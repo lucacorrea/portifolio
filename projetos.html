@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portfolio-Projetos</title>
 
-    <!-- Fonts -->
+    <!-- Fonts & Styles -->
     <link rel="stylesheet" href="./css/bootstrap.min.css">
     <link rel="stylesheet" href="./css/aos.css">
     <link rel="stylesheet" href="./css/style.css">
@@ -22,12 +22,11 @@
             <div class="container">
                 <div class="gx-row d-flex align-items-center justify-content-between">
 
-
                     <nav class="navbar">
                         <ul class="menu">
                             <li><a href="index.html">Home</a></li>
                             <li><a href="sobre.html">Sobre</a></li>
-                            <li class="active"><a href="contato.html">Projetos</a></li>
+                            <li class="active"><a href="projetos.html">Projetos</a></li>
                             <li><a href="contato.html">Contato</a></li>
                         </ul>
                         <a href="./contato.html" class="theme-btn">Vamos conversar</a>
@@ -36,9 +35,7 @@
                     <a href="./contato.html" class="theme-btn">Vamos conversar</a>
 
                     <div class="show-menu">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                        <span></span><span></span><span></span>
                     </div>
                 </div>
             </div>
@@ -47,12 +44,14 @@
         <!-- Projects -->
         <section class="projects-area">
             <div class="container">
-                <h1 class="section-heading" data-aos="fade-up">Meu Projeto </h1>
+                <h1 class="section-heading" data-aos="fade-up">Meu Projeto</h1>
                 <div class="row">
                     <div class="col-md-4">
+                        <!-- Projeto 1 -->
                         <div data-aos="zoom-in">
                             <div class="project-item shadow-box">
-                                <a class="overlay-link" href="#"></a>
+                                <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                        data-bs-target="#modalSisUicam"></a>
                                 <img src="./img/bg1.png" alt="BG" class="bg-img">
                                 <div class="project-img">
                                     <img src="./img/sis-uicam.png" alt="Project">
@@ -62,40 +61,46 @@
                                         <p>Software</p>
                                         <h1>Sis-Uicam</h1>
                                     </div>
-                                    <a href="#" class="project-btn">
+                                    <a href="#" class="project-btn" data-bs-toggle="modal"
+                                        data-bs-target="#modalSisUicam">
                                         <img src="./img/icon.svg" alt="Button">
                                     </a>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Projeto 2 -->
                         <div data-aos="zoom-in">
                             <div class="project-item shadow-box">
-                                <a class="overlay-link" href="#"></a>
+                                <a class="overlay-link" href="#" ata-bs-toggle="modal"
+                                        data-bs-target="#modalLandingUicam"></a>
                                 <img src="./img/bg1.png" alt="BG" class="bg-img">
                                 <div class="project-img">
                                     <img src="./img/lande uicam.png" alt="Project">
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div class="project-info">
-                                        <p>landing page</p>
-                                        <h1>Uicam coari</h1>
+                                        <p>Landing Page</p>
+                                        <h1>Uicam Coari</h1>
                                     </div>
-                                    <a href="#" class="project-btn">
+                                    <a href="#" class="project-btn" data-bs-toggle="modal"
+                                        data-bs-target="#modalLandingUicam">
                                         <img src="./img/icon.svg" alt="Button">
                                     </a>
                                 </div>
                             </div>
                         </div>
-
                     </div>
+
                     <div class="col-md-8">
                         <h1 class="section-heading" data-aos="fade-up">Meus Projetos</h1>
 
                         <div class="d-flex align-items-start gap-24">
+                            <!-- Projeto 3 -->
                             <div data-aos="zoom-in" class="flex-1">
                                 <div class="project-item shadow-box">
-                                    <a class="overlay-link" href="#"></a>
+                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#modalAutoEscola"></a>
                                     <img src="./img/bg1.png" alt="BG" class="bg-img">
                                     <div class="project-img">
                                         <img src="./img/auto.png" alt="Project">
@@ -105,16 +110,19 @@
                                             <p>Software</p>
                                             <h1>Auto-escola</h1>
                                         </div>
-                                        <a href="#" class="project-btn">
+                                        <a href="#" class="project-btn" data-bs-toggle="modal"
+                                            data-bs-target="#modalAutoEscola">
                                             <img src="./img/icon.svg" alt="Button">
                                         </a>
                                     </div>
                                 </div>
                             </div>
 
+                            <!-- Projeto 4 -->
                             <div data-aos="zoom-in" class="flex-1">
                                 <div class="project-item shadow-box">
-                                    <a class="overlay-link" href="#"></a>
+                                    <a class="overlay-link" href="#"  data-bs-toggle="modal"
+                                            data-bs-target="#modalCardapio"></a>
                                     <img src="./img/bg1.png" alt="BG" class="bg-img">
                                     <div class="project-img">
                                         <img src="./img/project2.png" alt="Project">
@@ -124,7 +132,8 @@
                                             <p>Software</p>
                                             <h1>Cardápio Online</h1>
                                         </div>
-                                        <a href="#" class="project-btn">
+                                        <a href="#" class="project-btn" data-bs-toggle="modal"
+                                            data-bs-target="#modalCardapio">
                                             <img src="./img/icon.svg" alt="Button">
                                         </a>
                                     </div>
@@ -133,9 +142,11 @@
                         </div>
 
                         <div class="d-flex align-items-start gap-24">
+                            <!-- Projeto 5 -->
                             <div data-aos="zoom-in" class="flex-1">
                                 <div class="project-item shadow-box">
-                                    <a class="overlay-link" href="#"></a>
+                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#modalPizzaria"></a>
                                     <img src="./img/bg1.png" alt="BG" class="bg-img">
                                     <div class="project-img">
                                         <img src="./img/project1.png" alt="Project">
@@ -145,16 +156,19 @@
                                             <p>Software</p>
                                             <h1>Pizzaria</h1>
                                         </div>
-                                        <a href="#" class="project-btn">
+                                        <a href="#" class="project-btn" data-bs-toggle="modal"
+                                            data-bs-target="#modalPizzaria">
                                             <img src="./img/icon.svg" alt="Button">
                                         </a>
                                     </div>
                                 </div>
                             </div>
 
+                            <!-- Projeto 6 -->
                             <div data-aos="zoom-in" class="flex-1">
                                 <div class="project-item shadow-box">
-                                    <a class="overlay-link" href="#"></a>
+                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#modalSisUicam2"></a>
                                     <img src="./img/bg1.png" alt="BG" class="bg-img">
                                     <div class="project-img">
                                         <img src="./img/uicam2.0.jpeg" alt="Project">
@@ -162,24 +176,20 @@
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div class="project-info">
                                             <p>Software</p>
-                                            <h1>Sis-uicam 2.0</h1>
+                                            <h1>Sis-Uicam 2.0</h1>
                                         </div>
-                                        <a href="#" class="project-btn">
+                                        <a href="#" class="project-btn" data-bs-toggle="modal"
+                                            data-bs-target="#modalSisUicam2">
                                             <img src="./img/icon.svg" alt="Button">
                                         </a>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
-
                     </div>
-
                 </div>
             </div>
         </section>
-
-
 
         <!-- Footer -->
         <footer class="footer-area">
@@ -195,19 +205,118 @@
                         <li><a href="contato.html">Contato</a></li>
                     </ul>
                     <p class="copyright">
-                        &copy; Todos direitos resevados <span>Lucas Correa</span>
+                        &copy; Todos direitos reservados <span>Lucas Correa</span>
                     </p>
                 </div>
             </div>
         </footer>
 
+        <!-- Modais -->
+        <!-- Modal: Sis-Uicam -->
+        <div class="modal fade" id="modalSisUicam" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Sis-Uicam</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Sistema de gerenciamento para a UIcam com funcionalidades administrativas.</p>
+                        <img src="./img/sis-uicam.png" class="img-fluid" alt="Sis-Uicam">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Landing Page Uicam -->
+        <div class="modal fade" id="modalLandingUicam" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Landing Page Uicam Coari</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Landing page institucional da UIcam de Coari, com design moderno e responsivo.</p>
+                        <img src="./img/lande uicam.png" class="img-fluid" alt="Landing Uicam">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Auto Escola -->
+        <div class="modal fade" id="modalAutoEscola" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Auto-Escola</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Software de gestão para autoescolas com agendamentos, avaliações e histórico do aluno.</p>
+                        <img src="./img/auto.png" class="img-fluid" alt="Auto Escola">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Cardápio Online -->
+        <div class="modal fade" id="modalCardapio" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Cardápio Online</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Aplicativo de cardápio digital para restaurantes com pedidos online.</p>
+                        <img src="./img/project2.png" class="img-fluid" alt="Cardápio Online">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Pizzaria -->
+        <div class="modal fade" id="modalPizzaria" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Pizzaria</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Sistema personalizado de pedidos para pizzarias com integração a WhatsApp.</p>
+                        <img src="./img/project1.png" class="img-fluid" alt="Pizzaria">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Sis-Uicam 2.0 -->
+        <div class="modal fade" id="modalSisUicam2" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Sis-Uicam 2.0</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Versão 2.0 do sistema Sis-Uicam com melhorias de usabilidade e novos módulos.</p>
+                        <img src="./img/uicam2.0.jpeg" class="img-fluid" alt="Sis-Uicam 2.0">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Repita os outros 5 modais aqui... (já estão prontos na resposta anterior) -->
+
+        <!-- Scripts -->
+        <script src="./js/jquery-3.6.4.js"></script>
+        <script src="./js/bootstrap.bundle.min.js"></script>
+        <script src="./js/aos.js"></script>
+        <script src="./js/main.js"></script>
     </main>
-
-
-    <script src="./js/jquery-3.6.4.js"></script>
-    <script src="./js/bootstrap.bundle.min.js"></script>
-    <script src="./js/aos.js"></script>
-    <script src="./js/main.js"></script>
 </body>
 
 </html>
