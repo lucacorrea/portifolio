@@ -12,7 +12,151 @@
     <link rel="stylesheet" href="./css/aos.css">
     <link rel="stylesheet" href="./css/style.css">
 </head>
+<style>
+    /* Estilos personalizados para os modais */
+    .modal-pricing-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        padding: 25px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        height: 100%;
+    }
 
+    .pricing-header {
+        text-align: center;
+        margin-bottom: 25px;
+        position: relative;
+    }
+
+    .pricing-header h4 {
+        color: #2c3e50;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .price-tag {
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .price-tag::before {
+        content: "";
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+    }
+
+    .original-price {
+        font-size: 1.1rem;
+        text-decoration: line-through;
+        opacity: 0.8;
+        display: block;
+    }
+
+    .current-price {
+        font-size: 2.2rem;
+        font-weight: 800;
+        display: block;
+        line-height: 1;
+        margin: 5px 0;
+    }
+
+    .price-note {
+        font-size: 0.8rem;
+        opacity: 0.8;
+        display: block;
+    }
+
+    .price-features {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .price-features li {
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+    }
+
+    .price-features li:last-child {
+        border-bottom: none;
+    }
+
+    .price-features li i {
+        color: #2575fc;
+        margin-right: 10px;
+        font-size: 1.1rem;
+    }
+
+    .feature-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .feature-list li {
+        padding: 8px 0;
+        display: flex;
+        align-items: flex-start;
+    }
+
+    .feature-list li i {
+        color: #2575fc;
+        margin-right: 10px;
+        font-size: 1.1rem;
+        margin-top: 3px;
+    }
+
+    .modal-body {
+        padding: 30px;
+    }
+
+    .modal-footer {
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 20px 30px;
+    }
+
+    .btn-premium {
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 10px 25px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-premium:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(37, 117, 252, 0.3);
+        color: white;
+    }
+
+    .btn-outline-premium {
+        border: 1px solid #2575fc;
+        color: #2575fc;
+        font-weight: 600;
+        padding: 10px 25px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-premium:hover {
+        background-color: #2575fc;
+        color: white;
+    }
+</style>
 
 <body>
 
@@ -50,17 +194,18 @@
                     <div class="col-md-4">
                         <div data-aos="zoom-in" class="mb-4">
                             <div class="project-item shadow-box position-relative">
-                                <a class="overlay-link" href="#" data-bs-toggle="modal" data-bs-target="#"></a>
+                                <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                    data-bs-target="#modalSites"></a>
                                 <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
                                 <div class="project-img">
                                     <img src="./img/landdingpage.svg" alt="" class="img-fluid" />
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between mt-2">
                                     <div class="project-info">
-                                        <p>Criação de sites responsivos para divulgação pessoal ou empresarial.</p>
+                                        <p>Criação de sites responsivos.</p>
                                         <h1>Desenvolvimento de Sites</h1>
                                     </div>
-                                    <a href="#" class="project-btn" data-bs-toggle="modal" data-bs-target="#">
+                                    <a href="#" class="project-btn" data-bs-toggle="modal" data-bs-target="#modalSites">
                                         <img src="./img/icon.svg" alt="Button" />
                                     </a>
                                 </div>
@@ -69,17 +214,19 @@
 
                         <div data-aos="zoom-in" class="mb-4">
                             <div class="project-item shadow-box position-relative">
-                                <a class="overlay-link" href="#" data-bs-toggle="modal" data-bs-target="#"></a>
+                                <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                    data-bs-target="#modalAplicacoes"></a>
                                 <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
                                 <div class="project-img">
                                     <img src="./img/landdingpage.svg" alt="  " class="img-fluid" />
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between mt-2">
                                     <div class="project-info">
-                                        <p>Aplicações web dinâmicas com funcionalidades avançadas e bancos de dados.</p>
+                                        <p>Aplicações web dinâmicas.</p>
                                         <h1>Desenvolvimento de Aplicações Web</h1>
                                     </div>
-                                    <a href="#" class="project-btn" data-bs-toggle="modal" data-bs-target="#">
+                                    <a href="#" class="project-btn" data-bs-toggle="modal"
+                                        data-bs-target="#modalAplicacoes">
                                         <img src="./img/icon.svg" alt="Button" />
                                     </a>
                                 </div>
@@ -93,18 +240,19 @@
                         <div class="d-flex align-items-start gap-3 mb-4 server">
                             <div data-aos="zoom-in" class="flex-1">
                                 <div class="project-item shadow-box position-relative">
-                                    <a class="overlay-link" href="#" data-bs-toggle="modal" data-bs-target="#"></a>
+                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                        data-bs-target="#modalLanding"></a>
                                     <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
                                     <div class="project-img">
                                         <img src="./img/landdingpage.svg" alt="" class="img-fluid" />
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-2">
                                         <div class="project-info">
-                                            <p>Landing pages otimizadas para conversão e campanhas de marketing digital.
-                                            </p>
+                                            <p>Landing pages otimizadas.</p>
                                             <h1>Landing Pages</h1>
                                         </div>
-                                        <a href="#" class="project-btn" data-bs-toggle="modal" data-bs-target="#">
+                                        <a href="#" class="project-btn" data-bs-toggle="modal"
+                                            data-bs-target="#modalLanding">
                                             <img src="./img/icon.svg" alt="Button" />
                                         </a>
                                     </div>
@@ -113,17 +261,19 @@
 
                             <div data-aos="zoom-in" class="flex-1">
                                 <div class="project-item shadow-box position-relative">
-                                    <a class="overlay-link" href="#" data-bs-toggle="modal" data-bs-target="#"></a>
+                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                        data-bs-target="#modalAPIs"></a>
                                     <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
                                     <div class="project-img">
                                         <img src="./img/landdingpage.svg" alt=" " class="img-fluid" />
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-2">
                                         <div class="project-info">
-                                            <p>Desenvolvimento de sistemas back-end com APIs REST para integração.</p>
+                                            <p>Desenvolvimento de sistemas.</p>
                                             <h1>Desenvolvimento de APIs</h1>
                                         </div>
-                                        <a href="#" class="project-btn" data-bs-toggle="modal" data-bs-target="#">
+                                        <a href="#" class="project-btn" data-bs-toggle="modal"
+                                            data-bs-target="#modalAPIs">
                                             <img src="./img/icon.svg" alt="Button" />
                                         </a>
                                     </div>
@@ -135,17 +285,18 @@
                             <div data-aos="zoom-in" class="flex-1">
                                 <div class="project-item shadow-box position-relative">
                                     <a class="overlay-link" href="#" data-bs-toggle="modal"
-                                        data-bs-target="#modalPizzaria"></a>
+                                        data-bs-target="#modalEcommerce"></a>
                                     <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
                                     <div class="project-img">
                                         <img src="./img/landdingpage.svg" alt="" class="img-fluid" />
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-2">
                                         <div class="project-info">
-                                            <p>Desenvolvimento de lojas virtuais com sistema de pagamento integrado.</p>
+                                            <p>Desenvolvimento de lojas virtuais.</p>
                                             <h1>E-commerce</h1>
                                         </div>
-                                        <a href="#" class="project-btn" data-bs-toggle="modal" data-bs-target="#">
+                                        <a href="#" class="project-btn" data-bs-toggle="modal"
+                                            data-bs-target="#modalEcommerce">
                                             <img src="./img/icon.svg" alt="Button" />
                                         </a>
                                     </div>
@@ -154,17 +305,19 @@
 
                             <div data-aos="zoom-in" class="flex-1">
                                 <div class="project-item shadow-box position-relative">
-                                    <a class="overlay-link" href="#" data-bs-toggle="modal" data-bs-target="#"></a>
+                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                        data-bs-target="#modalSeguranca"></a>
                                     <img src="./img/bg1.png" class="bg-img w-100" />
                                     <div class="project-img">
                                         <img src="./img/landdingpage.svg" class="img-fluid" />
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-2">
                                         <div class="project-info">
-                                            <p>Integração de sistemas com autenticação segura e proteção de dados.</p>
+                                            <p>Integração de sistemas</p>
                                             <h1>Autenticação e Segurança</h1>
                                         </div>
-                                        <a href="#" class="project-btn" data-bs-toggle="modal" data-bs-target="#">
+                                        <a href="#" class="project-btn" data-bs-toggle="modal"
+                                            data-bs-target="#modalSeguranca">
                                             <img src="./img/icon.svg" alt="Button" />
                                         </a>
                                     </div>
@@ -176,6 +329,356 @@
             </div>
         </section>
 
+        <!-- Modal Desenvolvimento de Sites -->
+        <div class="modal fade" id="modalSites" tabindex="-1" aria-labelledby="modalSitesLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalSitesLabel">Desenvolvimento de Sites</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <h3 class="mb-4">Sites Responsivos e Modernos</h3>
+                                <p class="mb-4">Desenvolvimento de sites completos, responsivos e otimizados para SEO,
+                                    garantindo a melhor experiência do usuário em qualquer dispositivo.</p>
+                                <ul class="feature-list">
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Design responsivo</strong> -
+                                        Adaptável a todos os dispositivos</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Otimização SEO</strong> - Pronto
+                                        para ser encontrado no Google</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Performance acelerada</strong> -
+                                        Carregamento ultrarrápido</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Integrações</strong> - Redes
+                                        sociais e formulários</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Segurança</strong> - Certificado
+                                        SSL incluso</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="modal-pricing-card">
+                                    <div class="pricing-header">
+                                        <h4>Pacote Profissional</h4>
+                                        <div class="price-tag">
+                                            <span class="original-price">De R$ 3.000</span>
+                                            <span class="current-price">R$ 3.600</span>
+                                            <span class="price-note">(+20% margem de negociação)</span>
+                                        </div>
+                                    </div>
+                                    <ul class="price-features">
+                                        <li><i class="bi bi-check2"></i> Até 5 páginas internas</li>
+                                        <li><i class="bi bi-check2"></i> Formulário de contato</li>
+                                        <li><i class="bi bi-check2"></i> SEO básico implementado</li>
+                                        <li><i class="bi bi-check2"></i> 1 ano de suporte gratuito</li>
+                                        <li><i class="bi bi-check2"></i> Hospedagem por 6 meses</li>
+                                        <li><i class="bi bi-check2"></i> Certificado SSL</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-premium" data-bs-dismiss="modal">Fechar</button>
+                        <a href="contato.html" class="btn btn-premium ms-3"><i class="bi bi-whatsapp"></i> Solicitar
+                            Orçamento</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Aplicações Web -->
+        <div class="modal fade" id="modalAplicacoes" tabindex="-1" aria-labelledby="modalAplicacoesLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAplicacoesLabel">Aplicações Web</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <h3 class="mb-4">Aplicações Web Dinâmicas</h3>
+                                <p class="mb-4">Desenvolvimento de aplicações web completas com funcionalidades
+                                    avançadas, banco de dados e interfaces intuitivas.</p>
+                                <ul class="feature-list">
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Sistemas
+                                            administrativos</strong> - Gestão completa</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>PWA</strong> - Aplicativos web
+                                        progressivos</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>APIs</strong> - Integração com
+                                        outros sistemas</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Painéis</strong> - Dashboards
+                                        intuitivos</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Banco de dados</strong> -
+                                        Armazenamento seguro</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="modal-pricing-card">
+                                    <div class="pricing-header">
+                                        <h4>Pacote Avançado</h4>
+                                        <div class="price-tag">
+                                            <span class="original-price">De R$ 8.000</span>
+                                            <span class="current-price">R$ 9.600</span>
+                                            <span class="price-note">(+20% margem de negociação)</span>
+                                        </div>
+                                    </div>
+                                    <ul class="price-features">
+                                        <li><i class="bi bi-check2"></i> Até 3 módulos principais</li>
+                                        <li><i class="bi bi-check2"></i> Painel administrativo</li>
+                                        <li><i class="bi bi-check2"></i> Banco de dados incluído</li>
+                                        <li><i class="bi bi-check2"></i> 6 meses de suporte</li>
+                                        <li><i class="bi bi-check2"></i> Documentação técnica</li>
+                                        <li><i class="bi bi-check2"></i> Hospedagem inicial</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-premium" data-bs-dismiss="modal">Fechar</button>
+                        <a href="contato.html" class="btn btn-premium ms-3"><i class="bi bi-whatsapp"></i> Solicitar
+                            Orçamento</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Landing Pages -->
+        <div class="modal fade" id="modalLanding" tabindex="-1" aria-labelledby="modalLandingLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalLandingLabel">Landing Pages</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <h3 class="mb-4">Landing Pages de Alta Conversão</h3>
+                                <p class="mb-4">Criação de landing pages otimizadas para conversão, com designs
+                                    atraentes e call-to-actions estratégicos para maximizar seus resultados.</p>
+                                <ul class="feature-list">
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Design conversor</strong> -
+                                        Focado em resultados</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Marketing tools</strong> -
+                                        Integração completa</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Testes A/B</strong> - Otimização
+                                        contínua</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>CTA estratégico</strong> -
+                                        Botões otimizados</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Analytics</strong> -
+                                        Monitoramento de resultados</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="modal-pricing-card">
+                                    <div class="pricing-header">
+                                        <h4>Pacote Conversão</h4>
+                                        <div class="price-tag">
+                                            <span class="original-price">De R$ 2.500</span>
+                                            <span class="current-price">R$ 3.000</span>
+                                            <span class="price-note">(+20% margem de negociação)</span>
+                                        </div>
+                                    </div>
+                                    <ul class="price-features">
+                                        <li><i class="bi bi-check2"></i> 1 página principal</li>
+                                        <li><i class="bi bi-check2"></i> 2 variações de design</li>
+                                        <li><i class="bi bi-check2"></i> Formulário integrado</li>
+                                        <li><i class="bi bi-check2"></i> SEO básico</li>
+                                        <li><i class="bi bi-check2"></i> 3 meses de suporte</li>
+                                        <li><i class="bi bi-check2"></i> Relatório de performance</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-premium" data-bs-dismiss="modal">Fechar</button>
+                        <a href="contato.html" class="btn btn-premium ms-3"><i class="bi bi-whatsapp"></i> Solicitar
+                            Orçamento</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal APIs -->
+        <div class="modal fade" id="modalAPIs" tabindex="-1" aria-labelledby="modalAPIsLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAPIsLabel">Desenvolvimento de APIs</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <h3 class="mb-4">APIs Robustas e Escaláveis</h3>
+                                <p class="mb-4">Desenvolvimento de APIs RESTful para integração entre sistemas,
+                                    aplicativos e serviços, com documentação completa e segurança implementada.</p>
+                                <ul class="feature-list">
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>RESTful API</strong> -
+                                        Arquitetura moderna</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Autenticação</strong> -
+                                        JWT/OAuth seguro</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Documentação</strong> -
+                                        Swagger/OpenAPI</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Testes</strong> - Suíte
+                                        automatizada</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Escalabilidade</strong> - Pronta
+                                        para crescimento</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="modal-pricing-card">
+                                    <div class="pricing-header">
+                                        <h4>Pacote Técnico</h4>
+                                        <div class="price-tag">
+                                            <span class="original-price">De R$ 6.000</span>
+                                            <span class="current-price">R$ 7.200</span>
+                                            <span class="price-note">(+20% margem de negociação)</span>
+                                        </div>
+                                    </div>
+                                    <ul class="price-features">
+                                        <li><i class="bi bi-check2"></i> Até 10 endpoints</li>
+                                        <li><i class="bi bi-check2"></i> Autenticação JWT</li>
+                                        <li><i class="bi bi-check2"></i> Documentação Swagger</li>
+                                        <li><i class="bi bi-check2"></i> Testes automatizados</li>
+                                        <li><i class="bi bi-check2"></i> 6 meses de suporte</li>
+                                        <li><i class="bi bi-check2"></i> Manual técnico</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-premium" data-bs-dismiss="modal">Fechar</button>
+                        <a href="contato.html" class="btn btn-premium ms-3"><i class="bi bi-whatsapp"></i> Solicitar
+                            Orçamento</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal E-commerce -->
+        <div class="modal fade" id="modalEcommerce" tabindex="-1" aria-labelledby="modalEcommerceLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalEcommerceLabel">E-commerce</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <h3 class="mb-4">Lojas Virtuais Completas</h3>
+                                <p class="mb-4">Desenvolvimento de e-commerces com todas as funcionalidades necessárias
+                                    para vender online, desde o catálogo até o checkout seguro.</p>
+                                <ul class="feature-list">
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Pagamentos</strong> - Gateways
+                                        integrados</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Gestão</strong> - Sistema de
+                                        pedidos completo</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Catálogo</strong> - Produtos e
+                                        categorias</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Relatórios</strong> - Análise de
+                                        vendas</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Mobile</strong> - Versão
+                                        otimizada</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="modal-pricing-card">
+                                    <div class="pricing-header">
+                                        <h4>Pacote Loja Virtual</h4>
+                                        <div class="price-tag">
+                                            <span class="original-price">De R$ 12.000</span>
+                                            <span class="current-price">R$ 14.400</span>
+                                            <span class="price-note">(+20% margem de negociação)</span>
+                                        </div>
+                                    </div>
+                                    <ul class="price-features">
+                                        <li><i class="bi bi-check2"></i> Até 50 produtos</li>
+                                        <li><i class="bi bi-check2"></i> 2 métodos de pagamento</li>
+                                        <li><i class="bi bi-check2"></i> Painel administrativo</li>
+                                        <li><i class="bi bi-check2"></i> Relatórios básicos</li>
+                                        <li><i class="bi bi-check2"></i> 6 meses de suporte</li>
+                                        <li><i class="bi bi-check2"></i> Integração com correios</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-premium" data-bs-dismiss="modal">Fechar</button>
+                        <a href="contato.html" class="btn btn-premium ms-3"><i class="bi bi-whatsapp"></i> Solicitar
+                            Orçamento</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Segurança -->
+        <div class="modal fade" id="modalSeguranca" tabindex="-1" aria-labelledby="modalSegurancaLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalSegurancaLabel">Autenticação e Segurança</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <h3 class="mb-4">Sistemas Seguros e Integrados</h3>
+                                <p class="mb-4">Implementação de sistemas de autenticação seguros e integração entre
+                                    diferentes plataformas e serviços.</p>
+                                <ul class="feature-list">
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>MFA</strong> - Autenticação
+                                        multi-fator</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>SSO</strong> - Login único
+                                        integrado</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Proteção</strong> - Contra
+                                        vulnerabilidades</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Integração</strong> - Sistemas
+                                        legados</li>
+                                    <li><i class="bi bi-check-circle-fill"></i> <strong>Backup</strong> - Segurança de
+                                        dados</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="modal-pricing-card">
+                                    <div class="pricing-header">
+                                        <h4>Pacote Segurança</h4>
+                                        <div class="price-tag">
+                                            <span class="original-price">De R$ 5.000</span>
+                                            <span class="current-price">R$ 6.000</span>
+                                            <span class="price-note">(+20% margem de negociação)</span>
+                                        </div>
+                                    </div>
+                                    <ul class="price-features">
+                                        <li><i class="bi bi-check2"></i> Autenticação JWT/OAuth</li>
+                                        <li><i class="bi bi-check2"></i> Proteção contra SQLi/XSS</li>
+                                        <li><i class="bi bi-check2"></i> Sistema de permissões</li>
+                                        <li><i class="bi bi-check2"></i> Logs de acesso</li>
+                                        <li><i class="bi bi-check2"></i> 6 meses de suporte</li>
+                                        <li><i class="bi bi-check2"></i> Manual de segurança</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-premium" data-bs-dismiss="modal">Fechar</button>
+                        <a href="contato.html" class="btn btn-premium ms-3"><i class="bi bi-whatsapp"></i> Solicitar
+                            Orçamento</a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <footer class="footer-area">
             <div class="container">
@@ -195,8 +698,6 @@
                 </div>
             </div>
         </footer>
-
-
 
         <!-- Scripts -->
         <script src="./js/jquery-3.6.4.js"></script>
