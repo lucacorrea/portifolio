@@ -678,8 +678,8 @@ ol {
     border-radius: 20px;
 }
 .projects-area .project-item .project-info p {
-    color: #BCBCBC;
-    opacity: 0.5;
+    color: #000;
+    opacity: 0.8;
     font-size: 14px;
     text-transform: uppercase;
     margin-bottom: 2px;
