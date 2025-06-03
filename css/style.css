@@ -701,7 +701,9 @@ ol {
     opacity: 1;
 }
 
-
+.server .project-img{
+    background-color: #fff;
+}
 
 /* # Project Details */
 .project-details-wrap .project-details-img {
