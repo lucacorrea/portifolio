@@ -672,10 +672,13 @@ ol {
 .projects-area .project-item .project-img {
     border-radius: 20px;
     margin-bottom: 13px;
+   
 }
 .projects-area .project-item .project-img img {
     display: block;
     border-radius: 20px;
+    top: 10px;
+    
 }
 .projects-area .project-item .project-info p {
     color: #000;
