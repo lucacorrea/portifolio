@@ -146,19 +146,20 @@
                     return;
                 }
 
-                // Formata a mensagem para o WhatsApp
-                const whatsappMessage =
-                    `Olá!%0A%0AMeu nome é: *${encodeURIComponent(formData.nome)}*%0A` +
-                    `Email: ${encodeURIComponent(formData.email)}%0A` +
-                    `Assunto: *${encodeURIComponent(formData.assunto)}*%0A%0A` +
-                    `Mensagem:%0A${encodeURIComponent(formData.mensagem)}`;
+                // Formata a mensagem para o email
+                const emailBody =
+                    `Nome: ${formData.nome}%0D%0A` +
+                    `Email: ${formData.email}%0D%0A` +
+                    `Assunto: ${formData.assunto}%0D%0A%0D%0A` +
+                    `Mensagem:%0D%0A${formData.mensagem}`;
 
-                // Configuração do link do WhatsApp
-                const whatsappNumber = '5592991515710'; // Número com DDI (55) e DDD (92)
-                const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+                // Cria o link mailto
+                const emailTo = 'lucaasscorrea0@gmail.com';
+                const emailSubject = `Contato via Site: ${formData.assunto}`;
+                const mailtoLink = `mailto:${emailTo}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
 
-                // Redirecionamento
-                window.open(whatsappUrl, '_blank');
+                // Abre o cliente de email padrão
+                window.location.href = mailtoLink;
 
                 // Opcional: Resetar o formulário após envio
                 // document.querySelector('.contact-form form').reset();
