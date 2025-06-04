@@ -135,6 +135,7 @@
         padding: 10px 25px;
         border-radius: 8px;
         transition: all 0.3s ease;
+        width: 270px;
     }
 
     .btn-premium:hover {
@@ -150,12 +151,35 @@
         padding: 10px 25px;
         border-radius: 8px;
         transition: all 0.3s ease;
+        width: 120px;
     }
 
     .btn-outline-premium:hover {
         background-color: #2575fc;
         color: white;
     }
+
+    @media (max-width: 575.98px) {
+        .modal-footer {
+            flex-direction: column-reverse !important;
+            align-items: stretch !important;
+        }
+        .modal-footer .btn,
+        .modal-footer .btn-premium,
+        .modal-footer .btn-outline-premium {
+            width: 100% !important;
+            margin: 0 0 10px 0 !important;
+        }
+        .modal-footer .btn-premium:last-child,
+        .modal-footer .btn-outline-premium:last-child {
+            margin-bottom: 0 !important;
+        }
+        .btn-outline-premium {
+            margin-top: 60px !important;
+        }
+    }
+
+
 </style>
 
 <body>
@@ -471,7 +495,7 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-premium" data-bs-dismiss="modal">Fechar</button>
                         <a href="https://wa.me/5592991515710?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20saber%20mais%20sobre%20o%20pacote%20Gest%C3%A3o"
-                            target="_blank" class="btn btn-premium ms-3">
+                            target="_blank" class="btn btn-premium ms-">
                             <i class="bi bi-whatsapp"></i> Solicitar Orçamento</a>
                     </div>
                 </div>
