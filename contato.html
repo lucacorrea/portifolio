@@ -148,11 +148,11 @@
 
                 // Formata a mensagem para o email
                 const emailBody =
-                    `Mensagem:${formData.mensagem}`;
+                    `${formData.mensagem}`;
 
                 // Cria o link mailto
                 const emailTo = 'lucaasscorrea0@gmail.com';
-                const emailSubject = `Contato via Site: ${formData.assunto}`;
+                const emailSubject = `${formData.assunto}`;
                 const mailtoLink = `&body=${encodeURIComponent(emailBody)}`;
 
                 // Abre o cliente de email padrão
