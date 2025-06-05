@@ -160,25 +160,6 @@
         color: white;
     }
 
-    .project-img {
-        text-align: center;
-        margin-bottom: 10px;
-    }
-
-    .project-img-fix {
-        height: 205px !important;
-        object-fit: contain;
-        display: block;
-        margin: 0 auto;
-        max-width: 100%;
-    }
-
-    .project-item {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        height: 100%;
-    }
 
 
     @media (max-width: 575.98px) {
@@ -236,7 +217,9 @@
             <div class="container server">
                 <h1 class="section-heading" data-aos="fade-up">Meus Serviços</h1>
                 <div class="row">
+                    <!-- Lado esquerdo com 2 cards empilhados -->
                     <div class="col-md-4">
+                        <!-- Card 1 -->
                         <div data-aos="zoom-in" class="mb-4">
                             <div class="project-item shadow-box position-relative">
                                 <a class="overlay-link" href="#" data-bs-toggle="modal"
@@ -258,13 +241,14 @@
                             </div>
                         </div>
 
+                        <!-- Card 2 -->
                         <div data-aos="zoom-in" class="mb-4">
                             <div class="project-item shadow-box position-relative">
                                 <a class="overlay-link" href="#" data-bs-toggle="modal"
                                     data-bs-target="#modalAplicacoes"></a>
                                 <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
                                 <div class="project-img">
-                                    <img src="./img/web.svg" style="max-height:205px !important;" alt="  "
+                                    <img src="./img/web.svg" style="max-height:205px !important;"alt=""
                                         class="img-fluid" />
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between mt-2">
@@ -281,105 +265,108 @@
                         </div>
                     </div>
 
+                    <!-- Lado direito com grid de 4 cards (2x2) -->
                     <div class="col-md-8">
                         <h1 class="section-heading" data-aos="fade-up">Meus Serviços</h1>
-
-                        <div class="d-flex align-items-start gap-3 mb-4 server">
-                            <div data-aos="zoom-in" class="flex-1">
-                                <div class="project-item shadow-box position-relative">
-                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
-                                        data-bs-target="#modalLanding"></a>
-                                    <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
-                                    <div class="project-img">
-                                        <img src="./img/landdingpage.svg" alt="" class="img-fluid" />
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between mt-2">
-                                        <div class="project-info">
-                                            <p>Landing pages otimizadas.</p>
-                                            <h1>Landing Pages</h1>
+                        <div class="row">
+                            <!-- Card 3 -->
+                            <div class="col-md-6 mb-4">
+                                <div data-aos="zoom-in" class="h-100">
+                                    <div class="project-item shadow-box position-relative h-100">
+                                        <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#modalLanding"></a>
+                                        <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
+                                        <div class="project-img">
+                                            <img src="./img/landdingpage.svg" alt="" style="max-height:205px !important;" class="img-fluid" />
                                         </div>
-                                        <a href="#" class="project-btn" data-bs-toggle="modal"
-                                            data-bs-target="#modalLanding">
-                                            <img src="./img/icon.svg" alt="Button" />
-                                        </a>
+                                        <div class="d-flex align-items-center justify-content-between mt-2">
+                                            <div class="project-info">
+                                                <p>Landing pages otimizadas.</p>
+                                                <h1>Landing Pages</h1>
+                                            </div>
+                                            <a href="#" class="project-btn" data-bs-toggle="modal"
+                                                data-bs-target="#modalLanding">
+                                                <img src="./img/icon.svg" alt="Button" />
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div data-aos="zoom-in" class="flex-1">
-                                <div class="project-item shadow-box position-relative">
-                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
-                                        data-bs-target="#modalVisaoComputacional"></a>
-                                    <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
-                                    <div class="project-img">
-                                        <img src="./img/ia.svg" style="height:205px !important;" alt=" "
-                                            class="img-fluid" />
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between mt-2">
-                                        <div class="project-info">
-                                            <p>visão computacional com IA.</p>
-                                            <h1>Visão Computacional</h1>
+                            <!-- Card 4 -->
+                            <div class="col-md-6 mb-4">
+                                <div data-aos="zoom-in" class="h-100">
+                                    <div class="project-item shadow-box position-relative h-100">
+                                        <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#modalVisaoComputacional"></a>
+                                        <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
+                                        <div class="project-img">
+                                            <img src="./img/ia.svg" style="height:205px !important;" alt=""
+                                                class="img-fluid" />
                                         </div>
-                                        <a href="#" class="project-btn" data-bs-toggle="modal"
-                                            data-bs-target="#modalVisaoComputacional">
-                                            <img src="./img/icon.svg" alt="Button" />
-                                        </a>
+                                        <div class="d-flex align-items-center justify-content-between mt-2">
+                                            <div class="project-info">
+                                                <p>visão computacional com IA.</p>
+                                                <h1>Visão Computacional</h1>
+                                            </div>
+                                            <a href="#" class="project-btn" data-bs-toggle="modal"
+                                                data-bs-target="#modalVisaoComputacional">
+                                                <img src="./img/icon.svg" alt="Button" />
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Card 5 - E-commerce -->
+                            <div class="col-md-6 mb-4">
+                                <div data-aos="zoom-in" class="h-100">
+                                    <div class="project-item shadow-box position-relative h-100">
+                                        <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#modalEcommerce"></a>
+                                        <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
+                                        <div class="project-img">
+                                            <img src="./img/loja.svg" alt="Loja Virtual" style="max-height:205px !important;" class="img-fluid" />
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-between mt-2">
+                                            <div class="project-info">
+                                                <p>Desenvolvimento de lojas virtuais.</p>
+                                                <h1>E-commerce</h1>
+                                            </div>
+                                            <a href="#" class="project-btn" data-bs-toggle="modal"
+                                                data-bs-target="#modalEcommerce">
+                                                <img src="./img/icon.svg" alt="Button" />
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card 6 - Consultoria -->
+                            <div class="col-md-6 mb-4">
+                                <div data-aos="zoom-in" class="h-100">
+                                    <div class="project-item shadow-box position-relative h-100">
+                                        <a class="overlay-link" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#modalSeguranca"></a>
+                                        <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
+                                        <div class="project-img">
+                                            <img src="./img/digital.svg" alt="Consultoria Digital" style="height:205px !important;" class="img-fluid" />
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-between mt-2">
+                                            <div class="project-info">
+                                                <p>Transformação digital</p>
+                                                <h1>Consultoria Digital</h1>
+                                            </div>
+                                            <a href="#" class="project-btn" data-bs-toggle="modal"
+                                                data-bs-target="#modalSeguranca">
+                                                <img src="./img/icon.svg" alt="Button" />
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
-
-                        <div class="d-flex align-items-start gap-3">
-
-                            <!-- E-commerce -->
-                            <div data-aos="zoom-in" class="flex-1">
-                                <div class="project-item shadow-box position-relative">
-                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
-                                        data-bs-target="#modalEcommerce"></a>
-                                    <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
-                                    <div class="project-img">
-                                        <img src="./img/loja.svg" alt="Loja Virtual"
-                                            class="img-fluid project-img-fix" />
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between mt-2">
-                                        <div class="project-info">
-                                            <p>Desenvolvimento de lojas virtuais.</p>
-                                            <h1>E-commerce</h1>
-                                        </div>
-                                        <a href="#" class="project-btn" data-bs-toggle="modal"
-                                            data-bs-target="#modalEcommerce">
-                                            <img src="./img/icon.svg" alt="Abrir" />
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Consultoria Digital -->
-                            <div data-aos="zoom-in" class="flex-1">
-                                <div class="project-item shadow-box position-relative">
-                                    <a class="overlay-link" href="#" data-bs-toggle="modal"
-                                        data-bs-target="#modalSeguranca"></a>
-                                    <img src="./img/bg1.png" alt="BG" class="bg-img w-100" />
-                                    <div class="project-img">
-                                        <img src="./img/digital.svg" alt="Consultoria Digital"
-                                            class="img-fluid project-img-fix" />
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between mt-2">
-                                        <div class="project-info">
-                                            <p>Transformação digital</p>
-                                            <h1>Consultoria Digital</h1>
-                                        </div>
-                                        <a href="#" class="project-btn" data-bs-toggle="modal"
-                                            data-bs-target="#modalSeguranca">
-                                            <img src="./img/icon.svg" alt="Abrir" />
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-
-                        </div>
-
                     </div>
                 </div>
             </div>
