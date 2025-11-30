@@ -7389,7 +7389,7 @@ h1, h2, h3, h4, h5,
   .ftco-navbar-light .navbar-nav > .nav-item.cta.cta-colored span {
     border-color: #ffcdcd; }
   .ftco-navbar-light .navbar-nav > .nav-item.active > a {
-    color:var(--danger-background); }
+    color:var(--danger-background) !important; }
   .ftco-navbar-light .navbar-toggler {
     border: none;
     color:var(--danger-background) !important;
