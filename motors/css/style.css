@@ -67,7 +67,7 @@ body {
 
 [tabindex="-1"]:focus {
   outline: 0 !important; }
-.navbar-nav .active a{
+.navbar-nav .active {
   color: var(--danger-background) !important;
 }
 
