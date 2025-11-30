@@ -7836,8 +7836,8 @@ h1, h2, h3, h4, h5,
       position: relative;
       width: 100px;
       height: 100px;
-      color: var(--danger-background) !important;
-      background: #a2000e           !important;
+     
+      background: var(--danger-background) !important;
       -webkit-border-radius: 50%;
       -moz-border-radius: 50%;
       -ms-border-radius: 50%;
