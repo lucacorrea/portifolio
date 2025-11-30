@@ -67,6 +67,9 @@ body {
 
 [tabindex="-1"]:focus {
   outline: 0 !important; }
+.navbar-nav .active a{
+  color: var(--danger-background) !important;
+}
 
 hr {
   -webkit-box-sizing: content-box;
