@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </form>
 
             <div class="text-center mt-3">
-                <a href="adm/index.php" class="text-muted">← Voltar ao login</a>
+                <a href="index.php" class="text-muted">← Voltar ao login</a>
             </div>
         </div>
 
