@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $sql = "INSERT INTO usuarios (email, senha) VALUES ('$email', '$senhaHash')";
 
     if ($conex->query($sql) === TRUE) {
-        echo "<script>alert('Conta criada com sucesso!'); window.location='adm/index.php';</script>";
+        echo "<script>alert('Conta criada com sucesso!'); window.location='./index.php';</script>";
         exit;
     } else {
         echo "<script>alert('Erro: Este e-mail já está cadastrado.');</script>";
