@@ -155,7 +155,7 @@ $rooms  = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
                         <div class="single_offers">
 
                             <div class="about_thumb">
-                                <img src="loja/uploads/<?= $p['imagem'] ?>">
+                                <img src="loja/uploads/<?= $p['imagem'] ?>" style="width:100%; height:240px; object-fit:cover;">
                             </div>
 
                             <h3><?= $p['nome'] ?></h3>
@@ -166,7 +166,10 @@ $rooms  = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
                                 <li><b>Estoque:</b> <?= $p['quantidade'] ?></li>
                             </ul>
 
-                            <a href="loja/visualizar.php" class="book_now bg-danger text-white">Ver mais</a>
+                            <a href="motos.php?id=<?= $p['id'] ?>"
+                                class="book_now bg-danger text-white">
+                                Ver mais
+                            </a>
                         </div>
                     </div>
                 <?php } ?>
@@ -175,8 +178,9 @@ $rooms  = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
         </div>
     </div>
 
+
     <!-- ============ 4 PRODUTOS (ESTILO ROOMS) ============ -->
-   
+
     <!-- features_room_end -->
 
     <footer class="footer">
