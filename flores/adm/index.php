@@ -39,7 +39,8 @@
             </form>
 
             <div class="text-center mt-3">
-                <a href="index.html" class="text-muted">← Voltar ao site</a>
+                  <a href="../criar-conta.php" class="text-muted">Criar Conta </a>  
+                <a href="../index.php" class="text-muted">← Voltar ao site</a>
             </div>
         </div>
 
