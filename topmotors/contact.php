@@ -69,7 +69,7 @@
 
     <!-- bradcam_area_start -->
     <div class="bradcam_area breadcam_bg_2">
-        <h3>Get in Touch</h3>
+        <h3>Cadastro de Cliente</h3>
     </div>
     <!-- bradcam_area_end -->
 
@@ -79,7 +79,7 @@
 
             <div class="row">
                 <div class="col-12 text-center mb-4">
-                    <h2 class="contact-title">Cadastro de Cliente</h2>
+                   
                     <p>Preencha seus dados abaixo para realizar seu cadastro na Top Motors.</p>
                 </div>
             </div>
