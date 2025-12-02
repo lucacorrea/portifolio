@@ -187,30 +187,10 @@ $rooms  = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
         </div>
 
         <!-- features_room_startt -->
-        <div class="features_room">
-            <div class="container">
-                <div class="row">
-                    <div class="col-xl-12">
-                        <div class="section_title text-center mb-100">
-                            <span class="text-danger">Nossas Motos</span>
-                            <h3>Escolha a Melhor Moto</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
+       
 
             <!-- features_room_startt -->
-            <div class="features_room">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-xl-12">
-                            <div class="section_title text-center mb-100">
-                                <span class="text-danger">Nossas Motos</span>
-                                <h3>Escolha a Melhor Moto</h3>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            
 
                 <div class="rooms_here">
 
