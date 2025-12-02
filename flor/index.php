@@ -90,11 +90,11 @@ $produtos = $conex->query($sql);
                     <?php while ($p = $produtos->fetch_assoc()): ?>
 
                         <?php
-                        // ----- CORREÇÃO DO NOME DA IMAGEM -----
                         $imgName = trim($p['imagem']);
-                        $imgPath = "./uploads/" . $imgName;
 
-                        if (!file_exists($imgPath) || empty($imgName)) {
+                        if (!empty($imgName)) {
+                            $imgPath = "uploads/" . $imgName;
+                        } else {
                             $imgPath = "img/core-img/no-image.png";
                         }
                         ?>
@@ -103,8 +103,8 @@ $produtos = $conex->query($sql);
                             <a href="product-details.php?id=<?= $p['id'] ?>">
 
                                 <img src="<?= $imgPath ?>"
-                                     alt="<?= htmlspecialchars($p['nome']) ?>"
-                                     style="width:100%; height:350px; object-fit:cover;">
+                                    alt="<?= htmlspecialchars($p['nome']) ?>"
+                                    style="width:100%; height:350px; object-fit:cover;">
 
                                 <div class="hover-content">
                                     <div class="line"></div>
@@ -123,6 +123,9 @@ $produtos = $conex->query($sql);
                     </div>
 
                 <?php endif; ?>
+
+
+
 
             </div>
         </div>
