@@ -103,7 +103,7 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
     transition: .3s;
 }
 .bloco-detalhes .btn-comprar:hover {
-    background: #ff3b30;
+    background: #95C106FF;
     transform: translateY(-3px);
     box-shadow: 0 6px 15px rgba(255,94,87,0.4);
 }
