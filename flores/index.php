@@ -80,7 +80,7 @@ $produtos = $conex->query($sql);
         </header>
 
         <!-- ============================== -->
-        <!--   PRODUTOS (ESTILO AMADO)     -->
+        <!--   LISTA DE PRODUTOS AMADO     -->
         <!-- ============================== -->
 
         <div class="products-catagories-area clearfix">
@@ -89,15 +89,23 @@ $produtos = $conex->query($sql);
                 <?php if ($produtos->num_rows > 0): ?>
                     <?php while ($p = $produtos->fetch_assoc()): ?>
 
+                        <?php
+                        // ----- CORREÇÃO DA IMAGEM -----
+                        $img = trim($p['imagem']);
+                        $imgPath = "uploads/" . basename($img);
+
+                        if (!file_exists($imgPath) || empty($img)) {
+                            $imgPath = "img/core-img/no-image.png"; // coloca imagem padrão
+                        }
+                        ?>
+
                         <div class="single-products-catagory clearfix">
                             <a href="product-details.php?id=<?= $p['id'] ?>">
 
-                                <!-- IMAGEM (Amado original) -->
-                                <img src="uploads/<?= basename($p['imagem']) ?>"
-                                    alt="<?= htmlspecialchars($p['nome']) ?>"
-                                    style="width:100%; height:350px; object-fit:cover;">
+                                <img src="<?= $imgPath ?>"
+                                     alt="<?= htmlspecialchars($p['nome']) ?>"
+                                     style="width:100%; height:350px; object-fit:cover;">
 
-                                <!-- HOVER STYLE ORIGINAL -->
                                 <div class="hover-content">
                                     <div class="line"></div>
                                     <p>R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
@@ -188,7 +196,6 @@ $produtos = $conex->query($sql);
         </div>
     </footer>
 
-    <!-- Scripts -->
     <script src="js/jquery/jquery-2.2.4.min.js"></script>
     <script src="js/popper.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
