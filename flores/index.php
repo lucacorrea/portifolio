@@ -1,13 +1,13 @@
 <?php
 require 'conex.php';
 
-// BUSCAR os 6 produtos mais recentes
+// Buscar os 6 produtos mais recentes
 $sql = "SELECT * FROM produtos ORDER BY id DESC LIMIT 6";
 $produtos = $conex->query($sql);
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
@@ -15,10 +15,9 @@ $produtos = $conex->query($sql);
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <!-- Title  -->
     <title>Floricultura</title>
 
-    <!-- Favicon  -->
+    <!-- Favicon -->
     <link rel="icon" href="img/core-img/favicon.ico">
 
     <!-- Core Style CSS -->
@@ -28,7 +27,6 @@ $produtos = $conex->query($sql);
 </head>
 
 <body>
-
     <!-- Search Wrapper Area Start -->
     <div class="search-wrapper section-padding-100">
         <div class="search-close"><i class="fa fa-close" aria-hidden="true"></i></div>
@@ -37,7 +35,7 @@ $produtos = $conex->query($sql);
                 <div class="col-12">
                     <div class="search-content">
                         <form action="#" method="get">
-                            <input type="search" name="search" id="search" placeholder="Digite algo...">
+                            <input type="search" name="search" id="search" placeholder="Buscar...">
                             <button type="submit"><img src="img/core-img/search.png" alt=""></button>
                         </form>
                     </div>
@@ -84,33 +82,36 @@ $produtos = $conex->query($sql);
         </header>
         <!-- Header Area End -->
 
-        <!-- ############ PRODUTOS DINÂMICOS ############ -->
+        <!-- ############################################ -->
+        <!-- ####    ÁREA DINÂMICA DE PRODUTOS        #### -->
+        <!-- ############################################ -->
 
         <div class="products-catagories-area clearfix">
             <div class="amado-pro-catagory clearfix">
 
                 <?php if ($produtos->num_rows > 0): ?>
+                    
                     <?php while ($p = $produtos->fetch_assoc()): ?>
 
                         <div class="single-products-catagory clearfix">
-                            <a href="product-details.php?id=<?php echo $p['id']; ?>">
-                                
-                                <!-- IMAGEM -->
-                                <img src="<?php echo $p['imagem']; ?>" 
-                                     alt="<?php echo htmlspecialchars($p['nome']); ?>"
-                                     style="height: 350px; width:100%; object-fit: cover;">
+                            <a href="product-details.php?id=<?= $p['id'] ?>">
 
-                                <!-- HOVER -->
+                                <!-- Imagem -->
+                                <img src="<?= $p['imagem'] ?>" 
+                                     alt="<?= htmlspecialchars($p['nome']) ?>"
+                                     style="height: 380px; width: 100%; object-fit: cover;">
+
+                                <!-- Hover -->
                                 <div class="hover-content">
                                     <div class="line"></div>
-                                    <p>R$ <?php echo number_format($p['preco'], 2, ',', '.'); ?></p>
-                                    <h4><?php echo htmlspecialchars($p['nome']); ?></h4>
+                                    <p>R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
+                                    <h4><?= htmlspecialchars($p['nome']) ?></h4>
                                 </div>
-
                             </a>
                         </div>
 
                     <?php endwhile; ?>
+
                 <?php else: ?>
 
                     <div class="col-12 text-center mt-5">
@@ -121,12 +122,11 @@ $produtos = $conex->query($sql);
 
             </div>
         </div>
-        <!-- Product Categories Area End -->
 
     </div>
     <!-- ##### Main Content Wrapper End ##### -->
 
-    <!-- ################## NEWSLETTER ################## -->
+    <!-- ################ NEWSLETTER ################ -->
     <section class="newsletter-area section-padding-100-0">
         <div class="container">
             <div class="row align-items-center">
@@ -134,7 +134,7 @@ $produtos = $conex->query($sql);
                 <div class="col-12 col-lg-6 col-xl-7">
                     <div class="newsletter-text mb-100">
                         <h2>Cadastre-se e ganhe <span>Desconto Exclusivo</span></h2>
-                        <p>Receba novidades, promoções e ofertas especiais direto no seu e‑mail.</p>
+                        <p>Receba novidades e promoções diretamente no seu e-mail.</p>
                     </div>
                 </div>
 
@@ -147,9 +147,8 @@ $produtos = $conex->query($sql);
             </div>
         </div>
     </section>
-    <!-- Newsletter End -->
 
-    <!-- ##### Footer Area Start ##### -->
+    <!-- ################# FOOTER ################# -->
     <footer class="footer_area clearfix">
         <div class="container">
             <div class="row align-items-center">
@@ -171,12 +170,13 @@ $produtos = $conex->query($sql);
                     <div class="single_widget_area">
                         <div class="footer_menu">
                             <nav class="navbar navbar-expand-lg justify-content-end">
-                                <button class="navbar-toggler" type="button" data-toggle="collapse"
-                                    data-target="#footerNavContent"><i class="fa fa-bars"></i></button>
+                                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#footerNavContent">
+                                    <i class="fa fa-bars"></i>
+                                </button>
 
                                 <div class="collapse navbar-collapse" id="footerNavContent">
                                     <ul class="navbar-nav ml-auto">
-                                        <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
+                                        <li class="nav-item active"><a class="nav-link" href="index.php">Home</a></li>
                                         <li class="nav-item"><a class="nav-link" href="shop.php">Shop</a></li>
                                         <li class="nav-item"><a class="nav-link" href="cart.php">Carrinho</a></li>
                                         <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
@@ -190,9 +190,8 @@ $produtos = $conex->query($sql);
             </div>
         </div>
     </footer>
-    <!-- ##### Footer Area End ##### -->
 
-    <!-- Scripts -->
+    <!-- ##### Scripts ##### -->
     <script src="js/jquery/jquery-2.2.4.min.js"></script>
     <script src="js/popper.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
