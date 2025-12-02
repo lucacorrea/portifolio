@@ -28,6 +28,11 @@
 </head>
 
 <body>
+    <style>
+        .breadcam_bg_1 {
+            background-image: url(../img/offers/motos.jpg)
+        }
+    </style>
     <!--[if lte IE 9]>
             <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
         <![endif]-->
@@ -52,7 +57,7 @@
                         </div>
                         <div class="col-xl-2 col-lg-2">
                             <div class="logo-img">
-                                
+
                             </div>
                         </div>
 
@@ -134,15 +139,15 @@
                     <div class="about_info">
                         <div class="section_title mb-20px">
                             <span>Sobre Nós</span>
-                          
+
                         </div>
 
                         <p>
                             Na <strong>Top Motors</strong> trabalhamos para oferecer a melhor experiência na compra da
                             sua moto.
                             Nosso compromisso é unir qualidade, segurança e preço justo, trazendo um estoque selecionado.<br>
-                            
-                        
+
+
                             Atuamos no mercado com transparência e dedicação, ajudando você a encontrar a moto ideal
                             para o seu
                             dia a dia, trabalho ou lazer. Nossa equipe especializada garante atendimento personalizado e
@@ -321,7 +326,7 @@
     <!-- forQuery_end-->
 
     <!-- instragram_area_start -->
-  
+
     <!-- instragram_area_end -->
 
     <!-- footer -->
@@ -384,7 +389,9 @@
                         <p class="copy_right">
                             <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
                             Copyright &copy;
-                            <script>document.write(new Date().getFullYear());</script> All rights reserved | This
+                            <script>
+                                document.write(new Date().getFullYear());
+                            </script> All rights reserved | This
                             template is made with <i class="fa fa-heart-o" aria-hidden="true"></i> by <a
                                 href="https://colorlib.com" target="_blank">Colorlib</a>
                             <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
