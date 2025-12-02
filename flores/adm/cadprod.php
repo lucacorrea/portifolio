@@ -56,18 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
 <body>
 
-    <!-- Wrapper principal -->
-    <div class="main-content-wrapper d-flex align-items-center justify-content-center" style="min-height: 100vh; background-color: #f5f5f5;">
-        <div class="cart-table-area p-5 bg-white shadow" style="width: 100%; max-width: 600px; border-radius: 15px;">
 
-            <div class="text-center mb-4">
-                <img src="../img/floricultura.png" alt="Logo" style="max-height: 80px;">
-                <h2 class="mt-3">Cadastrar Produto</h2>
-                <p class="text-muted">Preencha os dados abaixo para adicionar um novo produto</p>
-            </div>
+  
 
-            <!-- Mensagem de retorno -->
-            <?php echo $msg; ?>
+        
 
             <div class="cart-table-area section-padding-100">
                 <div class="container-fluid">
