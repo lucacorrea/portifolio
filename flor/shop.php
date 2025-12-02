@@ -1,14 +1,9 @@
 <?php
 require './conex.php';
 
-/* ================================
-   RECEBER CATEGORIA (SE TIVER)
-================================ */
+
 $categoria = $_GET['categoria'] ?? "";
 
-/* ================================
-   MONTAR SQL COM OU SEM FILTRO
-================================ */
 if ($categoria) {
     $sql = "SELECT id, nome, preco, imagem, categoria 
             FROM produtos 
@@ -31,9 +26,6 @@ while ($row = $res->fetch_assoc()) {
     $produtos[] = $row;
 }
 
-/* ================================
-   Função para validar imagem
-================================ */
 function imgPath($img)
 {
     if (!$img) return "img/core-img/no-image.png";
