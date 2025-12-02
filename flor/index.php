@@ -2,7 +2,7 @@
 require 'conex.php';
 
 // Buscar os 6 produtos mais recentes
-$sql = "SELECT * FROM produtos ORDER BY id DESC LIMIT 6";
+$sql = "SELECT id, nome, preco, imagem FROM produtos ORDER BY id DESC LIMIT 6";
 $produtos = $conex->query($sql);
 ?>
 
@@ -80,43 +80,38 @@ $produtos = $conex->query($sql);
         </header>
 
         <!-- ============================== -->
-        <!--   LISTA DE PRODUTOS AMADO     -->
+        <!--      LISTA DE PRODUTOS        -->
         <!-- ============================== -->
 
         <div class="products-catagories-area clearfix">
             <div class="amado-pro-catagory clearfix">
 
-                <?php if ($produtos->num_rows > 0): ?>
+                <?php if ($produtos && $produtos->num_rows > 0): ?>
                     <?php while ($p = $produtos->fetch_assoc()): ?>
 
                         <?php
-
-                        // Pega o nome da imagem salvo no banco
+                        // Limpa qualquer lixo vindo do banco
                         $imgName = trim($p['imagem']);
+                        $imgName = basename($imgName); // remove ../ e caminhos indevidos
 
-                        // Remove qualquer caminho inesperado
-                        $imgName = basename($imgName); // <-- AQUI! Isso remove ../, ./, uploads/ e QUALQUER caminho
-
-                        // Monta caminho final correto
-                        if (!empty($imgName)) {
-                            $imgPath = "uploads/" . $imgName;
-                        } else {
-                            $imgPath = "img/core-img/no-image.png";
-                        }
-
+                        // Monta caminho correto
+                        $imgPath = (!empty($imgName))
+                            ? "uploads/" . $imgName
+                            : "img/core-img/no-image.png";
                         ?>
-
 
                         <div class="single-products-catagory clearfix">
                             <a href="product-details.php?id=<?= $p['id'] ?>">
 
                                 <img src="<?= $imgPath ?>"
-                                    alt="<?= htmlspecialchars($p['nome']) ?>"
-                                    style="width:100%; height:350px; object-fit:cover;">
+                                     alt="<?= htmlspecialchars($p['nome']) ?>"
+                                     style="width:100%; height:350px; object-fit:cover;">
 
                                 <div class="hover-content">
                                     <div class="line"></div>
-                                    <p>R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
+                                    <p>R$
+                                        <?= number_format($p['preco'], 2, ',', '.') ?>
+                                    </p>
                                     <h4><?= htmlspecialchars($p['nome']) ?></h4>
                                 </div>
 
@@ -124,6 +119,7 @@ $produtos = $conex->query($sql);
                         </div>
 
                     <?php endwhile; ?>
+
                 <?php else: ?>
 
                     <div class="col-12 text-center mt-5">
@@ -204,6 +200,7 @@ $produtos = $conex->query($sql);
         </div>
     </footer>
 
+    <!-- Scripts -->
     <script src="js/jquery/jquery-2.2.4.min.js"></script>
     <script src="js/popper.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
