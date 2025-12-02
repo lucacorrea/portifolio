@@ -155,7 +155,7 @@
 
                         <div class="form-group mt-3 text-center">
                             <button type="submit" class="button button-contactForm boxed-btn" style="border: 1px solid darkred; color:darkred !
-                            important; hover{ background-color: darkred; color: white !important;}">
+                            important; hover{ background-color: darkred !; color: white !important;}">
                                 Finalizar Cadastro
                             </button>
                         </div>
