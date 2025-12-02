@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="row align-items-center no-gutters">
 
                         <div class="col-xl-5 col-lg-6">
-                            <div class="main-menu d-none d-lg-block">
+                            <div class="main-menu d-none d-lg-block bg-black">
                                 <nav>
                                     <ul id="navigation">
                                         <li><a href="../index.php">home</a></li>
