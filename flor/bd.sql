@@ -9,7 +9,7 @@ CREATE TABLE clientes(
     endereco VARCHAR(120),
     cep VARCHAR(20),
     numero VARCHAR(20),
-    comentário VARCHAR(120)
+   
     );
 
 CREATE TABLE produtos(

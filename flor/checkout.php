@@ -1,3 +1,11 @@
+<?php
+session_start();
+require './conex.php';
+
+/* PEGAR ID DO PRODUTO QUE TROUXE O CLIENTE PARA O CHECKOUT */
+$produto_id = $_GET['produto'] ?? 0;
+?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -8,48 +16,49 @@
     <link rel="stylesheet" href="css/core-style.css">
     <link rel="stylesheet" href="style.css">
 
-<style>
-/* Ajuste visual suave */
-.form-control {
-    height: 50px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-    padding-left: 15px;
-}
+    <style>
+        .form-control {
+            height: 50px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            padding-left: 15px;
+        }
 
-.form-control:focus {
-    border-color: #ff4f4f;
-    box-shadow: 0 0 4px rgba(255,0,0,0.4);
-}
+        .form-control:focus {
+            border-color: #ff4f4f;
+            box-shadow: 0 0 4px rgba(255, 0, 0, 0.4);
+        }
 
-.btn-amado {
-    display: block;
-    width: 100%;
-    background: #FFD438FF !important;
-    padding: 15px;
-    font-size: 18px;
-    border-radius: 10px;
-    text-align: center;
-    color: white;
-    margin-top: 20px;
-    transition: .3s;
-}
+        .btn-amado {
+            display: block;
+            width: 100%;
+            background: #FFD438FF !important;
+            padding: 15px;
+            font-size: 18px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            transition: .3s;
+            border: none;
+        }
 
-.btn-amado:hover {
-    background: #F6FE0EFF !important;
-    letter-spacing: 1px;
-}
+        .btn-amado:hover {
+            background: #F6FE0EFF !important;
+            letter-spacing: 1px;
+        }
 
-.cart-summary {
-    border-radius: 12px;
-    padding: 25px;
-}
-</style>
+        .cart-summary {
+            border-radius: 12px;
+            padding: 25px;
+        }
+    </style>
 
 </head>
 
 <body>
 
+    <!-- Search Wrapper -->
     <div class="search-wrapper section-padding-100">
         <div class="search-close">
             <i class="fa fa-close"></i>
@@ -58,17 +67,17 @@
         <div class="container">
             <div class="search-content">
                 <form action="#" method="get">
-                    <input type="search" name="search" id="search" placeholder="Buscar...">
+                    <input type="search" name="search" placeholder="Buscar...">
                     <button><img src="img/core-img/search.png"></button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- MAIN -->
+    <!-- Wrapper -->
     <div class="main-content-wrapper d-flex clearfix">
 
-        <!-- MOBILE BAR -->
+        <!-- Mobile Menu -->
         <div class="mobile-nav">
             <div class="amado-navbar-brand">
                 <a href="index.php"><img src="img/core-img/logo.png"></a>
@@ -76,9 +85,8 @@
             <div class="amado-navbar-toggler"><span></span><span></span><span></span></div>
         </div>
 
-        <!-- SIDEBAR -->
+        <!-- Sidebar -->
         <header class="header-area clearfix">
-
             <div class="nav-close"><i class="fa fa-close"></i></div>
 
             <div class="logo">
@@ -89,8 +97,7 @@
                 <ul>
                     <li><a href="index.php">Início</a></li>
                     <li><a href="shop.php">Compras</a></li>
-                    <li><a href="product-details.php">Produto</a></li>
-                    <li class="active"><a href="checkout.php">Cadastro</a></li>
+                    <li><a href="checkout.php" class="active">Cadastro</a></li>
                 </ul>
             </nav>
 
@@ -101,7 +108,7 @@
 
         </header>
 
-        <!-- CONTEÚDO CADASTRO -->
+        <!-- Conteúdo centro -->
         <div class="cart-table-area section-padding-100">
             <div class="container-fluid">
 
@@ -112,10 +119,14 @@
                         <div class="checkout_details_area mt-50 clearfix">
 
                             <div class="cart-title">
-                                <h2>Crie sua conta</h2>
+                                <h2>Criar Conta</h2>
+                                <p style="font-size:14px;color:#777">Para concluir sua compra, crie rapidamente sua conta.</p>
                             </div>
 
                             <form action="salvar_cadastro.php" method="post">
+
+                                <!-- Passa o ID do produto -->
+                                <input type="hidden" name="produto_id" value="<?= $produto_id ?>">
 
                                 <div class="row">
 
@@ -132,7 +143,7 @@
                                     </div>
 
                                     <div class="col-12 mb-3">
-                                        <input type="text" name="endereco" class="form-control" placeholder="Endereço" required>
+                                        <input type="text" name="endereco" class="form-control" placeholder="Endereço completo" required>
                                     </div>
 
                                     <div class="col-md-6 mb-3">
@@ -145,27 +156,26 @@
 
                                 </div>
 
-                                <button type="submit" class="btn btn-amado">
-                                    Cadastrar
-                                </button>
+                                <button type="submit" class="btn-amado">Cadastrar e Finalizar Compra</button>
 
                             </form>
 
                         </div>
                     </div>
 
-                    <!-- LADO DIREITO -->
+                    <!-- INFO LATERAL -->
                     <div class="col-12 col-lg-4">
                         <div class="cart-summary">
 
-                            <h5>Informações</h5>
+                            <h5>Por que cadastrar?</h5>
                             <ul class="summary-table">
-                                <li><span>Cadastro:</span> <span>Gratuito</span></li>
-                                <li><span>Benefícios:</span> <span>Acesso a compras</span></li>
+                                <li><span>✔ Cadastro:</span> <span>Gratuito</span></li>
+                                <li><span>✔ Permite:</span> <span>Realizar compras</span></li>
+                                <li><span>✔ Segurança:</span> <span>Seus dados protegidos</span></li>
                             </ul>
 
-                            <p style="margin-top:15px; font-size:15px;">
-                                Após finalizar o cadastro, você poderá concluir sua compra normalmente.
+                            <p style="margin-top:15px; font-size:15px; color:#666">
+                                Depois de cadastrar, você será automaticamente redirecionado para finalizar sua compra.
                             </p>
 
                         </div>
