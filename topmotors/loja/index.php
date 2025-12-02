@@ -21,6 +21,7 @@ $produtos = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 6");
     <link rel="stylesheet" href="../css/gijgo.css">
     <link rel="stylesheet" href="../css/animate.css">
     <link rel="stylesheet" href="../css/slicknav.css">
+    <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/stl.css">
 
     <style>
@@ -40,12 +41,15 @@ $produtos = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 6");
             <div id="sticky-header" class="main-header-area">
                 <div class="container-fluid p-0">
                     <div class="row align-items-center no-gutters">
+
                         <div class="col-xl-5 col-lg-6">
                             <div class="main-menu d-none d-lg-block">
                                 <nav>
                                     <ul id="navigation">
-                                        <li><a class="text-danger" href="../index.php">Home</a></li>
-                                 
+                                        <li><a href="../index.php">Home</a></li>
+                                        <li><a href="../motos.php">Motos</a></li>
+                                        <li><a href="../contact.php">Cadastro</a></li>
+                                        <li><a class="text-danger" href="index.php">Loja</a></li>
                                         <li><a href="visualizar.php">Produtos</a></li>
                                         <li><a href="adicionar.php">Adicionar Produto</a></li>
                                     </ul>
@@ -54,9 +58,7 @@ $produtos = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 6");
                         </div>
 
                         <div class="col-xl-2 col-lg-2">
-                            <div class="logo-img">
-                                <!-- SUA LOGO AQUI -->
-                            </div>
+                            <div class="logo-img"></div>
                         </div>
 
                         <div class="col-12">
@@ -70,6 +72,41 @@ $produtos = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 6");
     </header>
     <!-- HEADER END -->
 
+    <!-- ================= SLIDER (BANNER) ================ -->
+    <div class="slider_area">
+        <div class="slider_active owl-carousel">
+
+            <div class="single_slider d-flex align-items-center justify-content-center slider_bg_1">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-xl-12 text-center">
+                            <div class="slider_text">
+                                <h3>Top Motors - Loja Oficial</h3>
+                                <p>Gerencie seus produtos com rapidez e organização</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="single_slider d-flex align-items-center justify-content-center slider_bg_2">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-xl-12 text-center">
+                            <div class="slider_text">
+                                <h3>Cadastre Produtos</h3>
+                                <p>Mantenha seu estoque sempre atualizado</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <!-- ================= END SLIDER ====================== -->
+
+    <!-- OFFERS -->
     <div class="offers_area mt-5">
         <div class="container">
 
@@ -95,9 +132,9 @@ $produtos = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 6");
                             <h3><?php echo $p['nome']; ?></h3>
 
                             <ul>
-                                <li><b>Preço:</b> R$ <?php echo number_format($p['preco'], 2, ",", "."); ?></li>
-                                <li><b>Categoria:</b> <?php echo $p['categoria']; ?></li>
-                                <li><b>Estoque:</b> <?php echo $p['quantidade']; ?> unidades</li>
+                                <li><b>Preço:</b> R$ <?= number_format($p['preco'], 2, ',', '.') ?></li>
+                                <li><b>Categoria:</b> <?= $p['categoria'] ?></li>
+                                <li><b>Estoque:</b> <?= $p['quantidade'] ?> unidades</li>
                             </ul>
 
                             <a href="visualizar.php" class="book_now bg-danger text-white">Ver Todos</a>
