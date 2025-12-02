@@ -125,7 +125,7 @@ function imgPath($img)
             </nav>
 
             <div class="social-info d-flex justify-content-between">
-                <a href="#"><i class="fa fa-user"></i></a>
+                <a href="./adm/index.php"><i class="fa fa-user"></i></a>
                 <a href="#"><i class="fa fa-instagram"></i></a>
                 <a href="#"><i class="fa fa-facebook"></i></a>
                 <a href="#"><i class="fa fa-twitter"></i></a>
