@@ -38,7 +38,7 @@ $resultado = $conex->query($sql);
                         <div class="single-product-wrapper shadow-sm p-3" style="border: 1px solid #e1e1e1; border-radius: 10px;">
                             <!-- Imagem -->
                             <div class="product-img">
-                                <img src="<?php echo $produto['imagem']; ?>" alt="Imagem do produto" style="height: 200px; width: 100%; object-fit: cover; border-radius: 8px;">
+                                <img src="<?php echo $produto['imagem']; ?>" alt="Imagem do produto" style="height: 200px; width: 100%;  background-size: cover; object-fit: cover; border-radius: 8px;">
                             </div>
 
                             <!-- Detalhes -->
