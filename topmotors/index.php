@@ -241,8 +241,8 @@
             <div class="row">
                 <div class="col-xl-12">
                     <div class="section_title text-center mb-100">
-                        <span class="text-danger">Nossas Categorias</span>
-                        <h3>Escolha a Moto Ideal</h3>
+                        <span>Featured Rooms</span>
+                        <h3>Choose a Better Room</h3>
                     </div>
                 </div>
             </div>
@@ -250,49 +250,74 @@
         <div class="rooms_here">
             <div class="single_rooms">
                 <div class="room_thumb">
-                    <img src="imgmotos/1.png" alt="">
+                    <img src="img/rooms/1.png" alt="">
                     <div class="room_heading d-flex justify-content-between align-items-center">
                         <div class="room_heading_inner">
-                            <span>A partir de R$250/noite</span>
-                            <h3>Quarto Superior</h3>
+                            <span>From $250/night</span>
+                            <h3>Superior Room</h3>
                         </div>
-                        <a href="#" class="line-button">Ver Detalhes</a>
+                        <a href="#" class="line-button">book now</a>
                     </div>
                 </div>
             </div>
             <div class="single_rooms">
                 <div class="room_thumb">
-                    <img src="imgmotos/2.png" alt="">
+                    <img src="img/rooms/2.png" alt="">
                     <div class="room_heading d-flex justify-content-between align-items-center">
                         <div class="room_heading_inner">
-                            <span>A partir de R$250/noite</span>
-                            <h3>Quarto Deluxe</h3>
+                            <span>From $250/night</span>
+                            <h3>Deluxe Room</h3>
                         </div>
-                        <a href="#" class="line-button">Ver Detalhes</a>
+                        <a href="#" class="line-button">book now</a>
                     </div>
                 </div>
             </div>
             <div class="single_rooms">
                 <div class="room_thumb">
-                    <img src="imgmotos/3.png" alt="">
+                    <img src="img/rooms/3.png" alt="">
                     <div class="room_heading d-flex justify-content-between align-items-center">
                         <div class="room_heading_inner">
-                            <span>A partir de R$250/noite</span>
-                            <h3>Quarto Assinatura</h3>
+                            <span>From $250/night</span>
+                            <h3>Signature Room</h3>
                         </div>
-                        <a href="#" class="line-button">Ver Detalhes</a>
+                        <a href="#" class="line-button">book now</a>
                     </div>
                 </div>
             </div>
             <div class="single_rooms">
                 <div class="room_thumb">
-                    <img src="imgmotos/4.png" alt="">
+                    <img src="img/rooms/4.png" alt="">
                     <div class="room_heading d-flex justify-content-between align-items-center">
                         <div class="room_heading_inner">
-                            <span>A partir de R$250/noite</span>
-                            <h3>Quarto para Casal</h3>
+                            <span>From $250/night</span>
+                            <h3>Couple Room</h3>
                         </div>
-                        <a href="#" class="line-button">Ver Detalhes</a>
+                        <a href="#" class="line-button">book now</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- features_room_end -->
+
+    <!-- forQuery_start -->
+    <div class="forQuery">
+        <div class="container">
+            <div class="row">
+                <div class="col-xl-10 offset-xl-1 col-md-12">
+                    <div class="Query_border">
+                        <div class="row align-items-center justify-content-center">
+                            <div class="col-xl-6 col-md-6">
+                                <div class="Query_text">
+                                    <p>For Reservation 0r Query?</p>
+                                </div>
+                            </div>
+                            <div class="col-xl-6 col-md-6">
+                                <div class="phone_num">
+                                    <a href="#" class="mobile_no">+10 576 377 4789</a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -520,4 +545,4 @@
 
 </body>
 
-</html> 
+</html>
