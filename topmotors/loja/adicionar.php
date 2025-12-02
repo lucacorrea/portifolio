@@ -1,57 +1,18 @@
-<?php
-require "conexao.php";
-
-// =====================================
-// PROCESSAR ENVIO DO FORMULÁRIO
-// =====================================
-$msg = "";
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $nome       = $_POST['nome'] ?? '';
-    $preco      = $_POST['preco'] ?? '';
-    $categoria  = $_POST['categoria'] ?? '';
-    $descricao  = $_POST['descricao'] ?? '';
-    $quantidade = $_POST['quantidade'] ?? '';
-
-    // ---------------------------
-    // UPLOAD DA IMAGEM
-    // ---------------------------
-    $nomeImagem = "";
-
-    if (!empty($_FILES['imagem']['name'])) {
-        $ext = pathinfo($_FILES['imagem']['name'], PATHINFO_EXTENSION);
-        $nomeImagem = "produto_" . time() . "." . $ext;
-
-        move_uploaded_file($_FILES['imagem']['tmp_name'], "uploads/" . $nomeImagem);
-    }
-
-    // ---------------------------
-    // SALVAR NO BANCO
-    // ---------------------------
-    $stmt = $con->prepare("INSERT INTO produtos (nome, preco, categoria, descricao, quantidade, imagem) 
-                           VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sdssis", $nome, $preco, $categoria, $descricao, $quantidade, $nomeImagem);
-
-    if ($stmt->execute()) {
-        $msg = "<div class='alert alert-success text-center mt-4'>Produto adicionado com sucesso!</div>";
-    } else {
-        $msg = "<div class='alert alert-danger text-center mt-4'>Erro ao salvar produto.</div>";
-    }
-}
-?>
 <!doctype html>
 <html class="no-js" lang="zxx">
 
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>Adicionar Produto | Top Motors</title>
+    <title>Montana</title>
+    <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel="shortcut icon" type="image/x-icon" href="../img/favicon.png">
+    <!-- <link rel="manifest" href="site.webmanifest"> -->
+    <link rel="shortcut icon" type="image/x-icon" href="img/favicon.png">
+    <!-- Place favicon.ico in the root directory -->
 
-    <!-- CSS -->
+    <!-- CSS here -->
     <link rel="stylesheet" href="../css/bootstrap.min.css">
     <link rel="stylesheet" href="../css/owl.carousel.min.css">
     <link rel="stylesheet" href="../css/magnific-popup.css">
@@ -63,61 +24,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="../css/animate.css">
     <link rel="stylesheet" href="../css/slicknav.css">
     <link rel="stylesheet" href="../css/style.css">
-
-    <style>
-        .breadcam_bg_2 {
-            background-image: url('../img/banner/slider_bg_2.jpg') !important;
-            
-        }
-        #dark:hover {
-            background-color: darkred !important;
-            color: #ffffff !important;
-        }
-    </style>
-
+    <!-- <link rel="stylesheet" href="../css/responsive.css"> -->
 </head>
+<style>
+    .breadcam_bg_2 {
+        background-image: url(./img/banner/cliente.jpg) !important
+    }
+
+    #dark:hover {
+        background-color: darkred !important;
+        color: #ffffff !important;
+    }
+</style>
 
 <body>
+    <!--[if lte IE 9]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
+        <![endif]-->
 
-    <!-- HEADER -->
+    <!-- header-start -->
     <header>
-        <div class="header-area">
+        <div class="header-area ">
             <div id="sticky-header" class="main-header-area">
                 <div class="container-fluid p-0">
                     <div class="row align-items-center no-gutters">
-
                         <div class="col-xl-5 col-lg-6">
-                            <div class="main-menu d-none d-lg-block bg-black">
+                            <div class="main-menu  d-none d-lg-block">
                                 <nav>
                                     <ul id="navigation">
-                                        <li><a href="../index.php">home</a></li>
-                                        <li><a href="../motos.php">Motos</a></li>
-                                        <li><a href="../contact.php">Cadastro</a></li>
-                                        <li><a href="index.php">Loja</a></li>
-                                        <li><a class="text-danger" href="adicionar.php">Adicionar Produto</a></li>
+                                        <li><a href="index.php">home</a></li>
+                                        <li><a href="motos.php">Motos</a></li>
+
+                                        <li><a class=" text-danger" href="contact.php">Cadastro</a></li>
                                     </ul>
                                 </nav>
                             </div>
                         </div>
+                        <div class="col-xl-2 col-lg-2">
+                            <div class="logo-img">
 
-                        <div class="col-xl-2 col-lg-2"></div>
+                            </div>
+                        </div>
+
 
                         <div class="col-12">
                             <div class="mobile_menu d-block d-lg-none"></div>
                         </div>
-
                     </div>
                 </div>
             </div>
         </div>
     </header>
+    <!-- header-end -->
 
-    <!-- BANNER -->
+    <!-- bradcam_area_start -->
     <div class="bradcam_area breadcam_bg_2">
-        <h3>Adicionar Produto</h3>
+        <h3>Cadastro de Cliente</h3>
     </div>
+    <!-- bradcam_area_end -->
 
-    <!-- FORMULÁRIO -->
+    <!-- ================ contact section start ================= -->
     <section class="contact-section">
         <div class="container">
 
@@ -184,8 +150,193 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </section>
 
-    <!-- FOOTER -->
-    <?php include "../footer.php"; ?>
+
+    <footer class="footer">
+        <div class="footer_top">
+            <div class="container">
+                <div class="row">
+                    <div class="col-xl-3 col-md-6 col-lg-3">
+                        <div class="footer_widget">
+                            <h3 class="footer_title">
+                                address
+                            </h3>
+                            <p class="footer_text"> 200, Green road, Mongla, <br>
+                                New Yor City USA</p>
+                            <a href="#" class="line-button">Get Direction</a>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 col-lg-3">
+                        <div class="footer_widget">
+                            <h3 class="footer_title">
+                                Reservation
+                            </h3>
+                            <p class="footer_text">+10 367 267 2678 <br>
+                                reservation@montana.com</p>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-6 col-lg-2">
+                        <div class="footer_widget">
+                            <h3 class="footer_title">
+                                Navigation
+                            </h3>
+                            <ul>
+                                <li><a href="#">Home</a></li>
+                                <li><a href="#">Rooms</a></li>
+                                <li><a href="#">About</a></li>
+                                <li><a href="#">News</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-md-6 col-lg-4">
+                        <div class="footer_widget">
+                            <h3 class="footer_title">
+                                Newsletter
+                            </h3>
+                            <form action="#" class="newsletter_form">
+                                <input type="text" placeholder="Enter your mail">
+                                <button type="submit">Sign Up</button>
+                            </form>
+                            <p class="newsletter_text">Subscribe newsletter to get updates</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="copy-right_text">
+            <div class="container">
+                <div class="footer_border"></div>
+                <div class="row">
+                    <div class="col-xl-8 col-md-7 col-lg-9">
+                        <p class="copy_right">
+                            <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
+                            Copyright &copy;<script>
+                                document.write(new Date().getFullYear());
+                            </script> All rights reserved | This template is made with <i class="fa fa-heart-o" aria-hidden="true"></i> by <a href="https://colorlib.com" target="_blank">Colorlib</a>
+                            <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
+                        </p>
+                    </div>
+                    <div class="col-xl-4 col-md-5 col-lg-3">
+                        <div class="socail_links">
+                            <ul>
+                                <li>
+                                    <a href="#">
+                                        <i class="fa fa-facebook-square"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#">
+                                        <i class="fa fa-twitter"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#">
+                                        <i class="fa fa-instagram"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <!-- footer_end -->
+
+
+    <!-- form itself end-->
+    <form id="test-form" class="white-popup-block mfp-hide">
+        <div class="popup_box ">
+            <div class="popup_inner">
+                <h3>Check Availability</h3>
+                <form action="#">
+                    <div class="row">
+                        <div class="col-xl-6">
+                            <input id="datepicker" placeholder="Check in date">
+                        </div>
+                        <div class="col-xl-6">
+                            <input id="datepicker2" placeholder="Check out date">
+                        </div>
+                        <div class="col-xl-6">
+                            <select class="form-select wide" id="default-select" class="">
+                                <option data-display="Adult">1</option>
+                                <option value="1">2</option>
+                                <option value="2">3</option>
+                                <option value="3">4</option>
+                            </select>
+                        </div>
+                        <div class="col-xl-6">
+                            <select class="form-select wide" id="default-select" class="">
+                                <option data-display="Children">1</option>
+                                <option value="1">2</option>
+                                <option value="2">3</option>
+                                <option value="3">4</option>
+                            </select>
+                        </div>
+                        <div class="col-xl-12">
+                            <select class="form-select wide" id="default-select" class="">
+                                <option data-display="Room type">Room type</option>
+                                <option value="1">Laxaries Rooms</option>
+                                <option value="2">Deluxe Room</option>
+                                <option value="3">Signature Room</option>
+                                <option value="4">Couple Room</option>
+                            </select>
+                        </div>
+                        <div class="col-xl-12">
+                            <button type="submit" class="boxed-btn3">Check Availability</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </form>
+    <!-- form itself end -->
+
+    <!-- JS here -->
+    <script src="../js/vendor/modernizr-3.5.0.min.js"></script>
+    <script src="../js/vendor/jquery-1.12.4.min.js"></script>
+    <script src="../js/popper.min.js"></script>
+    <script src="../js/bootstrap.min.js"></script>
+    <script src="../js/owl.carousel.min.js"></script>
+    <script src="../js/isotope.pkgd.min.js"></script>
+    <script src="../js/ajax-form.js"></script>
+    <script src="../js/waypoints.min.js"></script>
+    <script src="../js/jquery.counterup.min.js"></script>
+    <script src="../js/imagesloaded.pkgd.min.js"></script>
+    <script src="../js/scrollIt.js"></script>
+    <script src="../js/jquery.scrollUp.min.js"></script>
+    <script src="../js/wow.min.js"></script>
+    <script src="../js/nice-select.min.js"></script>
+    <script src="../js/jquery.slicknav.min.js"></script>
+    <script src="../js/jquery.magnific-popup.min.js"></script>
+    <script src="../js/plugins.js"></script>
+    <script src="../js/gijgo.min.js"></script>
+
+    <!--contact js-->
+    <script src="../js/contact.js"></script>
+    <script src="../js/jquery.ajaxchimp.min.js"></script>
+    <script src="../js/jquery.form.js"></script>
+    <script src="../js/jquery.validate.min.js"></script>
+    <script src="../js/mail-script.js"></script>
+
+    <script src="../js/main.js"></script>
+    <script>
+        $('#datepicker').datepicker({
+            iconsLibrary: 'fontawesome',
+            icons: {
+                rightIcon: '<span class="fa fa-caret-down"></span>'
+            }
+        });
+        $('#datepicker2').datepicker({
+            iconsLibrary: 'fontawesome',
+            icons: {
+                rightIcon: '<span class="fa fa-caret-down"></span>'
+            }
+
+        });
+    </script>
+
+
 
 </body>
+
 </html>
