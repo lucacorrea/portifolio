@@ -90,12 +90,12 @@ $produtos = $conex->query($sql);
                     <?php while ($p = $produtos->fetch_assoc()): ?>
 
                         <?php
-                        // ----- CORREÇÃO DA IMAGEM -----
-                        $img = trim($p['imagem']);
-                        $imgPath = "uploads/" . basename($img);
+                        // ----- CORREÇÃO DO NOME DA IMAGEM -----
+                        $imgName = trim($p['imagem']);
+                        $imgPath = "uploads/" . $imgName;
 
-                        if (!file_exists($imgPath) || empty($img)) {
-                            $imgPath = "img/core-img/no-image.png"; // coloca imagem padrão
+                        if (!file_exists($imgPath) || empty($imgName)) {
+                            $imgPath = "img/core-img/no-image.png";
                         }
                         ?>
 
