@@ -174,7 +174,7 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
                         <!-- BOTÃO COMPRAR -->
                         <form action="comprar.php" method="post">
                             <input type="hidden" name="produto_id" value="<?= $p['id'] ?>">
-                            <button type="submit" class="btn-comprar">
+                            <button type="submit" class="btn-comprar bg-yellow">
                                 COMPRAR
                             </button>
                         </form>
