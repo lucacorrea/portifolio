@@ -28,7 +28,7 @@
 </head>
 <style>
     .breadcam_bg_2 {
-        background-image: url(./img/banner/cliente.jpg) !important
+        background-image: url(../img/banner/cliente.jpg) !important
     }
 
     #dark:hover {
