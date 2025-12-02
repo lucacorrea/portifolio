@@ -180,19 +180,19 @@
     <section class="newsletter-area section-padding-100-0">
         <div class="container">
             <div class="row align-items-center">
-                <!-- Newsletter Text -->
+                <!-- Texto do Boletim Informativo -->
                 <div class="col-12 col-lg-6 col-xl-7">
                     <div class="newsletter-text mb-100">
-                        <h2>Subscribe for a <span>25% Discount</span></h2>
-                        <p>Nulla ac convallis lorem, eget euismod nisl. Donec in libero sit amet mi vulputate consectetur. Donec auctor interdum purus, ac finibus massa bibendum nec.</p>
+                        <h2>Assine agora e receba um <span>Desconto Exclusivo!</span></h2>
+                        <p>Junte-se à nossa comunidade e fique por dentro das melhores ofertas e novidades. Não perca a chance de economizar!</p>
                     </div>
                 </div>
-                <!-- Newsletter Form -->
+                <!-- Formulário do Boletim Informativo -->
                 <div class="col-12 col-lg-6 col-xl-5">
                     <div class="newsletter-form mb-100">
                         <form action="#" method="post">
-                            <input type="email" name="email" class="nl-email" placeholder="Your E-mail">
-                            <input type="submit" value="Subscribe">
+                            <input type="email" name="email" class="nl-email" placeholder="Seu E-mail">
+                            <input type="submit" value="Inscrever-se">
                         </form>
                     </div>
                 </div>
