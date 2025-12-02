@@ -16,7 +16,7 @@ if (!$res || $res->num_rows == 0) {
 $p = $res->fetch_assoc();
 
 /* Estoque (se não existir coluna, fica 0) */
-$estoque = isset($p['quantidade']) ? (int)$p['esquantidade'] : 0;
+$estoque = isset($p['quantidade']) ? (int)$p['quantidade'] : 0;
 $sem_estoque = $estoque <= 0;
 
 /* Função imagem */
