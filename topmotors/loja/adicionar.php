@@ -67,8 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <style>
         .breadcam_bg_2 {
             background-image: url('../img/banner/slider_bg_2.jpg') !important;
-            background-size: cover;
-            background-position: center;
+            
         }
         #dark:hover {
             background-color: darkred !important;
