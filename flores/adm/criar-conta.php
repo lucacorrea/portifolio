@@ -1,14 +1,8 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
-// ---------------------------------------------------------
-// PROCESSAMENTO DO FORMULÁRIO (QUANDO CLICA EM "Cadastrar")
-// ---------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
-    require '../conex.php'; // usando sua conexão mysqli
+    require '../conex.php'; 
 
     $email = $_POST['email'];
     $senha = $_POST['senha'];
