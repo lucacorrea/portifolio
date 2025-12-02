@@ -92,7 +92,12 @@ $produtos = $conex->query($sql);
                         <?php
                         // NOME DA IMAGEM LIMPO
                         $imgName = trim($p['imagem']);
-                        $imgName = str_replace(["uploads/", "./uploads/", "../uploads/"], "", $imgName);
+
+                        $imgName = str_replace(
+                            ["uploads/", "./uploads/", "../uploads/", "../", "./"],
+                            "",
+                            $imgName
+                        );
 
                         // MONTA CAMINHO CERTO
                         if (!empty($imgName)) {
@@ -101,6 +106,7 @@ $produtos = $conex->query($sql);
                             $imgPath = "img/core-img/no-image.png";
                         }
                         ?>
+
 
                         <div class="single-products-catagory clearfix">
                             <a href="product-details.php?id=<?= $p['id'] ?>">
