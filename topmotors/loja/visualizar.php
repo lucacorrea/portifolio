@@ -27,24 +27,7 @@ $produtos = $con->query("SELECT * FROM produtos ORDER BY id DESC");
     <style>
         .bradcam_area {
             background-image: url('../img/banner/slider_bg_2.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 320px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .bradcam_area h3 {
-            color: white;
-            font-size: 48px;
-            font-weight: bold;
-            text-shadow: 0px 2px 6px rgba(0,0,0,0.6);
-        }
-        .single_offers img {
-            width: 100%;
-            height: 220px;
-            object-fit: cover;
+          
         }
     </style>
 </head>
