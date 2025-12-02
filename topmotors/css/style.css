@@ -889,7 +889,13 @@ h3 {
     padding: 0
 }
 
+.slider_bg_1 {
+    background-image: url(../img/banner/motoPista.jpg)
+}
 
+.slider_bg_2 {
+    background-image: url(../img/banner/custom].jpg)
+}
 
 .slider_area .single_slider {
     height: 100vh;
