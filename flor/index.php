@@ -1,6 +1,9 @@
 <?php
 require './conex.php';
 
+/* ================================
+   BUSCAR ATÉ 6 PRODUTOS DO BANCO
+   ================================ */
 $sql = "SELECT id, nome, preco, imagem FROM produtos ORDER BY id DESC LIMIT 6";
 $res = $conex->query($sql);
 
@@ -14,26 +17,46 @@ while ($row = $res->fetch_assoc()) {
     $produtos[] = $row;
 }
 
-// Garantir que temos 6 posições (para evitar erros)
+/* ======================================================
+   COMPLETAR ATÉ 6 PRODUTOS CASO A TABELA TENHA < 6 ITENS
+   ====================================================== */
 for ($i = 0; $i < 6; $i++) {
     if (!isset($produtos[$i])) {
         $produtos[$i] = [
             'id' => 0,
             'nome' => 'Produto Indisponível',
             'preco' => 0,
-            'imagem' => 'img/core-img/no-image.png'
+            'imagem' => ''
         ];
     }
 }
 
-    $path = "uploads/" . $img;
-    return (!empty($img) && file_exists($path)) ? $path : "img/core-img/no-image.png";
+/* ============================================
+   FUNÇÃO COMPLEXA PARA VALIDAR IMAGENS
+   - Remove ../ e caminhos sujos
+   - Verifica no servidor
+   - Retorna imagem válida
+   ============================================ */
 function imgPath($img)
 {
+    if (!$img) {
+        return "img/core-img/no-image.png";
+    }
+
+    // remove qualquer caminho (segurança)
     $img = basename(trim($img));
-    return file_exists("uploads/" . $img) ? "uploads/" . $img : "img/core-img/no-image.png";
+
+    $caminho = "uploads/" . $img;
+
+    // verifica se realmente existe no servidor
+    if (file_exists($caminho) && is_file($caminho)) {
+        return $caminho;
+    } else {
+        return "img/core-img/no-image.png";
+    }
 }
 ?>
+
 
 
 <!DOCTYPE html>
@@ -110,83 +133,83 @@ function imgPath($img)
         </header>
 
      
-        <div class="products-catagories-area clearfix">
-            <div class="amado-pro-catagory clearfix">
+      <div class="products-catagories-area clearfix">
+    <div class="amado-pro-catagory clearfix">
 
-                <!-- 1 -->
-                <div class="single-products-catagory clearfix">
-                    <a href="product-details.php?id=<?= $produtos[0]['id'] ?>">
-                        <img src="<?= imgPath($produtos[0]['imagem']) ?>" alt="<?= $produtos[0]['nome'] ?>">
-                        <div class="hover-content">
-                            <div class="line"></div>
-                            <p>R$ <?= number_format($produtos[0]['preco'], 2, ',', '.') ?></p>
-                            <h4><?= $produtos[0]['nome'] ?></h4>
-                        </div>
-                    </a>
+        <!-- PRODUTO 1 -->
+        <div class="single-products-catagory clearfix">
+            <a href="product-details.php?id=<?= $produtos[0]['id'] ?>">
+                <img src="<?= imgPath($produtos[0]['imagem']) ?>" alt="<?= $produtos[0]['nome'] ?>">
+                <div class="hover-content">
+                    <div class="line"></div>
+                    <p>R$ <?= number_format($produtos[0]['preco'], 2, ',', '.') ?></p>
+                    <h4><?= $produtos[0]['nome'] ?></h4>
                 </div>
-
-                <!-- 2 -->
-                <div class="single-products-catagory clearfix">
-                    <a href="product-details.php?id=<?= $produtos[1]['id'] ?>">
-                        <img src="<?= imgPath($produtos[1]['imagem']) ?>" alt="<?= $produtos[1]['nome'] ?>">
-                        <div class="hover-content">
-                            <div class="line"></div>
-                            <p>R$ <?= number_format($produtos[1]['preco'], 2, ',', '.') ?></p>
-                            <h4><?= $produtos[1]['nome'] ?></h4>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- 3 -->
-                <div class="single-products-catagory clearfix">
-                    <a href="product-details.php?id=<?= $produtos[2]['id'] ?>">
-                        <img src="<?= imgPath($produtos[2]['imagem']) ?>" alt="<?= $produtos[2]['nome'] ?>">
-                        <div class="hover-content">
-                            <div class="line"></div>
-                            <p>R$ <?= number_format($produtos[2]['preco'], 2, ',', '.') ?></p>
-                            <h4><?= $produtos[2]['nome'] ?></h4>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- 4 -->
-                <div class="single-products-catagory clearfix">
-                    <a href="product-details.php?id=<?= $produtos[3]['id'] ?>">
-                        <img src="<?= imgPath($produtos[3]['imagem']) ?>" alt="<?= $produtos[3]['nome'] ?>">
-                        <div class="hover-content">
-                            <div class="line"></div>
-                            <p>R$ <?= number_format($produtos[3]['preco'], 2, ',', '.') ?></p>
-                            <h4><?= $produtos[3]['nome'] ?></h4>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- 5 -->
-                <div class="single-products-catagory clearfix">
-                    <a href="product-details.php?id=<?= $produtos[4]['id'] ?>">
-                        <img src="<?= imgPath($produtos[4]['imagem']) ?>" alt="<?= $produtos[4]['nome'] ?>">
-                        <div class="hover-content">
-                            <div class="line"></div>
-                            <p>R$ <?= number_format($produtos[4]['preco'], 2, ',', '.') ?></p>
-                            <h4><?= $produtos[4]['nome'] ?></h4>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- 6 -->
-                <div class="single-products-catagory clearfix">
-                    <a href="product-details.php?id=<?= $produtos[5]['id'] ?>">
-                        <img src="<?= imgPath($produtos[5]['imagem']) ?>" alt="<?= $produtos[5]['nome'] ?>">
-                        <div class="hover-content">
-                            <div class="line"></div>
-                            <p>R$ <?= number_format($produtos[5]['preco'], 2, ',', '.') ?></p>
-                            <h4><?= $produtos[5]['nome'] ?></h4>
-                        </div>
-                    </a>
-                </div>
-
-            </div>
+            </a>
         </div>
+
+        <!-- PRODUTO 2 -->
+        <div class="single-products-catagory clearfix">
+            <a href="product-details.php?id=<?= $produtos[1]['id'] ?>">
+                <img src="<?= imgPath($produtos[1]['imagem']) ?>" alt="<?= $produtos[1]['nome'] ?>">
+                <div class="hover-content">
+                    <div class="line"></div>
+                    <p>R$ <?= number_format($produtos[1]['preco'], 2, ',', '.') ?></p>
+                    <h4><?= $produtos[1]['nome'] ?></h4>
+                </div>
+            </a>
+        </div>
+
+        <!-- PRODUTO 3 -->
+        <div class="single-products-catagory clearfix">
+            <a href="product-details.php?id=<?= $produtos[2]['id'] ?>">
+                <img src="<?= imgPath($produtos[2]['imagem']) ?>" alt="<?= $produtos[2]['nome'] ?>">
+                <div class="hover-content">
+                    <div class="line"></div>
+                    <p>R$ <?= number_format($produtos[2]['preco'], 2, ',', '.') ?></p>
+                    <h4><?= $produtos[2]['nome'] ?></h4>
+                </div>
+            </a>
+        </div>
+
+        <!-- PRODUTO 4 -->
+        <div class="single-products-catagory clearfix">
+            <a href="product-details.php?id=<?= $produtos[3]['id'] ?>">
+                <img src="<?= imgPath($produtos[3]['imagem']) ?>" alt="<?= $produtos[3]['nome'] ?>">
+                <div class="hover-content">
+                    <div class="line"></div>
+                    <p>R$ <?= number_format($produtos[3]['preco'], 2, ',', '.') ?></p>
+                    <h4><?= $produtos[3]['nome'] ?></h4>
+                </div>
+            </a>
+        </div>
+
+        <!-- PRODUTO 5 -->
+        <div class="single-products-catagory clearfix">
+            <a href="product-details.php?id=<?= $produtos[4]['id'] ?>">
+                <img src="<?= imgPath($produtos[4]['imagem']) ?>" alt="<?= $produtos[4]['nome'] ?>">
+                <div class="hover-content">
+                    <div class="line"></div>
+                    <p>R$ <?= number_format($produtos[4]['preco'], 2, ',', '.') ?></p>
+                    <h4><?= $produtos[4]['nome'] ?></h4>
+                </div>
+            </a>
+        </div>
+
+        <!-- PRODUTO 6 -->
+        <div class="single-products-catagory clearfix">
+            <a href="product-details.php?id=<?= $produtos[5]['id'] ?>">
+                <img src="<?= imgPath($produtos[5]['imagem']) ?>" alt="<?= $produtos[5]['nome'] ?>">
+                <div class="hover-content">
+                    <div class="line"></div>
+                    <p>R$ <?= number_format($produtos[5]['preco'], 2, ',', '.') ?></p>
+                    <h4><?= $produtos[5]['nome'] ?></h4>
+                </div>
+            </a>
+        </div>
+
+    </div>
+</div>
 
         <!-- Fim dos 6 produtos -->
 
