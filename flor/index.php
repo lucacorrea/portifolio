@@ -4,6 +4,10 @@ require 'conex.php';
 $sql = "SELECT id, nome, preco, imagem FROM produtos ORDER BY id DESC LIMIT 6";
 $res = $conex->query($sql);
 
+if (!$res) {
+    die("Erro ao executar a consulta: " . $conex->error);
+}
+
 $produtos = [];
 
 while ($row = $res->fetch_assoc()) {
@@ -22,7 +26,8 @@ for ($i = 0; $i < 6; $i++) {
     }
 }
 
-// limpar caminhos
+    $path = "uploads/" . $img;
+    return (!empty($img) && file_exists($path)) ? $path : "img/core-img/no-image.png";
 function imgPath($img)
 {
     $img = basename(trim($img));
