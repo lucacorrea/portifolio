@@ -43,7 +43,7 @@
                                 <nav>
                                     <ul id="navigation">
                                         <li><a class=" text-danger" href="index.php">home</a></li>
-                                        <li><a href=motos.php">Motos</a></li>
+                                        <li><a href="motos.php">Motos</a></li>
 
                                         <li><a href="contact.php">Cadastro</a></li>
                                     </ul>
