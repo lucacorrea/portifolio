@@ -57,8 +57,8 @@ $rooms  = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
                             <div class="main-menu d-none d-lg-block">
                                 <nav>
                                     <ul id="navigation">
-                                        <li><a href="index.php">Home</a></li>
-                                        <li><a class="text-danger" href="motos.php">Motos</a></li>
+                                        <li><a class="text-danger" href="index.php">Home</a></li>
+                                        <li><a href="motos.php">Motos</a></li>
                                         <li><a href="contact.php">Cadastro</a></li>
                                     </ul>
                                 </nav>
