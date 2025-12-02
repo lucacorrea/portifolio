@@ -22,7 +22,7 @@
         <!-- Área de login -->
         <div class="cart-table-area p-5 bg-white shadow" style="width: 100%; max-width: 500px; border-radius: 15px;">
             <div class="text-center mb-4">
-                <img src="img/core-img/logo.png" alt="Logo" style="max-height: 80px;">
+                <img src="../img/floricultura.png" alt="Logo" style="max-height: 80px;">
                 <h2 class="mt-3">Área Administrativa</h2>
                 <p class="text-muted">Informe seu e-mail e senha para entrar</p>
             </div>
