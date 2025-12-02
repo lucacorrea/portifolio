@@ -96,7 +96,7 @@
                             <li>Tamanho para 3 Adultos e 2 Crianças</li>
                             <li>Vista para o mar</li>
                         </ul>
-                        <a href="#" class="book_now bg-danger text-white ">reserve agora</a>
+                        <a href="#" class="book_now bg-danger text-white ">Ver detalhes</a>
                     </div>
                 </div>
                 <div class="col-xl-4 col-md-4">
@@ -111,7 +111,7 @@
                             <li>Tamanho para 3 Adultos e 2 Crianças</li>
                             <li>Vista para o mar</li>
                         </ul>
-                        <a href="#" class="book_now bg-danger text-white ">reserve agora</a>
+                        <a href="#" class="book_now bg-danger text-white ">Ver detalhes</a>
                     </div>
                 </div>
                 <div class="col-xl-4 col-md-4">
@@ -126,7 +126,7 @@
                             <li>Tamanho para 3 Adultos e 2 Crianças</li>
                             <li>Vista para o mar</li>
                         </ul>
-                        <a href="#" class="book_now bg-danger text-white" style="color: white;">reserve agora</a>
+                        <a href="#" class="book_now bg-danger text-white" style="color: white;">Ver detalhes</a>
                     </div>
                 </div>
             </div>

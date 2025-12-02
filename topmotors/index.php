@@ -251,7 +251,7 @@
                             <span>A partir de R$250/noite</span>
                             <h3>Quarto Superior</h3>
                         </div>
-                        <a href="#" class="line-button">reservar agora</a>
+                        <a href="#" class="line-button">Ver Detalhes</a>
                     </div>
                 </div>
             </div>
@@ -263,7 +263,7 @@
                             <span>A partir de R$250/noite</span>
                             <h3>Quarto Deluxe</h3>
                         </div>
-                        <a href="#" class="line-button">reservar agora</a>
+                        <a href="#" class="line-button">Ver Detalhes</a>
                     </div>
                 </div>
             </div>
@@ -275,7 +275,7 @@
                             <span>A partir de R$250/noite</span>
                             <h3>Quarto Assinatura</h3>
                         </div>
-                        <a href="#" class="line-button">reservar agora</a>
+                        <a href="#" class="line-button">Ver Detalhes</a>
                     </div>
                 </div>
             </div>
@@ -287,7 +287,7 @@
                             <span>A partir de R$250/noite</span>
                             <h3>Quarto para Casal</h3>
                         </div>
-                        <a href="#" class="line-button">reservar agora</a>
+                        <a href="#" class="line-button">Ver Detalhes</a>
                     </div>
                 </div>
             </div>
