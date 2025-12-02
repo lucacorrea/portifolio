@@ -2,36 +2,32 @@
 session_start();
 require './conex.php';
 
-$nome     = trim($_POST['nome'] ?? '');
-$email    = trim($_POST['email'] ?? '');
-$cidade   = trim($_POST['cidade'] ?? '');
-$endereco = trim($_POST['endereco'] ?? '');
-$cep      = trim($_POST['cep'] ?? '');
-$telefone = trim($_POST['telefone'] ?? '');
+/* PEGAR DADOS */
+$nome      = $_POST['nome'] ?? '';
+$email     = $_POST['email'] ?? '';
+$cidade    = $_POST['cidade'] ?? '';
+$endereco  = $_POST['endereco'] ?? '';
+$cep       = $_POST['cep'] ?? '';
+$telefone  = $_POST['telefone'] ?? '';
+
 $produto_id = $_POST['produto_id'] ?? 0;
 
-/* VALIDAÇÃO */
-if ($nome === '' || $email === '' || $endereco === '') {
-    die("Erro: Preencha todos os campos obrigatórios.");
-}
-
 /* SALVAR NO BANCO */
-$stmt = $conex->prepare("
-    INSERT INTO clientes (nome, email, cidade, endereco, cep, telefone)
+$sql = $conex->prepare("
+    INSERT INTO clientes (nome, email, cidade, endereco, cep, numero)
     VALUES (?, ?, ?, ?, ?, ?)
 ");
-$stmt->bind_param("ssssss", $nome, $email, $cidade, $endereco, $cep, $telefone);
+$sql->bind_param("ssssss", $nome, $email, $cidade, $endereco, $cep, $telefone);
+$sql->execute();
 
-if ($stmt->execute()) {
+/* PEGAR ID CADASTRADO */
+$cliente_id = $sql->insert_id;
 
-    // cria sessão
-    $_SESSION['cliente_logado'] = true;
-    $_SESSION['cliente_nome']   = $nome;
-    $_SESSION['cliente_email']  = $email;
+/* SALVAR NA SESSION */
+$_SESSION['cliente_id'] = $cliente_id;
+$_SESSION['cliente_nome'] = $nome;
+$_SESSION['cliente_email'] = $email;
 
-    // volta ao produto
-    header("Location: product-details.php?id=$produto_id&sucesso=1");
-    exit;
-}
-
-die("Erro ao salvar cadastro: " . $conex->error);
+/* VOLTAR PARA O PRODUTO */
+header("Location: product-details.php?id=$produto_id&sucesso=1");
+exit;
