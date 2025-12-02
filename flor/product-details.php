@@ -27,6 +27,7 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <title><?= $p['nome'] ?></title>
@@ -34,64 +35,70 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
     <link rel="stylesheet" href="css/core-style.css">
     <link rel="stylesheet" href="style.css">
 
-<style>
-.msg-sucesso {
-    background: #28a745;
-    color: #fff;
-    padding: 18px;
-    border-radius: 10px;
-    font-size: 20px;
-    text-align: center;
-    margin-bottom: 25px;
-}
-</style>
+    <style>
+        .msg-sucesso {
+            background: #28a745;
+            color: #fff;
+            padding: 18px;
+            border-radius: 10px;
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+    </style>
 
 </head>
+
 <body>
 
-<div class="main-content-wrapper d-flex clearfix">
+    <div class="main-content-wrapper d-flex clearfix">
 
-    <header class="header-area clearfix">
-        <div class="logo">
-            <a href="index.php"><img src="img/core-img/logo.png"></a>
-        </div>
-        <nav class="amado-nav">
-            <ul>
-                <li><a href="index.php">Início</a></li>
-                <li class="active"><a href="shop.php">Compras</a></li>
-                <li><a href="checkout.php">Cadastro</a></li>
-            </ul>
-        </nav>
-    </header>
+        <header class="header-area clearfix">
+            <div class="logo">
+                <a href="index.php"><img src="img/core-img/logo.png"></a>
+            </div>
+            <nav class="amado-nav">
+                <ul>
+                    <li><a href="index.php">Início</a></li>
+                    <li class="active"><a href="shop.php">Compras</a></li>
+                    <li><a href="checkout.php">Cadastro</a></li>
+                </ul>
+            </nav>
+        </header>
 
-    <div class="single-product-area section-padding-100 clearfix">
-        <div class="container-fluid">
+        <div class="single-product-area section-padding-100 clearfix">
+            <div class="container-fluid">
 
-            <?php if ($compra_ok): ?>
-                <div class="msg-sucesso">
-                    Compra realizada com sucesso! ❤️ Obrigado pela preferência!
-                </div>
-            <?php endif; ?>
+                <?php if ($compra_ok): ?>
+                    <div class="msg-sucesso">
+                        Compra realizada com sucesso! ❤️ Obrigado pela preferência!
+                    </div>
+                <?php endif; ?>
 
-            <div class="row">
-                <div class="col-12 col-lg-7">
-                    <img src="<?= imgPath($p['imagem']) ?>" style="width:100%; border-radius:10px;">
-                </div>
+                <div class="row">
+                    <div class="col-12 col-lg-7">
+                        <img src="<?= imgPath($p['imagem']) ?>" style="width:100%; border-radius:10px;">
+                    </div>
 
-                <div class="col-12 col-lg-5">
-                    <h3><?= $p['nome'] ?></h3>
-                    <p class="product-price">R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
-                    <p><?= $p['descricao'] ?></p>
+                    <div class="col-12 col-lg-5">
+                        <h3><?= $p['nome'] ?></h3>
+                        <p class="product-price">R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
+                        <p><?= $p['descricao'] ?></p>
 
-                    <a href="checkout.php?produto=<?= $p['id'] ?>" class="btn amado-btn" style="width:100%;">
-                        COMPRAR
-                    </a>
+                        <form action="comprar.php" method="post">
+                            <input type="hidden" name="produto_id" value="<?= $p['id'] ?>">
+                            <button type="submit" class="btn-comprar">
+                                COMPRAR
+                            </button>
+                        </form>
 
+
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-</div>
+    </div>
 </body>
+
 </html>
