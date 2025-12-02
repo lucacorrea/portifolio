@@ -93,9 +93,9 @@ $produtos = $conex->query($sql);
                             <a href="product-details.php?id=<?= $p['id'] ?>">
 
                                 <!-- IMAGEM (Amado original) -->
-                                <img src="<?= $p['imagem'] ?>"
-                                     alt="<?= htmlspecialchars($p['nome']) ?>"
-                                     style="width: 100%; height: 350px; object-fit: cover;">
+                                <img src="uploads/<?= basename($p['imagem']) ?>"
+                                    alt="<?= htmlspecialchars($p['nome']) ?>"
+                                    style="width:100%; height:350px; object-fit:cover;">
 
                                 <!-- HOVER STYLE ORIGINAL -->
                                 <div class="hover-content">
@@ -155,7 +155,9 @@ $produtos = $conex->query($sql);
                         </div>
                         <p class="copywrite">
                             Copyright &
-                            <script>document.write(new Date().getFullYear());</script>
+                            <script>
+                                document.write(new Date().getFullYear());
+                            </script>
                             Todos os direitos reservados
                         </p>
                     </div>
