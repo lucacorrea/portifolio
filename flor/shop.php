@@ -161,6 +161,68 @@ function imgPath($img)
         </div>
 
     </div>
+    <!-- Newsletter -->
+    <section class="newsletter-area section-padding-100-0">
+        <div class="container">
+            <div class="row align-items-center">
+
+                <div class="col-12 col-lg-6 col-xl-7">
+                    <div class="newsletter-text mb-100">
+                        <h2>Cadastre-se para receber promoções</h2>
+                        <p>Receba novidades exclusivas.</p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6 col-xl-5">
+                    <div class="newsletter-form mb-100">
+                        <a href="checkout.php" class="btn amado-btn">Cadastrar-se</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer_area clearfix">
+        <div class="container">
+            <div class="row align-items-center">
+
+                <div class="col-12 col-lg-4">
+                    <div class="single_widget_area">
+                        <div class="footer-logo mr-50">
+                            <a href="index.php"><img src="img/core-img/logo2.png" alt=""></a>
+                        </div>
+                        <p class="copywrite">© <script>
+                                document.write(new Date().getFullYear());
+                            </script> Todos os direitos reservados</p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-8">
+                    <div class="single_widget_area">
+
+                        <div class="footer_menu">
+                            <nav class="navbar navbar-expand-lg justify-content-end">
+
+                                <div class="collapse navbar-collapse" id="footerNavContent">
+                                    <ul class="navbar-nav ml-auto">
+                                        <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="shop.php">Shop</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="cart.php">Carrinho</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
+                                    </ul>
+                                </div>
+
+                            </nav>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </footer>
 
     <script src="js/jquery/jquery-2.2.4.min.js"></script>
     <script src="js/popper.min.js"></script>
