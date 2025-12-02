@@ -26,6 +26,11 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- <link rel="stylesheet" href="css/responsive.css"> -->
 </head>
+<style>
+    b.readcam_bg_2 {
+        background-image: url(./img/banner/cliente.jpg)
+    }
+</style>
 
 <body>
     <!--[if lte IE 9]>
