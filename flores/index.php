@@ -183,7 +183,7 @@
                 <!-- Texto do Boletim Informativo -->
                 <div class="col-12 col-lg-6 col-xl-7">
                     <div class="newsletter-text mb-100">
-                        <h2>Assine agora e receba um <span>Desconto Exclusivo!</span></h2>
+                        <h2>Cadastre-se agora e aproveite um <span>Desconto Exclusivo de 10%</span> na sua primeira compra!</h2>
                         <p>Junte-se à nossa comunidade e fique por dentro das melhores ofertas e novidades. Não perca a chance de economizar!</p>
                     </div>
                 </div>
