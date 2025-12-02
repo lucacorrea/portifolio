@@ -95,7 +95,7 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
     width: 100%;
     font-size: 22px;
     padding: 15px;
-    background: #ff5e57;
+    background: #FCD309FF;
     border-radius: 10px;
     color: white !important;
     text-align: center;
