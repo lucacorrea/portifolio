@@ -1,19 +1,15 @@
 <?php
 require "conexao.php";
 
-// Total de produtos
-$total = $con->query("SELECT COUNT(*) AS t FROM produtos")->fetch_assoc()['t'];
-
-// Últimos produtos
-$ultimos = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
+// Buscar últimos 6 produtos
+$sql = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 6");
 ?>
 <!doctype html>
 <html class="no-js" lang="zxx">
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>Loja - Painel</title>
+    <title>Loja | Top Motors</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- CSS -->
@@ -27,65 +23,63 @@ $ultimos = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
     <link rel="stylesheet" href="../css/gijgo.css">
     <link rel="stylesheet" href="../css/animate.css">
     <link rel="stylesheet" href="../css/slicknav.css">
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/stl.css">
 
     <style>
-        .custom-box {
-            background: #fff;
-            padding: 30px;
-            margin-top: 40px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, .1);
-            text-align: center;
+        .single_offers img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
         }
-        .card img {height: 180px; object-fit: cover;}
     </style>
 </head>
 
 <body>
-    <!-- HEADER -->
+
     <?php include "topo.php"; ?>
 
-    <section class="contact-section">
+    <div class="offers_area mt-5">
         <div class="container">
 
-            <div class="custom-box">
-                <h2>Sistema de Produtos</h2>
-                <p>Gerencie seus produtos cadastrados.</p>
-
-                <a href="adicionar.php" class="btn btn-success mt-3">+ Adicionar Produto</a>
-                <a href="visualizar.php" class="btn btn-primary mt-3">Ver Todos</a>
-
-                <hr>
-
-                <h4>Total cadastrados: <b><?php echo $total; ?></b></h4>
-            </div>
-
-
-            <h3 class="mt-5 mb-3">Últimos produtos adicionados</h3>
-
             <div class="row">
-                <?php while ($p = $ultimos->fetch_assoc()) { ?>
-                <div class="col-md-3 mb-4">
-                    <div class="card">
-                        <img src="uploads/<?php echo $p['imagem']; ?>" class="card-img-top">
-                        <div class="card-body">
-                            <h5><?php echo $p['nome']; ?></h5>
-                            <p>R$ <?php echo number_format($p['preco'], 2, ",", "."); ?></p>
-                        </div>
+                <div class="col-xl-12">
+                    <div class="section_title text-center mb-100">
+                        <span class="text-danger">Produtos Recentes</span>
+                        <h3>Últimos Adicionados</h3>
                     </div>
                 </div>
+            </div>
+
+            <div class="row">
+
+                <?php while ($p = $sql->fetch_assoc()) { ?>
+                    <div class="col-xl-4 col-md-4">
+                        <div class="single_offers">
+
+                            <div class="about_thumb">
+                                <img src="uploads/<?php echo $p['imagem']; ?>" alt="">
+                            </div>
+
+                            <h3><?php echo $p['nome']; ?></h3>
+
+                            <ul>
+                                <li><b>Preço:</b> R$ <?php echo number_format($p['preco'], 2, ",", "."); ?></li>
+                                <li><b>Categoria:</b> <?php echo $p['categoria']; ?></li>
+                                <li><b>Estoque:</b> <?php echo $p['quantidade']; ?> unidade(s)</li>
+                            </ul>
+
+                            <a href="visualizar.php" class="book_now bg-danger text-white">Ver Todos</a>
+                        </div>
+                    </div>
                 <?php } ?>
+
             </div>
 
         </div>
-    </section>
+    </div>
 
     <?php include "footer.php"; ?>
 
-    <!-- JS -->
-    <script src="js/vendor/jquery-1.12.4.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-    <script src="js/main.js"></script>
 </body>
+
 </html>
