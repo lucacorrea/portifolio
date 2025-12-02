@@ -86,7 +86,7 @@ function imgPath($img)
                 <ul>
                     <li><a href="index.php">Início</a></li>
                     <li class="active"><a href="shop.php">Compras</a></li>
-                    <li><a href="cart.php">Carrinho</a></li>
+                   
                     <li><a href="checkout.php">Cadastro</a></li>
                 </ul>
             </nav>
@@ -229,7 +229,7 @@ function imgPath($img)
                                     <ul class="navbar-nav ml-auto">
                                         <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
                                         <li class="nav-item"><a class="nav-link" href="shop.php">Shop</a></li>
-                                        <li class="nav-item"><a class="nav-link" href="cart.php">Carrinho</a></li>
+                                  
                                         <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
                                     </ul>
                                 </div>
