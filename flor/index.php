@@ -22,23 +22,21 @@ $produtos = $conex->query($sql);
     <link rel="stylesheet" href="css/core-style.css">
     <link rel="stylesheet" href="estilo.css">
 
-    <!-- CSS INTERNO PARA ARRUMAR TODAS AS IMAGENS -->
+    <!-- CORREÇÃO DEFINITIVA: Remove Masonry e força GRID -->
     <style>
-        /* Remove completamente Masonry e posicionamentos quebrados */
         .amado-pro-catagory {
             display: grid !important;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 30px;
+            gap: 30px !important;
             width: 100%;
-            height: auto !important;
             position: relative !important;
+            height: auto !important;
         }
 
-        .amado-pro-catagory .single-products-catagory {
+        .single-products-catagory {
             position: relative !important;
             left: auto !important;
             top: auto !important;
-            margin-bottom: 0 !important;
             width: 100%;
         }
 
@@ -46,7 +44,7 @@ $produtos = $conex->query($sql);
             width: 100%;
             height: 350px;
             object-fit: cover;
-            border-radius: 4px;
+            border-radius: 5px;
         }
     </style>
 
@@ -108,7 +106,7 @@ $produtos = $conex->query($sql);
         </header>
 
         <!-- ============================== -->
-        <!--      LISTA DE PRODUTOS        -->
+        <!--         LISTA DE PRODUTOS      -->
         <!-- ============================== -->
 
         <div class="products-catagories-area clearfix">
@@ -118,21 +116,18 @@ $produtos = $conex->query($sql);
                     <?php while ($p = $produtos->fetch_assoc()): ?>
 
                         <?php
-                        // Limpa qualquer lixo vindo do banco
-                        $imgName = trim($p['imagem']);
-                        $imgName = basename($imgName); // remove ../ e caminhos indevidos
-
-                        // Monta caminho correto
-                        $imgPath = (!empty($imgName))
-                            ? "uploads/" . $imgName
-                            : "img/core-img/no-image.png";
+                        // LIMPA O CAMINHO DA IMAGEM
+                        $imgName = basename(trim($p['imagem']));
+                        $imgPath = "uploads/" . $imgName;
+                        if (!file_exists($imgPath)) {
+                            $imgPath = "img/core-img/no-image.png";
+                        }
                         ?>
 
                         <div class="single-products-catagory clearfix">
                             <a href="product-details.php?id=<?= $p['id'] ?>">
 
-                                <img src="<?= $imgPath ?>"
-                                     alt="<?= htmlspecialchars($p['nome']) ?>">
+                                <img src="<?= $imgPath ?>" alt="<?= htmlspecialchars($p['nome']) ?>">
 
                                 <div class="hover-content">
                                     <div class="line"></div>
@@ -146,9 +141,7 @@ $produtos = $conex->query($sql);
                     <?php endwhile; ?>
                 <?php else: ?>
 
-                    <div class="col-12 text-center mt-5">
-                        <p class="text-muted">Nenhum produto cadastrado ainda.</p>
-                    </div>
+                    <p class="text-center mt-5">Nenhum produto encontrado.</p>
 
                 <?php endif; ?>
 
@@ -198,22 +191,16 @@ $produtos = $conex->query($sql);
                 </div>
 
                 <div class="col-12 col-lg-8">
-                    <div class="single_widget_area">
-
-                        <div class="footer_menu">
-                            <nav class="navbar navbar-expand-lg justify-content-end">
-                                <div class="collapse navbar-collapse" id="footerNavContent">
-                                    <ul class="navbar-nav ml-auto">
-                                        <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
-                                        <li class="nav-item"><a class="nav-link" href="shop.php">Shop</a></li>
-                                        <li class="nav-item"><a class="nav-link" href="cart.php">Carrinho</a></li>
-                                        <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
-                                    </ul>
-                                </div>
-                            </nav>
+                    <nav class="navbar navbar-expand-lg justify-content-end">
+                        <div class="collapse navbar-collapse" id="footerNavContent">
+                            <ul class="navbar-nav ml-auto">
+                                <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
+                                <li class="nav-item"><a class="nav-link" href="shop.php">Shop</a></li>
+                                <li class="nav-item"><a class="nav-link" href="cart.php">Carrinho</a></li>
+                                <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
+                            </ul>
                         </div>
-
-                    </div>
+                    </nav>
                 </div>
 
             </div>
@@ -226,6 +213,19 @@ $produtos = $conex->query($sql);
     <script src="js/bootstrap.min.js"></script>
     <script src="js/plugins.js"></script>
     <script src="js/active.js"></script>
+
+    <!-- REMOVE MASONRY / ISOTOPE DO AMADO (CORREÇÃO FINAL) -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (window.jQuery) {
+                try { $('.amado-pro-catagory').isotope('destroy'); } catch(e){}
+                try { $('.amado-pro-catagory').masonry('destroy'); } catch(e){}
+            }
+
+            document.querySelector('.amado-pro-catagory')?.removeAttribute('style');
+            document.querySelectorAll('.single-products-catagory').forEach(e => e.removeAttribute('style'));
+        });
+    </script>
 
 </body>
 </html>
