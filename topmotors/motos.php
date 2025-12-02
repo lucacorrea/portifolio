@@ -131,8 +131,7 @@
                 </div>
             </div>
         </div>
-    
-
+    </div>
 
     <!-- features_room_startt -->
     <div class="features_room">
