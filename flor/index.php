@@ -1,10 +1,35 @@
 <?php
 require 'conex.php';
 
-// Buscar apenas 6 produtos
 $sql = "SELECT id, nome, preco, imagem FROM produtos ORDER BY id DESC LIMIT 6";
-$produtos = $conex->query($sql);
+$res = $conex->query($sql);
+
+$produtos = [];
+
+while ($row = $res->fetch_assoc()) {
+    $produtos[] = $row;
+}
+
+// Garantir que temos 6 posições (para evitar erros)
+for ($i = 0; $i < 6; $i++) {
+    if (!isset($produtos[$i])) {
+        $produtos[$i] = [
+            'id' => 0,
+            'nome' => 'Produto Indisponível',
+            'preco' => 0,
+            'imagem' => 'img/core-img/no-image.png'
+        ];
+    }
+}
+
+// limpar caminhos
+function imgPath($img)
+{
+    $img = basename(trim($img));
+    return file_exists("uploads/" . $img) ? "uploads/" . $img : "img/core-img/no-image.png";
+}
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -22,30 +47,7 @@ $produtos = $conex->query($sql);
     <link rel="stylesheet" href="css/core-style.css">
     <link rel="stylesheet" href="estilo.css">
 
-    <style>
-        /* Remove Masonry do AMADO e usa GRID */
-        .amado-pro-catagory {
-            display: grid !important;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 30px;
-            width: 100%;
-            position: relative !important;
-            height: auto !important;
-        }
-
-        .single-products-catagory {
-            position: relative !important;
-            left: auto !important;
-            top: auto !important;
-        }
-
-        .single-products-catagory img {
-            width: 100%;
-            height: 320px;
-            object-fit: cover;
-        }
-    </style>
-
+  
 </head>
 
 <body>
@@ -102,43 +104,85 @@ $produtos = $conex->query($sql);
             </div>
         </header>
 
-        <!-- ========================== -->
-        <!--    PRODUTOS DINÂMICOS      -->
-        <!-- ========================== -->
+     
         <div class="products-catagories-area clearfix">
             <div class="amado-pro-catagory clearfix">
 
-                <?php while ($p = $produtos->fetch_assoc()): ?>
+                <!-- 1 -->
+                <div class="single-products-catagory clearfix">
+                    <a href="product-details.php?id=<?= $produtos[0]['id'] ?>">
+                        <img src="<?= imgPath($produtos[0]['imagem']) ?>" alt="<?= $produtos[0]['nome'] ?>">
+                        <div class="hover-content">
+                            <div class="line"></div>
+                            <p>R$ <?= number_format($produtos[0]['preco'], 2, ',', '.') ?></p>
+                            <h4><?= $produtos[0]['nome'] ?></h4>
+                        </div>
+                    </a>
+                </div>
 
-                    <?php
-                    // Limpa imagem
-                    $imgName = basename(trim($p['imagem']));
-                    $imgPath = "uploads/" . $imgName;
+                <!-- 2 -->
+                <div class="single-products-catagory clearfix">
+                    <a href="product-details.php?id=<?= $produtos[1]['id'] ?>">
+                        <img src="<?= imgPath($produtos[1]['imagem']) ?>" alt="<?= $produtos[1]['nome'] ?>">
+                        <div class="hover-content">
+                            <div class="line"></div>
+                            <p>R$ <?= number_format($produtos[1]['preco'], 2, ',', '.') ?></p>
+                            <h4><?= $produtos[1]['nome'] ?></h4>
+                        </div>
+                    </a>
+                </div>
 
-                    if (!file_exists($imgPath)) {
-                        $imgPath = "img/core-img/no-image.png";
-                    }
-                    ?>
+                <!-- 3 -->
+                <div class="single-products-catagory clearfix">
+                    <a href="product-details.php?id=<?= $produtos[2]['id'] ?>">
+                        <img src="<?= imgPath($produtos[2]['imagem']) ?>" alt="<?= $produtos[2]['nome'] ?>">
+                        <div class="hover-content">
+                            <div class="line"></div>
+                            <p>R$ <?= number_format($produtos[2]['preco'], 2, ',', '.') ?></p>
+                            <h4><?= $produtos[2]['nome'] ?></h4>
+                        </div>
+                    </a>
+                </div>
 
-                    <!-- AQUI É O BLOCO IDÊNTICO AO TEMPLATE -->
-                    <div class="single-products-catagory clearfix">
-                        <a href="product-details.php?id=<?= $p['id'] ?>">
+                <!-- 4 -->
+                <div class="single-products-catagory clearfix">
+                    <a href="product-details.php?id=<?= $produtos[3]['id'] ?>">
+                        <img src="<?= imgPath($produtos[3]['imagem']) ?>" alt="<?= $produtos[3]['nome'] ?>">
+                        <div class="hover-content">
+                            <div class="line"></div>
+                            <p>R$ <?= number_format($produtos[3]['preco'], 2, ',', '.') ?></p>
+                            <h4><?= $produtos[3]['nome'] ?></h4>
+                        </div>
+                    </a>
+                </div>
 
-                            <img src="<?= $imgPath ?>" alt="<?= htmlspecialchars($p['nome']) ?>">
+                <!-- 5 -->
+                <div class="single-products-catagory clearfix">
+                    <a href="product-details.php?id=<?= $produtos[4]['id'] ?>">
+                        <img src="<?= imgPath($produtos[4]['imagem']) ?>" alt="<?= $produtos[4]['nome'] ?>">
+                        <div class="hover-content">
+                            <div class="line"></div>
+                            <p>R$ <?= number_format($produtos[4]['preco'], 2, ',', '.') ?></p>
+                            <h4><?= $produtos[4]['nome'] ?></h4>
+                        </div>
+                    </a>
+                </div>
 
-                            <div class="hover-content">
-                                <div class="line"></div>
-                                <p>R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
-                                <h4><?= htmlspecialchars($p['nome']) ?></h4>
-                            </div>
-
-                        </a>
-                    </div>
-
-                <?php endwhile; ?>
+                <!-- 6 -->
+                <div class="single-products-catagory clearfix">
+                    <a href="product-details.php?id=<?= $produtos[5]['id'] ?>">
+                        <img src="<?= imgPath($produtos[5]['imagem']) ?>" alt="<?= $produtos[5]['nome'] ?>">
+                        <div class="hover-content">
+                            <div class="line"></div>
+                            <p>R$ <?= number_format($produtos[5]['preco'], 2, ',', '.') ?></p>
+                            <h4><?= $produtos[5]['nome'] ?></h4>
+                        </div>
+                    </a>
+                </div>
 
             </div>
         </div>
+
         <!-- Fim dos 6 produtos -->
 
     </div>
@@ -175,7 +219,9 @@ $produtos = $conex->query($sql);
                         <div class="footer-logo mr-50">
                             <a href="index.php"><img src="img/core-img/logo2.png" alt=""></a>
                         </div>
-                        <p class="copywrite">© <script>document.write(new Date().getFullYear());</script> Todos os direitos reservados</p>
+                        <p class="copywrite">© <script>
+                                document.write(new Date().getFullYear());
+                            </script> Todos os direitos reservados</p>
                     </div>
                 </div>
 
@@ -211,14 +257,8 @@ $produtos = $conex->query($sql);
     <script src="js/plugins.js"></script>
     <script src="js/active.js"></script>
 
-    <!-- Remove Masonry automático -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            document.querySelector('.amado-pro-catagory')?.removeAttribute('style');
-            document.querySelectorAll('.single-products-catagory')
-                .forEach(e => e.removeAttribute('style'));
-        });
-    </script>
+    
 
 </body>
+
 </html>
