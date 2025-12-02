@@ -1,7 +1,7 @@
 <?php
 require 'conex.php';
 
-// Buscar os 6 produtos mais recentes
+// Buscar apenas 6 produtos
 $sql = "SELECT id, nome, preco, imagem FROM produtos ORDER BY id DESC LIMIT 6";
 $produtos = $conex->query($sql);
 ?>
@@ -22,12 +22,12 @@ $produtos = $conex->query($sql);
     <link rel="stylesheet" href="css/core-style.css">
     <link rel="stylesheet" href="estilo.css">
 
-    <!-- CORREÇÃO DEFINITIVA: Remove Masonry e força GRID -->
     <style>
+        /* Remove Masonry do AMADO e usa GRID */
         .amado-pro-catagory {
             display: grid !important;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 30px !important;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
             width: 100%;
             position: relative !important;
             height: auto !important;
@@ -37,21 +37,18 @@ $produtos = $conex->query($sql);
             position: relative !important;
             left: auto !important;
             top: auto !important;
-            width: 100%;
         }
 
         .single-products-catagory img {
             width: 100%;
-            height: 350px;
+            height: 320px;
             object-fit: cover;
-            border-radius: 5px;
         }
     </style>
 
 </head>
 
 <body>
-
     <!-- Search Wrapper -->
     <div class="search-wrapper section-padding-100">
         <div class="search-close"><i class="fa fa-close"></i></div>
@@ -60,7 +57,7 @@ $produtos = $conex->query($sql);
                 <div class="col-12">
                     <div class="search-content">
                         <form action="#" method="get">
-                            <input type="search" name="search" placeholder="Buscar...">
+                            <input type="search" name="search" id="search" placeholder="Type your keyword...">
                             <button type="submit"><img src="img/core-img/search.png" alt=""></button>
                         </form>
                     </div>
@@ -69,10 +66,10 @@ $produtos = $conex->query($sql);
         </div>
     </div>
 
-    <!-- Conteúdo Principal -->
+    <!-- Main Content Wrapper -->
     <div class="main-content-wrapper d-flex clearfix">
 
-        <!-- Mobile -->
+        <!-- Mobile Nav -->
         <div class="mobile-nav">
             <div class="amado-navbar-brand">
                 <a href="index.php"><img src="img/core-img/logo.png" alt=""></a>
@@ -80,12 +77,12 @@ $produtos = $conex->query($sql);
             <div class="amado-navbar-toggler"><span></span><span></span><span></span></div>
         </div>
 
-        <!-- Menu lateral -->
+        <!-- Sidebar -->
         <header class="header-area clearfix">
             <div class="nav-close"><i class="fa fa-close"></i></div>
 
             <div class="logo">
-                <a href="index.php"><img src="img/floricultura.png" alt=""></a>
+                <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
             </div>
 
             <nav class="amado-nav">
@@ -98,55 +95,51 @@ $produtos = $conex->query($sql);
             </nav>
 
             <div class="social-info d-flex justify-content-between">
-                <a href="./adm/index.php"><i class="fa fa-user"></i></a>
+                <a href="#"><i class="fa fa-user"></i></a>
                 <a href="#"><i class="fa fa-instagram"></i></a>
                 <a href="#"><i class="fa fa-facebook"></i></a>
                 <a href="#"><i class="fa fa-twitter"></i></a>
             </div>
         </header>
 
-        <!-- ============================== -->
-        <!--         LISTA DE PRODUTOS      -->
-        <!-- ============================== -->
-
+        <!-- ========================== -->
+        <!--    PRODUTOS DINÂMICOS      -->
+        <!-- ========================== -->
         <div class="products-catagories-area clearfix">
-            <div class="amado-pro-catagory">
+            <div class="amado-pro-catagory clearfix">
 
-                <?php if ($produtos && $produtos->num_rows > 0): ?>
-                    <?php while ($p = $produtos->fetch_assoc()): ?>
+                <?php while ($p = $produtos->fetch_assoc()): ?>
 
-                        <?php
-                        // LIMPA O CAMINHO DA IMAGEM
-                        $imgName = basename(trim($p['imagem']));
-                        $imgPath = "uploads/" . $imgName;
-                        if (!file_exists($imgPath)) {
-                            $imgPath = "img/core-img/no-image.png";
-                        }
-                        ?>
+                    <?php
+                    // Limpa imagem
+                    $imgName = basename(trim($p['imagem']));
+                    $imgPath = "uploads/" . $imgName;
 
-                        <div class="single-products-catagory clearfix">
-                            <a href="product-details.php?id=<?= $p['id'] ?>">
+                    if (!file_exists($imgPath)) {
+                        $imgPath = "img/core-img/no-image.png";
+                    }
+                    ?>
 
-                                <img src="<?= $imgPath ?>" alt="<?= htmlspecialchars($p['nome']) ?>">
+                    <!-- AQUI É O BLOCO IDÊNTICO AO TEMPLATE -->
+                    <div class="single-products-catagory clearfix">
+                        <a href="product-details.php?id=<?= $p['id'] ?>">
 
-                                <div class="hover-content">
-                                    <div class="line"></div>
-                                    <p>R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
-                                    <h4><?= htmlspecialchars($p['nome']) ?></h4>
-                                </div>
+                            <img src="<?= $imgPath ?>" alt="<?= htmlspecialchars($p['nome']) ?>">
 
-                            </a>
-                        </div>
+                            <div class="hover-content">
+                                <div class="line"></div>
+                                <p>R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
+                                <h4><?= htmlspecialchars($p['nome']) ?></h4>
+                            </div>
 
-                    <?php endwhile; ?>
-                <?php else: ?>
+                        </a>
+                    </div>
 
-                    <p class="text-center mt-5">Nenhum produto encontrado.</p>
-
-                <?php endif; ?>
+                <?php endwhile; ?>
 
             </div>
         </div>
+        <!-- Fim dos 6 produtos -->
 
     </div>
 
@@ -157,14 +150,14 @@ $produtos = $conex->query($sql);
 
                 <div class="col-12 col-lg-6 col-xl-7">
                     <div class="newsletter-text mb-100">
-                        <h2>Cadastre-se e ganhe <span>Desconto Exclusivo</span></h2>
-                        <p>Receba novidades e promoções direto no seu e-mail.</p>
+                        <h2>Cadastre-se para receber promoções</h2>
+                        <p>Receba novidades exclusivas.</p>
                     </div>
                 </div>
 
                 <div class="col-12 col-lg-6 col-xl-5">
-                    <div class="newsletter-form mb-100 text-center text-lg-end">
-                        <a href="checkout.php" class="btn amado-btn">Inscrever-se</a>
+                    <div class="newsletter-form mb-100">
+                        <a href="checkout.php" class="btn amado-btn">Cadastrar-se</a>
                     </div>
                 </div>
 
@@ -172,7 +165,7 @@ $produtos = $conex->query($sql);
         </div>
     </section>
 
-    <!-- Rodapé -->
+    <!-- Footer -->
     <footer class="footer_area clearfix">
         <div class="container">
             <div class="row align-items-center">
@@ -182,25 +175,29 @@ $produtos = $conex->query($sql);
                         <div class="footer-logo mr-50">
                             <a href="index.php"><img src="img/core-img/logo2.png" alt=""></a>
                         </div>
-                        <p class="copywrite">
-                            Copyright &
-                            <script>document.write(new Date().getFullYear());</script>
-                            Todos os direitos reservados
-                        </p>
+                        <p class="copywrite">© <script>document.write(new Date().getFullYear());</script> Todos os direitos reservados</p>
                     </div>
                 </div>
 
                 <div class="col-12 col-lg-8">
-                    <nav class="navbar navbar-expand-lg justify-content-end">
-                        <div class="collapse navbar-collapse" id="footerNavContent">
-                            <ul class="navbar-nav ml-auto">
-                                <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
-                                <li class="nav-item"><a class="nav-link" href="shop.php">Shop</a></li>
-                                <li class="nav-item"><a class="nav-link" href="cart.php">Carrinho</a></li>
-                                <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
-                            </ul>
+                    <div class="single_widget_area">
+
+                        <div class="footer_menu">
+                            <nav class="navbar navbar-expand-lg justify-content-end">
+
+                                <div class="collapse navbar-collapse" id="footerNavContent">
+                                    <ul class="navbar-nav ml-auto">
+                                        <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="shop.php">Shop</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="cart.php">Carrinho</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
+                                    </ul>
+                                </div>
+
+                            </nav>
                         </div>
-                    </nav>
+
+                    </div>
                 </div>
 
             </div>
@@ -214,16 +211,12 @@ $produtos = $conex->query($sql);
     <script src="js/plugins.js"></script>
     <script src="js/active.js"></script>
 
-    <!-- REMOVE MASONRY / ISOTOPE DO AMADO (CORREÇÃO FINAL) -->
+    <!-- Remove Masonry automático -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            if (window.jQuery) {
-                try { $('.amado-pro-catagory').isotope('destroy'); } catch(e){}
-                try { $('.amado-pro-catagory').masonry('destroy'); } catch(e){}
-            }
-
             document.querySelector('.amado-pro-catagory')?.removeAttribute('style');
-            document.querySelectorAll('.single-products-catagory').forEach(e => e.removeAttribute('style'));
+            document.querySelectorAll('.single-products-catagory')
+                .forEach(e => e.removeAttribute('style'));
         });
     </script>
 
