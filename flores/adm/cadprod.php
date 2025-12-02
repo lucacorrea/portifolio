@@ -2,13 +2,12 @@
 include_once("../conex.php");
 session_start();
 
-// Protege a página
+
 if (!isset($_SESSION['usuario_id'])) {
     header("Location: index.php");
     exit;
 }
 
-// PROCESSAMENTO DO FORMULÁRIO
 $msg = "";
 if ($_SERVER['REQUEST_METHOD'] === "POST") {
     $nome = $_POST['nome'];
