@@ -133,69 +133,7 @@
         </div>
     </div>
 
-    <!-- features_room_startt -->
-    <div class="features_room">
-        <div class="container">
-            <div class="row">
-                <div class="col-xl-12">
-                    <div class="section_title text-center mb-100">
-                        <span class="text-danger">Nossas Categorias</span>
-                        <h3>Escolha a Moto Ideal</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="rooms_here">
-            <div class="single_rooms">
-                <div class="room_thumb">
-                    <img src="imgmotos/1.png" alt="">
-                    <div class="room_heading d-flex justify-content-between align-items-center">
-                        <div class="room_heading_inner">
-                            <span>A partir de R$250/noite</span>
-                            <h3>Quarto Superior</h3>
-                        </div>
-                        <a href="#" class="line-button">reservar agora</a>
-                    </div>
-                </div>
-            </div>
-            <div class="single_rooms">
-                <div class="room_thumb">
-                    <img src="imgmotos/2.png" alt="">
-                    <div class="room_heading d-flex justify-content-between align-items-center">
-                        <div class="room_heading_inner">
-                            <span>A partir de R$250/noite</span>
-                            <h3>Quarto Deluxe</h3>
-                        </div>
-                        <a href="#" class="line-button">reservar agora</a>
-                    </div>
-                </div>
-            </div>
-            <div class="single_rooms">
-                <div class="room_thumb">
-                    <img src="imgmotos/3.png" alt="">
-                    <div class="room_heading d-flex justify-content-between align-items-center">
-                        <div class="room_heading_inner">
-                            <span>A partir de R$250/noite</span>
-                            <h3>Quarto Assinatura</h3>
-                        </div>
-                        <a href="#" class="line-button">reservar agora</a>
-                    </div>
-                </div>
-            </div>
-            <div class="single_rooms">
-                <div class="room_thumb">
-                    <img src="imgmotos/4.png" alt="">
-                    <div class="room_heading d-flex justify-content-between align-items-center">
-                        <div class="room_heading_inner">
-                            <span>A partir de R$250/noite</span>
-                            <h3>Quarto para Casal</h3>
-                        </div>
-                        <a href="#" class="line-button">reservar agora</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+  
 
     <!-- forQuery_start -->
     <div class="forQuery">
@@ -206,12 +144,12 @@
                         <div class="row align-items-center justify-content-center">
                             <div class="col-xl-6 col-md-6">
                                 <div class="Query_text">
-                                    <p>For Reservation 0r Query?</p>
+                                    <p>É novo por aqui?</p>
                                 </div>
                             </div>
                             <div class="col-xl-6 col-md-6">
                                 <div class="phone_num">
-                                    <a href="#" class="mobile_no">+10 576 377 4789</a>
+                                    <a href="#" class="mobile_no bg-danger">Cadastra-se agora</a>
                                 </div>
                             </div>
                         </div>
