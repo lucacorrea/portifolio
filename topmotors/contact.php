@@ -32,7 +32,7 @@
     }
     #dark:hover {
         background-color: darkred !important;
-        color: white !important;
+        color: #ffffff !important;
     }
 </style>
 
