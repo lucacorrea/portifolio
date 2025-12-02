@@ -92,7 +92,7 @@ $produtos = $conex->query($sql);
                         <?php
                         // ----- CORREÇÃO DO NOME DA IMAGEM -----
                         $imgName = trim($p['imagem']);
-                        $imgPath = "uploads/" . $imgName;
+                        $imgPath = "./uploads/" . $imgName;
 
                         if (!file_exists($imgPath) || empty($imgName)) {
                             $imgPath = "img/core-img/no-image.png";
