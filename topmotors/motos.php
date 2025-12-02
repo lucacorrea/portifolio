@@ -73,7 +73,7 @@
     </div>
     <!-- bradcam_area_end -->
 
-    <div class="offers_area">
+    <div class="offers_area  padding_top">
         <div class="container">
             <div class="row">
                 <div class="col-xl-12">
