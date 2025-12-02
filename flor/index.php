@@ -22,6 +22,34 @@ $produtos = $conex->query($sql);
     <link rel="stylesheet" href="css/core-style.css">
     <link rel="stylesheet" href="estilo.css">
 
+    <!-- CSS INTERNO PARA ARRUMAR TODAS AS IMAGENS -->
+    <style>
+        /* Remove completamente Masonry e posicionamentos quebrados */
+        .amado-pro-catagory {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            width: 100%;
+            height: auto !important;
+            position: relative !important;
+        }
+
+        .amado-pro-catagory .single-products-catagory {
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            margin-bottom: 0 !important;
+            width: 100%;
+        }
+
+        .single-products-catagory img {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+    </style>
+
 </head>
 
 <body>
@@ -84,7 +112,7 @@ $produtos = $conex->query($sql);
         <!-- ============================== -->
 
         <div class="products-catagories-area clearfix">
-            <div class="amado-pro-catagory clearfix">
+            <div class="amado-pro-catagory">
 
                 <?php if ($produtos && $produtos->num_rows > 0): ?>
                     <?php while ($p = $produtos->fetch_assoc()): ?>
@@ -104,14 +132,11 @@ $produtos = $conex->query($sql);
                             <a href="product-details.php?id=<?= $p['id'] ?>">
 
                                 <img src="<?= $imgPath ?>"
-                                     alt="<?= htmlspecialchars($p['nome']) ?>"
-                                     style="width:100%; height:350px; object-fit:cover;">
+                                     alt="<?= htmlspecialchars($p['nome']) ?>">
 
                                 <div class="hover-content">
                                     <div class="line"></div>
-                                    <p>R$
-                                        <?= number_format($p['preco'], 2, ',', '.') ?>
-                                    </p>
+                                    <p>R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
                                     <h4><?= htmlspecialchars($p['nome']) ?></h4>
                                 </div>
 
@@ -119,7 +144,6 @@ $produtos = $conex->query($sql);
                         </div>
 
                     <?php endwhile; ?>
-
                 <?php else: ?>
 
                     <div class="col-12 text-center mt-5">
@@ -167,9 +191,7 @@ $produtos = $conex->query($sql);
                         </div>
                         <p class="copywrite">
                             Copyright &
-                            <script>
-                                document.write(new Date().getFullYear());
-                            </script>
+                            <script>document.write(new Date().getFullYear());</script>
                             Todos os direitos reservados
                         </p>
                     </div>
@@ -180,7 +202,6 @@ $produtos = $conex->query($sql);
 
                         <div class="footer_menu">
                             <nav class="navbar navbar-expand-lg justify-content-end">
-
                                 <div class="collapse navbar-collapse" id="footerNavContent">
                                     <ul class="navbar-nav ml-auto">
                                         <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
@@ -189,7 +210,6 @@ $produtos = $conex->query($sql);
                                         <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
                                     </ul>
                                 </div>
-
                             </nav>
                         </div>
 
@@ -208,5 +228,4 @@ $produtos = $conex->query($sql);
     <script src="js/active.js"></script>
 
 </body>
-
 </html>
