@@ -28,7 +28,7 @@
 </head>
     <style>
         .breadcam_bg_1 {
-            background-image: url(../img/offers/motos.jpg)
+            background-image: url(./img/offers/motos.jpg)
         }
     </style>
 <body>
