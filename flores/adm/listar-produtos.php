@@ -48,11 +48,8 @@ $resultado = $conex->query($sql);
                                 <p class="mb-1"><strong>Categoria:</strong> <?php echo htmlspecialchars($produto['categoria']); ?></p>
                                 <p class="small text-muted"><?php echo nl2br(htmlspecialchars($produto['descricao'])); ?></p>
 
-                                <!-- Ações futuras -->
-                                <div class="mt-3 d-flex justify-content-center gap-2">
-                                    <a href="editar-produto.php?id=<?php echo $produto['id']; ?>" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                    <a href="excluir-produto.php?id=<?php echo $produto['id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir?')">Excluir</a>
-                                </div>
+                              
+                              
                             </div>
                         </div>
                     </div>
