@@ -145,7 +145,7 @@
 
                                 </div>
 
-                                <button type="submit" class="btn amado-btn btn-amado">
+                                <button type="submit" class="btn btn-amado">
                                     Cadastrar
                                 </button>
 
