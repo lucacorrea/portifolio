@@ -7,7 +7,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     $senha = $_POST['senha'];
 
-  
+    $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
+
     $sql = "INSERT INTO usuarios (email, senha) VALUES ('$email', '$senhaHash')";
 
     if ($conex->query($sql) === TRUE) {
