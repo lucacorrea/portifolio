@@ -30,6 +30,10 @@
     .breadcam_bg_2 {
         background-image: url(./img/banner/cliente.jpg) !important
     }
+    #dark:hover {
+        background-color: darkred !important;
+        color: white !important;
+    }
 </style>
 
 <body>
@@ -154,7 +158,7 @@
                         </div>
 
                         <div class="form-group mt-3 text-center">
-                            <button type="submit" class="button button-contactForm boxed-btn" style="border: 1px solid darkred; color:darkred !
+                            <button type="submit" class="button button-contactForm boxed-btn" id="dark" style="border: 1px solid darkred; color:darkred !
                             important; hover{ background-color: darkred !important; color: white !important;}">
                                 Finalizar Cadastro
                             </button>
