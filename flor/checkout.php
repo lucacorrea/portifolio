@@ -36,7 +36,7 @@
 }
 
 .btn-amado:hover {
-    background: #C0C601FF !important;
+    background: #F6FE0EFF !important;
     letter-spacing: 1px;
 }
 
