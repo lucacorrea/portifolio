@@ -187,13 +187,10 @@
                         <p>Junte-se à nossa comunidade e fique por dentro das melhores ofertas e novidades. Não perca a chance de economizar!</p>
                     </div>
                 </div>
-                <!-- Formulário do Boletim Informativo -->
+                <!-- Link para a página de checkout -->
                 <div class="col-12 col-lg-6 col-xl-5">
                     <div class="newsletter-form mb-100">
-                        <form action="#" method="post">
-                            <input type="email" name="email" class="nl-email" placeholder="Seu E-mail">
-                            <input type="submit" value="Inscrever-se">
-                        </form>
+                        <a href="checkout.php" class="btn btn-primary">Inscrever-se</a>
                     </div>
                 </div>
             </div>
