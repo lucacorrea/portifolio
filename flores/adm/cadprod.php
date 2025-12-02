@@ -69,42 +69,78 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
             <!-- Mensagem de retorno -->
             <?php echo $msg; ?>
 
-            <!-- Formulário -->
-            <form method="POST" enctype="multipart/form-data">
-                <div class="row">
-                    <!-- Nome -->
-                    <div class="col-md-6 mb-3">
-                        <input type="text" class="form-control" name="nome" placeholder="Nome do produto" required>
+           <div class="cart-table-area section-padding-100">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- FORMULÁRIO -->
+            <div class="col-12 col-lg-8">
+                <div class="checkout_details_area mt-50 clearfix">
+
+                    <div class="cart-title">
+                        <h2>Cadastrar Produto</h2>
                     </div>
 
-                    <!-- Preço -->
-                    <div class="col-md-6 mb-3">
-                        <input type="text" class="form-control" name="preco" placeholder="Preço (ex: 29.90)" required>
+                    <!-- Mensagem de retorno -->
+                    <?php echo $msg; ?>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <input type="text" class="form-control" name="nome" placeholder="Nome do produto" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <input type="text" class="form-control" name="preco" placeholder="Preço (ex: 29.90)" required>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <input type="text" class="form-control" name="categoria" placeholder="Categoria (Flores, Buquê, Cactos...)" required>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <textarea class="form-control" name="descricao" rows="4" placeholder="Descrição do produto" required></textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <input type="number" class="form-control" name="quantidade" placeholder="Quantidade em estoque" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <input type="file" class="form-control" name="imagem" accept="image/*" required>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn amado-btn w-100">Cadastrar Produto</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- LADO DIREITO (opcional - você pode usar para preview, resumo, ações futuras...) -->
+            <div class="col-12 col-lg-4">
+                <div class="cart-summary mt-50">
+                    <h5>Ajuda</h5>
+                    <ul class="summary-table">
+                        <li><span>Campos obrigatórios:</span> <span>✔️</span></li>
+                        <li><span>Imagem:</span> <span>JPG, PNG</span></li>
+                        <li><span>Categoria:</span> <span>ex: Flores</span></li>
+                    </ul>
+
+                    <div class="payment-method">
+                        <div class="custom-control custom-checkbox mr-sm-2">
+                            <input type="checkbox" class="custom-control-input" id="exibirEstoque" checked disabled>
+                            <label class="custom-control-label" for="exibirEstoque">Controle de estoque ativo</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mr-sm-2">
+                            <input type="checkbox" class="custom-control-input" id="imagemObrigatoria" checked disabled>
+                            <label class="custom-control-label" for="imagemObrigatoria">Imagem obrigatória</label>
+                        </div>
                     </div>
 
-                    <!-- Categoria -->
-                    <div class="col-12 mb-3">
-                        <input type="text" class="form-control" name="categoria" placeholder="Categoria (Flores, Buquê...)" required>
-                    </div>
-
-                    <!-- Descrição -->
-                    <div class="col-12 mb-3">
-                        <textarea name="descricao" class="form-control" rows="4" placeholder="Descrição do produto" required></textarea>
-                    </div>
-
-                    <!-- Quantidade -->
-                    <div class="col-md-6 mb-3">
-                        <input type="number" class="form-control" name="quantidade" placeholder="Quantidade em estoque" required>
-                    </div>
-
-                    <!-- Imagem -->
-                    <div class="col-md-6 mb-3">
-                        <input type="file" name="imagem" class="form-control" accept="image/*" required>
+                    <div class="cart-btn mt-4">
+                        <a href="listar-produtos.php" class="btn amado-btn w-100">Ver produtos cadastrados</a>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                <button type="submit" class="btn amado-btn mt-3 w-100">Cadastrar</button>
-            </form>
 
 
             <div class="text-center mt-4">

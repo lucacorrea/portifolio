@@ -76,8 +76,8 @@
                     <li class="active"><a href="checkout.html">Cadastro</a></li>
                 </ul>
             </nav>
-
-
+           
+            
             <!-- Social Button -->
             <div class="social-info d-flex justify-content-between">
                 <a href="#"><i class="fa fa-pinterest" aria-hidden="true"></i></a>
@@ -91,75 +91,82 @@
         <div class="cart-table-area section-padding-100">
             <div class="container-fluid">
                 <div class="row">
-                    <!-- FORMULÁRIO -->
                     <div class="col-12 col-lg-8">
                         <div class="checkout_details_area mt-50 clearfix">
 
                             <div class="cart-title">
-                                <h2>Cadastrar Produto</h2>
+                                <h2>Finalizar compra</h2>
                             </div>
 
-                            <!-- Mensagem de retorno -->
-                            <?php echo $msg; ?>
-
-                            <form method="POST" enctype="multipart/form-data">
+                            <form action="#" method="post">
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <input type="text" class="form-control" name="nome" placeholder="Nome do produto" required>
+                                        <input type="text" class="form-control" id="first_name" value="" placeholder="Digite seu nome" required>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <input type="text" class="form-control" name="preco" placeholder="Preço (ex: 29.90)" required>
+                                        <input type="text" class="form-control" id="last_name" value="" placeholder="Segundo nome" required>
                                     </div>
                                     <div class="col-12 mb-3">
-                                        <input type="text" class="form-control" name="categoria" placeholder="Categoria (Flores, Buquê, Cactos...)" required>
+                                        <input type="email" class="form-control" id="email" placeholder="Email" value="">
                                     </div>
                                     <div class="col-12 mb-3">
-                                        <textarea class="form-control" name="descricao" rows="4" placeholder="Descrição do produto" required></textarea>
+                                        <input type="text" class="form-control" id="city" placeholder="Cidade" value="">
+                                    </div>
+                                      <div class="col-12 mb-3">
+                                        <input type="text" class="form-control mb-3" id="street_address" placeholder="Endereço" value="">
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <input type="number" class="form-control" name="quantidade" placeholder="Quantidade em estoque" required>
+                                        <input type="text" class="form-control" id="zipCode" placeholder="CEP" value="">
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <input type="file" class="form-control" name="imagem" accept="image/*" required>
+                                        <input type="number" class="form-control" id="phone_number" min="0" placeholder="Número de Telefone" value="">
                                     </div>
+                                  
+
                                     <div class="col-12">
-                                        <button type="submit" class="btn amado-btn w-100">Cadastrar Produto</button>
+                                        <div class="custom-control custom-checkbox d-block mb-2">
+                                            <input type="checkbox" class="custom-control-input" id="customCheck2">
+                                            <label class="custom-control-label" for="customCheck2">Criar uma conta</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox d-block">
+                                            <input type="checkbox" class="custom-control-input" id="customCheck3">
+                                            <label class="custom-control-label" for="customCheck3">Enviar para um endereço diferente</label>
+                                        </div>
                                     </div>
                                 </div>
                             </form>
                         </div>
                     </div>
-
-                    <!-- LADO DIREITO (opcional - você pode usar para preview, resumo, ações futuras...) -->
                     <div class="col-12 col-lg-4">
-                        <div class="cart-summary mt-50">
-                            <h5>Ajuda</h5>
+                        <div class="cart-summary">
+                            <h5>Cart Total</h5>
                             <ul class="summary-table">
-                                <li><span>Campos obrigatórios:</span> <span>✔️</span></li>
-                                <li><span>Imagem:</span> <span>JPG, PNG</span></li>
-                                <li><span>Categoria:</span> <span>ex: Flores</span></li>
+                                <li><span>subtotal:</span> <span>$140.00</span></li>
+                                <li><span>Entrega:</span> <span>Grátis</span></li>
+                                <li><span>total:</span> <span>$140.00</span></li>
                             </ul>
 
                             <div class="payment-method">
+                                <!-- Cash on delivery -->
                                 <div class="custom-control custom-checkbox mr-sm-2">
-                                    <input type="checkbox" class="custom-control-input" id="exibirEstoque" checked disabled>
-                                    <label class="custom-control-label" for="exibirEstoque">Controle de estoque ativo</label>
+                                    <input type="checkbox" class="custom-control-input" id="cod" checked>
+                                    <label class="custom-control-label" for="cod">Pagamento para a entrega</label>
                                 </div>
+                                <!-- Paypal -->
                                 <div class="custom-control custom-checkbox mr-sm-2">
-                                    <input type="checkbox" class="custom-control-input" id="imagemObrigatoria" checked disabled>
-                                    <label class="custom-control-label" for="imagemObrigatoria">Imagem obrigatória</label>
+                                    <input type="checkbox" class="custom-control-input" id="paypal">
+                                    <label class="custom-control-label" for="paypal">Paypal <img class="ml-15" src="img/core-img/paypal.png" alt=""></label>
                                 </div>
                             </div>
 
-                            <div class="cart-btn mt-4">
-                                <a href="listar-produtos.php" class="btn amado-btn w-100">Ver produtos cadastrados</a>
+                            <div class="cart-btn mt-100">
+                                <a href="#" class="btn amado-btn w-100">Finalizar Compra</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
     <!-- ##### Main Content Wrapper End ##### -->
 
@@ -201,10 +208,8 @@
                         </div>
                         <!-- Copywrite Text -->
                         <p class="copywrite"><!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
-                            Copyright &copy;<script>
-                                document.write(new Date().getFullYear());
-                            </script> All rights reserved | This template is made with <i class="fa fa-heart-o" aria-hidden="true"></i> by <a href="https://colorlib.com" target="_blank">Colorlib</a> & Re-distributed by <a href="https://themewagon.com/" target="_blank">Themewagon</a>
-                            <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. --></p>
+Copyright &copy;<script>document.write(new Date().getFullYear());</script> All rights reserved | This template is made with <i class="fa fa-heart-o" aria-hidden="true"></i> by <a href="https://colorlib.com" target="_blank">Colorlib</a> & Re-distributed by <a href="https://themewagon.com/" target="_blank">Themewagon</a>
+<!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. --></p>
                     </div>
                 </div>
                 <!-- Single Widget Area -->
