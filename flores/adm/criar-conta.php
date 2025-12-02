@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <!-- Área de cadastro -->
         <div class="cart-table-area p-5 bg-white shadow" style="width: 100%; max-width: 500px; border-radius: 15px;">
             <div class="text-center mb-4">
-                <img src="img/floricultura.png" alt="Logo" style="max-height: 80px;">
+                <img src="../img/floricultura.png" alt="Logo" style="max-height: 80px;">
                 <h2 class="mt-3">Criar Conta</h2>
                 <p class="text-muted">Cadastre um novo usuário administrativo</p>
             </div>
