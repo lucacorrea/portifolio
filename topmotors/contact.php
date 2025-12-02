@@ -158,8 +158,7 @@
                         </div>
 
                         <div class="form-group mt-3 text-center">
-                            <button type="submit" class="button button-contactForm boxed-btn" id="dark" style="border: 1px solid darkred; color:darkred !
-                            important; hover{ background-color: darkred !important; color: white !important;}">
+                            <button type="submit" class="button button-contactForm boxed-btn" id="dark" style="border: 1px solid darkred; color:darkred ;">
                                 Finalizar Cadastro
                             </button>
                         </div>
