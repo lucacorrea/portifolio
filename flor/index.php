@@ -1,9 +1,6 @@
 <?php
 require './conex.php';
 
-/* ================================
-   BUSCAR ATÉ 6 PRODUTOS DO BANCO
-   ================================ */
 $sql = "SELECT id, nome, preco, imagem FROM produtos ORDER BY id DESC LIMIT 6";
 $res = $conex->query($sql);
 
@@ -17,9 +14,6 @@ while ($row = $res->fetch_assoc()) {
     $produtos[] = $row;
 }
 
-/* ======================================================
-   COMPLETAR ATÉ 6 PRODUTOS CASO TENHA MENOS QUE 6
-   ====================================================== */
 for ($i = 0; $i < 6; $i++) {
     if (!isset($produtos[$i])) {
         $produtos[$i] = [
@@ -31,9 +25,7 @@ for ($i = 0; $i < 6; $i++) {
     }
 }
 
-/* ============================================
-   FUNÇÃO PARA VALIDAR E TRAZER O CAMINHO DA IMAGEM
-   ============================================ */
+
 function imgPath($img)
 {
     if (!$img) {
