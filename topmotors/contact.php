@@ -154,7 +154,8 @@
                         </div>
 
                         <div class="form-group mt-3 text-center">
-                            <button type="submit" class="button button-contactForm boxed-btn" style="border: 1px solid darkred; color:darkred">
+                            <button type="submit" class="button button-contactForm boxed-btn" style="border: 1px solid darkred; color:darkred !
+                            important;">
                                 Finalizar Cadastro
                             </button>
                         </div>
