@@ -18,7 +18,7 @@ while ($row = $res->fetch_assoc()) {
 }
 
 /* ======================================================
-   COMPLETAR ATÉ 6 PRODUTOS CASO A TABELA TENHA < 6 ITENS
+   COMPLETAR ATÉ 6 PRODUTOS CASO TENHA MENOS QUE 6
    ====================================================== */
 for ($i = 0; $i < 6; $i++) {
     if (!isset($produtos[$i])) {
@@ -32,10 +32,7 @@ for ($i = 0; $i < 6; $i++) {
 }
 
 /* ============================================
-   FUNÇÃO COMPLEXA PARA VALIDAR IMAGENS
-   - Remove ../ e caminhos sujos
-   - Verifica no servidor
-   - Retorna imagem válida
+   FUNÇÃO PARA VALIDAR E TRAZER O CAMINHO DA IMAGEM
    ============================================ */
 function imgPath($img)
 {
@@ -43,22 +40,14 @@ function imgPath($img)
         return "img/core-img/no-image.png";
     }
 
-    // remove qualquer caminho (segurança)
     $img = basename(trim($img));
-
     $caminho = "uploads/" . $img;
 
-    // verifica se realmente existe no servidor
-    if (file_exists($caminho) && is_file($caminho)) {
-        return $caminho;
-    } else {
-        return "img/core-img/no-image.png";
-    }
+    return (file_exists($caminho) && is_file($caminho)) ?
+        $caminho :
+        "img/core-img/no-image.png";
 }
 ?>
-
-
-
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -71,11 +60,8 @@ function imgPath($img)
     <title>Floricultura</title>
 
     <link rel="icon" href="img/core-img/favicon.ico">
-
     <link rel="stylesheet" href="css/core-style.css">
     <link rel="stylesheet" href="estilo.css">
-
-  
 </head>
 
 <body>
@@ -132,87 +118,31 @@ function imgPath($img)
             </div>
         </header>
 
-     
-      <div class="products-catagories-area clearfix">
-    <div class="amado-pro-catagory clearfix">
+        <!-- ÁREA DOS PRODUTOS -->
+        <div class="products-catagories-area clearfix">
+            <div class="amado-pro-catagory clearfix">
 
-        <!-- PRODUTO 1 -->
-        <div class="single-products-catagory clearfix">
-            <a href="product-details.php?id=<?= $produtos[0]['id'] ?>">
-                <img src="<?= imgPath($produtos[0]['imagem']) ?>" alt="<?= $produtos[0]['nome'] ?>">
-                <div class="hover-content">
-                    <div class="line"></div>
-                    <p>R$ <?= number_format($produtos[0]['preco'], 2, ',', '.') ?></p>
-                    <h4><?= $produtos[0]['nome'] ?></h4>
-                </div>
-            </a>
+                <?php foreach ($produtos as $p): ?>
+                    <div class="single-products-catagory clearfix">
+                        <a href="product-details.php?id=<?= $p['id'] ?>">
+
+                            <img src="<?= imgPath($p['imagem']) ?>"
+                                 alt="<?= htmlspecialchars($p['nome']) ?>"
+                                 style="width:100%; height:350px; object-fit:cover;">
+
+                            <div class="hover-content">
+                                <div class="line"></div>
+                                <p>R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
+                                <h4><?= htmlspecialchars($p['nome']) ?></h4>
+                            </div>
+
+                        </a>
+                    </div>
+                <?php endforeach; ?>
+
+            </div>
         </div>
-
-        <!-- PRODUTO 2 -->
-        <div class="single-products-catagory clearfix">
-            <a href="product-details.php?id=<?= $produtos[1]['id'] ?>">
-                <img src="<?= imgPath($produtos[1]['imagem']) ?>" alt="<?= $produtos[1]['nome'] ?>">
-                <div class="hover-content">
-                    <div class="line"></div>
-                    <p>R$ <?= number_format($produtos[1]['preco'], 2, ',', '.') ?></p>
-                    <h4><?= $produtos[1]['nome'] ?></h4>
-                </div>
-            </a>
-        </div>
-
-        <!-- PRODUTO 3 -->
-        <div class="single-products-catagory clearfix">
-            <a href="product-details.php?id=<?= $produtos[2]['id'] ?>">
-                <img src="<?= imgPath($produtos[2]['imagem']) ?>" alt="<?= $produtos[2]['nome'] ?>">
-                <div class="hover-content">
-                    <div class="line"></div>
-                    <p>R$ <?= number_format($produtos[2]['preco'], 2, ',', '.') ?></p>
-                    <h4><?= $produtos[2]['nome'] ?></h4>
-                </div>
-            </a>
-        </div>
-
-        <!-- PRODUTO 4 -->
-        <div class="single-products-catagory clearfix">
-            <a href="product-details.php?id=<?= $produtos[3]['id'] ?>">
-                <img src="<?= imgPath($produtos[3]['imagem']) ?>" alt="<?= $produtos[3]['nome'] ?>">
-                <div class="hover-content">
-                    <div class="line"></div>
-                    <p>R$ <?= number_format($produtos[3]['preco'], 2, ',', '.') ?></p>
-                    <h4><?= $produtos[3]['nome'] ?></h4>
-                </div>
-            </a>
-        </div>
-
-        <!-- PRODUTO 5 -->
-        <div class="single-products-catagory clearfix">
-            <a href="product-details.php?id=<?= $produtos[4]['id'] ?>">
-                <img src="<?= imgPath($produtos[4]['imagem']) ?>" alt="<?= $produtos[4]['nome'] ?>">
-                <div class="hover-content">
-                    <div class="line"></div>
-                    <p>R$ <?= number_format($produtos[4]['preco'], 2, ',', '.') ?></p>
-                    <h4><?= $produtos[4]['nome'] ?></h4>
-                </div>
-            </a>
-        </div>
-
-        <!-- PRODUTO 6 -->
-        <div class="single-products-catagory clearfix">
-            <a href="product-details.php?id=<?= $produtos[5]['id'] ?>">
-                <img src="<?= imgPath($produtos[5]['imagem']) ?>" alt="<?= $produtos[5]['nome'] ?>">
-                <div class="hover-content">
-                    <div class="line"></div>
-                    <p>R$ <?= number_format($produtos[5]['preco'], 2, ',', '.') ?></p>
-                    <h4><?= $produtos[5]['nome'] ?></h4>
-                </div>
-            </a>
-        </div>
-
-    </div>
-</div>
-
         <!-- Fim dos 6 produtos -->
-
     </div>
 
     <!-- Newsletter -->
@@ -247,9 +177,7 @@ function imgPath($img)
                         <div class="footer-logo mr-50">
                             <a href="index.php"><img src="img/core-img/logo2.png" alt=""></a>
                         </div>
-                        <p class="copywrite">© <script>
-                                document.write(new Date().getFullYear());
-                            </script> Todos os direitos reservados</p>
+                        <p class="copywrite">© <script>document.write(new Date().getFullYear());</script> Todos os direitos reservados</p>
                     </div>
                 </div>
 
@@ -285,8 +213,5 @@ function imgPath($img)
     <script src="js/plugins.js"></script>
     <script src="js/active.js"></script>
 
-    
-
 </body>
-
 </html>
