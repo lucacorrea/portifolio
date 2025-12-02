@@ -7,10 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     $senha = $_POST['senha'];
 
-    // Criptografar senha
-    $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
-
-    // SQL para inserir
+  
     $sql = "INSERT INTO usuarios (email, senha) VALUES ('$email', '$senhaHash')";
 
     if ($conex->query($sql) === TRUE) {
