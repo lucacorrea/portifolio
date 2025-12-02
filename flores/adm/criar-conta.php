@@ -8,7 +8,7 @@ error_reporting(E_ALL);
 // ---------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
-    require 'conex.php'; // usando sua conexão mysqli
+    require '../conex.php'; // usando sua conexão mysqli
 
     $email = $_POST['email'];
     $senha = $_POST['senha'];
