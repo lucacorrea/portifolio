@@ -62,9 +62,7 @@ $produtos = $con->query("SELECT * FROM produtos ORDER BY id DESC");
                             <div class="main-menu d-none d-lg-block">
                                 <nav>
                                     <ul id="navigation">
-                                        <li><a href="../index.php">Home</a></li>
-                                        <li><a href="../motos.php">Motos</a></li>
-                                        <li><a href="../contact.php">Cadastro</a></li>
+                                      
                                         <li><a class="text-danger" href="#">Produtos</a></li>
                                         <li><a href="adicionar.php">Adicionar Produto</a></li>
                                     </ul>
