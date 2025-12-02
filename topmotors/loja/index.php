@@ -45,8 +45,7 @@ $produtos = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 6");
                                 <nav>
                                     <ul id="navigation">
                                         <li><a class="text-danger" href="../index.php">Home</a></li>
-                                        <li><a href="../motos.php">Motos</a></li>
-                                        <li><a href="../contact.php">Cadastro</a></li>
+                                 
                                         <li><a href="visualizar.php">Produtos</a></li>
                                         <li><a href="adicionar.php">Adicionar Produto</a></li>
                                     </ul>
