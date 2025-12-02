@@ -90,21 +90,20 @@ $produtos = $conex->query($sql);
                     <?php while ($p = $produtos->fetch_assoc()): ?>
 
                         <?php
-                        // NOME DA IMAGEM LIMPO
+
+                        // Pega o nome da imagem salvo no banco
                         $imgName = trim($p['imagem']);
 
-                        $imgName = str_replace(
-                            ["uploads/", "./uploads/", "../uploads/", "../", "./"],
-                            "",
-                            $imgName
-                        );
+                        // Remove qualquer caminho inesperado
+                        $imgName = basename($imgName); // <-- AQUI! Isso remove ../, ./, uploads/ e QUALQUER caminho
 
-                        // MONTA CAMINHO CERTO
+                        // Monta caminho final correto
                         if (!empty($imgName)) {
                             $imgPath = "uploads/" . $imgName;
                         } else {
                             $imgPath = "img/core-img/no-image.png";
                         }
+
                         ?>
 
 
