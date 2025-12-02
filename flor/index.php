@@ -90,8 +90,11 @@ $produtos = $conex->query($sql);
                     <?php while ($p = $produtos->fetch_assoc()): ?>
 
                         <?php
+                        // NOME DA IMAGEM LIMPO
                         $imgName = trim($p['imagem']);
+                        $imgName = str_replace(["uploads/", "./uploads/", "../uploads/"], "", $imgName);
 
+                        // MONTA CAMINHO CERTO
                         if (!empty($imgName)) {
                             $imgPath = "uploads/" . $imgName;
                         } else {
@@ -123,9 +126,6 @@ $produtos = $conex->query($sql);
                     </div>
 
                 <?php endif; ?>
-
-
-
 
             </div>
         </div>
