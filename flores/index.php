@@ -75,8 +75,8 @@
                     <li><a href="checkout.php">Cadastro</a></li>
                 </ul>
             </nav>
-          
-           
+
+
             <!-- Social Button -->
             <div class="social-info d-flex justify-content-between">
                 <a href="./adm/index.php"><i class="fa fa-user" aria-hidden="true"></i></a>
@@ -130,7 +130,7 @@
                     </a>
                 </div>
 
-               
+
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
@@ -174,27 +174,30 @@
         </div>
         <!-- Product Catagories Area End -->
     </div>
-    <!-- ##### Main Content Wrapper End ##### -->
-
-    <!-- ##### Newsletter Area Start ##### -->
+   
     <section class="newsletter-area section-padding-100-0">
         <div class="container">
             <div class="row align-items-center">
-                <!-- Texto do Boletim Informativo -->
+
+               
                 <div class="col-12 col-lg-6 col-xl-7">
                     <div class="newsletter-text mb-100">
-                        <h2>Cadastre-se agora e ganhe um <span>Desconto Exclusivo</span> </h2>
+                        <h2>Cadastre-se agora e ganhe um <span>Desconto Exclusivo</span></h2>
                         <p>Junte-se à nossa comunidade e fique por dentro das melhores ofertas e novidades. Não perca a chance de economizar!</p>
                     </div>
                 </div>
-                <!-- Link para a página de checkout -->
+
+      
                 <div class="col-12 col-lg-6 col-xl-5">
-                    <div class="newsletter-form mb-100">
-                        <a href="checkout.php" class="btn btn-primary">Inscrever-se</a>
+                    <div class="newsletter-form mb-100 text-center text-lg-end">
+                        <a href="checkout.php" class="btn amado-btn">Inscrever-se</a>
                     </div>
                 </div>
+
             </div>
         </div>
+    </section>
+
     </section>
     <!-- ##### Newsletter Area End ##### -->
 
@@ -211,8 +214,10 @@
                         </div>
                         <!-- Copywrite Text -->
                         <p class="copywrite"><!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
-Copyright &copy;<script>document.write(new Date().getFullYear());</script> All rights reserved | This template is made with <i class="fa fa-heart-o" aria-hidden="true"></i> by <a href="https://colorlib.com" target="_blank">Colorlib</a> & Re-distributed by <a href="https://themewagon.com/" target="_blank">Themewagon</a>
-<!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. --></p>
+                            Copyright &copy;<script>
+                                document.write(new Date().getFullYear());
+                            </script> All rights reserved | This template is made with <i class="fa fa-heart-o" aria-hidden="true"></i> by <a href="https://colorlib.com" target="_blank">Colorlib</a> & Re-distributed by <a href="https://themewagon.com/" target="_blank">Themewagon</a>
+                            <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. --></p>
                     </div>
                 </div>
                 <!-- Single Widget Area -->
