@@ -13,7 +13,7 @@ $produto_id = $_GET['produto'] ?? 0;
     <title>Cadastro | Floricultura</title>
 
     <link rel="stylesheet" href="css/core-style.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="estilo.css">
 
     <style>
         /* ======= ESTILO PREMIUM DO CHECKOUT ======= */

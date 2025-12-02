@@ -33,7 +33,7 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
     <title><?= $p['nome'] ?></title>
 
     <link rel="stylesheet" href="css/core-style.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="estilo.css">
 
     <style>
         .msg-sucesso {
