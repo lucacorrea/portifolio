@@ -166,7 +166,7 @@ $rooms  = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
                                 <li><b>Estoque:</b> <?= $p['quantidade'] ?></li>
                             </ul>
 
-                            <a href="motos.php?id=<?= $p['id'] ?>"
+                            <a href="detalhes.php?id=<?= $p['id'] ?>"
                                 class="book_now bg-danger text-white">
                                 Ver mais
                             </a>
