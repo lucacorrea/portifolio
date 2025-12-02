@@ -52,10 +52,9 @@
                             <div class="main-menu  d-none d-lg-block">
                                 <nav>
                                     <ul id="navigation">
-                                        <li><a href="index.php">home</a></li>
-                                        <li><a href="motos.php">Motos</a></li>
-
-                                        <li><a class=" text-danger" href="contact.php">Cadastro</a></li>
+                                       
+                                        <li><a  href="index.php">Loja</a></li>
+                                        <li><a class="text-danger"href="adicionar.php">Adicionar Produto</a></li>
                                     </ul>
                                 </nav>
                             </div>
@@ -79,7 +78,7 @@
 
     <!-- bradcam_area_start -->
     <div class="bradcam_area breadcam_bg_2">
-        <h3>Cadastro de Cliente</h3>
+        <h3>Cadastro de Produto</h3>
     </div>
     <!-- bradcam_area_end -->
 
