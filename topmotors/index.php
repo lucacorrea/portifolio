@@ -176,55 +176,7 @@ $rooms  = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
     </div>
 
     <!-- ============ 4 PRODUTOS (ESTILO ROOMS) ============ -->
-    <div class="features_room">
-        <div class="container">
-
-            <div class="section_title text-center mb-100">
-                <span class="text-danger">Categorias</span>
-                <h3>Escolha sua Moto</h3>
-            </div>
-
-        </div>
-
-        <!-- features_room_startt -->
-
-
-        <!-- features_room_startt -->
-
-
-        <div class="rooms_here">
-
-            <?php
-            require "loja/conexao.php";
-
-            // BUSCA ATÉ 4 PRODUTOS
-            $rooms = $con->query("SELECT * FROM produtos ORDER BY id DESC LIMIT 4");
-
-            while ($r = $rooms->fetch_assoc()) {
-            ?>
-
-                <div class="single_rooms">
-                    <div class="room_thumb">
-                        <img src="loja/uploads/<?= $r['imagem'] ?>"
-                            alt="<?= $r['nome'] ?>"
-                            style="width:100%; height:260px; object-fit:cover;">
-
-                        <div class="room_heading d-flex justify-content-between align-items-center">
-                            <div class="room_heading_inner">
-                                <span>R$ <?= number_format($r['preco'], 2, ',', '.') ?></span>
-                                <h3><?= $r['nome'] ?></h3>
-                            </div>
-                            <a href="loja/visualizar.php?id=<?= $r['id'] ?>" class="line-button">
-                                ver moto
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-            <?php } ?>
-
-        </div>
-    </div>
+   
     <!-- features_room_end -->
 
     <footer class="footer">
