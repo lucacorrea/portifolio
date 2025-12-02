@@ -39,8 +39,12 @@
             </form>
 
             <div class="text-center mt-3">
-                  <a href="./criar-conta.php" class="text-muted">Criar Conta </a>  
-                <a href="../index.php" class="text-muted">← Voltar ao site</a>
+                <div class="mb-2">
+                    <a href="./criar-conta.php" class="btn btn-link text-muted">Criar Conta</a>
+                </div>
+                <div>
+                    <a href="../index.php" class="btn btn-link text-muted">← Voltar ao site</a>
+                </div>
             </div>
         </div>
 
