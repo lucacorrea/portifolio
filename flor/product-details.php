@@ -45,6 +45,33 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
             text-align: center;
             margin-bottom: 25px;
         }
+
+        .btn-comprar {
+            width: 100%;
+            padding: 15px 0;
+            font-size: 22px;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #FFD438, #F6FE0E);
+            border: none;
+            border-radius: 12px;
+            color: #3a3a3a;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: 0.3s ease-in-out;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+        }
+
+        .btn-comprar:hover {
+            background: linear-gradient(135deg, #FEE834, #E8F40C);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+        }
+
+        .btn-comprar:active {
+            transform: scale(0.98);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.20);
+        }
     </style>
 
 </head>
