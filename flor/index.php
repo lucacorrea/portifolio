@@ -1,5 +1,5 @@
 <?php
-require 'conex.php';
+require './conex.php';
 
 $sql = "SELECT id, nome, preco, imagem FROM produtos ORDER BY id DESC LIMIT 6";
 $res = $conex->query($sql);
