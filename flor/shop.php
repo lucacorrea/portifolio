@@ -61,7 +61,7 @@ function imgPath($img)
         <!-- Mobile Nav -->
         <div class="mobile-nav">
             <div class="amado-navbar-brand">
-                <a href="index.php"><img src="img/core-img/logo.png" alt=""></a>
+                <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
             </div>
             <div class="amado-navbar-toggler"><span></span><span></span><span></span></div>
         </div>
@@ -71,19 +71,18 @@ function imgPath($img)
             <div class="nav-close"><i class="fa fa-close"></i></div>
 
             <div class="logo">
-                <a href="index.php"><img src="img/core-img/logo.png" alt=""></a>
+                <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
             </div>
-
             <nav class="amado-nav">
                 <ul>
                     <li><a href="index.php">Início</a></li>
                     <li class="active"><a href="shop.php">Compras</a></li>
-                   
+
                     <li><a href="checkout.php">Cadastro</a></li>
                 </ul>
             </nav>
 
-             <div class="social-info d-flex justify-content-between">
+            <div class="social-info d-flex justify-content-between">
                 <a href="./adm/index.php"><i class="fa fa-user"></i></a>
                 <a href="#"><i class="fa fa-instagram"></i></a>
                 <a href="#"><i class="fa fa-facebook"></i></a>
@@ -221,7 +220,7 @@ function imgPath($img)
                                     <ul class="navbar-nav ml-auto">
                                         <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
                                         <li class="nav-item"><a class="nav-link" href="shop.php">Shop</a></li>
-                                  
+
                                         <li class="nav-item"><a class="nav-link" href="checkout.php">Checkout</a></li>
                                     </ul>
                                 </div>

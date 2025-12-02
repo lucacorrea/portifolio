@@ -81,49 +81,61 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
     <div class="main-content-wrapper d-flex clearfix">
 
         <header class="header-area clearfix">
-            <div class="logo">
-                <a href="index.php"><img src="img/core-img/logo.png"></a>
+            <!-- Mobile Nav -->
+            <div class="mobile-nav">
+                <div class="amado-navbar-brand">
+                    <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
+                </div>
+                <div class="amado-navbar-toggler"><span></span><span></span><span></span></div>
             </div>
-            <nav class="amado-nav">
-                <ul>
-                    <li><a href="index.php">Início</a></li>
-                    <li class="active"><a href="shop.php">Compras</a></li>
-                    <li><a href="checkout.php">Cadastro</a></li>
-                </ul>
-            </nav>
-        </header>
 
-        <div class="single-product-area section-padding-100 clearfix">
-            <div class="container-fluid">
+            <!-- Sidebar -->
+            <header class="header-area clearfix">
+                <div class="nav-close"><i class="fa fa-close"></i></div>
 
-                <?php if ($compra_ok): ?>
-                    <div class="msg-sucesso">
-                        Compra realizada com sucesso! ❤️ Obrigado pela preferência!
-                    </div>
-                <?php endif; ?>
+                <div class="logo">
+                    <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
+                </div>
+                <nav class="amado-nav">
+                    <ul>
+                        <li><a href="index.php">Início</a></li>
+                        <li class="active"><a href="shop.php">Compras</a></li>
+                        <li><a href="checkout.php">Cadastro</a></li>
+                    </ul>
+                </nav>
+            </header>
 
-                <div class="row">
-                    <div class="col-12 col-lg-7">
-                        <img src="<?= imgPath($p['imagem']) ?>" style="width:100%; border-radius:10px;">
-                    </div>
+            <div class="single-product-area section-padding-100 clearfix">
+                <div class="container-fluid">
 
-                    <div class="col-12 col-lg-5">
-                        <h3><?= $p['nome'] ?></h3>
-                        <p class="product-price">R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
-                        <p><?= $p['descricao'] ?></p>
+                    <?php if ($compra_ok): ?>
+                        <div class="msg-sucesso">
+                            Compra realizada com sucesso! ❤️ Obrigado pela preferência!
+                        </div>
+                    <?php endif; ?>
 
-                        <form action="comprar.php" method="post">
-                            <input type="hidden" name="produto_id" value="<?= $p['id'] ?>">
-                            <button type="submit" class="btn-comprar">
-                                COMPRAR
-                            </button>
-                        </form>
+                    <div class="row">
+                        <div class="col-12 col-lg-7">
+                            <img src="<?= imgPath($p['imagem']) ?>" style="width:100%; border-radius:10px;">
+                        </div>
+
+                        <div class="col-12 col-lg-5">
+                            <h3><?= $p['nome'] ?></h3>
+                            <p class="product-price">R$ <?= number_format($p['preco'], 2, ',', '.') ?></p>
+                            <p><?= $p['descricao'] ?></p>
+
+                            <form action="comprar.php" method="post">
+                                <input type="hidden" name="produto_id" value="<?= $p['id'] ?>">
+                                <button type="submit" class="btn-comprar">
+                                    COMPRAR
+                                </button>
+                            </form>
 
 
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
     </div>
 </body>

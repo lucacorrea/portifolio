@@ -99,11 +99,20 @@ $produto_id = $_GET['produto'] ?? 0;
 <body>
 
     <div class="main-content-wrapper d-flex clearfix">
+        <!-- Mobile Nav -->
+        <div class="mobile-nav">
+            <div class="amado-navbar-brand">
+                <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
+            </div>
+            <div class="amado-navbar-toggler"><span></span><span></span><span></span></div>
+        </div>
 
-        <!-- ===== MENU ===== -->
+        <!-- Sidebar -->
         <header class="header-area clearfix">
+            <div class="nav-close"><i class="fa fa-close"></i></div>
+
             <div class="logo">
-                <a href="index.php"><img src="img/core-img/logo.png"></a>
+                <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
             </div>
             <nav class="amado-nav">
                 <ul>

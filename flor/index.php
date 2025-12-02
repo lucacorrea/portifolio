@@ -80,7 +80,7 @@ function imgPath($img)
         <!-- Mobile Nav -->
         <div class="mobile-nav">
             <div class="amado-navbar-brand">
-                <a href="index.php"><img src="img/core-img/logo.png" alt=""></a>
+                <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
             </div>
             <div class="amado-navbar-toggler"><span></span><span></span><span></span></div>
         </div>
