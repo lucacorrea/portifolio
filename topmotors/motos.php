@@ -52,7 +52,7 @@
                         </div>
                         <div class="col-xl-2 col-lg-2">
                             <div class="logo-img">
-                                
+
                             </div>
                         </div>
 
@@ -73,14 +73,13 @@
     </div>
     <!-- bradcam_area_end -->
 
-    <!-- offers_area_start -->
-    <div class="offers_area padding_top">
+    <div class="offers_area">
         <div class="container">
             <div class="row">
                 <div class="col-xl-12">
                     <div class="section_title text-center mb-100">
-                        <span>Our Offers</span>
-                        <h3>Ongoing Offers</h3>
+                        <span class="text-danger">Nossas Ofertas</span>
+                        <h3>Ofertas Atuais</h3>
                     </div>
                 </div>
             </div>
@@ -90,14 +89,14 @@
                         <div class="about_thumb">
                             <img src="img/offers/1.png" alt="">
                         </div>
-                        <h3>Up to 35% savings on Club <br> 
-                                rooms and Suites</h3>
+                        <h3>Economize até 35% em Club <br>
+                            quartos e suítes</h3>
                         <ul>
-                            <li>Luxaries condition</li>
-                            <li>3 Adults & 2 Children size</li>
-                            <li>Sea view side</li>
+                            <li>Condições de luxo</li>
+                            <li>Tamanho para 3 Adultos e 2 Crianças</li>
+                            <li>Vista para o mar</li>
                         </ul>
-                        <a href="#" class="book_now">book now</a>
+                        <a href="#" class="book_now bg-danger text-white ">reserve agora</a>
                     </div>
                 </div>
                 <div class="col-xl-4 col-md-4">
@@ -105,14 +104,14 @@
                         <div class="about_thumb">
                             <img src="img/offers/2.png" alt="">
                         </div>
-                        <h3>Up to 35% savings on Club <br> 
-                                rooms and Suites</h3>
+                        <h3>Economize até 35% em Club <br>
+                            quartos e suítes</h3>
                         <ul>
-                            <li>Luxaries condition</li>
-                            <li>3 Adults & 2 Children size</li>
-                            <li>Sea view side</li>
+                            <li>Condições de luxo</li>
+                            <li>Tamanho para 3 Adultos e 2 Crianças</li>
+                            <li>Vista para o mar</li>
                         </ul>
-                        <a href="#" class="book_now">book now</a>
+                        <a href="#" class="book_now bg-danger text-white ">reserve agora</a>
                     </div>
                 </div>
                 <div class="col-xl-4 col-md-4">
@@ -120,20 +119,20 @@
                         <div class="about_thumb">
                             <img src="img/offers/3.png" alt="">
                         </div>
-                        <h3>Up to 35% savings on Club <br> 
-                                rooms and Suites</h3>
+                        <h3>Economize até 35% em Club <br>
+                            quartos e suítes</h3>
                         <ul>
-                            <li>Luxaries condition</li>
-                            <li>3 Adults & 2 Children size</li>
-                            <li>Sea view side</li>
+                            <li>Condições de luxo</li>
+                            <li>Tamanho para 3 Adultos e 2 Crianças</li>
+                            <li>Vista para o mar</li>
                         </ul>
-                        <a href="#" class="book_now">book now</a>
+                        <a href="#" class="book_now bg-danger text-white" style="color: white;">reserve agora</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <!-- offers_area_end -->
+
 
     <!-- features_room_startt -->
     <div class="features_room">
@@ -141,8 +140,8 @@
             <div class="row">
                 <div class="col-xl-12">
                     <div class="section_title text-center mb-100">
-                        <span>Featured Rooms</span>
-                        <h3>Choose a Better Room</h3>
+                        <span class="text-danger">Nossas Categorias</span>
+                        <h3>Escolha a Moto Ideal</h3>
                     </div>
                 </div>
             </div>
@@ -150,55 +149,54 @@
         <div class="rooms_here">
             <div class="single_rooms">
                 <div class="room_thumb">
-                    <img src="img/rooms/1.png" alt="">
+                    <img src="imgmotos/1.png" alt="">
                     <div class="room_heading d-flex justify-content-between align-items-center">
                         <div class="room_heading_inner">
-                            <span>From $250/night</span>
-                            <h3>Superior Room</h3>
+                            <span>A partir de R$250/noite</span>
+                            <h3>Quarto Superior</h3>
                         </div>
-                        <a href="#" class="line-button">book now</a>
+                        <a href="#" class="line-button">reservar agora</a>
                     </div>
                 </div>
             </div>
             <div class="single_rooms">
                 <div class="room_thumb">
-                    <img src="img/rooms/2.png" alt="">
+                    <img src="imgmotos/2.png" alt="">
                     <div class="room_heading d-flex justify-content-between align-items-center">
                         <div class="room_heading_inner">
-                            <span>From $250/night</span>
-                            <h3>Deluxe Room</h3>
+                            <span>A partir de R$250/noite</span>
+                            <h3>Quarto Deluxe</h3>
                         </div>
-                        <a href="#" class="line-button">book now</a>
+                        <a href="#" class="line-button">reservar agora</a>
                     </div>
                 </div>
             </div>
             <div class="single_rooms">
                 <div class="room_thumb">
-                    <img src="img/rooms/3.png" alt="">
+                    <img src="imgmotos/3.png" alt="">
                     <div class="room_heading d-flex justify-content-between align-items-center">
                         <div class="room_heading_inner">
-                            <span>From $250/night</span>
-                            <h3>Signature Room</h3>
+                            <span>A partir de R$250/noite</span>
+                            <h3>Quarto Assinatura</h3>
                         </div>
-                        <a href="#" class="line-button">book now</a>
+                        <a href="#" class="line-button">reservar agora</a>
                     </div>
                 </div>
             </div>
             <div class="single_rooms">
                 <div class="room_thumb">
-                    <img src="img/rooms/4.png" alt="">
+                    <img src="imgmotos/4.png" alt="">
                     <div class="room_heading d-flex justify-content-between align-items-center">
                         <div class="room_heading_inner">
-                            <span>From $250/night</span>
-                            <h3>Couple Room</h3>
+                            <span>A partir de R$250/noite</span>
+                            <h3>Quarto para Casal</h3>
                         </div>
-                        <a href="#" class="line-button">book now</a>
+                        <a href="#" class="line-button">reservar agora</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <!-- features_room_end -->
 
     <!-- forQuery_start -->
     <div class="forQuery">
@@ -209,12 +207,12 @@
                         <div class="row align-items-center justify-content-center">
                             <div class="col-xl-6 col-md-6">
                                 <div class="Query_text">
-                                        <p>For Reservation 0r Query?</p>
+                                    <p>For Reservation 0r Query?</p>
                                 </div>
                             </div>
                             <div class="col-xl-6 col-md-6">
                                 <div class="phone_num">
-                                        <a href="#" class="mobile_no">+10 576 377 4789</a>
+                                    <a href="#" class="mobile_no">+10 576 377 4789</a>
                                 </div>
                             </div>
                         </div>
@@ -269,9 +267,9 @@
         </div>
     </div>
     <!-- instragram_area_end -->
-    
+
     <!-- footer -->
-    <footer class="footer" >
+    <footer class="footer">
         <div class="footer_top">
             <div class="container">
                 <div class="row">
@@ -280,24 +278,24 @@
                             <h3 class="footer_title">
                                 address
                             </h3>
-                            <p class="footer_text" >  200, Green road, Mongla, <br>
-                                    New Yor City USA</p>
+                            <p class="footer_text"> 200, Green road, Mongla, <br>
+                                New Yor City USA</p>
                             <a href="#" class="line-button">Get Direction</a>
                         </div>
                     </div>
                     <div class="col-xl-3 col-md-6 col-lg-3">
                         <div class="footer_widget">
                             <h3 class="footer_title">
-                                    Reservation
+                                Reservation
                             </h3>
-                            <p class="footer_text" >+10 367 267 2678 <br>
-                                    reservation@montana.com</p>
+                            <p class="footer_text">+10 367 267 2678 <br>
+                                reservation@montana.com</p>
                         </div>
                     </div>
                     <div class="col-xl-2 col-md-6 col-lg-2">
                         <div class="footer_widget">
                             <h3 class="footer_title">
-                                    Navigation
+                                Navigation
                             </h3>
                             <ul>
                                 <li><a href="#">Home</a></li>
@@ -314,7 +312,7 @@
                             </h3>
                             <form action="#" class="newsletter_form">
                                 <input type="text" placeholder="Enter your mail">
-                                <button type="submit" >Sign Up</button>
+                                <button type="submit">Sign Up</button>
                             </form>
                             <p class="newsletter_text">Subscribe newsletter to get updates</p>
                         </div>
@@ -328,9 +326,11 @@
                 <div class="row">
                     <div class="col-xl-8 col-md-7 col-lg-9">
                         <p class="copy_right">
-                                <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
-Copyright &copy;<script>document.write(new Date().getFullYear());</script> All rights reserved | This template is made with <i class="fa fa-heart-o" aria-hidden="true"></i> by <a href="https://colorlib.com" target="_blank">Colorlib</a>
-<!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
+                            <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
+                            Copyright &copy;<script>
+                                document.write(new Date().getFullYear());
+                            </script> All rights reserved | This template is made with <i class="fa fa-heart-o" aria-hidden="true"></i> by <a href="https://colorlib.com" target="_blank">Colorlib</a>
+                            <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
                         </p>
                     </div>
                     <div class="col-xl-4 col-md-5 col-lg-3">
@@ -362,50 +362,50 @@ Copyright &copy;<script>document.write(new Date().getFullYear());</script> All r
     <!-- form itself end-->
     <form id="test-form" class="white-popup-block mfp-hide">
         <div class="popup_box ">
-                <div class="popup_inner">
-                    <h3>Check Availability</h3>
-                    <form action="#">
-                        <div class="row">
-                            <div class="col-xl-6">
-                                <input id="datepicker" placeholder="Check in date">
-                            </div>
-                            <div class="col-xl-6">
-                                <input id="datepicker2" placeholder="Check out date">
-                            </div>
-                            <div class="col-xl-6">
-                                <select class="form-select wide" id="default-select" class="">
-                                    <option data-display="Adult">1</option>
-                                    <option value="1">2</option>
-                                    <option value="2">3</option>
-                                    <option value="3">4</option>
-                                </select>
-                            </div>
-                            <div class="col-xl-6">
-                                <select class="form-select wide" id="default-select" class="">
-                                    <option data-display="Children">1</option>
-                                    <option value="1">2</option>
-                                    <option value="2">3</option>
-                                    <option value="3">4</option>
-                                </select>
-                            </div>
-                            <div class="col-xl-12">
-                                <select class="form-select wide" id="default-select" class="">
-                                    <option data-display="Room type">Room type</option>
-                                    <option value="1">Laxaries Rooms</option>
-                                    <option value="2">Deluxe Room</option>
-                                    <option value="3">Signature Room</option>
-                                    <option value="4">Couple Room</option>
-                                </select>
-                            </div>
-                            <div class="col-xl-12">
-                                <button type="submit" class="boxed-btn3">Check Availability</button>
-                            </div>
+            <div class="popup_inner">
+                <h3>Check Availability</h3>
+                <form action="#">
+                    <div class="row">
+                        <div class="col-xl-6">
+                            <input id="datepicker" placeholder="Check in date">
                         </div>
-                    </form>
-                </div>
+                        <div class="col-xl-6">
+                            <input id="datepicker2" placeholder="Check out date">
+                        </div>
+                        <div class="col-xl-6">
+                            <select class="form-select wide" id="default-select" class="">
+                                <option data-display="Adult">1</option>
+                                <option value="1">2</option>
+                                <option value="2">3</option>
+                                <option value="3">4</option>
+                            </select>
+                        </div>
+                        <div class="col-xl-6">
+                            <select class="form-select wide" id="default-select" class="">
+                                <option data-display="Children">1</option>
+                                <option value="1">2</option>
+                                <option value="2">3</option>
+                                <option value="3">4</option>
+                            </select>
+                        </div>
+                        <div class="col-xl-12">
+                            <select class="form-select wide" id="default-select" class="">
+                                <option data-display="Room type">Room type</option>
+                                <option value="1">Laxaries Rooms</option>
+                                <option value="2">Deluxe Room</option>
+                                <option value="3">Signature Room</option>
+                                <option value="4">Couple Room</option>
+                            </select>
+                        </div>
+                        <div class="col-xl-12">
+                            <button type="submit" class="boxed-btn3">Check Availability</button>
+                        </div>
+                    </div>
+                </form>
             </div>
+        </div>
     </form>
-<!-- form itself end -->
+    <!-- form itself end -->
 
 
     <!-- JS here -->
@@ -440,14 +440,14 @@ Copyright &copy;<script>document.write(new Date().getFullYear());</script> All r
         $('#datepicker').datepicker({
             iconsLibrary: 'fontawesome',
             icons: {
-             rightIcon: '<span class="fa fa-caret-down"></span>'
-         }
+                rightIcon: '<span class="fa fa-caret-down"></span>'
+            }
         });
         $('#datepicker2').datepicker({
             iconsLibrary: 'fontawesome',
             icons: {
-             rightIcon: '<span class="fa fa-caret-down"></span>'
-         }
+                rightIcon: '<span class="fa fa-caret-down"></span>'
+            }
 
         });
     </script>
