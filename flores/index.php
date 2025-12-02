@@ -9,7 +9,7 @@
     <!-- The above 4 meta tags *must* come first in the head; any other head content must come *after* these tags -->
 
     <!-- Title  -->
-    <title>Amado - Furniture Ecommerce Template | Home</title>
+    <title>floricultura</title>
 
     <!-- Favicon  -->
     <link rel="icon" href="img/core-img/favicon.ico">
@@ -72,7 +72,6 @@
                     <li class="active"><a href="index.php">início</a></li>
                     <li><a href="shop.php">compras</a></li>
                     <li><a href="product-details.php">Produtos</a></li>
-                    <li><a href="cart.php">Carrinho</a></li>
                     <li><a href="checkout.php">Cadastro</a></li>
                 </ul>
             </nav>
@@ -80,7 +79,7 @@
            
             <!-- Social Button -->
             <div class="social-info d-flex justify-content-between">
-                <a href="#"><i class="fa fa-pinterest" aria-hidden="true"></i></a>
+                <a href="#"><i class="fa fa-user" aria-hidden="true"></i></a>
                 <a href="#"><i class="fa fa-instagram" aria-hidden="true"></i></a>
                 <a href="#"><i class="fa fa-facebook" aria-hidden="true"></i></a>
                 <a href="#"><i class="fa fa-twitter" aria-hidden="true"></i></a>
