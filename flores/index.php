@@ -48,7 +48,7 @@
         <div class="mobile-nav">
             <!-- Navbar Brand -->
             <div class="amado-navbar-brand">
-                <a href="index.html"><img src="img/core-img/logo.png" alt=""></a>
+                <a href="index.php"><img src="img/core-img/logo.png" alt=""></a>
             </div>
             <!-- Navbar Toggler -->
             <div class="amado-navbar-toggler">
@@ -64,16 +64,16 @@
             </div>
             <!-- Logo -->
             <div class="logo">
-                <a href="index.html"><img src="./img/floricultura.png" alt=""></a>
+                <a href="index.php"><img src="./img/floricultura.png" alt=""></a>
             </div>
             <!-- Amado Nav -->
             <nav class="amado-nav">
                 <ul>
-                    <li class="active"><a href="index.html">início</a></li>
-                    <li><a href="shop.html">compras</a></li>
-                    <li><a href="product-details.html">Produtos</a></li>
-                    <li><a href="cart.html">Carrinho</a></li>
-                    <li><a href="checkout.html">Cadastro</a></li>
+                    <li class="active"><a href="index.php">início</a></li>
+                    <li><a href="shop.php">compras</a></li>
+                    <li><a href="product-details.php">Produtos</a></li>
+                    <li><a href="cart.php">Carrinho</a></li>
+                    <li><a href="checkout.php">Cadastro</a></li>
                 </ul>
             </nav>
           
@@ -94,7 +94,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/1.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -107,7 +107,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/2.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -120,7 +120,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/3.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -133,7 +133,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/4.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -146,7 +146,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/5.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -159,7 +159,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/6.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -172,7 +172,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/7.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -185,7 +185,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/8.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -198,7 +198,7 @@
 
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="shop.html">
+                    <a href="shop.php">
                         <img src="img/bg-img/9.jpg" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -248,7 +248,7 @@
                     <div class="single_widget_area">
                         <!-- Logo -->
                         <div class="footer-logo mr-50">
-                            <a href="index.html"><img src="img/core-img/logo2.png" alt=""></a>
+                            <a href="index.php"><img src="img/core-img/logo2.png" alt=""></a>
                         </div>
                         <!-- Copywrite Text -->
                         <p class="copywrite"><!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
@@ -266,19 +266,19 @@ Copyright &copy;<script>document.write(new Date().getFullYear());</script> All r
                                 <div class="collapse navbar-collapse" id="footerNavContent">
                                     <ul class="navbar-nav ml-auto">
                                         <li class="nav-item active">
-                                            <a class="nav-link" href="index.html">Home</a>
+                                            <a class="nav-link" href="index.php">Home</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" href="shop.html">Shop</a>
+                                            <a class="nav-link" href="shop.php">Shop</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" href="product-details.html">Product</a>
+                                            <a class="nav-link" href="product-details.php">Product</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" href="cart.html">Cart</a>
+                                            <a class="nav-link" href="cart.php">Cart</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" href="checkout.html">Checkout</a>
+                                            <a class="nav-link" href="checkout.php">Checkout</a>
                                         </li>
                                     </ul>
                                 </div>
