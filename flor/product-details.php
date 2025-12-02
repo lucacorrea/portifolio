@@ -108,7 +108,7 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
     box-shadow: 0 6px 15px rgba(255,94,87,0.4);
 }
 
-/* DESCRIÇÃO DO PRODUTO */
+/* DESCRIÇÃO */
 .short_overview p {
     font-size: 17px;
     color: #555;
@@ -171,13 +171,10 @@ $compra_ok = isset($_GET['sucesso']) && $_GET['sucesso'] == 1;
                             <p><?= $p['descricao'] ?></p>
                         </div>
 
-                        <!-- BOTÃO COMPRAR -->
-                        <form action="comprar.php" method="post">
-                            <input type="hidden" name="produto_id" value="<?= $p['id'] ?>">
-                            <button type="submit" class="btn-comprar bg-yellow">
-                                COMPRAR
-                            </button>
-                        </form>
+                        <!-- BOTÃO COMPRAR (AGORA LEVA AO CHECKOUT COM O PRODUTO) -->
+                        <a href="checkout.php?produto=<?= $p['id'] ?>" class="btn-comprar">
+                            COMPRAR
+                        </a>
 
                     </div>
                 </div>
