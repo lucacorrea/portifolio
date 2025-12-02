@@ -45,7 +45,7 @@
                                         <li><a  href="index.php">home</a></li>
                                         <li><a href="motos.php">Motos</a></li>
 
-                                        <li><class=" text-danger" a href="contact.php">Cadastro</a></li>
+                                        <li><a class=" text-danger"  href="contact.php">Cadastro</a></li>
                                     </ul>
                                 </nav>
                             </div>
