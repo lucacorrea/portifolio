@@ -25,7 +25,7 @@
 .btn-amado {
     display: block;
     width: 100%;
-    background: #ff4f4f !important;
+    background: #FFD438FF !important;
     padding: 15px;
     font-size: 18px;
     border-radius: 10px;
@@ -36,7 +36,7 @@
 }
 
 .btn-amado:hover {
-    background: #e63636 !important;
+    background: #C0C601FF !important;
     letter-spacing: 1px;
 }
 
