@@ -7,9 +7,9 @@ function db(): PDO
     if ($pdo instanceof PDO) return $pdo;
 
     $DB_HOST = 'localhost';
-    $DB_NAME = 'SEU_BANCO';
-    $DB_USER = 'root';
-    $DB_PASS = '';
+    $DB_NAME = 'u784961086_relatorio';
+    $DB_USER = 'u784961086_relatorio';
+    $DB_PASS = ':k~j#~>2qA^';
     $DB_PORT = '3306';
 
     $dsn = "mysql:host={$DB_HOST};port={$DB_PORT};dbname={$DB_NAME};charset=utf8mb4";
