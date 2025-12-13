@@ -1,10 +1,6 @@
-;enE|fxB^F3
+:k~j#~>2qA^
 
-SET NAMES utf8mb4;
 
--- =========================
--- USUÁRIOS
--- =========================
 CREATE TABLE IF NOT EXISTS usuarios (
   id               BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nome             VARCHAR(150) NOT NULL,
