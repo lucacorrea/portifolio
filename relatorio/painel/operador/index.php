@@ -19,7 +19,7 @@
   <!-- inject:css -->
   <link rel="stylesheet" href="../../css/vertical-layout-light/style.css">
   <!-- endinject -->
-  <link rel="shortcut icon" href="../../images/1.png" />
+  <link rel="shortcut icon" href="../../images/2.png" />
 </head>
 <body>
   <div class="container-scroller">
