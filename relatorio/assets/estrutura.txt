@@ -1,49 +1,11 @@
-relatorio
-├── assets
-├── css
-│   ├── maps
-│   │   └── vertical-layout-light
-│   └── vertical-layout-light
-├── fonts
-│   ├── Manrope
-│   ├── Nunito
-│   └── Roboto
-├── images
-│   ├── auth
-│   ├── carousel
-│   ├── dashboard
-│   ├── demo
-│   ├── faces
-│   ├── file-icons
-│   │   ├── 128
-│   │   ├── 256
-│   │   ├── 512
-│   │   └── 64
-│   ├── lightbox
-│   ├── samples
-│   │   ├── 1280x768
-│   │   └── 300x300
-│   └── sprites
-├── js
-├── painel
-│   └── adm
-│   └── operador
-└── scss
-    ├── common
-    │   ├── dark
-    │   │   ├── components
-    │   │   │   ├── loaders
-    │   │   │   ├── mail-components
-    │   │   │   └── plugin-overrides
-    │   │   ├── landing-screens
-    │   │   └── mixins
-    │   └── light
-    │       ├── components
-    │       │   ├── loaders
-    │       │   ├── mail-components
-    │       │   └── plugin-overrides
-    │       ├── landing-screens
-    │       └── mixins
-    ├── fonts
-    │   └── Manrope
-    └── vertical-layout-light
+relatorio/
+├── assets/
+│   └── php/
+│       ├── conexao.php
+│       └── auth.php
+├── painel/
+│   ├── adm/
+│   │   └── index.php
+│   └── operador/
+│       └── index.php
+└── index.php   (LOGIN)
