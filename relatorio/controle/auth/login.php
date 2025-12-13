@@ -82,9 +82,9 @@ try {
     $upd->execute([':id' => (int)$user['id']]);
 
     if (in_array('ADMIN', $perfis, true)) {
-        header('Location: /../../painel/adm/index.php');
+        header('Location: ../../painel/adm/index.php');
     } else {
-        header('Location: /../../painel/operador/index.php');
+        header('Location: ../../painel/operador/index.php');
     }
     exit;
 
