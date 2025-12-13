@@ -103,7 +103,7 @@
                 <i class="ti-settings text-primary"></i>
                 Settings
               </a>
-              <a class="dropdown-item">
+              <a class="dropdown-item" href="../../controle/auth/logout.php">
                 <i class="ti-power-off text-primary"></i>
                 Logout
               </a>
