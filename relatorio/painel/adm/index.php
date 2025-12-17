@@ -208,31 +208,26 @@
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
           <li class="nav-item">
-            <a class="nav-link" href="index.php">
-              <i class="icon-grid menu-icon"></i>
-              <span class="menu-title">Dashboard</span>
-            </a>
-          </li>
-          <li class="nav-item">
             <a class="nav-link" href="pages/documentation/documentation.html">
-              <i class="icon-basket-loaded menu-icon"></i>
+              <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira do Produtor</span>
             </a>
           </li>
 
           <li class="nav-item">
             <a class="nav-link" href="pages/documentation/documentation.html">
-              <i class="icon-leaf menu-icon"></i>
+              <i class="ti-leaf menu-icon"></i>
               <span class="menu-title">Feira Alternativa</span>
             </a>
           </li>
 
           <li class="nav-item">
             <a class="nav-link" href="pages/documentation/documentation.html">
-              <i class="icon-organization menu-icon"></i>
+              <i class="ti-home menu-icon"></i>
               <span class="menu-title">Mercado Municipal</span>
             </a>
           </li>
+        </ul> 
 
       </nav>
       <!-- partial -->
