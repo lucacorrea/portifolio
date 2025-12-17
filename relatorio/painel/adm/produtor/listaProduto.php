@@ -132,6 +132,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                             <i class="menu-arrow"></i>
                         </a>
                         <div class="collapse" id="ui-basic">
+
                             <style>
                                 .sub-menu .nav-item .nav-link {
                                     color: black !important;
@@ -142,12 +143,8 @@ if (!in_array('ADMIN', $perfis, true)) {
                                     color: blue !important;
                                 }
                             </style>
-                             <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                                <li class="nav-item active">
-                                    <a class="nav-link active" href="./listaProduto.php" style="color:aliceblue !important;">
-                                        <i class="ti-clipboard mr-2"></i> Lista de Produtos
-                                    </a>
-                                </li>
+                            <ul class="nav flex-column sub-menu " style=" background: white !important; ">
+                                <li class="nav-item"> <a class="nav-link" href="./listaUser.php">Lista de Adicionados</a></li>
 
                                 <li class="nav-item">
                                     <a class="nav-link" href="../adm/feira_produtor/categorias/">
