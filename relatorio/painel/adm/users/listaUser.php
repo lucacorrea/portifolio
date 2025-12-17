@@ -237,29 +237,51 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             /* esconde "Pesquisar:" */
         }
 
-        div.dataTables_filter label input {
-            font-size: 14px;
+        /* ===== Rodapé (info + paginação) alinhados ===== */
+        .dt-bottombar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 12px;
         }
 
-        div.dataTables_filter input {
-            width: 100% !important;
-            max-width: 100% !important;
-            padding-left: 38px !important;
-            height: 42px;
-            border-radius: 10px;
-            border: 1px solid rgba(0, 0, 0, .12);
-            background: #fff;
-            transition: box-shadow .2s ease, border-color .2s ease;
+        .dt-bottombar .dataTables_info,
+        .dt-bottombar .dataTables_paginate {
+            margin: 0 !important;
         }
 
-        div.dataTables_filter input:focus {
-            border-color: rgba(0, 123, 255, .45);
-            box-shadow: 0 0 0 .2rem rgba(0, 123, 255, .15);
-            outline: 0;
+        /* ===== Mobile: "Anterior" na esquerda e "Próxima" na direita ===== */
+        @media (max-width: 576px) {
+            .dt-bottombar {
+                flex-wrap: nowrap;
+                /* mantém lado a lado */
+            }
+
+            .dt-bottombar .dataTables_info {
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            /* Paginação ocupa o espaço e joga prev/next para as pontas */
+            .dt-bottombar .dataTables_paginate {
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            /* Esconde números + primeira/última no celular (fica só Anterior/Próxima) */
+            .dt-bottombar .dataTables_paginate .paginate_button:not(.previous):not(.next) {
+                display: none !important;
+            }
+
+            .dt-bottombar .dataTables_paginate .paginate_button {
+                margin: 0 !important;
+            }
         }
 
-        /* ações não estourarem */
-        .acoes-wrap {
+        não estourarem */ .acoes-wrap {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
@@ -347,8 +369,8 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                                 }
                             </style>
                             <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                                <li class="nav-item active"> <a class="nav-link" href="#"style="color:aliceblue !important;">Lista de Adicionados</a></li>
-                                <li class="nav-item "> <a class="nav-link"  href="./adicionarUser.php">Adicionar Usuários</a></li>
+                                <li class="nav-item active"> <a class="nav-link" href="#" style="color:aliceblue !important;">Lista de Adicionados</a></li>
+                                <li class="nav-item "> <a class="nav-link" href="./adicionarUser.php">Adicionar Usuários</a></li>
 
                             </ul>
                         </div>
@@ -493,7 +515,8 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             $('#tabelaUsuarios').DataTable({
                 pageLength: 10,
                 lengthChange: false, // remove "Mostrar X por página"
-                dom: '<"dt-topbar"<"dt-search-wrap"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                dom: '<"dt-topbar"<"dt-search-wrap"f>>rt<"dt-bottombar"<"dt-info"i><"dt-pages"p>>',
+
                 order: [
                     [0, 'desc']
                 ],
