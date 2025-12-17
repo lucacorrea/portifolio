@@ -1,255 +1,384 @@
-<!DOCTYPE html>
-<html lang="en">
+<?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+session_start();
 
+/* =========================
+   SEGURANÇA / LOGIN
+   =========================
+   Ajuste aqui para o seu padrão real de sessão:
+   - $_SESSION['usuario_logado'] = true
+   - $_SESSION['nivel'] = 'Admin'
+*/
+if (empty($_SESSION['usuario_logado']) || (($_SESSION['nivel'] ?? '') !== 'Admin')) {
+    header("Location: ../../login.php");
+    exit;
+}
+
+require_once "../../../assets/php/conexao.php"; // ajuste o caminho se necessário
+
+// CSRF
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION['csrf_token'];
+
+$msg = null;
+$err = null;
+
+/* =========================
+   AÇÕES (POST)
+   ========================= */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $token = $_POST['csrf_token'] ?? '';
+    if (!hash_equals($csrf, $token)) {
+        $err = "Falha de segurança (CSRF). Recarregue a página.";
+    } else {
+        $acao = $_POST['acao'] ?? '';
+        $id   = (int)($_POST['id'] ?? 0);
+
+        if ($id <= 0) {
+            $err = "Usuário inválido.";
+        } else {
+            try {
+                if ($acao === 'toggle') {
+                    // Alterna ativo (1/0)
+                    $stmt = $pdo->prepare("UPDATE usuarios SET ativo = IF(ativo=1,0,1) WHERE id = :id");
+                    $stmt->execute([':id' => $id]);
+                    $msg = "Status do usuário atualizado!";
+                } elseif ($acao === 'excluir') {
+                    // Excluir de vez (se preferir não excluir, comente e use só toggle)
+                    $stmt = $pdo->prepare("DELETE FROM usuarios WHERE id = :id");
+                    $stmt->execute([':id' => $id]);
+                    $msg = "Usuário excluído com sucesso!";
+                }
+            } catch (Exception $e) {
+                $err = "Erro ao executar ação: " . $e->getMessage();
+            }
+        }
+    }
+}
+
+/* =========================
+   LISTAGEM
+   ========================= */
+$usuarios = [];
+try {
+    $stmt = $pdo->query("
+        SELECT id, nome, email, ativo, ultimo_login_em, criado_em
+        FROM usuarios
+        ORDER BY id DESC
+    ");
+    $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $err = "Erro ao carregar usuários: " . $e->getMessage();
+}
+
+function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function fmtData($dt) {
+    if (!$dt) return '-';
+    $ts = strtotime($dt);
+    if (!$ts) return h($dt);
+    return date('d/m/Y H:i', $ts);
+}
+
+$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
+?>
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-    <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>SIGRelatórios Admin</title>
+
     <!-- plugins:css -->
     <link rel="stylesheet" href="../../../vendors/feather/feather.css">
     <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
     <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
     <!-- endinject -->
+
     <!-- Plugin css for this page -->
     <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
-    <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
     <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
-    <!-- End plugin css for this page -->
+
     <!-- inject:css -->
     <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
     <!-- endinject -->
     <link rel="shortcut icon" href="../../../images/3.png" />
+
     <style>
-        .nav-link.text-black:hover {
-            color: blue !important;
-        }
+        .sub-menu .nav-item .nav-link { color: black !important; }
+        .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+
+        .table td, .table th { vertical-align: middle; }
+        .badge { font-size: 12px; padding: .45rem .65rem; }
+        .btn-xs { padding: .25rem .5rem; font-size: .75rem; }
+        .dataTables_wrapper .dataTables_filter input { margin-left: .5rem; }
+        .card-title { margin-bottom: .25rem; }
+        .card-description { margin-bottom: 1rem; }
     </style>
 </head>
 
 <body>
-    <div class="container-scroller">
-        <!-- partial:partials/_navbar.html -->
-        <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-            <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-                <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-                <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
-            </div>
-            <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-                <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-                    <span class="icon-menu"></span>
-                </button>
-                <ul class="navbar-nav mr-lg-2">
-                    <li class="nav-item nav-search d-none d-lg-block">
+<div class="container-scroller">
 
-                    </li>
-                </ul>
-                <ul class="navbar-nav navbar-nav-right">
+    <!-- NAVBAR -->
+    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+        <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+            <a class="navbar-brand brand-logo mr-5" href="../index.php">SIGRelatórios</a>
+            <a class="navbar-brand brand-logo-mini" href="../index.php"><img src="../../../images/3.png" alt="logo" /></a>
+        </div>
+        <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+            <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+                <span class="icon-menu"></span>
+            </button>
 
+            <ul class="navbar-nav navbar-nav-right">
+                <li class="nav-item nav-profile dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
+                        <i class="ti-user"></i>
+                        <span class="ml-1"><?= h($nomeTopo) ?></span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+                        <a class="dropdown-item" href="../../logout.php">
+                            <i class="ti-power-off text-primary"></i> Sair
+                        </a>
+                    </div>
+                </li>
+            </ul>
 
+            <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+                <span class="icon-menu"></span>
+            </button>
+        </div>
+    </nav>
 
-                </ul>
-                <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-                    <span class="icon-menu"></span>
-                </button>
-            </div>
+    <div class="container-fluid page-body-wrapper">
+
+        <!-- SIDEBAR -->
+        <nav class="sidebar sidebar-offcanvas" id="sidebar">
+            <ul class="nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="../index.php">
+                        <i class="icon-grid menu-icon"></i>
+                        <span class="menu-title">Dashboard</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <i class="ti-shopping-cart menu-icon"></i>
+                        <span class="menu-title">Feira do Produtor</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <i class="ti-shopping-cart menu-icon"></i>
+                        <span class="menu-title">Feira Alternativa</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <i class="ti-home menu-icon"></i>
+                        <span class="menu-title">Mercado Municipal</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <i class="ti-agenda menu-icon"></i>
+                        <span class="menu-title">Relatórios</span>
+                    </a>
+                </li>
+
+                <li class="nav-item active">
+                    <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="true" aria-controls="ui-basic">
+                        <i class="ti-user menu-icon"></i>
+                        <span class="menu-title">Usuários</span>
+                        <i class="menu-arrow"></i>
+                    </a>
+                    <div class="collapse show" id="ui-basic">
+                        <ul class="nav flex-column sub-menu" style="background: white !important;">
+                            <li class="nav-item active">
+                                <a class="nav-link" href="./listaUser.php">Lista de Adicionados</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="./adicionarUser.php">Adicionar Usuários</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+                        <i class="ti-headphone-alt menu-icon"></i>
+                        <span class="menu-title">Suporte</span>
+                    </a>
+                </li>
+            </ul>
         </nav>
-        <!-- partial -->
-        <div class="container-fluid page-body-wrapper">
-            <!-- partial:partials/_settings-panel.html -->
 
-            <div id="right-sidebar" class="settings-panel">
-                <i class="settings-close ti-close"></i>
-                <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
-                    </li>
-                </ul>
+        <!-- MAIN -->
+        <div class="main-panel">
+            <div class="content-wrapper">
 
-            </div>
-            <!-- partial -->
-            <!-- partial:partials/_sidebar.html -->
-            <nav class="sidebar sidebar-offcanvas" id="sidebar">
-                <ul class="nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="../index.php">
-                            <i class="icon-grid menu-icon"></i>
-                            <span class="menu-title">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="pages/documentation/documentation.html">
-                            <i class="ti-shopping-cart menu-icon"></i>
-                            <span class="menu-title">Feira do Produtor</span>
-                        </a>
-                    </li>
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <h3 class="font-weight-bold">Usuários do sistema</h3>
+                        <h6 class="font-weight-normal mb-0">Gerencie usuários (ativar/desativar/excluir).</h6>
+                    </div>
+                </div>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="pages/documentation/documentation.html">
-                            <i class="ti-shopping-cart menu-icon"></i>
-                            <span class="menu-title">Feira Alternativa</span>
-                        </a>
-                    </li>
+                <?php if ($msg): ?>
+                    <div class="alert alert-success"><?= h($msg) ?></div>
+                <?php endif; ?>
+                <?php if ($err): ?>
+                    <div class="alert alert-danger"><?= h($err) ?></div>
+                <?php endif; ?>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="pages/documentation/documentation.html">
-                            <i class="ti-home menu-icon"></i>
-                            <span class="menu-title">Mercado Municipal</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="pages/documentation/documentation.html">
-                            <i class="ti-agenda menu-icon"></i>
-                            <span class="menu-title">Relatórios</span>
-                        </a>
-                    </li>
-                    <li class="nav-item active">
-                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
-                            <i class="ti-user menu-icon"></i>
-                            <span class="menu-title">Usuários</span>
-                            <i class="menu-arrow"></i>
-                        </a>
-                        <div class="collapse" id="ui-basic">
-                            <style>
-                                .sub-menu .nav-item .nav-link {
-                                    color: black !important;
-                                }
-
-                                .sub-menu .nav-item .nav-link:hover {
-
-                                    color: blue !important;
-                                }
-                            </style>
-                            <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                                <li class="nav-item active"> <a class="nav-link" style="color:aliceblue !important;" href="#">Lista de Adicionados</a></li>
-                                <li class="nav-item"> <a class="nav-link " href="./adicionarUser.php">Adicionar Usuários</a></li>
-
-                            </ul>
-                        </div>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-                            <i class="ti-headphone-alt menu-icon"></i>
-                            <span class="menu-title">Suporte</span>
-                        </a>
-                    </li>
-
-
-                </ul>
-
-
-            </nav>
-            <!-- partial -->
-            <div class="main-panel">
-                <div class="content-wrapper">
-                    <div class="row">
-                        <div class="col-md-12 grid-margin">
-                            <div class="row">
-                                <div class="col-12 col-xl-8 mb-4 mb-xl-0">
-                                    <h3 class="font-weight-bold">Welcome Aamir</h3>
-                                    <h6 class="font-weight-normal mb-0">All systems are running smoothly! You have <span class="text-primary">3 unread alerts!</span></h6>
-                                </div>
-                                <div class="col-lg-12 grid-margin stretch-card">
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <h4 class="card-title">Basic Table</h4>
-                                            <p class="card-description">
-                                                Add class <code>.table</code>
-                                            </p>
-                                            <div class="table-responsive">
-                                                <table class="table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Profile</th>
-                                                            <th>VatNo.</th>
-                                                            <th>Created</th>
-                                                            <th>Status</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr>
-                                                            <td>Jacob</td>
-                                                            <td>53275531</td>
-                                                            <td>12 May 2017</td>
-                                                            <td><label class="badge badge-danger">Pending</label></td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td>Messsy</td>
-                                                            <td>53275532</td>
-                                                            <td>15 May 2017</td>
-                                                            <td><label class="badge badge-warning">In progress</label></td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td>John</td>
-                                                            <td>53275533</td>
-                                                            <td>14 May 2017</td>
-                                                            <td><label class="badge badge-info">Fixed</label></td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td>Peter</td>
-                                                            <td>53275534</td>
-                                                            <td>16 May 2017</td>
-                                                            <td><label class="badge badge-success">Completed</label></td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td>Dave</td>
-                                                            <td>53275535</td>
-                                                            <td>20 May 2017</td>
-                                                            <td><label class="badge badge-warning">In progress</label></td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
+                <div class="row">
+                    <div class="col-lg-12 grid-margin stretch-card">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                    <div>
+                                        <h4 class="card-title mb-0">Lista de Usuários</h4>
+                                        <p class="card-description mb-0">Busca, ordenação e paginação automática.</p>
                                     </div>
+                                    <a href="./adicionarUser.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                                        <i class="ti-plus"></i> Adicionar
+                                    </a>
+                                </div>
+
+                                <div class="table-responsive pt-3">
+                                    <table id="tabelaUsuarios" class="table table-striped table-hover">
+                                        <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nome</th>
+                                            <th>Email</th>
+                                            <th>Criado em</th>
+                                            <th>Último login</th>
+                                            <th>Status</th>
+                                            <th style="min-width: 210px;">Ações</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php foreach ($usuarios as $u): ?>
+                                            <?php
+                                                $ativo = (int)($u['ativo'] ?? 0) === 1;
+                                                $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
+                                                $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+                                            ?>
+                                            <tr>
+                                                <td><?= (int)$u['id'] ?></td>
+                                                <td><?= h($u['nome']) ?></td>
+                                                <td><?= h($u['email']) ?></td>
+                                                <td><?= fmtData($u['criado_em'] ?? null) ?></td>
+                                                <td><?= fmtData($u['ultimo_login_em'] ?? null) ?></td>
+                                                <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                                                <td>
+                                                    <div class="d-flex flex-wrap" style="gap:8px;">
+                                                        <a class="btn btn-outline-info btn-xs"
+                                                           href="./editarUser.php?id=<?= (int)$u['id'] ?>">
+                                                            <i class="ti-pencil"></i> Editar
+                                                        </a>
+
+                                                        <form method="post" class="m-0">
+                                                            <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                            <input type="hidden" name="acao" value="toggle">
+                                                            <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+                                                            <button type="submit"
+                                                                    class="btn btn-outline-warning btn-xs"
+                                                                    onclick="return confirm('Deseja <?= $ativo ? 'DESATIVAR' : 'ATIVAR' ?> este usuário?');">
+                                                                <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
+                                                            </button>
+                                                        </form>
+
+                                                        <form method="post" class="m-0">
+                                                            <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                            <input type="hidden" name="acao" value="excluir">
+                                                            <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+                                                            <button type="submit"
+                                                                    class="btn btn-outline-danger btn-xs"
+                                                                    onclick="return confirm('Tem certeza que deseja EXCLUIR este usuário? Essa ação não pode ser desfeita.');">
+                                                                <i class="ti-trash"></i> Excluir
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+
+                                    <?php if (empty($usuarios)): ?>
+                                        <div class="text-muted mt-3">Nenhum usuário cadastrado ainda.</div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-           
-    
-     <footer class="footer">
-          <div class="d-sm-flex justify-content-center justify-content-sm-between">
-            <span class="text-muted text-center text-sm-left d-block d-sm-inline-block">Copyright © 2021. Premium <a href="https://www.bootstrapdash.com/" target="_blank">Bootstrap admin template</a> from BootstrapDash. All rights reserved.</span>
-            <span class="float-none float-sm-right d-block mt-1 mt-sm-0 text-center">Hand-crafted & made with <i class="ti-heart text-danger ml-1"></i></span>
-          </div>
-          <div class="d-sm-flex justify-content-center justify-content-sm-between">
-            <span class="text-muted text-center text-sm-left d-block d-sm-inline-block">Distributed by <a href="https://www.themewagon.com/" target="_blank">Themewagon</a></span>
-          </div>
-        </footer>
-        <!-- partial -->
-      </div>
-      <!-- main-panel ends -->
+
+            </div>
+
+            <footer class="footer">
+                <div class="d-sm-flex justify-content-center justify-content-sm-between">
+                    <span class="text-muted text-center text-sm-left d-block d-sm-inline-block">
+                        SIGRelatórios © <?= date('Y') ?>
+                    </span>
+                </div>
+            </footer>
+        </div>
+        <!-- main-panel ends -->
     </div>
     <!-- page-body-wrapper ends -->
-  </div>
-  <!-- container-scroller -->
+</div>
+<!-- container-scroller -->
 
-  <!-- plugins:js -->
-  <script src="../../../vendors/js/vendor.bundle.base.js"></script>
-  <!-- endinject -->
-  <!-- Plugin js for this page -->
-  <script src="../../../vendors/chart.js/Chart.min.js"></script>
+<!-- plugins:js -->
+<script src="../../../vendors/js/vendor.bundle.base.js"></script>
 
+<!-- DATATABLES (IMPORTANTE) -->
+<script src="../../../vendors/datatables.net/jquery.dataTables.js"></script>
+<script src="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.js"></script>
 
+<!-- inject:js -->
+<script src="../../../js/off-canvas.js"></script>
+<script src="../../../js/hoverable-collapse.js"></script>
+<script src="../../../js/template.js"></script>
+<script src="../../../js/settings.js"></script>
+<script src="../../../js/todolist.js"></script>
 
-  <!-- End plugin js for this page -->
-  <!-- inject:js -->
-  <script src="../../../js/off-canvas.js"></script>
-  <script src="../../../js/hoverable-collapse.js"></script>
-  <script src="../../../js/template.js"></script>
-  <script src="../../../js/settings.js"></script>
-  <script src="../../../js/todolist.js"></script>
-  <!-- endinject -->
-  <!-- Custom js for this page-->
-  <script src="../../../js/dashboard.js"></script>
-  <script src="../../../js/Chart.roundedBarCharts.js"></script>
-  <!-- End custom js for this page-->
+<script>
+  // DataTables em PT-BR (sem depender de CDN)
+  $(function () {
+    $('#tabelaUsuarios').DataTable({
+      pageLength: 10,
+      lengthMenu: [ [10, 25, 50, 100], [10, 25, 50, 100] ],
+      order: [[0, 'desc']],
+      language: {
+        processing: "Processando...",
+        search: "Pesquisar:",
+        lengthMenu: "Mostrar _MENU_ por página",
+        info: "Mostrando _START_ até _END_ de _TOTAL_ registros",
+        infoEmpty: "Mostrando 0 até 0 de 0 registros",
+        infoFiltered: "(filtrado de _MAX_ registros)",
+        loadingRecords: "Carregando...",
+        zeroRecords: "Nenhum registro encontrado",
+        emptyTable: "Nenhum dado disponível na tabela",
+        paginate: {
+          first: "Primeira",
+          previous: "Anterior",
+          next: "Próxima",
+          last: "Última"
+        }
+      }
+    });
+  });
+</script>
 </body>
-
 </html>
