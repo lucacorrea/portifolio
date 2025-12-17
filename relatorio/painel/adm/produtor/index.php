@@ -167,7 +167,7 @@ if (!in_array('ADMIN', $perfis, true)) {
               <span class="menu-title">Relatórios</span>
               <i class="menu-arrow"></i>
             </a>
-            <div class="collapse" id="feiraRelatorios">
+            <div class="collapse text-black" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
