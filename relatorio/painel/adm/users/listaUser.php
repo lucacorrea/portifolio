@@ -75,7 +75,7 @@
             <nav class="sidebar sidebar-offcanvas" id="sidebar">
                 <ul class="nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">
+                        <a class="nav-link" href="../index.php">
                             <i class="icon-grid menu-icon"></i>
                             <span class="menu-title">Dashboard</span>
                         </a>
@@ -125,8 +125,8 @@
                                 }
                             </style>
                             <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                                <li class="nav-item"> <a class="nav-link text-black" href="pages/ui-features/buttons.html">Lista de Adicionados</a></li>
-                                <li class="nav-item"> <a class="nav-link text-black" href="pages/ui-features/dropdowns.html">Adicionar Usuários</a></li>
+                                <li class="nav-item"> <a class="nav-link text-black" href="#">Lista de Adicionados</a></li>
+                                <li class="nav-item"> <a class="nav-link text-black" href="./adicionarUser.php">Adicionar Usuários</a></li>
 
                             </ul>
                         </div>
