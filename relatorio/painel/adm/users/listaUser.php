@@ -359,8 +359,6 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                           <td><?= $id ?></td>
                           <td><?= h($u['nome'] ?? '') ?></td>
                           <td><?= h($u['email'] ?? '') ?></td>
-                          <td><?= fmtData($u['criado_em'] ?? null) ?></td>
-                          <td><?= fmtData($u['ultimo_login_em'] ?? null) ?></td>
                           <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                           <td>
                             <div class="acoes-wrap">
