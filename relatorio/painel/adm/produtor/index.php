@@ -290,7 +290,7 @@ function h($s): string
               <div class="card tale-bg">
                 <div class="card-people ">
                     <img src="../../../images/dashboard/produtor.jpeg" alt="people" style="margin-top:-30px;">
-                  <div class="weather-info">
+                  <div class="weather-info text-white">
                     <div class="d-flex">
                       <div>
                         <h2 class="mb-0 font-weight-normal">
