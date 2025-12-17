@@ -12,7 +12,7 @@ if (empty($_SESSION['usuario_logado'])) {
 /* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
 if (!in_array('ADMIN', $perfis, true)) {
-  header('Location: ../operador/index.php');
+  header('Location: ../../operador/index.php');
   exit;
 }
 ?>
@@ -102,54 +102,18 @@ if (!in_array('ADMIN', $perfis, true)) {
           <li class="nav-item">
             <a class="nav-link" href="../adm/produtor/">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira do Produtor</span>
+              <span class="menu-title">Lista de Produtos</span>
             </a>
           </li>
 
           <li class="nav-item">
             <a class="nav-link" href="../adm/alternativa/">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira Alternativa</span>
+              <span class="menu-title">Ad. Produto</span>
             </a>
           </li>
 
-          <li class="nav-item">
-            <a class="nav-link" href="../adm/mercado/">
-              <i class="ti-home menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="../adm/relatorio/">
-              <i class="ti-agenda menu-icon"></i>
-              <span class="menu-title">Relatórios</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
-              <i class="ti-user menu-icon"></i>
-              <span class="menu-title">Usuários</span>
-              <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse" id="ui-basic">
-              <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-
-                  color: blue !important;
-                }
-              </style>
-              <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                <li class="nav-item"> <a class="nav-link text-black" href="./users/listaUser.php">Lista de Adicionados</a></li>
-                <li class="nav-item"> <a class="nav-link text-black" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
-
-              </ul>
-            </div>
-          </li>
+        
           <li class="nav-item">
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
