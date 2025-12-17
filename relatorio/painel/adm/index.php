@@ -20,6 +20,11 @@
   <link rel="stylesheet" href="../../css/vertical-layout-light/style.css">
   <!-- endinject -->
   <link rel="shortcut icon" href="../../images/3.png" />
+<style>
+  .nav-link.text-black:hover {
+    color: blue !important;
+  }
+</style>
 </head>
 
 <body>
@@ -109,8 +114,14 @@
               <i class="menu-arrow"></i>
             </a>
             <div class="collapse" id="ui-basic">
+              <style>
+                .sub-menu .nav-item .nav-link:hover {
+                  
+                  color: blue !important;
+                }
+              </style>
               <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                <li class="nav-item"> <a class="nav-link text-black" style="color:black !important;" href="pages/ui-features/buttons.html">Lista de Adicionados</a></li>
+                <li class="nav-item"> <a class="nav-link text-black" style="color:black !important; ;" href="pages/ui-features/buttons.html">Lista de Adicionados</a></li>
                 <li class="nav-item"> <a class="nav-link text-black" style="color:black !important;" href="pages/ui-features/dropdowns.html">Adicionar Usuários</a></li>
 
               </ul>
