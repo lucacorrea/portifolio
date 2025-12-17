@@ -136,6 +136,7 @@ if (!in_array('ADMIN', $perfis, true)) {
         <style>
           .sub-menu .nav-item .nav-link { color: black !important; }
           .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+          .sub-menu .nav-item .nav-link .active:hover { color:black !important; }
         </style>
 
         <ul class="nav flex-column sub-menu" style="background: white !important;">
