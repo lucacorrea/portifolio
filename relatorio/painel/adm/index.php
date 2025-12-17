@@ -63,7 +63,7 @@
             <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
           </li>
         </ul>
-       
+
       </div>
       <!-- partial -->
       <!-- partial:partials/_sidebar.html -->
@@ -95,6 +95,28 @@
               <span class="menu-title">Mercado Municipal</span>
             </a>
           </li>
+
+          <li>
+            <a class="nav-link" href="pages/documentation/documentation.html">
+              <i class="ti-agenda menu-icon"></i>
+              <span class="menu-title">Relatórios</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="pages/documentation/documentation.html">
+              <i class="ti-user menu-icon"></i>
+              <span class="menu-title">Usuários</span>
+            </a>
+          </li>
+            <li class="nav-item">
+            <a class="nav-link" href="pages/documentation/documentation.html">
+              <i class="ti-headphone-alt menu-icon"></i>
+              <span class="menu-title">Suporte</span>
+            </a>
+            </li>
+
+
+        </ul>
 
 
       </nav>
