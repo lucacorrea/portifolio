@@ -1,20 +1,21 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+declare(strict_types=1);
 session_start();
 
-/* =========================
-   SEGURANÇA / LOGIN
-   =========================
-   Ajuste aqui para o seu padrão real de sessão:
-   - $_SESSION['usuario_logado'] = true
-   - $_SESSION['nivel'] = 'Admin'
-*/
-if (empty($_SESSION['usuario_logado']) || (($_SESSION['nivel'] ?? '') !== 'Admin')) {
-    header("Location: ../../../index.php");
-    exit;
+/* Obrigatório estar logado */
+if (empty($_SESSION['usuario_logado'])) {
+  header('Location: ../../index.php');
+  exit;
+}
+
+/* Obrigatório ser ADMIN */
+$perfis = $_SESSION['perfis'] ?? [];
+if (!in_array('ADMIN', $perfis, true)) {
+  header('Location: ../operador/index.php');
+  exit;
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
