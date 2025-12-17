@@ -222,7 +222,7 @@
 
           <li class="nav-item">
             <a class="nav-link" href="pages/documentation/documentation.html">
-              <i class="ti-leaf menu-icon"></i>
+              <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira Alternativa</span>
             </a>
           </li>
