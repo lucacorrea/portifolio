@@ -75,11 +75,15 @@ if (!in_array('ADMIN', $perfis, true)) {
     <div class="container-scroller">
 
         <!-- NAVBAR -->
+        <!-- NAVBAR (DO JEITO QUE VOCÊ QUER) -->
         <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
             <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
                 <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-                <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
+                <a class="navbar-brand brand-logo-mini" href="index.php">
+                    <img src="../../../images/3.png" alt="logo" />
+                </a>
             </div>
+
             <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
                 <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
                     <span class="icon-menu"></span>
@@ -96,6 +100,92 @@ if (!in_array('ADMIN', $perfis, true)) {
                 </button>
             </div>
         </nav>
+
+        <!-- SIDEBAR (PADRÃO ACTIVE QUE VOCÊ EXIGIU) -->
+        <nav class="sidebar sidebar-offcanvas" id="sidebar">
+            <ul class="nav">
+
+                <li class="nav-item">
+                    <a class="nav-link" href="../index.php">
+                        <i class="icon-grid menu-icon"></i>
+                        <span class="menu-title">Dashboard</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="../produtor/">
+                        <i class="ti-shopping-cart menu-icon"></i>
+                        <span class="menu-title">Feira do Produtor</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="../alternativa/">
+                        <i class="ti-shopping-cart menu-icon"></i>
+                        <span class="menu-title">Feira Alternativa</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="../mercado/">
+                        <i class="ti-home menu-icon"></i>
+                        <span class="menu-title">Mercado Municipal</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="../relatorio/">
+                        <i class="ti-agenda menu-icon"></i>
+                        <span class="menu-title">Relatórios</span>
+                    </a>
+                </li>
+
+                <!-- EXEMPLO: SUBMENU "CADASTROS" ATIVO / ITEM "LISTA DE PRODUTOS" ATIVO -->
+                <li class="nav-item active">
+                    <a class="nav-link open" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+                        <i class="ti-id-badge menu-icon"></i>
+                        <span class="menu-title">Cadastros</span>
+                        <i class="menu-arrow"></i>
+                    </a>
+
+                    <div class="collapse" id="ui-basic">
+                        <style>
+                            .sub-menu .nav-item .nav-link {
+                                color: black !important;
+                            }
+
+                            .sub-menu .nav-item .nav-link:hover {
+                                color: blue !important;
+                            }
+                        </style>
+
+                        <ul class="nav flex-column sub-menu" style="background: white !important;">
+                            <li class="nav-item active">
+                                <a class="nav-link" href="./listaProduto.php" style="color:aliceblue !important;">Lista de Produtos</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="../adm/feira_produtor/categorias/">Categorias</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="../adm/feira_produtor/unidades/">Unidades</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="../adm/feira_produtor/produtores/">Produtores</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+                        <i class="ti-headphone-alt menu-icon"></i>
+                        <span class="menu-title">Suporte</span>
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
+
 
         <div class="container-fluid page-body-wrapper">
 
