@@ -126,7 +126,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                     <!-- FEIRA DO PRODUTOR / CADASTROS (ATIVO NO PADRÃO QUE VOCÊ PASSOU) -->
                     <li class="nav-item active">
-                        <a class="nav-link open" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
                             <i class="ti-user menu-icon"></i>
                             <span class="menu-title">Produtos</span>
                             <i class="menu-arrow"></i>
