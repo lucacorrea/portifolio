@@ -89,12 +89,11 @@ if (!in_array('ADMIN', $perfis, true)) {
         </ul>
 
       </div>
-      <!-- partial -->
-      <!-- partial:partials/_sidebar.html -->
       <!-- partial:partials/_sidebar.html -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
 
+          <!-- DASHBOARD -->
           <li class="nav-item active">
             <a class="nav-link" href="index.php">
               <i class="icon-grid menu-icon"></i>
@@ -102,58 +101,96 @@ if (!in_array('ADMIN', $perfis, true)) {
             </a>
           </li>
 
-          <!-- PRODUTOS -->
+          <!-- FEIRA DO PRODUTOR (ORGANIZADO) -->
           <li class="nav-item">
-            <a class="nav-link" href="../adm/feira_produtor/produtos/lista.php">
+            <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
+              <i class="ti-id-badge menu-icon"></i>
+              <span class="menu-title">Cadastros</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse" id="feiraCadastros">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/produtos/lista.php">
+                    <i class="ti-clipboard mr-2"></i> Lista de Produtos
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/produtos/adicionar.php">
+                    <i class="ti-plus mr-2"></i> Adicionar Produto
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/categorias/">
+                    <i class="ti-layers mr-2"></i> Categorias
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/unidades/">
+                    <i class="ti-ruler-pencil mr-2"></i> Unidades (kg, un, saco…)
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/produtores/">
+                    <i class="ti-user mr-2"></i> Produtores / Feirantes
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
+              <i class="ti-exchange-vertical menu-icon"></i>
+              <span class="menu-title">Movimento</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse" id="feiraMovimento">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/lancamentos/">
+                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/fechamento/">
+                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
               <i class="ti-clipboard menu-icon"></i>
-              <span class="menu-title">Lista de Produtos</span>
+              <span class="menu-title">Relatórios</span>
+              <i class="menu-arrow"></i>
             </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="../adm/feira_produtor/produtos/adicionar.php">
-              <i class="ti-plus menu-icon"></i>
-              <span class="menu-title">Adicionar Produto</span>
-            </a>
-          </li>
-
-          <!-- CATEGORIAS (frutas, hortaliças, grãos, etc.) -->
-          <li class="nav-item">
-            <a class="nav-link" href="../adm/feira_produtor/categorias/">
-              <i class="ti-layers menu-icon"></i>
-              <span class="menu-title">Categorias</span>
-            </a>
-          </li>
-
-          <!-- PRODUTORES / FEIRANTES -->
-          <li class="nav-item">
-            <a class="nav-link" href="../adm/feira_produtor/produtores/">
-              <i class="ti-user menu-icon"></i>
-              <span class="menu-title">Produtores</span>
-            </a>
-          </li>
-
-          <!-- LANÇAMENTOS (vendeu quanto no mês/dia) -->
-          <li class="nav-item">
-            <a class="nav-link" href="../adm/feira_produtor/lancamentos/">
-              <i class="ti-write menu-icon"></i>
-              <span class="menu-title">Lançamentos (Vendas)</span>
-            </a>
-          </li>
-
-          <!-- RELATÓRIOS (igual ao PDF: por período/mês + lista de produtos) -->
-          <li class="nav-item">
-            <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
-              <i class="ti-bar-chart menu-icon"></i>
-              <span class="menu-title">Relatório Financeiro</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="../adm/feira_produtor/relatorios/produtos.php">
-              <i class="ti-list menu-icon"></i>
-              <span class="menu-title">Relatório de Produtos</span>
-            </a>
+            <div class="collapse" id="feiraRelatorios">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
+                    <i class="ti-bar-chart mr-2"></i> Relatório Financeiro (Período)
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/relatorios/produtos.php">
+                    <i class="ti-list mr-2"></i> Produtos Comercializados
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/relatorios/mensal.php">
+                    <i class="ti-calendar mr-2"></i> Resumo Mensal
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../adm/feira_produtor/config/relatorio.php">
+                    <i class="ti-settings mr-2"></i> Configurar Texto/Assinatura
+                  </a>
+                </li>
+              </ul>
+            </div>
           </li>
 
           <!-- SUPORTE -->
@@ -166,6 +203,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 
         </ul>
       </nav>
+
 
       <!-- partial -->
       <div class="main-panel">
