@@ -47,7 +47,7 @@ if (!in_array('ADMIN', $perfis, true)) {
    CONEXÃO (tenta absoluto e depois relativo)
    ========================= */
 $pathAbs = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/\\') . "/assets/php/conexao.php";
-$pathRel = __DIR__ . "../../../assets/php/conexao.php";
+$pathRel = __DIR__ . "/../../../assets/php/conexao.php";
 
 try {
   if (is_file($pathAbs)) {
