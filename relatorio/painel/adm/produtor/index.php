@@ -91,29 +91,72 @@ if (!in_array('ADMIN', $perfis, true)) {
       </div>
       <!-- partial -->
       <!-- partial:partials/_sidebar.html -->
+      <!-- partial:partials/_sidebar.html -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
+
           <li class="nav-item active">
             <a class="nav-link" href="index.php">
               <i class="icon-grid menu-icon"></i>
               <span class="menu-title">Dashboard</span>
             </a>
           </li>
+
+          <!-- PRODUTOS -->
           <li class="nav-item">
-            <a class="nav-link" href="../adm/produtor/">
+            <a class="nav-link" href="../adm/feira_produtor/produtos/lista.php">
               <i class="ti-clipboard menu-icon"></i>
               <span class="menu-title">Lista de Produtos</span>
             </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link" href="../adm/alternativa/">
+            <a class="nav-link" href="../adm/feira_produtor/produtos/adicionar.php">
               <i class="ti-plus menu-icon"></i>
-              <span class="menu-title">Ad. Produto</span>
+              <span class="menu-title">Adicionar Produto</span>
             </a>
           </li>
 
-        
+          <!-- CATEGORIAS (frutas, hortaliças, grãos, etc.) -->
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/categorias/">
+              <i class="ti-layers menu-icon"></i>
+              <span class="menu-title">Categorias</span>
+            </a>
+          </li>
+
+          <!-- PRODUTORES / FEIRANTES -->
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/produtores/">
+              <i class="ti-user menu-icon"></i>
+              <span class="menu-title">Produtores</span>
+            </a>
+          </li>
+
+          <!-- LANÇAMENTOS (vendeu quanto no mês/dia) -->
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/lancamentos/">
+              <i class="ti-write menu-icon"></i>
+              <span class="menu-title">Lançamentos (Vendas)</span>
+            </a>
+          </li>
+
+          <!-- RELATÓRIOS (igual ao PDF: por período/mês + lista de produtos) -->
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
+              <i class="ti-bar-chart menu-icon"></i>
+              <span class="menu-title">Relatório Financeiro</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/relatorios/produtos.php">
+              <i class="ti-list menu-icon"></i>
+              <span class="menu-title">Relatório de Produtos</span>
+            </a>
+          </li>
+
+          <!-- SUPORTE -->
           <li class="nav-item">
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
@@ -121,11 +164,9 @@ if (!in_array('ADMIN', $perfis, true)) {
             </a>
           </li>
 
-
         </ul>
-
-
       </nav>
+
       <!-- partial -->
       <div class="main-panel">
         <div class="content-wrapper">
