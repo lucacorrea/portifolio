@@ -297,12 +297,12 @@ function h($s): string
                           <i class="icon-sun mr-2"></i> 29<sup>C</sup>
                         </h2>
                       </div>
-                      <div class="ml-2">
+                      <div class="ml-2 text-white">
                         <h4 class="location font-weight-normal">Coari</h4>
                         <h6 class="font-weight-normal">Amazonas</h6>
                       </div>
                     </div>
-                    <div class="mt-2 mini-kpi">Clima fictício (depois ligamos no tempo real)</div>
+                    <div class="mt-2 mini-kpi text-white">Clima fictício (depois ligamos no tempo real)</div>
                   </div>
                 </div>
               </div>
