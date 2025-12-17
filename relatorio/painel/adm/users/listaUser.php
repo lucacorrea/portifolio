@@ -11,7 +11,7 @@ session_start();
    - $_SESSION['nivel'] = 'Admin'
 */
 if (empty($_SESSION['usuario_logado']) || (($_SESSION['nivel'] ?? '') !== 'Admin')) {
-    header("Location: ../../../index.php");
+    header("Location: /../../../index.php");
     exit;
 }
 
