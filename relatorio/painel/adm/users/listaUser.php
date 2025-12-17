@@ -341,8 +341,6 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                         <th>ID</th>
                         <th>Nome</th>
                         <th>Email</th>
-                        <th>Criado em</th>
-                        <th>Último login</th>
                         <th>Status</th>
                         <th style="min-width: 210px;">Ações</th>
                       </tr>
