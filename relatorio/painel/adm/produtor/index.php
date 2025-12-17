@@ -43,6 +43,9 @@ if (!in_array('ADMIN', $perfis, true)) {
     .nav-link.text-black:hover {
       color: blue !important;
     }
+    .nav-link{
+      color: black !important;
+    }
   </style>
 </head>
 
