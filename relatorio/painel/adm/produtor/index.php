@@ -91,87 +91,107 @@ if (!in_array('ADMIN', $perfis, true)) {
       </div>
       <!-- partial -->
       <!-- partial:partials/_sidebar.html -->
-      <li class="nav-item">
-       
+      <nav class="sidebar sidebar-offcanvas" id="sidebar">
+        <li class="nav-item">
+          <a class="nav-link" data-toggle="collapse" href="#menuFeiraProdutor" aria-expanded="false" aria-controls="menuFeiraProdutor">
+            <i class="ti-apple menu-icon"></i>
+            <span class="menu-title">Feira do Produtor</span>
+            <i class="menu-arrow"></i>
+          </a>
 
-        <div class="collapse" id="menuFeiraProdutor">
-          <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+          <div class="collapse" id="menuFeiraProdutor">
+            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
 
-            <!-- PAINEL -->
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/dashboard.php">
-                <i class="ti-bar-chart mr-2"></i> Painel
-              </a>
-            </li>
+              <!-- PAINEL -->
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/dashboard.php">
+                  <i class="ti-bar-chart mr-2"></i> Painel
+                </a>
+              </li>
 
-            <!-- LANÇAMENTOS / MOVIMENTO -->
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/lancamentos.php">
-                <i class="ti-write mr-2"></i> Lançamentos (Vendas)
-              </a>
-            </li>
+              <!-- LANÇAMENTOS / MOVIMENTO -->
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/lancamentos.php">
+                  <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                </a>
+              </li>
 
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/fechamento_dia.php">
-                <i class="ti-check-box mr-2"></i> Fechamento do Dia
-              </a>
-            </li>
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/fechamento_dia.php">
+                  <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                </a>
+              </li>
 
-            <!-- CADASTROS -->
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/produtores.php">
-                <i class="ti-user mr-2"></i> Produtores / Feirantes
-              </a>
-            </li>
+              <!-- CADASTROS -->
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/produtores.php">
+                  <i class="ti-user mr-2"></i> Produtores / Feirantes
+                </a>
+              </li>
 
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/produtos.php">
-                <i class="ti-package mr-2"></i> Produtos
-              </a>
-            </li>
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/produtos.php">
+                  <i class="ti-package mr-2"></i> Produtos
+                </a>
+              </li>
 
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/categorias.php">
-                <i class="ti-layers mr-2"></i> Categorias
-              </a>
-            </li>
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/categorias.php">
+                  <i class="ti-layers mr-2"></i> Categorias
+                </a>
+              </li>
 
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/unidades.php">
-                <i class="ti-ruler-pencil mr-2"></i> Unidades (kg, un, saco…)
-              </a>
-            </li>
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/unidades.php">
+                  <i class="ti-ruler-pencil mr-2"></i> Unidades (kg, un, saco…)
+                </a>
+              </li>
 
-            <!-- RELATÓRIOS (IGUAL AO PDF) -->
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/relatorios_financeiro.php">
-                <i class="ti-clipboard mr-2"></i> Relatório Financeiro (por período)
-              </a>
-            </li>
+              <!-- RELATÓRIOS (IGUAL AO PDF) -->
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/relatorios_financeiro.php">
+                  <i class="ti-clipboard mr-2"></i> Relatório Financeiro (por período)
+                </a>
+              </li>
 
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/relatorios_produtos.php">
-                <i class="ti-list mr-2"></i> Produtos Comercializados (lista/ranking)
-              </a>
-            </li>
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/relatorios_produtos.php">
+                  <i class="ti-list mr-2"></i> Produtos Comercializados (lista/ranking)
+                </a>
+              </li>
 
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/relatorios_mensal.php">
-                <i class="ti-calendar mr-2"></i> Resumo Mensal
-              </a>
-            </li>
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/relatorios_mensal.php">
+                  <i class="ti-calendar mr-2"></i> Resumo Mensal
+                </a>
+              </li>
 
-            <!-- CONFIG -->
-            <li class="nav-item">
-              <a class="nav-link" href="../feira_produtor/config_relatorio.php">
-                <i class="ti-settings mr-2"></i> Configurar Relatório (texto/assinatura)
-              </a>
-            </li>
+              <!-- CONFIG -->
+              <li class="nav-item">
+                <a class="nav-link" href="../feira_produtor/config_relatorio.php">
+                  <i class="ti-settings mr-2"></i> Configurar Relatório (texto/assinatura)
+                </a>
+              </li>
 
-          </ul>
-        </div>
-      </li>
-    
+            </ul>
+          </div>
+        </li>
+
+
+
+        <li class="nav-item">
+          <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+            <i class="ti-headphone-alt menu-icon"></i>
+            <span class="menu-title">Suporte</span>
+          </a>
+        </li>
+
+
+        </ul>
+
+
+      </nav>
+      <!-- partial -->
       <div class="main-panel">
         <div class="content-wrapper">
           <div class="row">
