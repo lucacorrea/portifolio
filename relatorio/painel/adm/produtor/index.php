@@ -50,7 +50,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 
     /* Recuar TODOS os submenus para a esquerda (itens dentro do collapse) */
     .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -100px !important;
+      margin-left: -50px !important;
       /* ajuste: 8px / 10px / 12px */
     }
   </style>
