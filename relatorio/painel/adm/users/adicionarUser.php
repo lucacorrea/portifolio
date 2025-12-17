@@ -275,8 +275,8 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                     <li class="nav-item"><a class="nav-link" href="#"><i class="ti-home menu-icon"></i><span class="menu-title">Mercado Municipal</span></a></li>
                     <li class="nav-item"><a class="nav-link" href="#"><i class="ti-agenda menu-icon"></i><span class="menu-title">Relatórios</span></a></li>
 
-                    <li class="nav-item active open">
-                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+                    <li class="nav-item active">
+                        <a class="nav-link open" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
                             <i class="ti-user menu-icon"></i>
                             <span class="menu-title">Usuários</span>
                             <i class="menu-arrow"></i>
