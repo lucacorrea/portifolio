@@ -241,80 +241,80 @@ if (!in_array('ADMIN', $perfis, true)) {
             <div class="main-panel">
                 <div class="content-wrapper">
 
-                    <!-- TÍTULO -->
                     <div class="row">
-                        <div class="col-md-12 grid-margin">
-                            <div class="row">
-                                <div class="col-12 col-xl-8 mb-2 mb-xl-0">
-                                    <h3 class="font-weight-bold mb-0">Lista de Produtos</h3>
-                                    <h6 class="font-weight-normal text-muted mb-0">Feira do Produtor</h6>
-                                </div>
-                            </div>
+                        <div class="col-12 mb-3">
+                            <h3 class="font-weight-bold">Produtos do sistema</h3>
+                            <h6 class="font-weight-normal mb-0">Gerencie produtos (ativar/desativar/excluir).</h6>
                         </div>
                     </div>
 
-                    <!-- BARRA: PESQUISA / LIMPAR / EXPORTAR (SEM FILTROS) -->
+                    <!-- Mensagens (depois ligamos no PHP) -->
+                    <!--
+    <div class="alert alert-success">Mensagem de sucesso</div>
+    <div class="alert alert-danger">Mensagem de erro</div>
+    -->
+
                     <div class="row">
-                        <div class="col-md-12 grid-margin stretch-card">
-                            <div class="card toolbar-card">
+                        <div class="col-lg-12 grid-margin stretch-card">
+                            <div class="card">
                                 <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6 mb-2 mb-md-0">
-                                            <label class="mb-1">Pesquisa</label>
-                                            <input type="text" class="form-control" placeholder="Pesquisar por nome, categoria, unidade...">
+
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                        <div>
+                                            <h4 class="card-title mb-0">Lista de Produtos</h4>
+                                            <p class="card-description mb-0">Busca, ordenação e paginação automática.</p>
                                         </div>
 
+                                        <a href="./adicionarProduto.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                                            <i class="ti-plus"></i> Adicionar
+                                        </a>
+                                    </div>
+
+                                    <!-- Barra: Pesquisa / Limpar / Exportar (SEM filtros) -->
+                                    <div class="row mt-3">
+                                        <div class="col-md-6 mb-2 mb-md-0">
+                                            <input type="text" class="form-control" placeholder="Pesquisar por nome, categoria, unidade...">
+                                        </div>
                                         <div class="col-md-6">
-                                            <label class="mb-1 d-none d-md-block">&nbsp;</label>
                                             <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
-                                                <button type="button" class="btn btn-primary">
+                                                <button type="button" class="btn btn-primary btn-sm">
                                                     <i class="ti-search mr-1"></i> Pesquisar
                                                 </button>
-                                                <button type="button" class="btn btn-light">
+                                                <button type="button" class="btn btn-light btn-sm">
                                                     <i class="ti-close mr-1"></i> Limpar
                                                 </button>
-                                                <button type="button" class="btn btn-success">
+                                                <button type="button" class="btn btn-success btn-sm">
                                                     <i class="ti-export mr-1"></i> Exportar
                                                 </button>
                                             </div>
-                                            <small class="text-muted d-block mt-2">Depois a gente liga esses botões no back-end.</small>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- TABELA (SEM DADOS) -->
-                    <div class="row">
-                        <div class="col-md-12 grid-margin stretch-card">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
-                                        <p class="card-title mb-0">Produtos cadastrados</p>
-                                    </div>
-
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-borderless mb-0">
+                                    <div class="table-responsive pt-3">
+                                        <table id="tabelaProdutos" class="table table-striped table-hover">
                                             <thead>
                                                 <tr>
-                                                    <th style="width:80px;">#</th>
+                                                    <th style="width:90px;">ID</th>
                                                     <th>Produto</th>
                                                     <th>Categoria</th>
                                                     <th>Unidade</th>
                                                     <th style="width:140px;">Preço</th>
                                                     <th style="width:160px;">Status</th>
-                                                    <th style="width:180px;">Ações</th>
+                                                    <th style="min-width:210px;">Ações</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
                                                     <td colspan="7" class="text-center text-muted py-4">
-                                                        Nenhum produto listado ainda. (Vamos conectar no banco depois)
+                                                        Nenhum produto cadastrado ainda.
                                                     </td>
                                                 </tr>
                                             </tbody>
                                         </table>
+
+                                        <div class="text-muted mt-3">
+                                            Assim que conectar no banco, a tabela vai listar automaticamente os produtos.
+                                        </div>
                                     </div>
 
                                 </div>
@@ -323,9 +323,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                     </div>
 
                 </div>
-                <!-- content-wrapper ends -->
 
-                <!-- FOOTER -->
                 <footer class="footer">
                     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
                         <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
@@ -335,8 +333,8 @@ if (!in_array('ADMIN', $perfis, true)) {
                         </span>
                     </div>
                 </footer>
-
             </div>
+            >
             <!-- main-panel ends -->
 
         </div>
