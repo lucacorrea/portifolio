@@ -26,8 +26,7 @@
     <!-- partial:partials/_navbar.html -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-        <a class="navbar-brand brand-logo mr-5" href="index.html"><img src="../../images/1.png" class="mr-2" alt="logo"/></a>
-       
+        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
       </div>
       <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
         <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
@@ -1087,6 +1086,7 @@
   <script src="../../js/Chart.roundedBarCharts.js"></script>
   <!-- End custom js for this page-->
 </body>
+
 
 </html>
 
