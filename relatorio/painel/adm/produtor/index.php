@@ -53,6 +53,10 @@ if (!in_array('ADMIN', $perfis, true)) {
       margin-left: -35px !important;
       /* ajuste: 8px / 10px / 12px */
     }
+
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
   </style>
 </head>
 
