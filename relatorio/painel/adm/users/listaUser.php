@@ -347,8 +347,8 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                                 }
                             </style>
                             <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                                <li class="nav-item active"> <a class="nav-link" href="./listaUser.php">Lista de Adicionados</a></li>
-                                <li class="nav-item "> <a class="nav-link" style="color:aliceblue !important;" href="#">Adicionar Usuários</a></li>
+                                <li class="nav-item active"> <a class="nav-link" href="#"style="color:aliceblue !important;">Lista de Adicionados</a></li>
+                                <li class="nav-item "> <a class="nav-link"  href="./adicionarUser.php">Adicionar Usuários</a></li>
 
                             </ul>
                         </div>
