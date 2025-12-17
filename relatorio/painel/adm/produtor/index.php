@@ -91,7 +91,8 @@ if (!in_array('ADMIN', $perfis, true)) {
       </div>
       <!-- partial -->
       <!-- partial:partials/_sidebar.html -->
-      
+      <li class="nav-item">
+       
 
         <div class="collapse" id="menuFeiraProdutor">
           <ul class="nav flex-column sub-menu" style="background:#fff !important;">
