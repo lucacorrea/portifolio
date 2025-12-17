@@ -382,9 +382,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                                             <button type="submit" class="btn btn-primary">
                                                 <i class="ti-save mr-1"></i> Salvar usuário
                                             </button>
-                                            <a href="./listaUser.php" class="btn btn-outline-secondary">
-                                                <i class="ti-arrow-left mr-1"></i> Voltar para lista
-                                            </a>
+                                           
                                         </div>
                                     </form>
 
