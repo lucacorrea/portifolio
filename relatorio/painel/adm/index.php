@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -38,11 +39,11 @@ if (!in_array('ADMIN', $perfis, true)) {
   <link rel="stylesheet" href="../../css/vertical-layout-light/style.css">
   <!-- endinject -->
   <link rel="shortcut icon" href="../../images/3.png" />
-<style>
-  .nav-link.text-black:hover {
-    color: blue !important;
-  }
-</style>
+  <style>
+    .nav-link.text-black:hover {
+      color: blue !important;
+    }
+  </style>
 </head>
 
 <body>
@@ -135,15 +136,16 @@ if (!in_array('ADMIN', $perfis, true)) {
               <style>
                 .sub-menu .nav-item .nav-link {
                   color: black !important;
-                } 
+                }
+
                 .sub-menu .nav-item .nav-link:hover {
-                  
+
                   color: blue !important;
                 }
               </style>
               <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                <li class="nav-item"> <a class="nav-link text-black"  href="./users/listaUser.php">Lista de Adicionados</a></li>
-                <li class="nav-item"> <a class="nav-link text-black"  href="./users/adicionarUser.php">Adicionar Usuários</a></li>
+                <li class="nav-item"> <a class="nav-link text-black" href="./users/listaUser.php">Lista de Adicionados</a></li>
+                <li class="nav-item"> <a class="nav-link text-black" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
 
               </ul>
             </div>
@@ -864,12 +866,15 @@ if (!in_array('ADMIN', $perfis, true)) {
         <!-- content-wrapper ends -->
         <!-- partial:partials/_footer.html -->
         <footer class="footer">
-          <div class="d-sm-flex justify-content-center justify-content-sm-between">
-            <span class="text-muted text-center text-sm-left d-block d-sm-inline-block">Copyright © 2021. Premium <a href="https://www.bootstrapdash.com/" target="_blank">Bootstrap admin template</a> from BootstrapDash. All rights reserved.</span>
-            <span class="float-none float-sm-right d-block mt-1 mt-sm-0 text-center">Hand-crafted & made with <i class="ti-heart text-danger ml-1"></i></span>
-          </div>
-          <div class="d-sm-flex justify-content-center justify-content-sm-between">
-            <span class="text-muted text-center text-sm-left d-block d-sm-inline-block">Distributed by <a href="https://www.themewagon.com/" target="_blank">Themewagon</a></span>
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
+            <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
+              © <?= date('Y') ?> SIGRelatórios —
+              <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">
+                lucascorrea.pro
+              </a>
+              . Todos os direitos reservados.
+            </span>
+
           </div>
         </footer>
         <!-- partial -->

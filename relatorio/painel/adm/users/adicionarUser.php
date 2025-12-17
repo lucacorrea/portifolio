@@ -395,11 +395,16 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 
                 </div>
 
-                <footer class="footer">
-                    <div class="d-sm-flex justify-content-center justify-content-sm-between">
-                        <span class="text-muted text-center text-sm-left d-block d-sm-inline-block">
-                            SIGRelatórios © <?= date('Y') ?>
+                 <footer class="footer">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
+                        <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
+                            © <?= date('Y') ?> SIGRelatórios —
+                            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">
+                                lucascorrea.pro
+                            </a>
+                            . Todos os direitos reservados.
                         </span>
+
                     </div>
                 </footer>
             </div>

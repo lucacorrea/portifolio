@@ -516,9 +516,6 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                             . Todos os direitos reservados.
                         </span>
 
-                        <span class="text-center text-sm-right d-block">
-                            Feito com <i class="ti-heart text-danger ml-1"></i>
-                        </span>
                     </div>
                 </footer>
 
