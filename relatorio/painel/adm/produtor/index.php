@@ -40,7 +40,7 @@ if (!in_array('ADMIN', $perfis, true)) {
   <!-- endinject -->
   <link rel="shortcut icon" href="../../../images/3.png" />
   <style>
-    .nav-link:hover {
+    ul .nav-link:hover {
       color: blue !important;
     }
     .nav-link{
