@@ -289,7 +289,7 @@ function h($s): string
             <div class="col-md-6 grid-margin stretch-card">
               <div class="card tale-bg">
                 <div class="card-people mt-auto">
-                  <img src="../../../images/dashboard/produtor.jpeg" alt="people" style="max-height:100%">
+                  <img src="../../../images/dashboard/produtor.jpeg" alt="people" style="max-height:100% !important;">
                   <div class="weather-info">
                     <div class="d-flex">
                       <div>
