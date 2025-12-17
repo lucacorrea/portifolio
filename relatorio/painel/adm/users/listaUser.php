@@ -322,24 +322,28 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                     <li class="nav-item"><a class="nav-link" href="#"><i class="ti-agenda menu-icon"></i><span class="menu-title">Relatórios</span></a></li>
 
                     <li class="nav-item active">
-                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="true" aria-controls="ui-basic">
+                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
                             <i class="ti-user menu-icon"></i>
                             <span class="menu-title">Usuários</span>
                             <i class="menu-arrow"></i>
                         </a>
-                        <div class="collapse show" id="ui-basic">
-                            <ul class="nav flex-column sub-menu" style="background: white !important;">
-                                <li class="nav-item active"><a class="nav-link" href="./listaUser.php">Lista de Adicionados</a></li>
-                                <li class="nav-item"><a class="nav-link" href="./adicionarUser.php">Adicionar Usuários</a></li>
+                        <div class="collapse" id="ui-basic">
+                            <style>
+                                .sub-menu .nav-item .nav-link {
+                                    color: black !important;
+                                }
+
+                                .sub-menu .nav-item .nav-link:hover {
+
+                                    color: blue !important;
+                                }
+                            </style>
+                            <ul class="nav flex-column sub-menu " style=" background: white !important; ">
+                                <li class="nav-item active"> <a class="nav-link" style="color:aliceblue !important;" href="#">Lista de Adicionados</a></li>
+                                <li class="nav-item"> <a class="nav-link " href="./adicionarUser.php">Adicionar Usuários</a></li>
+
                             </ul>
                         </div>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-                            <i class="ti-headphone-alt menu-icon"></i>
-                            <span class="menu-title">Suporte</span>
-                        </a>
                     </li>
                 </ul>
             </nav>
