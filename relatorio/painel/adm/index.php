@@ -213,18 +213,24 @@
               <span class="menu-title">Dashboard</span>
             </a>
           </li>
-          <li class="nav-item">
+            <li class="nav-item">
             <a class="nav-link" href="pages/documentation/documentation.html">
-              <i class="icon-paper menu-icon"></i>
+              <i class="icon-basket menu-icon"></i>
               <span class="menu-title">Feira do Produtor</span>
             </a>
-          </li>
-          <li class="nav-item">
+            </li>
+            <li class="nav-item">
             <a class="nav-link" href="pages/documentation/documentation.html">
-              <i class="icon-paper menu-icon"></i>
+              <i class="icon-leaf menu-icon"></i>
+              <span class="menu-title">Feira Alternativa</span>
+            </a>
+            </li>
+            <li class="nav-item">
+            <a class="nav-link" href="pages/documentation/documentation.html">
+              <i class="icon-home menu-icon"></i>
               <span class="menu-title">Mercado Municipal</span>
             </a>
-          </li>
+            </li>
         </ul>
       </nav>
       <!-- partial -->
