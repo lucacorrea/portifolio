@@ -138,7 +138,7 @@ if (!in_array('ADMIN', $perfis, true)) {
           .sub-menu .nav-item .nav-link:hover { color: blue !important; }
         </style>
 
-        <ul class="nav flex-column sub-menu" >
+        <ul class="nav flex-column sub-menu" style="background: white !important;">
           <li class="nav-item active">
             <a class="nav-link" href="./listaProduto.php" style="color:aliceblue !important;">Lista de Produtos</a>
           </li>
