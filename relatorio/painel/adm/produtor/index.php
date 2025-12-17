@@ -265,7 +265,7 @@ function h($s): string
                 <div class="col-12 col-xl-8 mb-4 mb-xl-0">
                   <h3 class="font-weight-bold">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
                   <h6 class="font-weight-normal mb-0">
-                    Painel administrativo da Feira do Produtor 
+                    Painel administrativo da Feira do Produtor
                   </h6>
                 </div>
 
@@ -289,9 +289,9 @@ function h($s): string
             <div class="col-md-6 grid-margin stretch-card">
               <div class="card tale-bg">
                 <div class="card-people ">
-                    <div style="position: relative; margin-top: -30px;">
-                      <img src="../../../images/dashboard/produtor.jpeg" alt="people" style="filter: brightness(50%); margin-top: -30px;">
-                    </div>
+                  <div style="position: relative; margin-top: -30px;">
+                    <img src="../../../images/dashboard/produtor.jpeg" alt="people" style="filter: brightness(50%); margin-top: -30px;">
+                  </div>
                   <div class="weather-info text-white font-weight-bold">
                     <div class="d-flex">
                       <div>
@@ -1009,24 +1009,25 @@ function h($s): string
   <!-- container-scroller -->
 
   <!-- SEM JS (como você pediu) -->
+  <script src="../../vendors/js/vendor.bundle.base.js"></script>
+  <!-- endinject -->
+  <!-- Plugin js for this page -->
+  <script src="../../vendors/chart.js/Chart.min.js"></script>
+
+
+
+  <!-- End plugin js for this page -->
+  <!-- inject:js -->
+  <script src="../../js/off-canvas.js"></script>
+  <script src="../../js/hoverable-collapse.js"></script>
+  <script src="../../js/template.js"></script>
+  <script src="../../js/settings.js"></script>
+  <script src="../../js/todolist.js"></script>
+  <!-- endinject -->
+  <!-- Custom js for this page-->
+  <script src="../../js/dashboard.js"></script>
+  <script src="../../js/Chart.roundedBarCharts.js"></script>
 </body>
-<script src="../../vendors/js/vendor.bundle.base.js"></script>
-<!-- endinject -->
-<!-- Plugin js for this page -->
-<script src="../../vendors/chart.js/Chart.min.js"></script>
 
-
-
-<!-- End plugin js for this page -->
-<!-- inject:js -->
-<script src="../../js/off-canvas.js"></script>
-<script src="../../js/hoverable-collapse.js"></script>
-<script src="../../js/template.js"></script>
-<script src="../../js/settings.js"></script>
-<script src="../../js/todolist.js"></script>
-<!-- endinject -->
-<!-- Custom js for this page-->
-<script src="../../js/dashboard.js"></script>
-<script src="../../js/Chart.roundedBarCharts.js"></script>
 
 </html>
