@@ -43,10 +43,16 @@ if (!in_array('ADMIN', $perfis, true)) {
     ul .nav-link:hover {
       color: blue !important;
     }
-    .nav-link{
+
+    .nav-link {
       color: black !important;
     }
-    
+
+    /* Recuar TODOS os submenus para a esquerda (itens dentro do collapse) */
+    .sidebar .sub-menu .nav-item .nav-link {
+      padding-left: 10px !important;
+      /* ajuste: 8px / 10px / 12px */
+    }
   </style>
 </head>
 
@@ -131,12 +137,12 @@ if (!in_array('ADMIN', $perfis, true)) {
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/unidades/">
-                    <i class="ti-ruler-pencil mr-2"></i> Unidades (kg, un, saco…)
+                    <i class="ti-ruler-pencil mr-2"></i> Unidades
                   </a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/produtores/">
-                    <i class="ti-user mr-2"></i> Produtores / Feirantes
+                    <i class="ti-user mr-2"></i> Produtores
                   </a>
                 </li>
               </ul>
@@ -175,7 +181,7 @@ if (!in_array('ADMIN', $perfis, true)) {
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
-                    <i class="ti-bar-chart mr-2"></i> Relatório Financeiro (Período)
+                    <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
                   </a>
                 </li>
                 <li class="nav-item">
@@ -190,7 +196,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/config/relatorio.php">
-                    <i class="ti-settings mr-2"></i> Configurar Texto/Assinatura
+                    <i class="ti-settings mr-2"></i> Configurar
                   </a>
                 </li>
               </ul>
