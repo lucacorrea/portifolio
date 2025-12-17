@@ -99,28 +99,28 @@ if (!in_array('ADMIN', $perfis, true)) {
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="../produtor/">
+            <a class="nav-link" href="../adm/produtor/">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira do Produtor</span>
             </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link" href="../alternativa/">
+            <a class="nav-link" href="../adm/alternativa/">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira Alternativa</span>
             </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link" href="../mercado/">
+            <a class="nav-link" href="../adm/mercado/">
               <i class="ti-home menu-icon"></i>
               <span class="menu-title">Mercado Municipal</span>
             </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link" href="../relatorio/">
+            <a class="nav-link" href="../adm/relatorio/">
               <i class="ti-agenda menu-icon"></i>
               <span class="menu-title">Relatórios</span>
             </a>
