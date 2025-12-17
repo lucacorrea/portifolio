@@ -145,7 +145,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                             <ul class="nav flex-column sub-menu" style="background: white !important;">
                                 <li class="nav-item active">
-                                    <a class="nav-link" href="./listaProduto.php" style="color:white !important; background:btn-primary !important;">Lista de Produtos</a>
+                                    <a class="nav-link" href="./listaProduto.php" style="color:white !important; background: #231475C5 !important;">Lista de Produtos</a>
                                 </li>
 
                                 <li class="nav-item">
