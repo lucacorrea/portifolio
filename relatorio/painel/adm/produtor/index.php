@@ -144,7 +144,7 @@ function h($s): string
 
           <!-- DASHBOARD -->
           <li class="nav-item active">
-            <a class="nav-link" href="index.php">
+            <a class="nav-link" href="./index.php">
               <i class="icon-grid menu-icon"></i>
               <span class="menu-title">Dashboard</span>
             </a>
@@ -160,27 +160,25 @@ function h($s): string
             <div class="collapse" id="feiraCadastros">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/produtos/lista.php">
+                  <a class="nav-link" href="./listaProduto.php">
                     <i class="ti-clipboard mr-2"></i> Lista de Produtos
                   </a>
                 </li>
+
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/produtos/adicionar.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Produto
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/categorias/">
+                  <a class="nav-link" href="./categorias.php">
                     <i class="ti-layers mr-2"></i> Categorias
                   </a>
                 </li>
+
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/unidades/">
+                  <a class="nav-link" href="./unidades.php">
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
                   </a>
                 </li>
+
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/produtores/">
+                  <a class="nav-link" href="./produtores.php">
                     <i class="ti-user mr-2"></i> Produtores
                   </a>
                 </li>
@@ -197,12 +195,13 @@ function h($s): string
             <div class="collapse" id="feiraMovimento">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/lancamentos/">
+                  <a class="nav-link" href="./lancamentos.php">
                     <i class="ti-write mr-2"></i> Lançamentos (Vendas)
                   </a>
                 </li>
+
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/fechamento/">
+                  <a class="nav-link" href="./fechamentoDia.php">
                     <i class="ti-check-box mr-2"></i> Fechamento do Dia
                   </a>
                 </li>
@@ -219,22 +218,25 @@ function h($s): string
             <div class="collapse text-black" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
+                  <a class="nav-link" href="./relatorioFinanceiro.php">
                     <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
                   </a>
                 </li>
+
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/relatorios/produtos.php">
+                  <a class="nav-link" href="./relatorioProdutos.php">
                     <i class="ti-list mr-2"></i> Produtos Comercializados
                   </a>
                 </li>
+
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/relatorios/mensal.php">
+                  <a class="nav-link" href="./relatorioMensal.php">
                     <i class="ti-calendar mr-2"></i> Resumo Mensal
                   </a>
                 </li>
+
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/config/relatorio.php">
+                  <a class="nav-link" href="./configRelatorio.php">
                     <i class="ti-settings mr-2"></i> Configurar
                   </a>
                 </li>
@@ -252,6 +254,7 @@ function h($s): string
 
         </ul>
       </nav>
+
       <!-- /SIDEBAR -->
 
       <!-- MAIN -->
