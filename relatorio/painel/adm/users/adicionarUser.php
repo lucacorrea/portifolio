@@ -297,7 +297,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
         <?php endif; ?>
 
         <div class="row">
-          <div class="col-lg-8 grid-margin stretch-card">
+          <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
                 <h4 class="card-title mb-0">Novo usuário</h4>
@@ -361,19 +361,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             </div>
           </div>
 
-          <div class="col-lg-4 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
-                <h4 class="card-title mb-0">Dicas</h4>
-                <p class="card-description">Boas práticas</p>
-                <ul class="mb-0" style="padding-left:18px;">
-                  <li>Use e-mails reais para recuperação.</li>
-                  <li>Evite senhas fracas.</li>
-                  <li>Crie ADMIN somente quando necessário.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+        
         </div>
 
       </div>
