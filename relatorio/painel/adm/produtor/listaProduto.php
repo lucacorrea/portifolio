@@ -142,7 +142,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                                     color: blue !important;
                                 }
                             </style>
-                            <ul class="nav flex-column sub-menu" style="background: white !important;">
+                             <ul class="nav flex-column sub-menu " style=" background: white !important; ">
                                 <li class="nav-item active">
                                     <a class="nav-link active" href="./listaProduto.php" style="color:aliceblue !important;">
                                         <i class="ti-clipboard mr-2"></i> Lista de Produtos
