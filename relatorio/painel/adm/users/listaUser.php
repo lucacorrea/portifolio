@@ -153,7 +153,7 @@
                                     <h3 class="font-weight-bold">Welcome Aamir</h3>
                                     <h6 class="font-weight-normal mb-0">All systems are running smoothly! You have <span class="text-primary">3 unread alerts!</span></h6>
                                 </div>
-                                <div class="col-lg-6 grid-margin stretch-card">
+                                <div class="col-lg-12 grid-margin stretch-card">
                                     <div class="card">
                                         <div class="card-body">
                                             <h4 class="card-title">Basic Table</h4>
