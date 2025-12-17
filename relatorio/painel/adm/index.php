@@ -1,3 +1,20 @@
+<?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+session_start();
+
+/* =========================
+   SEGURANÇA / LOGIN
+   =========================
+   Ajuste aqui para o seu padrão real de sessão:
+   - $_SESSION['usuario_logado'] = true
+   - $_SESSION['nivel'] = 'Admin'
+*/
+if (empty($_SESSION['usuario_logado']) || (($_SESSION['nivel'] ?? '') !== 'Admin')) {
+    header("Location: ../../../index.php");
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
