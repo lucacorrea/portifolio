@@ -96,17 +96,25 @@
             </a>
           </li>
 
-          <li>
+          <li class="nav-item">
             <a class="nav-link" href="pages/documentation/documentation.html">
               <i class="ti-agenda menu-icon"></i>
               <span class="menu-title">Relatórios</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="pages/documentation/documentation.html">
-              <i class="ti-user menu-icon"></i>
-              <span class="menu-title">Usuários</span>
+            <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+              <i class="icon-layout menu-icon"></i>
+              <span class="menu-title">Usuarios</span>
+              <i class="menu-arrow"></i>
             </a>
+            <div class="collapse" id="ui-basic">
+              <ul class="nav flex-column sub-menu">
+                <li class="nav-item"> <a class="nav-link" href="pages/ui-features/buttons.html">Lista de Adicionados</a></li>
+                <li class="nav-item"> <a class="nav-link" href="pages/ui-features/dropdowns.html">Adicionar Usuarios</a></li>
+                
+              </ul>
+            </div>
           </li>
             <li class="nav-item">
             <a class="nav-link" href="pages/documentation/documentation.html">
