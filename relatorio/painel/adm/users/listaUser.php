@@ -237,6 +237,27 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             /* esconde "Pesquisar:" */
         }
 
+        div.dataTables_filter label input {
+            font-size: 14px;
+        }
+
+        div.dataTables_filter input {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding-left: 38px !important;
+            height: 42px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, .12);
+            background: #fff;
+            transition: box-shadow .2s ease, border-color .2s ease;
+        }
+
+        div.dataTables_filter input:focus {
+            border-color: rgba(0, 123, 255, .45);
+            box-shadow: 0 0 0 .2rem rgba(0, 123, 255, .15);
+            outline: 0;
+        }
+
         /* ===== Rodapé (info + paginação) alinhados ===== */
         .dt-bottombar {
             display: flex;
@@ -281,7 +302,9 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             }
         }
 
-        não estourarem */ .acoes-wrap {
+
+        /* ações não estourarem */
+        .acoes-wrap {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
