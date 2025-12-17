@@ -44,7 +44,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 }
 
 /* =========================
-   CONEXÃO (tenta absoluto e depois relativo)
+   CONEXÃO (db(): PDO)
    ========================= */
 $pathAbs = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/\\') . "/assets/php/conexao.php";
 $pathRel = __DIR__ . "/../../../assets/php/conexao.php";
@@ -58,11 +58,15 @@ try {
     throw new RuntimeException("Não encontrei conexao.php em: {$pathAbs} nem em: {$pathRel}");
   }
 
-  if (!isset($pdo) || !($pdo instanceof PDO)) {
-    throw new RuntimeException("Falha: \$pdo não está disponível no conexao.php (verifique o nome da variável).");
+  if (!function_exists('db')) {
+    throw new RuntimeException("Falha: função db() não existe no conexao.php");
+  }
+
+  $pdo = db();
+  if (!($pdo instanceof PDO)) {
+    throw new RuntimeException("Falha: db() não retornou uma instância de PDO");
   }
 } catch (Throwable $e) {
-  // Mostra erro amigável (sem cair em 500)
   $fatal = $e->getMessage();
   echo "<h3>Erro ao iniciar a página</h3><pre>" . htmlspecialchars($fatal, ENT_QUOTES, 'UTF-8') . "</pre>";
   exit;
