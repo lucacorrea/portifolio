@@ -136,12 +136,11 @@ if (!in_array('ADMIN', $perfis, true)) {
         <style>
           .sub-menu .nav-item .nav-link { color: black !important; }
           .sub-menu .nav-item .nav-link:hover { color: blue !important; }
-          .sub-menu .nav-item .nav-link.active:hover { color:black !important; }
         </style>
 
         <ul class="nav flex-column sub-menu" style="background: white !important;">
           <li class="nav-item active">
-            <a class="nav-link" href="./listaProduto.php" style="color:white !important; background:blue !important;">Lista de Produtos</a>
+            <a class="nav-link" href="./listaProduto.php" style="color:white !important; background:darck-blue !important;">Lista de Produtos</a>
           </li>
 
           <li class="nav-item">
