@@ -364,9 +364,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                           <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                           <td>
                             <div class="acoes-wrap">
-                              <a class="btn btn-outline-info btn-xs" href="./editarUser.php?id=<?= $id ?>">
-                                <i class="ti-pencil"></i> Editar
-                              </a>
+                             
 
                               <form method="post" class="m-0">
                                 <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
