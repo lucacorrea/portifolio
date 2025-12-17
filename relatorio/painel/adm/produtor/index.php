@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -19,7 +20,8 @@ if (!in_array('ADMIN', $perfis, true)) {
 /* Nome usuário (só pra mostrar no topo) */
 $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 ?>
@@ -620,43 +622,57 @@ function h($s): string {
                           <td>Tomate</td>
                           <td class="text-right font-weight-bold">R$ 8,50/kg</td>
                           <td><?= date('d/m/Y') ?></td>
-                          <td class="font-weight-medium"><div class="badge badge-success">Em alta</div></td>
+                          <td class="font-weight-medium">
+                            <div class="badge badge-success">Em alta</div>
+                          </td>
                         </tr>
                         <tr>
                           <td>Banana</td>
                           <td class="text-right font-weight-bold">R$ 6,00/kg</td>
                           <td><?= date('d/m/Y', strtotime('-1 day')) ?></td>
-                          <td class="font-weight-medium"><div class="badge badge-success">Estável</div></td>
+                          <td class="font-weight-medium">
+                            <div class="badge badge-success">Estável</div>
+                          </td>
                         </tr>
                         <tr>
                           <td>Macaxeira</td>
                           <td class="text-right font-weight-bold">R$ 5,00/kg</td>
                           <td><?= date('d/m/Y', strtotime('-2 day')) ?></td>
-                          <td class="font-weight-medium"><div class="badge badge-warning">Oscilando</div></td>
+                          <td class="font-weight-medium">
+                            <div class="badge badge-warning">Oscilando</div>
+                          </td>
                         </tr>
                         <tr>
                           <td>Cheiro-verde</td>
                           <td class="text-right font-weight-bold">R$ 2,50/maço</td>
                           <td><?= date('d/m/Y', strtotime('-2 day')) ?></td>
-                          <td class="font-weight-medium"><div class="badge badge-success">Em alta</div></td>
+                          <td class="font-weight-medium">
+                            <div class="badge badge-success">Em alta</div>
+                          </td>
                         </tr>
                         <tr>
                           <td>Ovos caipira</td>
                           <td class="text-right font-weight-bold">R$ 18,00/bandeja</td>
                           <td><?= date('d/m/Y', strtotime('-3 day')) ?></td>
-                          <td class="font-weight-medium"><div class="badge badge-danger">Baixo estoque</div></td>
+                          <td class="font-weight-medium">
+                            <div class="badge badge-danger">Baixo estoque</div>
+                          </td>
                         </tr>
                         <tr>
                           <td>Pimenta de cheiro</td>
                           <td class="text-right font-weight-bold">R$ 12,00/kg</td>
                           <td><?= date('d/m/Y', strtotime('-3 day')) ?></td>
-                          <td class="font-weight-medium"><div class="badge badge-warning">Oscilando</div></td>
+                          <td class="font-weight-medium">
+                            <div class="badge badge-warning">Oscilando</div>
+                          </td>
                         </tr>
                         <tr>
                           <td>Farinha d’água</td>
                           <td class="text-right font-weight-bold">R$ 9,00/kg</td>
                           <td><?= date('d/m/Y', strtotime('-4 day')) ?></td>
-                          <td class="font-weight-medium"><div class="badge badge-success">Estável</div></td>
+                          <td class="font-weight-medium">
+                            <div class="badge badge-success">Estável</div>
+                          </td>
                         </tr>
                       </tbody>
                     </table>
@@ -992,5 +1008,23 @@ function h($s): string {
 
   <!-- SEM JS (como você pediu) -->
 </body>
+<script src="../../vendors/js/vendor.bundle.base.js"></script>
+<!-- endinject -->
+<!-- Plugin js for this page -->
+<script src="../../vendors/chart.js/Chart.min.js"></script>
+
+
+
+<!-- End plugin js for this page -->
+<!-- inject:js -->
+<script src="../../js/off-canvas.js"></script>
+<script src="../../js/hoverable-collapse.js"></script>
+<script src="../../js/template.js"></script>
+<script src="../../js/settings.js"></script>
+<script src="../../js/todolist.js"></script>
+<!-- endinject -->
+<!-- Custom js for this page-->
+<script src="../../js/dashboard.js"></script>
+<script src="../../js/Chart.roundedBarCharts.js"></script>
 
 </html>
