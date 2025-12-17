@@ -5,9 +5,9 @@ declare(strict_types=1);
    DEBUG (gera log na pasta do arquivo)
    ========================= */
 error_reporting(E_ALL);
-ini_set('display_errors', '0');
+ini_set('display_errors', '0');      // hosting: não exibir
 ini_set('log_errors', '1');
-@ini_set('error_log', __DIR__ . '/php_error.log');
+@ini_set('error_log', __DIR__ . '/php_error.log'); // pode falhar sem permissão, mas não quebra
 
 /* =========================
    SESSION (cookie válido no site todo)
@@ -162,17 +162,14 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    /* ====== UI base (organizado) ====== */
-    :root{ --r:14px; }
-    .card{ border-radius: var(--r); overflow:hidden; }
-    .btn{ border-radius: 10px; }
-    .btn-xs{ padding:.28rem .55rem; font-size:.78rem; white-space:nowrap; }
-    .badge{ font-size: 12px; padding: .45rem .65rem; border-radius: 999px; }
-    .table td, .table th{ vertical-align: middle; }
+    .sub-menu .nav-item .nav-link{ color:black !important; }
+    .sub-menu .nav-item .nav-link:hover{ color:blue !important; }
 
-    /* menu */
-    .sub-menu .nav-item .nav-link{ color: black !important; }
-    .sub-menu .nav-item .nav-link:hover{ color: blue !important; }
+    .table td, .table th{ vertical-align: middle; }
+    .badge{ font-size:12px; padding:.45rem .65rem; }
+    .btn-xs{ padding:.25rem .5rem; font-size:.75rem; }
+    .card-title{ margin-bottom:.25rem; }
+    .card-description{ margin-bottom:1rem; }
 
     /* ====== Search bonito (DataTables) ====== */
     .dt-topbar{
@@ -198,8 +195,10 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
     }
     div.dataTables_filter{ margin:0 !important; width:100%; }
     div.dataTables_filter label{
-      margin:0 !important; width:100%; display:block;
-      font-size:0; /* esconde o "Pesquisar:" */
+      margin:0 !important;
+      width:100%;
+      display:block;
+      font-size:0; /* esconde "Pesquisar:" */
     }
     div.dataTables_filter label input{ font-size:14px; }
     div.dataTables_filter input{
@@ -218,47 +217,12 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
       outline:0;
     }
 
-    /* ações */
-    .actions-wrap{ display:flex; flex-wrap:wrap; gap:8px; }
+    /* ações não estourarem */
+    .acoes-wrap{ display:flex; flex-wrap:wrap; gap:8px; }
 
-    /* ====== Mobile: tabela vira "cards" ====== */
     @media (max-width: 576px){
-      .content-wrapper{ padding: 1rem .75rem !important; }
       .dt-search-wrap{ max-width:100%; }
       div.dataTables_filter input{ height:44px; }
-
-      /* datatables info/paginação centralizado */
-      .dataTables_wrapper .dataTables_info{ text-align:center !important; padding-top:.75rem; }
-      .dataTables_wrapper .dataTables_paginate{ text-align:center !important; }
-      .dataTables_wrapper .pagination{ justify-content:center; }
-
-      /* tabela em cards */
-      table.table-mobile-cards thead{ display:none; }
-      table.table-mobile-cards tbody tr{
-        display:block;
-        background:#fff;
-        border:1px solid rgba(0,0,0,.08);
-        border-radius: var(--r);
-        padding: 10px 12px;
-        margin-bottom: 12px;
-      }
-      table.table-mobile-cards tbody td{
-        display:flex;
-        justify-content:space-between;
-        gap:12px;
-        padding: 8px 0 !important;
-        border:0 !important;
-      }
-      table.table-mobile-cards tbody td::before{
-        content: attr(data-label);
-        font-weight:600;
-        opacity:.75;
-        flex:0 0 auto;
-      }
-
-      /* botões em coluna no mobile */
-      .actions-wrap{ width:100%; flex-direction:column; }
-      .actions-wrap .btn, .actions-wrap button{ width:100%; }
     }
   </style>
 </head>
@@ -272,6 +236,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
       <a class="navbar-brand brand-logo mr-5" href="../index.php">SIGRelatórios</a>
       <a class="navbar-brand brand-logo-mini" href="../index.php"><img src="../../../images/3.png" alt="logo" /></a>
     </div>
+
     <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
       <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
         <span class="icon-menu"></span>
@@ -360,17 +325,17 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             <div class="card">
               <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
-                  <div class="mb-2 mb-md-0">
+                  <div>
                     <h4 class="card-title mb-0">Lista de Usuários</h4>
                     <p class="card-description mb-0">Busca, ordenação e paginação automática.</p>
                   </div>
-                  <a href="./adicionarUser.php" class="btn btn-primary btn-sm">
+                  <a href="./adicionarUser.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
                     <i class="ti-plus"></i> Adicionar
                   </a>
                 </div>
 
                 <div class="table-responsive pt-3">
-                  <table id="tabelaUsuarios" class="table table-striped table-hover table-mobile-cards">
+                  <table id="tabelaUsuarios" class="table table-striped table-hover">
                     <thead>
                       <tr>
                         <th>ID</th>
@@ -385,20 +350,20 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                     <tbody>
                       <?php foreach ($usuarios as $u): ?>
                         <?php
+                          $id = (int)($u['id'] ?? 0);
                           $ativo = (int)($u['ativo'] ?? 0) === 1;
                           $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
                           $badgeText  = $ativo ? 'Ativo' : 'Inativo';
-                          $id = (int)($u['id'] ?? 0);
                         ?>
                         <tr>
-                          <td data-label="ID"><?= $id ?></td>
-                          <td data-label="Nome"><?= h($u['nome'] ?? '') ?></td>
-                          <td data-label="Email"><?= h($u['email'] ?? '') ?></td>
-                          <td data-label="Criado em"><?= fmtData($u['criado_em'] ?? null) ?></td>
-                          <td data-label="Último login"><?= fmtData($u['ultimo_login_em'] ?? null) ?></td>
-                          <td data-label="Status"><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
-                          <td data-label="Ações">
-                            <div class="actions-wrap">
+                          <td><?= $id ?></td>
+                          <td><?= h($u['nome'] ?? '') ?></td>
+                          <td><?= h($u['email'] ?? '') ?></td>
+                          <td><?= fmtData($u['criado_em'] ?? null) ?></td>
+                          <td><?= fmtData($u['ultimo_login_em'] ?? null) ?></td>
+                          <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                          <td>
+                            <div class="acoes-wrap">
                               <a class="btn btn-outline-info btn-xs" href="./editarUser.php?id=<?= $id ?>">
                                 <i class="ti-pencil"></i> Editar
                               </a>
@@ -467,12 +432,12 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 <script src="../../../js/todolist.js"></script>
 
 <script>
-  $(function () {
+  $(function() {
     if (!$('#tabelaUsuarios').length) return;
 
     $('#tabelaUsuarios').DataTable({
       pageLength: 10,
-      lengthChange: false,
+      lengthChange: false, // remove "Mostrar X por página"
       dom: '<"dt-topbar"<"dt-search-wrap"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
       order: [[0, 'desc']],
       language: {
@@ -486,7 +451,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
         emptyTable: "Nenhum dado disponível na tabela",
         paginate: { first: "Primeira", previous: "Anterior", next: "Próxima", last: "Última" }
       },
-      initComplete: function () {
+      initComplete: function() {
         const $filter = $('#tabelaUsuarios_filter');
         const $input  = $filter.find('input');
 
