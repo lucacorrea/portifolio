@@ -108,7 +108,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 
           <li class="nav-item">
             <a class="nav-link" href="../adm/alternativa/">
-              <i class="ti-shopping-cart menu-icon"></i>
+              <i class="ti-plus menu-icon"></i>
               <span class="menu-title">Ad. Produto</span>
             </a>
           </li>
