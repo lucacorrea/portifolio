@@ -91,12 +91,7 @@ if (!in_array('ADMIN', $perfis, true)) {
       </div>
       <!-- partial -->
       <!-- partial:partials/_sidebar.html -->
-      <li class="nav-item">
-        <a class="nav-link" data-toggle="collapse" href="#menuFeiraProdutor" aria-expanded="false" aria-controls="menuFeiraProdutor">
-          <i class="ti-apple menu-icon"></i>
-          <span class="menu-title">Feira do Produtor</span>
-          <i class="menu-arrow"></i>
-        </a>
+      
 
         <div class="collapse" id="menuFeiraProdutor">
           <ul class="nav flex-column sub-menu" style="background:#fff !important;">
