@@ -115,7 +115,7 @@ if (!in_array('ADMIN', $perfis, true)) {
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/produtos/lista.php">
-                    <i class="ti-clipboard mr-2"></i> Lista de Produtos
+                    <i class="ti-clipboard "></i> Lista de Produtos
                   </a>
                 </li>
                 <li class="nav-item">
