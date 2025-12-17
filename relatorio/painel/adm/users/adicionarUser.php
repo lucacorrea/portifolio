@@ -270,10 +270,10 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                         </a>
                     </li>
 
-                    <li class="nav-item"><a class="nav-link" href="#"><i class="ti-shopping-cart menu-icon"></i><span class="menu-title">Feira do Produtor</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="#"><i class="ti-shopping-cart menu-icon"></i><span class="menu-title">Feira Alternativa</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="#"><i class="ti-home menu-icon"></i><span class="menu-title">Mercado Municipal</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="#"><i class="ti-agenda menu-icon"></i><span class="menu-title">Relatórios</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../produtor/"><i class="ti-shopping-cart menu-icon"></i><span class="menu-title">Feira do Produtor</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../alternativa/"><i class="ti-shopping-cart menu-icon"></i><span class="menu-title">Feira Alternativa</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../mercado/"><i class="ti-home menu-icon"></i><span class="menu-title">Mercado Municipal</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../relatorio/"><i class="ti-agenda menu-icon"></i><span class="menu-title">Relatórios</span></a></li>
 
                     <li class="nav-item active">
                         <a class="nav-link open" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
@@ -294,7 +294,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                             </style>
                             <ul class="nav flex-column sub-menu " style=" background: white !important; ">
                                 <li class="nav-item"> <a class="nav-link" href="./listaUser.php">Lista de Adicionados</a></li>
-                                <li class="nav-item active"> <a class="nav-link" style="color:aliceblue !important;"   href="#">Adicionar Usuários</a></li>
+                                <li class="nav-item active"> <a class="nav-link" style="color:aliceblue !important;" href="#">Adicionar Usuários</a></li>
 
                             </ul>
                         </div>
@@ -382,7 +382,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                                             <button type="submit" class="btn btn-primary">
                                                 <i class="ti-save mr-1"></i> Salvar usuário
                                             </button>
-                                           
+
                                         </div>
                                     </form>
 
