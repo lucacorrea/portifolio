@@ -963,7 +963,7 @@
   <script src="../../vendors/chart.js/Chart.min.js"></script>
   <script src="../../vendors/datatables.net/jquery.dataTables.js"></script>
   <script src="../../vendors/datatables.net-bs4/dataTables.bootstrap4.js"></script>
-  <script src="../../js/dataTables.select.min.js"></script>
+
 
   <!-- End plugin js for this page -->
   <!-- inject:js -->
