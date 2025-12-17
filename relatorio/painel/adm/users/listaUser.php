@@ -107,7 +107,7 @@
                             <span class="menu-title">Relatórios</span>
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item active">
                         <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
                             <i class="ti-user menu-icon"></i>
                             <span class="menu-title">Usuários</span>
