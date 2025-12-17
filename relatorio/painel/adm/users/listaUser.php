@@ -345,6 +345,13 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                             </ul>
                         </div>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+                            <i class="ti-headphone-alt menu-icon"></i>
+                            <span class="menu-title">Suporte</span>
+                        </a>
+                    </li>
                 </ul>
             </nav>
 
