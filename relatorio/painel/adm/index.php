@@ -109,9 +109,9 @@
               <i class="menu-arrow"></i>
             </a>
             <div class="collapse" id="ui-basic">
-              <ul class="nav flex-column sub-menu " style="color: black !important; background: white !important; ">
-                <li class="nav-item"> <a class="nav-link" href="pages/ui-features/buttons.html">Lista de Adicionados</a></li>
-                <li class="nav-item"> <a class="nav-link" href="pages/ui-features/dropdowns.html">Adicionar Usuários</a></li>
+              <ul class="nav flex-column sub-menu " style=" background: white !important; ">
+                <li class="nav-item"> <a class="nav-link text-black" href="pages/ui-features/buttons.html">Lista de Adicionados</a></li>
+                <li class="nav-item"> <a class="nav-link text-black" href="pages/ui-features/dropdowns.html">Adicionar Usuários</a></li>
 
               </ul>
             </div>
