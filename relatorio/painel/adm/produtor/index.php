@@ -265,7 +265,7 @@ function h($s): string
                 <div class="col-12 col-xl-8 mb-4 mb-xl-0">
                   <h3 class="font-weight-bold">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
                   <h6 class="font-weight-normal mb-0">
-                    Painel administrativo (dados fictícios) — pronto pra ligar no banco depois.
+                    Painel administrativo da Feira do Produtor 
                   </h6>
                 </div>
 
