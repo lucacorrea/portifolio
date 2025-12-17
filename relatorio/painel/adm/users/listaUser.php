@@ -125,7 +125,7 @@
                                 }
                             </style>
                             <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                                <li class="nav-item active"> <a class="nav-link text-black" href="#">Lista de Adicionados</a></li>
+                                <li class="nav-item active"> <a class="nav-link text-white" href="#">Lista de Adicionados</a></li>
                                 <li class="nav-item"> <a class="nav-link text-black" href="./adicionarUser.php">Adicionar Usuários</a></li>
 
                             </ul>
