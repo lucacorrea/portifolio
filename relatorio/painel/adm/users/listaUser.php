@@ -512,6 +512,10 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                             SIGRelatórios © <?= date('Y') ?>
                         </span>
                     </div>
+                    <div class="d-sm-flex justify-content-center justify-content-sm-between">
+                        <span class="text-muted text-center text-sm-left d-block d-sm-inline-block">Desenvolvido por 
+                    <a href="https://wa.me/92991515710" target="_blank">Lucas Correa</a> </span>
+                    </div>
                 </footer>
             </div>
         </div>
