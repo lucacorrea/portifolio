@@ -126,13 +126,12 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                     <!-- FEIRA DO PRODUTOR / CADASTROS (ATIVO NO PADRÃO QUE VOCÊ PASSOU) -->
                     <li class="nav-item active">
-                        <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
-                            <i class="ti-id-badge menu-icon"></i>
-                            <span class="menu-title">Cadastros</span>
+                        <a class="nav-link open" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+                            <i class="ti-user menu-icon"></i>
+                            <span class="menu-title">Produtos</span>
                             <i class="menu-arrow"></i>
                         </a>
-
-                          <div class="collapse" id="ui-basic">
+                        <div class="collapse" id="ui-basic">
                             <style>
                                 .sub-menu .nav-item .nav-link {
                                     color: black !important;
@@ -143,7 +142,6 @@ if (!in_array('ADMIN', $perfis, true)) {
                                     color: blue !important;
                                 }
                             </style>
-
                             <ul class="nav flex-column sub-menu" style="background: white !important;">
                                 <li class="nav-item active">
                                     <a class="nav-link active" href="./listaProduto.php" style="color:aliceblue !important;">
