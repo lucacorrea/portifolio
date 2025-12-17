@@ -7,19 +7,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>SIGRelatórios Admin</title>
   <!-- plugins:css -->
-  <link rel="stylesheet" href="../../../vendors/feather/feather.css">
-  <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
-  <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
+  <link rel="stylesheet" href="../../../../vendors/feather/feather.css">
+  <link rel="stylesheet" href="../../../../vendors/ti-icons/css/themify-icons.css">
+  <link rel="stylesheet" href="../../../../vendors/css/vendor.bundle.base.css">
   <!-- endinject -->
   <!-- Plugin css for this page -->
-  <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
-  <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
-  <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
+  <link rel="stylesheet" href="../../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
+  <link rel="stylesheet" href="../../../../vendors/ti-icons/css/themify-icons.css">
+  <link rel="stylesheet" type="text/css" href="../../../../js/select.dataTables.min.css">
   <!-- End plugin css for this page -->
   <!-- inject:css -->
-  <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
+  <link rel="stylesheet" href="../../../../css/vertical-layout-light/style.css">
   <!-- endinject -->
-  <link rel="shortcut icon" href="../../../images/3.png" />
+  <link rel="shortcut icon" href="../../../../images/3.png" />
 <style>
   .nav-link.text-black:hover {
     color: blue !important;
@@ -33,7 +33,7 @@
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
+        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../../images/3.png" alt="logo" /></a>
       </div>
       <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
         <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
@@ -174,7 +174,7 @@
             <div class="col-md-6 grid-margin stretch-card">
               <div class="card tale-bg">
                 <div class="card-people mt-auto">
-                  <img src="../../../images/dashboard/people.svg" alt="people">
+                  <img src="../../../../images/dashboard/people.svg" alt="people">
                   <div class="weather-info">
                     <div class="d-flex">
                       <div>
@@ -758,7 +758,7 @@
                   <ul class="icon-data-list">
                     <li>
                       <div class="d-flex">
-                        <img src="../../../images/faces/face1.jpg" alt="user">
+                        <img src="../../../../images/faces/face1.jpg" alt="user">
                         <div>
                           <p class="text-info mb-1">Isabella Becker</p>
                           <p class="mb-0">Sales dashboard have been created</p>
@@ -768,7 +768,7 @@
                     </li>
                     <li>
                       <div class="d-flex">
-                        <img src="../../../images/faces/face2.jpg" alt="user">
+                        <img src="../../../../images/faces/face2.jpg" alt="user">
                         <div>
                           <p class="text-info mb-1">Adam Warren</p>
                           <p class="mb-0">You have done a great job #TW111</p>
@@ -778,7 +778,7 @@
                     </li>
                     <li>
                       <div class="d-flex">
-                        <img src="../../../images/faces/face3.jpg" alt="user">
+                        <img src="../../../../images/faces/face3.jpg" alt="user">
                         <div>
                           <p class="text-info mb-1">Leonard Thornton</p>
                           <p class="mb-0">Sales dashboard have been created</p>
@@ -788,7 +788,7 @@
                     </li>
                     <li>
                       <div class="d-flex">
-                        <img src="../../../images/faces/face4.jpg" alt="user">
+                        <img src="../../../../images/faces/face4.jpg" alt="user">
                         <div>
                           <p class="text-info mb-1">George Morrison</p>
                           <p class="mb-0">Sales dashboard have been created</p>
@@ -798,7 +798,7 @@
                     </li>
                     <li>
                       <div class="d-flex">
-                        <img src="../../../images/faces/face5.jpg" alt="user">
+                        <img src="../../../../images/faces/face5.jpg" alt="user">
                         <div>
                           <p class="text-info mb-1">Ryan Cortez</p>
                           <p class="mb-0">Herbs are fun and easy to grow.</p>
@@ -863,24 +863,24 @@
   <!-- container-scroller -->
 
   <!-- plugins:js -->
-  <script src="../../../vendors/js/vendor.bundle.base.js"></script>
+  <script src="../../../../vendors/js/vendor.bundle.base.js"></script>
   <!-- endinject -->
   <!-- Plugin js for this page -->
-  <script src="../../../vendors/chart.js/Chart.min.js"></script>
+  <script src="../../../../vendors/chart.js/Chart.min.js"></script>
 
 
 
   <!-- End plugin js for this page -->
   <!-- inject:js -->
-  <script src="../../../js/off-canvas.js"></script>
-  <script src="../../../js/hoverable-collapse.js"></script>
-  <script src="../../../js/template.js"></script>
-  <script src="../../../js/settings.js"></script>
-  <script src="../../../js/todolist.js"></script>
+  <script src="../../../../js/off-canvas.js"></script>
+  <script src="../../../../js/hoverable-collapse.js"></script>
+  <script src="../../../../js/template.js"></script>
+  <script src="../../../../js/settings.js"></script>
+  <script src="../../../../js/todolist.js"></script>
   <!-- endinject -->
   <!-- Custom js for this page-->
-  <script src="../../../js/dashboard.js"></script>
-  <script src="../../../js/Chart.roundedBarCharts.js"></script>
+  <script src="../../../../js/dashboard.js"></script>
+  <script src="../../../../js/Chart.roundedBarCharts.js"></script>
   <!-- End custom js for this page-->
 </body>
 
