@@ -381,12 +381,12 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
     if ($('#tabelaUsuarios').length) {
       $('#tabelaUsuarios').DataTable({
         pageLength: 10,
-        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        lengthChange: false, // <- remove o seletor "Mostrar X por página"
+        dom: '<"row"<"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
         order: [[0, 'desc']],
         language: {
           processing: "Processando...",
           search: "Pesquisar:",
-          lengthMenu: "Mostrar _MENU_ por página",
           info: "Mostrando _START_ até _END_ de _TOTAL_ registros",
           infoEmpty: "Mostrando 0 até 0 de 0 registros",
           infoFiltered: "(filtrado de _MAX_ registros)",
@@ -399,5 +399,6 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
     }
   });
 </script>
+
 </body>
 </html>
