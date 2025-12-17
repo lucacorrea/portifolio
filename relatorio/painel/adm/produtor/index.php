@@ -46,6 +46,9 @@ if (!in_array('ADMIN', $perfis, true)) {
     .nav-link{
       color: black !important;
     }
+    nav-item{
+      margin-left: -10px !important;
+    }
   </style>
 </head>
 
