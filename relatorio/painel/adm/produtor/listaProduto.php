@@ -113,126 +113,124 @@ if (!in_array('ADMIN', $perfis, true)) {
             </div>
 
             <!-- SIDEBAR -->
-            <nav class="sidebar sidebar-offcanvas" id="sidebar">
-                <ul class="nav">
+           <nav class="sidebar sidebar-offcanvas" id="sidebar">
+  <ul class="nav">
 
-                    <!-- DASHBOARD -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.php">
-                            <i class="icon-grid menu-icon"></i>
-                            <span class="menu-title">Dashboard</span>
-                        </a>
-                    </li>
+    <!-- DASHBOARD -->
+    <li class="nav-item">
+      <a class="nav-link" href="index.php">
+        <i class="icon-grid menu-icon"></i>
+        <span class="menu-title">Dashboard</span>
+      </a>
+    </li>
 
-                    <!-- FEIRA DO PRODUTOR / CADASTROS (ATIVO NO PADRÃO QUE VOCÊ PASSOU) -->
-                    <li class="nav-item active">
-                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
-                            <i class="ti-user menu-icon"></i>
-                            <span class="menu-title">Produtos</span>
-                            <i class="menu-arrow"></i>
-                        </a>
-                        <div class="collapse" id="ui-basic">
+    <!-- PRODUTOS (SUBMENU ATIVO NO PADRÃO) -->
+    <li class="nav-item active">
+      <a class="nav-link open" data-toggle="collapse" href="#ui-basic" aria-expanded="true" aria-controls="ui-basic">
+        <i class="ti-user menu-icon"></i>
+        <span class="menu-title">Produtos</span>
+        <i class="menu-arrow"></i>
+      </a>
 
-                            <style>
-                                .sub-menu .nav-item .nav-link {
-                                    color: black !important;
-                                }
+      <div class="collapse show" id="ui-basic">
+        <style>
+          .sub-menu .nav-item .nav-link { color: black !important; }
+          .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+        </style>
 
-                                .sub-menu .nav-item .nav-link:hover {
+        <ul class="nav flex-column sub-menu" style="background: white !important;">
+          <li class="nav-item active">
+            <a class="nav-link" href="./listaProduto.php" style="color:aliceblue !important;">Lista de Produtos</a>
+          </li>
 
-                                    color: blue !important;
-                                }
-                            </style>
-                            <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                                <li class="nav-item"> <a class="nav-link" href="./listaUser.php">Lista de Adicionados</a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/categorias/">
+              <i class="ti-layers mr-2"></i> Categorias
+            </a>
+          </li>
 
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/categorias/">
-                                        <i class="ti-layers mr-2"></i> Categorias
-                                    </a>
-                                </li>
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/unidades/">
+              <i class="ti-ruler-pencil mr-2"></i> Unidades
+            </a>
+          </li>
 
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/unidades/">
-                                        <i class="ti-ruler-pencil mr-2"></i> Unidades
-                                    </a>
-                                </li>
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/produtores/">
+              <i class="ti-user mr-2"></i> Produtores
+            </a>
+          </li>
+        </ul>
+      </div>
+    </li>
 
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/produtores/">
-                                        <i class="ti-user mr-2"></i> Produtores
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
+    <!-- MOVIMENTO -->
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
+        <i class="ti-exchange-vertical menu-icon"></i>
+        <span class="menu-title">Movimento</span>
+        <i class="menu-arrow"></i>
+      </a>
+      <div class="collapse" id="feiraMovimento">
+        <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/lancamentos/">
+              <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/fechamento/">
+              <i class="ti-check-box mr-2"></i> Fechamento do Dia
+            </a>
+          </li>
+        </ul>
+      </div>
+    </li>
 
-                    <!-- MOVIMENTO -->
-                    <li class="nav-item">
-                        <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
-                            <i class="ti-exchange-vertical menu-icon"></i>
-                            <span class="menu-title">Movimento</span>
-                            <i class="menu-arrow"></i>
-                        </a>
-                        <div class="collapse" id="feiraMovimento">
-                            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/lancamentos/">
-                                        <i class="ti-write mr-2"></i> Lançamentos (Vendas)
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/fechamento/">
-                                        <i class="ti-check-box mr-2"></i> Fechamento do Dia
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
+    <!-- RELATÓRIOS -->
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
+        <i class="ti-clipboard menu-icon"></i>
+        <span class="menu-title">Relatórios</span>
+        <i class="menu-arrow"></i>
+      </a>
+      <div class="collapse text-black" id="feiraRelatorios">
+        <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
+              <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/relatorios/produtos.php">
+              <i class="ti-list mr-2"></i> Produtos Comercializados
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/relatorios/mensal.php">
+              <i class="ti-calendar mr-2"></i> Resumo Mensal
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="../adm/feira_produtor/config/relatorio.php">
+              <i class="ti-settings mr-2"></i> Configurar
+            </a>
+          </li>
+        </ul>
+      </div>
+    </li>
 
-                    <!-- RELATÓRIOS -->
-                    <li class="nav-item">
-                        <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
-                            <i class="ti-clipboard menu-icon"></i>
-                            <span class="menu-title">Relatórios</span>
-                            <i class="menu-arrow"></i>
-                        </a>
-                        <div class="collapse text-black" id="feiraRelatorios">
-                            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
-                                        <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/relatorios/produtos.php">
-                                        <i class="ti-list mr-2"></i> Produtos Comercializados
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/relatorios/mensal.php">
-                                        <i class="ti-calendar mr-2"></i> Resumo Mensal
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="../adm/feira_produtor/config/relatorio.php">
-                                        <i class="ti-settings mr-2"></i> Configurar
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
+    <!-- SUPORTE -->
+    <li class="nav-item">
+      <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+        <i class="ti-headphone-alt menu-icon"></i>
+        <span class="menu-title">Suporte</span>
+      </a>
+    </li>
 
-                    <!-- SUPORTE -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-                            <i class="ti-headphone-alt menu-icon"></i>
-                            <span class="menu-title">Suporte</span>
-                        </a>
-                    </li>
+  </ul>
+</nav>
 
-                </ul>
-            </nav>
 
             <!-- MAIN -->
             <div class="main-panel">
