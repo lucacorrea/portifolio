@@ -132,13 +132,14 @@ if (!in_array('ADMIN', $perfis, true)) {
                             <i class="menu-arrow"></i>
                         </a>
 
-                        <div class="collapse show" id="feiraCadastros">
+                          <div class="collapse" id="ui-basic">
                             <style>
                                 .sub-menu .nav-item .nav-link {
                                     color: black !important;
                                 }
 
                                 .sub-menu .nav-item .nav-link:hover {
+
                                     color: blue !important;
                                 }
                             </style>
