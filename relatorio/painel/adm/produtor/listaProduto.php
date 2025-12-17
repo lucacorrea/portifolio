@@ -135,7 +135,7 @@ if (!in_array('ADMIN', $perfis, true)) {
       <div class="collapse show" id="ui-basic">
         <style>
           .sub-menu .nav-item .nav-link { color: black !important; }
-          .sub-menu .nav-item .nav-link:hover { color: blue; }
+          .sub-menu .nav-item .nav-link:hover { color: blue !important; }
           .sub-menu .nav-item .nav-link .active:hover { color:black !important; }
         </style>
 
