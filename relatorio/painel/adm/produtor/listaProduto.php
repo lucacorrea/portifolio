@@ -243,7 +243,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                     <div class="row">
                         <div class="col-12 mb-3">
-                            <h3 class="font-weight-bold">Produtos do sistema</h3>
+                            <h3 class="font-weight-bold">Produtos da Feira do Produtor</h3>
                             <h6 class="font-weight-normal mb-0">Gerencie produtos (ativar/desativar/excluir).</h6>
                         </div>
                     </div>
