@@ -20,6 +20,43 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
+
+/* ===== Conexão + Listagem ===== */
+require '../../../assets/php/conexao.php';
+$pdo = db();
+
+/* Feira do Produtor = 1 (na pasta da Feira Alternativa você coloca 2) */
+$feiraId = 1;
+
+$q = trim((string)($_GET['q'] ?? ''));
+$produtores = [];
+
+try {
+  if ($q !== '') {
+    $sql = "SELECT id, nome, comunidade, telefone, ativo
+            FROM produtores
+            WHERE feira_id = :feira
+              AND (nome LIKE :q OR comunidade LIKE :q OR telefone LIKE :q)
+            ORDER BY nome ASC";
+    $stmt = $pdo->prepare($sql);
+    $like = '%' . $q . '%';
+    $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+    $stmt->bindValue(':q', $like, PDO::PARAM_STR);
+    $stmt->execute();
+    $produtores = $stmt->fetchAll();
+  } else {
+    $sql = "SELECT id, nome, comunidade, telefone, ativo
+            FROM produtores
+            WHERE feira_id = :feira
+            ORDER BY nome ASC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+    $stmt->execute();
+    $produtores = $stmt->fetchAll();
+  }
+} catch (Throwable $e) {
+  $err = $err ?: 'Não foi possível carregar os produtores agora.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -53,7 +90,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
     .sig-flash-wrap{
       position: fixed;
       top: 78px;
-      right: 18px;       /* >>> AGORA À DIREITA */
+      right: 18px;
       left: auto;
       width: min(420px, calc(100vw - 36px));
       z-index: 9999;
@@ -70,10 +107,10 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
       margin-bottom: 10px !important;
 
       opacity: 0;
-      transform: translateX(10px); /* >>> ENTRA DA DIREITA */
+      transform: translateX(10px);
       animation:
         sigToastIn .22s ease-out forwards,
-        sigToastOut .25s ease-in forwards 5.75s; /* total ~6s */
+        sigToastOut .25s ease-in forwards 5.75s;
     }
     .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
     .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
@@ -86,12 +123,11 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
     .sig-toast .close{ opacity:.55; font-size: 18px; line-height: 1; padding: 0 6px; }
     .sig-toast .close:hover{ opacity:1; }
 
-    @keyframes sigToastIn{
-      to{ opacity:1; transform: translateX(0); }
-    }
-    @keyframes sigToastOut{
-      to{ opacity:0; transform: translateX(12px); visibility:hidden; } /* >>> SAI PRA DIREITA */
-    }
+    @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
+    @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
+
+    .acoes-wrap{ display:flex; flex-wrap:wrap; gap:8px; }
+    .btn-xs{ padding: .25rem .5rem; font-size: .75rem; line-height: 1.2; height:auto; }
   </style>
 </head>
 
@@ -200,11 +236,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
                 </a>
               </li>
 
-              <li class="nav-item">
-                <a class="nav-link" href="./adicionarProduto.php">
-                  <i class="ti-plus mr-2"></i> Adicionar Produto
-                </a>
-              </li>
+              
 
               <li class="nav-item">
                 <a class="nav-link" href="./listaCategoria.php">
@@ -212,11 +244,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
                 </a>
               </li>
 
-              <li class="nav-item">
-                <a class="nav-link" href="./adicionarCategoria.php">
-                  <i class="ti-plus mr-2"></i> Adicionar Categoria
-                </a>
-              </li>
+              
 
               <li class="nav-item">
                 <a class="nav-link" href="./listaUnidade.php">
@@ -224,11 +252,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
                 </a>
               </li>
 
-              <li class="nav-item">
-                <a class="nav-link" href="./adicionarUnidade.php">
-                  <i class="ti-plus mr-2"></i> Adicionar Unidade
-                </a>
-              </li>
+              
 
               <li class="nav-item active">
                 <a class="nav-link" href="./listaProdutor.php" style="color:white !important; background: #231475C5 !important;">
@@ -236,11 +260,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
                 </a>
               </li>
 
-              <li class="nav-item">
-                <a class="nav-link" href="./adicionarProdutor.php">
-                  <i class="ti-plus mr-2"></i> Adicionar Produtor
-                </a>
-              </li>
+              
             </ul>
           </div>
         </li>
@@ -320,6 +340,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
           </div>
         </div>
 
+        <!-- Barra (mantendo layout) -->
         <div class="row">
           <div class="col-md-12 grid-margin stretch-card">
             <div class="card toolbar-card">
@@ -327,7 +348,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
                 <div class="row align-items-center">
                   <div class="col-md-6 mb-2 mb-md-0">
                     <label class="mb-1">Pesquisa</label>
-                    <input type="text" class="form-control" placeholder="Pesquisar por nome, comunidade, telefone...">
+                    <input type="text" class="form-control" placeholder="Pesquisar por nome, comunidade, telefone..." value="<?= h($q) ?>">
                   </div>
 
                   <div class="col-md-6">
@@ -336,14 +357,14 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
                       <button type="button" class="btn btn-primary">
                         <i class="ti-search mr-1"></i> Pesquisar
                       </button>
-                      <button type="button" class="btn btn-light">
+                      <a class="btn btn-light" href="./listaProdutor.php">
                         <i class="ti-close mr-1"></i> Limpar
-                      </button>
+                      </a>
                       <button type="button" class="btn btn-success">
                         <i class="ti-export mr-1"></i> Exportar
                       </button>
                     </div>
-                    <small class="text-muted d-block mt-2">Depois a gente liga esses botões no back-end.</small>
+                    <small class="text-muted d-block mt-2">Pesquisa por URL: <b>?q=texto</b> (depois a gente liga o botão).</small>
                   </div>
                 </div>
               </div>
@@ -351,6 +372,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
           </div>
         </div>
 
+        <!-- LISTAGEM -->
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
@@ -358,7 +380,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Lista de Produtores</h4>
-                    <p class="card-description mb-0">Depois conectamos com paginação, busca e ordenação.</p>
+                    <p class="card-description mb-0">Mostrando <?= (int)count($produtores) ?> registro(s).</p>
                   </div>
                   <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
                     <i class="ti-plus"></i> Adicionar
@@ -378,15 +400,41 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                          Nenhum produtor listado ainda. (Vamos conectar no banco depois)
-                        </td>
-                      </tr>
+                      <?php if (empty($produtores)): ?>
+                        <tr>
+                          <td colspan="6" class="text-center text-muted py-4">
+                            Nenhum produtor encontrado.
+                          </td>
+                        </tr>
+                      <?php else: ?>
+                        <?php foreach ($produtores as $p): ?>
+                          <?php
+                            $id = (int)($p['id'] ?? 0);
+                            $ativo = (int)($p['ativo'] ?? 0) === 1;
+                            $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
+                            $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+                          ?>
+                          <tr>
+                            <td><?= $id ?></td>
+                            <td><?= h($p['nome'] ?? '') ?></td>
+                            <td><?= h($p['comunidade'] ?? '') ?></td>
+                            <td><?= h($p['telefone'] ?? '') ?></td>
+                            <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                            <td>
+                              <div class="acoes-wrap">
+                                <button type="button" class="btn btn-outline-primary btn-xs" disabled>
+                                  <i class="ti-pencil"></i> Editar
+                                </button>
+                                <button type="button" class="btn btn-outline-warning btn-xs" disabled>
+                                  <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
                     </tbody>
                   </table>
-
-                  <div class="text-muted mt-3">Dica: aqui depois a gente coloca editar / ativar / inativar.</div>
                 </div>
 
               </div>
