@@ -249,7 +249,7 @@ if (!in_array('ADMIN', $perfis, true)) {
           <div class="row">
             <div class="col-12 mb-3">
               <h3 class="font-weight-bold">Adicionar Produtor</h3>
-              <h6 class="font-weight-normal mb-0">Cadastro de produtor rural (feirante). Sem caixa próprio — vendas registradas “na fala”.</h6>
+              <h6 class="font-weight-normal mb-0">Cadastro de produtor rural (feirante).</h6>
             </div>
           </div>
 
