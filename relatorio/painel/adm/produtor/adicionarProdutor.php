@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
@@ -15,6 +14,112 @@ if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
 }
+
+/* Conexão (padrão do seu sistema: db(): PDO) */
+require '../../../assets/php/conexao.php';
+
+function h($s): string
+{
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
+
+function trunc255(string $s): string
+{
+  if (function_exists('mb_substr')) return mb_substr($s, 0, 255, 'UTF-8');
+  return substr($s, 0, 255);
+}
+
+/* Feira padrão desta página */
+$FEIRA_ID = 1; // 1=Feira do Produtor | 2=Feira Alternativa
+
+/* Detecção opcional pela pasta (se você separou em pastas) */
+$dirLower = strtolower((string)__DIR__);
+if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
+if (strpos($dirLower, 'produtor') !== false) $FEIRA_ID = 1;
+
+/* Flash */
+$msg = (string)($_SESSION['flash_ok'] ?? '');
+$err = (string)($_SESSION['flash_err'] ?? '');
+unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
+
+/* CSRF */
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = (string)$_SESSION['csrf_token'];
+
+/* Valores antigos */
+$old = [
+  'nome' => '',
+  'banca' => '',
+  'cpf' => '',
+  'telefone' => '',
+  'ativo' => '1',
+  'comunidade' => '',
+  'tipo' => 'Produtor rural',
+  'observacao' => '',
+];
+
+/* POST */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $tokenPost = (string)($_POST['csrf_token'] ?? '');
+  if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
+    $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
+    header('Location: ./adicionarProdutor.php');
+    exit;
+  }
+
+  $old['nome']       = trim((string)($_POST['nome'] ?? ''));
+  $old['banca']      = trim((string)($_POST['banca'] ?? ''));
+  $old['cpf']        = trim((string)($_POST['cpf'] ?? ''));
+  $old['telefone']   = trim((string)($_POST['telefone'] ?? ''));
+  $old['ativo']      = (string)($_POST['ativo'] ?? '1');
+  $old['comunidade'] = trim((string)($_POST['comunidade'] ?? ''));
+  $old['tipo']       = trim((string)($_POST['tipo'] ?? 'Produtor rural'));
+  $old['observacao'] = trim((string)($_POST['observacao'] ?? ''));
+
+  if ($old['nome'] === '') {
+    $err = 'Informe o nome do produtor.';
+  } else {
+    $contato = trunc255($old['telefone']);
+    $comunidade = trunc255($old['comunidade']);
+    $ativo = ($old['ativo'] === '1') ? 1 : 0;
+
+    /* Como sua tabela produtores tem apenas: nome, contato, comunidade, ativo, observacao
+       vamos “compactar” banca/cpf/tipo dentro de observacao por enquanto. */
+    $extras = [];
+    if ($old['banca'] !== '') $extras[] = 'Banca: ' . $old['banca'];
+    if ($old['cpf'] !== '')   $extras[] = 'CPF: ' . $old['cpf'];
+    if ($old['tipo'] !== '')  $extras[] = 'Tipo: ' . $old['tipo'];
+
+    $obs = $old['observacao'];
+    $obsFinal = trim(implode(' | ', $extras));
+    if ($obs !== '') $obsFinal = trim($obsFinal . ' | Obs: ' . $obs);
+    $obsFinal = trunc255($obsFinal);
+
+    try {
+      $pdo = db();
+
+      $sql = "INSERT INTO produtores (feira_id, nome, contato, comunidade, ativo, observacao)
+              VALUES (:feira_id, :nome, :contato, :comunidade, :ativo, :observacao)";
+      $stmt = $pdo->prepare($sql);
+      $stmt->execute([
+        ':feira_id'    => $FEIRA_ID,
+        ':nome'        => $old['nome'],
+        ':contato'     => $contato !== '' ? $contato : null,
+        ':comunidade'  => $comunidade !== '' ? $comunidade : null,
+        ':ativo'       => $ativo,
+        ':observacao'  => $obsFinal !== '' ? $obsFinal : null,
+      ]);
+
+      $_SESSION['flash_ok'] = 'Produtor cadastrado com sucesso!';
+      header('Location: ./listaProdutor.php');
+      exit;
+    } catch (Throwable $e) {
+      $err = 'Erro ao salvar produtor: ' . $e->getMessage();
+    }
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -24,60 +129,33 @@ if (!in_array('ADMIN', $perfis, true)) {
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>SIGRelatórios Feira do Produtor — Adicionar Produtor</title>
 
-  <!-- plugins:css -->
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
-  <!-- endinject -->
 
-  <!-- Plugin css for this page -->
   <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
-  <!-- End plugin css for this page -->
 
-  <!-- inject:css -->
   <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
-  <!-- endinject -->
-
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover {
-      color: blue !important;
-    }
+    ul .nav-link:hover { color: blue !important; }
+    .nav-link { color: black !important; }
 
-    .nav-link {
-      color: black !important;
-    }
+    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
+    .sidebar .sub-menu li { list-style: none !important; }
 
-    /* Recuar TODOS os submenus para a esquerda */
-    .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -35px !important;
-    }
-
-    .sidebar .sub-menu li {
-      list-style: none !important;
-    }
-
-    .form-control {
-      height: 42px;
-    }
-
-    .btn {
-      height: 42px;
-    }
-
-    .help-hint {
-      font-size: 12px;
-    }
+    .form-control { height: 42px; }
+    .btn { height: 42px; }
+    .help-hint { font-size: 12px; }
   </style>
 </head>
 
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR (padrão) -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -102,7 +180,6 @@ if (!in_array('ADMIN', $perfis, true)) {
 
     <div class="container-fluid page-body-wrapper">
 
-      <!-- settings-panel (mantido) -->
       <div id="right-sidebar" class="settings-panel">
         <i class="settings-close ti-close"></i>
         <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
@@ -115,7 +192,6 @@ if (!in_array('ADMIN', $perfis, true)) {
         </ul>
       </div>
 
-      <!-- SIDEBAR (Cadastros ativo + Adicionar Produtor ativo) -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
 
@@ -126,7 +202,6 @@ if (!in_array('ADMIN', $perfis, true)) {
             </a>
           </li>
 
-          <!-- CADASTROS (ATIVO) -->
           <li class="nav-item active">
             <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
               <i class="ti-id-badge menu-icon"></i>
@@ -136,13 +211,8 @@ if (!in_array('ADMIN', $perfis, true)) {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
+                .sub-menu .nav-item .nav-link { color: black !important; }
+                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -199,7 +269,6 @@ if (!in_array('ADMIN', $perfis, true)) {
             </div>
           </li>
 
-          <!-- MOVIMENTO -->
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
               <i class="ti-exchange-vertical menu-icon"></i>
@@ -223,7 +292,6 @@ if (!in_array('ADMIN', $perfis, true)) {
             </div>
           </li>
 
-          <!-- RELATÓRIOS -->
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
               <i class="ti-clipboard menu-icon"></i>
@@ -257,7 +325,6 @@ if (!in_array('ADMIN', $perfis, true)) {
             </div>
           </li>
 
-          <!-- SUPORTE -->
           <li class="nav-item">
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
@@ -268,7 +335,6 @@ if (!in_array('ADMIN', $perfis, true)) {
         </ul>
       </nav>
 
-      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
 
@@ -279,6 +345,13 @@ if (!in_array('ADMIN', $perfis, true)) {
             </div>
           </div>
 
+          <?php if (!empty($msg)): ?>
+            <div class="alert alert-success"><?= h($msg) ?></div>
+          <?php endif; ?>
+          <?php if (!empty($err)): ?>
+            <div class="alert alert-danger"><?= h($err) ?></div>
+          <?php endif; ?>
+
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
@@ -286,72 +359,66 @@ if (!in_array('ADMIN', $perfis, true)) {
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
                       <h4 class="card-title mb-0">Dados do Produtor</h4>
-                      <p class="card-description mb-0">Preencha os campos abaixo. Depois conectamos o POST no back-end.</p>
+                      <p class="card-description mb-0">Salvar direto no banco (sem caixa próprio, tudo “na fala”).</p>
                     </div>
                     <a href="./listaProdutor.php" class="btn btn-light btn-sm mt-2 mt-md-0">
                       <i class="ti-arrow-left"></i> Voltar
                     </a>
                   </div>
 
-                  <form class="pt-4" method="post" action="#">
+                  <form class="pt-4" method="post" action="">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+
                     <div class="row">
 
-                      <!-- Nome -->
                       <div class="col-md-6 mb-3">
                         <label>Nome do produtor <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" placeholder="Ex.: João da Silva" required>
+                        <input name="nome" type="text" class="form-control" placeholder="Ex.: João da Silva" required value="<?= h($old['nome']) ?>">
                         <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
                       </div>
 
-                      <!-- Apelido / Nome de banca -->
                       <div class="col-md-6 mb-3">
                         <label>Nome da banca (opcional)</label>
-                        <input type="text" class="form-control" placeholder="Ex.: Banca do João">
+                        <input name="banca" type="text" class="form-control" placeholder="Ex.: Banca do João" value="<?= h($old['banca']) ?>">
                         <small class="text-muted help-hint">Ajuda a identificar no dia a dia.</small>
                       </div>
 
-                      <!-- CPF (opcional por enquanto) -->
                       <div class="col-md-4 mb-3">
                         <label>CPF (opcional)</label>
-                        <input type="text" class="form-control" placeholder="000.000.000-00">
+                        <input name="cpf" type="text" class="form-control" placeholder="000.000.000-00" value="<?= h($old['cpf']) ?>">
                       </div>
 
-                      <!-- Telefone -->
                       <div class="col-md-4 mb-3">
                         <label>Telefone / WhatsApp</label>
-                        <input type="text" class="form-control" placeholder="(92) 9xxxx-xxxx">
+                        <input name="telefone" type="text" class="form-control" placeholder="(92) 9xxxx-xxxx" value="<?= h($old['telefone']) ?>">
                       </div>
 
-                      <!-- Status -->
                       <div class="col-md-4 mb-3">
                         <label>Status</label>
-                        <select class="form-control">
-                          <option value="1" selected>Ativo</option>
-                          <option value="0">Inativo</option>
+                        <select name="ativo" class="form-control">
+                          <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
+                          <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
                         </select>
                       </div>
 
-                      <!-- Comunidade -->
                       <div class="col-md-6 mb-3">
                         <label>Comunidade / Localidade</label>
-                        <input type="text" class="form-control" placeholder="Ex.: Comunidade X / Ramal Y">
+                        <input name="comunidade" type="text" class="form-control" placeholder="Ex.: Comunidade X / Ramal Y" value="<?= h($old['comunidade']) ?>">
                       </div>
 
-                      <!-- Tipo de produtor (só referência) -->
                       <div class="col-md-6 mb-3">
                         <label>Tipo</label>
-                        <select class="form-control">
-                          <option selected>Produtor rural</option>
-                          <option>Associação / Cooperativa</option>
-                          <option>Revendedor (se houver)</option>
+                        <select name="tipo" class="form-control">
+                          <option <?= ($old['tipo'] === 'Produtor rural' ? 'selected' : '') ?>>Produtor rural</option>
+                          <option <?= ($old['tipo'] === 'Associação / Cooperativa' ? 'selected' : '') ?>>Associação / Cooperativa</option>
+                          <option <?= ($old['tipo'] === 'Revendedor (se houver)' ? 'selected' : '') ?>>Revendedor (se houver)</option>
                         </select>
                         <small class="text-muted help-hint">Você pode ajustar essas opções depois.</small>
                       </div>
 
-                      <!-- Observações -->
                       <div class="col-md-12 mb-3">
                         <label>Observações</label>
-                        <textarea class="form-control" rows="4" placeholder="Ex.: entrega só na sexta, produtos principais, etc."></textarea>
+                        <textarea name="observacao" class="form-control" rows="4" placeholder="Ex.: entrega só na sexta, produtos principais, etc."><?= h($old['observacao']) ?></textarea>
                       </div>
 
                     </div>
@@ -365,11 +432,10 @@ if (!in_array('ADMIN', $perfis, true)) {
                       <button type="reset" class="btn btn-light">
                         <i class="ti-close mr-1"></i> Limpar
                       </button>
-
                     </div>
 
                     <small class="text-muted d-block mt-3">
-                      * Campos obrigatórios. (Depois a gente valida no back-end também.)
+                      * Campos obrigatórios.
                     </small>
                   </form>
 
@@ -380,7 +446,6 @@ if (!in_array('ADMIN', $perfis, true)) {
 
         </div>
 
-        <!-- FOOTER -->
         <footer class="footer">
           <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
             <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
@@ -392,14 +457,10 @@ if (!in_array('ADMIN', $perfis, true)) {
         </footer>
 
       </div>
-      <!-- main-panel ends -->
 
     </div>
-    <!-- page-body-wrapper ends -->
   </div>
-  <!-- container-scroller -->
 
-  <!-- JS EXTERNO (sem JS interno) -->
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
@@ -412,5 +473,4 @@ if (!in_array('ADMIN', $perfis, true)) {
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
 </body>
-
 </html>
