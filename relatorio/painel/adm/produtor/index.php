@@ -166,19 +166,19 @@ function h($s): string
                 </li>
 
                 <li class="nav-item">
-                  <a class="nav-link" href="./categorias.php">
+                  <a class="nav-link" href="./listaCategoria.php">
                     <i class="ti-layers mr-2"></i> Categorias
                   </a>
                 </li>
 
                 <li class="nav-item">
-                  <a class="nav-link" href="./unidades.php">
+                  <a class="nav-link" href="./listaUnidade.php">
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
                   </a>
                 </li>
 
                 <li class="nav-item">
-                  <a class="nav-link" href="./produtores.php">
+                  <a class="nav-link" href="./listaProdutor.php">
                     <i class="ti-user mr-2"></i> Produtores
                   </a>
                 </li>
