@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -198,6 +199,11 @@ try {
 
 $pages = (int)ceil(max(1, $total) / $perPage);
 if ($page > $pages) $page = $pages;
+
+$_SESSION['flash_ok'] = 'Produtor atualizado com sucesso.';
+$_SESSION['flash_ok'] = 'Produtor removido com sucesso.';
+$_SESSION['flash_ok'] = 'Status do produtor alterado com sucesso.';
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -219,20 +225,94 @@ if ($page > $pages) $page = $pages;
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
+    ul .nav-link:hover {
+      color: blue !important;
+    }
 
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
+    .nav-link {
+      color: black !important;
+    }
 
-    .toolbar-card .form-control { height: 42px; }
-    .toolbar-card .btn { height: 42px; }
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
 
-    .acoes-wrap { display: flex; gap: 8px; flex-wrap: wrap; }
-    .acoes-wrap form { margin: 0; }
-    .btn-xs { padding: .35rem .5rem; font-size: .75rem; height: 34px; }
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
+
+    .toolbar-card .form-control {
+      height: 42px;
+    }
+
+    .toolbar-card .btn {
+      height: 42px;
+    }
+
+    .acoes-wrap {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .acoes-wrap form {
+      margin: 0;
+    }
+
+    .btn-xs {
+      padding: .35rem .5rem;
+      font-size: .75rem;
+      height: 34px;
+    }
   </style>
 </head>
+<style>
+  .sig-toast.alert {
+    border: 0 !important;
+    border-left: 6px solid !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
+  }
+
+  .sig-toast--success {
+    background: #f1fff6 !important;
+    border-left-color: #22c55e !important;
+  }
+
+  .sig-toast--danger {
+    background: #fff1f2 !important;
+    border-left-color: #ef4444 !important;
+  }
+
+  .sig-toast .sig-toast__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .sig-toast .sig-toast__icon i {
+    font-size: 18px;
+    margin-top: 2px;
+  }
+
+  .sig-toast .sig-toast__title {
+    font-weight: 800;
+    margin-bottom: 2px;
+  }
+
+  .sig-toast .sig-toast__text {
+    margin: 0;
+  }
+
+  .sig-toast .close {
+    opacity: .55;
+  }
+
+  .sig-toast .close:hover {
+    opacity: 1;
+  }
+</style>
 
 <body>
   <div class="container-scroller">
@@ -293,8 +373,13 @@ if ($page > $pages) $page = $pages;
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link { color: black !important; }
-                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -425,13 +510,36 @@ if ($page > $pages) $page = $pages;
               <h6 class="font-weight-normal mb-0">Cadastro de produtores rurais (feirantes). Sem caixa próprio — vendas são registradas “na fala”.</h6>
             </div>
           </div>
-
           <?php if (!empty($msg)): ?>
-            <div class="alert alert-success"><?= h($msg) ?></div>
+            <div class="alert sig-toast sig-toast--success alert-dismissible fade show" role="alert">
+              <div class="sig-toast__row">
+                <div class="sig-toast__icon"><i class="ti-check"></i></div>
+                <div>
+                  <div class="sig-toast__title">Tudo certo!</div>
+                  <p class="sig-toast__text mb-0"><?= h($msg) ?></p>
+                </div>
+              </div>
+              <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
           <?php endif; ?>
+
           <?php if (!empty($err)): ?>
-            <div class="alert alert-danger"><?= h($err) ?></div>
+            <div class="alert sig-toast sig-toast--danger alert-dismissible fade show" role="alert">
+              <div class="sig-toast__row">
+                <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+                <div>
+                  <div class="sig-toast__title">Atenção!</div>
+                  <p class="sig-toast__text mb-0"><?= h($err) ?></p>
+                </div>
+              </div>
+              <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
           <?php endif; ?>
+
 
           <!-- PESQUISA / LIMPAR / EXPORTAR -->
           <div class="row">
@@ -506,10 +614,10 @@ if ($page > $pages) $page = $pages;
                         <?php else: ?>
                           <?php foreach ($rows as $r): ?>
                             <?php
-                              $id = (int)($r['id'] ?? 0);
-                              $ativo = (int)($r['ativo'] ?? 0) === 1;
-                              $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
-                              $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+                            $id = (int)($r['id'] ?? 0);
+                            $ativo = (int)($r['ativo'] ?? 0) === 1;
+                            $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
+                            $badgeText  = $ativo ? 'Ativo' : 'Inativo';
                             ?>
                             <tr>
                               <td><?= $id ?></td>
@@ -557,8 +665,8 @@ if ($page > $pages) $page = $pages;
                           </li>
 
                           <?php
-                            $start = max(1, $page - 2);
-                            $end   = min($pages, $page + 2);
+                          $start = max(1, $page - 2);
+                          $end   = min($pages, $page + 2);
                           ?>
                           <?php for ($i = $start; $i <= $end; $i++): ?>
                             <li class="page-item <?= ($i === $page ? 'active' : '') ?>">
@@ -608,4 +716,5 @@ if ($page > $pages) $page = $pages;
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
 </body>
+
 </html>
