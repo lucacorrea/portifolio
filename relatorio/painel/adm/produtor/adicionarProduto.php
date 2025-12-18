@@ -48,22 +48,21 @@ if (!in_array('ADMIN', $perfis, true)) {
     .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
     .sidebar .sub-menu li { list-style: none !important; }
 
-    /* Form */
-    .form-control, .custom-select { height: 42px; }
-    textarea.form-control { height: auto; }
+    /* Inputs mais “padrão sistema” */
+    .form-control { height: 42px; }
+    .form-group label { font-weight: 600; }
   </style>
 </head>
 
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR -->
+    <!-- NAVBAR (do jeito que você pediu) -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
         <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
       </div>
-
       <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
         <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
           <span class="icon-menu"></span>
@@ -83,19 +82,15 @@ if (!in_array('ADMIN', $perfis, true)) {
 
     <div class="container-fluid page-body-wrapper">
 
-      <!-- (Painel lateral do template - mantido) -->
+      <!-- Painel lateral do template (mantido) -->
       <div id="right-sidebar" class="settings-panel">
         <i class="settings-close ti-close"></i>
         <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
           <li class="nav-item">
-            <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">
-              TO DO LIST
-            </a>
+            <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">
-              CHATS
-            </a>
+            <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
           </li>
         </ul>
       </div>
@@ -112,7 +107,7 @@ if (!in_array('ADMIN', $perfis, true)) {
             </a>
           </li>
 
-          <!-- CADASTROS (ATIVO / PADRÃO OBRIGATÓRIO) -->
+          <!-- CADASTROS (ATIVO) -->
           <li class="nav-item active">
             <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
               <i class="ti-id-badge menu-icon"></i>
@@ -120,7 +115,7 @@ if (!in_array('ADMIN', $perfis, true)) {
               <i class="menu-arrow"></i>
             </a>
 
-            <div class="collapse" id="feiraCadastros">
+            <div class="collapse show" id="feiraCadastros">
               <style>
                 .sub-menu .nav-item .nav-link { color: black !important; }
                 .sub-menu .nav-item .nav-link:hover { color: blue !important; }
@@ -129,31 +124,31 @@ if (!in_array('ADMIN', $perfis, true)) {
               <ul class="nav flex-column sub-menu" style="background: white !important;">
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProduto.php">
-                    Lista de Produtos
+                    <i class="ti-clipboard mr-2"></i> Lista de Produtos
                   </a>
                 </li>
 
                 <li class="nav-item active">
                   <a class="nav-link" href="./adicionarProduto.php" style="color:white !important; background: #231475C5 !important;">
-                    Adicionar Produto
+                    <i class="ti-plus mr-2"></i> Adicionar Produto
                   </a>
                 </li>
 
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/categorias/">
-                    Categorias
+                    <i class="ti-layers mr-2"></i> Categorias
                   </a>
                 </li>
 
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/unidades/">
-                    Unidades
+                    <i class="ti-ruler-pencil mr-2"></i> Unidades
                   </a>
                 </li>
 
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/produtores/">
-                    Produtores
+                    <i class="ti-user mr-2"></i> Produtores
                   </a>
                 </li>
               </ul>
@@ -171,12 +166,12 @@ if (!in_array('ADMIN', $perfis, true)) {
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/lancamentos/">
-                    Lançamentos (Vendas)
+                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
                   </a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/fechamento/">
-                    Fechamento do Dia
+                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
                   </a>
                 </li>
               </ul>
@@ -194,22 +189,22 @@ if (!in_array('ADMIN', $perfis, true)) {
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
-                    Relatório Financeiro
+                    <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
                   </a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/relatorios/produtos.php">
-                    Produtos Comercializados
+                    <i class="ti-list mr-2"></i> Produtos Comercializados
                   </a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/relatorios/mensal.php">
-                    Resumo Mensal
+                    <i class="ti-calendar mr-2"></i> Resumo Mensal
                   </a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="../adm/feira_produtor/config/relatorio.php">
-                    Configurar
+                    <i class="ti-settings mr-2"></i> Configurar
                   </a>
                 </li>
               </ul>
@@ -231,13 +226,17 @@ if (!in_array('ADMIN', $perfis, true)) {
       <div class="main-panel">
         <div class="content-wrapper">
 
+          <!-- TÍTULO (modelo de listagem como referência) -->
           <div class="row">
             <div class="col-12 mb-3">
               <h3 class="font-weight-bold">Adicionar Produto</h3>
-              <h6 class="font-weight-normal mb-0">Cadastre um novo produto para a Feira do Produtor.</h6>
+              <h6 class="font-weight-normal mb-0">
+                Cadastro simples para a feira (sem código de barras, sem caixa próprio — só produto e valores).
+              </h6>
             </div>
           </div>
 
+          <!-- FORMULÁRIO (somente HTML — depois ligamos no back-end) -->
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
@@ -245,96 +244,84 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
-                      <h4 class="card-title mb-0">Formulário do Produto</h4>
-                      <p class="card-description mb-0">Depois a gente liga no banco e validações.</p>
+                      <h4 class="card-title mb-0">Dados do Produto</h4>
+                      <p class="card-description mb-0">Preencha o básico e salve.</p>
                     </div>
 
-                    <a href="./listaProduto.php" class="btn btn-light btn-sm mt-2 mt-md-0">
-                      <i class="ti-arrow-left"></i> Voltar
-                    </a>
+                    <div class="mt-2 mt-md-0">
+                      <a href="./listaProduto.php" class="btn btn-light btn-sm">
+                        <i class="ti-arrow-left"></i> Voltar
+                      </a>
+                    </div>
                   </div>
 
-                  <form action="#" method="post" class="pt-3" enctype="multipart/form-data">
+                  <hr>
+
+                  <form action="#" method="post" autocomplete="off">
                     <div class="row">
 
                       <div class="col-md-6">
                         <div class="form-group">
-                          <label>Nome do Produto</label>
-                          <input type="text" class="form-control" placeholder="Digite o nome do produto">
+                          <label>Nome do Produto *</label>
+                          <input type="text" class="form-control" name="nome" placeholder="Ex.: Banana pacovã, Farinha d’água, Alface..." required>
                         </div>
                       </div>
 
                       <div class="col-md-3">
                         <div class="form-group">
-                          <label>Categoria</label>
-                          <select class="form-control">
-                            <option value="">Selecione...</option>
+                          <label>Categoria (Tipo) *</label>
+                          <select class="form-control" name="categoria_id" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            <!-- depois a gente carrega do banco -->
                           </select>
+                          <small class="text-muted">Ex.: Hortaliças, Frutas, Farinhas, Temperos, etc.</small>
                         </div>
                       </div>
 
                       <div class="col-md-3">
                         <div class="form-group">
-                          <label>Unidade</label>
-                          <select class="form-control">
-                            <option value="">Selecione...</option>
+                          <label>Unidade *</label>
+                          <select class="form-control" name="unidade_id" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            <!-- depois a gente carrega do banco -->
                           </select>
+                          <small class="text-muted">Ex.: kg, unidade, maço, litro.</small>
+                        </div>
+                      </div>
+
+                      <div class="col-md-6">
+                        <div class="form-group">
+                          <label>Produtor (Feirante) *</label>
+                          <select class="form-control" name="produtor_id" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            <!-- depois a gente carrega do banco -->
+                          </select>
+                          <small class="text-muted">Produtores rurais cadastrados no sistema.</small>
                         </div>
                       </div>
 
                       <div class="col-md-3">
                         <div class="form-group">
-                          <label>Preço (R$)</label>
-                          <input type="text" class="form-control" placeholder="0,00">
+                          <label>Preço de referência (R$) *</label>
+                          <input type="text" class="form-control" name="preco" placeholder="0,00" required>
+                          <small class="text-muted">Se o preço variar no dia, o lançamento da venda pode ajustar depois.</small>
                         </div>
                       </div>
 
                       <div class="col-md-3">
                         <div class="form-group">
-                          <label>Estoque (opcional)</label>
-                          <input type="number" class="form-control" placeholder="0">
-                        </div>
-                      </div>
-
-                      <div class="col-md-3">
-                        <div class="form-group">
-                          <label>Status</label>
-                          <select class="form-control">
-                            <option value="">Selecione...</option>
-                            <option value="1">Ativo</option>
+                          <label>Status *</label>
+                          <select class="form-control" name="ativo" required>
+                            <option value="1" selected>Ativo</option>
                             <option value="0">Inativo</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div class="col-md-3">
-                        <div class="form-group">
-                          <label>Produtor (opcional)</label>
-                          <select class="form-control">
-                            <option value="">Selecione...</option>
                           </select>
                         </div>
                       </div>
 
                       <div class="col-md-12">
                         <div class="form-group">
-                          <label>Descrição (opcional)</label>
-                          <textarea class="form-control" rows="4" placeholder="Descreva o produto..."></textarea>
-                        </div>
-                      </div>
-
-                      <div class="col-md-6">
-                        <div class="form-group">
-                          <label>Imagem (opcional)</label>
-                          <input type="file" class="form-control">
-                          <small class="text-muted">Depois a gente configura upload/validação.</small>
-                        </div>
-                      </div>
-
-                      <div class="col-md-6">
-                        <div class="form-group">
-                          <label>Código/SKU (opcional)</label>
-                          <input type="text" class="form-control" placeholder="Código interno">
+                          <label>Observação</label>
+                          <textarea class="form-control" name="observacao" rows="3" placeholder="Ex.: Produto sazonal, vendido por saco, observações do produtor..."></textarea>
                         </div>
                       </div>
 
@@ -342,13 +329,16 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                     <div class="d-flex flex-wrap" style="gap:8px;">
                       <button type="submit" class="btn btn-primary">
-                        <i class="ti-save mr-1"></i> Salvar
+                        <i class="ti-save mr-1"></i> Salvar Produto
                       </button>
-                      <button type="button" class="btn btn-light">
-                        <i class="ti-close mr-1"></i> Cancelar
+                      <button type="reset" class="btn btn-light">
+                        <i class="ti-close mr-1"></i> Limpar
                       </button>
                     </div>
 
+                    <small class="text-muted d-block mt-3">
+                      Depois a gente liga esse formulário no banco (insert/update) e validações.
+                    </small>
                   </form>
 
                 </div>
@@ -357,7 +347,9 @@ if (!in_array('ADMIN', $perfis, true)) {
           </div>
 
         </div>
+        <!-- content-wrapper ends -->
 
+        <!-- FOOTER -->
         <footer class="footer">
           <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
             <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
@@ -367,6 +359,7 @@ if (!in_array('ADMIN', $perfis, true)) {
             </span>
           </div>
         </footer>
+
       </div>
       <!-- main-panel ends -->
 
@@ -375,16 +368,19 @@ if (!in_array('ADMIN', $perfis, true)) {
   </div>
   <!-- container-scroller -->
 
-  <!-- JS EXTERNO (SEM JS INTERNO) -->
+  <!-- JS EXTERNO (sem JS interno) -->
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
+  <!-- endinject -->
   <!-- Plugin js for this page -->
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
+  <!-- End plugin js for this page -->
   <!-- inject:js -->
   <script src="../../../js/off-canvas.js"></script>
   <script src="../../../js/hoverable-collapse.js"></script>
   <script src="../../../js/template.js"></script>
   <script src="../../../js/settings.js"></script>
   <script src="../../../js/todolist.js"></script>
+  <!-- endinject -->
   <!-- Custom js for this page-->
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
