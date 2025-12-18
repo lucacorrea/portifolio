@@ -49,11 +49,12 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
     .toolbar-card .form-control { height: 42px; }
     .toolbar-card .btn { height: 42px; }
 
-    /* ===== Flash “Hostinger style” (top-left, menor, some em ~6s) ===== */
+    /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
     .sig-flash-wrap{
       position: fixed;
       top: 78px;
-      left: 18px;
+      right: 18px;       /* >>> AGORA À DIREITA */
+      left: auto;
       width: min(420px, calc(100vw - 36px));
       z-index: 9999;
       pointer-events: none;
@@ -69,7 +70,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
       margin-bottom: 10px !important;
 
       opacity: 0;
-      transform: translateX(-10px);
+      transform: translateX(10px); /* >>> ENTRA DA DIREITA */
       animation:
         sigToastIn .22s ease-out forwards,
         sigToastOut .25s ease-in forwards 5.75s; /* total ~6s */
@@ -77,7 +78,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
     .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
     .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-    .sig-toast__row{ display:flex; align-items:flex-end; gap:10px; }
+    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
     .sig-toast__icon i{ font-size:16px; margin-top:2px; }
     .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
     .sig-toast__text{ margin:0; line-height: 1.25; }
@@ -89,7 +90,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
       to{ opacity:1; transform: translateX(0); }
     }
     @keyframes sigToastOut{
-      to{ opacity:0; transform: translateX(-12px); visibility:hidden; }
+      to{ opacity:0; transform: translateX(12px); visibility:hidden; } /* >>> SAI PRA DIREITA */
     }
   </style>
 </head>
