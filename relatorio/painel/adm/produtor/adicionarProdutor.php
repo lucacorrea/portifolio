@@ -339,9 +339,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                       <button type="reset" class="btn btn-light">
                         <i class="ti-close mr-1"></i> Limpar
                       </button>
-                      <a href="./listaProdutor.php" class="btn btn-outline-secondary">
-                        Cancelar
-                      </a>
+                     
                     </div>
 
                     <small class="text-muted d-block mt-3">
