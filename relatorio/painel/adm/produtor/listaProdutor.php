@@ -77,7 +77,7 @@ unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
     .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
     .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
+    .sig-toast__row{ display:flex; align-items:flex-end; gap:10px; }
     .sig-toast__icon i{ font-size:16px; margin-top:2px; }
     .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
     .sig-toast__text{ margin:0; line-height: 1.25; }
