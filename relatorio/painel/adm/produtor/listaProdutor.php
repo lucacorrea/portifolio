@@ -149,11 +149,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                   </a>
                 </li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="./adicionarProduto.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Produto
-                  </a>
-                </li>
+               
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaCategoria.php">
@@ -161,23 +157,14 @@ if (!in_array('ADMIN', $perfis, true)) {
                   </a>
                 </li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="./adicionarCategoria.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Categoria
-                  </a>
-                </li>
-
+                
                 <li class="nav-item">
                   <a class="nav-link" href="./listaUnidade.php">
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
                   </a>
                 </li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="./adicionarUnidade.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Unidade
-                  </a>
-                </li>
+                
 
                 <li class="nav-item active">
                   <a class="nav-link" href="./listaProdutor.php" style="color:white !important; background: #231475C5 !important;">
@@ -185,11 +172,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                   </a>
                 </li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="./adicionarProdutor.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Produtor
-                  </a>
-                </li>
+               
 
               </ul>
             </div>
