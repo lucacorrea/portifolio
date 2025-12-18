@@ -21,41 +21,101 @@ $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 
+$debug = (isset($_GET['debug']) && $_GET['debug'] === '1');
+
 /* ===== Conexão + Listagem ===== */
 require '../../../assets/php/conexao.php';
-$pdo = db();
 
-/* Feira do Produtor = 1 (na pasta da Feira Alternativa você coloca 2) */
-$feiraId = 1;
+if (!function_exists('db')) {
+  $err = $err ?: 'Função db() não encontrada em conexao.php';
+  $produtores = [];
+} else {
+  $pdo = db();
 
-$q = trim((string)($_GET['q'] ?? ''));
-$produtores = [];
+  /* Feira do Produtor = 1 (na pasta da Feira Alternativa você coloca 2) */
+  $feiraId = 1;
 
-try {
-  if ($q !== '') {
-    $sql = "SELECT id, nome, comunidade, telefone, ativo
-            FROM produtores
-            WHERE feira_id = :feira
-              AND (nome LIKE :q OR comunidade LIKE :q OR telefone LIKE :q)
-            ORDER BY nome ASC";
+  $q = trim((string)($_GET['q'] ?? ''));
+  $produtores = [];
+  $errDetail = '';
+
+  $pickCol = function(array $byLower, array $candidates): ?string {
+    foreach ($candidates as $c) {
+      $k = strtolower($c);
+      if (isset($byLower[$k])) return $byLower[$k];
+    }
+    return null;
+  };
+
+  $cleanErr = function(string $m): string {
+    $m = preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $m) ?? $m;
+    $m = preg_replace('/\(SQL:\s*.*\)$/', '', $m) ?? $m;
+    return trim((string)$m);
+  };
+
+  try {
+    $tbl = $pdo->query("SHOW TABLES LIKE 'produtores'")->fetchColumn();
+    if (!$tbl) {
+      throw new RuntimeException("Tabela 'produtores' não existe neste banco.");
+    }
+
+    $cols = $pdo->query("SHOW COLUMNS FROM `produtores`")->fetchAll(PDO::FETCH_ASSOC);
+    $byLower = [];
+    foreach ($cols as $c) {
+      if (!empty($c['Field'])) $byLower[strtolower((string)$c['Field'])] = (string)$c['Field'];
+    }
+
+    $colId   = $pickCol($byLower, ['id', 'produtor_id']);
+    $colNome = $pickCol($byLower, ['nome', 'produtor', 'nome_produtor', 'razao_social', 'nome_completo']);
+    $colCom  = $pickCol($byLower, ['comunidade', 'localidade', 'endereco', 'bairro', 'comunidade_localidade']);
+    $colTel  = $pickCol($byLower, ['telefone', 'celular', 'whatsapp', 'fone']);
+    $colAtv  = $pickCol($byLower, ['ativo', 'status', 'is_ativo']);
+    $colFei  = $pickCol($byLower, ['feira_id', 'feira', 'id_feira', 'tipo_feira']);
+
+    if (!$colId || !$colNome) {
+      throw new RuntimeException("A tabela 'produtores' precisa ter pelo menos colunas de ID e NOME. (Ex.: id, nome)");
+    }
+
+    $select = [];
+    $select[] = "`$colId` AS id";
+    $select[] = "`$colNome` AS nome";
+    $select[] = $colCom ? "`$colCom` AS comunidade" : "NULL AS comunidade";
+    $select[] = $colTel ? "`$colTel` AS telefone" : "NULL AS telefone";
+    $select[] = $colAtv ? "`$colAtv` AS ativo" : "1 AS ativo";
+
+    $where = [];
+    $params = [];
+
+    if ($colFei) {
+      $where[] = "`$colFei` = :feira";
+      $params[':feira'] = $feiraId;
+    }
+
+    if ($q !== '') {
+      $likeParts = ["`$colNome` LIKE :q"];
+      if ($colCom) $likeParts[] = "`$colCom` LIKE :q";
+      if ($colTel) $likeParts[] = "`$colTel` LIKE :q";
+      $where[] = '(' . implode(' OR ', $likeParts) . ')';
+      $params[':q'] = '%' . $q . '%';
+    }
+
+    $sql = "SELECT " . implode(', ', $select) . "
+            FROM `produtores`"
+            . (count($where) ? " WHERE " . implode(' AND ', $where) : "")
+            . " ORDER BY `$colNome` ASC";
+
     $stmt = $pdo->prepare($sql);
-    $like = '%' . $q . '%';
-    $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-    $stmt->bindValue(':q', $like, PDO::PARAM_STR);
+
+    if (isset($params[':feira'])) $stmt->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
+    if (isset($params[':q']))     $stmt->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
+
     $stmt->execute();
-    $produtores = $stmt->fetchAll();
-  } else {
-    $sql = "SELECT id, nome, comunidade, telefone, ativo
-            FROM produtores
-            WHERE feira_id = :feira
-            ORDER BY nome ASC";
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-    $stmt->execute();
-    $produtores = $stmt->fetchAll();
+    $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+  } catch (Throwable $e) {
+    $err = $err ?: 'Não foi possível carregar os produtores agora.';
+    $errDetail = $cleanErr($e->getMessage());
   }
-} catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar os produtores agora.';
 }
 ?>
 <!DOCTYPE html>
@@ -180,7 +240,12 @@ try {
             <div class="sig-toast__icon"><i class="ti-alert"></i></div>
             <div>
               <div class="sig-toast__title">Atenção!</div>
-              <p class="sig-toast__text"><?= h($err) ?></p>
+              <p class="sig-toast__text">
+                <?= h($err) ?>
+                <?php if (!empty($debug) && !empty($errDetail)): ?>
+                  <br><small style="opacity:.75; display:block; margin-top:4px;"><?= h($errDetail) ?></small>
+                <?php endif; ?>
+              </p>
             </div>
           </div>
           <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
@@ -236,15 +301,11 @@ try {
                 </a>
               </li>
 
-              
-
               <li class="nav-item">
                 <a class="nav-link" href="./listaCategoria.php">
                   <i class="ti-layers mr-2"></i> Categorias
                 </a>
               </li>
-
-              
 
               <li class="nav-item">
                 <a class="nav-link" href="./listaUnidade.php">
@@ -252,15 +313,11 @@ try {
                 </a>
               </li>
 
-              
-
               <li class="nav-item active">
                 <a class="nav-link" href="./listaProdutor.php" style="color:white !important; background: #231475C5 !important;">
                   <i class="ti-user mr-2"></i> Produtores
                 </a>
               </li>
-
-              
             </ul>
           </div>
         </li>
@@ -340,7 +397,6 @@ try {
           </div>
         </div>
 
-        <!-- Barra (mantendo layout) -->
         <div class="row">
           <div class="col-md-12 grid-margin stretch-card">
             <div class="card toolbar-card">
@@ -348,7 +404,7 @@ try {
                 <div class="row align-items-center">
                   <div class="col-md-6 mb-2 mb-md-0">
                     <label class="mb-1">Pesquisa</label>
-                    <input type="text" class="form-control" placeholder="Pesquisar por nome, comunidade, telefone..." value="<?= h($q) ?>">
+                    <input type="text" class="form-control" placeholder="Pesquisar por nome, comunidade, telefone..." value="<?= h($q ?? '') ?>">
                   </div>
 
                   <div class="col-md-6">
@@ -372,7 +428,6 @@ try {
           </div>
         </div>
 
-        <!-- LISTAGEM -->
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
@@ -380,7 +435,7 @@ try {
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Lista de Produtores</h4>
-                    <p class="card-description mb-0">Mostrando <?= (int)count($produtores) ?> registro(s).</p>
+                    <p class="card-description mb-0">Mostrando <?= isset($produtores) ? (int)count($produtores) : 0 ?> registro(s).</p>
                   </div>
                   <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
                     <i class="ti-plus"></i> Adicionar
