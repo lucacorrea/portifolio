@@ -224,32 +224,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </li>
 
                 <li class="nav-item">
-                  <a class="nav-link" href="./adicionarProduto.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Produto
-                  </a>
-                </li>
-
-                <li class="nav-item">
                   <a class="nav-link" href="./listaCategoria.php">
                     <i class="ti-layers mr-2"></i> Categorias
                   </a>
                 </li>
 
                 <li class="nav-item">
-                  <a class="nav-link" href="./adicionarCategoria.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Categoria
-                  </a>
-                </li>
-
-                <li class="nav-item">
                   <a class="nav-link" href="./listaUnidade.php">
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
-                  </a>
-                </li>
-
-                <li class="nav-item">
-                  <a class="nav-link" href="./adicionarUnidade.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Unidade
                   </a>
                 </li>
 
