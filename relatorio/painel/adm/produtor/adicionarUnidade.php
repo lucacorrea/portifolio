@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -42,16 +43,34 @@ if (!in_array('ADMIN', $perfis, true)) {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
+    ul .nav-link:hover {
+      color: blue !important;
+    }
+
+    .nav-link {
+      color: black !important;
+    }
 
     /* Recuar TODOS os submenus para a esquerda */
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
 
-    .form-control { height: 42px; }
-    .btn { height: 42px; }
-    .helper { font-size: 12px; }
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
+
+    .form-control {
+      height: 42px;
+    }
+
+    .btn {
+      height: 42px;
+    }
+
+    .helper {
+      font-size: 12px;
+    }
   </style>
 </head>
 
@@ -117,8 +136,13 @@ if (!in_array('ADMIN', $perfis, true)) {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link { color: black !important; }
-                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -129,11 +153,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                   </a>
                 </li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="./adicionarProduto.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Produto
-                  </a>
-                </li>
+               
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaCategoria.php">
@@ -141,12 +161,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                   </a>
                 </li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="./adicionarCategoria.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Categoria
-                  </a>
-                </li>
-
+               
                 <li class="nav-item">
                   <a class="nav-link" href="./listaUnidade.php">
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
@@ -160,7 +175,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                 </li>
 
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/produtores/">
+                  <a class="nav-link" href="./listaProdutor.php">
                     <i class="ti-user mr-2"></i> Produtores
                   </a>
                 </li>
@@ -176,15 +191,16 @@ if (!in_array('ADMIN', $perfis, true)) {
               <span class="menu-title">Movimento</span>
               <i class="menu-arrow"></i>
             </a>
+
             <div class="collapse" id="feiraMovimento">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/lancamentos/">
+                  <a class="nav-link" href="./lancamentos.php">
                     <i class="ti-write mr-2"></i> Lançamentos (Vendas)
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/fechamento/">
+                  <a class="nav-link" href="./fechamentoDia.php">
                     <i class="ti-check-box mr-2"></i> Fechamento do Dia
                   </a>
                 </li>
@@ -199,25 +215,26 @@ if (!in_array('ADMIN', $perfis, true)) {
               <span class="menu-title">Relatórios</span>
               <i class="menu-arrow"></i>
             </a>
+
             <div class="collapse text-black" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/relatorios/financeiro.php">
+                  <a class="nav-link" href="./relatorioFinanceiro.php">
                     <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/relatorios/produtos.php">
+                  <a class="nav-link" href="./relatorioProdutos.php">
                     <i class="ti-list mr-2"></i> Produtos Comercializados
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/relatorios/mensal.php">
+                  <a class="nav-link" href="./relatorioMensal.php">
                     <i class="ti-calendar mr-2"></i> Resumo Mensal
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/config/relatorio.php">
+                  <a class="nav-link" href="./configRelatorio.php">
                     <i class="ti-settings mr-2"></i> Configurar
                   </a>
                 </li>

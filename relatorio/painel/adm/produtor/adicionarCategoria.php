@@ -147,11 +147,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                                     </a>
                                 </li>
 
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./adicionarProduto.php">
-                                        <i class="ti-plus mr-2"></i> Adicionar Produto
-                                    </a>
-                                </li>
+                               
 
                                 <li class="nav-item">
                                     <a class="nav-link" href="./listaCategoria.php">
