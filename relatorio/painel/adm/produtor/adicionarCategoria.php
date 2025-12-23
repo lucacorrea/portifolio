@@ -39,11 +39,13 @@ require '../../../assets/php/conexao.php';
 $pdo = db();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = trim((string)($_POST['nome'] ?? ''));
-    $ativo = (string)($_POST['ativo'] ?? '1');
-    $ordem = trim((string)($_POST['ordem'] ?? ''));
-    $descricao = trim((string)($_POST['descricao'] ?? ''));
+    $nome       = trim((string)($_POST['nome'] ?? ''));
+    $ativo      = (string)($_POST['ativo'] ?? '1');
     $postedCsrf = (string)($_POST['csrf_token'] ?? '');
+
+    // (opcionais no form, mas NÃO vamos salvar no banco porque sua tabela não tem essas colunas)
+    $ordem      = trim((string)($_POST['ordem'] ?? ''));
+    $descricao  = trim((string)($_POST['descricao'] ?? ''));
 
     if (!hash_equals($csrf, $postedCsrf)) {
         $err = 'Sessão expirada. Atualize a página e tente novamente.';
@@ -53,42 +55,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $err = 'Status inválido.';
     }
 
-    $ordemInt = null;
-    if (!$err && $ordem !== '') {
-        if (!preg_match('/^\d+$/', $ordem)) {
-            $err = 'A ordem deve ser um número inteiro (ou deixe em branco).';
-        } else {
-            $ordemInt = (int)$ordem;
-        }
-    }
-
     if (!$err) {
         try {
             $pdo->beginTransaction();
 
+            // Evita duplicidade (respeita uq_categorias_feira_nome)
             $check = $pdo->prepare("SELECT id FROM categorias WHERE feira_id = :feira AND nome = :nome LIMIT 1");
             $check->bindValue(':feira', $feiraId, PDO::PARAM_INT);
             $check->bindValue(':nome', $nome, PDO::PARAM_STR);
             $check->execute();
+
             if ($check->fetchColumn()) {
                 $pdo->rollBack();
                 $err = 'Já existe uma categoria com esse nome.';
             } else {
+
+                // ✅ INSERT compatível com sua tabela atual (SEM descricao e ordem)
                 $sql = "INSERT INTO categorias (feira_id, nome, ativo)
-        VALUES (:feira, :nome, :ativo)";
+                        VALUES (:feira, :nome, :ativo)";
                 $ins = $pdo->prepare($sql);
                 $ins->bindValue(':feira', $feiraId, PDO::PARAM_INT);
                 $ins->bindValue(':nome', $nome, PDO::PARAM_STR);
-                $ins->bindValue(':ativo', (int)$ativo, PDO::PARAM_INT);
-                $ins->execute();
-
-
-                if ($descricao === '') $ins->bindValue(':descricao', null, PDO::PARAM_NULL);
-                else $ins->bindValue(':descricao', $descricao, PDO::PARAM_STR);
-
-                if ($ordemInt === null) $ins->bindValue(':ordem', null, PDO::PARAM_NULL);
-                else $ins->bindValue(':ordem', $ordemInt, PDO::PARAM_INT);
-
                 $ins->bindValue(':ativo', (int)$ativo, PDO::PARAM_INT);
                 $ins->execute();
 
@@ -106,11 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($mysqlCode === 1062) {
                 $err = 'Já existe uma categoria com esse nome.';
             } elseif ($mysqlCode === 1452) {
-                $err = 'Feira não cadastrada no banco (tabela feiras). Rode o SQL de feiras (id=1 e id=2).';
+                $err = 'Feira não cadastrada no banco (tabela feiras). Verifique se existe feiras.id = 1.';
             } elseif ($mysqlCode === 1146) {
                 $err = 'Tabela "categorias" não existe. Rode o SQL das tabelas.';
-            } elseif ($mysqlCode === 1054) {
-                $err = 'Coluna inválida na tabela "categorias". Confira se seu SQL está igual ao padrão.';
             } else {
                 $err = 'Não foi possível salvar a categoria agora.';
             }
