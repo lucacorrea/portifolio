@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
@@ -14,6 +13,113 @@ $perfis = $_SESSION['perfis'] ?? [];
 if (!in_array('ADMIN', $perfis, true)) {
     header('Location: ../../operador/index.php');
     exit;
+}
+
+function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+/* Flash padrão */
+$msg = (string)($_SESSION['flash_ok'] ?? '');
+$err = (string)($_SESSION['flash_err'] ?? '');
+unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
+
+$debug = (isset($_GET['debug']) && $_GET['debug'] === '1');
+
+/* CSRF */
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = (string)$_SESSION['csrf_token'];
+
+/* Feira do Produtor */
+$feiraId = 1;
+
+/* Valores do form (para repopular) */
+$nome = '';
+$ativo = '1';
+$ordem = '';
+$descricao = '';
+
+/* Conexão */
+require '../../../assets/php/conexao.php';
+if (!function_exists('db')) {
+    $err = $err ?: 'Função db() não encontrada em assets/php/conexao.php';
+} else {
+    $pdo = db();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $nome = trim((string)($_POST['nome'] ?? ''));
+        $ativo = (string)($_POST['ativo'] ?? '1');
+        $ordem = trim((string)($_POST['ordem'] ?? ''));
+        $descricao = trim((string)($_POST['descricao'] ?? ''));
+        $postedCsrf = (string)($_POST['csrf_token'] ?? '');
+
+        if (!hash_equals($csrf, $postedCsrf)) {
+            $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
+            header('Location: ./adicionarCategoria.php');
+            exit;
+        }
+
+        if ($nome === '' || mb_strlen($nome) < 2) {
+            $err = 'Informe um nome válido para a categoria.';
+        } elseif (!in_array($ativo, ['0','1'], true)) {
+            $err = 'Status inválido.';
+        } else {
+            $ordemInt = null;
+            if ($ordem !== '') {
+                if (!preg_match('/^\d+$/', $ordem)) {
+                    $err = 'A ordem deve ser um número inteiro (ou deixe em branco).';
+                } else {
+                    $ordemInt = (int)$ordem;
+                    if ($ordemInt < 0 || $ordemInt > 999999) {
+                        $err = 'A ordem está fora do limite permitido.';
+                    }
+                }
+            }
+        }
+
+        if (!$err) {
+            try {
+                $pdo->beginTransaction();
+
+                $check = $pdo->prepare("SELECT id FROM categorias WHERE feira_id = :feira AND nome = :nome LIMIT 1");
+                $check->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+                $check->bindValue(':nome', $nome, PDO::PARAM_STR);
+                $check->execute();
+                $exists = $check->fetchColumn();
+
+                if ($exists) {
+                    $pdo->rollBack();
+                    $err = 'Já existe uma categoria com esse nome.';
+                } else {
+                    $sql = "INSERT INTO categorias (feira_id, nome, descricao, ordem, ativo)
+                            VALUES (:feira, :nome, :descricao, :ordem, :ativo)";
+                    $ins = $pdo->prepare($sql);
+                    $ins->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+                    $ins->bindValue(':nome', $nome, PDO::PARAM_STR);
+                    $ins->bindValue(':descricao', ($descricao !== '' ? $descricao : null), PDO::PARAM_STR);
+                    if ($ordemInt === null) {
+                        $ins->bindValue(':ordem', null, PDO::PARAM_NULL);
+                    } else {
+                        $ins->bindValue(':ordem', $ordemInt, PDO::PARAM_INT);
+                    }
+                    $ins->bindValue(':ativo', (int)$ativo, PDO::PARAM_INT);
+                    $ins->execute();
+
+                    $pdo->commit();
+
+                    $_SESSION['flash_ok'] = "Categoria adicionada: {$nome}";
+                    header('Location: ./listaCategoria.php');
+                    exit;
+                }
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                $err = 'Não foi possível salvar a categoria agora.';
+                if ($debug) {
+                    $err .= ' ' . preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $e->getMessage());
+                }
+            }
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -43,29 +149,54 @@ if (!in_array('ADMIN', $perfis, true)) {
     <link rel="shortcut icon" href="../../../images/3.png" />
 
     <style>
-        ul .nav-link:hover {
-            color: blue !important;
-        }
+        ul .nav-link:hover { color: blue !important; }
+        .nav-link { color: black !important; }
 
-        .nav-link {
-            color: black !important;
-        }
+        .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
+        .sidebar .sub-menu li { list-style: none !important; }
 
-        .sidebar .sub-menu .nav-item .nav-link {
-            margin-left: -35px !important;
-        }
+        .form-control { height: 42px; }
+        .form-group label { font-weight: 600; }
 
-        .sidebar .sub-menu li {
-            list-style: none !important;
+        /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
+        .sig-flash-wrap{
+          position: fixed;
+          top: 78px;
+          right: 18px;
+          left: auto;
+          width: min(420px, calc(100vw - 36px));
+          z-index: 9999;
+          pointer-events: none;
         }
+        .sig-toast.alert{
+          pointer-events: auto;
+          border: 0 !important;
+          border-left: 6px solid !important;
+          border-radius: 14px !important;
+          padding: 10px 12px !important;
+          box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
+          font-size: 13px !important;
+          margin-bottom: 10px !important;
 
-        .form-control {
-            height: 42px;
+          opacity: 0;
+          transform: translateX(10px);
+          animation:
+            sigToastIn .22s ease-out forwards,
+            sigToastOut .25s ease-in forwards 5.75s;
         }
+        .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
+        .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-        .form-group label {
-            font-weight: 600;
-        }
+        .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
+        .sig-toast__icon i{ font-size:16px; margin-top:2px; }
+        .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
+        .sig-toast__text{ margin:0; line-height: 1.25; }
+
+        .sig-toast .close{ opacity:.55; font-size: 18px; line-height: 1; padding: 0 6px; }
+        .sig-toast .close:hover{ opacity:1; }
+
+        @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
+        @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
     </style>
 </head>
 
@@ -94,6 +225,40 @@ if (!in_array('ADMIN', $perfis, true)) {
                 </button>
             </div>
         </nav>
+
+        <?php if ($msg || $err): ?>
+          <div class="sig-flash-wrap">
+            <?php if ($msg): ?>
+              <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+                <div class="sig-toast__row">
+                  <div class="sig-toast__icon"><i class="ti-check"></i></div>
+                  <div>
+                    <div class="sig-toast__title">Tudo certo!</div>
+                    <p class="sig-toast__text"><?= h($msg) ?></p>
+                  </div>
+                </div>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+            <?php endif; ?>
+
+            <?php if ($err): ?>
+              <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+                <div class="sig-toast__row">
+                  <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+                  <div>
+                    <div class="sig-toast__title">Atenção!</div>
+                    <p class="sig-toast__text"><?= h($err) ?></p>
+                  </div>
+                </div>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
 
         <div class="container-fluid page-body-wrapper">
 
@@ -130,13 +295,8 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                         <div class="collapse show" id="feiraCadastros">
                             <style>
-                                .sub-menu .nav-item .nav-link {
-                                    color: black !important;
-                                }
-
-                                .sub-menu .nav-item .nav-link:hover {
-                                    color: blue !important;
-                                }
+                                .sub-menu .nav-item .nav-link { color: black !important; }
+                                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
                             </style>
 
                             <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -146,8 +306,6 @@ if (!in_array('ADMIN', $perfis, true)) {
                                         <i class="ti-clipboard mr-2"></i> Lista de Produtos
                                     </a>
                                 </li>
-
-                               
 
                                 <li class="nav-item">
                                     <a class="nav-link" href="./listaCategoria.php">
@@ -246,7 +404,6 @@ if (!in_array('ADMIN', $perfis, true)) {
                 </ul>
             </nav>
 
-
             <!-- MAIN -->
             <div class="main-panel">
                 <div class="content-wrapper">
@@ -276,13 +433,14 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                                     <hr>
 
-                                    <form action="#" method="post" autocomplete="off">
+                                    <form action="./adicionarCategoria.php" method="post" autocomplete="off">
+                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                                         <div class="row">
 
                                             <div class="col-md-6">
                                                 <div class="form-group">
                                                     <label>Nome da Categoria *</label>
-                                                    <input type="text" class="form-control" name="nome" placeholder="Ex.: Frutas, Hortaliças, Farinhas..." required>
+                                                    <input type="text" class="form-control" name="nome" value="<?= h($nome) ?>" placeholder="Ex.: Frutas, Hortaliças, Farinhas..." required>
                                                 </div>
                                             </div>
 
@@ -290,8 +448,8 @@ if (!in_array('ADMIN', $perfis, true)) {
                                                 <div class="form-group">
                                                     <label>Status *</label>
                                                     <select class="form-control" name="ativo" required>
-                                                        <option value="1" selected>Ativo</option>
-                                                        <option value="0">Inativo</option>
+                                                        <option value="1" <?= $ativo === '1' ? 'selected' : '' ?>>Ativo</option>
+                                                        <option value="0" <?= $ativo === '0' ? 'selected' : '' ?>>Inativo</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -299,7 +457,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                                             <div class="col-md-3">
                                                 <div class="form-group">
                                                     <label>Ordem (opcional)</label>
-                                                    <input type="number" class="form-control" name="ordem" placeholder="Ex.: 1, 2, 3...">
+                                                    <input type="number" class="form-control" name="ordem" value="<?= h($ordem) ?>" placeholder="Ex.: 1, 2, 3...">
                                                     <small class="text-muted">Só para organizar a lista depois.</small>
                                                 </div>
                                             </div>
@@ -307,7 +465,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                                             <div class="col-md-12">
                                                 <div class="form-group">
                                                     <label>Descrição (opcional)</label>
-                                                    <textarea class="form-control" name="descricao" rows="3" placeholder="Ex.: Produtos frescos, de época, verduras, etc."></textarea>
+                                                    <textarea class="form-control" name="descricao" rows="3" placeholder="Ex.: Produtos frescos, de época, verduras, etc."><?= h($descricao) ?></textarea>
                                                 </div>
                                             </div>
 
@@ -322,7 +480,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                                             </button>
                                         </div>
 
-                                        <small class="text-muted d-block mt-3">Depois a gente liga no banco (INSERT) e validações.</small>
+                                        <small class="text-muted d-block mt-3">Salva no banco e volta para a lista.</small>
                                     </form>
 
                                 </div>
@@ -348,15 +506,12 @@ if (!in_array('ADMIN', $perfis, true)) {
 
     <!-- JS EXTERNO -->
     <script src="../../../vendors/js/vendor.bundle.base.js"></script>
-    <!-- endinject -->
     <script src="../../../vendors/chart.js/Chart.min.js"></script>
-    <!-- End plugin js for this page -->
     <script src="../../../js/off-canvas.js"></script>
     <script src="../../../js/hoverable-collapse.js"></script>
     <script src="../../../js/template.js"></script>
     <script src="../../../js/settings.js"></script>
     <script src="../../../js/todolist.js"></script>
-    <!-- endinject -->
     <script src="../../../js/dashboard.js"></script>
     <script src="../../../js/Chart.roundedBarCharts.js"></script>
 </body>
