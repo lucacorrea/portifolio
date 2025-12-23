@@ -1,123 +1,119 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
-/* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
     header('Location: ../../../index.php');
     exit;
 }
 
-/* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
 if (!in_array('ADMIN', $perfis, true)) {
     header('Location: ../../operador/index.php');
     exit;
 }
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function h($s)
+{
+    return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
 
-/* Flash padrão */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 
-$debug = (isset($_GET['debug']) && $_GET['debug'] === '1');
-
-/* CSRF */
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* Feira do Produtor */
 $feiraId = 1;
 
-/* Valores do form (para repopular) */
 $nome = '';
 $ativo = '1';
 $ordem = '';
 $descricao = '';
 
-/* Conexão */
 require '../../../assets/php/conexao.php';
-if (!function_exists('db')) {
-    $err = $err ?: 'Função db() não encontrada em assets/php/conexao.php';
-} else {
-    $pdo = db();
+$pdo = db();
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $nome = trim((string)($_POST['nome'] ?? ''));
-        $ativo = (string)($_POST['ativo'] ?? '1');
-        $ordem = trim((string)($_POST['ordem'] ?? ''));
-        $descricao = trim((string)($_POST['descricao'] ?? ''));
-        $postedCsrf = (string)($_POST['csrf_token'] ?? '');
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nome = trim((string)($_POST['nome'] ?? ''));
+    $ativo = (string)($_POST['ativo'] ?? '1');
+    $ordem = trim((string)($_POST['ordem'] ?? ''));
+    $descricao = trim((string)($_POST['descricao'] ?? ''));
+    $postedCsrf = (string)($_POST['csrf_token'] ?? '');
 
-        if (!hash_equals($csrf, $postedCsrf)) {
-            $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-            header('Location: ./adicionarCategoria.php');
-            exit;
-        }
+    if (!hash_equals($csrf, $postedCsrf)) {
+        $err = 'Sessão expirada. Atualize a página e tente novamente.';
+    } elseif ($nome === '' || mb_strlen($nome) < 2) {
+        $err = 'Informe um nome válido para a categoria.';
+    } elseif (!in_array($ativo, ['0', '1'], true)) {
+        $err = 'Status inválido.';
+    }
 
-        if ($nome === '' || mb_strlen($nome) < 2) {
-            $err = 'Informe um nome válido para a categoria.';
-        } elseif (!in_array($ativo, ['0','1'], true)) {
-            $err = 'Status inválido.';
+    $ordemInt = null;
+    if (!$err && $ordem !== '') {
+        if (!preg_match('/^\d+$/', $ordem)) {
+            $err = 'A ordem deve ser um número inteiro (ou deixe em branco).';
         } else {
-            $ordemInt = null;
-            if ($ordem !== '') {
-                if (!preg_match('/^\d+$/', $ordem)) {
-                    $err = 'A ordem deve ser um número inteiro (ou deixe em branco).';
-                } else {
-                    $ordemInt = (int)$ordem;
-                    if ($ordemInt < 0 || $ordemInt > 999999) {
-                        $err = 'A ordem está fora do limite permitido.';
-                    }
-                }
-            }
+            $ordemInt = (int)$ordem;
         }
+    }
 
-        if (!$err) {
-            try {
-                $pdo->beginTransaction();
+    if (!$err) {
+        try {
+            $pdo->beginTransaction();
 
-                $check = $pdo->prepare("SELECT id FROM categorias WHERE feira_id = :feira AND nome = :nome LIMIT 1");
-                $check->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-                $check->bindValue(':nome', $nome, PDO::PARAM_STR);
-                $check->execute();
-                $exists = $check->fetchColumn();
+            $check = $pdo->prepare("SELECT id FROM categorias WHERE feira_id = :feira AND nome = :nome LIMIT 1");
+            $check->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+            $check->bindValue(':nome', $nome, PDO::PARAM_STR);
+            $check->execute();
+            if ($check->fetchColumn()) {
+                $pdo->rollBack();
+                $err = 'Já existe uma categoria com esse nome.';
+            } else {
+                $sql = "INSERT INTO categorias (feira_id, nome, descricao, ordem, ativo)
+                        VALUES (:feira, :nome, :descricao, :ordem, :ativo)";
+                $ins = $pdo->prepare($sql);
+                $ins->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+                $ins->bindValue(':nome', $nome, PDO::PARAM_STR);
 
-                if ($exists) {
-                    $pdo->rollBack();
-                    $err = 'Já existe uma categoria com esse nome.';
-                } else {
-                    $sql = "INSERT INTO categorias (feira_id, nome, descricao, ordem, ativo)
-                            VALUES (:feira, :nome, :descricao, :ordem, :ativo)";
-                    $ins = $pdo->prepare($sql);
-                    $ins->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-                    $ins->bindValue(':nome', $nome, PDO::PARAM_STR);
-                    $ins->bindValue(':descricao', ($descricao !== '' ? $descricao : null), PDO::PARAM_STR);
-                    if ($ordemInt === null) {
-                        $ins->bindValue(':ordem', null, PDO::PARAM_NULL);
-                    } else {
-                        $ins->bindValue(':ordem', $ordemInt, PDO::PARAM_INT);
-                    }
-                    $ins->bindValue(':ativo', (int)$ativo, PDO::PARAM_INT);
-                    $ins->execute();
+                if ($descricao === '') $ins->bindValue(':descricao', null, PDO::PARAM_NULL);
+                else $ins->bindValue(':descricao', $descricao, PDO::PARAM_STR);
 
-                    $pdo->commit();
+                if ($ordemInt === null) $ins->bindValue(':ordem', null, PDO::PARAM_NULL);
+                else $ins->bindValue(':ordem', $ordemInt, PDO::PARAM_INT);
 
-                    $_SESSION['flash_ok'] = "Categoria adicionada: {$nome}";
-                    header('Location: ./listaCategoria.php');
-                    exit;
-                }
-            } catch (Throwable $e) {
-                if ($pdo->inTransaction()) $pdo->rollBack();
-                $err = 'Não foi possível salvar a categoria agora.';
-                if ($debug) {
-                    $err .= ' ' . preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $e->getMessage());
-                }
+                $ins->bindValue(':ativo', (int)$ativo, PDO::PARAM_INT);
+                $ins->execute();
+
+                $pdo->commit();
+
+                $_SESSION['flash_ok'] = "Categoria adicionada: {$nome}";
+                header('Location: ./listaCategoria.php');
+                exit;
             }
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+
+            $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+
+            if ($mysqlCode === 1062) {
+                $err = 'Já existe uma categoria com esse nome.';
+            } elseif ($mysqlCode === 1452) {
+                $err = 'Feira não cadastrada no banco (tabela feiras). Rode o SQL de feiras (id=1 e id=2).';
+            } elseif ($mysqlCode === 1146) {
+                $err = 'Tabela "categorias" não existe. Rode o SQL das tabelas.';
+            } elseif ($mysqlCode === 1054) {
+                $err = 'Coluna inválida na tabela "categorias". Confira se seu SQL está igual ao padrão.';
+            } else {
+                $err = 'Não foi possível salvar a categoria agora.';
+            }
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            $err = 'Não foi possível salvar a categoria agora.';
         }
     }
 }
@@ -130,80 +126,129 @@ if (!function_exists('db')) {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>SIGRelatórios Feira do Produtor — Adicionar Categoria</title>
 
-    <!-- plugins:css -->
     <link rel="stylesheet" href="../../../vendors/feather/feather.css">
     <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
     <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
-    <!-- endinject -->
 
-    <!-- Plugin css for this page -->
     <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
     <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
     <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
-    <!-- End plugin css for this page -->
 
-    <!-- inject:css -->
     <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
-    <!-- endinject -->
-
     <link rel="shortcut icon" href="../../../images/3.png" />
 
     <style>
-        ul .nav-link:hover { color: blue !important; }
-        .nav-link { color: black !important; }
-
-        .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-        .sidebar .sub-menu li { list-style: none !important; }
-
-        .form-control { height: 42px; }
-        .form-group label { font-weight: 600; }
-
-        /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
-        .sig-flash-wrap{
-          position: fixed;
-          top: 78px;
-          right: 18px;
-          left: auto;
-          width: min(420px, calc(100vw - 36px));
-          z-index: 9999;
-          pointer-events: none;
+        ul .nav-link:hover {
+            color: blue !important;
         }
-        .sig-toast.alert{
-          pointer-events: auto;
-          border: 0 !important;
-          border-left: 6px solid !important;
-          border-radius: 14px !important;
-          padding: 10px 12px !important;
-          box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
-          font-size: 13px !important;
-          margin-bottom: 10px !important;
 
-          opacity: 0;
-          transform: translateX(10px);
-          animation:
-            sigToastIn .22s ease-out forwards,
-            sigToastOut .25s ease-in forwards 5.75s;
+        .nav-link {
+            color: black !important;
         }
-        .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
-        .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-        .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
-        .sig-toast__icon i{ font-size:16px; margin-top:2px; }
-        .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
-        .sig-toast__text{ margin:0; line-height: 1.25; }
+        .sidebar .sub-menu .nav-item .nav-link {
+            margin-left: -35px !important;
+        }
 
-        .sig-toast .close{ opacity:.55; font-size: 18px; line-height: 1; padding: 0 6px; }
-        .sig-toast .close:hover{ opacity:1; }
+        .sidebar .sub-menu li {
+            list-style: none !important;
+        }
 
-        @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
-        @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
+        .form-control {
+            height: 42px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+        }
+
+        .sig-flash-wrap {
+            position: fixed;
+            top: 78px;
+            right: 18px;
+            left: auto;
+            width: min(420px, calc(100vw - 36px));
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .sig-toast.alert {
+            pointer-events: auto;
+            border: 0 !important;
+            border-left: 6px solid !important;
+            border-radius: 14px !important;
+            padding: 10px 12px !important;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
+            font-size: 13px !important;
+            margin-bottom: 10px !important;
+            opacity: 0;
+            transform: translateX(10px);
+            animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
+        }
+
+        .sig-toast--success {
+            background: #f1fff6 !important;
+            border-left-color: #22c55e !important;
+        }
+
+        .sig-toast--danger {
+            background: #fff1f2 !important;
+            border-left-color: #ef4444 !important;
+        }
+
+        .sig-toast__row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .sig-toast__icon i {
+            font-size: 16px;
+            margin-top: 2px;
+        }
+
+        .sig-toast__title {
+            font-weight: 800;
+            margin-bottom: 1px;
+            line-height: 1.1;
+        }
+
+        .sig-toast__text {
+            margin: 0;
+            line-height: 1.25;
+        }
+
+        .sig-toast .close {
+            opacity: .55;
+            font-size: 18px;
+            line-height: 1;
+            padding: 0 6px;
+        }
+
+        .sig-toast .close:hover {
+            opacity: 1;
+        }
+
+        @keyframes sigToastIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes sigToastOut {
+            to {
+                opacity: 0;
+                transform: translateX(12px);
+                visibility: hidden;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="container-scroller">
 
-        <!-- NAVBAR -->
         <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
             <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
                 <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -227,37 +272,37 @@ if (!function_exists('db')) {
         </nav>
 
         <?php if ($msg || $err): ?>
-          <div class="sig-flash-wrap">
-            <?php if ($msg): ?>
-              <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
-                <div class="sig-toast__row">
-                  <div class="sig-toast__icon"><i class="ti-check"></i></div>
-                  <div>
-                    <div class="sig-toast__title">Tudo certo!</div>
-                    <p class="sig-toast__text"><?= h($msg) ?></p>
-                  </div>
-                </div>
-                <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-                  <span aria-hidden="true">&times;</span>
-                </button>
-              </div>
-            <?php endif; ?>
+            <div class="sig-flash-wrap">
+                <?php if ($msg): ?>
+                    <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+                        <div class="sig-toast__row">
+                            <div class="sig-toast__icon"><i class="ti-check"></i></div>
+                            <div>
+                                <div class="sig-toast__title">Tudo certo!</div>
+                                <p class="sig-toast__text"><?= h($msg) ?></p>
+                            </div>
+                        </div>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                <?php endif; ?>
 
-            <?php if ($err): ?>
-              <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
-                <div class="sig-toast__row">
-                  <div class="sig-toast__icon"><i class="ti-alert"></i></div>
-                  <div>
-                    <div class="sig-toast__title">Atenção!</div>
-                    <p class="sig-toast__text"><?= h($err) ?></p>
-                  </div>
-                </div>
-                <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-                  <span aria-hidden="true">&times;</span>
-                </button>
-              </div>
-            <?php endif; ?>
-          </div>
+                <?php if ($err): ?>
+                    <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+                        <div class="sig-toast__row">
+                            <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+                            <div>
+                                <div class="sig-toast__title">Atenção!</div>
+                                <p class="sig-toast__text"><?= h($err) ?></p>
+                            </div>
+                        </div>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
 
         <div class="container-fluid page-body-wrapper">
@@ -274,7 +319,6 @@ if (!function_exists('db')) {
                 </ul>
             </div>
 
-            <!-- SIDEBAR -->
             <nav class="sidebar sidebar-offcanvas" id="sidebar">
                 <ul class="nav">
 
@@ -285,7 +329,6 @@ if (!function_exists('db')) {
                         </a>
                     </li>
 
-                    <!-- CADASTROS (ATIVO) -->
                     <li class="nav-item active">
                         <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
                             <i class="ti-id-badge menu-icon"></i>
@@ -295,8 +338,13 @@ if (!function_exists('db')) {
 
                         <div class="collapse show" id="feiraCadastros">
                             <style>
-                                .sub-menu .nav-item .nav-link { color: black !important; }
-                                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+                                .sub-menu .nav-item .nav-link {
+                                    color: black !important;
+                                }
+
+                                .sub-menu .nav-item .nav-link:hover {
+                                    color: blue !important;
+                                }
                             </style>
 
                             <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -335,7 +383,6 @@ if (!function_exists('db')) {
                         </div>
                     </li>
 
-                    <!-- MOVIMENTO -->
                     <li class="nav-item">
                         <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
                             <i class="ti-exchange-vertical menu-icon"></i>
@@ -359,7 +406,6 @@ if (!function_exists('db')) {
                         </div>
                     </li>
 
-                    <!-- RELATÓRIOS -->
                     <li class="nav-item">
                         <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
                             <i class="ti-clipboard menu-icon"></i>
@@ -393,7 +439,6 @@ if (!function_exists('db')) {
                         </div>
                     </li>
 
-                    <!-- SUPORTE -->
                     <li class="nav-item">
                         <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
                             <i class="ti-headphone-alt menu-icon"></i>
@@ -404,7 +449,6 @@ if (!function_exists('db')) {
                 </ul>
             </nav>
 
-            <!-- MAIN -->
             <div class="main-panel">
                 <div class="content-wrapper">
 
@@ -480,7 +524,6 @@ if (!function_exists('db')) {
                                             </button>
                                         </div>
 
-                                        <small class="text-muted d-block mt-3">Salva no banco e volta para a lista.</small>
                                     </form>
 
                                 </div>
@@ -504,7 +547,6 @@ if (!function_exists('db')) {
         </div>
     </div>
 
-    <!-- JS EXTERNO -->
     <script src="../../../vendors/js/vendor.bundle.base.js"></script>
     <script src="../../../vendors/chart.js/Chart.min.js"></script>
     <script src="../../../js/off-canvas.js"></script>
