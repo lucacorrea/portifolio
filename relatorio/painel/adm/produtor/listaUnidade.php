@@ -170,7 +170,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 
 
                 <li class="nav-item">
-                  <a class="nav-link" href="../adm/feira_produtor/produtores/">
+                  <a class="nav-link" href="./listaProdutor.php">
                     <i class="ti-user mr-2"></i> Produtores
                   </a>
                 </li>
