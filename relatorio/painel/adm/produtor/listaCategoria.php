@@ -15,6 +15,126 @@ if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
 }
+
+function h($s)
+{
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
+
+/* Flash */
+$msg = (string)($_SESSION['flash_ok'] ?? '');
+$err = (string)($_SESSION['flash_err'] ?? '');
+unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
+
+/* CSRF */
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = (string)$_SESSION['csrf_token'];
+
+/* ===== Conexão + Feira ===== */
+require '../../../assets/php/conexao.php';
+$pdo = db();
+
+/* Feira do Produtor = 1 (na Feira Alternativa use 2) */
+$feiraId = 1;
+
+/* ===== Ações (Ativar/Desativar e Excluir) ===== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $postedCsrf = (string)($_POST['csrf_token'] ?? '');
+  $acao = (string)($_POST['acao'] ?? '');
+  $id = (int)($_POST['id'] ?? 0);
+
+  if (!hash_equals($csrf, $postedCsrf)) {
+    $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
+    header('Location: ./listaCategoria.php');
+    exit;
+  }
+
+  if ($id <= 0) {
+    $_SESSION['flash_err'] = 'ID inválido.';
+    header('Location: ./listaCategoria.php');
+    exit;
+  }
+
+  try {
+    if ($acao === 'toggle') {
+      $sql = "UPDATE categorias
+              SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END
+              WHERE id = :id AND feira_id = :feira
+              LIMIT 1";
+      $stmt = $pdo->prepare($sql);
+      $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+      $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+      $stmt->execute();
+
+      if ($stmt->rowCount() > 0) {
+        $_SESSION['flash_ok'] = 'Status da categoria atualizado.';
+      } else {
+        $_SESSION['flash_err'] = 'Categoria não encontrada.';
+      }
+      header('Location: ./listaCategoria.php');
+      exit;
+    }
+
+    if ($acao === 'excluir') {
+      $sql = "DELETE FROM categorias
+              WHERE id = :id AND feira_id = :feira
+              LIMIT 1";
+      $stmt = $pdo->prepare($sql);
+      $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+      $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+      $stmt->execute();
+
+      if ($stmt->rowCount() > 0) {
+        $_SESSION['flash_ok'] = 'Categoria excluída com sucesso.';
+      } else {
+        $_SESSION['flash_err'] = 'Categoria não encontrada.';
+      }
+      header('Location: ./listaCategoria.php');
+      exit;
+    }
+
+    $_SESSION['flash_err'] = 'Ação inválida.';
+    header('Location: ./listaCategoria.php');
+    exit;
+  } catch (PDOException $e) {
+    $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+
+    if ($mysqlCode === 1451) {
+      $_SESSION['flash_err'] = 'Não é possível excluir: existem produtos usando esta categoria.';
+    } elseif ($mysqlCode === 1146) {
+      $_SESSION['flash_err'] = 'Tabela "categorias" não existe. Rode o SQL das tabelas.';
+    } else {
+      $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
+    }
+
+    header('Location: ./listaCategoria.php');
+    exit;
+  } catch (Throwable $e) {
+    $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
+    header('Location: ./listaCategoria.php');
+    exit;
+  }
+}
+
+/* ===== Listagem ===== */
+$categorias = [];
+try {
+  $sql = "SELECT id, nome, ativo, ordem
+          FROM categorias
+          WHERE feira_id = :feira
+          ORDER BY
+            CASE WHEN ordem IS NULL THEN 1 ELSE 0 END,
+            ordem ASC,
+            nome ASC";
+  $stmt = $pdo->prepare($sql);
+  $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+  $stmt->execute();
+  $categorias = $stmt->fetchAll();
+} catch (Throwable $e) {
+  $err = $err ?: 'Não foi possível carregar as categorias agora.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -24,22 +144,15 @@ if (!in_array('ADMIN', $perfis, true)) {
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>SIGRelatórios Feira do Produtor — Categorias</title>
 
-  <!-- plugins:css -->
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
-  <!-- endinject -->
 
-  <!-- Plugin css for this page -->
   <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
-  <!-- End plugin css for this page -->
 
-  <!-- inject:css -->
   <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
-  <!-- endinject -->
-
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
@@ -51,7 +164,6 @@ if (!in_array('ADMIN', $perfis, true)) {
       color: black !important;
     }
 
-    /* Recuar TODOS os submenus para a esquerda */
     .sidebar .sub-menu .nav-item .nav-link {
       margin-left: -35px !important;
     }
@@ -60,16 +172,108 @@ if (!in_array('ADMIN', $perfis, true)) {
       list-style: none !important;
     }
 
-    /* Pequenos ajustes de listagem */
     .acoes-wrap {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
     }
 
+    .btn-xs {
+      padding: .25rem .5rem;
+      font-size: .75rem;
+      line-height: 1.2;
+      height: auto;
+    }
+
     .table td,
     .table th {
       vertical-align: middle !important;
+    }
+
+    /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
+    .sig-flash-wrap {
+      position: fixed;
+      top: 78px;
+      right: 18px;
+      left: auto;
+      width: min(420px, calc(100vw - 36px));
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .sig-toast.alert {
+      pointer-events: auto;
+      border: 0 !important;
+      border-left: 6px solid !important;
+      border-radius: 14px !important;
+      padding: 10px 12px !important;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
+      font-size: 13px !important;
+      margin-bottom: 10px !important;
+
+      opacity: 0;
+      transform: translateX(10px);
+      animation:
+        sigToastIn .22s ease-out forwards,
+        sigToastOut .25s ease-in forwards 5.75s;
+    }
+
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important;
+    }
+
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important;
+    }
+
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .sig-toast__title {
+      font-weight: 800;
+      margin-bottom: 1px;
+      line-height: 1.1;
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    .sig-toast .close {
+      opacity: .55;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 6px;
+    }
+
+    .sig-toast .close:hover {
+      opacity: 1;
+    }
+
+    @keyframes sigToastIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes sigToastOut {
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden;
+      }
     }
   </style>
 </head>
@@ -77,7 +281,6 @@ if (!in_array('ADMIN', $perfis, true)) {
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR (como você pediu) -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -100,9 +303,42 @@ if (!in_array('ADMIN', $perfis, true)) {
       </div>
     </nav>
 
+    <?php if ($msg || $err): ?>
+      <div class="sig-flash-wrap">
+        <?php if ($msg): ?>
+          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-check"></i></div>
+              <div>
+                <div class="sig-toast__title">Tudo certo!</div>
+                <p class="sig-toast__text"><?= h($msg) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($err): ?>
+          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+              <div>
+                <div class="sig-toast__title">Atenção!</div>
+                <p class="sig-toast__text"><?= h($err) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
+
     <div class="container-fluid page-body-wrapper">
 
-      <!-- settings-panel (mantido do template) -->
       <div id="right-sidebar" class="settings-panel">
         <i class="settings-close ti-close"></i>
         <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
@@ -115,7 +351,6 @@ if (!in_array('ADMIN', $perfis, true)) {
         </ul>
       </div>
 
-      <!-- SIDEBAR (MENU PADRÃO + CADASTROS ABERTO + ITEM ATIVO) -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
 
@@ -126,7 +361,6 @@ if (!in_array('ADMIN', $perfis, true)) {
             </a>
           </li>
 
-          <!-- CADASTROS (ATIVO) -->
           <li class="nav-item active">
             <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
               <i class="ti-id-badge menu-icon"></i>
@@ -175,8 +409,6 @@ if (!in_array('ADMIN', $perfis, true)) {
             </div>
           </li>
 
-          <!-- MOVIMENTO -->
-          <!-- MOVIMENTO -->
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
               <i class="ti-exchange-vertical menu-icon"></i>
@@ -200,7 +432,6 @@ if (!in_array('ADMIN', $perfis, true)) {
             </div>
           </li>
 
-          <!-- RELATÓRIOS -->
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
               <i class="ti-clipboard menu-icon"></i>
@@ -234,7 +465,6 @@ if (!in_array('ADMIN', $perfis, true)) {
             </div>
           </li>
 
-          <!-- SUPORTE -->
           <li class="nav-item">
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
@@ -245,7 +475,6 @@ if (!in_array('ADMIN', $perfis, true)) {
         </ul>
       </nav>
 
-      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
 
@@ -264,7 +493,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
                       <h4 class="card-title mb-0">Lista de Categorias</h4>
-                      <p class="card-description mb-0">Sem dados por enquanto (vamos ligar no banco depois).</p>
+                      <p class="card-description mb-0">Mostrando <?= (int)count($categorias) ?> registro(s).</p>
                     </div>
 
                     <a href="./adicionarCategoria.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
@@ -283,11 +512,60 @@ if (!in_array('ADMIN', $perfis, true)) {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td colspan="4" class="text-center text-muted py-4">
-                            Nenhuma categoria cadastrada ainda.
-                          </td>
-                        </tr>
+                        <?php if (empty($categorias)): ?>
+                          <tr>
+                            <td colspan="4" class="text-center text-muted py-4">
+                              Nenhuma categoria cadastrada ainda.
+                            </td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($categorias as $c): ?>
+                            <?php
+                            $id = (int)($c['id'] ?? 0);
+                            $ativo = (int)($c['ativo'] ?? 0) === 1;
+                            $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
+                            $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+                            $ordem = $c['ordem'] ?? null;
+                            ?>
+                            <tr>
+                              <td><?= $id ?></td>
+                              <td>
+                                <div class="font-weight-bold"><?= h($c['nome'] ?? '') ?></div>
+                                <?php if ($ordem !== null && $ordem !== ''): ?>
+                                  <small class="text-muted">Ordem: <?= (int)$ordem ?></small>
+                                <?php endif; ?>
+                              </td>
+                              <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                              <td>
+                                <div class="acoes-wrap">
+                                  <button type="button" class="btn btn-outline-primary btn-xs" disabled>
+                                    <i class="ti-pencil"></i> Editar
+                                  </button>
+
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="toggle">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <button type="submit" class="btn btn-outline-warning btn-xs"
+                                      onclick="return confirm('Deseja <?= $ativo ? 'DESATIVAR' : 'ATIVAR' ?> esta categoria?');">
+                                      <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
+                                    </button>
+                                  </form>
+
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="excluir">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <button type="submit" class="btn btn-outline-danger btn-xs"
+                                      onclick="return confirm('Tem certeza que deseja EXCLUIR esta categoria?');">
+                                      <i class="ti-trash"></i> Excluir
+                                    </button>
+                                  </form>
+                                </div>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
                       </tbody>
                     </table>
                   </div>
@@ -299,7 +577,6 @@ if (!in_array('ADMIN', $perfis, true)) {
 
         </div>
 
-        <!-- FOOTER -->
         <footer class="footer">
           <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
             <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
@@ -311,14 +588,9 @@ if (!in_array('ADMIN', $perfis, true)) {
         </footer>
 
       </div>
-      <!-- main-panel ends -->
-
     </div>
-    <!-- page-body-wrapper ends -->
   </div>
-  <!-- container-scroller -->
 
-  <!-- JS EXTERNO (sem JS interno) -->
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
