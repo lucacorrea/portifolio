@@ -74,11 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->rollBack();
                 $err = 'Já existe uma categoria com esse nome.';
             } else {
-                $sql = "INSERT INTO categorias (feira_id, nome, descricao, ordem, ativo)
-                        VALUES (:feira, :nome, :descricao, :ordem, :ativo)";
+                $sql = "INSERT INTO categorias (feira_id, nome, ativo)
+        VALUES (:feira, :nome, :ativo)";
                 $ins = $pdo->prepare($sql);
                 $ins->bindValue(':feira', $feiraId, PDO::PARAM_INT);
                 $ins->bindValue(':nome', $nome, PDO::PARAM_STR);
+                $ins->bindValue(':ativo', (int)$ativo, PDO::PARAM_INT);
+                $ins->execute();
+
 
                 if ($descricao === '') $ins->bindValue(':descricao', null, PDO::PARAM_NULL);
                 else $ins->bindValue(':descricao', $descricao, PDO::PARAM_STR);
