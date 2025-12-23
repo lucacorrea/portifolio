@@ -537,9 +537,7 @@ try {
                               <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                               <td>
                                 <div class="acoes-wrap">
-                                  <button type="button" class="btn btn-outline-primary btn-xs" disabled>
-                                    <i class="ti-pencil"></i> Editar
-                                  </button>
+                               
 
                                   <form method="post" class="m-0">
                                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
