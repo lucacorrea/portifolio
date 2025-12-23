@@ -59,10 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   try {
     if ($acao === 'toggle') {
+      // ✅ CORRIGIDO: aqui era UPDATE, mas você tinha colocado um SELECT
       $sql = "UPDATE categorias
               SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END
               WHERE id = :id AND feira_id = :feira
               LIMIT 1";
+
       $stmt = $pdo->prepare($sql);
       $stmt->bindValue(':id', $id, PDO::PARAM_INT);
       $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
@@ -106,7 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($mysqlCode === 1146) {
       $_SESSION['flash_err'] = 'Tabela "categorias" não existe. Rode o SQL das tabelas.';
     } else {
-      $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
+      $sqlState  = (string)$e->getCode();
+      $mysqlCode2 = (int)($e->errorInfo[1] ?? 0);
+      $_SESSION['flash_err'] = "Não foi possível concluir a ação agora. (SQLSTATE {$sqlState} / MySQL {$mysqlCode2})";
     }
 
     header('Location: ./listaCategoria.php');
@@ -121,17 +125,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 /* ===== Listagem ===== */
 $categorias = [];
 try {
-  $sql = "SELECT id, nome, ativo, ordem
+  // ✅ CORRIGIDO: sua tabela NÃO tem coluna "ordem"
+  $sql = "SELECT id, nome, ativo
           FROM categorias
           WHERE feira_id = :feira
-          ORDER BY
-            CASE WHEN ordem IS NULL THEN 1 ELSE 0 END,
-            ordem ASC,
-            nome ASC";
+          ORDER BY nome ASC";
   $stmt = $pdo->prepare($sql);
   $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
   $stmt->execute();
-  $categorias = $stmt->fetchAll();
+  $categorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
   $err = $err ?: 'Não foi possível carregar as categorias agora.';
 }
@@ -370,13 +372,8 @@ try {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
+                .sub-menu .nav-item .nav-link { color: black !important; }
+                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -525,6 +522,8 @@ try {
                             $ativo = (int)($c['ativo'] ?? 0) === 1;
                             $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
                             $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+
+                            // ✅ Mantido no HTML (pra não "tirar nada"), mas não vem do banco
                             $ordem = $c['ordem'] ?? null;
                             ?>
                             <tr>
