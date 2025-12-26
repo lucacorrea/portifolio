@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
@@ -15,6 +14,112 @@ if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
 }
+
+function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+/* Flash */
+$msg = (string)($_SESSION['flash_ok'] ?? '');
+$err = (string)($_SESSION['flash_err'] ?? '');
+unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
+
+/* CSRF */
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = (string)$_SESSION['csrf_token'];
+
+/* ===== Conexão ===== */
+require '../../../assets/php/conexao.php';
+$pdo = db();
+
+/* Feira do Produtor = 1 (na Feira Alternativa use 2) */
+$feiraId = 1;
+
+/* Valores do form (repopular) */
+$nome = '';
+$sigla = '';
+$ativo = '1';
+$observacao = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $postedCsrf = (string)($_POST['csrf_token'] ?? '');
+  if (!hash_equals($csrf, $postedCsrf)) {
+    $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
+    header('Location: ./adicionarUnidade.php');
+    exit;
+  }
+
+  $nome = trim((string)($_POST['nome'] ?? ''));
+  $sigla = trim((string)($_POST['sigla'] ?? ''));
+  $ativo = (string)($_POST['ativo'] ?? '1');
+  $observacao = trim((string)($_POST['observacao'] ?? ''));
+
+  $ativoInt = ($ativo === '0') ? 0 : 1;
+
+  if ($nome === '') {
+    $err = 'Informe o nome da unidade.';
+  } elseif ($sigla === '') {
+    $err = 'Informe a abreviação da unidade.';
+  } elseif (mb_strlen($nome) > 160) {
+    $err = 'O nome da unidade ficou muito grande.';
+  } elseif (mb_strlen($sigla) > 10) {
+    $err = 'A abreviação deve ter no máximo 10 caracteres.';
+  } elseif ($observacao !== '' && mb_strlen($observacao) > 255) {
+    $err = 'A observação ficou muito grande.';
+  } else {
+    try {
+      /* Evitar duplicado por feira (nome OU sigla) */
+      $chk = $pdo->prepare("
+        SELECT id
+        FROM unidades
+        WHERE feira_id = :feira
+          AND (nome = :nome OR sigla = :sigla)
+        LIMIT 1
+      ");
+      $chk->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+      $chk->bindValue(':nome', $nome, PDO::PARAM_STR);
+      $chk->bindValue(':sigla', $sigla, PDO::PARAM_STR);
+      $chk->execute();
+      $jaExiste = (int)($chk->fetchColumn() ?: 0);
+
+      if ($jaExiste > 0) {
+        $err = 'Já existe uma unidade com esse nome ou abreviação.';
+      } else {
+        $ins = $pdo->prepare("
+          INSERT INTO unidades (feira_id, nome, sigla, ativo, observacao, criado_em)
+          VALUES (:feira_id, :nome, :sigla, :ativo, :observacao, NOW())
+        ");
+        $ins->bindValue(':feira_id', $feiraId, PDO::PARAM_INT);
+        $ins->bindValue(':nome', $nome, PDO::PARAM_STR);
+        $ins->bindValue(':sigla', $sigla, PDO::PARAM_STR);
+        $ins->bindValue(':ativo', $ativoInt, PDO::PARAM_INT);
+
+        if ($observacao === '') {
+          $ins->bindValue(':observacao', null, PDO::PARAM_NULL);
+        } else {
+          $ins->bindValue(':observacao', $observacao, PDO::PARAM_STR);
+        }
+
+        $ins->execute();
+
+        $_SESSION['flash_ok'] = 'Unidade cadastrada com sucesso.';
+        header('Location: ./listaUnidade.php');
+        exit;
+      }
+    } catch (PDOException $e) {
+      $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+      if ($mysqlCode === 1146) {
+        $err = 'Tabela "unidades" não existe. Rode o SQL das tabelas.';
+      } elseif ($mysqlCode === 1062) {
+        $err = 'Já existe uma unidade com esse nome ou abreviação.';
+      } else {
+        $err = 'Não foi possível salvar a unidade agora.';
+      }
+    } catch (Throwable $e) {
+      $err = 'Não foi possível salvar a unidade agora.';
+    }
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -24,53 +129,67 @@ if (!in_array('ADMIN', $perfis, true)) {
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>SIGRelatórios Feira do Produtor — Adicionar Unidade</title>
 
-  <!-- plugins:css -->
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
-  <!-- endinject -->
 
-  <!-- Plugin css for this page -->
   <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
-  <!-- End plugin css for this page -->
 
-  <!-- inject:css -->
   <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
-  <!-- endinject -->
-
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover {
-      color: blue !important;
-    }
+    ul .nav-link:hover { color: blue !important; }
+    .nav-link { color: black !important; }
 
-    .nav-link {
-      color: black !important;
-    }
+    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
+    .sidebar .sub-menu li { list-style: none !important; }
 
-    /* Recuar TODOS os submenus para a esquerda */
-    .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -35px !important;
-    }
+    .form-control { height: 42px; }
+    .btn { height: 42px; }
+    .helper { font-size: 12px; }
 
-    .sidebar .sub-menu li {
-      list-style: none !important;
+    /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
+    .sig-flash-wrap{
+      position: fixed;
+      top: 78px;
+      right: 18px;
+      left: auto;
+      width: min(420px, calc(100vw - 36px));
+      z-index: 9999;
+      pointer-events: none;
     }
+    .sig-toast.alert{
+      pointer-events: auto;
+      border: 0 !important;
+      border-left: 6px solid !important;
+      border-radius: 14px !important;
+      padding: 10px 12px !important;
+      box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
+      font-size: 13px !important;
+      margin-bottom: 10px !important;
 
-    .form-control {
-      height: 42px;
+      opacity: 0;
+      transform: translateX(10px);
+      animation:
+        sigToastIn .22s ease-out forwards,
+        sigToastOut .25s ease-in forwards 5.75s;
     }
+    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
+    .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-    .btn {
-      height: 42px;
-    }
+    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
+    .sig-toast__icon i{ font-size:16px; margin-top:2px; }
+    .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
+    .sig-toast__text{ margin:0; line-height: 1.25; }
 
-    .helper {
-      font-size: 12px;
-    }
+    .sig-toast .close{ opacity:.55; font-size: 18px; line-height: 1; padding: 0 6px; }
+    .sig-toast .close:hover{ opacity:1; }
+
+    @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
+    @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
   </style>
 </head>
 
@@ -99,6 +218,40 @@ if (!in_array('ADMIN', $perfis, true)) {
         </button>
       </div>
     </nav>
+
+    <?php if ($msg || $err): ?>
+      <div class="sig-flash-wrap">
+        <?php if ($msg): ?>
+          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-check"></i></div>
+              <div>
+                <div class="sig-toast__title">Tudo certo!</div>
+                <p class="sig-toast__text"><?= h($msg) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($err): ?>
+          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+              <div>
+                <div class="sig-toast__title">Atenção!</div>
+                <p class="sig-toast__text"><?= h($err) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
 
     <div class="container-fluid page-body-wrapper">
 
@@ -136,13 +289,8 @@ if (!in_array('ADMIN', $perfis, true)) {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
+                .sub-menu .nav-item .nav-link { color: black !important; }
+                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -153,15 +301,12 @@ if (!in_array('ADMIN', $perfis, true)) {
                   </a>
                 </li>
 
-               
-
                 <li class="nav-item">
                   <a class="nav-link" href="./listaCategoria.php">
                     <i class="ti-layers mr-2"></i> Categorias
                   </a>
                 </li>
 
-               
                 <li class="nav-item">
                   <a class="nav-link" href="./listaUnidade.php">
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
@@ -272,7 +417,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
                       <h4 class="card-title mb-0">Formulário</h4>
-                      <p class="card-description mb-0">Somente layout por enquanto. Depois conectamos no banco.</p>
+                      <p class="card-description mb-0">Cadastro real no banco (INSERT) — Feira ID: <?= (int)$feiraId ?></p>
                     </div>
                     <a href="./listaUnidade.php" class="btn btn-light btn-sm mt-2 mt-md-0">
                       <i class="ti-arrow-left"></i> Voltar
@@ -281,35 +426,41 @@ if (!in_array('ADMIN', $perfis, true)) {
 
                   <hr>
 
-                  <form action="#" method="post" class="pt-2">
+                  <form action="./adicionarUnidade.php" method="post" class="pt-2" autocomplete="off">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
                     <div class="row">
                       <div class="col-md-6 mb-3">
                         <label class="mb-1">Nome da Unidade</label>
-                        <input type="text" class="form-control" placeholder="Ex.: Quilograma, Litro, Maço" required>
+                        <input type="text" class="form-control" name="nome"
+                               placeholder="Ex.: Quilograma, Litro, Maço" required
+                               value="<?= h($nome) ?>">
                         <small class="text-muted helper">Nome completo, como vai aparecer no cadastro de produtos.</small>
                       </div>
 
                       <div class="col-md-6 mb-3">
                         <label class="mb-1">Abreviação</label>
-                        <input type="text" class="form-control" placeholder="Ex.: kg, L, un, cx, dz" maxlength="10" required>
+                        <input type="text" class="form-control" name="sigla"
+                               placeholder="Ex.: kg, L, un, cx, dz" maxlength="10" required
+                               value="<?= h($sigla) ?>">
                         <small class="text-muted helper">Curta e padrão (recomendado: 2 a 5 letras).</small>
                       </div>
 
                       <div class="col-md-6 mb-3">
                         <label class="mb-1">Status</label>
-                        <select class="form-control" required>
-                          <option value="" selected disabled>Selecione</option>
-                          <option value="1">Ativo</option>
-                          <option value="0">Inativo</option>
+                        <select class="form-control" name="ativo" required>
+                          <option value="1" <?= $ativo === '1' ? 'selected' : '' ?>>Ativo</option>
+                          <option value="0" <?= $ativo === '0' ? 'selected' : '' ?>>Inativo</option>
                         </select>
                         <small class="text-muted helper">Inativo não aparece para selecionar nos produtos.</small>
                       </div>
 
                       <div class="col-md-6 mb-3">
                         <label class="mb-1">Observação (opcional)</label>
-                        <input type="text" class="form-control" placeholder="Ex.: usada para hortaliças e verduras">
-                        <small class="text-muted helper">Campo opcional para você se organizar (pode remover depois).</small>
+                        <input type="text" class="form-control" name="observacao"
+                               placeholder="Ex.: usada para hortaliças e verduras"
+                               value="<?= h($observacao) ?>">
+                        <small class="text-muted helper">Campo opcional para você se organizar.</small>
                       </div>
                     </div>
 
@@ -350,7 +501,6 @@ if (!in_array('ADMIN', $perfis, true)) {
   </div>
   <!-- container-scroller -->
 
-  <!-- JS EXTERNO (sem JS interno) -->
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
