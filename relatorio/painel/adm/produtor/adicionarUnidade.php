@@ -28,96 +28,108 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* ===== Conexão ===== */
+/* ===== Conexão + Feira ===== */
 require '../../../assets/php/conexao.php';
 $pdo = db();
 
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
 
-/* Valores do form (repopular) */
-$nome = '';
-$sigla = '';
-$ativo = '1';
-
+/* ===== Ações (Ativar/Desativar e Excluir) ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $postedCsrf = (string)($_POST['csrf_token'] ?? '');
+  $acao = (string)($_POST['acao'] ?? '');
+  $id = (int)($_POST['id'] ?? 0);
+
   if (!hash_equals($csrf, $postedCsrf)) {
     $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./adicionarUnidade.php');
+    header('Location: ./listaUnidade.php');
     exit;
   }
 
-  $nome  = trim((string)($_POST['nome'] ?? ''));
-  $sigla = trim((string)($_POST['sigla'] ?? ''));
-  $ativo = (string)($_POST['ativo'] ?? '1');
-
-  $ativoInt = ($ativo === '0') ? 0 : 1;
-
-  /* Normalização simples (evita "kg" vs "KG" virar duplicado visual) */
-  $nomeNorm  = preg_replace('/\s+/', ' ', $nome) ?? $nome;
-  $siglaNorm = preg_replace('/\s+/', ' ', $sigla) ?? $sigla;
-
-  if ($nomeNorm === '') {
-    $err = 'Informe o nome da unidade.';
-  } elseif ($siglaNorm === '') {
-    $err = 'Informe a abreviação da unidade.';
-  } elseif (mb_strlen($nomeNorm) > 80) { // VARCHAR(80)
-    $err = 'O nome da unidade deve ter no máximo 80 caracteres.';
-  } elseif (mb_strlen($siglaNorm) > 20) { // VARCHAR(20)
-    $err = 'A abreviação deve ter no máximo 20 caracteres.';
-  } else {
-    try {
-      /* Evitar duplicado por feira (nome OU sigla) */
-      $chk = $pdo->prepare("
-        SELECT id
-        FROM unidades
-        WHERE feira_id = :feira
-          AND (nome = :nome OR sigla = :sigla)
-        LIMIT 1
-      ");
-      $chk->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-      $chk->bindValue(':nome',  $nomeNorm, PDO::PARAM_STR);
-      $chk->bindValue(':sigla', $siglaNorm, PDO::PARAM_STR);
-      $chk->execute();
-      $jaExiste = (int)($chk->fetchColumn() ?: 0);
-
-      if ($jaExiste > 0) {
-        $err = 'Já existe uma unidade com esse nome ou abreviação.';
-      } else {
-        /* INSERT compatível com sua tabela (SEM observacao) */
-        $ins = $pdo->prepare("
-          INSERT INTO unidades (feira_id, nome, sigla, ativo)
-          VALUES (:feira_id, :nome, :sigla, :ativo)
-        ");
-        $ins->bindValue(':feira_id', $feiraId, PDO::PARAM_INT);
-        $ins->bindValue(':nome',     $nomeNorm, PDO::PARAM_STR);
-        $ins->bindValue(':sigla',    $siglaNorm, PDO::PARAM_STR);
-        $ins->bindValue(':ativo',    $ativoInt, PDO::PARAM_INT);
-        $ins->execute();
-
-        $_SESSION['flash_ok'] = 'Unidade cadastrada com sucesso.';
-        header('Location: ./listaUnidade.php');
-        exit;
-      }
-    } catch (PDOException $e) {
-      $mysqlCode = (int)($e->errorInfo[1] ?? 0);
-
-      if ($mysqlCode === 1146) {
-        $err = 'Tabela "unidades" não existe. Rode o SQL das tabelas.';
-      } elseif ($mysqlCode === 1062) {
-        $err = 'Já existe uma unidade com esse nome (ou abreviação).';
-      } elseif ($mysqlCode === 1452) {
-        $err = 'Feira inválida (feira_id não existe na tabela feiras).';
-      } elseif ($mysqlCode === 1054) {
-        $err = 'Erro no cadastro: coluna inexistente no banco (verifique a estrutura da tabela unidades).';
-      } else {
-        $err = 'Não foi possível salvar a unidade agora.';
-      }
-    } catch (Throwable $e) {
-      $err = 'Não foi possível salvar a unidade agora.';
-    }
+  if ($id <= 0) {
+    $_SESSION['flash_err'] = 'ID inválido.';
+    header('Location: ./listaUnidade.php');
+    exit;
   }
+
+  try {
+    if ($acao === 'toggle') {
+      $sql = "UPDATE unidades
+              SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END
+              WHERE id = :id AND feira_id = :feira
+              LIMIT 1";
+      $stmt = $pdo->prepare($sql);
+      $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+      $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+      $stmt->execute();
+
+      if ($stmt->rowCount() > 0) {
+        $_SESSION['flash_ok'] = 'Status da unidade atualizado.';
+      } else {
+        $_SESSION['flash_err'] = 'Unidade não encontrada.';
+      }
+      header('Location: ./listaUnidade.php');
+      exit;
+    }
+
+    if ($acao === 'excluir') {
+      $sql = "DELETE FROM unidades
+              WHERE id = :id AND feira_id = :feira
+              LIMIT 1";
+      $stmt = $pdo->prepare($sql);
+      $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+      $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+      $stmt->execute();
+
+      if ($stmt->rowCount() > 0) {
+        $_SESSION['flash_ok'] = 'Unidade excluída com sucesso.';
+      } else {
+        $_SESSION['flash_err'] = 'Unidade não encontrada.';
+      }
+      header('Location: ./listaUnidade.php');
+      exit;
+    }
+
+    $_SESSION['flash_err'] = 'Ação inválida.';
+    header('Location: ./listaUnidade.php');
+    exit;
+
+  } catch (PDOException $e) {
+    $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+
+    if ($mysqlCode === 1451) {
+      $_SESSION['flash_err'] = 'Não é possível excluir: existem produtos usando esta unidade.';
+    } elseif ($mysqlCode === 1146) {
+      $_SESSION['flash_err'] = 'Tabela "unidades" não existe. Rode o SQL das tabelas.';
+    } else {
+      $sqlState   = (string)$e->getCode();
+      $mysqlCode2 = (int)($e->errorInfo[1] ?? 0);
+      $_SESSION['flash_err'] = "Não foi possível concluir a ação agora. (SQLSTATE {$sqlState} / MySQL {$mysqlCode2})";
+    }
+
+    header('Location: ./listaUnidade.php');
+    exit;
+  } catch (Throwable $e) {
+    $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
+    header('Location: ./listaUnidade.php');
+    exit;
+  }
+}
+
+/* ===== Listagem ===== */
+$unidades = [];
+try {
+  $sql = "SELECT id, nome, sigla, ativo, criado_em, atualizado_em
+          FROM unidades
+          WHERE feira_id = :feira
+          ORDER BY nome ASC";
+  $stmt = $pdo->prepare($sql);
+  $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+  $stmt->execute();
+  $unidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+  $err = $err ?: 'Não foi possível carregar as unidades agora.';
 }
 ?>
 <!DOCTYPE html>
@@ -126,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Feira do Produtor — Adicionar Unidade</title>
+  <title>SIGRelatórios Feira do Produtor — Unidades</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -146,9 +158,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
     .sidebar .sub-menu li { list-style: none !important; }
 
-    .form-control { height: 42px; }
-    .btn { height: 42px; }
-    .helper { font-size: 12px; }
+    .acoes-wrap { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-xs { padding:.25rem .5rem; font-size:.75rem; line-height:1.2; height:auto; }
+    .table td, .table th { vertical-align: middle !important; }
 
     /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
     .sig-flash-wrap{
@@ -267,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </ul>
       </div>
 
-      <!-- SIDEBAR (Cadastros ativo + Adicionar Unidade ativo) -->
+      <!-- SIDEBAR (Cadastros ativo + Unidades ativo) -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
 
@@ -306,14 +318,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   </a>
                 </li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="./listaUnidade.php">
+                <li class="nav-item active">
+                  <a class="nav-link" href="./listaUnidade.php" style="color:white !important; background: #231475C5 !important;">
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
                   </a>
                 </li>
 
-                <li class="nav-item active">
-                  <a class="nav-link" href="./adicionarUnidade.php" style="color:white !important; background: #231475C5 !important;">
+                <li class="nav-item">
+                  <a class="nav-link" href="./adicionarUnidade.php">
                     <i class="ti-plus mr-2"></i> Adicionar Unidade
                   </a>
                 </li>
@@ -403,8 +415,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <div class="row">
             <div class="col-12 mb-3">
-              <h3 class="font-weight-bold">Adicionar Unidade</h3>
-              <h6 class="font-weight-normal mb-0">Cadastre uma unidade de medida para usar nos produtos (ex.: kg, litro, maço, dúzia).</h6>
+              <h3 class="font-weight-bold">Unidades</h3>
+              <h6 class="font-weight-normal mb-0">Cadastre e gerencie as unidades de medida dos produtos.</h6>
             </div>
           </div>
 
@@ -415,56 +427,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
-                      <h4 class="card-title mb-0">Formulário</h4>
-                      <p class="card-description mb-0">Cadastro real no banco (INSERT) — Feira ID: <?= (int)$feiraId ?></p>
+                      <h4 class="card-title mb-0">Lista de Unidades</h4>
+                      <p class="card-description mb-0">Mostrando <?= (int)count($unidades) ?> registro(s).</p>
                     </div>
-                    <a href="./listaUnidade.php" class="btn btn-light btn-sm mt-2 mt-md-0">
-                      <i class="ti-arrow-left"></i> Voltar
+
+                    <a href="./adicionarUnidade.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                      <i class="ti-plus"></i> Adicionar
                     </a>
                   </div>
 
-                  <hr>
+                  <div class="table-responsive pt-3">
+                    <table class="table table-striped table-hover">
+                      <thead>
+                        <tr>
+                          <th style="width: 90px;">ID</th>
+                          <th>Unidade</th>
+                          <th style="width: 180px;">Abreviação</th>
+                          <th style="width: 160px;">Status</th>
+                          <th style="min-width: 220px;">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if (empty($unidades)): ?>
+                          <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                              Nenhuma unidade cadastrada ainda.
+                            </td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($unidades as $u): ?>
+                            <?php
+                              $id = (int)($u['id'] ?? 0);
+                              $ativo = (int)($u['ativo'] ?? 0) === 1;
+                              $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
+                              $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+                            ?>
+                            <tr>
+                              <td><?= $id ?></td>
+                              <td>
+                                <div class="font-weight-bold"><?= h($u['nome'] ?? '') ?></div>
+                                <small class="text-muted">
+                                  Criado: <?= h((string)($u['criado_em'] ?? '')) ?>
+                                  <?php if (!empty($u['atualizado_em'])): ?>
+                                    • Atualizado: <?= h((string)$u['atualizado_em']) ?>
+                                  <?php endif; ?>
+                                </small>
+                              </td>
+                              <td><?= h($u['sigla'] ?? '') ?></td>
+                              <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                              <td>
+                                <div class="acoes-wrap">
 
-                  <form action="./adicionarUnidade.php" method="post" class="pt-2" autocomplete="off">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="toggle">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <button type="submit" class="btn btn-outline-warning btn-xs"
+                                      onclick="return confirm('Deseja <?= $ativo ? 'DESATIVAR' : 'ATIVAR' ?> esta unidade?');">
+                                      <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
+                                    </button>
+                                  </form>
 
-                    <div class="row">
-                      <div class="col-md-6 mb-3">
-                        <label class="mb-1">Nome da Unidade</label>
-                        <input type="text" class="form-control" name="nome"
-                               placeholder="Ex.: Quilograma, Litro, Maço" required maxlength="80"
-                               value="<?= h($nome) ?>">
-                        <small class="text-muted helper">Máximo 80 caracteres (conforme o banco).</small>
-                      </div>
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="excluir">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <button type="submit" class="btn btn-outline-danger btn-xs"
+                                      onclick="return confirm('Tem certeza que deseja EXCLUIR esta unidade?');">
+                                      <i class="ti-trash"></i> Excluir
+                                    </button>
+                                  </form>
 
-                      <div class="col-md-6 mb-3">
-                        <label class="mb-1">Abreviação</label>
-                        <input type="text" class="form-control" name="sigla"
-                               placeholder="Ex.: kg, L, un, cx, dz" maxlength="20" required
-                               value="<?= h($sigla) ?>">
-                        <small class="text-muted helper">Máximo 20 caracteres (conforme o banco).</small>
-                      </div>
-
-                      <div class="col-md-6 mb-3">
-                        <label class="mb-1">Status</label>
-                        <select class="form-control" name="ativo" required>
-                          <option value="1" <?= $ativo === '1' ? 'selected' : '' ?>>Ativo</option>
-                          <option value="0" <?= $ativo === '0' ? 'selected' : '' ?>>Inativo</option>
-                        </select>
-                        <small class="text-muted helper">Inativo não aparece para selecionar nos produtos.</small>
-                      </div>
-                    </div>
-
-                    <div class="d-flex flex-wrap" style="gap:8px;">
-                      <button type="submit" class="btn btn-primary">
-                        <i class="ti-save mr-1"></i> Salvar
-                      </button>
-                      <button type="reset" class="btn btn-light">
-                        <i class="ti-close mr-1"></i> Limpar
-                      </button>
-                    </div>
-
-                  </form>
+                                </div>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
 
                 </div>
               </div>
