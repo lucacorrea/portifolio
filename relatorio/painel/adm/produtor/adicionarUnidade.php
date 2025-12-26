@@ -39,7 +39,6 @@ $feiraId = 1;
 $nome = '';
 $sigla = '';
 $ativo = '1';
-$observacao = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $postedCsrf = (string)($_POST['csrf_token'] ?? '');
@@ -49,23 +48,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  $nome = trim((string)($_POST['nome'] ?? ''));
+  $nome  = trim((string)($_POST['nome'] ?? ''));
   $sigla = trim((string)($_POST['sigla'] ?? ''));
   $ativo = (string)($_POST['ativo'] ?? '1');
-  $observacao = trim((string)($_POST['observacao'] ?? ''));
 
   $ativoInt = ($ativo === '0') ? 0 : 1;
 
-  if ($nome === '') {
+  /* Normalização simples (evita "kg" vs "KG" virar duplicado visual) */
+  $nomeNorm  = preg_replace('/\s+/', ' ', $nome) ?? $nome;
+  $siglaNorm = preg_replace('/\s+/', ' ', $sigla) ?? $sigla;
+
+  if ($nomeNorm === '') {
     $err = 'Informe o nome da unidade.';
-  } elseif ($sigla === '') {
+  } elseif ($siglaNorm === '') {
     $err = 'Informe a abreviação da unidade.';
-  } elseif (mb_strlen($nome) > 160) {
-    $err = 'O nome da unidade ficou muito grande.';
-  } elseif (mb_strlen($sigla) > 10) {
-    $err = 'A abreviação deve ter no máximo 10 caracteres.';
-  } elseif ($observacao !== '' && mb_strlen($observacao) > 255) {
-    $err = 'A observação ficou muito grande.';
+  } elseif (mb_strlen($nomeNorm) > 80) { // VARCHAR(80)
+    $err = 'O nome da unidade deve ter no máximo 80 caracteres.';
+  } elseif (mb_strlen($siglaNorm) > 20) { // VARCHAR(20)
+    $err = 'A abreviação deve ter no máximo 20 caracteres.';
   } else {
     try {
       /* Evitar duplicado por feira (nome OU sigla) */
@@ -77,29 +77,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         LIMIT 1
       ");
       $chk->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-      $chk->bindValue(':nome', $nome, PDO::PARAM_STR);
-      $chk->bindValue(':sigla', $sigla, PDO::PARAM_STR);
+      $chk->bindValue(':nome',  $nomeNorm, PDO::PARAM_STR);
+      $chk->bindValue(':sigla', $siglaNorm, PDO::PARAM_STR);
       $chk->execute();
       $jaExiste = (int)($chk->fetchColumn() ?: 0);
 
       if ($jaExiste > 0) {
         $err = 'Já existe uma unidade com esse nome ou abreviação.';
       } else {
+        /* INSERT compatível com sua tabela (SEM observacao) */
         $ins = $pdo->prepare("
-          INSERT INTO unidades (feira_id, nome, sigla, ativo, observacao, criado_em)
-          VALUES (:feira_id, :nome, :sigla, :ativo, :observacao, NOW())
+          INSERT INTO unidades (feira_id, nome, sigla, ativo)
+          VALUES (:feira_id, :nome, :sigla, :ativo)
         ");
         $ins->bindValue(':feira_id', $feiraId, PDO::PARAM_INT);
-        $ins->bindValue(':nome', $nome, PDO::PARAM_STR);
-        $ins->bindValue(':sigla', $sigla, PDO::PARAM_STR);
-        $ins->bindValue(':ativo', $ativoInt, PDO::PARAM_INT);
-
-        if ($observacao === '') {
-          $ins->bindValue(':observacao', null, PDO::PARAM_NULL);
-        } else {
-          $ins->bindValue(':observacao', $observacao, PDO::PARAM_STR);
-        }
-
+        $ins->bindValue(':nome',     $nomeNorm, PDO::PARAM_STR);
+        $ins->bindValue(':sigla',    $siglaNorm, PDO::PARAM_STR);
+        $ins->bindValue(':ativo',    $ativoInt, PDO::PARAM_INT);
         $ins->execute();
 
         $_SESSION['flash_ok'] = 'Unidade cadastrada com sucesso.';
@@ -108,10 +102,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     } catch (PDOException $e) {
       $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+
       if ($mysqlCode === 1146) {
         $err = 'Tabela "unidades" não existe. Rode o SQL das tabelas.';
       } elseif ($mysqlCode === 1062) {
-        $err = 'Já existe uma unidade com esse nome ou abreviação.';
+        $err = 'Já existe uma unidade com esse nome (ou abreviação).';
+      } elseif ($mysqlCode === 1452) {
+        $err = 'Feira inválida (feira_id não existe na tabela feiras).';
+      } elseif ($mysqlCode === 1054) {
+        $err = 'Erro no cadastro: coluna inexistente no banco (verifique a estrutura da tabela unidades).';
       } else {
         $err = 'Não foi possível salvar a unidade agora.';
       }
@@ -433,17 +432,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       <div class="col-md-6 mb-3">
                         <label class="mb-1">Nome da Unidade</label>
                         <input type="text" class="form-control" name="nome"
-                               placeholder="Ex.: Quilograma, Litro, Maço" required
+                               placeholder="Ex.: Quilograma, Litro, Maço" required maxlength="80"
                                value="<?= h($nome) ?>">
-                        <small class="text-muted helper">Nome completo, como vai aparecer no cadastro de produtos.</small>
+                        <small class="text-muted helper">Máximo 80 caracteres (conforme o banco).</small>
                       </div>
 
                       <div class="col-md-6 mb-3">
                         <label class="mb-1">Abreviação</label>
                         <input type="text" class="form-control" name="sigla"
-                               placeholder="Ex.: kg, L, un, cx, dz" maxlength="10" required
+                               placeholder="Ex.: kg, L, un, cx, dz" maxlength="20" required
                                value="<?= h($sigla) ?>">
-                        <small class="text-muted helper">Curta e padrão (recomendado: 2 a 5 letras).</small>
+                        <small class="text-muted helper">Máximo 20 caracteres (conforme o banco).</small>
                       </div>
 
                       <div class="col-md-6 mb-3">
@@ -453,14 +452,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <option value="0" <?= $ativo === '0' ? 'selected' : '' ?>>Inativo</option>
                         </select>
                         <small class="text-muted helper">Inativo não aparece para selecionar nos produtos.</small>
-                      </div>
-
-                      <div class="col-md-6 mb-3">
-                        <label class="mb-1">Observação (opcional)</label>
-                        <input type="text" class="form-control" name="observacao"
-                               placeholder="Ex.: usada para hortaliças e verduras"
-                               value="<?= h($observacao) ?>">
-                        <small class="text-muted helper">Campo opcional para você se organizar.</small>
                       </div>
                     </div>
 
