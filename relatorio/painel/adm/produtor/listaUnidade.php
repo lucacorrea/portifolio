@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
@@ -15,6 +14,123 @@ if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
 }
+
+function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+/* Flash */
+$msg = (string)($_SESSION['flash_ok'] ?? '');
+$err = (string)($_SESSION['flash_err'] ?? '');
+unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
+
+/* CSRF */
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = (string)$_SESSION['csrf_token'];
+
+/* ===== Conexão + Feira ===== */
+require '../../../assets/php/conexao.php';
+$pdo = db();
+
+/* Feira do Produtor = 1 (na Feira Alternativa use 2) */
+$feiraId = 1;
+
+/* ===== Ações (Ativar/Desativar e Excluir) ===== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $postedCsrf = (string)($_POST['csrf_token'] ?? '');
+  $acao = (string)($_POST['acao'] ?? '');
+  $id = (int)($_POST['id'] ?? 0);
+
+  if (!hash_equals($csrf, $postedCsrf)) {
+    $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
+    header('Location: ./listaUnidade.php');
+    exit;
+  }
+
+  if ($id <= 0) {
+    $_SESSION['flash_err'] = 'ID inválido.';
+    header('Location: ./listaUnidade.php');
+    exit;
+  }
+
+  try {
+    if ($acao === 'toggle') {
+      $sql = "UPDATE unidades
+              SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END
+              WHERE id = :id AND feira_id = :feira
+              LIMIT 1";
+      $stmt = $pdo->prepare($sql);
+      $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+      $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+      $stmt->execute();
+
+      if ($stmt->rowCount() > 0) {
+        $_SESSION['flash_ok'] = 'Status da unidade atualizado.';
+      } else {
+        $_SESSION['flash_err'] = 'Unidade não encontrada.';
+      }
+      header('Location: ./listaUnidade.php');
+      exit;
+    }
+
+    if ($acao === 'excluir') {
+      $sql = "DELETE FROM unidades
+              WHERE id = :id AND feira_id = :feira
+              LIMIT 1";
+      $stmt = $pdo->prepare($sql);
+      $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+      $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+      $stmt->execute();
+
+      if ($stmt->rowCount() > 0) {
+        $_SESSION['flash_ok'] = 'Unidade excluída com sucesso.';
+      } else {
+        $_SESSION['flash_err'] = 'Unidade não encontrada.';
+      }
+      header('Location: ./listaUnidade.php');
+      exit;
+    }
+
+    $_SESSION['flash_err'] = 'Ação inválida.';
+    header('Location: ./listaUnidade.php');
+    exit;
+
+  } catch (PDOException $e) {
+    $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+
+    if ($mysqlCode === 1451) {
+      $_SESSION['flash_err'] = 'Não é possível excluir: existem produtos usando esta unidade.';
+    } elseif ($mysqlCode === 1146) {
+      $_SESSION['flash_err'] = 'Tabela "unidades" não existe. Rode o SQL das tabelas.';
+    } else {
+      $sqlState   = (string)$e->getCode();
+      $mysqlCode2 = (int)($e->errorInfo[1] ?? 0);
+      $_SESSION['flash_err'] = "Não foi possível concluir a ação agora. (SQLSTATE {$sqlState} / MySQL {$mysqlCode2})";
+    }
+
+    header('Location: ./listaUnidade.php');
+    exit;
+  } catch (Throwable $e) {
+    $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
+    header('Location: ./listaUnidade.php');
+    exit;
+  }
+}
+
+/* ===== Listagem ===== */
+$unidades = [];
+try {
+  $sql = "SELECT id, nome, sigla, ativo, criado_em, atualizado_em
+          FROM unidades
+          WHERE feira_id = :feira
+          ORDER BY nome ASC";
+  $stmt = $pdo->prepare($sql);
+  $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
+  $stmt->execute();
+  $unidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+  $err = $err ?: 'Não foi possível carregar as unidades agora.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -24,59 +140,74 @@ if (!in_array('ADMIN', $perfis, true)) {
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>SIGRelatórios Feira do Produtor — Unidades</title>
 
-  <!-- plugins:css -->
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
-  <!-- endinject -->
 
-  <!-- Plugin css for this page -->
   <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
-  <!-- End plugin css for this page -->
 
-  <!-- inject:css -->
   <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
-  <!-- endinject -->
-
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover {
-      color: blue !important;
-    }
+    ul .nav-link:hover { color: blue !important; }
+    .nav-link { color: black !important; }
 
-    .nav-link {
-      color: black !important;
-    }
+    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
+    .sidebar .sub-menu li { list-style: none !important; }
 
-    /* Recuar TODOS os submenus para a esquerda */
-    .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -35px !important;
-    }
+    .acoes-wrap { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-xs { padding:.25rem .5rem; font-size:.75rem; line-height:1.2; height:auto; }
+    .table td, .table th { vertical-align: middle !important; }
 
-    .sidebar .sub-menu li {
-      list-style: none !important;
+    /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
+    .sig-flash-wrap{
+      position: fixed;
+      top: 78px;
+      right: 18px;
+      left: auto;
+      width: min(420px, calc(100vw - 36px));
+      z-index: 9999;
+      pointer-events: none;
     }
+    .sig-toast.alert{
+      pointer-events: auto;
+      border: 0 !important;
+      border-left: 6px solid !important;
+      border-radius: 14px !important;
+      padding: 10px 12px !important;
+      box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
+      font-size: 13px !important;
+      margin-bottom: 10px !important;
 
-    .acoes-wrap {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      opacity: 0;
+      transform: translateX(10px);
+      animation:
+        sigToastIn .22s ease-out forwards,
+        sigToastOut .25s ease-in forwards 5.75s;
     }
+    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
+    .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-    .table td,
-    .table th {
-      vertical-align: middle !important;
-    }
+    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
+    .sig-toast__icon i{ font-size:16px; margin-top:2px; }
+    .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
+    .sig-toast__text{ margin:0; line-height: 1.25; }
+
+    .sig-toast .close{ opacity:.55; font-size: 18px; line-height: 1; padding: 0 6px; }
+    .sig-toast .close:hover{ opacity:1; }
+
+    @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
+    @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
   </style>
 </head>
 
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR (padrão que você pediu) -->
+    <!-- NAVBAR (padrão) -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -99,6 +230,40 @@ if (!in_array('ADMIN', $perfis, true)) {
       </div>
     </nav>
 
+    <?php if ($msg || $err): ?>
+      <div class="sig-flash-wrap">
+        <?php if ($msg): ?>
+          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-check"></i></div>
+              <div>
+                <div class="sig-toast__title">Tudo certo!</div>
+                <p class="sig-toast__text"><?= h($msg) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($err): ?>
+          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+              <div>
+                <div class="sig-toast__title">Atenção!</div>
+                <p class="sig-toast__text"><?= h($err) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
+
     <div class="container-fluid page-body-wrapper">
 
       <!-- settings-panel (mantido) -->
@@ -114,7 +279,7 @@ if (!in_array('ADMIN', $perfis, true)) {
         </ul>
       </div>
 
-      <!-- SIDEBAR (CADASTROS ativo + item Unidades ativo) -->
+      <!-- SIDEBAR (Cadastros ativo + Unidades ativo) -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
 
@@ -135,13 +300,8 @@ if (!in_array('ADMIN', $perfis, true)) {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
+                .sub-menu .nav-item .nav-link { color: black !important; }
+                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -152,15 +312,11 @@ if (!in_array('ADMIN', $perfis, true)) {
                   </a>
                 </li>
 
-              
-
                 <li class="nav-item">
                   <a class="nav-link" href="./listaCategoria.php">
                     <i class="ti-layers mr-2"></i> Categorias
                   </a>
                 </li>
-
-              
 
                 <li class="nav-item active">
                   <a class="nav-link" href="./listaUnidade.php" style="color:white !important; background: #231475C5 !important;">
@@ -168,6 +324,11 @@ if (!in_array('ADMIN', $perfis, true)) {
                   </a>
                 </li>
 
+                <li class="nav-item">
+                  <a class="nav-link" href="./adicionarUnidade.php">
+                    <i class="ti-plus mr-2"></i> Adicionar Unidade
+                  </a>
+                </li>
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProdutor.php">
@@ -255,7 +416,7 @@ if (!in_array('ADMIN', $perfis, true)) {
           <div class="row">
             <div class="col-12 mb-3">
               <h3 class="font-weight-bold">Unidades</h3>
-              <h6 class="font-weight-normal mb-0">Cadastre e gerencie as unidades de medida (kg, maço, litro, dúzia...).</h6>
+              <h6 class="font-weight-normal mb-0">Cadastre e gerencie as unidades de medida dos produtos.</h6>
             </div>
           </div>
 
@@ -267,7 +428,7 @@ if (!in_array('ADMIN', $perfis, true)) {
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
                       <h4 class="card-title mb-0">Lista de Unidades</h4>
-                      <p class="card-description mb-0">Sem dados por enquanto (vamos ligar no banco depois).</p>
+                      <p class="card-description mb-0">Mostrando <?= (int)count($unidades) ?> registro(s).</p>
                     </div>
 
                     <a href="./adicionarUnidade.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
@@ -287,11 +448,61 @@ if (!in_array('ADMIN', $perfis, true)) {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td colspan="5" class="text-center text-muted py-4">
-                            Nenhuma unidade cadastrada ainda.
-                          </td>
-                        </tr>
+                        <?php if (empty($unidades)): ?>
+                          <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                              Nenhuma unidade cadastrada ainda.
+                            </td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($unidades as $u): ?>
+                            <?php
+                              $id = (int)($u['id'] ?? 0);
+                              $ativo = (int)($u['ativo'] ?? 0) === 1;
+                              $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
+                              $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+                            ?>
+                            <tr>
+                              <td><?= $id ?></td>
+                              <td>
+                                <div class="font-weight-bold"><?= h($u['nome'] ?? '') ?></div>
+                                <small class="text-muted">
+                                  Criado: <?= h((string)($u['criado_em'] ?? '')) ?>
+                                  <?php if (!empty($u['atualizado_em'])): ?>
+                                    • Atualizado: <?= h((string)$u['atualizado_em']) ?>
+                                  <?php endif; ?>
+                                </small>
+                              </td>
+                              <td><?= h($u['sigla'] ?? '') ?></td>
+                              <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                              <td>
+                                <div class="acoes-wrap">
+
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="toggle">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <button type="submit" class="btn btn-outline-warning btn-xs"
+                                      onclick="return confirm('Deseja <?= $ativo ? 'DESATIVAR' : 'ATIVAR' ?> esta unidade?');">
+                                      <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
+                                    </button>
+                                  </form>
+
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="excluir">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <button type="submit" class="btn btn-outline-danger btn-xs"
+                                      onclick="return confirm('Tem certeza que deseja EXCLUIR esta unidade?');">
+                                      <i class="ti-trash"></i> Excluir
+                                    </button>
+                                  </form>
+
+                                </div>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
                       </tbody>
                     </table>
                   </div>
@@ -322,7 +533,6 @@ if (!in_array('ADMIN', $perfis, true)) {
   </div>
   <!-- container-scroller -->
 
-  <!-- JS EXTERNO (sem JS interno) -->
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
