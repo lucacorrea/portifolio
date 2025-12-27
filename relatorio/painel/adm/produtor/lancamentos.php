@@ -29,11 +29,12 @@ function to_decimal($v): float {
   return (float)$s;
 }
 
+/* ✅ agora sem hora: mostra só data (d/m/Y) */
 function fmt_dt(string $s): string {
   if ($s === '') return '';
   try {
     $dt = new DateTime($s);
-    return $dt->format('d/m/Y H:i');
+    return $dt->format('d/m/Y');
   } catch (Throwable $e) {
     return $s;
   }
@@ -141,9 +142,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // venda_itens: feira_id, venda_id, produto_id, quantidade, valor_unitario, subtotal...
 
     $dataVenda = trim((string)($_POST['data_venda'] ?? ''));
-    $horaVenda = trim((string)($_POST['hora_venda'] ?? ''));
     $pagamento = trim((string)($_POST['forma_pagamento'] ?? ''));
     $obs       = trim((string)($_POST['observacao'] ?? ''));
+
+    // ✅ sem hora no form: grava fixo meio-dia
+    $dataHora = $dataVenda . ' 12:00:00';
 
     $produtoIds = $_POST['produto_id'] ?? [];
     $qtds       = $_POST['quantidade'] ?? [];
@@ -154,10 +157,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($dataVenda === '') $localErr = 'Informe a data do lançamento.';
     elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataVenda)) $localErr = 'Data inválida.';
     elseif ($pagamento === '') $localErr = 'Selecione a forma de pagamento.';
-
-    if ($horaVenda !== '' && !preg_match('/^\d{2}:\d{2}$/', $horaVenda)) $horaVenda = '';
-    if ($horaVenda === '') $horaVenda = date('H:i');
-    $dataHora = $dataVenda.' '.$horaVenda.':00';
 
     $itens = [];
     $total = 0.0;
@@ -368,8 +367,6 @@ if ($verId > 0) {
     exit;
   }
 }
-
-$horaAgora = date('H:i');
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -609,7 +606,7 @@ $horaAgora = date('H:i');
         <div class="row">
           <div class="col-12 mb-3">
             <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
-            <h6 class="font-weight-normal mb-0">O “Visualizar” funciona e quando tiver mais de um feirante aparece em lista (linhas separadas).</h6>
+            <h6 class="font-weight-normal mb-0">Sem hora no formulário e “Feirante(s)” sempre em linhas separadas quando tiver mais de um.</h6>
           </div>
         </div>
 
@@ -622,7 +619,7 @@ $horaAgora = date('H:i');
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Novo Lançamento</h4>
-                    <p class="card-description mb-0">Escolha data/hora, forma de pagamento, adicione itens e salve.</p>
+                    <p class="card-description mb-0">Escolha a data, forma de pagamento, adicione itens e salve.</p>
                   </div>
                   <div class="totbox mt-2 mt-md-0">
                     <p class="totlabel">Total</p>
@@ -642,11 +639,7 @@ $horaAgora = date('H:i');
                       <input type="date" class="form-control" name="data_venda" value="<?= h($dia) ?>" required>
                     </div>
 
-                    <div class="col-md-2 mb-3">
-                      <label class="mb-1">Hora</label>
-                      <input type="time" class="form-control" name="hora_venda" value="<?= h($horaAgora) ?>">
-                      <small class="text-muted helper">Opcional.</small>
-                    </div>
+                    <!-- ✅ HORA REMOVIDA -->
 
                     <div class="col-md-3 mb-3">
                       <label class="mb-1">Forma de Pagamento</label>
@@ -659,7 +652,7 @@ $horaAgora = date('H:i');
                       </select>
                     </div>
 
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                       <label class="mb-1">Observação</label>
                       <input type="text" class="form-control" name="observacao" placeholder="Opcional">
                     </div>
@@ -789,7 +782,7 @@ $horaAgora = date('H:i');
                     <thead>
                       <tr>
                         <th style="width:90px;">ID</th>
-                        <th style="width:170px;">Data/Hora</th>
+                        <th style="width:170px;">Data</th>
                         <th style="width:150px;">Pagamento</th>
                         <th>Feirante(s)</th>
                         <th style="width:160px;">Total</th>
@@ -807,7 +800,7 @@ $horaAgora = date('H:i');
                             $vid = (int)($v['id'] ?? 0);
                             $tot = (float)($v['total'] ?? 0);
 
-                            // ✅ lista de feirantes em linhas separadas quando tiver mais de um
+                            // ✅ feirantes em LINHAS separadas (sempre que houver mais de um)
                             $plistRaw = (string)($v['produtores_list'] ?? '');
                             $plist = array_values(array_filter(array_map('trim', $plistRaw !== '' ? explode('||', $plistRaw) : [])));
                             if (empty($plist)) $plist = ['—'];
@@ -818,7 +811,6 @@ $horaAgora = date('H:i');
                             <td><?= $vid ?></td>
                             <td><?= h(fmt_dt((string)($v['data_hora'] ?? ''))) ?></td>
                             <td><?= h((string)($v['forma_pagamento'] ?? '')) ?></td>
-
                             <td>
                               <?php if (count($plist) <= 1): ?>
                                 <?= h($plist[0] ?? '—') ?>
@@ -830,7 +822,6 @@ $horaAgora = date('H:i');
                                 </ul>
                               <?php endif; ?>
                             </td>
-
                             <td><b>R$ <?= number_format($tot, 2, ',', '.') ?></b></td>
                             <td>
                               <div class="acoes-wrap">
@@ -901,7 +892,7 @@ $horaAgora = date('H:i');
           ?>
           <div class="row">
             <div class="col-md-3 mb-2">
-              <div class="text-muted" style="font-size:12px;">Data/Hora</div>
+              <div class="text-muted" style="font-size:12px;">Data</div>
               <div style="font-weight:800;"><?= h(fmt_dt((string)$detalheVenda['data_hora'])) ?></div>
             </div>
             <div class="col-md-3 mb-2">
@@ -924,7 +915,6 @@ $horaAgora = date('H:i');
             <div class="col-md-6 mb-2">
               <div class="text-muted" style="font-size:12px;">Feirante(s)</div>
 
-              <!-- ✅ em linhas separadas quando tiver mais de um -->
               <?php if (empty($detalheProdutores)): ?>
                 <div>—</div>
               <?php elseif (count($detalheProdutores) === 1): ?>
