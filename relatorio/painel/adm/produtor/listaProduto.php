@@ -207,12 +207,22 @@ $totalPaginas = 1;
 
 try {
   $where = "p.feira_id = :feira";
+  $params = [':feira' => $feiraId];
+
   if ($q !== '') {
+    // placeholders diferentes (PDO MySQL com emulação OFF não permite repetir o mesmo :q)
+    $params[':q1'] = '%' . $q . '%';
+    $params[':q2'] = '%' . $q . '%';
+    $params[':q3'] = '%' . $q . '%';
+    $params[':q4'] = '%' . $q . '%';
+    $params[':q5'] = '%' . $q . '%';
+
     $where .= " AND (
-      p.nome LIKE :q OR
-      c.nome LIKE :q OR
-      u.nome LIKE :q OR u.sigla LIKE :q OR
-      pr.nome LIKE :q
+      p.nome LIKE :q1 OR
+      c.nome LIKE :q2 OR
+      u.nome LIKE :q3 OR
+      u.sigla LIKE :q4 OR
+      pr.nome LIKE :q5
     )";
   }
 
@@ -225,8 +235,13 @@ try {
     WHERE $where
   ";
   $stmt = $pdo->prepare($sqlCount);
-  $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-  if ($q !== '') $stmt->bindValue(':q', '%' . $q . '%', PDO::PARAM_STR);
+  $stmt->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
+
+  foreach ($params as $k => $v) {
+    if ($k === ':feira') continue;
+    $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+  }
+
   $stmt->execute();
 
   $totalRegistros = (int)$stmt->fetchColumn();
@@ -244,12 +259,22 @@ try {
 $produtos = [];
 try {
   $where = "p.feira_id = :feira";
+  $params = [':feira' => $feiraId];
+
   if ($q !== '') {
+    // placeholders diferentes (PDO MySQL com emulação OFF não permite repetir o mesmo :q)
+    $params[':q1'] = '%' . $q . '%';
+    $params[':q2'] = '%' . $q . '%';
+    $params[':q3'] = '%' . $q . '%';
+    $params[':q4'] = '%' . $q . '%';
+    $params[':q5'] = '%' . $q . '%';
+
     $where .= " AND (
-      p.nome LIKE :q OR
-      c.nome LIKE :q OR
-      u.nome LIKE :q OR u.sigla LIKE :q OR
-      pr.nome LIKE :q
+      p.nome LIKE :q1 OR
+      c.nome LIKE :q2 OR
+      u.nome LIKE :q3 OR
+      u.sigla LIKE :q4 OR
+      pr.nome LIKE :q5
     )";
   }
 
@@ -272,10 +297,15 @@ try {
     LIMIT :lim OFFSET :off
   ";
   $stmt = $pdo->prepare($sql);
-  $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-  if ($q !== '') $stmt->bindValue(':q', '%' . $q . '%', PDO::PARAM_STR);
-  $stmt->bindValue(':lim', $porPagina, PDO::PARAM_INT);
-  $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+  $stmt->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
+
+  foreach ($params as $k => $v) {
+    if ($k === ':feira') continue;
+    $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+  }
+
+  $stmt->bindValue(':lim', (int)$porPagina, PDO::PARAM_INT);
+  $stmt->bindValue(':off', (int)$offset, PDO::PARAM_INT);
   $stmt->execute();
 
   $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -800,6 +830,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
   <script src="../../../js/off-canvas.js"></script>
+  <script src="../../../js/hoverable-collapse.js"></script>
   <script src="../../../js/hoverable-collapse.js"></script>
   <script src="../../../js/template.js"></script>
   <script src="../../../js/settings.js"></script>
