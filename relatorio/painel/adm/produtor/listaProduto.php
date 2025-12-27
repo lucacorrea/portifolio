@@ -686,7 +686,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
                         </a>
                         
                       </div>
-                      <small class="text-muted d-block mt-2">Pesquisa por URL: <b>?q=texto</b></small>
+                     
                     </div>
                   </form>
                 </div>
