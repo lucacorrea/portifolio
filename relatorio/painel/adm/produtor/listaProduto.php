@@ -684,9 +684,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
                         <a class="btn btn-light" href="./listaProduto.php">
                           <i class="ti-close mr-1"></i> Limpar
                         </a>
-                        <button type="button" class="btn btn-success" disabled>
-                          <i class="ti-export mr-1"></i> Exportar
-                        </button>
+                        
                       </div>
                       <small class="text-muted d-block mt-2">Pesquisa por URL: <b>?q=texto</b></small>
                     </div>
