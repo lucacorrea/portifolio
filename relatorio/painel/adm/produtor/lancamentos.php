@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   $acao = (string)($_POST['acao'] ?? '');
 
-  /* EXCLUIR VENDA */
+  /* EXCLUIR VENDA (inteira) */
   if ($acao === 'excluir') {
     $id = (int)($_POST['id'] ?? 0);
     if ($id <= 0) {
@@ -145,7 +145,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $dataHora = '';
     if ($localErr === '') {
-      // yyyy-mm-dd + hh:mm
       $horaVenda = preg_replace('/[^0-9:]/', '', $horaVenda) ?? '';
       if (!preg_match('/^\d{2}:\d{2}$/', $horaVenda)) $localErr = 'Hora inválida (use HH:MM).';
       else $dataHora = $dataVenda.' '.$horaVenda.':00';
@@ -236,25 +235,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 }
 
-/* ===== Listagem (VENDAS) ===== */
-$vendas = [];
-$itensPorVenda = []; // [venda_id => [itens...]]
+/* ===== LISTAGEM ORGANIZADA: 1 LINHA = 1 FEIRANTE (mesmo que seja a mesma venda) ===== */
+$linhas = [];                 // cada linha é venda + produtor
+$itensPorVendaProd = [];       // [venda_id][produtor_id] => itens
 try {
   $sql = "
     SELECT
-      v.id,
-      v.data_hora,
-      v.forma_pagamento,
-      v.total,
-      v.status,
-      v.observacao,
-      GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR '||') AS produtores_lista
+      v.id AS venda_id,
+      MAX(v.data_hora) AS data_hora,
+      MAX(v.forma_pagamento) AS forma_pagamento,
+      MAX(v.total) AS venda_total,
+      MAX(v.status) AS status,
+      MAX(v.observacao) AS observacao,
+      pr.id AS produtor_id,
+      pr.nome AS produtor_nome,
+      SUM(vi.subtotal) AS total_feirante
     FROM vendas v
-    LEFT JOIN venda_itens vi
+    JOIN venda_itens vi
       ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
-    LEFT JOIN produtos p
+    JOIN produtos p
       ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
-    LEFT JOIN produtores pr
+    JOIN produtores pr
       ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
     WHERE v.feira_id = :f
       AND DATE(v.data_hora) = :dia
@@ -262,68 +263,65 @@ try {
   $params = [':f' => $feiraId, ':dia' => $dia];
 
   if ($prodFiltro > 0) {
-    $sql .= "
-      AND EXISTS (
-        SELECT 1
-        FROM venda_itens vi2
-        JOIN produtos p2 ON p2.feira_id = vi2.feira_id AND p2.id = vi2.produto_id
-        WHERE vi2.feira_id = v.feira_id
-          AND vi2.venda_id = v.id
-          AND p2.produtor_id = :prod
-      )
-    ";
+    $sql .= " AND pr.id = :prod ";
     $params[':prod'] = $prodFiltro;
   }
 
-  $sql .= " GROUP BY v.id ORDER BY v.id DESC";
+  $sql .= "
+    GROUP BY v.id, pr.id, pr.nome
+    ORDER BY v.id DESC, pr.nome ASC
+  ";
 
   $st = $pdo->prepare($sql);
   $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
   $st->bindValue(':dia', $dia, PDO::PARAM_STR);
   if (isset($params[':prod'])) $st->bindValue(':prod', (int)$params[':prod'], PDO::PARAM_INT);
   $st->execute();
-  $vendas = $st->fetchAll();
+  $linhas = $st->fetchAll();
 
-  /* Carregar itens das vendas (para o Visualizar funcionar) */
-  $ids = array_map(fn($r) => (int)($r['id'] ?? 0), $vendas);
-  $ids = array_values(array_filter($ids, fn($x) => $x > 0));
-  if (!empty($ids)) {
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+  /* Carregar itens (para o Visualizar por feirante funcionar) */
+  $vendaIds = array_values(array_unique(array_map(fn($r)=>(int)($r['venda_id'] ?? 0), $linhas)));
+  $vendaIds = array_values(array_filter($vendaIds, fn($x)=>$x>0));
+
+  if (!empty($vendaIds)) {
+    $ph = implode(',', array_fill(0, count($vendaIds), '?'));
 
     $stItens = $pdo->prepare("
       SELECT
         vi.venda_id,
+        pr.id AS produtor_id,
         vi.id AS item_id,
         vi.quantidade,
         vi.valor_unitario,
         vi.subtotal,
-        COALESCE(p.nome,'')   AS produto_nome,
-        COALESCE(u.sigla,'')  AS unidade_sigla,
-        COALESCE(c.nome,'')   AS categoria_nome,
-        COALESCE(pr.nome,'')  AS produtor_nome
+        COALESCE(p.nome,'')  AS produto_nome,
+        COALESCE(u.sigla,'') AS unidade_sigla,
+        COALESCE(c.nome,'')  AS categoria_nome,
+        COALESCE(pr.nome,'') AS produtor_nome
       FROM venda_itens vi
-      LEFT JOIN produtos p
+      JOIN produtos p
         ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+      JOIN produtores pr
+        ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
       LEFT JOIN unidades u
         ON u.feira_id = p.feira_id AND u.id = p.unidade_id
       LEFT JOIN categorias c
         ON c.feira_id = p.feira_id AND c.id = p.categoria_id
-      LEFT JOIN produtores pr
-        ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
       WHERE vi.feira_id = ?
-        AND vi.venda_id IN ($placeholders)
-      ORDER BY vi.venda_id DESC, vi.id ASC
+        AND vi.venda_id IN ($ph)
+      ORDER BY vi.venda_id DESC, pr.nome ASC, vi.id ASC
     ");
 
-    $bind = array_merge([$feiraId], $ids);
-    $stItens->execute($bind);
+    $stItens->execute(array_merge([$feiraId], $vendaIds));
     $rowsItens = $stItens->fetchAll();
 
     foreach ($rowsItens as $it) {
       $vid = (int)($it['venda_id'] ?? 0);
-      if ($vid <= 0) continue;
-      if (!isset($itensPorVenda[$vid])) $itensPorVenda[$vid] = [];
-      $itensPorVenda[$vid][] = $it;
+      $pid = (int)($it['produtor_id'] ?? 0);
+      if ($vid <= 0 || $pid <= 0) continue;
+      if (!isset($itensPorVendaProd[$vid])) $itensPorVendaProd[$vid] = [];
+      if (!isset($itensPorVendaProd[$vid][$pid])) $itensPorVendaProd[$vid][$pid] = [];
+      $itensPorVendaProd[$vid][$pid][] = $it;
     }
   }
 
@@ -331,7 +329,6 @@ try {
   $err = $err ?: 'Não foi possível carregar os lançamentos agora.';
 }
 
-/* defaults de hora no form */
 $horaPadrao = date('H:i');
 ?>
 <!DOCTYPE html>
@@ -414,8 +411,7 @@ $horaPadrao = date('H:i');
     @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
     @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
 
-    /* Feirantes em linhas */
-    .feirantes-lines{ line-height: 1.35; }
+    .mini{ font-size: 12px; color:#6c757d; }
   </style>
 </head>
 
@@ -493,7 +489,7 @@ $horaPadrao = date('H:i');
       </ul>
     </div>
 
-    <!-- SIDEBAR (mantida) -->
+    <!-- SIDEBAR -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
       <ul class="nav">
 
@@ -523,19 +519,16 @@ $horaPadrao = date('H:i');
                   <i class="ti-clipboard mr-2"></i> Lista de Produtos
                 </a>
               </li>
-
               <li class="nav-item">
                 <a class="nav-link" href="./listaCategoria.php">
                   <i class="ti-layers mr-2"></i> Categorias
                 </a>
               </li>
-
               <li class="nav-item">
                 <a class="nav-link" href="./listaUnidade.php">
                   <i class="ti-ruler-pencil mr-2"></i> Unidades
                 </a>
               </li>
-
               <li class="nav-item">
                 <a class="nav-link" href="./listaProdutor.php">
                   <i class="ti-user mr-2"></i> Produtores
@@ -618,7 +611,7 @@ $horaPadrao = date('H:i');
         <div class="row">
           <div class="col-12 mb-3">
             <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
-            <h6 class="font-weight-normal mb-0">Página simplificada: menos campos, mais rápido de lançar.</h6>
+            <h6 class="font-weight-normal mb-0">Organizado: na lista, cada feirante aparece em uma linha (mesma venda pode repetir em linhas diferentes).</h6>
           </div>
         </div>
 
@@ -631,7 +624,7 @@ $horaPadrao = date('H:i');
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Novo Lançamento</h4>
-                    <p class="card-description mb-0">Selecione os itens (cada item já vem com feirante do produto).</p>
+                    <p class="card-description mb-0">Escolha os produtos e informe quantidade e valor.</p>
                   </div>
                   <div class="totbox mt-2 mt-md-0">
                     <p class="totlabel">Total</p>
@@ -640,12 +633,6 @@ $horaPadrao = date('H:i');
                 </div>
 
                 <hr>
-
-                <?php if (empty($produtosAtivos)): ?>
-                  <div class="alert alert-warning mb-3" role="alert" style="border-radius:12px;">
-                    <b>Atenção:</b> para lançar vendas, você precisa ter <b>produtos</b> ativos cadastrados.
-                  </div>
-                <?php endif; ?>
 
                 <form method="post" action="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>" autocomplete="off">
                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
@@ -671,7 +658,6 @@ $horaPadrao = date('H:i');
                         <option value="CARTAO">Cartão</option>
                         <option value="OUTROS">Outros</option>
                       </select>
-                      <small class="text-muted helper">Como foi pago.</small>
                     </div>
 
                     <div class="col-md-3 mb-3">
@@ -685,7 +671,7 @@ $horaPadrao = date('H:i');
                       <thead>
                         <tr>
                           <th>Produto</th>
-                          <th style="width:160px;">Feirante</th>
+                          <th style="width:170px;">Feirante</th>
                           <th style="width:110px;">Qtd</th>
                           <th style="width:150px;">Valor (R$)</th>
                           <th style="width:110px;">Unid</th>
@@ -756,10 +742,6 @@ $horaPadrao = date('H:i');
                     </div>
                   </div>
 
-                  <small class="text-muted d-block mt-2">
-                    Dica: o feirante aparece automaticamente conforme o produto escolhido.
-                  </small>
-
                 </form>
 
               </div>
@@ -767,7 +749,7 @@ $horaPadrao = date('H:i');
           </div>
         </div>
 
-        <!-- LISTAGEM -->
+        <!-- LISTAGEM (1 FEIRANTE POR LINHA) -->
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
@@ -775,8 +757,10 @@ $horaPadrao = date('H:i');
 
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
-                    <h4 class="card-title mb-0">Lançamentos</h4>
-                    <p class="card-description mb-0">Mostrando <?= (int)count($vendas) ?> registro(s).</p>
+                    <h4 class="card-title mb-0">Lançamentos do dia</h4>
+                    <p class="card-description mb-0">
+                      Mostrando <b><?= (int)count($linhas) ?></b> linha(s) — <span class="mini">cada linha é um feirante dentro do lançamento</span>.
+                    </p>
                   </div>
                 </div>
 
@@ -793,7 +777,7 @@ $horaPadrao = date('H:i');
                         <option value="<?= $pid ?>" <?= $prodFiltro===$pid ? 'selected' : '' ?>><?= h($p['nome'] ?? '') ?></option>
                       <?php endforeach; ?>
                     </select>
-                    <small class="text-muted helper">Mostra vendas que tenham itens daquele feirante.</small>
+                    <small class="text-muted helper">Agora o filtro mostra o feirante em linha separada.</small>
                   </div>
                   <div class="col-md-3 mb-2 d-flex align-items-end">
                     <a class="btn btn-light w-100" href="./lancamentos.php">
@@ -806,83 +790,79 @@ $horaPadrao = date('H:i');
                   <table class="table table-striped table-hover">
                     <thead>
                       <tr>
-                        <th style="width:90px;">ID</th>
+                        <th style="width:90px;">Venda</th>
                         <th style="width:160px;">Data/Hora</th>
+                        <th>Feirante</th>
+                        <th style="width:170px;">Total do Feirante</th>
+                        <th style="width:170px;">Total da Venda</th>
                         <th style="width:130px;">Pagamento</th>
-                        <th>Feirante(s)</th>
-                        <th style="width:150px;">Total</th>
                         <th style="width:120px;">Status</th>
                         <th style="min-width:250px;">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <?php if (empty($vendas)): ?>
+                      <?php if (empty($linhas)): ?>
                         <tr>
-                          <td colspan="7" class="text-center text-muted py-4">Nenhum lançamento encontrado.</td>
+                          <td colspan="8" class="text-center text-muted py-4">Nenhum lançamento encontrado.</td>
                         </tr>
                       <?php else: ?>
-                        <?php foreach ($vendas as $v): ?>
+                        <?php foreach ($linhas as $r): ?>
                           <?php
-                            $vid = (int)($v['id'] ?? 0);
-                            $tot = (float)($v['total'] ?? 0);
-                            $dt  = (string)($v['data_hora'] ?? '');
-                            $fp  = (string)($v['forma_pagamento'] ?? '');
-                            $st  = (string)($v['status'] ?? '');
+                            $vendaId = (int)($r['venda_id'] ?? 0);
+                            $prodId  = (int)($r['produtor_id'] ?? 0);
 
-                            $prodStr = (string)($v['produtores_lista'] ?? '');
-                            $plist = [];
-                            if ($prodStr !== '') {
-                              $plist = array_values(array_filter(array_map('trim', explode('||', $prodStr)), fn($x)=>$x!==''));
-                            }
-                            if (empty($plist)) $plist = ['—'];
+                            $dt  = (string)($r['data_hora'] ?? '');
+                            $fp  = (string)($r['forma_pagamento'] ?? '');
+                            $st  = (string)($r['status'] ?? '');
+                            $obs = (string)($r['observacao'] ?? '');
+
+                            $feirante = (string)($r['produtor_nome'] ?? '');
+
+                            $totFeir = (float)($r['total_feirante'] ?? 0);
+                            $totVend = (float)($r['venda_total'] ?? 0);
 
                             $badge = 'badge-secondary';
                             if (strtoupper($st) === 'FECHADA') $badge = 'badge-success';
                             if (strtoupper($st) === 'ABERTA')  $badge = 'badge-warning';
                             if (strtoupper($st) === 'CANCELADA') $badge = 'badge-danger';
+
+                            $modalId = 'modalVenda_'.$vendaId.'_prod_'.$prodId;
+                            $its = $itensPorVendaProd[$vendaId][$prodId] ?? [];
                           ?>
                           <tr>
-                            <td><?= $vid ?></td>
+                            <td><?= $vendaId ?></td>
                             <td><?= h($dt) ?></td>
+                            <td><b><?= h($feirante) ?></b></td>
+                            <td><b>R$ <?= number_format($totFeir, 2, ',', '.') ?></b></td>
+                            <td>R$ <?= number_format($totVend, 2, ',', '.') ?></td>
                             <td><?= h($fp) ?></td>
-
-                            <!-- FEIRANTES EM LINHAS (cada um em uma linha) -->
-                            <td class="feirantes-lines">
-                              <?php if (empty($plist) || (count($plist) === 1 && trim((string)$plist[0]) === '—')): ?>
-                                —
-                              <?php else: ?>
-                                <?= implode('<br>', array_map(fn($x) => h((string)$x), $plist)) ?>
-                              <?php endif; ?>
-                            </td>
-
-                            <td><b>R$ <?= number_format($tot, 2, ',', '.') ?></b></td>
                             <td><label class="badge <?= $badge ?>"><?= h($st) ?></label></td>
                             <td>
                               <div class="acoes-wrap">
-                                <button type="button" class="btn btn-outline-primary btn-xs" data-toggle="modal" data-target="#modalVenda<?= $vid ?>">
+                                <button type="button" class="btn btn-outline-primary btn-xs" data-toggle="modal" data-target="#<?= h($modalId) ?>">
                                   <i class="ti-eye"></i> Visualizar
                                 </button>
 
                                 <form method="post" class="m-0">
                                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                                   <input type="hidden" name="acao" value="excluir">
-                                  <input type="hidden" name="id" value="<?= $vid ?>">
+                                  <input type="hidden" name="id" value="<?= $vendaId ?>">
                                   <button type="submit" class="btn btn-outline-danger btn-xs"
-                                    onclick="return confirm('Excluir este lançamento? Essa ação não pode ser desfeita.');">
-                                    <i class="ti-trash"></i> Excluir
+                                    onclick="return confirm('Excluir a VENDA inteira #<?= $vendaId ?> (todos os feirantes)? Essa ação não pode ser desfeita.');">
+                                    <i class="ti-trash"></i> Excluir venda
                                   </button>
                                 </form>
                               </div>
                             </td>
                           </tr>
 
-                          <!-- MODAL VISUALIZAR (FUNCIONANDO) -->
-                          <div class="modal fade" id="modalVenda<?= $vid ?>" tabindex="-1" role="dialog" aria-labelledby="modalVendaLbl<?= $vid ?>" aria-hidden="true">
+                          <!-- MODAL VISUALIZAR (por feirante) -->
+                          <div class="modal fade" id="<?= h($modalId) ?>" tabindex="-1" role="dialog" aria-hidden="true">
                             <div class="modal-dialog modal-lg" role="document">
                               <div class="modal-content" style="border-radius:14px;">
                                 <div class="modal-header">
-                                  <h5 class="modal-title" id="modalVendaLbl<?= $vid ?>">
-                                    Venda #<?= $vid ?>
+                                  <h5 class="modal-title">
+                                    Venda #<?= $vendaId ?> — Feirante: <?= h($feirante) ?>
                                   </h5>
                                   <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
                                     <span aria-hidden="true">&times;</span>
@@ -906,49 +886,40 @@ $horaPadrao = date('H:i');
                                   </div>
 
                                   <div class="row mt-2">
-                                    <div class="col-md-8 mb-2">
-                                      <small class="text-muted">Feirante(s)</small>
-                                      <div class="feirantes-lines">
-                                        <?php if (empty($plist) || (count($plist)===1 && trim((string)$plist[0])==='—')): ?>
-                                          —
-                                        <?php else: ?>
-                                          <?= implode('<br>', array_map(fn($x) => h((string)$x), $plist)) ?>
-                                        <?php endif; ?>
-                                      </div>
+                                    <div class="col-md-6 mb-2">
+                                      <small class="text-muted">Total do Feirante</small>
+                                      <div style="font-size:20px;font-weight:800;">R$ <?= number_format($totFeir, 2, ',', '.') ?></div>
                                     </div>
-                                    <div class="col-md-4 mb-2 text-md-right">
-                                      <small class="text-muted">Total</small>
-                                      <div style="font-size:20px;font-weight:800;">R$ <?= number_format($tot, 2, ',', '.') ?></div>
+                                    <div class="col-md-6 mb-2 text-md-right">
+                                      <small class="text-muted">Total da Venda</small>
+                                      <div style="font-size:16px;font-weight:700;">R$ <?= number_format($totVend, 2, ',', '.') ?></div>
                                     </div>
                                   </div>
 
-                                  <?php $obsVenda = trim((string)($v['observacao'] ?? '')); ?>
-                                  <?php if ($obsVenda !== ''): ?>
+                                  <?php if (trim($obs) !== ''): ?>
                                     <div class="mt-2">
                                       <small class="text-muted">Observação</small>
-                                      <div><?= h($obsVenda) ?></div>
+                                      <div><?= h($obs) ?></div>
                                     </div>
                                   <?php endif; ?>
 
                                   <hr>
 
-                                  <h6 class="font-weight-bold mb-2">Itens</h6>
+                                  <h6 class="font-weight-bold mb-2">Itens deste Feirante</h6>
                                   <div class="table-responsive">
                                     <table class="table table-sm table-striped">
                                       <thead>
                                         <tr>
                                           <th>Produto</th>
-                                          <th>Feirante</th>
                                           <th style="width:110px;">Qtd</th>
                                           <th style="width:140px;">V. Unit</th>
                                           <th style="width:140px;">Subtotal</th>
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        <?php $its = $itensPorVenda[$vid] ?? []; ?>
                                         <?php if (empty($its)): ?>
                                           <tr>
-                                            <td colspan="5" class="text-center text-muted py-3">Nenhum item encontrado.</td>
+                                            <td colspan="4" class="text-center text-muted py-3">Nenhum item encontrado.</td>
                                           </tr>
                                         <?php else: ?>
                                           <?php foreach ($its as $it): ?>
@@ -958,11 +929,9 @@ $horaPadrao = date('H:i');
                                               $sb = (float)($it['subtotal'] ?? 0);
                                               $un = (string)($it['unidade_sigla'] ?? '');
                                               $pn = (string)($it['produto_nome'] ?? '');
-                                              $fn = (string)($it['produtor_nome'] ?? '');
                                             ?>
                                             <tr>
                                               <td><?= h($pn) ?> <?= $un !== '' ? '<span class="text-muted">('.h($un).')</span>' : '' ?></td>
-                                              <td><?= h($fn) ?></td>
                                               <td><?= number_format($q, 3, ',', '.') ?></td>
                                               <td>R$ <?= number_format($vu, 2, ',', '.') ?></td>
                                               <td><b>R$ <?= number_format($sb, 2, ',', '.') ?></b></td>
@@ -989,6 +958,10 @@ $horaPadrao = date('H:i');
                     </tbody>
                   </table>
                 </div>
+
+                <small class="text-muted d-block mt-2">
+                  Observação: se uma venda tiver itens de 2 feirantes, ela vai aparecer 2 vezes (uma linha para cada feirante).
+                </small>
 
               </div>
             </div>
@@ -1071,7 +1044,7 @@ $horaPadrao = date('H:i');
       const vu  = toNum((tr.querySelector('.js-vu')||{}).value || '0') || 0;
       if (qtd > 0 && vu > 0) tot += (qtd * vu);
     });
-    totalEl.textContent = 'R$ ' + brMoney(tot);
+    if (totalEl) totalEl.textContent = 'R$ ' + brMoney(tot);
   }
 
   function updateRemoveButtons(){
@@ -1101,42 +1074,46 @@ $horaPadrao = date('H:i');
     syncInfo(tr);
   }
 
-  btnAdd && btnAdd.addEventListener('click', function(){
-    const base = document.querySelector('.js-item-row');
-    if (!base) return;
-    const clone = base.cloneNode(true);
+  if (btnAdd) {
+    btnAdd.addEventListener('click', function(){
+      const base = document.querySelector('.js-item-row');
+      if (!base || !body) return;
+      const clone = base.cloneNode(true);
 
-    (clone.querySelector('.js-prod')||{}).value = '0';
-    (clone.querySelector('.js-qtd')||{}).value = '1';
-    (clone.querySelector('.js-vu')||{}).value = '';
-    (clone.querySelector('.js-un')||{}).value = '';
-    (clone.querySelector('.js-cat')||{}).value = '';
-    (clone.querySelector('.js-fei')||{}).value = '';
+      (clone.querySelector('.js-prod')||{}).value = '0';
+      (clone.querySelector('.js-qtd')||{}).value = '1';
+      (clone.querySelector('.js-vu')||{}).value = '';
+      (clone.querySelector('.js-un')||{}).value = '';
+      (clone.querySelector('.js-cat')||{}).value = '';
+      (clone.querySelector('.js-fei')||{}).value = '';
 
-    body.appendChild(clone);
-    wireRow(clone);
-    updateRemoveButtons();
-    calcTotal();
-  });
-
-  btnRef && btnRef.addEventListener('click', function(){
-    document.querySelectorAll('.js-item-row').forEach(tr=>{
-      const sel = tr.querySelector('.js-prod');
-      const vu  = tr.querySelector('.js-vu');
-      if (!sel || !vu) return;
-
-      const pid = parseInt(sel.value || '0', 10);
-      if (!pid) return;
-
-      const opt = sel.options[sel.selectedIndex];
-      const ref = (opt && opt.dataset) ? (opt.dataset.preco || '') : '';
-      if (!vu.value && ref) {
-        const n = toNum(ref);
-        if (n > 0) vu.value = brMoney(n);
-      }
+      body.appendChild(clone);
+      wireRow(clone);
+      updateRemoveButtons();
+      calcTotal();
     });
-    calcTotal();
-  });
+  }
+
+  if (btnRef) {
+    btnRef.addEventListener('click', function(){
+      document.querySelectorAll('.js-item-row').forEach(tr=>{
+        const sel = tr.querySelector('.js-prod');
+        const vu  = tr.querySelector('.js-vu');
+        if (!sel || !vu) return;
+
+        const pid = parseInt(sel.value || '0', 10);
+        if (!pid) return;
+
+        const opt = sel.options[sel.selectedIndex];
+        const ref = (opt && opt.dataset) ? (opt.dataset.preco || '') : '';
+        if (!vu.value && ref) {
+          const n = toNum(ref);
+          if (n > 0) vu.value = brMoney(n);
+        }
+      });
+      calcTotal();
+    });
+  }
 
   document.querySelectorAll('.js-item-row').forEach(wireRow);
   updateRemoveButtons();
