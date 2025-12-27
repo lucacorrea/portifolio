@@ -551,6 +551,9 @@ try {
                     <p class="card-description mb-0">
                       Total: <?= (int)$totalRows ?> — Página <?= (int)$page ?> de <?= (int)$totalPages ?>.
                     </p>
+                      <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                      <i class="ti-plus"></i> Adicionar
+                    </a>
                   </div>
                 </div>
 
