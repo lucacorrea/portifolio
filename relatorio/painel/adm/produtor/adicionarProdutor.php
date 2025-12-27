@@ -51,7 +51,6 @@ $csrf = (string)$_SESSION['csrf_token'];
 /* Valores antigos */
 $old = [
   'nome' => '',
-  'banca' => '',
   'cpf' => '',
   'telefone' => '',
   'ativo' => '1',
@@ -70,7 +69,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   $old['nome']       = trim((string)($_POST['nome'] ?? ''));
-  $old['banca']      = trim((string)($_POST['banca'] ?? ''));
   $old['cpf']        = trim((string)($_POST['cpf'] ?? ''));
   $old['telefone']   = trim((string)($_POST['telefone'] ?? ''));
   $old['ativo']      = (string)($_POST['ativo'] ?? '1');
@@ -86,9 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ativo = ($old['ativo'] === '1') ? 1 : 0;
 
     /* Como sua tabela produtores tem apenas: nome, contato, comunidade, ativo, observacao
-       vamos “compactar” banca/cpf/tipo dentro de observacao por enquanto. */
+       vamos “compactar” cpf/tipo dentro de observacao por enquanto. */
     $extras = [];
-    if ($old['banca'] !== '') $extras[] = 'Banca: ' . $old['banca'];
     if ($old['cpf'] !== '')   $extras[] = 'CPF: ' . $old['cpf'];
     if ($old['tipo'] !== '')  $extras[] = 'Tipo: ' . $old['tipo'];
 
@@ -359,23 +356,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
                       </div>
 
-                      <div class="col-md-6 mb-3">
-                        <label>Nome da banca (opcional)</label>
-                        <input name="banca" type="text" class="form-control" placeholder="Ex.: Banca do João" value="<?= h($old['banca']) ?>">
-                        <small class="text-muted help-hint">Ajuda a identificar no dia a dia.</small>
-                      </div>
-
-                      <div class="col-md-4 mb-3">
+                      <div class="col-md-3 mb-3">
                         <label>CPF (opcional)</label>
                         <input name="cpf" type="text" class="form-control" placeholder="000.000.000-00" value="<?= h($old['cpf']) ?>">
                       </div>
 
-                      <div class="col-md-4 mb-3">
-                        <label>Telefone / WhatsApp</label>
-                        <input name="telefone" type="text" class="form-control" placeholder="(92) 9xxxx-xxxx" value="<?= h($old['telefone']) ?>">
-                      </div>
-
-                      <div class="col-md-4 mb-3">
+                      <div class="col-md-3 mb-3">
                         <label>Status</label>
                         <select name="ativo" class="form-control">
                           <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
@@ -384,8 +370,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       </div>
 
                       <div class="col-md-6 mb-3">
+                        <label>Telefone / WhatsApp</label>
+                        <input name="telefone" type="text" class="form-control" placeholder="(92) 9xxxx-xxxx" value="<?= h($old['telefone']) ?>">
+                      </div>
+
+                      <div class="col-md-6 mb-3">
                         <label>Comunidade / Localidade</label>
                         <input name="comunidade" type="text" class="form-control" placeholder="Ex.: Comunidade X / Ramal Y" value="<?= h($old['comunidade']) ?>">
+                        <small class="text-muted help-hint">Agora este campo substitui a banca.</small>
                       </div>
 
                       <div class="col-md-6 mb-3">
