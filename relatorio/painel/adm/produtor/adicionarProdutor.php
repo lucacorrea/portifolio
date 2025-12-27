@@ -555,9 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </option>
                           <?php endforeach; ?>
                         </select>
-                        <small class="text-muted help-hint">
-                          Vem da tabela <b>comunidades</b> (feira_id = <?= (int)$FEIRA_ID ?>, ativo=1).
-                        </small>
+                       
                       </div>
 
                       <div class="col-md-3 mb-3">
@@ -597,12 +595,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     * Campos obrigatórios.
                   </small>
 
-                  <div class="mini-debug mt-2">
-                    Feira atual: <code><?= (int)$FEIRA_ID ?></code>
-                    <?php if ($dbName !== ''): ?>
-                      • Banco do db(): <code><?= h($dbName) ?></code>
-                    <?php endif; ?>
-                  </div>
+                  
                 </form>
 
               </div>
