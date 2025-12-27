@@ -30,7 +30,8 @@ function trunc255(string $s): string {
 }
 
 function only_digits(string $s): string {
-  return preg_replace('/\D+/', '', $s) ?? '';
+  $out = preg_replace('/\D+/', '', $s);
+  return $out !== null ? $out : '';
 }
 
 /* Feira padrão desta página */
@@ -103,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome = trunc255($old['nome']);
     $contato = trunc255($old['contato']);
 
-    // documento: pode salvar com máscara ou só números. Aqui vou salvar só números (mais limpo).
+    // documento: salva somente dígitos (mais limpo)
     $docDigits = only_digits($old['documento']);
     $documento = $docDigits !== '' ? trunc255($docDigits) : null;
 
@@ -111,9 +112,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ativo = ($old['ativo'] === '1') ? 1 : 0;
     $comunidadeId = (int)$old['comunidade_id'];
 
-    // Garante que a comunidade existe e é da mesma feira
     try {
-      $chk = $pdo->prepare("SELECT COUNT(*) FROM comunidades WHERE id = :id AND feira_id = :feira AND ativo = 1");
+      // Garante que a comunidade existe e é da mesma feira e está ativa
+      $chk = $pdo->prepare("SELECT COUNT(*)
+                            FROM comunidades
+                            WHERE id = :id AND feira_id = :feira AND ativo = 1");
       $chk->bindValue(':id', $comunidadeId, PDO::PARAM_INT);
       $chk->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
       $chk->execute();
@@ -130,11 +133,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([
           ':feira_id'      => $FEIRA_ID,
           ':nome'          => $nome,
-          ':contato'       => $contato !== '' ? $contato : null,
+          ':contato'       => ($contato !== '' ? $contato : null),
           ':comunidade_id' => $comunidadeId,
           ':documento'     => $documento,
           ':ativo'         => $ativo,
-          ':observacao'    => $observacao !== '' ? $observacao : null,
+          ':observacao'    => ($observacao !== '' ? $observacao : null),
         ]);
 
         $_SESSION['flash_ok'] = 'Produtor cadastrado com sucesso!';
@@ -184,12 +187,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       gap:10px;
       flex-wrap:wrap;
     }
+
+    .req-badge{
+      display:inline-block;
+      font-size:11px;
+      padding:2px 8px;
+      border-radius:999px;
+      background:#eef2ff;
+      color:#1f2a6b;
+      font-weight:700;
+      margin-left:6px;
+      vertical-align:middle;
+    }
+
+    .form-section{
+      background:#fff;
+      border:1px solid rgba(0,0,0,.06);
+      border-radius:12px;
+      padding:14px 14px 6px 14px;
+      margin-bottom:12px;
+    }
+
+    .form-section .section-title{
+      font-weight:800;
+      font-size:13px;
+      margin-bottom:10px;
+      color:#111827;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .form-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-start;
+    }
   </style>
 </head>
 
 <body>
 <div class="container-scroller">
 
+  <!-- NAVBAR -->
   <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
     <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
       <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -214,6 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <div class="container-fluid page-body-wrapper">
 
+    <!-- settings-panel (mantido) -->
     <div id="right-sidebar" class="settings-panel">
       <i class="settings-close ti-close"></i>
       <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
@@ -226,6 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </ul>
     </div>
 
+    <!-- SIDEBAR -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
       <ul class="nav">
 
@@ -250,7 +294,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </style>
 
             <ul class="nav flex-column sub-menu" style="background: white !important;">
-
               <li class="nav-item">
                 <a class="nav-link" href="./listaProduto.php">
                   <i class="ti-clipboard mr-2"></i> Lista de Produtos
@@ -280,7 +323,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <i class="ti-plus mr-2"></i> Adicionar Produtor
                 </a>
               </li>
-
             </ul>
           </div>
         </li>
@@ -351,6 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </ul>
     </nav>
 
+    <!-- MAIN -->
     <div class="main-panel">
       <div class="content-wrapper">
 
@@ -376,7 +419,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card-title-row">
                   <div>
                     <h4 class="card-title mb-0">Dados do Produtor</h4>
-                    <p class="card-description mb-0">Comunidade é obrigatória (vem do cadastro de comunidades).</p>
+                    <p class="card-description mb-0">
+                      Comunidade é obrigatória e vem do cadastro de comunidades.
+                      <span class="req-badge">Obrigatório</span>
+                    </p>
                   </div>
                   <a href="./listaProdutor.php" class="btn btn-light btn-sm">
                     <i class="ti-arrow-left"></i> Voltar
@@ -393,61 +439,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <form class="pt-4" method="post" action="">
                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
-                  <div class="row">
-
-                    <div class="col-md-6 mb-3">
-                      <label>Nome do produtor <span class="text-danger">*</span></label>
-                      <input name="nome" type="text" class="form-control" placeholder="Ex.: João da Silva"
-                        required value="<?= h($old['nome']) ?>">
-                      <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
+                  <div class="form-section">
+                    <div class="section-title">
+                      <i class="ti-user"></i> Identificação
                     </div>
 
-                    <div class="col-md-3 mb-3">
-                      <label>CPF / Documento</label>
-                      <input name="documento" type="text" class="form-control" placeholder="Somente números"
-                        value="<?= h($old['documento']) ?>">
-                      <small class="text-muted help-hint">Opcional (salvo em produtores.documento).</small>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label>Nome do produtor <span class="text-danger">*</span></label>
+                        <input
+                          name="nome"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: João Batista da Silva"
+                          required
+                          value="<?= h($old['nome']) ?>"
+                        >
+                        <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
+                      </div>
+
+                      <div class="col-md-3 mb-3">
+                        <label>CPF / Documento</label>
+                        <input
+                          name="documento"
+                          type="text"
+                          class="form-control"
+                          placeholder="Somente números"
+                          value="<?= h($old['documento']) ?>"
+                        >
+                        <small class="text-muted help-hint">Opcional (salvo em <b>produtores.documento</b>).</small>
+                      </div>
+
+                      <div class="col-md-3 mb-3">
+                        <label>Telefone / WhatsApp</label>
+                        <input
+                          name="contato"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: 92991112222"
+                          value="<?= h($old['contato']) ?>"
+                        >
+                        <small class="text-muted help-hint">Opcional (salvo em <b>produtores.contato</b>).</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-section">
+                    <div class="section-title">
+                      <i class="ti-map-alt"></i> Comunidade
                     </div>
 
-                    <div class="col-md-3 mb-3">
-                      <label>Telefone / WhatsApp</label>
-                      <input name="contato" type="text" class="form-control" placeholder="Ex.: 92991112222"
-                        value="<?= h($old['contato']) ?>">
-                    </div>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label>Comunidade <span class="text-danger">*</span></label>
+                        <select
+                          name="comunidade_id"
+                          class="form-control"
+                          <?= empty($comunidades) ? 'disabled' : 'required' ?>
+                        >
+                          <option value="">Selecione</option>
+                          <?php foreach ($comunidades as $c): ?>
+                            <option
+                              value="<?= (int)$c['id'] ?>"
+                              <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>
+                            >
+                              <?= h($c['nome']) ?>
+                            </option>
+                          <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted help-hint">
+                          Vem da tabela <b>comunidades</b> (feira_id = <?= (int)$FEIRA_ID ?>, ativo=1).
+                        </small>
+                      </div>
 
-                    <div class="col-md-6 mb-3">
-                      <label>Comunidade <span class="text-danger">*</span></label>
-                      <select name="comunidade_id" class="form-control" <?= empty($comunidades) ? 'disabled' : 'required' ?>>
-                        <option value="">Selecione</option>
-                        <?php foreach ($comunidades as $c): ?>
-                          <option value="<?= (int)$c['id'] ?>"
-                            <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
-                            <?= h($c['nome']) ?>
-                          </option>
-                        <?php endforeach; ?>
-                      </select>
-                      <small class="text-muted help-hint">Vem da tabela comunidades (feira_id = <?= (int)$FEIRA_ID ?>).</small>
-                    </div>
+                      <div class="col-md-3 mb-3">
+                        <label>Status</label>
+                        <select name="ativo" class="form-control">
+                          <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
+                          <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
+                        </select>
+                        <small class="text-muted help-hint">Você pode desativar sem excluir.</small>
+                      </div>
 
-                    <div class="col-md-3 mb-3">
-                      <label>Status</label>
-                      <select name="ativo" class="form-control">
-                        <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
-                        <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
-                      </select>
+                      <div class="col-md-12 mb-3">
+                        <label>Observações</label>
+                        <textarea
+                          name="observacao"
+                          class="form-control"
+                          rows="4"
+                          placeholder="Ex.: produtor de farinha tradicional, entrega na sexta..."
+                        ><?= h($old['observacao']) ?></textarea>
+                        <small class="text-muted help-hint">Opcional (até 255 caracteres).</small>
+                      </div>
                     </div>
-
-                    <div class="col-md-12 mb-3">
-                      <label>Observações</label>
-                      <textarea name="observacao" class="form-control" rows="4"
-                        placeholder="Ex.: produtor de farinha tradicional, entrega na sexta..."><?= h($old['observacao']) ?></textarea>
-                    </div>
-
                   </div>
 
                   <hr>
 
-                  <div class="d-flex flex-wrap" style="gap:8px;">
+                  <div class="form-actions">
                     <button type="submit" class="btn btn-primary" <?= empty($comunidades) ? 'disabled' : '' ?>>
                       <i class="ti-save mr-1"></i> Salvar
                     </button>
@@ -479,7 +568,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </footer>
 
     </div>
-
   </div>
 </div>
 
