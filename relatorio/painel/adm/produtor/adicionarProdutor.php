@@ -15,20 +15,29 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
+/* Conexão (padrão do seu sistema: db(): PDO) */
 require '../../../assets/php/conexao.php';
 
 function h($s): string {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
+
 function trunc255(string $s): string {
+  $s = trim($s);
+  if ($s === '') return '';
   if (function_exists('mb_substr')) return mb_substr($s, 0, 255, 'UTF-8');
   return substr($s, 0, 255);
+}
+
+function only_digits(string $s): string {
+  $out = preg_replace('/\D+/', '', $s);
+  return $out !== null ? $out : '';
 }
 
 /* Feira padrão desta página */
 $FEIRA_ID = 1; // 1=Feira do Produtor | 2=Feira Alternativa
 
-/* Detecção opcional pela pasta */
+/* Detecção opcional pela pasta (se você separou em pastas) */
 $dirLower = strtolower((string)__DIR__);
 if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
 if (strpos($dirLower, 'produtor') !== false) $FEIRA_ID = 1;
@@ -44,79 +53,50 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* ===== DB ===== */
 $pdo = db();
 
-/* ===== Helpers de schema (robusto) ===== */
-function table_exists(PDO $pdo, string $table): bool {
-  $stmt = $pdo->prepare("SHOW TABLES LIKE :t");
-  $stmt->execute([':t' => $table]);
-  return (bool)$stmt->fetchColumn();
-}
-function column_exists(PDO $pdo, string $table, string $col): bool {
-  $stmt = $pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c");
-  $stmt->execute([':c' => $col]);
-  return (bool)$stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-/* ===== Carregar comunidades (para o SELECT) ===== */
+/* ===== Comunidades (para o SELECT) =====
+   Melhorado: detecta se a tabela existe no DB atual e mostra erro amigável.
+*/
 $comunidades = [];
-$temComunidadesTable = false;
-$comunidadesTemFeiraId = false;
-$comunidadesTemAtivo = false;
+$comunidadesTableOk = true;
+$dbName = '';
 
 try {
-  $temComunidadesTable = table_exists($pdo, 'comunidades');
-  if ($temComunidadesTable) {
-    $comunidadesTemFeiraId = column_exists($pdo, 'comunidades', 'feira_id');
-    $comunidadesTemAtivo   = column_exists($pdo, 'comunidades', 'ativo');
+  $dbName = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
 
-    $where = [];
-    $params = [];
-    if ($comunidadesTemFeiraId) {
-      $where[] = "feira_id = :feira";
-      $params[':feira'] = $FEIRA_ID;
-    }
-    if ($comunidadesTemAtivo) {
-      $where[] = "ativo = 1";
-    }
+  $chkT = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = :db
+      AND TABLE_NAME = 'comunidades'
+  ");
+  $chkT->execute([':db' => $dbName]);
+  $comunidadesTableOk = ((int)$chkT->fetchColumn() > 0);
 
-    $sqlC = "SELECT id, nome FROM comunidades"
-      . (count($where) ? " WHERE " . implode(" AND ", $where) : "")
-      . " ORDER BY nome ASC";
-
-    $stmt = $pdo->prepare($sqlC);
-    if (isset($params[':feira'])) $stmt->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
-    $stmt->execute();
-    $comunidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  if ($comunidadesTableOk) {
+    $sqlC = "SELECT id, nome
+             FROM comunidades
+             WHERE feira_id = :feira AND ativo = 1
+             ORDER BY nome ASC";
+    $stC = $pdo->prepare($sqlC);
+    $stC->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
+    $stC->execute();
+    $comunidades = $stC->fetchAll(PDO::FETCH_ASSOC);
   }
 } catch (Throwable $e) {
-  // não quebra a página
-  $temComunidadesTable = false;
-  $comunidades = [];
-}
-
-/* ===== Detectar schema do produtores ===== */
-$produtoresTemComunidadeId = false;
-$produtoresTemComunidadeTexto = false;
-try {
-  if (table_exists($pdo, 'produtores')) {
-    $produtoresTemComunidadeId = column_exists($pdo, 'produtores', 'comunidade_id');
-    $produtoresTemComunidadeTexto = column_exists($pdo, 'produtores', 'comunidade');
-  }
-} catch (Throwable $e) {
-  // segue
+  $comunidadesTableOk = false;
+  $err = 'Erro ao carregar comunidades: ' . $e->getMessage();
 }
 
 /* Valores antigos */
 $old = [
-  'nome' => '',
-  'cpf' => '',
-  'telefone' => '',
-  'ativo' => '1',
+  'nome'          => '',
+  'documento'     => '',
+  'contato'       => '',
   'comunidade_id' => '',
-  'tipo' => 'Produtor rural',
-  'observacao' => '',
+  'ativo'         => '1',
+  'observacao'    => '',
 ];
 
 /* POST */
@@ -129,95 +109,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   $old['nome']          = trim((string)($_POST['nome'] ?? ''));
-  $old['cpf']           = trim((string)($_POST['cpf'] ?? ''));
-  $old['telefone']      = trim((string)($_POST['telefone'] ?? ''));
-  $old['ativo']         = (string)($_POST['ativo'] ?? '1');
+  $old['documento']     = trim((string)($_POST['documento'] ?? ''));
+  $old['contato']       = trim((string)($_POST['contato'] ?? ''));
   $old['comunidade_id'] = trim((string)($_POST['comunidade_id'] ?? ''));
-  $old['tipo']          = trim((string)($_POST['tipo'] ?? 'Produtor rural'));
+  $old['ativo']         = (string)($_POST['ativo'] ?? '1');
   $old['observacao']    = trim((string)($_POST['observacao'] ?? ''));
 
   if ($old['nome'] === '') {
     $err = 'Informe o nome do produtor.';
+  } elseif (!$comunidadesTableOk) {
+    $err = 'A tabela comunidades não existe no banco conectado. Importe o SQL no banco correto.';
+  } elseif ($old['comunidade_id'] === '' || !ctype_digit($old['comunidade_id'])) {
+    $err = 'Selecione a comunidade do produtor.';
   } else {
+    $nome = trunc255($old['nome']);
+    $contato = trunc255($old['contato']);
+
+    // documento: salva somente dígitos (mais limpo)
+    $docDigits = only_digits($old['documento']);
+    $documento = $docDigits !== '' ? trunc255($docDigits) : null;
+
+    $observacao = trunc255($old['observacao']);
     $ativo = ($old['ativo'] === '1') ? 1 : 0;
-    $contato = trunc255($old['telefone']);
-
     $comunidadeId = (int)$old['comunidade_id'];
-    if ($comunidadeId <= 0) $comunidadeId = 0;
-
-    // se for salvar texto, pega o nome da comunidade escolhida
-    $comunidadeNome = '';
-    if ($comunidadeId > 0) {
-      foreach ($comunidades as $c) {
-        if ((int)($c['id'] ?? 0) === $comunidadeId) {
-          $comunidadeNome = (string)($c['nome'] ?? '');
-          break;
-        }
-      }
-    }
-    $comunidadeNome = trunc255(trim($comunidadeNome));
-
-    /* Compacta cpf/tipo em observacao (se sua tabela não tem esses campos) */
-    $extras = [];
-    if ($old['cpf'] !== '')  $extras[] = 'CPF: ' . $old['cpf'];
-    if ($old['tipo'] !== '') $extras[] = 'Tipo: ' . $old['tipo'];
-
-    $obs = $old['observacao'];
-    $obsFinal = trim(implode(' | ', $extras));
-    if ($obs !== '') $obsFinal = trim($obsFinal . ' | Obs: ' . $obs);
-    $obsFinal = trunc255($obsFinal);
 
     try {
-      // Monta INSERT conforme seu schema
-      if ($produtoresTemComunidadeId) {
-        $sql = "INSERT INTO produtores (feira_id, nome, contato, comunidade_id, ativo, observacao)
-                VALUES (:feira_id, :nome, :contato, :comunidade_id, :ativo, :observacao)";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-          ':feira_id'       => $FEIRA_ID,
-          ':nome'           => $old['nome'],
-          ':contato'        => $contato !== '' ? $contato : null,
-          ':comunidade_id'  => ($comunidadeId > 0) ? $comunidadeId : null,
-          ':ativo'          => $ativo,
-          ':observacao'     => $obsFinal !== '' ? $obsFinal : null,
-        ]);
+      // Garante que a comunidade existe e é da mesma feira e está ativa
+      $chk = $pdo->prepare("SELECT COUNT(*)
+                            FROM comunidades
+                            WHERE id = :id AND feira_id = :feira AND ativo = 1");
+      $chk->bindValue(':id', $comunidadeId, PDO::PARAM_INT);
+      $chk->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
+      $chk->execute();
+      $okCom = (int)$chk->fetchColumn() > 0;
+
+      if (!$okCom) {
+        $err = 'Comunidade inválida (não encontrada ou inativa).';
       } else {
-        // fallback: salva texto em "comunidade" (se existir)
-        $comuTexto = $comunidadeNome;
-        if ($comuTexto === '' && !$temComunidadesTable) {
-          // se não tem tabela comunidades, pode vir de input antigo (caso você queira)
-          $comuTexto = trunc255(trim((string)($_POST['comunidade_texto'] ?? '')));
-        }
-
-        if (!$produtoresTemComunidadeTexto) {
-          throw new RuntimeException("Sua tabela produtores não tem 'comunidade_id' nem 'comunidade'. Ajuste o schema.");
-        }
-
-        $sql = "INSERT INTO produtores (feira_id, nome, contato, comunidade, ativo, observacao)
-                VALUES (:feira_id, :nome, :contato, :comunidade, :ativo, :observacao)";
+        $sql = "INSERT INTO produtores
+                  (feira_id, nome, contato, comunidade_id, documento, ativo, observacao)
+                VALUES
+                  (:feira_id, :nome, :contato, :comunidade_id, :documento, :ativo, :observacao)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
-          ':feira_id'    => $FEIRA_ID,
-          ':nome'        => $old['nome'],
-          ':contato'     => $contato !== '' ? $contato : null,
-          ':comunidade'  => ($comuTexto !== '') ? $comuTexto : null,
-          ':ativo'       => $ativo,
-          ':observacao'  => $obsFinal !== '' ? $obsFinal : null,
+          ':feira_id'      => $FEIRA_ID,
+          ':nome'          => $nome,
+          ':contato'       => ($contato !== '' ? $contato : null),
+          ':comunidade_id' => $comunidadeId,
+          ':documento'     => $documento,
+          ':ativo'         => $ativo,
+          ':observacao'    => ($observacao !== '' ? $observacao : null),
         ]);
+
+        $_SESSION['flash_ok'] = 'Produtor cadastrado com sucesso!';
+        header('Location: ./listaProdutor.php');
+        exit;
       }
-
-      $_SESSION['flash_ok'] = 'Produtor cadastrado com sucesso!';
-      header('Location: ./listaProdutor.php');
-      exit;
-
     } catch (Throwable $e) {
-      $err = 'Erro ao salvar produtor: ' . $e->getMessage();
+      $msgE = $e->getMessage();
+      if (stripos($msgE, 'Duplicate entry') !== false) {
+        $err = 'Já existe um produtor com esse nome nesta feira.';
+      } else {
+        $err = 'Erro ao salvar produtor: ' . $msgE;
+      }
     }
   }
 }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -237,15 +198,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <style>
     ul .nav-link:hover { color: blue !important; }
     .nav-link { color: black !important; }
+
     .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
     .sidebar .sub-menu li { list-style: none !important; }
 
     .form-control { height: 42px; }
     .btn { height: 42px; }
     .help-hint { font-size: 12px; }
-    .section-title { font-weight: 700; margin: 0; }
-    .section-sub { margin: 0; opacity: .75; }
-    .form-divider { margin: 14px 0; }
+
+    .card-title-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .req-badge{
+      display:inline-block;
+      font-size:11px;
+      padding:2px 8px;
+      border-radius:999px;
+      background:#eef2ff;
+      color:#1f2a6b;
+      font-weight:700;
+      margin-left:6px;
+      vertical-align:middle;
+    }
+
+    .form-section{
+      background:#fff;
+      border:1px solid rgba(0,0,0,.06);
+      border-radius:12px;
+      padding:14px 14px 6px 14px;
+      margin-bottom:12px;
+    }
+
+    .form-section .section-title{
+      font-weight:800;
+      font-size:13px;
+      margin-bottom:10px;
+      color:#111827;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .form-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-start;
+    }
+
+    .mini-debug{
+      font-size:12px;
+      color:#6b7280;
+    }
+    .mini-debug code{
+      font-size:12px;
+    }
   </style>
 </head>
 
@@ -262,8 +275,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
         <span class="icon-menu"></span>
       </button>
-      <ul class="navbar-nav mr-lg-2"><li class="nav-item nav-search d-none d-lg-block"></li></ul>
+
+      <ul class="navbar-nav mr-lg-2">
+        <li class="nav-item nav-search d-none d-lg-block"></li>
+      </ul>
+
       <ul class="navbar-nav navbar-nav-right"></ul>
+
       <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
         <span class="icon-menu"></span>
       </button>
@@ -272,11 +290,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <div class="container-fluid page-body-wrapper">
 
+    <!-- settings-panel (mantido) -->
     <div id="right-sidebar" class="settings-panel">
       <i class="settings-close ti-close"></i>
       <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-        <li class="nav-item"><a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab">TO DO LIST</a></li>
-        <li class="nav-item"><a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab">CHATS</a></li>
+        <li class="nav-item">
+          <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
+        </li>
       </ul>
     </div>
 
@@ -305,10 +328,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </style>
 
             <ul class="nav flex-column sub-menu" style="background: white !important;">
-              <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
-              <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
-              <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-              <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+              <li class="nav-item">
+                <a class="nav-link" href="./listaProduto.php">
+                  <i class="ti-clipboard mr-2"></i> Lista de Produtos
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="./listaCategoria.php">
+                  <i class="ti-layers mr-2"></i> Categorias
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="./listaUnidade.php">
+                  <i class="ti-ruler-pencil mr-2"></i> Unidades
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="./listaProdutor.php">
+                  <i class="ti-user mr-2"></i> Produtores
+                </a>
+              </li>
 
               <li class="nav-item active">
                 <a class="nav-link" href="./adicionarProdutor.php" style="color:white !important; background: #231475C5 !important;">
@@ -325,10 +367,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span class="menu-title">Movimento</span>
             <i class="menu-arrow"></i>
           </a>
+
           <div class="collapse" id="feiraMovimento">
             <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-              <li class="nav-item"><a class="nav-link" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
-              <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
+              <li class="nav-item">
+                <a class="nav-link" href="./lancamentos.php">
+                  <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="./fechamentoDia.php">
+                  <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                </a>
+              </li>
             </ul>
           </div>
         </li>
@@ -339,12 +390,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span class="menu-title">Relatórios</span>
             <i class="menu-arrow"></i>
           </a>
+
           <div class="collapse text-black" id="feiraRelatorios">
             <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-              <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
-              <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
-              <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
-              <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
+              <li class="nav-item">
+                <a class="nav-link" href="./relatorioFinanceiro.php">
+                  <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="./relatorioProdutos.php">
+                  <i class="ti-list mr-2"></i> Produtos Comercializados
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="./relatorioMensal.php">
+                  <i class="ti-calendar mr-2"></i> Resumo Mensal
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="./configRelatorio.php">
+                  <i class="ti-settings mr-2"></i> Configurar
+                </a>
+              </li>
             </ul>
           </div>
         </li>
@@ -377,124 +445,147 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="alert alert-danger"><?= h($err) ?></div>
         <?php endif; ?>
 
+        <?php if (!$comunidadesTableOk): ?>
+          <div class="alert alert-danger">
+            <b>Tabela comunidades não encontrada</b> no banco conectado por <b>db()</b>.
+            <?php if ($dbName !== ''): ?>
+              <div class="mini-debug mt-2">
+                Banco atual do db(): <code><?= h($dbName) ?></code>
+              </div>
+            <?php endif; ?>
+            <div class="mini-debug mt-2">
+              Solução: importe seu SQL no banco correto (ex.: <code>u784961086_relatorio</code>) e confirme no phpMyAdmin.
+            </div>
+          </div>
+        <?php endif; ?>
+
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
 
-                <div class="d-flex align-items-center justify-content-between flex-wrap">
+                <div class="card-title-row">
                   <div>
                     <h4 class="card-title mb-0">Dados do Produtor</h4>
-                    <p class="card-description mb-0">Agora a comunidade vem de um select (cadastro de comunidades).</p>
+                    <p class="card-description mb-0">
+                      Comunidade é obrigatória e vem do cadastro de comunidades.
+                      <span class="req-badge">Obrigatório</span>
+                    </p>
                   </div>
-                  <a href="./listaProdutor.php" class="btn btn-light btn-sm mt-2 mt-md-0">
+                  <a href="./listaProdutor.php" class="btn btn-light btn-sm">
                     <i class="ti-arrow-left"></i> Voltar
                   </a>
                 </div>
 
+                <?php if ($comunidadesTableOk && empty($comunidades)): ?>
+                  <div class="alert alert-warning mt-3">
+                    Nenhuma comunidade ativa cadastrada para esta feira (feira_id = <?= (int)$FEIRA_ID ?>).
+                    Cadastre comunidades primeiro para poder cadastrar produtores.
+                  </div>
+                <?php endif; ?>
+
                 <form class="pt-4" method="post" action="">
                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
-                  <div class="row">
-
-                    <!-- Bloco 1 -->
-                    <div class="col-12 mb-2">
-                      <p class="section-title">Identificação</p>
-                      <p class="section-sub">Quem é o produtor e como contatar.</p>
-                      <hr class="form-divider">
+                  <div class="form-section">
+                    <div class="section-title">
+                      <i class="ti-user"></i> Identificação
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                      <label>Nome do produtor <span class="text-danger">*</span></label>
-                      <input name="nome" type="text" class="form-control" placeholder="Ex.: João da Silva" required value="<?= h($old['nome']) ?>">
-                      <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label>Nome do produtor <span class="text-danger">*</span></label>
+                        <input
+                          name="nome"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: João Batista da Silva"
+                          required
+                          value="<?= h($old['nome']) ?>"
+                        >
+                        <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
+                      </div>
+
+                      <div class="col-md-3 mb-3">
+                        <label>CPF / Documento</label>
+                        <input
+                          name="documento"
+                          type="text"
+                          class="form-control"
+                          placeholder="Somente números"
+                          value="<?= h($old['documento']) ?>"
+                        >
+                        <small class="text-muted help-hint">Opcional (salvo em <b>produtores.documento</b>).</small>
+                      </div>
+
+                      <div class="col-md-3 mb-3">
+                        <label>Telefone / WhatsApp</label>
+                        <input
+                          name="contato"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: 92991112222"
+                          value="<?= h($old['contato']) ?>"
+                        >
+                        <small class="text-muted help-hint">Opcional (salvo em <b>produtores.contato</b>).</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-section">
+                    <div class="section-title">
+                      <i class="ti-map-alt"></i> Comunidade
                     </div>
 
-                    <div class="col-md-3 mb-3">
-                      <label>CPF (opcional)</label>
-                      <input name="cpf" type="text" class="form-control" placeholder="000.000.000-00" value="<?= h($old['cpf']) ?>">
-                    </div>
-
-                    <div class="col-md-3 mb-3">
-                      <label>Status</label>
-                      <select name="ativo" class="form-control">
-                        <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
-                        <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
-                      </select>
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                      <label>Telefone / WhatsApp</label>
-                      <input name="telefone" type="text" class="form-control" placeholder="(92) 9xxxx-xxxx" value="<?= h($old['telefone']) ?>">
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                      <label>Tipo</label>
-                      <select name="tipo" class="form-control">
-                        <option <?= ($old['tipo'] === 'Produtor rural' ? 'selected' : '') ?>>Produtor rural</option>
-                        <option <?= ($old['tipo'] === 'Associação / Cooperativa' ? 'selected' : '') ?>>Associação / Cooperativa</option>
-                        <option <?= ($old['tipo'] === 'Revendedor (se houver)' ? 'selected' : '') ?>>Revendedor (se houver)</option>
-                      </select>
-                      <small class="text-muted help-hint">Você pode ajustar essas opções depois.</small>
-                    </div>
-
-                    <!-- Bloco 2 -->
-                    <div class="col-12 mt-2 mb-2">
-                      <p class="section-title">Comunidade</p>
-                      <p class="section-sub">Selecione uma comunidade cadastrada.</p>
-                      <hr class="form-divider">
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                      <label>Comunidade / Localidade</label>
-
-                      <?php if ($temComunidadesTable): ?>
-                        <select name="comunidade_id" class="form-control">
-                          <option value="">— Selecione —</option>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label>Comunidade <span class="text-danger">*</span></label>
+                        <select
+                          name="comunidade_id"
+                          class="form-control"
+                          <?= (!$comunidadesTableOk || empty($comunidades)) ? 'disabled' : 'required' ?>
+                        >
+                          <option value="">Selecione</option>
                           <?php foreach ($comunidades as $c): ?>
-                            <?php
-                              $cid = (int)($c['id'] ?? 0);
-                              $cnome = (string)($c['nome'] ?? '');
-                              $sel = ((string)$cid === (string)$old['comunidade_id']) ? 'selected' : '';
-                            ?>
-                            <option value="<?= $cid ?>" <?= $sel ?>><?= h($cnome) ?></option>
+                            <option
+                              value="<?= (int)$c['id'] ?>"
+                              <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>
+                            >
+                              <?= h($c['nome']) ?>
+                            </option>
                           <?php endforeach; ?>
                         </select>
+                        <small class="text-muted help-hint">
+                          Vem da tabela <b>comunidades</b> (feira_id = <?= (int)$FEIRA_ID ?>, ativo=1).
+                        </small>
+                      </div>
 
-                        <?php if (empty($comunidades)): ?>
-                          <small class="text-danger d-block mt-2">
-                            Nenhuma comunidade cadastrada ainda. Cadastre comunidades para aparecer aqui.
-                          </small>
-                        <?php else: ?>
-                          <small class="text-muted help-hint">Lista carregada da tabela <b>comunidades</b>.</small>
-                        <?php endif; ?>
-                      <?php else: ?>
-                        <div class="alert alert-warning mb-2">
-                          Tabela <b>comunidades</b> não encontrada. (Assim que você criar, este campo vira select automático.)
-                        </div>
-                        <input name="comunidade_texto" type="text" class="form-control" placeholder="Ex.: Comunidade X / Ramal Y" value="">
-                      <?php endif; ?>
+                      <div class="col-md-3 mb-3">
+                        <label>Status</label>
+                        <select name="ativo" class="form-control">
+                          <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
+                          <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
+                        </select>
+                        <small class="text-muted help-hint">Você pode desativar sem excluir.</small>
+                      </div>
+
+                      <div class="col-md-12 mb-3">
+                        <label>Observações</label>
+                        <textarea
+                          name="observacao"
+                          class="form-control"
+                          rows="4"
+                          placeholder="Ex.: produtor de farinha tradicional, entrega na sexta..."
+                        ><?= h($old['observacao']) ?></textarea>
+                        <small class="text-muted help-hint">Opcional (até 255 caracteres).</small>
+                      </div>
                     </div>
-
-                    <!-- Bloco 3 -->
-                    <div class="col-12 mt-2 mb-2">
-                      <p class="section-title">Observações</p>
-                      <p class="section-sub">Informações extras do produtor.</p>
-                      <hr class="form-divider">
-                    </div>
-
-                    <div class="col-md-12 mb-3">
-                      <label>Observações</label>
-                      <textarea name="observacao" class="form-control" rows="4" placeholder="Ex.: entrega só na sexta, produtos principais, etc."><?= h($old['observacao']) ?></textarea>
-                      <small class="text-muted help-hint">CPF/Tipo também são gravados em observação (se sua tabela não tiver campos próprios).</small>
-                    </div>
-
                   </div>
 
                   <hr>
 
-                  <div class="d-flex flex-wrap" style="gap:8px;">
-                    <button type="submit" class="btn btn-primary">
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" <?= (!$comunidadesTableOk || empty($comunidades)) ? 'disabled' : '' ?>>
                       <i class="ti-save mr-1"></i> Salvar
                     </button>
                     <button type="reset" class="btn btn-light">
@@ -505,6 +596,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <small class="text-muted d-block mt-3">
                     * Campos obrigatórios.
                   </small>
+
+                  <div class="mini-debug mt-2">
+                    Feira atual: <code><?= (int)$FEIRA_ID ?></code>
+                    <?php if ($dbName !== ''): ?>
+                      • Banco do db(): <code><?= h($dbName) ?></code>
+                    <?php endif; ?>
+                  </div>
                 </form>
 
               </div>
