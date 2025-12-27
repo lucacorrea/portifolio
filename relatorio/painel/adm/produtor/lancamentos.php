@@ -55,7 +55,7 @@ require '../../../assets/php/conexao.php';
 $pdo = db();
 
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
-$feiraId = 1;
+$feiraId = 2;
 
 /* ===== Filtros ===== */
 $dia        = trim((string)($_GET['dia'] ?? date('Y-m-d'))); // filtra por DATE(v.data_hora)
