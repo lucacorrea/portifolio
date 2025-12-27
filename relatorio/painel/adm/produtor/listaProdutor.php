@@ -26,34 +26,41 @@ $debug = (isset($_GET['debug']) && $_GET['debug'] === '1');
 /* ===== Conexão + Listagem ===== */
 require '../../../assets/php/conexao.php';
 
+$feiraId = 1;
+
+/* Paginação */
+$perPage = 8;
+$page = (int)($_GET['p'] ?? 1);
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $perPage;
+
+$q = trim((string)($_GET['q'] ?? ''));
+
+$produtores = [];
+$totalRows = 0;
+$totalPages = 1;
+$errDetail = '';
+
+$pickCol = function(array $byLower, array $candidates): ?string {
+  foreach ($candidates as $c) {
+    $k = strtolower($c);
+    if (isset($byLower[$k])) return $byLower[$k];
+  }
+  return null;
+};
+
+$cleanErr = function(string $m): string {
+  $m = preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $m) ?? $m;
+  $m = preg_replace('/\(SQL:\s*.*\)$/', '', $m) ?? $m;
+  return trim((string)$m);
+};
+
 if (!function_exists('db')) {
   $err = $err ?: 'Função db() não encontrada em conexao.php';
-  $produtores = [];
 } else {
-  $pdo = db();
-
-  /* Feira do Produtor = 1 (na pasta da Feira Alternativa você coloca 2) */
-  $feiraId = 1;
-
-  $q = trim((string)($_GET['q'] ?? ''));
-  $produtores = [];
-  $errDetail = '';
-
-  $pickCol = function(array $byLower, array $candidates): ?string {
-    foreach ($candidates as $c) {
-      $k = strtolower($c);
-      if (isset($byLower[$k])) return $byLower[$k];
-    }
-    return null;
-  };
-
-  $cleanErr = function(string $m): string {
-    $m = preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $m) ?? $m;
-    $m = preg_replace('/\(SQL:\s*.*\)$/', '', $m) ?? $m;
-    return trim((string)$m);
-  };
-
   try {
+    $pdo = db();
+
     $tbl = $pdo->query("SHOW TABLES LIKE 'produtores'")->fetchColumn();
     if (!$tbl) {
       throw new RuntimeException("Tabela 'produtores' não existe neste banco.");
@@ -68,7 +75,7 @@ if (!function_exists('db')) {
     $colId   = $pickCol($byLower, ['id', 'produtor_id']);
     $colNome = $pickCol($byLower, ['nome', 'produtor', 'nome_produtor', 'razao_social', 'nome_completo']);
     $colCom  = $pickCol($byLower, ['comunidade', 'localidade', 'endereco', 'bairro', 'comunidade_localidade']);
-    $colTel  = $pickCol($byLower, ['telefone', 'celular', 'whatsapp', 'fone']);
+    $colTel  = $pickCol($byLower, ['contato', 'telefone', 'celular', 'whatsapp', 'fone']);
     $colAtv  = $pickCol($byLower, ['ativo', 'status', 'is_ativo']);
     $colFei  = $pickCol($byLower, ['feira_id', 'feira', 'id_feira', 'tipo_feira']);
 
@@ -76,13 +83,7 @@ if (!function_exists('db')) {
       throw new RuntimeException("A tabela 'produtores' precisa ter pelo menos colunas de ID e NOME. (Ex.: id, nome)");
     }
 
-    $select = [];
-    $select[] = "`$colId` AS id";
-    $select[] = "`$colNome` AS nome";
-    $select[] = $colCom ? "`$colCom` AS comunidade" : "NULL AS comunidade";
-    $select[] = $colTel ? "`$colTel` AS telefone" : "NULL AS telefone";
-    $select[] = $colAtv ? "`$colAtv` AS ativo" : "1 AS ativo";
-
+    /* WHERE */
     $where = [];
     $params = [];
 
@@ -99,15 +100,41 @@ if (!function_exists('db')) {
       $params[':q'] = '%' . $q . '%';
     }
 
+    $whereSql = count($where) ? (" WHERE " . implode(' AND ', $where)) : "";
+
+    /* TOTAL (para paginação) */
+    $sqlCount = "SELECT COUNT(*) FROM `produtores`" . $whereSql;
+    $stCount = $pdo->prepare($sqlCount);
+    if (isset($params[':feira'])) $stCount->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
+    if (isset($params[':q']))     $stCount->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
+    $stCount->execute();
+    $totalRows = (int)$stCount->fetchColumn();
+
+    $totalPages = max(1, (int)ceil($totalRows / $perPage));
+    if ($page > $totalPages) {
+      $page = $totalPages;
+      $offset = ($page - 1) * $perPage;
+    }
+
+    /* SELECT paginado */
+    $select = [];
+    $select[] = "`$colId` AS id";
+    $select[] = "`$colNome` AS nome";
+    $select[] = $colCom ? "`$colCom` AS comunidade" : "NULL AS comunidade";
+    $select[] = $colTel ? "`$colTel` AS telefone" : "NULL AS telefone";
+    $select[] = $colAtv ? "`$colAtv` AS ativo" : "1 AS ativo";
+
     $sql = "SELECT " . implode(', ', $select) . "
             FROM `produtores`"
-            . (count($where) ? " WHERE " . implode(' AND ', $where) : "")
-            . " ORDER BY `$colNome` ASC";
+            . $whereSql . "
+            ORDER BY `$colNome` ASC
+            LIMIT :lim OFFSET :off";
 
     $stmt = $pdo->prepare($sql);
-
     if (isset($params[':feira'])) $stmt->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
     if (isset($params[':q']))     $stmt->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
+    $stmt->bindValue(':lim', (int)$perPage, PDO::PARAM_INT);
+    $stmt->bindValue(':off', (int)$offset, PDO::PARAM_INT);
 
     $stmt->execute();
     $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -116,6 +143,18 @@ if (!function_exists('db')) {
     $err = $err ?: 'Não foi possível carregar os produtores agora.';
     $errDetail = $cleanErr($e->getMessage());
   }
+}
+
+/* helper para links mantendo q/debug */
+function buildUrl(array $add = []): string {
+  $base = strtok($_SERVER['REQUEST_URI'], '?') ?: './listaProdutor.php';
+  $cur = $_GET ?? [];
+  foreach ($add as $k => $v) {
+    if ($v === null) unset($cur[$k]);
+    else $cur[$k] = (string)$v;
+  }
+  $qs = http_build_query($cur);
+  return $qs ? ($base . '?' . $qs) : $base;
 }
 ?>
 <!DOCTYPE html>
@@ -188,6 +227,12 @@ if (!function_exists('db')) {
 
     .acoes-wrap{ display:flex; flex-wrap:wrap; gap:8px; }
     .btn-xs{ padding: .25rem .5rem; font-size: .75rem; line-height: 1.2; height:auto; }
+
+    /* Paginação */
+    .sig-pager { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-top: 14px; }
+    .sig-pager .info { color:#6c757d; font-size: 13px; }
+    .sig-pager .pagination { margin:0; }
+    .sig-pager .page-link { border-radius: 10px !important; }
   </style>
 </head>
 
@@ -273,7 +318,6 @@ if (!function_exists('db')) {
     <!-- SIDEBAR (padrão) -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
       <ul class="nav">
-
         <li class="nav-item">
           <a class="nav-link" href="index.php">
             <i class="icon-grid menu-icon"></i>
@@ -382,7 +426,6 @@ if (!function_exists('db')) {
             <span class="menu-title">Suporte</span>
           </a>
         </li>
-
       </ul>
     </nav>
 
@@ -397,37 +440,43 @@ if (!function_exists('db')) {
           </div>
         </div>
 
+        <!-- Toolbar (Pesquisa REAL por GET) -->
         <div class="row">
           <div class="col-md-12 grid-margin stretch-card">
             <div class="card toolbar-card">
               <div class="card-body">
-                <div class="row align-items-center">
+                <form method="get" class="row align-items-center">
                   <div class="col-md-6 mb-2 mb-md-0">
                     <label class="mb-1">Pesquisa</label>
-                    <input type="text" class="form-control" placeholder="Pesquisar por nome, comunidade, telefone..." value="<?= h($q ?? '') ?>">
+                    <input type="text" name="q" class="form-control"
+                           placeholder="Pesquisar por nome, comunidade, telefone..." value="<?= h($q) ?>">
+                    <?php if ($debug): ?>
+                      <input type="hidden" name="debug" value="1">
+                    <?php endif; ?>
                   </div>
 
                   <div class="col-md-6">
                     <label class="mb-1 d-none d-md-block">&nbsp;</label>
                     <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
-                      <button type="button" class="btn btn-primary">
+                      <button type="submit" class="btn btn-primary">
                         <i class="ti-search mr-1"></i> Pesquisar
                       </button>
-                      <a class="btn btn-light" href="./listaProdutor.php">
+                      <a class="btn btn-light" href="<?= h(buildUrl(['q'=>null,'p'=>null])) ?>">
                         <i class="ti-close mr-1"></i> Limpar
                       </a>
-                      <button type="button" class="btn btn-success">
+                      <button type="button" class="btn btn-success" disabled>
                         <i class="ti-export mr-1"></i> Exportar
                       </button>
                     </div>
-                    <small class="text-muted d-block mt-2">Pesquisa por URL: <b>?q=texto</b> (depois a gente liga o botão).</small>
+                    <small class="text-muted d-block mt-2">Paginação: 8 por página.</small>
                   </div>
-                </div>
+                </form>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Tabela -->
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
@@ -435,7 +484,9 @@ if (!function_exists('db')) {
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Lista de Produtores</h4>
-                    <p class="card-description mb-0">Mostrando <?= isset($produtores) ? (int)count($produtores) : 0 ?> registro(s).</p>
+                    <p class="card-description mb-0">
+                      Total: <?= (int)$totalRows ?> — Página <?= (int)$page ?> de <?= (int)$totalPages ?>.
+                    </p>
                   </div>
                   <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
                     <i class="ti-plus"></i> Adicionar
@@ -490,6 +541,51 @@ if (!function_exists('db')) {
                       <?php endif; ?>
                     </tbody>
                   </table>
+
+                  <!-- Paginação -->
+                  <?php if ($totalPages > 1): ?>
+                    <?php
+                      $prev = max(1, $page - 1);
+                      $next = min($totalPages, $page + 1);
+
+                      $start = max(1, $page - 2);
+                      $end   = min($totalPages, $page + 2);
+                      if ($end - $start < 4) {
+                        $start = max(1, $end - 4);
+                        $end   = min($totalPages, $start + 4);
+                      }
+                    ?>
+                    <div class="sig-pager">
+                      <div class="info">
+                        Mostrando <?= (int)count($produtores) ?> de <?= (int)$totalRows ?> (<?= (int)$perPage ?> por página)
+                      </div>
+
+                      <nav aria-label="Paginação produtores">
+                        <ul class="pagination">
+                          <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                            <a class="page-link" href="<?= h(buildUrl(['p'=>1])) ?>">«</a>
+                          </li>
+                          <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                            <a class="page-link" href="<?= h(buildUrl(['p'=>$prev])) ?>">Anterior</a>
+                          </li>
+
+                          <?php for ($i=$start; $i<=$end; $i++): ?>
+                            <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                              <a class="page-link" href="<?= h(buildUrl(['p'=>$i])) ?>"><?= $i ?></a>
+                            </li>
+                          <?php endfor; ?>
+
+                          <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                            <a class="page-link" href="<?= h(buildUrl(['p'=>$next])) ?>">Próxima</a>
+                          </li>
+                          <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                            <a class="page-link" href="<?= h(buildUrl(['p'=>$totalPages])) ?>">»</a>
+                          </li>
+                        </ul>
+                      </nav>
+                    </div>
+                  <?php endif; ?>
+
                 </div>
 
               </div>
