@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -15,7 +16,10 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function h($s)
+{
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
@@ -38,7 +42,8 @@ $feiraId = 1;
 /* ===========================
    PAGINAÇÃO PADRÃO SIG (REUSO)
    =========================== */
-function sig_build_url(string $baseUrl, array $add = [], array $removeKeys = []): string {
+function sig_build_url(string $baseUrl, array $add = [], array $removeKeys = []): string
+{
   $cur = $_GET ?? [];
 
   foreach ($removeKeys as $rk) {
@@ -53,7 +58,8 @@ function sig_build_url(string $baseUrl, array $add = [], array $removeKeys = [])
   return $qs ? ($baseUrl . '?' . $qs) : $baseUrl;
 }
 
-function sig_render_pagination(string $baseUrl, int $pagina, int $totalPaginas): void {
+function sig_render_pagination(string $baseUrl, int $pagina, int $totalPaginas): void
+{
   if ($totalPaginas <= 1) return;
 
   $prev = max(1, $pagina - 1);
@@ -70,13 +76,13 @@ function sig_render_pagination(string $baseUrl, int $pagina, int $totalPaginas):
     $ini = max(1, $fim - ($win * 2));
     $fim = min($totalPaginas, $ini + ($win * 2));
   }
-  ?>
+?>
   <div class="d-flex flex-wrap justify-content-between align-items-center mt-3">
     <div class="text-muted">
       Página <?= (int)$pagina ?> de <?= (int)$totalPaginas ?>
     </div>
 
-    <nav aria-label="Paginação produtores">
+    <nav aria-label="Paginação produtos">
       <ul class="pagination mb-0">
 
         <li class="page-item <?= $disabledPrev ?>">
@@ -114,10 +120,10 @@ function sig_render_pagination(string $baseUrl, int $pagina, int $totalPaginas):
       </ul>
     </nav>
   </div>
-  <?php
+<?php
 }
 
-/* ===== Filtros/Busca ===== */
+/* ===== Busca ===== */
 $q = trim((string)($_GET['q'] ?? ''));
 
 /* ===== Paginação (8 por página) ===== */
@@ -136,19 +142,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if (!hash_equals($csrf, $postedCsrf)) {
     $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./listaProdutor.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
+    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
     exit;
   }
 
   if ($id <= 0) {
     $_SESSION['flash_err'] = 'ID inválido.';
-    header('Location: ./listaProdutor.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
+    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
     exit;
   }
 
   try {
     if ($acao === 'toggle') {
-      $sql = "UPDATE produtores
+      $sql = "UPDATE produtos
               SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END
               WHERE id = :id AND feira_id = :feira
               LIMIT 1";
@@ -157,13 +163,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
       $stmt->execute();
 
-      $_SESSION['flash_ok'] = ($stmt->rowCount() > 0) ? 'Status do produtor atualizado.' : 'Produtor não encontrado.';
-      header('Location: ./listaProdutor.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
+      $_SESSION['flash_ok'] = ($stmt->rowCount() > 0) ? 'Status do produto atualizado.' : 'Produto não encontrado.';
+      header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
       exit;
     }
 
     if ($acao === 'excluir') {
-      $sql = "DELETE FROM produtores
+      $sql = "DELETE FROM produtos
               WHERE id = :id AND feira_id = :feira
               LIMIT 1";
       $stmt = $pdo->prepare($sql);
@@ -171,27 +177,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
       $stmt->execute();
 
-      $_SESSION['flash_ok'] = ($stmt->rowCount() > 0) ? 'Produtor excluído com sucesso.' : 'Produtor não encontrado.';
-      header('Location: ./listaProdutor.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
+      $_SESSION['flash_ok'] = ($stmt->rowCount() > 0) ? 'Produto excluído com sucesso.' : 'Produto não encontrado.';
+      header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
       exit;
     }
 
     $_SESSION['flash_err'] = 'Ação inválida.';
-    header('Location: ./listaProdutor.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
+    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
     exit;
-
   } catch (PDOException $e) {
     $mysqlCode = (int)($e->errorInfo[1] ?? 0);
     if ($mysqlCode === 1451) {
-      $_SESSION['flash_err'] = 'Não é possível excluir: existem produtos/vendas vinculados a este produtor.';
+      $_SESSION['flash_err'] = 'Não é possível excluir: existem vendas/itens usando este produto.';
     } else {
       $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
     }
-    header('Location: ./listaProdutor.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
+    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
     exit;
   } catch (Throwable $e) {
     $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
-    header('Location: ./listaProdutor.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
+    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
     exit;
   }
 }
@@ -201,12 +206,24 @@ $totalRegistros = 0;
 $totalPaginas = 1;
 
 try {
-  $where = "feira_id = :feira";
+  $where = "p.feira_id = :feira";
   if ($q !== '') {
-    $where .= " AND (nome LIKE :q OR contato LIKE :q OR comunidade LIKE :q)";
+    $where .= " AND (
+      p.nome LIKE :q OR
+      c.nome LIKE :q OR
+      u.nome LIKE :q OR u.sigla LIKE :q OR
+      pr.nome LIKE :q
+    )";
   }
 
-  $sqlCount = "SELECT COUNT(*) FROM produtores WHERE $where";
+  $sqlCount = "
+    SELECT COUNT(*)
+    FROM produtos p
+    LEFT JOIN categorias c ON c.id = p.categoria_id AND c.feira_id = p.feira_id
+    LEFT JOIN unidades   u ON u.id = p.unidade_id   AND u.feira_id = p.feira_id
+    LEFT JOIN produtores pr ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
+    WHERE $where
+  ";
   $stmt = $pdo->prepare($sqlCount);
   $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
   if ($q !== '') $stmt->bindValue(':q', '%' . $q . '%', PDO::PARAM_STR);
@@ -224,21 +241,32 @@ try {
 }
 
 /* ===== Listagem (LIMIT/OFFSET) ===== */
-$produtores = [];
+$produtos = [];
 try {
   $where = "p.feira_id = :feira";
   if ($q !== '') {
-    $where .= " AND (p.nome LIKE :q OR p.contato LIKE :q OR p.comunidade LIKE :q)";
+    $where .= " AND (
+      p.nome LIKE :q OR
+      c.nome LIKE :q OR
+      u.nome LIKE :q OR u.sigla LIKE :q OR
+      pr.nome LIKE :q
+    )";
   }
 
   $sql = "
     SELECT
       p.id,
       p.nome,
-      p.comunidade,
-      p.contato,
-      p.ativo
-    FROM produtores p
+      p.ativo,
+      p.preco_referencia,
+      c.nome AS categoria_nome,
+      u.sigla AS unidade_sigla,
+      u.nome  AS unidade_nome,
+      pr.nome AS produtor_nome
+    FROM produtos p
+    LEFT JOIN categorias c ON c.id = p.categoria_id AND c.feira_id = p.feira_id
+    LEFT JOIN unidades   u ON u.id = p.unidade_id   AND u.feira_id = p.feira_id
+    LEFT JOIN produtores pr ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
     WHERE $where
     ORDER BY p.nome ASC
     LIMIT :lim OFFSET :off
@@ -250,9 +278,9 @@ try {
   $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
   $stmt->execute();
 
-  $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar os produtores agora.';
+  $err = $err ?: 'Não foi possível carregar os produtos agora.';
 }
 
 /* ===== Texto “Mostrando X–Y de N” ===== */
@@ -261,10 +289,11 @@ $fim = min($offset + $porPagina, $totalRegistros);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Feira do Produtor — Produtores</title>
+  <title>SIGRelatórios Feira do Produtor — Lista de Produtos</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -278,19 +307,42 @@ $fim = min($offset + $porPagina, $totalRegistros);
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
+    ul .nav-link:hover {
+      color: blue !important;
+    }
 
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
+    .nav-link {
+      color: black !important;
+    }
 
-    .table td,.table th{ vertical-align: middle !important; }
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
 
-    .acoes-wrap{ display:flex; flex-wrap:wrap; gap:8px; }
-    .btn-xs{ padding:.25rem .5rem; font-size:.75rem; line-height:1.2; height:auto; }
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
+
+    .table td,
+    .table th {
+      vertical-align: middle !important;
+    }
+
+    .acoes-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn-xs {
+      padding: .25rem .5rem;
+      font-size: .75rem;
+      line-height: 1.2;
+      height: auto;
+    }
 
     /* Flash “Hostinger style” */
-    .sig-flash-wrap{
+    .sig-flash-wrap {
       position: fixed;
       top: 78px;
       right: 18px;
@@ -299,13 +351,14 @@ $fim = min($offset + $porPagina, $totalRegistros);
       z-index: 9999;
       pointer-events: none;
     }
-    .sig-toast.alert{
+
+    .sig-toast.alert {
       pointer-events: auto;
       border: 0 !important;
       border-left: 6px solid !important;
       border-radius: 14px !important;
       padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
 
@@ -315,382 +368,445 @@ $fim = min($offset + $porPagina, $totalRegistros);
         sigToastIn .22s ease-out forwards,
         sigToastOut .25s ease-in forwards 5.75s;
     }
-    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
-    .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
-    .sig-toast__icon i{ font-size:16px; margin-top:2px; }
-    .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height:1.1; }
-    .sig-toast__text{ margin:0; line-height:1.25; }
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important;
+    }
 
-    .sig-toast .close{ opacity:.55; font-size:18px; line-height:1; padding:0 6px; }
-    .sig-toast .close:hover{ opacity:1; }
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important;
+    }
 
-    @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
-    @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .sig-toast__title {
+      font-weight: 800;
+      margin-bottom: 1px;
+      line-height: 1.1;
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    .sig-toast .close {
+      opacity: .55;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 6px;
+    }
+
+    .sig-toast .close:hover {
+      opacity: 1;
+    }
+
+    @keyframes sigToastIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes sigToastOut {
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden;
+      }
+    }
   </style>
 </head>
 
 <body>
-<div class="container-scroller">
+  <div class="container-scroller">
 
-  <!-- NAVBAR -->
-  <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-    <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-      <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-      <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
-    </div>
-    <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-      <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-        <span class="icon-menu"></span>
-      </button>
+    <!-- NAVBAR -->
+    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
+      </div>
+      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+          <span class="icon-menu"></span>
+        </button>
 
-      <ul class="navbar-nav mr-lg-2">
-        <li class="nav-item nav-search d-none d-lg-block"></li>
-      </ul>
+        <ul class="navbar-nav mr-lg-2">
+          <li class="nav-item nav-search d-none d-lg-block"></li>
+        </ul>
 
-      <ul class="navbar-nav navbar-nav-right"></ul>
+        <ul class="navbar-nav navbar-nav-right"></ul>
 
-      <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-        <span class="icon-menu"></span>
-      </button>
-    </div>
-  </nav>
-
-  <?php if ($msg || $err): ?>
-    <div class="sig-flash-wrap">
-      <?php if ($msg): ?>
-        <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
-          <div class="sig-toast__row">
-            <div class="sig-toast__icon"><i class="ti-check"></i></div>
-            <div>
-              <div class="sig-toast__title">Tudo certo!</div>
-              <p class="sig-toast__text"><?= h($msg) ?></p>
-            </div>
-          </div>
-          <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-      <?php endif; ?>
-
-      <?php if ($err): ?>
-        <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
-          <div class="sig-toast__row">
-            <div class="sig-toast__icon"><i class="ti-alert"></i></div>
-            <div>
-              <div class="sig-toast__title">Atenção!</div>
-              <p class="sig-toast__text"><?= h($err) ?></p>
-            </div>
-          </div>
-          <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-      <?php endif; ?>
-    </div>
-  <?php endif; ?>
-
-  <div class="container-fluid page-body-wrapper">
-
-    <!-- settings-panel (mantido) -->
-    <div id="right-sidebar" class="settings-panel">
-      <i class="settings-close ti-close"></i>
-      <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-        <li class="nav-item">
-          <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
-        </li>
-      </ul>
-    </div>
-
-    <!-- SIDEBAR -->
-    <nav class="sidebar sidebar-offcanvas" id="sidebar">
-      <ul class="nav">
-
-        <li class="nav-item">
-          <a class="nav-link" href="index.php">
-            <i class="icon-grid menu-icon"></i>
-            <span class="menu-title">Dashboard</span>
-          </a>
-        </li>
-
-        <li class="nav-item active">
-          <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
-            <i class="ti-id-badge menu-icon"></i>
-            <span class="menu-title">Cadastros</span>
-            <i class="menu-arrow"></i>
-          </a>
-
-          <div class="collapse show" id="feiraCadastros">
-            <style>
-              .sub-menu .nav-item .nav-link { color: black !important; }
-              .sub-menu .nav-item .nav-link:hover { color: blue !important; }
-            </style>
-
-            <ul class="nav flex-column sub-menu" style="background: white !important;">
-              <li class="nav-item">
-                <a class="nav-link" href="./listaProduto.php">
-                  <i class="ti-clipboard mr-2"></i> Lista de Produtos
-                </a>
-              </li>
-
-              <li class="nav-item">
-                <a class="nav-link" href="./listaCategoria.php">
-                  <i class="ti-layers mr-2"></i> Categorias
-                </a>
-              </li>
-
-              <li class="nav-item">
-                <a class="nav-link" href="./listaUnidade.php">
-                  <i class="ti-ruler-pencil mr-2"></i> Unidades
-                </a>
-              </li>
-
-              <li class="nav-item active">
-                <a class="nav-link" href="./listaProdutor.php" style="color:white !important; background: #231475C5 !important;">
-                  <i class="ti-user mr-2"></i> Produtores
-                </a>
-              </li>
-            </ul>
-          </div>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
-            <i class="ti-exchange-vertical menu-icon"></i>
-            <span class="menu-title">Movimento</span>
-            <i class="menu-arrow"></i>
-          </a>
-          <div class="collapse" id="feiraMovimento">
-            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-              <li class="nav-item">
-                <a class="nav-link" href="./lancamentos.php">
-                  <i class="ti-write mr-2"></i> Lançamentos (Vendas)
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./fechamentoDia.php">
-                  <i class="ti-check-box mr-2"></i> Fechamento do Dia
-                </a>
-              </li>
-            </ul>
-          </div>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
-            <i class="ti-clipboard menu-icon"></i>
-            <span class="menu-title">Relatórios</span>
-            <i class="menu-arrow"></i>
-          </a>
-          <div class="collapse text-black" id="feiraRelatorios">
-            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-              <li class="nav-item">
-                <a class="nav-link" href="./relatorioFinanceiro.php">
-                  <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./relatorioProdutos.php">
-                  <i class="ti-list mr-2"></i> Produtos Comercializados
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./relatorioMensal.php">
-                  <i class="ti-calendar mr-2"></i> Resumo Mensal
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./configRelatorio.php">
-                  <i class="ti-settings mr-2"></i> Configurar
-                </a>
-              </li>
-            </ul>
-          </div>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-            <i class="ti-headphone-alt menu-icon"></i>
-            <span class="menu-title">Suporte</span>
-          </a>
-        </li>
-
-      </ul>
+        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+          <span class="icon-menu"></span>
+        </button>
+      </div>
     </nav>
 
-    <!-- MAIN -->
-    <div class="main-panel">
-      <div class="content-wrapper">
-
-        <div class="row">
-          <div class="col-12 mb-3">
-            <h3 class="font-weight-bold">Produtores</h3>
-            <h6 class="font-weight-normal mb-0">Gerencie produtores (ativar/desativar/excluir).</h6>
+    <?php if ($msg || $err): ?>
+      <div class="sig-flash-wrap">
+        <?php if ($msg): ?>
+          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-check"></i></div>
+              <div>
+                <div class="sig-toast__title">Tudo certo!</div>
+                <p class="sig-toast__text"><?= h($msg) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
-        </div>
+        <?php endif; ?>
 
-        <!-- Toolbar busca -->
-        <div class="row">
-          <div class="col-lg-12 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
-                <form method="get" action="./listaProdutor.php" class="row align-items-end">
-                  <div class="col-md-6">
-                    <label class="mb-1">Pesquisa</label>
-                    <input type="text" class="form-control" name="q" placeholder="Pesquisar por nome, contato, comunidade..." value="<?= h($q) ?>">
-                  </div>
-                  <div class="col-md-6 mt-3 mt-md-0">
-                    <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
-                      <button type="submit" class="btn btn-primary">
-                        <i class="ti-search mr-1"></i> Pesquisar
-                      </button>
-                      <a class="btn btn-light" href="./listaProdutor.php">
-                        <i class="ti-close mr-1"></i> Limpar
-                      </a>
-                      <button type="button" class="btn btn-success" disabled>
-                        <i class="ti-export mr-1"></i> Exportar
-                      </button>
+        <?php if ($err): ?>
+          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+              <div>
+                <div class="sig-toast__title">Atenção!</div>
+                <p class="sig-toast__text"><?= h($err) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
+
+    <div class="container-fluid page-body-wrapper">
+
+      <!-- (settings-panel mantido) -->
+      <div id="right-sidebar" class="settings-panel">
+        <i class="settings-close ti-close"></i>
+        <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
+          <li class="nav-item">
+            <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- SIDEBAR -->
+      <nav class="sidebar sidebar-offcanvas" id="sidebar">
+        <ul class="nav">
+
+          <li class="nav-item">
+            <a class="nav-link" href="index.php">
+              <i class="icon-grid menu-icon"></i>
+              <span class="menu-title">Dashboard</span>
+            </a>
+          </li>
+
+          <li class="nav-item active">
+            <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
+              <i class="ti-id-badge menu-icon"></i>
+              <span class="menu-title">Cadastros</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse show" id="feiraCadastros">
+              <style>
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
+              </style>
+
+              <ul class="nav flex-column sub-menu" style="background: white !important;">
+                <li class="nav-item active">
+                  <a class="nav-link" href="./listaProduto.php" style="color:white !important; background: #231475C5 !important;">
+                    <i class="ti-clipboard mr-2"></i> Lista de Produtos
+                  </a>
+                </li>
+
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaCategoria.php">
+                    <i class="ti-layers mr-2"></i> Categorias
+                  </a>
+                </li>
+
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaUnidade.php">
+                    <i class="ti-ruler-pencil mr-2"></i> Unidades
+                  </a>
+                </li>
+
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaProdutor.php">
+                    <i class="ti-user mr-2"></i> Produtores
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
+              <i class="ti-exchange-vertical menu-icon"></i>
+              <span class="menu-title">Movimento</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse" id="feiraMovimento">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item">
+                  <a class="nav-link" href="./lancamentos.php">
+                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./fechamentoDia.php">
+                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
+              <i class="ti-clipboard menu-icon"></i>
+              <span class="menu-title">Relatórios</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse text-black" id="feiraRelatorios">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item">
+                  <a class="nav-link" href="./relatorioFinanceiro.php">
+                    <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./relatorioProdutos.php">
+                    <i class="ti-list mr-2"></i> Produtos Comercializados
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./relatorioMensal.php">
+                    <i class="ti-calendar mr-2"></i> Resumo Mensal
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./configRelatorio.php">
+                    <i class="ti-settings mr-2"></i> Configurar
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+              <i class="ti-headphone-alt menu-icon"></i>
+              <span class="menu-title">Suporte</span>
+            </a>
+          </li>
+
+        </ul>
+      </nav>
+
+      <!-- MAIN -->
+      <div class="main-panel">
+        <div class="content-wrapper">
+
+          <div class="row">
+            <div class="col-12 mb-3">
+              <h3 class="font-weight-bold">Produtos</h3>
+              <h6 class="font-weight-normal mb-0">Gerencie produtos (ativar/desativar/excluir).</h6>
+            </div>
+          </div>
+
+          <!-- Toolbar busca -->
+          <div class="row">
+            <div class="col-lg-12 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
+                  <form method="get" action="./listaProduto.php" class="row align-items-end">
+                    <div class="col-md-6">
+                      <label class="mb-1">Pesquisa</label>
+                      <input type="text" class="form-control" name="q" placeholder="Pesquisar por produto, categoria, unidade, produtor..." value="<?= h($q) ?>">
                     </div>
-                    <small class="text-muted d-block mt-2">Pesquisa por URL: <b>?q=texto</b></small>
-                  </div>
-                </form>
+                    <div class="col-md-6 mt-3 mt-md-0">
+                      <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
+                        <button type="submit" class="btn btn-primary">
+                          <i class="ti-search mr-1"></i> Pesquisar
+                        </button>
+                        <a class="btn btn-light" href="./listaProduto.php">
+                          <i class="ti-close mr-1"></i> Limpar
+                        </a>
+                        <button type="button" class="btn btn-success" disabled>
+                          <i class="ti-export mr-1"></i> Exportar
+                        </button>
+                      </div>
+                      <small class="text-muted d-block mt-2">Pesquisa por URL: <b>?q=texto</b></small>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Tabela -->
-        <div class="row">
-          <div class="col-lg-12 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
+          <!-- Tabela -->
+          <div class="row">
+            <div class="col-lg-12 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
 
-                <div class="d-flex align-items-center justify-content-between flex-wrap">
-                  <div>
-                    <h4 class="card-title mb-0">Lista de Produtores</h4>
-                    <p class="card-description mb-0">
-                      Mostrando <?= (int)$inicio ?>–<?= (int)$fim ?> de <?= (int)$totalRegistros ?> registro(s).
-                    </p>
+                  <div class="d-flex align-items-center justify-content-between flex-wrap">
+                    <div>
+                      <h4 class="card-title mb-0">Lista de Produtos</h4>
+                      <p class="card-description mb-0">
+                        Mostrando <?= (int)$inicio ?>–<?= (int)$fim ?> de <?= (int)$totalRegistros ?> registro(s).
+                      </p>
+                    </div>
+
+                    <a href="./adicionarProduto.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                      <i class="ti-plus"></i> Adicionar
+                    </a>
                   </div>
 
-                  <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
-                    <i class="ti-plus"></i> Adicionar
-                  </a>
-                </div>
-
-                <div class="table-responsive pt-3">
-                  <table class="table table-striped table-hover">
-                    <thead>
-                      <tr>
-                        <th style="width:90px;">ID</th>
-                        <th>Produtor</th>
-                        <th>Comunidade / Localidade</th>
-                        <th>Contato</th>
-                        <th style="width:160px;">Status</th>
-                        <th style="min-width:220px;">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php if (empty($produtores)): ?>
+                  <div class="table-responsive pt-3">
+                    <table class="table table-striped table-hover">
+                      <thead>
                         <tr>
-                          <td colspan="6" class="text-center text-muted py-4">
-                            Nenhum produtor encontrado.
-                          </td>
+                          <th style="width:90px;">ID</th>
+                          <th>Produto</th>
+                          <th>Categoria</th>
+                          <th>Unidade</th>
+                          <th>Produtor</th>
+                          <th style="width:140px;">Preço</th>
+                          <th style="width:160px;">Status</th>
+                          <th style="min-width:220px;">Ações</th>
                         </tr>
-                      <?php else: ?>
-                        <?php foreach ($produtores as $p): ?>
-                          <?php
+                      </thead>
+                      <tbody>
+                        <?php if (empty($produtos)): ?>
+                          <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                              Nenhum produto encontrado.
+                            </td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($produtos as $p): ?>
+                            <?php
                             $id = (int)($p['id'] ?? 0);
                             $ativoP = (int)($p['ativo'] ?? 0) === 1;
                             $badgeClass = $ativoP ? 'badge-success' : 'badge-danger';
                             $badgeText  = $ativoP ? 'Ativo' : 'Inativo';
 
-                            $comu = trim((string)($p['comunidade'] ?? ''));
-                            if ($comu === '') $comu = '-';
+                            $preco = $p['preco_referencia'];
+                            $precoFmt = ($preco === null || $preco === '') ? '-' : number_format((float)$preco, 2, ',', '.');
 
-                            $cont = trim((string)($p['contato'] ?? ''));
-                            if ($cont === '') $cont = '-';
-                          ?>
-                          <tr>
-                            <td><?= $id ?></td>
-                            <td class="font-weight-bold"><?= h($p['nome'] ?? '') ?></td>
-                            <td><?= h($comu) ?></td>
-                            <td><?= h($cont) ?></td>
-                            <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
-                            <td>
-                              <div class="acoes-wrap">
+                            $categoriaNome = trim((string)($p['categoria_nome'] ?? ''));
+                            if ($categoriaNome === '') $categoriaNome = '-';
 
-                                <form method="post" class="m-0">
-                                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                  <input type="hidden" name="acao" value="toggle">
-                                  <input type="hidden" name="id" value="<?= $id ?>">
-                                  <input type="hidden" name="return_p" value="<?= (int)$pagina ?>">
-                                  <button type="submit" class="btn btn-outline-warning btn-xs"
-                                    onclick="return confirm('Deseja <?= $ativoP ? 'DESATIVAR' : 'ATIVAR' ?> este produtor?');">
-                                    <i class="ti-power-off"></i> <?= $ativoP ? 'Desativar' : 'Ativar' ?>
-                                  </button>
-                                </form>
+                            $unSigla = trim((string)($p['unidade_sigla'] ?? ''));
+                            $unNome  = trim((string)($p['unidade_nome'] ?? ''));
+                            $unLabel = $unSigla !== '' ? $unSigla : $unNome;
+                            if ($unLabel === '') $unLabel = '-';
 
-                                <form method="post" class="m-0">
-                                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                  <input type="hidden" name="acao" value="excluir">
-                                  <input type="hidden" name="id" value="<?= $id ?>">
-                                  <input type="hidden" name="return_p" value="<?= (int)$pagina ?>">
-                                  <button type="submit" class="btn btn-outline-danger btn-xs"
-                                    onclick="return confirm('Tem certeza que deseja EXCLUIR este produtor?');">
-                                    <i class="ti-trash"></i> Excluir
-                                  </button>
-                                </form>
+                            $produtorNome = trim((string)($p['produtor_nome'] ?? ''));
+                            if ($produtorNome === '') $produtorNome = '-';
+                            ?>
+                            <tr>
+                              <td><?= $id ?></td>
+                              <td class="font-weight-bold"><?= h($p['nome'] ?? '') ?></td>
+                              <td><?= h($categoriaNome) ?></td>
+                              <td><?= h($unLabel) ?></td>
+                              <td><?= h($produtorNome) ?></td>
+                              <td>R$ <?= h($precoFmt) ?></td>
+                              <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                              <td>
+                                <div class="acoes-wrap">
 
-                              </div>
-                            </td>
-                          </tr>
-                        <?php endforeach; ?>
-                      <?php endif; ?>
-                    </tbody>
-                  </table>
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="toggle">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <input type="hidden" name="return_p" value="<?= (int)$pagina ?>">
+                                    <button type="submit" class="btn btn-outline-warning btn-xs"
+                                      onclick="return confirm('Deseja <?= $ativoP ? 'DESATIVAR' : 'ATIVAR' ?> este produto?');">
+                                      <i class="ti-power-off"></i> <?= $ativoP ? 'Desativar' : 'Ativar' ?>
+                                    </button>
+                                  </form>
 
-                  <!-- PAGINAÇÃO (MESMO PADRÃO) -->
-                  <?php sig_render_pagination('./listaProdutor.php', (int)$pagina, (int)$totalPaginas); ?>
-                  <!-- /PAGINAÇÃO -->
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="excluir">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <input type="hidden" name="return_p" value="<?= (int)$pagina ?>">
+                                    <button type="submit" class="btn btn-outline-danger btn-xs"
+                                      onclick="return confirm('Tem certeza que deseja EXCLUIR este produto?');">
+                                      <i class="ti-trash"></i> Excluir
+                                    </button>
+                                  </form>
+
+                                </div>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+
+                    <!-- PAGINAÇÃO (MESMO PADRÃO) -->
+                    <?php sig_render_pagination('./listaProduto.php', (int)$pagina, (int)$totalPaginas); ?>
+                    <!-- /PAGINAÇÃO -->
+
+                  </div>
 
                 </div>
-
               </div>
             </div>
           </div>
+
         </div>
+
+        <footer class="footer">
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
+            <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
+              © <?= date('Y') ?> SIGRelatórios —
+              <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
+              Todos os direitos reservados.
+            </span>
+          </div>
+        </footer>
 
       </div>
-
-      <footer class="footer">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
-          <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
-            © <?= date('Y') ?> SIGRelatórios —
-            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
-            Todos os direitos reservados.
-          </span>
-        </div>
-      </footer>
-
     </div>
   </div>
-</div>
 
-<script src="../../../vendors/js/vendor.bundle.base.js"></script>
-<script src="../../../vendors/chart.js/Chart.min.js"></script>
+  <script src="../../../vendors/js/vendor.bundle.base.js"></script>
+  <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
-<script src="../../../js/off-canvas.js"></script>
-<script src="../../../js/hoverable-collapse.js"></script>
-<script src="../../../js/template.js"></script>
-<script src="../../../js/settings.js"></script>
-<script src="../../../js/todolist.js"></script>
+  <script src="../../../js/off-canvas.js"></script>
+  <script src="../../../js/hoverable-collapse.js"></script>
+  <script src="../../../js/template.js"></script>
+  <script src="../../../js/settings.js"></script>
+  <script src="../../../js/todolist.js"></script>
 
-<script src="../../../js/dashboard.js"></script>
-<script src="../../../js/Chart.roundedBarCharts.js"></script>
+  <script src="../../../js/dashboard.js"></script>
+  <script src="../../../js/Chart.roundedBarCharts.js"></script>
 </body>
+
 </html>
