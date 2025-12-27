@@ -35,31 +35,36 @@ $pdo = db();
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
 
+/* Dia */
 $dia = trim((string)($_GET['dia'] ?? date('Y-m-d')));
+if ($dia === '') $dia = date('Y-m-d');
 
-/* ===== Detecta tabela de fechamento ===== */
-$hasFechamentos = false;
+/* ===== Detecta tabela do seu DB: fechamento_dia ===== */
+$hasFechamentoDia = false;
 try {
   $st = $pdo->prepare("
-    SELECT COUNT(*) 
-    FROM information_schema.tables 
-    WHERE table_schema = DATABASE() AND table_name = 'fechamentos_dia'
+    SELECT COUNT(*)
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = 'fechamento_dia'
   ");
   $st->execute();
-  $hasFechamentos = ((int)$st->fetchColumn() > 0);
+  $hasFechamentoDia = ((int)$st->fetchColumn() > 0);
 } catch (Throwable $e) {
-  $hasFechamentos = false;
+  $hasFechamentoDia = false;
 }
 
-/* ===== Registrar fechamento (se tabela existir) ===== */
+/* ===== Carrega fechamento existente (se houver) ===== */
 $fechamento = null;
-
-if ($hasFechamentos) {
+if ($hasFechamentoDia) {
   try {
     $stF = $pdo->prepare("
-      SELECT id, data_fechamento, total_dia, vendas_qtd, produtores_qtd, observacao, criado_em
-      FROM fechamentos_dia
-      WHERE feira_id = :f AND data_fechamento = :d
+      SELECT
+        id, feira_id, data_ref,
+        qtd_vendas, total_dia,
+        total_dinheiro, total_pix, total_cartao, total_outros,
+        observacao, criado_em, atualizado_em
+      FROM fechamento_dia
+      WHERE feira_id = :f AND data_ref = :d
       LIMIT 1
     ");
     $stF->bindValue(':f', $feiraId, PDO::PARAM_INT);
@@ -71,93 +76,35 @@ if ($hasFechamentos) {
   }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $hasFechamentos) {
-  $postedCsrf = (string)($_POST['csrf_token'] ?? '');
-  if (!hash_equals($csrf, $postedCsrf)) {
-    $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./fechamentoDia.php?dia='.urlencode($dia));
-    exit;
-  }
-
-  $acao = (string)($_POST['acao'] ?? '');
-  if ($acao === 'fechar') {
-    $obs = trim((string)($_POST['observacao'] ?? ''));
-
-    try {
-      $stSum = $pdo->prepare("
-        SELECT 
-          COUNT(*) AS vendas_qtd,
-          COALESCE(SUM(total), 0) AS total_dia,
-          COUNT(DISTINCT produtor_id) AS produtores_qtd
-        FROM vendas
-        WHERE feira_id = :f AND data_venda = :d
-      ");
-      $stSum->bindValue(':f', $feiraId, PDO::PARAM_INT);
-      $stSum->bindValue(':d', $dia, PDO::PARAM_STR);
-      $stSum->execute();
-      $sum = $stSum->fetch() ?: ['vendas_qtd'=>0,'total_dia'=>0,'produtores_qtd'=>0];
-
-      $vendasQtd = (int)($sum['vendas_qtd'] ?? 0);
-      $totalDia  = (float)($sum['total_dia'] ?? 0);
-      $prodQtd   = (int)($sum['produtores_qtd'] ?? 0);
-
-      $pdo->beginTransaction();
-
-      $ins = $pdo->prepare("
-        INSERT INTO fechamentos_dia (feira_id, data_fechamento, total_dia, vendas_qtd, produtores_qtd, observacao, criado_em)
-        VALUES (:f, :d, :t, :vq, :pq, :obs, NOW())
-        ON DUPLICATE KEY UPDATE
-          total_dia = VALUES(total_dia),
-          vendas_qtd = VALUES(vendas_qtd),
-          produtores_qtd = VALUES(produtores_qtd),
-          observacao = VALUES(observacao),
-          atualizado_em = NOW()
-      ");
-      $ins->bindValue(':f', $feiraId, PDO::PARAM_INT);
-      $ins->bindValue(':d', $dia, PDO::PARAM_STR);
-      $ins->bindValue(':t', $totalDia);
-      $ins->bindValue(':vq', $vendasQtd, PDO::PARAM_INT);
-      $ins->bindValue(':pq', $prodQtd, PDO::PARAM_INT);
-      if ($obs === '') $ins->bindValue(':obs', null, PDO::PARAM_NULL);
-      else $ins->bindValue(':obs', $obs, PDO::PARAM_STR);
-      $ins->execute();
-
-      $pdo->commit();
-
-      $_SESSION['flash_ok'] = 'Fechamento do dia registrado.';
-    } catch (PDOException $e) {
-      if ($pdo->inTransaction()) $pdo->rollBack();
-      $mysqlCode = (int)($e->errorInfo[1] ?? 0);
-      if ($mysqlCode === 1146) $_SESSION['flash_err'] = 'A tabela de fechamento não existe. Rode o SQL do fechamento.';
-      else $_SESSION['flash_err'] = 'Não foi possível registrar o fechamento agora.';
-    } catch (Throwable $e) {
-      if ($pdo->inTransaction()) $pdo->rollBack();
-      $_SESSION['flash_err'] = 'Não foi possível registrar o fechamento agora.';
-    }
-
-    header('Location: ./fechamentoDia.php?dia='.urlencode($dia));
-    exit;
-  }
-}
-
-/* ===== Resumo do dia ===== */
+/* ===== Resumo do dia (DB NOVO: vendas.data_hora / venda_itens.quantidade etc.) ===== */
 $resumo = [
-  'vendas_qtd' => 0,
-  'total_dia' => 0.0,
-  'produtores_qtd' => 0,
-  'ticket_medio' => 0.0,
+  'vendas_qtd'      => 0,
+  'total_dia'       => 0.0,
+  'total_dinheiro'  => 0.0,
+  'total_pix'       => 0.0,
+  'total_cartao'    => 0.0,
+  'total_outros'    => 0.0,
+  'feirantes_qtd'   => 0,
+  'ticket_medio'    => 0.0,
 ];
-$porProdutor = [];
+
+$porFeirante = [];
 $topProdutos = [];
 
 try {
+  /* Totais por forma de pagamento (ignora CANCELADA) */
   $st = $pdo->prepare("
-    SELECT 
+    SELECT
       COUNT(*) AS vendas_qtd,
-      COALESCE(SUM(total), 0) AS total_dia,
-      COUNT(DISTINCT produtor_id) AS produtores_qtd
-    FROM vendas
-    WHERE feira_id = :f AND data_venda = :d
+      COALESCE(SUM(v.total), 0) AS total_dia,
+      COALESCE(SUM(CASE WHEN UPPER(v.forma_pagamento)='DINHEIRO' THEN v.total ELSE 0 END), 0) AS total_dinheiro,
+      COALESCE(SUM(CASE WHEN UPPER(v.forma_pagamento)='PIX'      THEN v.total ELSE 0 END), 0) AS total_pix,
+      COALESCE(SUM(CASE WHEN UPPER(v.forma_pagamento)='CARTAO'   THEN v.total ELSE 0 END), 0) AS total_cartao,
+      COALESCE(SUM(CASE WHEN UPPER(v.forma_pagamento)='OUTROS'   THEN v.total ELSE 0 END), 0) AS total_outros
+    FROM vendas v
+    WHERE v.feira_id = :f
+      AND DATE(v.data_hora) = :d
+      AND UPPER(v.status) <> 'CANCELADA'
   ");
   $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
   $st->bindValue(':d', $dia, PDO::PARAM_STR);
@@ -165,37 +112,76 @@ try {
   $r = $st->fetch() ?: null;
 
   if ($r) {
-    $resumo['vendas_qtd'] = (int)($r['vendas_qtd'] ?? 0);
-    $resumo['total_dia'] = (float)($r['total_dia'] ?? 0);
-    $resumo['produtores_qtd'] = (int)($r['produtores_qtd'] ?? 0);
-    $resumo['ticket_medio'] = $resumo['vendas_qtd'] > 0 ? ($resumo['total_dia'] / $resumo['vendas_qtd']) : 0.0;
+    $resumo['vendas_qtd']     = (int)($r['vendas_qtd'] ?? 0);
+    $resumo['total_dia']      = (float)($r['total_dia'] ?? 0);
+    $resumo['total_dinheiro'] = (float)($r['total_dinheiro'] ?? 0);
+    $resumo['total_pix']      = (float)($r['total_pix'] ?? 0);
+    $resumo['total_cartao']   = (float)($r['total_cartao'] ?? 0);
+    $resumo['total_outros']   = (float)($r['total_outros'] ?? 0);
+    $resumo['ticket_medio']   = $resumo['vendas_qtd'] > 0 ? ($resumo['total_dia'] / $resumo['vendas_qtd']) : 0.0;
   }
 
-  $st2 = $pdo->prepare("
-    SELECT p.id, p.nome,
-           COUNT(v.id) AS vendas_qtd,
-           COALESCE(SUM(v.total), 0) AS total
+  /* Quantidade de feirantes (produtores) que tiveram itens no dia */
+  $stFq = $pdo->prepare("
+    SELECT COUNT(DISTINCT pr.id) AS feirantes_qtd
     FROM vendas v
-    JOIN produtores p ON p.id = v.produtor_id
-    WHERE v.feira_id = :f AND v.data_venda = :d
-    GROUP BY p.id, p.nome
-    ORDER BY total DESC, p.nome ASC
+    JOIN venda_itens vi
+      ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
+    JOIN produtos p
+      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    JOIN produtores pr
+      ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
+    WHERE v.feira_id = :f
+      AND DATE(v.data_hora) = :d
+      AND UPPER(v.status) <> 'CANCELADA'
+  ");
+  $stFq->bindValue(':f', $feiraId, PDO::PARAM_INT);
+  $stFq->bindValue(':d', $dia, PDO::PARAM_STR);
+  $stFq->execute();
+  $resumo['feirantes_qtd'] = (int)($stFq->fetchColumn() ?? 0);
+
+  /* Resumo por Feirante (cada feirante = soma dos itens dele no dia) */
+  $st2 = $pdo->prepare("
+    SELECT
+      pr.id,
+      pr.nome,
+      COUNT(DISTINCT v.id) AS vendas_qtd,
+      COALESCE(SUM(vi.subtotal), 0) AS total
+    FROM vendas v
+    JOIN venda_itens vi
+      ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
+    JOIN produtos p
+      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    JOIN produtores pr
+      ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
+    WHERE v.feira_id = :f
+      AND DATE(v.data_hora) = :d
+      AND UPPER(v.status) <> 'CANCELADA'
+    GROUP BY pr.id, pr.nome
+    ORDER BY total DESC, pr.nome ASC
   ");
   $st2->bindValue(':f', $feiraId, PDO::PARAM_INT);
   $st2->bindValue(':d', $dia, PDO::PARAM_STR);
   $st2->execute();
-  $porProdutor = $st2->fetchAll();
+  $porFeirante = $st2->fetchAll();
 
+  /* Top Produtos (por valor) */
   $st3 = $pdo->prepare("
-    SELECT pr.id, pr.nome,
-           COALESCE(SUM(vi.qtd), 0) AS qtd_total,
-           COALESCE(SUM(vi.subtotal), 0) AS valor_total
-    FROM venda_itens vi
-    JOIN vendas v   ON v.id = vi.venda_id AND v.feira_id = vi.feira_id
-    JOIN produtos pr ON pr.id = vi.produto_id
-    WHERE vi.feira_id = :f AND v.data_venda = :d
-    GROUP BY pr.id, pr.nome
-    ORDER BY valor_total DESC
+    SELECT
+      p.id,
+      p.nome,
+      COALESCE(SUM(vi.quantidade), 0) AS qtd_total,
+      COALESCE(SUM(vi.subtotal), 0) AS valor_total
+    FROM vendas v
+    JOIN venda_itens vi
+      ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
+    JOIN produtos p
+      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    WHERE v.feira_id = :f
+      AND DATE(v.data_hora) = :d
+      AND UPPER(v.status) <> 'CANCELADA'
+    GROUP BY p.id, p.nome
+    ORDER BY valor_total DESC, p.nome ASC
     LIMIT 15
   ");
   $st3->bindValue(':f', $feiraId, PDO::PARAM_INT);
@@ -209,6 +195,74 @@ try {
   else $err = $err ?: 'Não foi possível carregar o fechamento do dia agora.';
 } catch (Throwable $e) {
   $err = $err ?: 'Não foi possível carregar o fechamento do dia agora.';
+}
+
+/* ===== POST: Registrar/Atualizar fechamento (DB NOVO: fechamento_dia) ===== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $postedCsrf = (string)($_POST['csrf_token'] ?? '');
+  if (!hash_equals($csrf, $postedCsrf)) {
+    $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
+    header('Location: ./fechamentoDia.php?dia='.urlencode($dia));
+    exit;
+  }
+
+  $acao = (string)($_POST['acao'] ?? '');
+  if ($acao === 'fechar') {
+    if (!$hasFechamentoDia) {
+      $_SESSION['flash_err'] = 'A tabela fechamento_dia não existe. Rode o SQL do fechamento.';
+      header('Location: ./fechamentoDia.php?dia='.urlencode($dia));
+      exit;
+    }
+
+    $obs = trim((string)($_POST['observacao'] ?? ''));
+
+    try {
+      $pdo->beginTransaction();
+
+      $ins = $pdo->prepare("
+        INSERT INTO fechamento_dia
+          (feira_id, data_ref, qtd_vendas, total_dia, total_dinheiro, total_pix, total_cartao, total_outros, observacao)
+        VALUES
+          (:f, :d, :q, :tot, :din, :pix, :car, :out, :obs)
+        ON DUPLICATE KEY UPDATE
+          qtd_vendas      = VALUES(qtd_vendas),
+          total_dia       = VALUES(total_dia),
+          total_dinheiro  = VALUES(total_dinheiro),
+          total_pix       = VALUES(total_pix),
+          total_cartao    = VALUES(total_cartao),
+          total_outros    = VALUES(total_outros),
+          observacao      = VALUES(observacao),
+          atualizado_em   = NOW()
+      ");
+      $ins->bindValue(':f', $feiraId, PDO::PARAM_INT);
+      $ins->bindValue(':d', $dia, PDO::PARAM_STR);
+      $ins->bindValue(':q', (int)$resumo['vendas_qtd'], PDO::PARAM_INT);
+      $ins->bindValue(':tot', number_format((float)$resumo['total_dia'], 2, '.', ''), PDO::PARAM_STR);
+      $ins->bindValue(':din', number_format((float)$resumo['total_dinheiro'], 2, '.', ''), PDO::PARAM_STR);
+      $ins->bindValue(':pix', number_format((float)$resumo['total_pix'], 2, '.', ''), PDO::PARAM_STR);
+      $ins->bindValue(':car', number_format((float)$resumo['total_cartao'], 2, '.', ''), PDO::PARAM_STR);
+      $ins->bindValue(':out', number_format((float)$resumo['total_outros'], 2, '.', ''), PDO::PARAM_STR);
+
+      if ($obs === '') $ins->bindValue(':obs', null, PDO::PARAM_NULL);
+      else $ins->bindValue(':obs', $obs, PDO::PARAM_STR);
+
+      $ins->execute();
+      $pdo->commit();
+
+      $_SESSION['flash_ok'] = 'Fechamento do dia registrado/atualizado.';
+    } catch (PDOException $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+      if ($mysqlCode === 1146) $_SESSION['flash_err'] = 'A tabela fechamento_dia não existe. Rode o SQL do fechamento.';
+      else $_SESSION['flash_err'] = 'Não foi possível registrar o fechamento agora.';
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      $_SESSION['flash_err'] = 'Não foi possível registrar o fechamento agora.';
+    }
+
+    header('Location: ./fechamentoDia.php?dia='.urlencode($dia));
+    exit;
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -244,6 +298,7 @@ try {
       border-radius: 14px;
       padding: 14px;
       background: #fff;
+      height: 100%;
     }
     .kpi-label{ font-size: 12px; color: #6c757d; margin:0; }
     .kpi-value{ font-size: 22px; font-weight: 800; margin:0; }
@@ -285,6 +340,8 @@ try {
     .sig-toast .close:hover{ opacity:1; }
     @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
     @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
+
+    .mini{ font-size: 12px; color:#6c757d; }
   </style>
 </head>
 
@@ -301,13 +358,8 @@ try {
       <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
         <span class="icon-menu"></span>
       </button>
-
-      <ul class="navbar-nav mr-lg-2">
-        <li class="nav-item nav-search d-none d-lg-block"></li>
-      </ul>
-
+      <ul class="navbar-nav mr-lg-2"><li class="nav-item nav-search d-none d-lg-block"></li></ul>
       <ul class="navbar-nav navbar-nav-right"></ul>
-
       <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
         <span class="icon-menu"></span>
       </button>
@@ -353,16 +405,12 @@ try {
     <div id="right-sidebar" class="settings-panel">
       <i class="settings-close ti-close"></i>
       <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-        <li class="nav-item">
-          <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
-        </li>
+        <li class="nav-item"><a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab">TO DO LIST</a></li>
+        <li class="nav-item"><a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab">CHATS</a></li>
       </ul>
     </div>
 
-    <!-- SIDEBAR (NÃO MEXI NO PADRÃO) -->
+    <!-- SIDEBAR (mantida no padrão) -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
       <ul class="nav">
 
@@ -387,26 +435,10 @@ try {
             </style>
 
             <ul class="nav flex-column sub-menu" style="background: white !important;">
-              <li class="nav-item">
-                <a class="nav-link" href="./listaProduto.php">
-                  <i class="ti-clipboard mr-2"></i> Lista de Produtos
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./listaCategoria.php">
-                  <i class="ti-layers mr-2"></i> Categorias
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./listaUnidade.php">
-                  <i class="ti-ruler-pencil mr-2"></i> Unidades
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./listaProdutor.php">
-                  <i class="ti-user mr-2"></i> Produtores
-                </a>
-              </li>
+              <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
+              <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
+              <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
+              <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
             </ul>
           </div>
         </li>
@@ -443,26 +475,10 @@ try {
           </a>
           <div class="collapse text-black" id="feiraRelatorios">
             <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-              <li class="nav-item">
-                <a class="nav-link" href="./relatorioFinanceiro.php">
-                  <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./relatorioProdutos.php">
-                  <i class="ti-list mr-2"></i> Produtos Comercializados
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./relatorioMensal.php">
-                  <i class="ti-calendar mr-2"></i> Resumo Mensal
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./configRelatorio.php">
-                  <i class="ti-settings mr-2"></i> Configurar
-                </a>
-              </li>
+              <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
+              <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
+              <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
+              <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
             </ul>
           </div>
         </li>
@@ -484,20 +500,19 @@ try {
         <div class="row">
           <div class="col-12 mb-3">
             <h3 class="font-weight-bold">Fechamento do Dia</h3>
-            <h6 class="font-weight-normal mb-0">Resumo rápido do dia + (opcional) registrar o fechamento.</h6>
+            <h6 class="font-weight-normal mb-0">Ajustado para o seu DB: <span class="mini">vendas.data_hora + fechamento_dia.data_ref</span></h6>
           </div>
         </div>
 
-        <!-- FILTRO (SIMPLES) -->
+        <!-- FILTRO DIA -->
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
-
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
-                    <h4 class="card-title mb-0">Dia</h4>
-                    <p class="card-description mb-0">Selecione a data para ver o resumo.</p>
+                    <h4 class="card-title mb-0">Selecionar dia</h4>
+                    <p class="card-description mb-0">Escolha a data para calcular o resumo e registrar o fechamento.</p>
                   </div>
                 </div>
 
@@ -514,7 +529,7 @@ try {
                         <i class="ti-write mr-1"></i> Ver lançamentos do dia
                       </a>
                       <a href="./fechamentoDia.php" class="btn btn-light">
-                        <i class="ti-close mr-1"></i> Hoje
+                        <i class="ti-reload mr-1"></i> Hoje
                       </a>
                     </div>
                   </div>
@@ -531,21 +546,21 @@ try {
             <div class="kpi-card">
               <p class="kpi-label">Total do dia</p>
               <p class="kpi-value">R$ <?= number_format($resumo['total_dia'], 2, ',', '.') ?></p>
-              <div class="kpi-sub">Somatório dos lançamentos</div>
+              <div class="kpi-sub">Somatório das vendas</div>
             </div>
           </div>
           <div class="col-md-3 mb-3">
             <div class="kpi-card">
-              <p class="kpi-label">Vendas (lanc.)</p>
+              <p class="kpi-label">Vendas</p>
               <p class="kpi-value"><?= (int)$resumo['vendas_qtd'] ?></p>
               <div class="kpi-sub">Quantidade de lançamentos</div>
             </div>
           </div>
           <div class="col-md-3 mb-3">
             <div class="kpi-card">
-              <p class="kpi-label">Produtores</p>
-              <p class="kpi-value"><?= (int)$resumo['produtores_qtd'] ?></p>
-              <div class="kpi-sub">Produtores com venda no dia</div>
+              <p class="kpi-label">Feirantes</p>
+              <p class="kpi-value"><?= (int)$resumo['feirantes_qtd'] ?></p>
+              <div class="kpi-sub">Feirantes com itens no dia</div>
             </div>
           </div>
           <div class="col-md-3 mb-3">
@@ -557,7 +572,15 @@ try {
           </div>
         </div>
 
-        <!-- FECHAMENTO (OPCIONAL) -->
+        <!-- QUEBRA POR PAGAMENTO -->
+        <div class="row">
+          <div class="col-md-3 mb-3"><div class="kpi-card"><p class="kpi-label">Dinheiro</p><p class="kpi-value">R$ <?= number_format($resumo['total_dinheiro'], 2, ',', '.') ?></p></div></div>
+          <div class="col-md-3 mb-3"><div class="kpi-card"><p class="kpi-label">Pix</p><p class="kpi-value">R$ <?= number_format($resumo['total_pix'], 2, ',', '.') ?></p></div></div>
+          <div class="col-md-3 mb-3"><div class="kpi-card"><p class="kpi-label">Cartão</p><p class="kpi-value">R$ <?= number_format($resumo['total_cartao'], 2, ',', '.') ?></p></div></div>
+          <div class="col-md-3 mb-3"><div class="kpi-card"><p class="kpi-label">Outros</p><p class="kpi-value">R$ <?= number_format($resumo['total_outros'], 2, ',', '.') ?></p></div></div>
+        </div>
+
+        <!-- REGISTRAR FECHAMENTO -->
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
@@ -566,25 +589,30 @@ try {
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Registrar Fechamento</h4>
-                    <p class="card-description mb-0">Opcional: salva um “carimbo” do fechamento para o dia selecionado.</p>
+                    <p class="card-description mb-0">Salva em <b>fechamento_dia</b> (por feira + data_ref). Se já existir, atualiza.</p>
                   </div>
                 </div>
 
                 <hr>
 
-                <?php if (!$hasFechamentos): ?>
+                <?php if (!$hasFechamentoDia): ?>
                   <div class="alert alert-warning" role="alert" style="border-radius:12px;">
-                    <b>Atenção:</b> a tabela <b>fechamentos_dia</b> ainda não existe.  
-                    Se quiser registrar o fechamento (salvar), rode o SQL dessa tabela.
+                    <b>Atenção:</b> a tabela <b>fechamento_dia</b> não foi encontrada neste banco.
                   </div>
                 <?php else: ?>
 
                   <?php if ($fechamento): ?>
                     <div class="alert alert-success" role="alert" style="border-radius:12px;">
-                      <b>Fechado!</b> Este dia já tem fechamento registrado.
+                      <b>Já existe fechamento registrado</b> para <b><?= h($dia) ?></b>.
                       <div class="mt-2">
+                        <div><b>Qtd vendas:</b> <?= (int)($fechamento['qtd_vendas'] ?? 0) ?></div>
                         <div><b>Total:</b> R$ <?= number_format((float)($fechamento['total_dia'] ?? 0), 2, ',', '.') ?></div>
-                        <div><b>Vendas:</b> <?= (int)($fechamento['vendas_qtd'] ?? 0) ?> • <b>Produtores:</b> <?= (int)($fechamento['produtores_qtd'] ?? 0) ?></div>
+                        <div class="mini">
+                          Dinheiro: R$ <?= number_format((float)($fechamento['total_dinheiro'] ?? 0), 2, ',', '.') ?> •
+                          Pix: R$ <?= number_format((float)($fechamento['total_pix'] ?? 0), 2, ',', '.') ?> •
+                          Cartão: R$ <?= number_format((float)($fechamento['total_cartao'] ?? 0), 2, ',', '.') ?> •
+                          Outros: R$ <?= number_format((float)($fechamento['total_outros'] ?? 0), 2, ',', '.') ?>
+                        </div>
                         <?php if (!empty($fechamento['observacao'])): ?>
                           <div class="mt-1"><b>Obs:</b> <?= h($fechamento['observacao']) ?></div>
                         <?php endif; ?>
@@ -599,18 +627,20 @@ try {
                     <div class="row">
                       <div class="col-md-9 mb-2">
                         <label class="mb-1">Observação (opcional)</label>
-                        <input type="text" class="form-control" name="observacao" placeholder="Ex.: conferido com a equipe / pendência X">
+                        <input type="text" class="form-control" name="observacao"
+                               value="<?= h((string)($fechamento['observacao'] ?? '')) ?>"
+                               placeholder="Ex.: conferido / pendência X">
                       </div>
                       <div class="col-md-3 mb-2 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary w-100"
-                          onclick="return confirm('Registrar fechamento do dia <?= h($dia) ?>?');">
+                          onclick="return confirm('Registrar/atualizar fechamento do dia <?= h($dia) ?>?');">
                           <i class="ti-check mr-1"></i> Registrar
                         </button>
                       </div>
                     </div>
 
                     <small class="text-muted d-block mt-2">
-                      Se já existir, o registro é atualizado (não duplica).
+                      O sistema salva: qtd_vendas, total_dia e totais por forma de pagamento (Dinheiro/Pix/Cartão/Outros).
                     </small>
                   </form>
 
@@ -621,7 +651,7 @@ try {
           </div>
         </div>
 
-        <!-- POR PRODUTOR -->
+        <!-- RESUMO POR FEIRANTE -->
         <div class="row">
           <div class="col-lg-7 grid-margin stretch-card">
             <div class="card">
@@ -629,8 +659,8 @@ try {
 
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
-                    <h4 class="card-title mb-0">Resumo por Produtor</h4>
-                    <p class="card-description mb-0">Quem vendeu mais no dia.</p>
+                    <h4 class="card-title mb-0">Resumo por Feirante</h4>
+                    <p class="card-description mb-0">Soma dos itens por produtor (no dia).</p>
                   </div>
                 </div>
 
@@ -638,18 +668,16 @@ try {
                   <table class="table table-striped table-hover">
                     <thead>
                       <tr>
-                        <th>Produtor</th>
+                        <th>Feirante</th>
                         <th style="width:120px;">Vendas</th>
                         <th style="width:170px;">Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <?php if (empty($porProdutor)): ?>
-                        <tr>
-                          <td colspan="3" class="text-center text-muted py-4">Nenhum dado para este dia.</td>
-                        </tr>
+                      <?php if (empty($porFeirante)): ?>
+                        <tr><td colspan="3" class="text-center text-muted py-4">Nenhum dado para este dia.</td></tr>
                       <?php else: ?>
-                        <?php foreach ($porProdutor as $p): ?>
+                        <?php foreach ($porFeirante as $p): ?>
                           <tr>
                             <td><?= h($p['nome'] ?? '') ?></td>
                             <td><?= (int)($p['vendas_qtd'] ?? 0) ?></td>
@@ -673,7 +701,7 @@ try {
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Top Produtos</h4>
-                    <p class="card-description mb-0">Os mais vendidos (por valor) no dia.</p>
+                    <p class="card-description mb-0">Mais vendidos (por valor) no dia.</p>
                   </div>
                 </div>
 
@@ -688,14 +716,12 @@ try {
                     </thead>
                     <tbody>
                       <?php if (empty($topProdutos)): ?>
-                        <tr>
-                          <td colspan="3" class="text-center text-muted py-4">Nenhum dado para este dia.</td>
-                        </tr>
+                        <tr><td colspan="3" class="text-center text-muted py-4">Nenhum dado para este dia.</td></tr>
                       <?php else: ?>
                         <?php foreach ($topProdutos as $tp): ?>
                           <tr>
                             <td><?= h($tp['nome'] ?? '') ?></td>
-                            <td><?= number_format((float)($tp['qtd_total'] ?? 0), 2, ',', '.') ?></td>
+                            <td><?= number_format((float)($tp['qtd_total'] ?? 0), 3, ',', '.') ?></td>
                             <td><b>R$ <?= number_format((float)($tp['valor_total'] ?? 0), 2, ',', '.') ?></b></td>
                           </tr>
                         <?php endforeach; ?>
