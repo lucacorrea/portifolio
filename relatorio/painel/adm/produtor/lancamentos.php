@@ -16,7 +16,6 @@ if (!in_array('ADMIN', $perfis, true)) {
 }
 
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-
 function to_decimal($v): float {
   $s = trim((string)$v);
   if ($s === '') return 0.0;
@@ -26,12 +25,6 @@ function to_decimal($v): float {
   $s = preg_replace('/[^0-9\.\-]/', '', $s) ?? '0';
   if ($s === '' || $s === '-' || $s === '.') return 0.0;
   return (float)$s;
-}
-function to_int($v): int {
-  $s = trim((string)$v);
-  if ($s === '') return 0;
-  $s = preg_replace('/\D+/', '', $s) ?? '0';
-  return (int)$s;
 }
 
 /* Flash */
@@ -52,7 +45,11 @@ $pdo = db();
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
 
-/* ===== Carregar combos ===== */
+/* ===== Filtros de listagem ===== */
+$dia = trim((string)($_GET['dia'] ?? date('Y-m-d')));
+$prodFiltro = (int)($_GET['produtor'] ?? 0);
+
+/* ===== Combos ===== */
 $produtoresAtivos = [];
 $produtosAtivos   = [];
 try {
@@ -63,8 +60,7 @@ try {
 
   $stPr = $pdo->prepare("
     SELECT p.id, p.nome,
-           p.categoria_id, p.unidade_id,
-           COALESCE(c.nome,'') AS categoria_nome,
+           COALESCE(c.nome,'')  AS categoria_nome,
            COALESCE(u.sigla,'') AS unidade_sigla,
            p.preco_referencia
     FROM produtos p
@@ -80,7 +76,7 @@ try {
   $err = $err ?: 'Não foi possível carregar os cadastros agora.';
 }
 
-/* ===== Ações (Salvar / Excluir) ===== */
+/* ===== POST (Salvar / Excluir) ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $postedCsrf = (string)($_POST['csrf_token'] ?? '');
   if (!hash_equals($csrf, $postedCsrf)) {
@@ -95,12 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     if ($id <= 0) {
       $_SESSION['flash_err'] = 'Lançamento inválido.';
-      header('Location: ./lancamentos.php');
+      header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
       exit;
     }
 
     try {
       $pdo->beginTransaction();
+
       $d1 = $pdo->prepare("DELETE FROM venda_itens WHERE feira_id = :f AND venda_id = :id");
       $d1->bindValue(':f', $feiraId, PDO::PARAM_INT);
       $d1->bindValue(':id', $id, PDO::PARAM_INT);
@@ -113,33 +110,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       $pdo->commit();
       $_SESSION['flash_ok'] = 'Lançamento excluído com sucesso.';
-      header('Location: ./lancamentos.php');
-      exit;
     } catch (Throwable $e) {
       if ($pdo->inTransaction()) $pdo->rollBack();
       $_SESSION['flash_err'] = 'Não foi possível excluir o lançamento agora.';
-      header('Location: ./lancamentos.php');
-      exit;
     }
+
+    header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+    exit;
   }
 
   if ($acao === 'salvar') {
-    $dataVenda   = trim((string)($_POST['data_venda'] ?? ''));
-    $produtorId  = (int)($_POST['produtor_id'] ?? 0);
-    $obs         = trim((string)($_POST['observacao'] ?? ''));
+    $dataVenda  = trim((string)($_POST['data_venda'] ?? ''));
+    $produtorId = (int)($_POST['produtor_id'] ?? 0);
+    $obs        = trim((string)($_POST['observacao'] ?? ''));
 
-    $produtoIds  = $_POST['produto_id'] ?? [];
-    $qtds        = $_POST['qtd'] ?? [];
-    $vunit       = $_POST['valor_unit'] ?? [];
+    $produtoIds = $_POST['produto_id'] ?? [];
+    $qtds       = $_POST['qtd'] ?? [];
+    $vunit      = $_POST['valor_unit'] ?? [];
 
-    if ($dataVenda === '') {
-      $err = 'Informe a data do lançamento.';
-    } elseif ($produtorId <= 0) {
-      $err = 'Selecione o produtor.';
-    } else {
-      $itens = [];
-      $total = 0.0;
+    $localErr = '';
+    if ($dataVenda === '') $localErr = 'Informe a data do lançamento.';
+    elseif ($produtorId <= 0) $localErr = 'Selecione o produtor.';
 
+    $itens = [];
+    $total = 0.0;
+
+    if ($localErr === '') {
       $n = max(count((array)$produtoIds), count((array)$qtds), count((array)$vunit));
       for ($i = 0; $i < $n; $i++) {
         $pid = (int)($produtoIds[$i] ?? 0);
@@ -162,68 +158,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
       }
 
-      if (empty($itens)) {
-        $err = 'Adicione pelo menos 1 item (produto + valor).';
-      } elseif ($total <= 0) {
-        $err = 'Total inválido.';
-      } else {
-        try {
-          $pdo->beginTransaction();
-
-          $ins = $pdo->prepare("
-            INSERT INTO vendas (feira_id, produtor_id, data_venda, total, observacao, criado_em)
-            VALUES (:f, :prod, :data, :total, :obs, NOW())
-          ");
-          $ins->bindValue(':f', $feiraId, PDO::PARAM_INT);
-          $ins->bindValue(':prod', $produtorId, PDO::PARAM_INT);
-          $ins->bindValue(':data', $dataVenda, PDO::PARAM_STR);
-          $ins->bindValue(':total', $total);
-          if ($obs === '') $ins->bindValue(':obs', null, PDO::PARAM_NULL);
-          else $ins->bindValue(':obs', $obs, PDO::PARAM_STR);
-          $ins->execute();
-
-          $vendaId = (int)$pdo->lastInsertId();
-
-          $insItem = $pdo->prepare("
-            INSERT INTO venda_itens (feira_id, venda_id, produto_id, qtd, valor_unit, subtotal)
-            VALUES (:f, :v, :p, :q, :vu, :sub)
-          ");
-
-          foreach ($itens as $it) {
-            $insItem->bindValue(':f', $feiraId, PDO::PARAM_INT);
-            $insItem->bindValue(':v', $vendaId, PDO::PARAM_INT);
-            $insItem->bindValue(':p', $it['produto_id'], PDO::PARAM_INT);
-            $insItem->bindValue(':q', $it['qtd']);
-            $insItem->bindValue(':vu', $it['valor_unit']);
-            $insItem->bindValue(':sub', $it['subtotal']);
-            $insItem->execute();
-          }
-
-          $pdo->commit();
-          $_SESSION['flash_ok'] = 'Lançamento registrado com sucesso.';
-          header('Location: ./lancamentos.php');
-          exit;
-        } catch (PDOException $e) {
-          if ($pdo->inTransaction()) $pdo->rollBack();
-          $mysqlCode = (int)($e->errorInfo[1] ?? 0);
-          if ($mysqlCode === 1146) {
-            $err = 'As tabelas de lançamentos não existem (vendas / venda_itens). Rode o SQL das tabelas.';
-          } else {
-            $err = 'Não foi possível salvar o lançamento agora.';
-          }
-        } catch (Throwable $e) {
-          if ($pdo->inTransaction()) $pdo->rollBack();
-          $err = 'Não foi possível salvar o lançamento agora.';
-        }
-      }
+      if (empty($itens)) $localErr = 'Adicione pelo menos 1 item (produto + valor).';
+      elseif ($total <= 0) $localErr = 'Total inválido.';
     }
+
+    if ($localErr !== '') {
+      $_SESSION['flash_err'] = $localErr;
+      header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+      exit;
+    }
+
+    try {
+      $pdo->beginTransaction();
+
+      $ins = $pdo->prepare("
+        INSERT INTO vendas (feira_id, produtor_id, data_venda, total, observacao, criado_em)
+        VALUES (:f, :prod, :data, :total, :obs, NOW())
+      ");
+      $ins->bindValue(':f', $feiraId, PDO::PARAM_INT);
+      $ins->bindValue(':prod', $produtorId, PDO::PARAM_INT);
+      $ins->bindValue(':data', $dataVenda, PDO::PARAM_STR);
+      $ins->bindValue(':total', $total);
+      if ($obs === '') $ins->bindValue(':obs', null, PDO::PARAM_NULL);
+      else $ins->bindValue(':obs', $obs, PDO::PARAM_STR);
+      $ins->execute();
+
+      $vendaId = (int)$pdo->lastInsertId();
+
+      $insItem = $pdo->prepare("
+        INSERT INTO venda_itens (feira_id, venda_id, produto_id, qtd, valor_unit, subtotal)
+        VALUES (:f, :v, :p, :q, :vu, :sub)
+      ");
+      foreach ($itens as $it) {
+        $insItem->bindValue(':f', $feiraId, PDO::PARAM_INT);
+        $insItem->bindValue(':v', $vendaId, PDO::PARAM_INT);
+        $insItem->bindValue(':p', $it['produto_id'], PDO::PARAM_INT);
+        $insItem->bindValue(':q', $it['qtd']);
+        $insItem->bindValue(':vu', $it['valor_unit']);
+        $insItem->bindValue(':sub', $it['subtotal']);
+        $insItem->execute();
+      }
+
+      $pdo->commit();
+      $_SESSION['flash_ok'] = 'Lançamento registrado com sucesso.';
+    } catch (PDOException $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+      if ($mysqlCode === 1146) $_SESSION['flash_err'] = 'As tabelas de lançamentos não existem (vendas / venda_itens). Rode o SQL das tabelas.';
+      else $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
+    }
+
+    header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+    exit;
   }
 }
 
 /* ===== Listagem ===== */
-$dia = trim((string)($_GET['dia'] ?? date('Y-m-d')));
-$prodFiltro = (int)($_GET['produtor'] ?? 0);
-
 $vendas = [];
 try {
   $sql = "
@@ -284,11 +277,21 @@ try {
 
     .form-control { height: 42px; }
     .btn { height: 42px; }
+    .helper{ font-size: 12px; }
 
     .acoes-wrap{ display:flex; flex-wrap:wrap; gap:8px; }
     .btn-xs{ padding: .25rem .5rem; font-size: .75rem; line-height: 1.2; height:auto; }
     .table td, .table th{ vertical-align: middle !important; }
-    .helper{ font-size: 12px; }
+
+    .item-actions{ display:flex; gap:8px; justify-content:flex-end; }
+    .totbox{
+      border: 1px solid rgba(0,0,0,.08);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .totlabel{ font-size: 12px; color: #6c757d; margin:0; }
+    .totvalue{ font-size: 20px; font-weight: 800; margin:0; }
 
     /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
     .sig-flash-wrap{
@@ -312,9 +315,7 @@ try {
 
       opacity: 0;
       transform: translateX(10px);
-      animation:
-        sigToastIn .22s ease-out forwards,
-        sigToastOut .25s ease-in forwards 5.75s;
+      animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
     }
     .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
     .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
@@ -335,6 +336,7 @@ try {
 <body>
 <div class="container-scroller">
 
+  <!-- NAVBAR -->
   <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
     <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
       <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -405,6 +407,7 @@ try {
       </ul>
     </div>
 
+    <!-- SIDEBAR (mantida) -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
       <ul class="nav">
 
@@ -486,7 +489,6 @@ try {
             <span class="menu-title">Relatórios</span>
             <i class="menu-arrow"></i>
           </a>
-
           <div class="collapse text-black" id="feiraRelatorios">
             <ul class="nav flex-column sub-menu" style="background:#fff !important;">
               <li class="nav-item">
@@ -523,17 +525,18 @@ try {
       </ul>
     </nav>
 
+    <!-- MAIN -->
     <div class="main-panel">
       <div class="content-wrapper">
 
         <div class="row">
           <div class="col-12 mb-3">
             <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
-            <h6 class="font-weight-normal mb-0">Registro “na fala”: sem caixa próprio, sem código — apenas itens e valores.</h6>
+            <h6 class="font-weight-normal mb-0">Página simplificada: menos campos, mais rápido de lançar.</h6>
           </div>
         </div>
 
-        <!-- FORM NOVO LANÇAMENTO -->
+        <!-- NOVO LANÇAMENTO (SIMPLIFICADO) -->
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
@@ -542,13 +545,23 @@ try {
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Novo Lançamento</h4>
-                    <p class="card-description mb-0">Preencha o produtor e os itens vendidos.</p>
+                    <p class="card-description mb-0">Selecione produtor, adicione os itens e salve.</p>
+                  </div>
+                  <div class="totbox mt-2 mt-md-0">
+                    <p class="totlabel">Total</p>
+                    <p class="totvalue" id="jsTotal">R$ 0,00</p>
                   </div>
                 </div>
 
                 <hr>
 
-                <form method="post" action="./lancamentos.php" autocomplete="off">
+                <?php if (empty($produtoresAtivos) || empty($produtosAtivos)): ?>
+                  <div class="alert alert-warning mb-3" role="alert" style="border-radius:12px;">
+                    <b>Atenção:</b> para lançar vendas, você precisa ter <b>produtores</b> e <b>produtos</b> ativos cadastrados.
+                  </div>
+                <?php endif; ?>
+
+                <form method="post" action="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>" autocomplete="off">
                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                   <input type="hidden" name="acao" value="salvar">
 
@@ -570,70 +583,86 @@ try {
                     </div>
 
                     <div class="col-md-3 mb-3">
-                      <label class="mb-1">Observação (opcional)</label>
-                      <input type="text" class="form-control" name="observacao" placeholder="Ex.: fiado / desconto / etc.">
+                      <label class="mb-1">Observação</label>
+                      <input type="text" class="form-control" name="observacao" placeholder="Opcional">
                     </div>
                   </div>
 
                   <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0">
+                    <table class="table table-striped table-hover mb-0" id="itensTable">
                       <thead>
                         <tr>
                           <th>Produto</th>
-                          <th style="width:140px;">Qtd</th>
-                          <th style="width:170px;">Valor (R$)</th>
+                          <th style="width:120px;">Qtd</th>
+                          <th style="width:160px;">Valor (R$)</th>
                           <th style="width:140px;">Unid</th>
                           <th style="width:220px;">Categoria</th>
+                          <th style="width:90px;" class="text-right">—</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        <?php for ($i=0; $i<10; $i++): ?>
-                          <tr>
-                            <td>
-                              <select class="form-control" name="produto_id[]">
-                                <option value="0">—</option>
-                                <?php foreach ($produtosAtivos as $pr): ?>
-                                  <option
-                                    value="<?= (int)$pr['id'] ?>"
-                                    data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
-                                    data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
-                                    data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>"
-                                  >
-                                    <?= h($pr['nome'] ?? '') ?>
-                                  </option>
-                                <?php endforeach; ?>
-                              </select>
-                            </td>
-                            <td>
-                              <input type="text" class="form-control" name="qtd[]" placeholder="1" value="1">
-                            </td>
-                            <td>
-                              <input type="text" class="form-control" name="valor_unit[]" placeholder="Ex.: 10,00">
-                            </td>
-                            <td>
-                              <input type="text" class="form-control" value="" readonly>
-                            </td>
-                            <td>
-                              <input type="text" class="form-control" value="" readonly>
-                            </td>
-                          </tr>
-                        <?php endfor; ?>
+                      <tbody id="itensBody">
+                        <!-- 1 linha inicial -->
+                        <tr class="js-item-row">
+                          <td>
+                            <select class="form-control js-prod" name="produto_id[]">
+                              <option value="0">—</option>
+                              <?php foreach ($produtosAtivos as $pr): ?>
+                                <option
+                                  value="<?= (int)$pr['id'] ?>"
+                                  data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
+                                  data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
+                                  data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>"
+                                >
+                                  <?= h($pr['nome'] ?? '') ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </select>
+                          </td>
+                          <td>
+                            <input type="text" class="form-control js-qtd" name="qtd[]" value="1">
+                          </td>
+                          <td>
+                            <input type="text" class="form-control js-vu" name="valor_unit[]" placeholder="0,00">
+                          </td>
+                          <td>
+                            <input type="text" class="form-control js-un" value="" readonly>
+                          </td>
+                          <td>
+                            <input type="text" class="form-control js-cat" value="" readonly>
+                          </td>
+                          <td class="text-right">
+                            <button type="button" class="btn btn-light btn-xs js-remove" title="Remover linha" disabled>
+                              <i class="ti-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
 
-                  <small class="text-muted d-block mt-2">
-                    Dica: preencha somente as linhas necessárias. O valor pode ser o “falado” (não precisa bater com referência).
-                  </small>
+                  <div class="d-flex flex-wrap justify-content-between align-items-center mt-3" style="gap:8px;">
+                    <div class="d-flex flex-wrap" style="gap:8px;">
+                      <button type="button" class="btn btn-light" id="btnAddLinha">
+                        <i class="ti-plus mr-1"></i> Adicionar linha
+                      </button>
+                      <button type="button" class="btn btn-light" id="btnPrecoRef">
+                        <i class="ti-tag mr-1"></i> Preencher valor ref.
+                      </button>
+                    </div>
 
-                  <div class="d-flex flex-wrap mt-3" style="gap:8px;">
-                    <button type="submit" class="btn btn-primary">
-                      <i class="ti-save mr-1"></i> Salvar Lançamento
-                    </button>
-                    <a href="./lancamentos.php" class="btn btn-light">
-                      <i class="ti-close mr-1"></i> Limpar
-                    </a>
+                    <div class="d-flex flex-wrap" style="gap:8px;">
+                      <button type="submit" class="btn btn-primary">
+                        <i class="ti-save mr-1"></i> Salvar
+                      </button>
+                      <a href="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>" class="btn btn-light">
+                        <i class="ti-close mr-1"></i> Limpar
+                      </a>
+                    </div>
                   </div>
+
+                  <small class="text-muted d-block mt-2">
+                    Dica: você pode lançar só 1 item e salvar. O botão “Preencher valor ref.” coloca o preço de referência nos itens vazios (se você tiver cadastrado).
+                  </small>
 
                 </form>
 
@@ -650,7 +679,7 @@ try {
 
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
-                    <h4 class="card-title mb-0">Lançamentos do dia</h4>
+                    <h4 class="card-title mb-0">Lançamentos</h4>
                     <p class="card-description mb-0">Mostrando <?= (int)count($vendas) ?> registro(s).</p>
                   </div>
                 </div>
@@ -658,7 +687,7 @@ try {
                 <div class="row mt-3">
                   <div class="col-md-3 mb-2">
                     <label class="mb-1">Dia</label>
-                    <input type="date" class="form-control" value="<?= h($dia) ?>" onchange="location.href='?dia='+this.value<?= $prodFiltro>0 ? "+'&produtor=".((int)$prodFiltro)."'" : "" ?>;">
+                    <input type="date" class="form-control" value="<?= h($dia) ?>" onchange="location.href='?dia='+this.value+'&produtor=<?= (int)$prodFiltro ?>';">
                   </div>
                   <div class="col-md-6 mb-2">
                     <label class="mb-1">Produtor</label>
@@ -727,9 +756,7 @@ try {
                   </table>
                 </div>
 
-                <small class="text-muted d-block mt-2">
-                  Obs.: “Detalhes” fica habilitado quando você quiser (a gente cria a tela/aba do detalhamento).
-                </small>
+                <small class="text-muted d-block mt-2">“Detalhes” você ativa depois (quando criar a tela de itens do lançamento).</small>
 
               </div>
             </div>
@@ -765,32 +792,122 @@ try {
 <script src="../../../js/Chart.roundedBarCharts.js"></script>
 
 <script>
-  // Preencher “Unid” e “Categoria” na mesma linha (sem mudar layout)
-  (function(){
-    const table = document.querySelector('table');
-    if (!table) return;
+(function(){
+  const body = document.getElementById('itensBody');
+  const btnAdd = document.getElementById('btnAddLinha');
+  const btnRef = document.getElementById('btnPrecoRef');
+  const totalEl = document.getElementById('jsTotal');
 
-    function refreshRow(sel){
-      const tr = sel.closest('tr');
-      if (!tr) return;
-      const opt = sel.options[sel.selectedIndex];
-      const un = (opt && opt.dataset && opt.dataset.un) ? opt.dataset.un : '';
-      const cat = (opt && opt.dataset && opt.dataset.cat) ? opt.dataset.cat : '';
-
-      const tds = tr.querySelectorAll('td');
-      if (tds.length >= 5) {
-        const unInput  = tds[3].querySelector('input');
-        const catInput = tds[4].querySelector('input');
-        if (unInput) unInput.value = un;
-        if (catInput) catInput.value = cat;
-      }
+  function brMoney(n){
+    try {
+      return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch(e){
+      const x = Math.round(n*100)/100;
+      return String(x).replace('.', ',');
     }
+  }
 
-    document.querySelectorAll('select[name="produto_id[]"]').forEach(sel=>{
-      sel.addEventListener('change', function(){ refreshRow(this); });
-      refreshRow(sel);
+  function toNum(s){
+    s = String(s || '').trim();
+    if (!s) return 0;
+    s = s.replace(/R\$/g,'').replace(/\s/g,'');
+    s = s.replace(/\./g,'').replace(',', '.');
+    s = s.replace(/[^0-9.\-]/g,'');
+    const v = parseFloat(s);
+    return isNaN(v) ? 0 : v;
+  }
+
+  function syncInfo(tr){
+    const sel = tr.querySelector('.js-prod');
+    const opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
+    const un  = (opt && opt.dataset) ? (opt.dataset.un || '') : '';
+    const cat = (opt && opt.dataset) ? (opt.dataset.cat || '') : '';
+    const unIn  = tr.querySelector('.js-un');
+    const catIn = tr.querySelector('.js-cat');
+    if (unIn) unIn.value = un;
+    if (catIn) catIn.value = cat;
+  }
+
+  function calcTotal(){
+    let tot = 0;
+    document.querySelectorAll('.js-item-row').forEach(tr=>{
+      const pid = parseInt((tr.querySelector('.js-prod')||{}).value || '0', 10);
+      if (!pid) return;
+      const qtd = toNum((tr.querySelector('.js-qtd')||{}).value || '1') || 0;
+      const vu  = toNum((tr.querySelector('.js-vu')||{}).value || '0') || 0;
+      if (qtd > 0 && vu > 0) tot += (qtd * vu);
     });
-  })();
+    totalEl.textContent = 'R$ ' + brMoney(tot);
+  }
+
+  function updateRemoveButtons(){
+    const rows = document.querySelectorAll('.js-item-row');
+    rows.forEach((tr, idx)=>{
+      const btn = tr.querySelector('.js-remove');
+      if (!btn) return;
+      btn.disabled = (rows.length <= 1);
+      btn.onclick = function(){
+        if (rows.length <= 1) return;
+        tr.remove();
+        updateRemoveButtons();
+        calcTotal();
+      };
+    });
+  }
+
+  function wireRow(tr){
+    const sel = tr.querySelector('.js-prod');
+    const qtd = tr.querySelector('.js-qtd');
+    const vu  = tr.querySelector('.js-vu');
+
+    if (sel) sel.addEventListener('change', ()=>{ syncInfo(tr); calcTotal(); });
+    if (qtd) qtd.addEventListener('input', calcTotal);
+    if (vu)  vu.addEventListener('input', calcTotal);
+
+    syncInfo(tr);
+  }
+
+  btnAdd && btnAdd.addEventListener('click', function(){
+    const base = document.querySelector('.js-item-row');
+    if (!base) return;
+    const clone = base.cloneNode(true);
+
+    (clone.querySelector('.js-prod')||{}).value = '0';
+    (clone.querySelector('.js-qtd')||{}).value = '1';
+    (clone.querySelector('.js-vu')||{}).value = '';
+    (clone.querySelector('.js-un')||{}).value = '';
+    (clone.querySelector('.js-cat')||{}).value = '';
+
+    body.appendChild(clone);
+    wireRow(clone);
+    updateRemoveButtons();
+    calcTotal();
+  });
+
+  btnRef && btnRef.addEventListener('click', function(){
+    document.querySelectorAll('.js-item-row').forEach(tr=>{
+      const sel = tr.querySelector('.js-prod');
+      const vu  = tr.querySelector('.js-vu');
+      if (!sel || !vu) return;
+
+      const pid = parseInt(sel.value || '0', 10);
+      if (!pid) return;
+
+      const opt = sel.options[sel.selectedIndex];
+      const ref = (opt && opt.dataset) ? (opt.dataset.preco || '') : '';
+      if (!vu.value && ref) {
+        // ref pode vir "10.00" -> mostrar "10,00"
+        const n = toNum(ref);
+        if (n > 0) vu.value = brMoney(n);
+      }
+    });
+    calcTotal();
+  });
+
+  document.querySelectorAll('.js-item-row').forEach(wireRow);
+  updateRemoveButtons();
+  calcTotal();
+})();
 </script>
 </body>
 </html>
