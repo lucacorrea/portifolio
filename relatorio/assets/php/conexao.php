@@ -9,7 +9,7 @@ function db(): PDO
     $DB_HOST = 'localhost';
     $DB_NAME = 'u784961086_relatorio';
     $DB_USER = 'u784961086_relatorio';
-    $DB_PASS = ':k~j#~>2qA^';
+    $DB_PASS = '*|s2~tXVz0|';
     $DB_PORT = '3306';
 
     $dsn = "mysql:host={$DB_HOST};port={$DB_PORT};dbname={$DB_NAME};charset=utf8mb4";
