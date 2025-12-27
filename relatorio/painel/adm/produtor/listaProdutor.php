@@ -15,18 +15,37 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+require '../../../assets/php/conexao.php';
 
+function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+/* Feira padrão desta página */
+$FEIRA_ID = 1; // 1=Feira do Produtor | 2=Feira Alternativa
+
+/* Detecção opcional pela pasta (se você separou em pastas) */
+$dirLower = strtolower((string)__DIR__);
+if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
+if (strpos($dirLower, 'produtor')   !== false) $FEIRA_ID = 1;
+
+/* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 
 $debug = (isset($_GET['debug']) && $_GET['debug'] === '1');
 
-/* ===== Conexão + Listagem ===== */
-require '../../../assets/php/conexao.php';
+/* CSRF */
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = (string)$_SESSION['csrf_token'];
 
-$feiraId = 1;
+/* ===== Conexão ===== */
+$produtores = [];
+$totalRows  = 0;
+$totalPages = 1;
+$errDetail  = '';
+$dbName     = '';
 
 /* Paginação */
 $perPage = 8;
@@ -34,20 +53,8 @@ $page = (int)($_GET['p'] ?? 1);
 if ($page < 1) $page = 1;
 $offset = ($page - 1) * $perPage;
 
+/* Busca */
 $q = trim((string)($_GET['q'] ?? ''));
-
-$produtores = [];
-$totalRows = 0;
-$totalPages = 1;
-$errDetail = '';
-
-$pickCol = function(array $byLower, array $candidates): ?string {
-  foreach ($candidates as $c) {
-    $k = strtolower($c);
-    if (isset($byLower[$k])) return $byLower[$k];
-  }
-  return null;
-};
 
 $cleanErr = function(string $m): string {
   $m = preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $m) ?? $m;
@@ -55,97 +62,6 @@ $cleanErr = function(string $m): string {
   return trim((string)$m);
 };
 
-if (!function_exists('db')) {
-  $err = $err ?: 'Função db() não encontrada em conexao.php';
-} else {
-  try {
-    $pdo = db();
-
-    $tbl = $pdo->query("SHOW TABLES LIKE 'produtores'")->fetchColumn();
-    if (!$tbl) {
-      throw new RuntimeException("Tabela 'produtores' não existe neste banco.");
-    }
-
-    $cols = $pdo->query("SHOW COLUMNS FROM `produtores`")->fetchAll(PDO::FETCH_ASSOC);
-    $byLower = [];
-    foreach ($cols as $c) {
-      if (!empty($c['Field'])) $byLower[strtolower((string)$c['Field'])] = (string)$c['Field'];
-    }
-
-    $colId   = $pickCol($byLower, ['id', 'produtor_id']);
-    $colNome = $pickCol($byLower, ['nome', 'produtor', 'nome_produtor', 'razao_social', 'nome_completo']);
-    $colCom  = $pickCol($byLower, ['comunidade', 'localidade', 'endereco', 'bairro', 'comunidade_localidade']);
-    $colTel  = $pickCol($byLower, ['contato', 'telefone', 'celular', 'whatsapp', 'fone']);
-    $colAtv  = $pickCol($byLower, ['ativo', 'status', 'is_ativo']);
-    $colFei  = $pickCol($byLower, ['feira_id', 'feira', 'id_feira', 'tipo_feira']);
-
-    if (!$colId || !$colNome) {
-      throw new RuntimeException("A tabela 'produtores' precisa ter pelo menos colunas de ID e NOME. (Ex.: id, nome)");
-    }
-
-    /* WHERE */
-    $where = [];
-    $params = [];
-
-    if ($colFei) {
-      $where[] = "`$colFei` = :feira";
-      $params[':feira'] = $feiraId;
-    }
-
-    if ($q !== '') {
-      $likeParts = ["`$colNome` LIKE :q"];
-      if ($colCom) $likeParts[] = "`$colCom` LIKE :q";
-      if ($colTel) $likeParts[] = "`$colTel` LIKE :q";
-      $where[] = '(' . implode(' OR ', $likeParts) . ')';
-      $params[':q'] = '%' . $q . '%';
-    }
-
-    $whereSql = count($where) ? (" WHERE " . implode(' AND ', $where)) : "";
-
-    /* TOTAL (para paginação) */
-    $sqlCount = "SELECT COUNT(*) FROM `produtores`" . $whereSql;
-    $stCount = $pdo->prepare($sqlCount);
-    if (isset($params[':feira'])) $stCount->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
-    if (isset($params[':q']))     $stCount->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
-    $stCount->execute();
-    $totalRows = (int)$stCount->fetchColumn();
-
-    $totalPages = max(1, (int)ceil($totalRows / $perPage));
-    if ($page > $totalPages) {
-      $page = $totalPages;
-      $offset = ($page - 1) * $perPage;
-    }
-
-    /* SELECT paginado */
-    $select = [];
-    $select[] = "`$colId` AS id";
-    $select[] = "`$colNome` AS nome";
-    $select[] = $colCom ? "`$colCom` AS comunidade" : "NULL AS comunidade";
-    $select[] = $colTel ? "`$colTel` AS telefone" : "NULL AS telefone";
-    $select[] = $colAtv ? "`$colAtv` AS ativo" : "1 AS ativo";
-
-    $sql = "SELECT " . implode(', ', $select) . "
-            FROM `produtores`"
-            . $whereSql . "
-            ORDER BY `$colNome` ASC
-            LIMIT :lim OFFSET :off";
-
-    $stmt = $pdo->prepare($sql);
-    if (isset($params[':feira'])) $stmt->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
-    if (isset($params[':q']))     $stmt->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
-    $stmt->bindValue(':lim', (int)$perPage, PDO::PARAM_INT);
-    $stmt->bindValue(':off', (int)$offset, PDO::PARAM_INT);
-
-    $stmt->execute();
-    $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-  } catch (Throwable $e) {
-    $err = $err ?: 'Não foi possível carregar os produtores agora.';
-    $errDetail = $cleanErr($e->getMessage());
-  }
-}
-
-/* helper para links mantendo q/debug */
 function buildUrl(array $add = []): string {
   $base = strtok($_SERVER['REQUEST_URI'], '?') ?: './listaProdutor.php';
   $cur = $_GET ?? [];
@@ -155,6 +71,141 @@ function buildUrl(array $add = []): string {
   }
   $qs = http_build_query($cur);
   return $qs ? ($base . '?' . $qs) : $base;
+}
+
+try {
+  $pdo = db();
+  $dbName = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
+
+  /* Checa tabelas */
+  $tblP = $pdo->query("SHOW TABLES LIKE 'produtores'")->fetchColumn();
+  if (!$tblP) {
+    throw new RuntimeException("Tabela 'produtores' não existe neste banco.");
+  }
+
+  $tblC = $pdo->query("SHOW TABLES LIKE 'comunidades'")->fetchColumn();
+  $hasComunidades = (bool)$tblC;
+
+  /* ===== AÇÃO: Ativar/Desativar ===== */
+  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $tokenPost = (string)($_POST['csrf_token'] ?? '');
+    if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
+      $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
+      header('Location: ' . buildUrl());
+      exit;
+    }
+
+    $action = (string)($_POST['action'] ?? '');
+    $id = (int)($_POST['id'] ?? 0);
+
+    if ($action === 'toggle' && $id > 0) {
+      // alterna ativo = 1/0 (apenas da feira atual)
+      $st = $pdo->prepare("SELECT ativo FROM produtores WHERE id = :id AND feira_id = :feira");
+      $st->bindValue(':id', $id, PDO::PARAM_INT);
+      $st->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
+      $st->execute();
+      $curAtv = $st->fetchColumn();
+
+      if ($curAtv === false) {
+        $_SESSION['flash_err'] = 'Produtor não encontrado.';
+      } else {
+        $newAtv = ((int)$curAtv === 1) ? 0 : 1;
+        $up = $pdo->prepare("UPDATE produtores SET ativo = :a WHERE id = :id AND feira_id = :feira");
+        $up->bindValue(':a', $newAtv, PDO::PARAM_INT);
+        $up->bindValue(':id', $id, PDO::PARAM_INT);
+        $up->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
+        $up->execute();
+
+        $_SESSION['flash_ok'] = $newAtv ? 'Produtor ativado com sucesso!' : 'Produtor desativado com sucesso!';
+      }
+
+      header('Location: ' . buildUrl(['p' => $page])); // mantém busca/página
+      exit;
+    }
+  }
+
+  /* ===== WHERE da listagem ===== */
+  $where = ["p.feira_id = :feira"];
+  $params = [':feira' => $FEIRA_ID];
+
+  if ($q !== '') {
+    // busca por nome do produtor, comunidade, telefone e documento
+    $whereLike = [];
+    $whereLike[] = "p.nome LIKE :q";
+    $whereLike[] = "p.contato LIKE :q";
+    $whereLike[] = "p.documento LIKE :q";
+    if ($hasComunidades) $whereLike[] = "c.nome LIKE :q";
+    $where[] = '(' . implode(' OR ', $whereLike) . ')';
+    $params[':q'] = '%' . $q . '%';
+  }
+
+  $whereSql = ' WHERE ' . implode(' AND ', $where);
+
+  /* ===== COUNT ===== */
+  if ($hasComunidades) {
+    $sqlCount = "SELECT COUNT(*)
+                 FROM produtores p
+                 LEFT JOIN comunidades c
+                   ON c.id = p.comunidade_id AND c.feira_id = p.feira_id
+                 $whereSql";
+  } else {
+    $sqlCount = "SELECT COUNT(*) FROM produtores p $whereSql";
+  }
+
+  $stCount = $pdo->prepare($sqlCount);
+  $stCount->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
+  if (isset($params[':q'])) $stCount->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
+  $stCount->execute();
+  $totalRows = (int)$stCount->fetchColumn();
+
+  $totalPages = max(1, (int)ceil($totalRows / $perPage));
+  if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $perPage;
+  }
+
+  /* ===== SELECT ===== */
+  if ($hasComunidades) {
+    $sql = "SELECT
+              p.id,
+              p.nome,
+              p.contato,
+              p.documento,
+              p.ativo,
+              p.comunidade_id,
+              c.nome AS comunidade
+            FROM produtores p
+            LEFT JOIN comunidades c
+              ON c.id = p.comunidade_id AND c.feira_id = p.feira_id
+            $whereSql
+            ORDER BY p.nome ASC
+            LIMIT :lim OFFSET :off";
+  } else {
+    $sql = "SELECT
+              p.id,
+              p.nome,
+              p.contato,
+              p.documento,
+              p.ativo,
+              p.comunidade_id,
+              NULL AS comunidade
+            FROM produtores p
+            $whereSql
+            ORDER BY p.nome ASC
+            LIMIT :lim OFFSET :off";
+  }
+
+  $stmt = $pdo->prepare($sql);
+  $stmt->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
+  if (isset($params[':q'])) $stmt->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
+  $stmt->bindValue(':lim', (int)$perPage, PDO::PARAM_INT);
+  $stmt->bindValue(':off', (int)$offset, PDO::PARAM_INT);
+  $stmt->execute();
+  $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (Throwable $e) {
+  $err = $err ?: 'Não foi possível carregar os produtores agora.';
+  $errDetail = $cleanErr($e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -225,8 +276,9 @@ function buildUrl(array $add = []): string {
     @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
     @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
 
-    .acoes-wrap{ display:flex; flex-wrap:wrap; gap:8px; }
+    .acoes-wrap{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .btn-xs{ padding: .25rem .5rem; font-size: .75rem; line-height: 1.2; height:auto; }
+    .muted-small{ font-size: 12px; color:#6b7280; }
 
     /* Paginação */
     .sig-pager { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-top: 14px; }
@@ -362,6 +414,12 @@ function buildUrl(array $add = []): string {
                   <i class="ti-user mr-2"></i> Produtores
                 </a>
               </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="./adicionarProdutor.php">
+                  <i class="ti-plus mr-2"></i> Adicionar Produtor
+                </a>
+              </li>
             </ul>
           </div>
         </li>
@@ -436,11 +494,17 @@ function buildUrl(array $add = []): string {
         <div class="row">
           <div class="col-12 mb-3">
             <h3 class="font-weight-bold">Produtores</h3>
-            <h6 class="font-weight-normal mb-0">Cadastro de produtores rurais (feirantes). Sem caixa próprio — vendas são registradas “na fala”.</h6>
+            <h6 class="font-weight-normal mb-0">Cadastro de produtores rurais (feirantes).</h6>
           </div>
         </div>
 
-        <!-- Toolbar (Pesquisa REAL por GET) -->
+        <?php if ($debug): ?>
+          <div class="alert alert-info">
+            <b>Debug:</b> feira_id = <?= (int)$FEIRA_ID ?> • banco = <code><?= h($dbName) ?></code>
+          </div>
+        <?php endif; ?>
+
+        <!-- Toolbar -->
         <div class="row">
           <div class="col-md-12 grid-margin stretch-card">
             <div class="card toolbar-card">
@@ -449,7 +513,7 @@ function buildUrl(array $add = []): string {
                   <div class="col-md-6 mb-2 mb-md-0">
                     <label class="mb-1">Pesquisa</label>
                     <input type="text" name="q" class="form-control"
-                           placeholder="Pesquisar por nome, comunidade, telefone..." value="<?= h($q) ?>">
+                           placeholder="Pesquisar por nome, comunidade, telefone, CPF..." value="<?= h($q) ?>">
                     <?php if ($debug): ?>
                       <input type="hidden" name="debug" value="1">
                     <?php endif; ?>
@@ -464,11 +528,11 @@ function buildUrl(array $add = []): string {
                       <a class="btn btn-light" href="<?= h(buildUrl(['q'=>null,'p'=>null])) ?>">
                         <i class="ti-close mr-1"></i> Limpar
                       </a>
-                      <button type="button" class="btn btn-success" disabled>
-                        <i class="ti-export mr-1"></i> Exportar
-                      </button>
+                      <a href="./adicionarProdutor.php" class="btn btn-success">
+                        <i class="ti-plus mr-1"></i> Adicionar
+                      </a>
                     </div>
-                    <small class="text-muted d-block mt-2">Paginação: 8 por página.</small>
+                    <small class="text-muted d-block mt-2">Paginação: <?= (int)$perPage ?> por página.</small>
                   </div>
                 </form>
               </div>
@@ -488,9 +552,6 @@ function buildUrl(array $add = []): string {
                       Total: <?= (int)$totalRows ?> — Página <?= (int)$page ?> de <?= (int)$totalPages ?>.
                     </p>
                   </div>
-                  <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
-                    <i class="ti-plus"></i> Adicionar
-                  </a>
                 </div>
 
                 <div class="table-responsive pt-3">
@@ -499,10 +560,10 @@ function buildUrl(array $add = []): string {
                       <tr>
                         <th style="width:90px;">ID</th>
                         <th>Produtor</th>
-                        <th>Comunidade / Localidade</th>
-                        <th>Telefone</th>
+                        <th>Comunidade</th>
+                        <th>Contato</th>
                         <th>Status</th>
-                        <th style="min-width: 210px;">Ações</th>
+                        <th style="min-width: 260px;">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -516,24 +577,52 @@ function buildUrl(array $add = []): string {
                         <?php foreach ($produtores as $p): ?>
                           <?php
                             $id = (int)($p['id'] ?? 0);
-                            $ativo = (int)($p['ativo'] ?? 0) === 1;
+                            $ativo = ((int)($p['ativo'] ?? 0) === 1);
                             $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
                             $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+
+                            $comunidadeNome = (string)($p['comunidade'] ?? '');
+                            $comId = (int)($p['comunidade_id'] ?? 0);
+                            if ($comunidadeNome === '' && $comId > 0) {
+                              $comunidadeNome = 'ID ' . $comId;
+                            }
+
+                            $contato = trim((string)($p['contato'] ?? ''));
+                            $doc = trim((string)($p['documento'] ?? ''));
                           ?>
                           <tr>
                             <td><?= $id ?></td>
-                            <td><?= h($p['nome'] ?? '') ?></td>
-                            <td><?= h($p['comunidade'] ?? '') ?></td>
-                            <td><?= h($p['telefone'] ?? '') ?></td>
+                            <td>
+                              <div class="font-weight-bold"><?= h($p['nome'] ?? '') ?></div>
+                              <?php if ($doc !== ''): ?>
+                                <div class="muted-small">CPF/Doc: <?= h($doc) ?></div>
+                              <?php endif; ?>
+                            </td>
+                            <td><?= h($comunidadeNome) ?></td>
+                            <td><?= h($contato) ?></td>
                             <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                             <td>
                               <div class="acoes-wrap">
-                                <button type="button" class="btn btn-outline-primary btn-xs" disabled>
+
+                                <!-- (Opcional) Você pode criar editarProdutor.php depois -->
+                                <a class="btn btn-outline-primary btn-xs" href="#" onclick="return false;" title="Em breve">
                                   <i class="ti-pencil"></i> Editar
-                                </button>
-                                <button type="button" class="btn btn-outline-warning btn-xs" disabled>
-                                  <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
-                                </button>
+                                </a>
+
+                                <!-- Toggle ativo -->
+                                <form method="post" action="<?= h(buildUrl(['p'=>$page])) ?>" style="margin:0;">
+                                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                  <input type="hidden" name="action" value="toggle">
+                                  <input type="hidden" name="id" value="<?= $id ?>">
+                                  <button
+                                    type="submit"
+                                    class="btn btn-outline-<?= $ativo ? 'warning' : 'success' ?> btn-xs"
+                                    onclick="return confirm('Confirma <?= $ativo ? 'desativar' : 'ativar' ?> este produtor?');"
+                                  >
+                                    <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
+                                  </button>
+                                </form>
+
                               </div>
                             </td>
                           </tr>
