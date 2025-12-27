@@ -1,223 +1,173 @@
-CREATE TABLE IF NOT EXISTS usuarios (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(150) NOT NULL,
-  email VARCHAR(190) NOT NULL,
-  senha_hash VARCHAR(255) NOT NULL,
-  ativo TINYINT(1) NOT NULL DEFAULT 1,
-  ultimo_login_em DATETIME NULL,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_usuarios_email (email),
-  KEY idx_usuarios_ativo (ativo),
-  KEY idx_usuarios_nome (nome)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+CREATE TABLE `categorias` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `nome` varchar(120) NOT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- =========================
--- PERFIS
--- =========================
-CREATE TABLE IF NOT EXISTS perfis (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(50) NOT NULL,
-  -- ADMIN / OPERADOR
-  nome VARCHAR(100) NOT NULL,
-  descricao VARCHAR(255) NULL,
-  UNIQUE KEY uq_perfis_codigo (codigo),
-  KEY idx_perfis_nome (nome)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+INSERT INTO `categorias` (`id`, `feira_id`, `nome`, `ativo`, `criado_em`, `atualizado_em`) VALUES
+(1, 1, 'Derivados da Mandioca', 1, '2025-12-27 18:36:44', NULL),
+(2, 1, 'Farinhas de Mandioca', 1, '2025-12-27 18:36:44', NULL),
+(3, 1, 'Goma e Polvilho', 1, '2025-12-27 18:36:44', NULL),
+(4, 1, 'Subprodutos da Mandioca', 1, '2025-12-27 18:36:44', NULL);
 
--- =========================
--- VÍNCULO USUÁRIO x PERFIL (sem FK)
--- =========================
-CREATE TABLE IF NOT EXISTS usuario_perfis (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  usuario_id BIGINT UNSIGNED NOT NULL,
-  perfil_id BIGINT UNSIGNED NOT NULL,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_usuario_perfil (usuario_id, perfil_id),
-  KEY idx_up_usuario (usuario_id),
-  KEY idx_up_perfil (perfil_id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+CREATE TABLE `comunidades` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `nome` varchar(160) NOT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `observacao` varchar(255) DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Perfis padrão
-INSERT
-  IGNORE INTO perfis (codigo, nome, descricao)
-VALUES
-  (
-    'ADMIN',
-    'Administrador',
-    'Acesso total ao sistema'
-  ),
-  (
-    'OPERADOR',
-    'Operador',
-    'Somente preencher dados'
-  );
+INSERT INTO `comunidades` (`id`, `feira_id`, `nome`, `ativo`, `observacao`, `criado_em`, `atualizado_em`) VALUES
+(1, 1, 'Comunidade São Francisco', 1, NULL, '2025-12-27 18:36:11', NULL),
+(2, 1, 'Comunidade Nova Esperança', 1, NULL, '2025-12-27 18:36:11', NULL),
+(3, 1, 'Comunidade Santa Luzia', 1, NULL, '2025-12-27 18:36:11', NULL),
+(4, 1, 'Comunidade Boa Vista', 1, NULL, '2025-12-27 18:36:11', NULL);
 
-SET
-  FOREIGN_KEY_CHECKS = 0;
+CREATE TABLE `fechamento_dia` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `data_ref` date NOT NULL,
+  `qtd_vendas` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `total_dia` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `total_dinheiro` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `total_pix` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `total_cartao` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `total_outros` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `observacao` varchar(255) DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS venda_itens;
+CREATE TABLE `feiras` (
+  `id` tinyint(3) UNSIGNED NOT NULL,
+  `codigo` varchar(30) NOT NULL,
+  `nome` varchar(120) NOT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS vendas;
+CREATE TABLE `perfis` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `codigo` varchar(50) NOT NULL,
+  `nome` varchar(100) NOT NULL,
+  `descricao` varchar(255) DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS fechamento_dia;
+CREATE TABLE `produtores` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `nome` varchar(160) NOT NULL,
+  `contato` varchar(60) DEFAULT NULL,
+  `comunidade_id` bigint(20) UNSIGNED NOT NULL,
+  `documento` varchar(30) DEFAULT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `observacao` varchar(255) DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS produtos;
+INSERT INTO `produtores` (`id`, `feira_id`, `nome`, `contato`, `comunidade_id`, `documento`, `ativo`, `observacao`, `criado_em`, `atualizado_em`) VALUES
+(1, 1, 'João Batista da Silva', '92991112222', 1, NULL, 1, 'Produtor de farinha tradicional', '2025-12-27 18:36:59', NULL),
+(2, 1, 'Maria do Socorro Lima', '92992223333', 2, NULL, 1, 'Produção artesanal de goma', '2025-12-27 18:36:59', NULL),
+(3, 1, 'José Raimundo Pereira', '92993334444', 3, NULL, 1, 'Especialista em tucupi', '2025-12-27 18:36:59', NULL),
+(4, 1, 'Antônia Alves Costa', '92994445555', 4, NULL, 1, 'Venda de derivados diversos', '2025-12-27 18:36:59', NULL);
 
-DROP TABLE IF EXISTS produtores;
+CREATE TABLE `produtos` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `nome` varchar(160) NOT NULL,
+  `categoria_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `unidade_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `produtor_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `preco_referencia` decimal(10,2) DEFAULT NULL,
+  `custo_referencia` decimal(10,2) DEFAULT NULL,
+  `codigo_interno` varchar(60) DEFAULT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `observacao` varchar(255) DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS unidades;
+INSERT INTO `produtos` (`id`, `feira_id`, `nome`, `categoria_id`, `unidade_id`, `produtor_id`, `preco_referencia`, `custo_referencia`, `codigo_interno`, `ativo`, `observacao`, `criado_em`, `atualizado_em`) VALUES
+(1, 1, 'Farinha d’Água Tradicional', 2, 1, 1, 8.00, 5.50, 'FAR-001', 1, 'Farinha grossa artesanal', '2025-12-27 18:37:19', NULL),
+(2, 1, 'Farinha Seca Branca', 2, 1, 1, 7.50, 5.00, 'FAR-002', 1, NULL, '2025-12-27 18:37:19', NULL),
+(3, 1, 'Farinha Torrada Amarela', 2, 1, 4, 9.00, 6.20, 'FAR-003', 1, 'Vendida também por saco', '2025-12-27 18:37:19', NULL),
+(4, 1, 'Goma de Tapioca Fresca', 3, 1, 2, 6.00, 3.80, 'GOM-001', 1, NULL, '2025-12-27 18:37:19', NULL),
+(5, 1, 'Polvilho Doce', 3, 1, 2, 6.50, 4.00, 'GOM-002', 1, NULL, '2025-12-27 18:37:19', NULL),
+(6, 1, 'Polvilho Azedo', 3, 1, 2, 7.00, 4.50, 'GOM-003', 1, 'Fermentado naturalmente', '2025-12-27 18:37:19', NULL),
+(7, 1, 'Tucupi Amarelo', 4, 3, 3, 5.00, 3.00, 'SUB-001', 1, 'Vendido por litro', '2025-12-27 18:37:19', NULL),
+(8, 1, 'Tucupi Preto', 4, 3, 3, 6.00, 3.50, 'SUB-002', 1, NULL, '2025-12-27 18:37:19', NULL),
+(9, 1, 'Maniçoba (massa)', 4, 1, 3, 4.50, 2.80, 'SUB-003', 1, 'Pré-cozida', '2025-12-27 18:37:19', NULL),
+(10, 1, 'Beiju Tradicional', 1, 2, 4, 2.50, 1.20, 'DER-001', 1, 'Unidade', '2025-12-27 18:37:19', NULL),
+(11, 1, 'Beiju com Coco', 1, 2, 4, 3.00, 1.50, 'DER-002', 1, NULL, '2025-12-27 18:37:19', NULL),
+(12, 1, 'Tapioca Pronta', 1, 2, 4, 3.50, 1.80, 'DER-003', 1, NULL, '2025-12-27 18:37:19', NULL),
+(13, 1, 'Massa de Mandioca Crúa', 4, 1, 3, 3.00, 1.90, 'MAS-001', 1, NULL, '2025-12-27 18:37:19', NULL),
+(14, 1, 'Massa de Mandioca Lavada', 4, 1, 3, 3.50, 2.10, 'MAS-002', 1, NULL, '2025-12-27 18:37:19', NULL);
 
-DROP TABLE IF EXISTS categorias;
+CREATE TABLE `unidades` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `nome` varchar(80) NOT NULL,
+  `sigla` varchar(20) DEFAULT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS feiras;
+INSERT INTO `unidades` (`id`, `feira_id`, `nome`, `sigla`, `ativo`, `criado_em`, `atualizado_em`) VALUES
+(1, 1, 'Quilo', 'kg', 1, '2025-12-27 18:36:26', NULL),
+(2, 1, 'Unidade', 'un', 1, '2025-12-27 18:36:26', NULL),
+(3, 1, 'Litro', 'L', 1, '2025-12-27 18:36:26', NULL),
+(4, 1, 'Saco', 'sc', 1, '2025-12-27 18:36:26', NULL),
+(5, 1, 'Pacote', 'pct', 1, '2025-12-27 18:36:26', NULL);
 
-SET
-  FOREIGN_KEY_CHECKS = 1;
+CREATE TABLE `usuarios` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `nome` varchar(150) NOT NULL,
+  `email` varchar(190) NOT NULL,
+  `senha_hash` varchar(255) NOT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `ultimo_login_em` datetime DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE feiras (
-  id TINYINT UNSIGNED NOT NULL,
-  codigo VARCHAR(30) NOT NULL,
-  nome VARCHAR(120) NOT NULL,
-  ativo TINYINT(1) NOT NULL DEFAULT 1,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_feiras_codigo (codigo),
-  KEY idx_feiras_ativo (ativo)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+CREATE TABLE `usuario_perfis` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `usuario_id` bigint(20) UNSIGNED NOT NULL,
+  `perfil_id` bigint(20) UNSIGNED NOT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO
-  feiras (id, codigo, nome, ativo)
-VALUES
-  (1, 'PRODUTOR', 'Feira do Produtor', 1),
-  (2, 'ALTERNATIVA', 'Feira Alternativa', 1);
+CREATE TABLE `vendas` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `data_hora` datetime NOT NULL DEFAULT current_timestamp(),
+  `forma_pagamento` varchar(20) NOT NULL,
+  `total` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `status` varchar(20) NOT NULL DEFAULT 'ABERTA',
+  `observacao` varchar(255) DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE categorias (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  feira_id TINYINT UNSIGNED NOT NULL,
-  nome VARCHAR(120) NOT NULL,
-  ativo TINYINT(1) NOT NULL DEFAULT 1,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_categorias_feira_nome (feira_id, nome),
-  UNIQUE KEY uq_categorias_feira_id (feira_id, id),
-  KEY idx_categorias_feira_ativo (feira_id, ativo),
-  KEY idx_categorias_feira_nome (feira_id, nome),
-  CONSTRAINT fk_categorias_feira FOREIGN KEY (feira_id) REFERENCES feiras(id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE unidades (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  feira_id TINYINT UNSIGNED NOT NULL,
-  nome VARCHAR(80) NOT NULL,
-  sigla VARCHAR(20) NULL,
-  ativo TINYINT(1) NOT NULL DEFAULT 1,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_unidades_feira_nome (feira_id, nome),
-  UNIQUE KEY uq_unidades_feira_id (feira_id, id),
-  KEY idx_unidades_feira_ativo (feira_id, ativo),
-  KEY idx_unidades_feira_nome (feira_id, nome),
-  CONSTRAINT fk_unidades_feira FOREIGN KEY (feira_id) REFERENCES feiras(id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE produtores (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  feira_id TINYINT UNSIGNED NOT NULL,
-  nome VARCHAR(160) NOT NULL,
-  contato VARCHAR(60) NULL,
-  comunidade VARCHAR(120) NULL,
-  ativo TINYINT(1) NOT NULL DEFAULT 1,
-  observacao VARCHAR(255) NULL,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_produtores_feira_nome (feira_id, nome),
-  UNIQUE KEY uq_produtores_feira_id (feira_id, id),
-  KEY idx_produtores_feira_ativo (feira_id, ativo),
-  KEY idx_produtores_feira_nome (feira_id, nome),
-  CONSTRAINT fk_produtores_feira FOREIGN KEY (feira_id) REFERENCES feiras(id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE produtos (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  feira_id TINYINT UNSIGNED NOT NULL,
-  nome VARCHAR(160) NOT NULL,
-  categoria_id BIGINT UNSIGNED NULL,
-  unidade_id BIGINT UNSIGNED NULL,
-  produtor_id BIGINT UNSIGNED NULL,
-  preco_referencia DECIMAL(10, 2) NULL,
-  ativo TINYINT(1) NOT NULL DEFAULT 1,
-  observacao VARCHAR(255) NULL,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_produtos_feira_nome (feira_id, nome),
-  UNIQUE KEY uq_produtos_feira_id (feira_id, id),
-  KEY idx_produtos_feira_ativo (feira_id, ativo),
-  KEY idx_produtos_feira_categoria (feira_id, categoria_id),
-  KEY idx_produtos_feira_unidade (feira_id, unidade_id),
-  KEY idx_produtos_feira_produtor (feira_id, produtor_id),
-  CONSTRAINT fk_produtos_feira FOREIGN KEY (feira_id) REFERENCES feiras(id) ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_produtos_categoria FOREIGN KEY (feira_id, categoria_id) REFERENCES categorias(feira_id, id) ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_produtos_unidade FOREIGN KEY (feira_id, unidade_id) REFERENCES unidades(feira_id, id) ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_produtos_produtor FOREIGN KEY (feira_id, produtor_id) REFERENCES produtores(feira_id, id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE vendas (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  feira_id TINYINT UNSIGNED NOT NULL,
-  data_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  forma_pagamento VARCHAR(20) NOT NULL,
-  total DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  status VARCHAR(20) NOT NULL DEFAULT 'ABERTA',
-  observacao VARCHAR(255) NULL,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_vendas_feira_id (feira_id, id),
-  KEY idx_vendas_feira_data (feira_id, data_hora),
-  KEY idx_vendas_feira_status (feira_id, status),
-  KEY idx_vendas_feira_pagamento (feira_id, forma_pagamento),
-  CONSTRAINT fk_vendas_feira FOREIGN KEY (feira_id) REFERENCES feiras(id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE venda_itens (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  feira_id TINYINT UNSIGNED NOT NULL,
-  venda_id BIGINT UNSIGNED NOT NULL,
-  produto_id BIGINT UNSIGNED NULL,
-  descricao_livre VARCHAR(160) NULL,
-  quantidade DECIMAL(10, 3) NOT NULL DEFAULT 1.000,
-  valor_unitario DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  subtotal DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  observacao VARCHAR(255) NULL,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  KEY idx_itens_feira_venda (feira_id, venda_id),
-  KEY idx_itens_feira_produto (feira_id, produto_id),
-  CONSTRAINT fk_itens_venda FOREIGN KEY (feira_id, venda_id) REFERENCES vendas(feira_id, id) ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_itens_produto FOREIGN KEY (feira_id, produto_id) REFERENCES produtos(feira_id, id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE fechamento_dia (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  feira_id TINYINT UNSIGNED NOT NULL,
-  data_ref DATE NOT NULL,
-  qtd_vendas INT UNSIGNED NOT NULL DEFAULT 0,
-  total_dia DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  total_dinheiro DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  total_pix DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  total_cartao DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  total_outros DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  observacao VARCHAR(255) NULL,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_fechamento_feira_data (feira_id, data_ref),
-  KEY idx_fechamento_feira_data (feira_id, data_ref),
-  CONSTRAINT fk_fechamento_feira FOREIGN KEY (feira_id) REFERENCES feiras(id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+CREATE TABLE `venda_itens` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `venda_id` bigint(20) UNSIGNED NOT NULL,
+  `produto_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `descricao_livre` varchar(160) DEFAULT NULL,
+  `quantidade` decimal(10,3) NOT NULL DEFAULT 1.000,
+  `valor_unitario` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `subtotal` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `observacao` varchar(255) DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
