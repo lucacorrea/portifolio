@@ -137,9 +137,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   if ($acao === 'salvar') {
-    // vendas: feira_id, data_hora, forma_pagamento, total, status, observacao...
-    // venda_itens: feira_id, venda_id, produto_id, quantidade, valor_unitario, subtotal...
-
     $dataVenda = trim((string)($_POST['data_venda'] ?? ''));
     $horaVenda = trim((string)($_POST['hora_venda'] ?? ''));
     $pagamento = trim((string)($_POST['forma_pagamento'] ?? ''));
@@ -265,7 +262,7 @@ try {
       COALESCE((
         SELECT GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR '||')
         FROM venda_itens vi
-        JOIN produtos p   ON p.id = vi.produto_id AND p.feira_id = vi.feira_id
+        JOIN produtos p    ON p.id = vi.produto_id AND p.feira_id = vi.feira_id
         JOIN produtores pr ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
         WHERE vi.feira_id = v.feira_id AND vi.venda_id = v.id
       ), '') AS produtores_list
@@ -341,10 +338,10 @@ if ($verId > 0) {
         COALESCE(c.nome,'')  AS categoria_nome,
         COALESCE(pr.nome,'') AS produtor_nome
       FROM venda_itens vi
-      LEFT JOIN produtos p    ON p.id = vi.produto_id AND p.feira_id = vi.feira_id
-      LEFT JOIN unidades u    ON u.id = p.unidade_id  AND u.feira_id = p.feira_id
-      LEFT JOIN categorias c  ON c.id = p.categoria_id AND c.feira_id = p.feira_id
-      LEFT JOIN produtores pr ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
+      LEFT JOIN produtos p     ON p.id = vi.produto_id AND p.feira_id = vi.feira_id
+      LEFT JOIN unidades u     ON u.id = p.unidade_id  AND u.feira_id = p.feira_id
+      LEFT JOIN categorias c   ON c.id = p.categoria_id AND c.feira_id = p.feira_id
+      LEFT JOIN produtores pr  ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
       WHERE vi.feira_id = :f AND vi.venda_id = :v
       ORDER BY vi.id ASC
     ");
@@ -353,7 +350,6 @@ if ($verId > 0) {
     $stI->execute();
     $detalheItens = $stI->fetchAll();
 
-    // produtores distintos (lista)
     $map = [];
     foreach ($detalheItens as $it) {
       $pn = trim((string)($it['produtor_nome'] ?? ''));
@@ -413,11 +409,10 @@ $horaAgora = date('H:i');
     .totlabel{ font-size: 12px; color: #6c757d; margin:0; }
     .totvalue{ font-size: 20px; font-weight: 800; margin:0; }
 
-    /* produtores em lista (compacto) */
+    /* ✅ produtores em linhas separadas */
     .plist{ margin:0; padding-left: 18px; }
-    .plist li{ line-height: 1.1; margin: 2px 0; }
+    .plist li{ line-height: 1.15; margin: 2px 0; }
 
-    /* ===== Flash “Hostinger style” (top-right, ~6s) ===== */
     .sig-flash-wrap{
       position: fixed;
       top: 78px;
@@ -455,7 +450,6 @@ $horaAgora = date('H:i');
     @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
     @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
 
-    /* modal */
     .modal-content{ border-radius: 14px; }
     .modal-header{ border-top-left-radius: 14px; border-top-right-radius: 14px; }
   </style>
@@ -474,13 +468,8 @@ $horaAgora = date('H:i');
       <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
         <span class="icon-menu"></span>
       </button>
-
-      <ul class="navbar-nav mr-lg-2">
-        <li class="nav-item nav-search d-none d-lg-block"></li>
-      </ul>
-
+      <ul class="navbar-nav mr-lg-2"><li class="nav-item nav-search d-none d-lg-block"></li></ul>
       <ul class="navbar-nav navbar-nav-right"></ul>
-
       <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
         <span class="icon-menu"></span>
       </button>
@@ -538,7 +527,6 @@ $horaAgora = date('H:i');
     <!-- SIDEBAR -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
       <ul class="nav">
-
         <li class="nav-item">
           <a class="nav-link" href="index.php">
             <i class="icon-grid menu-icon"></i>
@@ -552,13 +540,11 @@ $horaAgora = date('H:i');
             <span class="menu-title">Cadastros</span>
             <i class="menu-arrow"></i>
           </a>
-
           <div class="collapse" id="feiraCadastros">
             <style>
               .sub-menu .nav-item .nav-link { color: black !important; }
               .sub-menu .nav-item .nav-link:hover { color: blue !important; }
             </style>
-
             <ul class="nav flex-column sub-menu" style="background: white !important;">
               <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
               <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
@@ -609,7 +595,7 @@ $horaAgora = date('H:i');
         <div class="row">
           <div class="col-12 mb-3">
             <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
-            <h6 class="font-weight-normal mb-0">O “Visualizar” funciona e quando tiver mais de um feirante aparece em lista (linhas separadas).</h6>
+            <h6 class="font-weight-normal mb-0">Agora o “Feirante(s)” aparece sempre em linhas separadas (igual no modal).</h6>
           </div>
         </div>
 
@@ -807,7 +793,6 @@ $horaAgora = date('H:i');
                             $vid = (int)($v['id'] ?? 0);
                             $tot = (float)($v['total'] ?? 0);
 
-                            // ✅ lista de feirantes em linhas separadas quando tiver mais de um
                             $plistRaw = (string)($v['produtores_list'] ?? '');
                             $plist = array_values(array_filter(array_map('trim', $plistRaw !== '' ? explode('||', $plistRaw) : [])));
                             if (empty($plist)) $plist = ['—'];
@@ -819,16 +804,13 @@ $horaAgora = date('H:i');
                             <td><?= h(fmt_dt((string)($v['data_hora'] ?? ''))) ?></td>
                             <td><?= h((string)($v['forma_pagamento'] ?? '')) ?></td>
 
+                            <!-- ✅ SEMPRE EM LINHAS, IGUAL MODAL -->
                             <td>
-                              <?php if (count($plist) <= 1): ?>
-                                <?= h($plist[0] ?? '—') ?>
-                              <?php else: ?>
-                                <ul class="plist">
-                                  <?php foreach ($plist as $pn): ?>
-                                    <li><?= h($pn) ?></li>
-                                  <?php endforeach; ?>
-                                </ul>
-                              <?php endif; ?>
+                              <ul class="plist">
+                                <?php foreach ($plist as $pn): ?>
+                                  <li><?= h($pn) ?></li>
+                                <?php endforeach; ?>
+                              </ul>
                             </td>
 
                             <td><b>R$ <?= number_format($tot, 2, ',', '.') ?></b></td>
@@ -923,12 +905,8 @@ $horaAgora = date('H:i');
           <div class="row">
             <div class="col-md-6 mb-2">
               <div class="text-muted" style="font-size:12px;">Feirante(s)</div>
-
-              <!-- ✅ em linhas separadas quando tiver mais de um -->
               <?php if (empty($detalheProdutores)): ?>
                 <div>—</div>
-              <?php elseif (count($detalheProdutores) === 1): ?>
-                <div><?= h($detalheProdutores[0]) ?></div>
               <?php else: ?>
                 <ul class="plist">
                   <?php foreach ($detalheProdutores as $pn): ?>
@@ -937,7 +915,6 @@ $horaAgora = date('H:i');
                 </ul>
               <?php endif; ?>
             </div>
-
             <div class="col-md-6 mb-2">
               <div class="text-muted" style="font-size:12px;">Observação</div>
               <div><?= $vObs !== '' ? h($vObs) : '—' ?></div>
@@ -1151,7 +1128,6 @@ $horaAgora = date('H:i');
   applyFiltroProdutos();
   calcTotal();
 
-  // auto abrir modal se veio com ?ver=
   <?php if ($verId > 0 && $detalheVenda): ?>
     if (window.jQuery && jQuery.fn.modal) {
       jQuery(function(){ jQuery('#modalDetalhes').modal('show'); });
