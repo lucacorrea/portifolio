@@ -16,6 +16,8 @@ if (!in_array('ADMIN', $perfis, true)) {
 }
 
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+/** Converte "1.234,56" -> 1234.56 */
 function to_decimal($v): float {
   $s = trim((string)$v);
   if ($s === '') return 0.0;
@@ -46,12 +48,13 @@ $pdo = db();
 $feiraId = 1;
 
 /* ===== Filtros de listagem ===== */
-$dia = trim((string)($_GET['dia'] ?? date('Y-m-d')));
+$dia        = trim((string)($_GET['dia'] ?? date('Y-m-d'))); // filtra por DATE(v.data_hora)
 $prodFiltro = (int)($_GET['produtor'] ?? 0);
 
 /* ===== Combos ===== */
 $produtoresAtivos = [];
 $produtosAtivos   = [];
+
 try {
   $stP = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :f AND ativo = 1 ORDER BY nome ASC");
   $stP->bindValue(':f', $feiraId, PDO::PARAM_INT);
@@ -59,13 +62,17 @@ try {
   $produtoresAtivos = $stP->fetchAll();
 
   $stPr = $pdo->prepare("
-    SELECT p.id, p.nome,
-           COALESCE(c.nome,'')  AS categoria_nome,
-           COALESCE(u.sigla,'') AS unidade_sigla,
-           p.preco_referencia
+    SELECT
+      p.id, p.nome,
+      p.produtor_id,
+      COALESCE(pr.nome,'') AS produtor_nome,
+      COALESCE(c.nome,'')  AS categoria_nome,
+      COALESCE(u.sigla,'') AS unidade_sigla,
+      p.preco_referencia
     FROM produtos p
-    LEFT JOIN categorias c ON c.id = p.categoria_id
-    LEFT JOIN unidades u   ON u.id = p.unidade_id
+    LEFT JOIN produtores pr ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
+    LEFT JOIN categorias c ON c.id = p.categoria_id AND c.feira_id = p.feira_id
+    LEFT JOIN unidades   u ON u.id = p.unidade_id   AND u.feira_id = p.feira_id
     WHERE p.feira_id = :f AND p.ativo = 1
     ORDER BY p.nome ASC
   ");
@@ -120,17 +127,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   if ($acao === 'salvar') {
-    $dataVenda  = trim((string)($_POST['data_venda'] ?? ''));
-    $produtorId = (int)($_POST['produtor_id'] ?? 0);
-    $obs        = trim((string)($_POST['observacao'] ?? ''));
+    // ===== AJUSTADO PARA O BANCO QUE VOCÊ ENVIOU =====
+    // vendas: (feira_id, data_hora, forma_pagamento, total, status, observacao, ...)
+    // venda_itens: (feira_id, venda_id, produto_id, descricao_livre, quantidade, valor_unitario, subtotal, ...)
 
+    $dataVenda = trim((string)($_POST['data_venda'] ?? ''));
+    $horaVenda = trim((string)($_POST['hora_venda'] ?? ''));
+    $pagamento = trim((string)($_POST['forma_pagamento'] ?? ''));
+    $obs       = trim((string)($_POST['observacao'] ?? ''));
+
+    // Itens
     $produtoIds = $_POST['produto_id'] ?? [];
-    $qtds       = $_POST['qtd'] ?? [];
-    $vunit      = $_POST['valor_unit'] ?? [];
+    $qtds       = $_POST['quantidade'] ?? [];
+    $vunit      = $_POST['valor_unitario'] ?? [];
 
     $localErr = '';
+
     if ($dataVenda === '') $localErr = 'Informe a data do lançamento.';
-    elseif ($produtorId <= 0) $localErr = 'Selecione o produtor.';
+    elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataVenda)) $localErr = 'Data inválida.';
+    elseif ($pagamento === '') $localErr = 'Selecione a forma de pagamento.';
+
+    // Hora opcional; se vier inválida, usa hora atual
+    if ($horaVenda !== '' && !preg_match('/^\d{2}:\d{2}$/', $horaVenda)) {
+      $horaVenda = '';
+    }
+    if ($horaVenda === '') $horaVenda = date('H:i'); // HH:MM
+
+    $dataHora = $dataVenda . ' ' . $horaVenda . ':00';
 
     $itens = [];
     $total = 0.0;
@@ -143,20 +166,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $q = to_decimal($qtds[$i] ?? '1');
         if ($q <= 0) $q = 1.0;
+        $q = round($q, 3);
 
         $vu = to_decimal($vunit[$i] ?? '0');
         if ($vu <= 0) continue;
+        $vu = round($vu, 2);
 
-        $sub = $q * $vu;
+        $sub = round($q * $vu, 2);
+        if ($sub <= 0) continue;
+
         $total += $sub;
 
         $itens[] = [
-          'produto_id' => $pid,
-          'qtd'        => $q,
-          'valor_unit' => $vu,
-          'subtotal'   => $sub
+          'produto_id'     => $pid,
+          'quantidade'     => $q,
+          'valor_unitario' => $vu,
+          'subtotal'       => $sub
         ];
       }
+
+      $total = round($total, 2);
 
       if (empty($itens)) $localErr = 'Adicione pelo menos 1 item (produto + valor).';
       elseif ($total <= 0) $localErr = 'Total inválido.';
@@ -172,29 +201,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $pdo->beginTransaction();
 
       $ins = $pdo->prepare("
-        INSERT INTO vendas (feira_id, produtor_id, data_venda, total, observacao, criado_em)
-        VALUES (:f, :prod, :data, :total, :obs, NOW())
+        INSERT INTO vendas (feira_id, data_hora, forma_pagamento, total, status, observacao, criado_em)
+        VALUES (:f, :dh, :fp, :total, 'FECHADA', :obs, NOW())
       ");
       $ins->bindValue(':f', $feiraId, PDO::PARAM_INT);
-      $ins->bindValue(':prod', $produtorId, PDO::PARAM_INT);
-      $ins->bindValue(':data', $dataVenda, PDO::PARAM_STR);
+      $ins->bindValue(':dh', $dataHora, PDO::PARAM_STR);
+      $ins->bindValue(':fp', $pagamento, PDO::PARAM_STR);
       $ins->bindValue(':total', $total);
+
       if ($obs === '') $ins->bindValue(':obs', null, PDO::PARAM_NULL);
       else $ins->bindValue(':obs', $obs, PDO::PARAM_STR);
-      $ins->execute();
 
+      $ins->execute();
       $vendaId = (int)$pdo->lastInsertId();
 
       $insItem = $pdo->prepare("
-        INSERT INTO venda_itens (feira_id, venda_id, produto_id, qtd, valor_unit, subtotal)
-        VALUES (:f, :v, :p, :q, :vu, :sub)
+        INSERT INTO venda_itens
+          (feira_id, venda_id, produto_id, descricao_livre, quantidade, valor_unitario, subtotal, observacao, criado_em)
+        VALUES
+          (:f, :v, :p, NULL, :q, :vu, :sub, NULL, NOW())
       ");
+
       foreach ($itens as $it) {
         $insItem->bindValue(':f', $feiraId, PDO::PARAM_INT);
         $insItem->bindValue(':v', $vendaId, PDO::PARAM_INT);
         $insItem->bindValue(':p', $it['produto_id'], PDO::PARAM_INT);
-        $insItem->bindValue(':q', $it['qtd']);
-        $insItem->bindValue(':vu', $it['valor_unit']);
+        $insItem->bindValue(':q', $it['quantidade']);
+        $insItem->bindValue(':vu', $it['valor_unitario']);
         $insItem->bindValue(':sub', $it['subtotal']);
         $insItem->execute();
       }
@@ -216,24 +249,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 }
 
-/* ===== Listagem ===== */
+/* ===== Listagem (AJUSTADA PARA SEU BANCO) ===== */
 $vendas = [];
 try {
   $sql = "
-    SELECT v.id, v.data_venda, v.total, v.observacao,
-           p.nome AS produtor_nome
+    SELECT
+      v.id,
+      v.data_hora,
+      v.forma_pagamento,
+      v.total,
+      v.status,
+      v.observacao,
+      COALESCE((
+        SELECT GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR ', ')
+        FROM venda_itens vi
+        JOIN produtos p   ON p.id = vi.produto_id AND p.feira_id = vi.feira_id
+        JOIN produtores pr ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
+        WHERE vi.feira_id = v.feira_id AND vi.venda_id = v.id
+      ), '') AS produtores
     FROM vendas v
-    JOIN produtores p ON p.id = v.produtor_id
     WHERE v.feira_id = :f
   ";
   $params = [':f' => $feiraId];
 
   if ($dia !== '') {
-    $sql .= " AND v.data_venda = :dia";
+    $sql .= " AND DATE(v.data_hora) = :dia";
     $params[':dia'] = $dia;
   }
+
   if ($prodFiltro > 0) {
-    $sql .= " AND v.produtor_id = :prod";
+    $sql .= "
+      AND EXISTS (
+        SELECT 1
+        FROM venda_itens vi2
+        JOIN produtos p2 ON p2.id = vi2.produto_id AND p2.feira_id = vi2.feira_id
+        WHERE vi2.feira_id = v.feira_id
+          AND vi2.venda_id = v.id
+          AND p2.produtor_id = :prod
+      )
+    ";
     $params[':prod'] = $prodFiltro;
   }
 
@@ -249,6 +303,9 @@ try {
 } catch (Throwable $e) {
   $err = $err ?: 'Não foi possível carregar os lançamentos agora.';
 }
+
+/* Hora padrão no formulário */
+$horaAgora = date('H:i');
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -283,7 +340,6 @@ try {
     .btn-xs{ padding: .25rem .5rem; font-size: .75rem; line-height: 1.2; height:auto; }
     .table td, .table th{ vertical-align: middle !important; }
 
-    .item-actions{ display:flex; gap:8px; justify-content:flex-end; }
     .totbox{
       border: 1px solid rgba(0,0,0,.08);
       background: #fff;
@@ -293,7 +349,7 @@ try {
     .totlabel{ font-size: 12px; color: #6c757d; margin:0; }
     .totvalue{ font-size: 20px; font-weight: 800; margin:0; }
 
-    /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
+    /* ===== Flash “Hostinger style” (top-right, ~6s) ===== */
     .sig-flash-wrap{
       position: fixed;
       top: 78px;
@@ -532,7 +588,7 @@ try {
         <div class="row">
           <div class="col-12 mb-3">
             <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
-            <h6 class="font-weight-normal mb-0">Página simplificada: menos campos, mais rápido de lançar.</h6>
+            <h6 class="font-weight-normal mb-0">Ajustado para o seu banco: <b>vendas.data_hora</b>, <b>forma_pagamento</b>, <b>status</b> e itens com <b>quantidade/valor_unitario</b>.</h6>
           </div>
         </div>
 
@@ -545,7 +601,7 @@ try {
                 <div class="d-flex align-items-center justify-content-between flex-wrap">
                   <div>
                     <h4 class="card-title mb-0">Novo Lançamento</h4>
-                    <p class="card-description mb-0">Selecione produtor, adicione os itens e salve.</p>
+                    <p class="card-description mb-0">Escolha data/hora, forma de pagamento, adicione itens e salve.</p>
                   </div>
                   <div class="totbox mt-2 mt-md-0">
                     <p class="totlabel">Total</p>
@@ -555,9 +611,9 @@ try {
 
                 <hr>
 
-                <?php if (empty($produtoresAtivos) || empty($produtosAtivos)): ?>
+                <?php if (empty($produtosAtivos)): ?>
                   <div class="alert alert-warning mb-3" role="alert" style="border-radius:12px;">
-                    <b>Atenção:</b> para lançar vendas, você precisa ter <b>produtores</b> e <b>produtos</b> ativos cadastrados.
+                    <b>Atenção:</b> para lançar vendas, você precisa ter <b>produtos</b> ativos cadastrados.
                   </div>
                 <?php endif; ?>
 
@@ -571,20 +627,39 @@ try {
                       <input type="date" class="form-control" name="data_venda" value="<?= h($dia) ?>" required>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                      <label class="mb-1">Produtor</label>
-                      <select class="form-control" name="produtor_id" required>
+                    <div class="col-md-2 mb-3">
+                      <label class="mb-1">Hora</label>
+                      <input type="time" class="form-control" name="hora_venda" value="<?= h($horaAgora) ?>">
+                      <small class="text-muted helper">Opcional.</small>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                      <label class="mb-1">Forma de Pagamento</label>
+                      <select class="form-control" name="forma_pagamento" required>
                         <option value="" selected disabled>Selecione</option>
+                        <option value="DINHEIRO">Dinheiro</option>
+                        <option value="PIX">Pix</option>
+                        <option value="CARTAO">Cartão</option>
+                        <option value="OUTROS">Outros</option>
+                      </select>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                      <label class="mb-1">Observação</label>
+                      <input type="text" class="form-control" name="observacao" placeholder="Opcional">
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="mb-1">Filtrar produtos por produtor (opcional)</label>
+                      <select class="form-control" id="jsFiltroProd">
+                        <option value="0">Todos</option>
                         <?php foreach ($produtoresAtivos as $p): ?>
                           <option value="<?= (int)$p['id'] ?>"><?= h($p['nome'] ?? '') ?></option>
                         <?php endforeach; ?>
                       </select>
-                      <small class="text-muted helper">Somente produtores ativos aparecem.</small>
-                    </div>
-
-                    <div class="col-md-3 mb-3">
-                      <label class="mb-1">Observação</label>
-                      <input type="text" class="form-control" name="observacao" placeholder="Opcional">
+                      <small class="text-muted helper">Isso é só para facilitar a escolha do produto (não grava produtor na venda).</small>
                     </div>
                   </div>
 
@@ -595,7 +670,7 @@ try {
                           <th>Produto</th>
                           <th style="width:120px;">Qtd</th>
                           <th style="width:160px;">Valor (R$)</th>
-                          <th style="width:140px;">Unid</th>
+                          <th style="width:120px;">Unid</th>
                           <th style="width:220px;">Categoria</th>
                           <th style="width:90px;" class="text-right">—</th>
                         </tr>
@@ -609,20 +684,21 @@ try {
                               <?php foreach ($produtosAtivos as $pr): ?>
                                 <option
                                   value="<?= (int)$pr['id'] ?>"
+                                  data-prod="<?= (int)($pr['produtor_id'] ?? 0) ?>"
                                   data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
                                   data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
                                   data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>"
                                 >
-                                  <?= h($pr['nome'] ?? '') ?>
+                                  <?= h($pr['nome'] ?? '') ?><?= ($pr['produtor_nome'] ?? '') ? ' — '.h($pr['produtor_nome']) : '' ?>
                                 </option>
                               <?php endforeach; ?>
                             </select>
                           </td>
                           <td>
-                            <input type="text" class="form-control js-qtd" name="qtd[]" value="1">
+                            <input type="text" class="form-control js-qtd" name="quantidade[]" value="1">
                           </td>
                           <td>
-                            <input type="text" class="form-control js-vu" name="valor_unit[]" placeholder="0,00">
+                            <input type="text" class="form-control js-vu" name="valor_unitario[]" placeholder="0,00">
                           </td>
                           <td>
                             <input type="text" class="form-control js-un" value="" readonly>
@@ -661,7 +737,7 @@ try {
                   </div>
 
                   <small class="text-muted d-block mt-2">
-                    Dica: você pode lançar só 1 item e salvar. O botão “Preencher valor ref.” coloca o preço de referência nos itens vazios (se você tiver cadastrado).
+                    Botão “Preencher valor ref.” coloca o preço de referência nos itens vazios (se o produto tiver).
                   </small>
 
                 </form>
@@ -690,13 +766,14 @@ try {
                     <input type="date" class="form-control" value="<?= h($dia) ?>" onchange="location.href='?dia='+this.value+'&produtor=<?= (int)$prodFiltro ?>';">
                   </div>
                   <div class="col-md-6 mb-2">
-                    <label class="mb-1">Produtor</label>
+                    <label class="mb-1">Produtor (filtra por itens)</label>
                     <select class="form-control" onchange="location.href='?dia=<?= h($dia) ?>&produtor='+this.value;">
                       <option value="0">Todos</option>
                       <?php foreach ($produtoresAtivos as $p): $pid=(int)$p['id']; ?>
                         <option value="<?= $pid ?>" <?= $prodFiltro===$pid ? 'selected' : '' ?>><?= h($p['nome'] ?? '') ?></option>
                       <?php endforeach; ?>
                     </select>
+                    <small class="text-muted helper">Esse filtro pega vendas que tenham itens de produtos daquele produtor.</small>
                   </div>
                   <div class="col-md-3 mb-2 d-flex align-items-end">
                     <a class="btn btn-light w-100" href="./lancamentos.php">
@@ -710,8 +787,9 @@ try {
                     <thead>
                       <tr>
                         <th style="width:90px;">ID</th>
-                        <th style="width:140px;">Data</th>
-                        <th>Produtor</th>
+                        <th style="width:170px;">Data/Hora</th>
+                        <th style="width:150px;">Pagamento</th>
+                        <th>Produtor(es)</th>
                         <th style="width:160px;">Total</th>
                         <th style="min-width:210px;">Ações</th>
                       </tr>
@@ -719,18 +797,25 @@ try {
                     <tbody>
                       <?php if (empty($vendas)): ?>
                         <tr>
-                          <td colspan="5" class="text-center text-muted py-4">Nenhum lançamento encontrado.</td>
+                          <td colspan="6" class="text-center text-muted py-4">Nenhum lançamento encontrado.</td>
                         </tr>
                       <?php else: ?>
                         <?php foreach ($vendas as $v): ?>
                           <?php
                             $vid = (int)($v['id'] ?? 0);
                             $tot = (float)($v['total'] ?? 0);
+                            $dh  = (string)($v['data_hora'] ?? '');
+                            $dhFmt = $dh;
+                            try {
+                              $dt = new DateTime($dh);
+                              $dhFmt = $dt->format('d/m/Y H:i');
+                            } catch (Throwable $e) {}
                           ?>
                           <tr>
                             <td><?= $vid ?></td>
-                            <td><?= h($v['data_venda'] ?? '') ?></td>
-                            <td><?= h($v['produtor_nome'] ?? '') ?></td>
+                            <td><?= h($dhFmt) ?></td>
+                            <td><?= h($v['forma_pagamento'] ?? '') ?></td>
+                            <td><?= h($v['produtores'] ?? '') ?></td>
                             <td><b>R$ <?= number_format($tot, 2, ',', '.') ?></b></td>
                             <td>
                               <div class="acoes-wrap">
@@ -756,7 +841,7 @@ try {
                   </table>
                 </div>
 
-                <small class="text-muted d-block mt-2">“Detalhes” você ativa depois (quando criar a tela de itens do lançamento).</small>
+                <small class="text-muted d-block mt-2">“Detalhes” você ativa depois (quando criar a tela para ver os itens da venda).</small>
 
               </div>
             </div>
@@ -797,11 +882,11 @@ try {
   const btnAdd = document.getElementById('btnAddLinha');
   const btnRef = document.getElementById('btnPrecoRef');
   const totalEl = document.getElementById('jsTotal');
+  const filtroProd = document.getElementById('jsFiltroProd');
 
   function brMoney(n){
-    try {
-      return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    } catch(e){
+    try { return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    catch(e){
       const x = Math.round(n*100)/100;
       return String(x).replace('.', ',');
     }
@@ -842,7 +927,7 @@ try {
 
   function updateRemoveButtons(){
     const rows = document.querySelectorAll('.js-item-row');
-    rows.forEach((tr, idx)=>{
+    rows.forEach((tr)=>{
       const btn = tr.querySelector('.js-remove');
       if (!btn) return;
       btn.disabled = (rows.length <= 1);
@@ -867,6 +952,29 @@ try {
     syncInfo(tr);
   }
 
+  function applyFiltroProdutos(){
+    const prodId = parseInt((filtroProd && filtroProd.value) ? filtroProd.value : '0', 10) || 0;
+    document.querySelectorAll('.js-item-row .js-prod').forEach(sel=>{
+      const current = sel.value;
+      let hasCurrentVisible = false;
+
+      Array.from(sel.options).forEach(opt=>{
+        if (!opt.value || opt.value === '0') { opt.hidden = false; return; }
+        const p = parseInt(opt.dataset.prod || '0', 10) || 0;
+        const show = (prodId === 0) || (p === prodId);
+        opt.hidden = !show;
+        if (opt.value === current && show) hasCurrentVisible = true;
+      });
+
+      if (!hasCurrentVisible && current !== '0') {
+        sel.value = '0';
+        syncInfo(sel.closest('tr'));
+      }
+    });
+
+    calcTotal();
+  }
+
   btnAdd && btnAdd.addEventListener('click', function(){
     const base = document.querySelector('.js-item-row');
     if (!base) return;
@@ -881,6 +989,7 @@ try {
     body.appendChild(clone);
     wireRow(clone);
     updateRemoveButtons();
+    applyFiltroProdutos();
     calcTotal();
   });
 
@@ -896,7 +1005,6 @@ try {
       const opt = sel.options[sel.selectedIndex];
       const ref = (opt && opt.dataset) ? (opt.dataset.preco || '') : '';
       if (!vu.value && ref) {
-        // ref pode vir "10.00" -> mostrar "10,00"
         const n = toNum(ref);
         if (n > 0) vu.value = brMoney(n);
       }
@@ -904,8 +1012,11 @@ try {
     calcTotal();
   });
 
+  filtroProd && filtroProd.addEventListener('change', applyFiltroProdutos);
+
   document.querySelectorAll('.js-item-row').forEach(wireRow);
   updateRemoveButtons();
+  applyFiltroProdutos();
   calcTotal();
 })();
 </script>
