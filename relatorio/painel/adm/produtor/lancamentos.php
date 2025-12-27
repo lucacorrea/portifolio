@@ -609,7 +609,7 @@ $horaAgora = date('H:i');
         <div class="row">
           <div class="col-12 mb-3">
             <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
-            <h6 class="font-weight-normal mb-0">Agora o “Visualizar” funciona e quando tiver mais de um feirante aparece em lista.</h6>
+            <h6 class="font-weight-normal mb-0">O “Visualizar” funciona e quando tiver mais de um feirante aparece em lista (linhas separadas).</h6>
           </div>
         </div>
 
@@ -806,22 +806,31 @@ $horaAgora = date('H:i');
                           <?php
                             $vid = (int)($v['id'] ?? 0);
                             $tot = (float)($v['total'] ?? 0);
+
+                            // ✅ lista de feirantes em linhas separadas quando tiver mais de um
                             $plistRaw = (string)($v['produtores_list'] ?? '');
                             $plist = array_values(array_filter(array_map('trim', $plistRaw !== '' ? explode('||', $plistRaw) : [])));
                             if (empty($plist)) $plist = ['—'];
+
                             $urlView = './lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro.'&ver='.$vid;
                           ?>
                           <tr>
                             <td><?= $vid ?></td>
                             <td><?= h(fmt_dt((string)($v['data_hora'] ?? ''))) ?></td>
                             <td><?= h((string)($v['forma_pagamento'] ?? '')) ?></td>
+
                             <td>
-                              <ul class="plist">
-                                <?php foreach ($plist as $pn): ?>
-                                  <li><?= h($pn) ?></li>
-                                <?php endforeach; ?>
-                              </ul>
+                              <?php if (count($plist) <= 1): ?>
+                                <?= h($plist[0] ?? '—') ?>
+                              <?php else: ?>
+                                <ul class="plist">
+                                  <?php foreach ($plist as $pn): ?>
+                                    <li><?= h($pn) ?></li>
+                                  <?php endforeach; ?>
+                                </ul>
+                              <?php endif; ?>
                             </td>
+
                             <td><b>R$ <?= number_format($tot, 2, ',', '.') ?></b></td>
                             <td>
                               <div class="acoes-wrap">
@@ -914,8 +923,12 @@ $horaAgora = date('H:i');
           <div class="row">
             <div class="col-md-6 mb-2">
               <div class="text-muted" style="font-size:12px;">Feirante(s)</div>
+
+              <!-- ✅ em linhas separadas quando tiver mais de um -->
               <?php if (empty($detalheProdutores)): ?>
                 <div>—</div>
+              <?php elseif (count($detalheProdutores) === 1): ?>
+                <div><?= h($detalheProdutores[0]) ?></div>
               <?php else: ?>
                 <ul class="plist">
                   <?php foreach ($detalheProdutores as $pn): ?>
@@ -924,6 +937,7 @@ $horaAgora = date('H:i');
                 </ul>
               <?php endif; ?>
             </div>
+
             <div class="col-md-6 mb-2">
               <div class="text-muted" style="font-size:12px;">Observação</div>
               <div><?= $vObs !== '' ? h($vObs) : '—' ?></div>
