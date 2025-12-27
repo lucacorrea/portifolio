@@ -324,11 +324,7 @@ try {
                   </a>
                 </li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="./adicionarUnidade.php">
-                    <i class="ti-plus mr-2"></i> Adicionar Unidade
-                  </a>
-                </li>
+              
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProdutor.php">
