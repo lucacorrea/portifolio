@@ -636,8 +636,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                 <h6 class="font-weight-normal mb-1">Painel administrativo da Feira do Produtor</h6>
                 <div class="mini-kpi">
                   Mês selecionado: <b><?= h($mesLabel) ?></b> • Período: <b><?= h(date('d/m/Y', strtotime($monthStart))) ?></b> até <b><?= h(date('d/m/Y', strtotime($monthEnd))) ?></b>
-                  <span class="ml-2">• Fuso: <b>Amazonas</b></span>
-                </div>
+                 
                 </div>
               </div>
 
