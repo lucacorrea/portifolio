@@ -2,6 +2,13 @@
 declare(strict_types=1);
 session_start();
 
+/* ======================================================================
+   TIMEZONE (AMAZONAS)
+   - PHP: America/Manaus (UTC-04)
+   - MySQL (nesta página): -04:00 (sem mexer no padrão global do seu db())
+   ====================================================================== */
+date_default_timezone_set('America/Manaus');
+
 /* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
   header('Location: ../../../index.php');
@@ -27,6 +34,11 @@ function h($s): string {
 require '../../../assets/php/conexao.php';
 $pdo = db();
 
+/* Força timezone do MySQL só nesta página (Amazonas = -04:00) */
+try {
+  $pdo->exec("SET time_zone = '-04:00'");
+} catch (Throwable $e) {}
+
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
 
@@ -37,12 +49,16 @@ if (!preg_match('/^\d{4}-\d{2}$/', $mes)) {
 }
 $monthStart = $mes . '-01';
 $monthEnd   = date('Y-m-t', strtotime($monthStart));
+$mesLabel   = date('m/Y', strtotime($monthStart));
 
-$mesLabel = date('m/Y', strtotime($monthStart));
-
-/* Datas base */
+/* Datas base (já no timezone AM/Manaus) */
 $today      = date('Y-m-d');
 $yesterday  = date('Y-m-d', strtotime('-1 day'));
+
+/* Mes anterior do mes filtrado (para comparação) */
+$prevMonthStart = date('Y-m-01', strtotime($monthStart . ' -1 month'));
+$prevMonthEnd   = date('Y-m-t',  strtotime($monthStart . ' -1 month'));
+$prevMesLabel   = date('m/Y', strtotime($prevMonthStart));
 
 /* Detecta tabela fechamento_dia (do seu DB) */
 $hasFechamentoDia = false;
@@ -63,6 +79,46 @@ function money($n): string {
   return number_format((float)$n, 2, ',', '.');
 }
 
+/* Helper: cálculo de variação % (hoje vs ontem / mês vs mês anterior) */
+function pct_change(float $current, float $previous): ?float {
+  if ($previous == 0.0) {
+    if ($current == 0.0) return 0.0;
+    return null; // indefinido (antes era 0)
+  }
+  return (($current - $previous) / $previous) * 100.0;
+}
+
+/* Helper: badge de variação */
+function variation_badge(?float $pct): array {
+  // retorna [html, texto_curto]
+  if ($pct === null) {
+    return [
+      '<span class="badge badge-info ml-2" title="Comparação indefinida (valor anterior = 0)">novo</span>',
+      'novo'
+    ];
+  }
+  $val = (float)$pct;
+  $abs = abs($val);
+  $fmt = number_format($abs, 1, ',', '.');
+
+  if ($val > 0.0001) {
+    return [
+      '<span class="badge badge-success ml-2"><i class="ti-arrow-up"></i> '.$fmt.'%</span>',
+      '+'.$fmt.'%'
+    ];
+  }
+  if ($val < -0.0001) {
+    return [
+      '<span class="badge badge-danger ml-2"><i class="ti-arrow-down"></i> '.$fmt.'%</span>',
+      '-'.$fmt.'%'
+    ];
+  }
+  return [
+    '<span class="badge badge-secondary ml-2">0,0%</span>',
+    '0,0%'
+  ];
+}
+
 /* ===== KPIs ===== */
 $kpi = [
   'vendas_hoje_total' => 0.0,
@@ -70,9 +126,17 @@ $kpi = [
   'itens_hoje_qtd'    => 0.0,
   'ticket_hoje'       => 0.0,
 
+  'vendas_ontem_total' => 0.0,
+  'vendas_ontem_qtd'   => 0,
+  'ticket_ontem'       => 0.0,
+
   'mes_total'         => 0.0,
   'mes_vendas_qtd'    => 0,
   'mes_ticket'        => 0.0,
+
+  'mes_ant_total'      => 0.0,
+  'mes_ant_vendas_qtd' => 0,
+  'mes_ant_ticket'     => 0.0,
 
   'produtores_ativos' => 0,
   'produtos_ativos'   => 0,
@@ -109,6 +173,22 @@ try {
   $kpi['vendas_hoje_qtd']   = (int)$r['qtd'];
   $kpi['vendas_hoje_total'] = (float)$r['total'];
   $kpi['ticket_hoje']       = $kpi['vendas_hoje_qtd'] > 0 ? ($kpi['vendas_hoje_total'] / $kpi['vendas_hoje_qtd']) : 0.0;
+
+  /* Vendas Ontem (para % do card) */
+  $st = $pdo->prepare("
+    SELECT
+      COUNT(*) AS qtd,
+      COALESCE(SUM(total),0) AS total
+    FROM vendas
+    WHERE feira_id = :f
+      AND DATE(data_hora) = :d
+      AND UPPER(status) <> 'CANCELADA'
+  ");
+  $st->execute([':f'=>$feiraId, ':d'=>$yesterday]);
+  $r = $st->fetch() ?: ['qtd'=>0,'total'=>0];
+  $kpi['vendas_ontem_qtd']   = (int)$r['qtd'];
+  $kpi['vendas_ontem_total'] = (float)$r['total'];
+  $kpi['ticket_ontem']       = $kpi['vendas_ontem_qtd'] > 0 ? ($kpi['vendas_ontem_total'] / $kpi['vendas_ontem_qtd']) : 0.0;
 
   /* Itens vendidos HOJE */
   $st = $pdo->prepare("
@@ -149,6 +229,22 @@ try {
   $kpi['mes_vendas_qtd'] = (int)$r['qtd'];
   $kpi['mes_total']      = (float)$r['total'];
   $kpi['mes_ticket']     = $kpi['mes_vendas_qtd'] > 0 ? ($kpi['mes_total'] / $kpi['mes_vendas_qtd']) : 0.0;
+
+  /* Total do MÊS ANTERIOR (comparação do card do mês) */
+  $st = $pdo->prepare("
+    SELECT
+      COUNT(*) AS qtd,
+      COALESCE(SUM(total),0) AS total
+    FROM vendas
+    WHERE feira_id = :f
+      AND DATE(data_hora) BETWEEN :i AND :e
+      AND UPPER(status) <> 'CANCELADA'
+  ");
+  $st->execute([':f'=>$feiraId, ':i'=>$prevMonthStart, ':e'=>$prevMonthEnd]);
+  $r = $st->fetch() ?: ['qtd'=>0,'total'=>0];
+  $kpi['mes_ant_vendas_qtd'] = (int)$r['qtd'];
+  $kpi['mes_ant_total']      = (float)$r['total'];
+  $kpi['mes_ant_ticket']     = $kpi['mes_ant_vendas_qtd'] > 0 ? ($kpi['mes_ant_total'] / $kpi['mes_ant_vendas_qtd']) : 0.0;
 
   /* Produtores ativos */
   $st = $pdo->prepare("SELECT COUNT(*) FROM produtores WHERE feira_id = :f AND ativo = 1");
@@ -235,6 +331,13 @@ $payPct = [
   'CARTAO'   => $totalPayHoje > 0 ? (int)round(($payHoje['CARTAO'] / $totalPayHoje) * 100) : 0,
   'OUTROS'   => $totalPayHoje > 0 ? (int)round(($payHoje['OUTROS'] / $totalPayHoje) * 100) : 0,
 ];
+
+/* ===== Percentuais de comparação (cards) ===== */
+$todayPct = pct_change((float)$kpi['vendas_hoje_total'], (float)$kpi['vendas_ontem_total']);
+[$todayBadgeHtml] = variation_badge($todayPct);
+
+$monthPct = pct_change((float)$kpi['mes_total'], (float)$kpi['mes_ant_total']);
+[$monthBadgeHtml] = variation_badge($monthPct);
 
 /* ===== Top categorias (MÊS FILTRADO) ===== */
 $topCategorias = [];
@@ -367,7 +470,7 @@ try {
 } catch (Throwable $e) { $ultimosItens = []; }
 
 /* Para botões de navegação do mês */
-$mesAtual = date('Y-m');
+$mesAtual    = date('Y-m');
 $mesAnterior = date('Y-m', strtotime($monthStart . ' -1 month'));
 $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
 ?>
@@ -416,6 +519,13 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
       padding: 6px 10px;
       background:#fff;
     }
+
+    .kpi-compare {
+      font-size: 12px;
+      opacity: .95;
+      margin-top: 4px;
+    }
+    .kpi-compare .badge { font-weight: 700; }
   </style>
 </head>
 
@@ -530,6 +640,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                 <h6 class="font-weight-normal mb-0">Painel administrativo da Feira do Produtor</h6>
                 <div class="mini-kpi mt-1">
                   Mês selecionado: <b><?= h($mesLabel) ?></b> • Período: <b><?= h(date('d/m/Y', strtotime($monthStart))) ?></b> até <b><?= h(date('d/m/Y', strtotime($monthEnd))) ?></b>
+                  <span class="ml-2">• Fuso: <b>Amazonas (America/Manaus)</b></span>
                 </div>
               </div>
 
@@ -579,12 +690,24 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                       </h2>
                     </div>
                     <div class="ml-2 text-white">
-                      <h4 class="location font-weight-normal">Vendas Hoje</h4>
-                      <h6 class="font-weight-normal"><?= (int)$kpi['vendas_hoje_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['ticket_hoje']) ?></h6>
+                      <h4 class="location font-weight-normal">
+                        Vendas Hoje <?= $todayBadgeHtml ?>
+                      </h4>
+                      <h6 class="font-weight-normal">
+                        <?= (int)$kpi['vendas_hoje_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['ticket_hoje']) ?>
+                      </h6>
+                      <div class="kpi-compare text-white">
+                        Comparado a ontem (<?= h(date('d/m', strtotime($yesterday))) ?>):
+                        <b>R$ <?= money($kpi['vendas_ontem_total']) ?></b>
+                        • <?= (int)$kpi['vendas_ontem_qtd'] ?> venda(s)
+                      </div>
                     </div>
                   </div>
                   <div class="mt-2 mini-kpi text-white">
                     Itens hoje: <b><?= number_format((float)$kpi['itens_hoje_qtd'], 3, ',', '.') ?></b> • Canceladas: <b><?= (int)$kpi['canceladas_hoje'] ?></b>
+                    <?php if ((int)$kpi['fechamento_pendente_ontem'] === 1): ?>
+                      <span class="badge badge-warning ml-2">Fechamento pendente ontem</span>
+                    <?php endif; ?>
                   </div>
                 </div>
               </div>
@@ -596,18 +719,28 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
               <div class="col-md-6 mb-4 stretch-card transparent">
                 <div class="card card-tale">
                   <div class="card-body">
-                    <p class="mb-2">Vendas Hoje</p>
+                    <p class="mb-2">Vendas Hoje <?= $todayBadgeHtml ?></p>
                     <p class="fs-30 mb-1">R$ <?= money($kpi['vendas_hoje_total']) ?></p>
-                    <p class="mini-kpi"><?= (int)$kpi['vendas_hoje_qtd'] ?> lançamento(s)</p>
+                    <p class="mini-kpi">
+                      <?= (int)$kpi['vendas_hoje_qtd'] ?> lançamento(s)
+                      <span class="ml-1">• Ontem: R$ <?= money($kpi['vendas_ontem_total']) ?></span>
+                    </p>
                   </div>
                 </div>
               </div>
+
               <div class="col-md-6 mb-4 stretch-card transparent">
                 <div class="card card-dark-blue">
                   <div class="card-body">
-                    <p class="mb-2">Total do Mês (<?= h($mesLabel) ?>)</p>
+                    <p class="mb-2">
+                      Total do Mês (<?= h($mesLabel) ?>) <?= $monthBadgeHtml ?>
+                    </p>
                     <p class="fs-30 mb-1">R$ <?= money($kpi['mes_total']) ?></p>
-                    <p class="mini-kpi"><?= (int)$kpi['mes_vendas_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['mes_ticket']) ?></p>
+                    <p class="mini-kpi">
+                      <?= (int)$kpi['mes_vendas_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['mes_ticket']) ?>
+                      <br>
+                      Comparado a <?= h($prevMesLabel) ?>: <b>R$ <?= money($kpi['mes_ant_total']) ?></b> • <?= (int)$kpi['mes_ant_vendas_qtd'] ?> venda(s)
+                    </p>
                   </div>
                 </div>
               </div>
