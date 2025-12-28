@@ -55,38 +55,19 @@ $csrf = (string)$_SESSION['csrf_token'];
 
 $pdo = db();
 
-/* ===== Comunidades (para o SELECT) =====
-   Melhorado: detecta se a tabela existe no DB atual e mostra erro amigável.
-*/
+/* ===== Comunidades (para o SELECT) ===== */
 $comunidades = [];
-$comunidadesTableOk = true;
-$dbName = '';
-
 try {
-  $dbName = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
-
-  $chkT = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM information_schema.TABLES
-    WHERE TABLE_SCHEMA = :db
-      AND TABLE_NAME = 'comunidades'
-  ");
-  $chkT->execute([':db' => $dbName]);
-  $comunidadesTableOk = ((int)$chkT->fetchColumn() > 0);
-
-  if ($comunidadesTableOk) {
-    $sqlC = "SELECT id, nome
-             FROM comunidades
-             WHERE feira_id = :feira AND ativo = 1
-             ORDER BY nome ASC";
-    $stC = $pdo->prepare($sqlC);
-    $stC->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
-    $stC->execute();
-    $comunidades = $stC->fetchAll(PDO::FETCH_ASSOC);
-  }
+  $sqlC = "SELECT id, nome
+           FROM comunidades
+           WHERE feira_id = :feira AND ativo = 1
+           ORDER BY nome ASC";
+  $stC = $pdo->prepare($sqlC);
+  $stC->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
+  $stC->execute();
+  $comunidades = $stC->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-  $comunidadesTableOk = false;
-  $err = 'Erro ao carregar comunidades: ' . $e->getMessage();
+  $comunidades = [];
 }
 
 /* Valores antigos */
@@ -117,8 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if ($old['nome'] === '') {
     $err = 'Informe o nome do produtor.';
-  } elseif (!$comunidadesTableOk) {
-    $err = 'A tabela comunidades não existe no banco conectado. Importe o SQL no banco correto.';
   } elseif ($old['comunidade_id'] === '' || !ctype_digit($old['comunidade_id'])) {
     $err = 'Selecione a comunidade do produtor.';
   } else {
@@ -166,12 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
       }
     } catch (Throwable $e) {
-      $msgE = $e->getMessage();
-      if (stripos($msgE, 'Duplicate entry') !== false) {
-        $err = 'Já existe um produtor com esse nome nesta feira.';
-      } else {
-        $err = 'Erro ao salvar produtor: ' . $msgE;
-      }
+      $err = 'Erro ao salvar produtor: ' . $e->getMessage();
     }
   }
 }
@@ -250,14 +224,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       gap:8px;
       align-items:center;
       justify-content:flex-start;
-    }
-
-    .mini-debug{
-      font-size:12px;
-      color:#6b7280;
-    }
-    .mini-debug code{
-      font-size:12px;
     }
   </style>
 </head>
@@ -445,20 +411,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="alert alert-danger"><?= h($err) ?></div>
         <?php endif; ?>
 
-        <?php if (!$comunidadesTableOk): ?>
-          <div class="alert alert-danger">
-            <b>Tabela comunidades não encontrada</b> no banco conectado por <b>db()</b>.
-            <?php if ($dbName !== ''): ?>
-              <div class="mini-debug mt-2">
-                Banco atual do db(): <code><?= h($dbName) ?></code>
-              </div>
-            <?php endif; ?>
-            <div class="mini-debug mt-2">
-              Solução: importe seu SQL no banco correto (ex.: <code>u784961086_relatorio</code>) e confirme no phpMyAdmin.
-            </div>
-          </div>
-        <?php endif; ?>
-
         <div class="row">
           <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
@@ -477,9 +429,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   </a>
                 </div>
 
-                <?php if ($comunidadesTableOk && empty($comunidades)): ?>
+                <?php if (empty($comunidades)): ?>
                   <div class="alert alert-warning mt-3">
-                    Nenhuma comunidade ativa cadastrada para esta feira (feira_id = <?= (int)$FEIRA_ID ?>).
+                    Nenhuma comunidade ativa cadastrada para esta feira.
                     Cadastre comunidades primeiro para poder cadastrar produtores.
                   </div>
                 <?php endif; ?>
@@ -543,7 +495,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <select
                           name="comunidade_id"
                           class="form-control"
-                          <?= (!$comunidadesTableOk || empty($comunidades)) ? 'disabled' : 'required' ?>
+                          <?= empty($comunidades) ? 'disabled' : 'required' ?>
                         >
                           <option value="">Selecione</option>
                           <?php foreach ($comunidades as $c): ?>
@@ -555,7 +507,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </option>
                           <?php endforeach; ?>
                         </select>
-                       
+                        <small class="text-muted help-hint">
+                          Vem da tabela <b>comunidades</b> (feira_id = <?= (int)$FEIRA_ID ?>, ativo=1).
+                        </small>
                       </div>
 
                       <div class="col-md-3 mb-3">
@@ -583,7 +537,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <hr>
 
                   <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" <?= (!$comunidadesTableOk || empty($comunidades)) ? 'disabled' : '' ?>>
+                    <button type="submit" class="btn btn-primary" <?= empty($comunidades) ? 'disabled' : '' ?>>
                       <i class="ti-save mr-1"></i> Salvar
                     </button>
                     <button type="reset" class="btn btn-light">
@@ -594,8 +548,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <small class="text-muted d-block mt-3">
                     * Campos obrigatórios.
                   </small>
-
-                  
                 </form>
 
               </div>
