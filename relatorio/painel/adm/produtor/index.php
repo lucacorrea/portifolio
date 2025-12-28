@@ -1430,6 +1430,15 @@ for ($i = 0; $i < 24; $i++) {
       </div>
     </div>
   </div>
+  <script>
+    function goMes(val) {
+      if (!val) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('mes', val);
+      url.searchParams.delete('p'); // reseta paginação
+      window.location.href = url.toString();
+    }
+  </script>
 
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
