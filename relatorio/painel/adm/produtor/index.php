@@ -563,7 +563,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
       background-size: cover;
       height: 180% !important;
       background-position: center;
-      filter: brightness(100%);
+      filter: brightness(70%);
       transform: scale(1.05);
     }
     .kpi-hero .hero-overlay{
