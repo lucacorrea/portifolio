@@ -760,7 +760,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
             <div class="card kpi-card">
               <div class="kpi-hero">
                 <div class="hero-bg" style="background-image:url('../../../images/dashboard/produtor.jpeg');"></div>
-                <div class="hero-overlay"></div>
+               
 
                 <div class="hero-content">
                   <div class="kpi-row">
