@@ -493,10 +493,14 @@ try {
   $totalPages = 1;
 }
 
-/* Navegação mês */
-$mesAtual    = date('Y-m');
-$mesAnterior = date('Y-m', strtotime($monthStart . ' -1 month'));
-$mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
+/* ===== Lista de meses (ex.: últimos 24) ===== */
+$mesOptions = [];
+$base = strtotime(date('Y-m-01')); // mês atual
+for ($i = 0; $i < 24; $i++) {
+  $m = date('Y-m', strtotime("-{$i} month", $base));
+  $label = date('m/Y', strtotime($m . '-01'));
+  $mesOptions[] = ['val' => $m, 'label' => $label];
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
