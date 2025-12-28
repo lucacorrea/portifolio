@@ -721,14 +721,9 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                     Fuso: <b>Amazonas</b>
                   </div>
 
-                  <?php
-                  $diasNoPeriodo = (int)date('t', strtotime($monthStart));
-                  $mediaDia = $diasNoPeriodo > 0 ? ($kpi['mes_total'] / $diasNoPeriodo) : 0;
-                  ?>
                   <div class="mini-kpi">
-                    Total do mês: <b>R$ <?= money($kpi['mes_total']) ?></b> •
-                    Média/dia: <b>R$ <?= money($mediaDia) ?></b> •
-                    Ticket médio: <b>R$ <?= money($kpi['mes_ticket']) ?></b>
+                    Hoje: <b>R$ <?= money($kpi['vendas_hoje_total']) ?></b> <?= $todayBadgeHtml ?> •
+                    Mês: <b>R$ <?= money($kpi['mes_total']) ?></b> <?= $monthBadgeHtml ?>
                   </div>
                 </div>
 
