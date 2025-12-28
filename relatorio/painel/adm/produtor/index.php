@@ -646,7 +646,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
 
                   <input type="month" value="<?= h($mes) ?>" onchange="location.href='?mes='+this.value" title="Filtrar mês" />
 
-                  <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesProximo) ?>">Próximo <i class="ti-angle-right ml-1"></i></a>
+                  
 
                   <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesAtual) ?>">
                     <i class="ti-calendar mr-1"></i> Atual
