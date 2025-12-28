@@ -35,27 +35,24 @@ require '../../../assets/php/conexao.php';
 $pdo = db();
 
 /* Força timezone do MySQL só nesta página (Amazonas = -04:00) */
-try {
-  $pdo->exec("SET time_zone = '-04:00'");
-} catch (Throwable $e) {}
+try { $pdo->exec("SET time_zone = '-04:00'"); } catch (Throwable $e) {}
 
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
 
 /* ===== Filtro mensal (YYYY-MM) ===== */
 $mes = trim((string)($_GET['mes'] ?? date('Y-m')));
-if (!preg_match('/^\d{4}-\d{2}$/', $mes)) {
-  $mes = date('Y-m');
-}
+if (!preg_match('/^\d{4}-\d{2}$/', $mes)) $mes = date('Y-m');
+
 $monthStart = $mes . '-01';
 $monthEnd   = date('Y-m-t', strtotime($monthStart));
 $mesLabel   = date('m/Y', strtotime($monthStart));
 
-/* Datas base (já no timezone AM/Manaus) */
+/* Datas base (timezone AM/Manaus) */
 $today      = date('Y-m-d');
 $yesterday  = date('Y-m-d', strtotime('-1 day'));
 
-/* Mes anterior do mes filtrado (para comparação) */
+/* Mes anterior do mes filtrado (comparação) */
 $prevMonthStart = date('Y-m-01', strtotime($monthStart . ' -1 month'));
 $prevMonthEnd   = date('Y-m-t',  strtotime($monthStart . ' -1 month'));
 $prevMesLabel   = date('m/Y', strtotime($prevMonthStart));
@@ -74,50 +71,40 @@ try {
   $hasFechamentoDia = false;
 }
 
-/* Helper: dinheiro */
-function money($n): string {
-  return number_format((float)$n, 2, ',', '.');
-}
-
-/* Helper: cálculo de variação % (hoje vs ontem / mês vs mês anterior) */
+/* Helpers */
+function money($n): string { return number_format((float)$n, 2, ',', '.'); }
 function pct_change(float $current, float $previous): ?float {
-  if ($previous == 0.0) {
-    if ($current == 0.0) return 0.0;
-    return null; // indefinido (antes era 0)
-  }
+  if ($previous == 0.0) { return ($current == 0.0) ? 0.0 : null; }
   return (($current - $previous) / $previous) * 100.0;
 }
-
-/* Helper: badge de variação */
 function variation_badge(?float $pct): array {
-  // retorna [html, texto_curto]
-  if ($pct === null) {
-    return [
-      '<span class="badge badge-info ml-2" title="Comparação indefinida (valor anterior = 0)">novo</span>',
-      'novo'
-    ];
-  }
+  if ($pct === null) return ['<span class="badge badge-info ml-2" title="Comparação indefinida (valor anterior = 0)">novo</span>', 'novo'];
   $val = (float)$pct;
   $abs = abs($val);
   $fmt = number_format($abs, 1, ',', '.');
-
-  if ($val > 0.0001) {
-    return [
-      '<span class="badge badge-success ml-2"><i class="ti-arrow-up"></i> '.$fmt.'%</span>',
-      '+'.$fmt.'%'
-    ];
-  }
-  if ($val < -0.0001) {
-    return [
-      '<span class="badge badge-danger ml-2"><i class="ti-arrow-down"></i> '.$fmt.'%</span>',
-      '-'.$fmt.'%'
-    ];
-  }
-  return [
-    '<span class="badge badge-secondary ml-2">0,0%</span>',
-    '0,0%'
-  ];
+  if ($val > 0.0001) return ['<span class="badge badge-success ml-2"><i class="ti-arrow-up"></i> '.$fmt.'%</span>', '+'.$fmt.'%'];
+  if ($val < -0.0001) return ['<span class="badge badge-danger ml-2"><i class="ti-arrow-down"></i> '.$fmt.'%</span>', '-'.$fmt.'%'];
+  return ['<span class="badge badge-secondary ml-2">0,0%</span>', '0,0%'];
 }
+
+/* URL helper mantendo filtros */
+function url_with(array $add): string {
+  $q = $_GET;
+  foreach ($add as $k => $v) {
+    if ($v === null) unset($q[$k]);
+    else $q[$k] = $v;
+  }
+  return '?' . http_build_query($q);
+}
+
+/* ===== Paginação (tabela grande do mês) ===== */
+$perPage = 6;
+$page = (int)($_GET['p'] ?? 1);
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $perPage;
+
+$totalRows = 0;
+$totalPages = 1;
 
 /* ===== KPIs ===== */
 $kpi = [
@@ -158,11 +145,9 @@ $payHoje = [
 ];
 
 try {
-  /* Vendas Hoje (total + qtd) */
+  /* Vendas Hoje */
   $st = $pdo->prepare("
-    SELECT
-      COUNT(*) AS qtd,
-      COALESCE(SUM(total),0) AS total
+    SELECT COUNT(*) AS qtd, COALESCE(SUM(total),0) AS total
     FROM vendas
     WHERE feira_id = :f
       AND DATE(data_hora) = :d
@@ -174,16 +159,7 @@ try {
   $kpi['vendas_hoje_total'] = (float)$r['total'];
   $kpi['ticket_hoje']       = $kpi['vendas_hoje_qtd'] > 0 ? ($kpi['vendas_hoje_total'] / $kpi['vendas_hoje_qtd']) : 0.0;
 
-  /* Vendas Ontem (para % do card) */
-  $st = $pdo->prepare("
-    SELECT
-      COUNT(*) AS qtd,
-      COALESCE(SUM(total),0) AS total
-    FROM vendas
-    WHERE feira_id = :f
-      AND DATE(data_hora) = :d
-      AND UPPER(status) <> 'CANCELADA'
-  ");
+  /* Vendas Ontem (comparação) */
   $st->execute([':f'=>$feiraId, ':d'=>$yesterday]);
   $r = $st->fetch() ?: ['qtd'=>0,'total'=>0];
   $kpi['vendas_ontem_qtd']   = (int)$r['qtd'];
@@ -191,7 +167,7 @@ try {
   $kpi['ticket_ontem']       = $kpi['vendas_ontem_qtd'] > 0 ? ($kpi['vendas_ontem_total'] / $kpi['vendas_ontem_qtd']) : 0.0;
 
   /* Itens vendidos HOJE */
-  $st = $pdo->prepare("
+  $st2 = $pdo->prepare("
     SELECT COALESCE(SUM(vi.quantidade),0) AS itens
     FROM venda_itens vi
     JOIN vendas v
@@ -200,48 +176,37 @@ try {
       AND DATE(v.data_hora) = :d
       AND UPPER(v.status) <> 'CANCELADA'
   ");
-  $st->execute([':f'=>$feiraId, ':d'=>$today]);
-  $kpi['itens_hoje_qtd'] = (float)($st->fetchColumn() ?? 0);
+  $st2->execute([':f'=>$feiraId, ':d'=>$today]);
+  $kpi['itens_hoje_qtd'] = (float)($st2->fetchColumn() ?? 0);
 
   /* Canceladas HOJE */
-  $st = $pdo->prepare("
+  $st3 = $pdo->prepare("
     SELECT COUNT(*)
     FROM vendas
     WHERE feira_id = :f
       AND DATE(data_hora) = :d
       AND UPPER(status) = 'CANCELADA'
   ");
-  $st->execute([':f'=>$feiraId, ':d'=>$today]);
-  $kpi['canceladas_hoje'] = (int)($st->fetchColumn() ?? 0);
+  $st3->execute([':f'=>$feiraId, ':d'=>$today]);
+  $kpi['canceladas_hoje'] = (int)($st3->fetchColumn() ?? 0);
 
-  /* Total do MÊS (FILTRO) */
-  $st = $pdo->prepare("
-    SELECT
-      COUNT(*) AS qtd,
-      COALESCE(SUM(total),0) AS total
+  /* Total do MÊS */
+  $st4 = $pdo->prepare("
+    SELECT COUNT(*) AS qtd, COALESCE(SUM(total),0) AS total
     FROM vendas
     WHERE feira_id = :f
       AND DATE(data_hora) BETWEEN :i AND :e
       AND UPPER(status) <> 'CANCELADA'
   ");
-  $st->execute([':f'=>$feiraId, ':i'=>$monthStart, ':e'=>$monthEnd]);
-  $r = $st->fetch() ?: ['qtd'=>0,'total'=>0];
+  $st4->execute([':f'=>$feiraId, ':i'=>$monthStart, ':e'=>$monthEnd]);
+  $r = $st4->fetch() ?: ['qtd'=>0,'total'=>0];
   $kpi['mes_vendas_qtd'] = (int)$r['qtd'];
   $kpi['mes_total']      = (float)$r['total'];
   $kpi['mes_ticket']     = $kpi['mes_vendas_qtd'] > 0 ? ($kpi['mes_total'] / $kpi['mes_vendas_qtd']) : 0.0;
 
-  /* Total do MÊS ANTERIOR (comparação do card do mês) */
-  $st = $pdo->prepare("
-    SELECT
-      COUNT(*) AS qtd,
-      COALESCE(SUM(total),0) AS total
-    FROM vendas
-    WHERE feira_id = :f
-      AND DATE(data_hora) BETWEEN :i AND :e
-      AND UPPER(status) <> 'CANCELADA'
-  ");
-  $st->execute([':f'=>$feiraId, ':i'=>$prevMonthStart, ':e'=>$prevMonthEnd]);
-  $r = $st->fetch() ?: ['qtd'=>0,'total'=>0];
+  /* Total do MÊS ANTERIOR */
+  $st4->execute([':f'=>$feiraId, ':i'=>$prevMonthStart, ':e'=>$prevMonthEnd]);
+  $r = $st4->fetch() ?: ['qtd'=>0,'total'=>0];
   $kpi['mes_ant_vendas_qtd'] = (int)$r['qtd'];
   $kpi['mes_ant_total']      = (float)$r['total'];
   $kpi['mes_ant_ticket']     = $kpi['mes_ant_vendas_qtd'] > 0 ? ($kpi['mes_ant_total'] / $kpi['mes_ant_vendas_qtd']) : 0.0;
@@ -256,7 +221,7 @@ try {
   $st->execute([':f'=>$feiraId]);
   $kpi['produtos_ativos'] = (int)($st->fetchColumn() ?? 0);
 
-  /* Vendas sem forma_pagamento no MÊS (FILTRO) */
+  /* Vendas sem forma_pagamento no mês */
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM vendas
@@ -300,7 +265,7 @@ try {
     else $payHoje['OUTROS'] += $val;
   }
 
-  /* Fechamento pendente ontem? (só se tabela existir) */
+  /* Fechamento pendente ontem? (se existir tabela) */
   if ($hasFechamentoDia) {
     $st = $pdo->prepare("
       SELECT COUNT(*)
@@ -318,7 +283,6 @@ try {
 
     $kpi['fechamento_pendente_ontem'] = ($ontemVendas > 0 && $ontemFechado <= 0) ? 1 : 0;
   }
-
 } catch (Throwable $e) {
   // abre com zeros
 }
@@ -332,14 +296,14 @@ $payPct = [
   'OUTROS'   => $totalPayHoje > 0 ? (int)round(($payHoje['OUTROS'] / $totalPayHoje) * 100) : 0,
 ];
 
-/* ===== Percentuais de comparação (cards) ===== */
+/* Badges comparação */
 $todayPct = pct_change((float)$kpi['vendas_hoje_total'], (float)$kpi['vendas_ontem_total']);
 [$todayBadgeHtml] = variation_badge($todayPct);
 
 $monthPct = pct_change((float)$kpi['mes_total'], (float)$kpi['mes_ant_total']);
 [$monthBadgeHtml] = variation_badge($monthPct);
 
-/* ===== Top categorias (MÊS FILTRADO) ===== */
+/* ===== Top categorias (mês) ===== */
 $topCategorias = [];
 try {
   $st = $pdo->prepare("
@@ -365,7 +329,7 @@ try {
   $topCategorias = $st->fetchAll();
 } catch (Throwable $e) { $topCategorias = []; }
 
-/* ===== Top produtos (MÊS FILTRADO) ===== */
+/* ===== Top produtos (mês) ===== */
 $topProdutos = [];
 try {
   $st = $pdo->prepare("
@@ -389,7 +353,7 @@ try {
   $topProdutos = $st->fetchAll();
 } catch (Throwable $e) { $topProdutos = []; }
 
-/* ===== Últimos lançamentos (FILTRADO PELO MÊS) com feirantes em linhas separadas ===== */
+/* ===== Últimos lançamentos (mês) ===== */
 $ultimosLanc = [];
 try {
   $st = $pdo->prepare("
@@ -415,7 +379,7 @@ try {
   $ultimosLanc = $st->fetchAll();
 } catch (Throwable $e) { $ultimosLanc = []; }
 
-/* ===== Lista de produtores (amostra real) ===== */
+/* ===== Lista produtores (amostra) ===== */
 $listaProdutores = [];
 try {
   $st = $pdo->prepare("
@@ -434,9 +398,25 @@ try {
   $listaProdutores = $st->fetchAll();
 } catch (Throwable $e) { $listaProdutores = []; }
 
-/* ===== Tabela avançada: últimos itens vendidos (FILTRADO PELO MÊS) ===== */
+/* ===== Tabela grande (mês) com paginação 6 ===== */
 $ultimosItens = [];
 try {
+  $st = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM venda_itens vi
+    JOIN vendas v
+      ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    JOIN produtos p
+      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    WHERE vi.feira_id = :f
+      AND DATE(v.data_hora) BETWEEN :i AND :e
+  ");
+  $st->execute([':f'=>$feiraId, ':i'=>$monthStart, ':e'=>$monthEnd]);
+  $totalRows = (int)($st->fetchColumn() ?? 0);
+
+  $totalPages = max(1, (int)ceil($totalRows / $perPage));
+  if ($page > $totalPages) { $page = $totalPages; $offset = ($page - 1) * $perPage; }
+
   $st = $pdo->prepare("
     SELECT
       v.id AS venda_id,
@@ -463,13 +443,22 @@ try {
     WHERE vi.feira_id = :f
       AND DATE(v.data_hora) BETWEEN :i AND :e
     ORDER BY v.data_hora DESC
-    LIMIT 30
+    LIMIT :lim OFFSET :off
   ");
-  $st->execute([':f'=>$feiraId, ':i'=>$monthStart, ':e'=>$monthEnd]);
+  $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
+  $st->bindValue(':i', $monthStart, PDO::PARAM_STR);
+  $st->bindValue(':e', $monthEnd, PDO::PARAM_STR);
+  $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
+  $st->bindValue(':off', $offset, PDO::PARAM_INT);
+  $st->execute();
   $ultimosItens = $st->fetchAll();
-} catch (Throwable $e) { $ultimosItens = []; }
+} catch (Throwable $e) {
+  $ultimosItens = [];
+  $totalRows = 0;
+  $totalPages = 1;
+}
 
-/* Para botões de navegação do mês */
+/* Navegação mês */
 $mesAtual    = date('Y-m');
 $mesAnterior = date('Y-m', strtotime($monthStart . ' -1 month'));
 $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
@@ -491,20 +480,31 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
-
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
-
-    .mini-kpi { font-size: 12px; color: #6c757d; }
+    /* ===== Slim / clean ===== */
+    .content-wrapper { padding-top: 1rem !important; }
+    .grid-margin { margin-bottom: 1rem !important; }
+    .card { border-radius: 14px !important; }
+    .card-body { padding: 1rem !important; }
+    .card-title { margin-bottom: .35rem !important; }
+    hr { margin: .8rem 0 !important; }
+    .mini-kpi { font-size: 12px; color: #6c757d; margin-bottom: .35rem; }
+    .table th, .table td { padding: .55rem .6rem !important; vertical-align: middle !important; }
+    .table thead th { font-size: 12px; text-transform: uppercase; letter-spacing: .02em; }
     .badge-soft {
       background: rgba(0, 0, 0, 0.05);
       border: 1px solid rgba(0, 0, 0, 0.07);
       font-weight: 600;
     }
-    .table td, .table th { vertical-align: middle !important; }
+    .kpi-compare { font-size: 12px; opacity: .95; margin-top: 4px; }
+    .kpi-compare .badge { font-weight: 700; }
 
+    /* Menu hover/cores */
+    ul .nav-link:hover { color: blue !important; }
+    .nav-link { color: black !important; }
+    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
+    .sidebar .sub-menu li { list-style: none !important; }
+
+    /* Filtro mês slim */
     .mes-filter{
       display:flex;
       gap:8px;
@@ -513,19 +513,15 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
       justify-content:flex-end;
     }
     .mes-filter input[type="month"]{
-      height: 38px;
+      height: 36px;
       border-radius: 10px;
       border: 1px solid rgba(0,0,0,.15);
       padding: 6px 10px;
       background:#fff;
     }
 
-    .kpi-compare {
-      font-size: 12px;
-      opacity: .95;
-      margin-top: 4px;
-    }
-    .kpi-compare .badge { font-weight: 700; }
+    /* Paginação menor */
+    .pagination.pagination-sm .page-link { padding: .25rem .55rem; }
   </style>
 </head>
 
@@ -635,38 +631,33 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
         <div class="row">
           <div class="col-md-12 grid-margin">
             <div class="row">
-              <div class="col-12 col-xl-7 mb-3 mb-xl-0">
-                <h3 class="font-weight-bold">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
-                <h6 class="font-weight-normal mb-0">Painel administrativo da Feira do Produtor</h6>
-                <div class="mini-kpi mt-1">
+              <div class="col-12 col-xl-7 mb-2 mb-xl-0">
+                <h3 class="font-weight-bold mb-1">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
+                <h6 class="font-weight-normal mb-1">Painel administrativo da Feira do Produtor</h6>
+                <div class="mini-kpi">
                   Mês selecionado: <b><?= h($mesLabel) ?></b> • Período: <b><?= h(date('d/m/Y', strtotime($monthStart))) ?></b> até <b><?= h(date('d/m/Y', strtotime($monthEnd))) ?></b>
-                  <span class="ml-2">• Fuso: <b>Amazonas (America/Manaus)</b></span>
+                  <span class="ml-2">• Fuso: <b>Amazonas</b></span>
                 </div>
               </div>
 
               <div class="col-12 col-xl-5">
                 <div class="mes-filter">
-                  <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesAnterior) ?>"><i class="ti-angle-left mr-1"></i> Mês anterior</a>
+                  <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesAnterior) ?>"><i class="ti-angle-left mr-1"></i> Anterior</a>
 
-                  <input
-                    type="month"
-                    value="<?= h($mes) ?>"
-                    onchange="location.href='?mes='+this.value"
-                    title="Filtrar mês"
-                  />
+                  <input type="month" value="<?= h($mes) ?>" onchange="location.href='?mes='+this.value" title="Filtrar mês" />
 
-                  <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesProximo) ?>">Próximo mês <i class="ti-angle-right ml-1"></i></a>
+                  <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesProximo) ?>">Próximo <i class="ti-angle-right ml-1"></i></a>
 
                   <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesAtual) ?>">
-                    <i class="ti-calendar mr-1"></i> Mês atual
+                    <i class="ti-calendar mr-1"></i> Atual
                   </a>
 
                   <a class="btn btn-sm btn-light bg-white" href="./lancamentos.php?dia=<?= h($today) ?>">
-                    <i class="ti-write mr-1"></i> Lançar hoje
+                    <i class="ti-write mr-1"></i> Lançar
                   </a>
 
                   <a class="btn btn-sm btn-light bg-white" href="./fechamentoDia.php?dia=<?= h($today) ?>">
-                    <i class="ti-check mr-1"></i> Fechamento hoje
+                    <i class="ti-check mr-1"></i> Fechar
                   </a>
                 </div>
               </div>
@@ -690,16 +681,14 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                       </h2>
                     </div>
                     <div class="ml-2 text-white">
-                      <h4 class="location font-weight-normal">
+                      <h4 class="location font-weight-normal mb-1">
                         Vendas Hoje <?= $todayBadgeHtml ?>
                       </h4>
-                      <h6 class="font-weight-normal">
+                      <h6 class="font-weight-normal mb-1">
                         <?= (int)$kpi['vendas_hoje_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['ticket_hoje']) ?>
                       </h6>
                       <div class="kpi-compare text-white">
-                        Comparado a ontem (<?= h(date('d/m', strtotime($yesterday))) ?>):
-                        <b>R$ <?= money($kpi['vendas_ontem_total']) ?></b>
-                        • <?= (int)$kpi['vendas_ontem_qtd'] ?> venda(s)
+                        Ontem (<?= h(date('d/m', strtotime($yesterday))) ?>): <b>R$ <?= money($kpi['vendas_ontem_total']) ?></b> • <?= (int)$kpi['vendas_ontem_qtd'] ?> venda(s)
                       </div>
                     </div>
                   </div>
@@ -716,30 +705,23 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
 
           <div class="col-md-6 grid-margin transparent">
             <div class="row">
-              <div class="col-md-6 mb-4 stretch-card transparent">
+              <div class="col-md-6 mb-3 stretch-card transparent">
                 <div class="card card-tale">
                   <div class="card-body">
-                    <p class="mb-2">Vendas Hoje <?= $todayBadgeHtml ?></p>
+                    <p class="mb-1">Vendas Hoje <?= $todayBadgeHtml ?></p>
                     <p class="fs-30 mb-1">R$ <?= money($kpi['vendas_hoje_total']) ?></p>
-                    <p class="mini-kpi">
-                      <?= (int)$kpi['vendas_hoje_qtd'] ?> lançamento(s)
-                      <span class="ml-1">• Ontem: R$ <?= money($kpi['vendas_ontem_total']) ?></span>
-                    </p>
+                    <p class="mini-kpi mb-0"><?= (int)$kpi['vendas_hoje_qtd'] ?> lançamento(s) • Ontem: R$ <?= money($kpi['vendas_ontem_total']) ?></p>
                   </div>
                 </div>
               </div>
-
-              <div class="col-md-6 mb-4 stretch-card transparent">
+              <div class="col-md-6 mb-3 stretch-card transparent">
                 <div class="card card-dark-blue">
                   <div class="card-body">
-                    <p class="mb-2">
-                      Total do Mês (<?= h($mesLabel) ?>) <?= $monthBadgeHtml ?>
-                    </p>
+                    <p class="mb-1">Total do Mês (<?= h($mesLabel) ?>) <?= $monthBadgeHtml ?></p>
                     <p class="fs-30 mb-1">R$ <?= money($kpi['mes_total']) ?></p>
-                    <p class="mini-kpi">
-                      <?= (int)$kpi['mes_vendas_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['mes_ticket']) ?>
-                      <br>
-                      Comparado a <?= h($prevMesLabel) ?>: <b>R$ <?= money($kpi['mes_ant_total']) ?></b> • <?= (int)$kpi['mes_ant_vendas_qtd'] ?> venda(s)
+                    <p class="mini-kpi mb-0">
+                      <?= (int)$kpi['mes_vendas_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['mes_ticket']) ?><br>
+                      <?= h($prevMesLabel) ?>: <b>R$ <?= money($kpi['mes_ant_total']) ?></b> • <?= (int)$kpi['mes_ant_vendas_qtd'] ?> venda(s)
                     </p>
                   </div>
                 </div>
@@ -747,21 +729,21 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
             </div>
 
             <div class="row">
-              <div class="col-md-6 mb-4 mb-lg-0 stretch-card transparent">
+              <div class="col-md-6 mb-3 mb-lg-0 stretch-card transparent">
                 <div class="card card-light-blue">
                   <div class="card-body">
-                    <p class="mb-2">Produtores Ativos</p>
+                    <p class="mb-1">Produtores Ativos</p>
                     <p class="fs-30 mb-1"><?= (int)$kpi['produtores_ativos'] ?></p>
-                    <p class="mini-kpi">Feira <?= (int)$feiraId ?></p>
+                    <p class="mini-kpi mb-0">Feira <?= (int)$feiraId ?></p>
                   </div>
                 </div>
               </div>
               <div class="col-md-6 stretch-card transparent">
                 <div class="card card-light-danger">
                   <div class="card-body">
-                    <p class="mb-2">Produtos Ativos</p>
+                    <p class="mb-1">Produtos Ativos</p>
                     <p class="fs-30 mb-1"><?= (int)$kpi['produtos_ativos'] ?></p>
-                    <p class="mini-kpi">Preço ref. zerado: <?= (int)$kpi['preco_ref_zero'] ?></p>
+                    <p class="mini-kpi mb-0">Preço ref. zerado: <?= (int)$kpi['preco_ref_zero'] ?></p>
                   </div>
                 </div>
               </div>
@@ -769,35 +751,35 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           </div>
         </div>
 
-        <!-- Pagamento HOJE + Top Categorias (MÊS FILTRADO) -->
+        <!-- Pagamento HOJE + Top Categorias -->
         <div class="row">
           <div class="col-md-6 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
                 <p class="card-title mb-1">Resumo de Vendas (Hoje)</p>
-                <p class="mini-kpi mb-3">Distribuição por forma de pagamento (hoje)</p>
+                <p class="mini-kpi mb-2">Distribuição por forma de pagamento</p>
 
                 <div class="table-responsive">
                   <table class="table table-borderless mb-0">
                     <tbody>
                       <tr>
-                        <td><span class="badge badge-soft">PIX</span></td>
-                        <td class="w-100 px-3"><div class="progress progress-md"><div class="progress-bar bg-success" role="progressbar" style="width: <?= (int)$payPct['PIX'] ?>%"></div></div></td>
-                        <td class="text-right font-weight-bold"><?= (int)$payPct['PIX'] ?>%</td>
+                        <td style="width:110px"><span class="badge badge-soft">PIX</span></td>
+                        <td class="w-100 px-2"><div class="progress progress-md"><div class="progress-bar bg-success" role="progressbar" style="width: <?= (int)$payPct['PIX'] ?>%"></div></div></td>
+                        <td class="text-right font-weight-bold" style="width:60px"><?= (int)$payPct['PIX'] ?>%</td>
                       </tr>
                       <tr>
                         <td><span class="badge badge-soft">Dinheiro</span></td>
-                        <td class="w-100 px-3"><div class="progress progress-md"><div class="progress-bar bg-primary" role="progressbar" style="width: <?= (int)$payPct['DINHEIRO'] ?>%"></div></div></td>
+                        <td class="w-100 px-2"><div class="progress progress-md"><div class="progress-bar bg-primary" role="progressbar" style="width: <?= (int)$payPct['DINHEIRO'] ?>%"></div></div></td>
                         <td class="text-right font-weight-bold"><?= (int)$payPct['DINHEIRO'] ?>%</td>
                       </tr>
                       <tr>
                         <td><span class="badge badge-soft">Cartão</span></td>
-                        <td class="w-100 px-3"><div class="progress progress-md"><div class="progress-bar bg-info" role="progressbar" style="width: <?= (int)$payPct['CARTAO'] ?>%"></div></div></td>
+                        <td class="w-100 px-2"><div class="progress progress-md"><div class="progress-bar bg-info" role="progressbar" style="width: <?= (int)$payPct['CARTAO'] ?>%"></div></div></td>
                         <td class="text-right font-weight-bold"><?= (int)$payPct['CARTAO'] ?>%</td>
                       </tr>
                       <tr>
                         <td><span class="badge badge-soft">Outros</span></td>
-                        <td class="w-100 px-3"><div class="progress progress-md"><div class="progress-bar bg-warning" role="progressbar" style="width: <?= (int)$payPct['OUTROS'] ?>%"></div></div></td>
+                        <td class="w-100 px-2"><div class="progress progress-md"><div class="progress-bar bg-warning" role="progressbar" style="width: <?= (int)$payPct['OUTROS'] ?>%"></div></div></td>
                         <td class="text-right font-weight-bold"><?= (int)$payPct['OUTROS'] ?>%</td>
                       </tr>
                     </tbody>
@@ -806,15 +788,15 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
 
                 <hr>
                 <div class="d-flex flex-wrap">
-                  <div class="mr-4 mt-2">
+                  <div class="mr-4 mt-1">
                     <div class="mini-kpi">Sem pagamento (<?= h($mesLabel) ?>)</div>
                     <div class="font-weight-bold"><?= (int)$kpi['sem_pagto_mes'] ?></div>
                   </div>
-                  <div class="mr-4 mt-2">
+                  <div class="mr-4 mt-1">
                     <div class="mini-kpi">Canceladas hoje</div>
                     <div class="font-weight-bold"><?= (int)$kpi['canceladas_hoje'] ?></div>
                   </div>
-                  <div class="mt-2">
+                  <div class="mt-1">
                     <div class="mini-kpi">Preço ref. zerado</div>
                     <div class="font-weight-bold"><?= (int)$kpi['preco_ref_zero'] ?></div>
                   </div>
@@ -831,7 +813,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                   <p class="card-title mb-1">Top Categorias (<?= h($mesLabel) ?>)</p>
                   <a href="./relatorioProdutos.php" class="text-info">Ver relatório</a>
                 </div>
-                <p class="mini-kpi mb-3">Ordenado por faturamento</p>
+                <p class="mini-kpi mb-2">Ordenado por faturamento</p>
 
                 <div class="table-responsive">
                   <table class="table table-striped table-borderless mb-0">
@@ -858,21 +840,20 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                   </table>
                 </div>
 
-                <hr>
-                <div class="mini-kpi">Filtro mensal aplicado em tudo que é “do mês”.</div>
+                <div class="mini-kpi mt-2 mb-0">Filtro mensal aplicado.</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- TOP PRODUTOS (MÊS FILTRADO) + PRODUTORES + ÚLTIMOS LANÇAMENTOS -->
+        <!-- Top Produtos + Produtores -->
         <div class="row">
           <div class="col-md-7 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
-                <p class="card-title mb-0">Top Produtos (<?= h($mesLabel) ?>)</p>
-                <div class="table-responsive mt-3">
-                  <table class="table table-striped table-borderless">
+                <p class="card-title mb-1">Top Produtos (<?= h($mesLabel) ?>)</p>
+                <div class="table-responsive">
+                  <table class="table table-striped table-borderless mb-0">
                     <thead>
                       <tr>
                         <th>Produto</th>
@@ -895,8 +876,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                     </tbody>
                   </table>
                 </div>
-
-                <div class="mini-kpi">Este bloco também está filtrado pelo mês.</div>
+                <div class="mini-kpi mt-2 mb-0">Filtro mensal aplicado.</div>
               </div>
             </div>
           </div>
@@ -904,9 +884,9 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           <div class="col-md-5 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
-                <p class="card-title mb-0">Produtores (amostra)</p>
-                <div class="table-responsive mt-3">
-                  <table class="table table-borderless">
+                <p class="card-title mb-1">Produtores (amostra)</p>
+                <div class="table-responsive">
+                  <table class="table table-borderless mb-0">
                     <thead>
                       <tr>
                         <th class="pl-0 pb-2 border-bottom">Produtor</th>
@@ -935,20 +915,20 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                     </tbody>
                   </table>
                 </div>
-                <div class="mini-kpi">Este bloco não depende do mês (é cadastro).</div>
+                <div class="mini-kpi mt-2 mb-0">Cadastro (não depende do mês).</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ÚLTIMOS LANÇAMENTOS (MÊS) -->
+        <!-- Últimos lançamentos -->
         <div class="row">
           <div class="col-md-12 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
-                <p class="card-title mb-0">Últimos lançamentos (<?= h($mesLabel) ?>)</p>
-                <div class="table-responsive mt-3">
-                  <table class="table table-borderless">
+                <p class="card-title mb-1">Últimos lançamentos (<?= h($mesLabel) ?>)</p>
+                <div class="table-responsive">
+                  <table class="table table-borderless mb-0">
                     <thead>
                       <tr>
                         <th class="pl-0 pb-2 border-bottom">Data</th>
@@ -975,19 +955,28 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                     </tbody>
                   </table>
                 </div>
-                <div class="mini-kpi">Feirantes em linhas separadas quando houver mais de um.</div>
+                <div class="mini-kpi mt-2 mb-0">Feirantes em linhas separadas quando houver mais de um.</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- TABELA GRANDE (MÊS) -->
+        <!-- TABELA GRANDE (MÊS) COM PAGINAÇÃO 6 -->
         <div class="row">
           <div class="col-md-12 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
-                <p class="card-title">Últimos itens vendidos (<?= h($mesLabel) ?>)</p>
-                <p class="mini-kpi mb-3">Filtro mensal aplicado.</p>
+                <div class="d-flex flex-wrap justify-content-between align-items-end">
+                  <div>
+                    <p class="card-title mb-1">Últimos itens vendidos (<?= h($mesLabel) ?>)</p>
+                    <p class="mini-kpi mb-0">
+                      Mostrando <b><?= (int)min($perPage, max(0, $totalRows - $offset)) ?></b> de <b><?= (int)$totalRows ?></b> • Página <b><?= (int)$page ?></b> / <b><?= (int)$totalPages ?></b>
+                    </p>
+                  </div>
+                  <div class="mini-kpi mt-2"><span class="badge badge-soft">6 por página</span></div>
+                </div>
+
+                <hr>
 
                 <div class="table-responsive">
                   <table class="table table-striped table-borderless" style="width:100%">
@@ -1022,9 +1011,9 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                             <td><span class="badge badge-soft"><?= h($it['forma_pagamento'] ?? '—') ?></span></td>
                             <td>
                               <?php
-                                $st = strtoupper(trim((string)($it['status'] ?? '')));
-                                if ($st === 'CANCELADA' || $st === 'CANCELADO') echo '<span class="badge badge-danger">Cancelada</span>';
-                                elseif ($st === 'PENDENTE') echo '<span class="badge badge-warning">Pendente</span>';
+                                $stt = strtoupper(trim((string)($it['status'] ?? '')));
+                                if ($stt === 'CANCELADA' || $stt === 'CANCELADO') echo '<span class="badge badge-danger">Cancelada</span>';
+                                elseif ($stt === 'PENDENTE') echo '<span class="badge badge-warning">Pendente</span>';
                                 else echo '<span class="badge badge-success">OK</span>';
                               ?>
                             </td>
@@ -1034,6 +1023,49 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                     </tbody>
                   </table>
                 </div>
+
+                <?php if ($totalPages > 1): ?>
+                  <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+                    <div class="mini-kpi mb-2">Paginação mantém o filtro do mês.</div>
+
+                    <nav aria-label="Paginação">
+                      <ul class="pagination pagination-sm mb-0">
+                        <?php
+                          $prevDisabled = ($page <= 1) ? ' disabled' : '';
+                          $nextDisabled = ($page >= $totalPages) ? ' disabled' : '';
+                        ?>
+                        <li class="page-item<?= $prevDisabled ?>">
+                          <a class="page-link" href="<?= h($page <= 1 ? '#' : url_with(['p'=>$page-1])) ?>" tabindex="-1">«</a>
+                        </li>
+
+                        <?php
+                          $win = 2;
+                          $start = max(1, $page - $win);
+                          $end   = min($totalPages, $page + $win);
+
+                          if ($start > 1) {
+                            echo '<li class="page-item"><a class="page-link" href="'.h(url_with(['p'=>1])).'">1</a></li>';
+                            if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                          }
+
+                          for ($i=$start; $i<=$end; $i++) {
+                            $active = ($i === $page) ? ' active' : '';
+                            echo '<li class="page-item'.$active.'"><a class="page-link" href="'.h(url_with(['p'=>$i])).'">'.(int)$i.'</a></li>';
+                          }
+
+                          if ($end < $totalPages) {
+                            if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                            echo '<li class="page-item"><a class="page-link" href="'.h(url_with(['p'=>$totalPages])).'">'.(int)$totalPages.'</a></li>';
+                          }
+                        ?>
+
+                        <li class="page-item<?= $nextDisabled ?>">
+                          <a class="page-link" href="<?= h($page >= $totalPages ? '#' : url_with(['p'=>$page+1])) ?>">»</a>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
+                <?php endif; ?>
 
               </div>
             </div>
