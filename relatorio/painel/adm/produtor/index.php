@@ -22,21 +22,6 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 function h($s): string {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
-function money($n): string {
-  return number_format((float)$n, 2, ',', '.');
-}
-function intParam(string $key, int $default = 1): int {
-  $v = (int)($_GET[$key] ?? $default);
-  return $v < 1 ? 1 : $v;
-}
-function buildQuery(array $override = []): string {
-  $q = $_GET;
-  foreach ($override as $k => $v) {
-    if ($v === null) unset($q[$k]);
-    else $q[$k] = $v;
-  }
-  return http_build_query($q);
-}
 
 /* ===== Conexão (padrão do seu sistema: db(): PDO) ===== */
 require '../../../assets/php/conexao.php';
@@ -45,28 +30,21 @@ $pdo = db();
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
 
-/* ===== Filtro mensal via SELECT (meses anteriores) ===== */
+/* ===== Filtro mensal (YYYY-MM) ===== */
 $mes = trim((string)($_GET['mes'] ?? date('Y-m')));
-if (!preg_match('/^\d{4}-\d{2}$/', $mes)) $mes = date('Y-m');
-
+if (!preg_match('/^\d{4}-\d{2}$/', $mes)) {
+  $mes = date('Y-m');
+}
 $monthStart = $mes . '-01';
 $monthEnd   = date('Y-m-t', strtotime($monthStart));
-$mesLabel   = date('m/Y', strtotime($monthStart));
 
-$today     = date('Y-m-d');
-$yesterday = date('Y-m-d', strtotime('-1 day'));
+$mesLabel = date('m/Y', strtotime($monthStart));
 
-/* ===== Meses para o SELECT (últimos 18 meses) ===== */
-$mesesSelect = [];
-for ($i = 0; $i < 18; $i++) {
-  $m = date('Y-m', strtotime(date('Y-m-01') . " -{$i} month"));
-  $mesesSelect[] = [
-    'value' => $m,
-    'label' => date('m/Y', strtotime($m . '-01')),
-  ];
-}
+/* Datas base */
+$today      = date('Y-m-d');
+$yesterday  = date('Y-m-d', strtotime('-1 day'));
 
-/* ===== Detecta tabela fechamento_dia ===== */
+/* Detecta tabela fechamento_dia (do seu DB) */
 $hasFechamentoDia = false;
 try {
   $st = $pdo->prepare("
@@ -78,6 +56,11 @@ try {
   $hasFechamentoDia = ((int)$st->fetchColumn() > 0);
 } catch (Throwable $e) {
   $hasFechamentoDia = false;
+}
+
+/* Helper: dinheiro */
+function money($n): string {
+  return number_format((float)$n, 2, ',', '.');
 }
 
 /* ===== KPIs ===== */
@@ -95,6 +78,7 @@ $kpi = [
   'produtos_ativos'   => 0,
 
   'canceladas_hoje'   => 0,
+
   'sem_pagto_mes'     => 0,
   'preco_ref_zero'    => 0,
 
@@ -110,9 +94,11 @@ $payHoje = [
 ];
 
 try {
-  /* Vendas Hoje */
+  /* Vendas Hoje (total + qtd) */
   $st = $pdo->prepare("
-    SELECT COUNT(*) AS qtd, COALESCE(SUM(total),0) AS total
+    SELECT
+      COUNT(*) AS qtd,
+      COALESCE(SUM(total),0) AS total
     FROM vendas
     WHERE feira_id = :f
       AND DATE(data_hora) = :d
@@ -124,11 +110,12 @@ try {
   $kpi['vendas_hoje_total'] = (float)$r['total'];
   $kpi['ticket_hoje']       = $kpi['vendas_hoje_qtd'] > 0 ? ($kpi['vendas_hoje_total'] / $kpi['vendas_hoje_qtd']) : 0.0;
 
-  /* Itens HOJE */
+  /* Itens vendidos HOJE */
   $st = $pdo->prepare("
     SELECT COALESCE(SUM(vi.quantidade),0) AS itens
     FROM venda_itens vi
-    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    JOIN vendas v
+      ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
     WHERE vi.feira_id = :f
       AND DATE(v.data_hora) = :d
       AND UPPER(v.status) <> 'CANCELADA'
@@ -147,9 +134,11 @@ try {
   $st->execute([':f'=>$feiraId, ':d'=>$today]);
   $kpi['canceladas_hoje'] = (int)($st->fetchColumn() ?? 0);
 
-  /* Total do MÊS (filtro) */
+  /* Total do MÊS (FILTRO) */
   $st = $pdo->prepare("
-    SELECT COUNT(*) AS qtd, COALESCE(SUM(total),0) AS total
+    SELECT
+      COUNT(*) AS qtd,
+      COALESCE(SUM(total),0) AS total
     FROM vendas
     WHERE feira_id = :f
       AND DATE(data_hora) BETWEEN :i AND :e
@@ -171,7 +160,7 @@ try {
   $st->execute([':f'=>$feiraId]);
   $kpi['produtos_ativos'] = (int)($st->fetchColumn() ?? 0);
 
-  /* Sem pagamento no MÊS */
+  /* Vendas sem forma_pagamento no MÊS (FILTRO) */
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM vendas
@@ -183,7 +172,7 @@ try {
   $st->execute([':f'=>$feiraId, ':i'=>$monthStart, ':e'=>$monthEnd]);
   $kpi['sem_pagto_mes'] = (int)($st->fetchColumn() ?? 0);
 
-  /* Preço ref zerado */
+  /* Produtos com preço referência zerado/vazio */
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM produtos
@@ -194,10 +183,11 @@ try {
   $st->execute([':f'=>$feiraId]);
   $kpi['preco_ref_zero'] = (int)($st->fetchColumn() ?? 0);
 
-  /* Pagamento HOJE */
+  /* Breakdown pagamento HOJE */
   $st = $pdo->prepare("
-    SELECT UPPER(COALESCE(NULLIF(TRIM(forma_pagamento),''),'OUTROS')) AS fp,
-           COALESCE(SUM(total),0) AS total
+    SELECT
+      UPPER(COALESCE(NULLIF(TRIM(forma_pagamento),''),'OUTROS')) AS fp,
+      COALESCE(SUM(total),0) AS total
     FROM vendas
     WHERE feira_id = :f
       AND DATE(data_hora) = :d
@@ -206,7 +196,7 @@ try {
   ");
   $st->execute([':f'=>$feiraId, ':d'=>$today]);
   foreach ($st->fetchAll() as $row) {
-    $fp  = (string)($row['fp'] ?? 'OUTROS');
+    $fp = (string)($row['fp'] ?? 'OUTROS');
     $val = (float)($row['total'] ?? 0);
     if ($fp === 'PIX') $payHoje['PIX'] += $val;
     elseif ($fp === 'DINHEIRO') $payHoje['DINHEIRO'] += $val;
@@ -214,7 +204,7 @@ try {
     else $payHoje['OUTROS'] += $val;
   }
 
-  /* Fechamento pendente ontem (se existir tabela) */
+  /* Fechamento pendente ontem? (só se tabela existir) */
   if ($hasFechamentoDia) {
     $st = $pdo->prepare("
       SELECT COUNT(*)
@@ -232,8 +222,9 @@ try {
 
     $kpi['fechamento_pendente_ontem'] = ($ontemVendas > 0 && $ontemFechado <= 0) ? 1 : 0;
   }
+
 } catch (Throwable $e) {
-  // fica com zeros
+  // abre com zeros
 }
 
 /* Percentuais pagamento HOJE */
@@ -245,17 +236,21 @@ $payPct = [
   'OUTROS'   => $totalPayHoje > 0 ? (int)round(($payHoje['OUTROS'] / $totalPayHoje) * 100) : 0,
 ];
 
-/* ===== Top categorias (mês) ===== */
+/* ===== Top categorias (MÊS FILTRADO) ===== */
 $topCategorias = [];
 try {
   $st = $pdo->prepare("
-    SELECT c.nome AS categoria,
-           COALESCE(SUM(vi.quantidade),0) AS itens,
-           COALESCE(SUM(vi.subtotal),0)   AS total
+    SELECT
+      c.nome AS categoria,
+      COALESCE(SUM(vi.quantidade),0) AS itens,
+      COALESCE(SUM(vi.subtotal),0)   AS total
     FROM venda_itens vi
-    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
-    JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
-    LEFT JOIN categorias c ON c.feira_id = p.feira_id AND c.id = p.categoria_id
+    JOIN vendas v
+      ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    JOIN produtos p
+      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    LEFT JOIN categorias c
+      ON c.feira_id = p.feira_id AND c.id = p.categoria_id
     WHERE vi.feira_id = :f
       AND DATE(v.data_hora) BETWEEN :i AND :e
       AND UPPER(v.status) <> 'CANCELADA'
@@ -267,16 +262,19 @@ try {
   $topCategorias = $st->fetchAll();
 } catch (Throwable $e) { $topCategorias = []; }
 
-/* ===== Top produtos (mês) ===== */
+/* ===== Top produtos (MÊS FILTRADO) ===== */
 $topProdutos = [];
 try {
   $st = $pdo->prepare("
-    SELECT p.nome AS produto,
-           COALESCE(SUM(vi.quantidade),0) AS itens,
-           COALESCE(SUM(vi.subtotal),0)   AS total
+    SELECT
+      p.nome AS produto,
+      COALESCE(SUM(vi.quantidade),0) AS itens,
+      COALESCE(SUM(vi.subtotal),0)   AS total
     FROM venda_itens vi
-    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
-    JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    JOIN vendas v
+      ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    JOIN produtos p
+      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
     WHERE vi.feira_id = :f
       AND DATE(v.data_hora) BETWEEN :i AND :e
       AND UPPER(v.status) <> 'CANCELADA'
@@ -288,47 +286,10 @@ try {
   $topProdutos = $st->fetchAll();
 } catch (Throwable $e) { $topProdutos = []; }
 
-/* ===== Produtores (amostra) ===== */
-$listaProdutores = [];
-try {
-  $st = $pdo->prepare("
-    SELECT pr.nome,
-           COALESCE(c.nome,'') AS comunidade,
-           pr.ativo
-    FROM produtores pr
-    LEFT JOIN comunidades c ON c.feira_id = pr.feira_id AND c.id = pr.comunidade_id
-    WHERE pr.feira_id = :f
-    ORDER BY pr.ativo DESC, pr.nome ASC
-    LIMIT 6
-  ");
-  $st->execute([':f'=>$feiraId]);
-  $listaProdutores = $st->fetchAll();
-} catch (Throwable $e) { $listaProdutores = []; }
-
-/* ======================================================================
-   PAGINAÇÃO: Últimos lançamentos (10 por página)
-   ====================================================================== */
-$perPage = 10;
-$pLanc = intParam('p_lanc', 1);
-$totalLanc = 0;
-$totalPagesLanc = 1;
+/* ===== Últimos lançamentos (FILTRADO PELO MÊS) com feirantes em linhas separadas ===== */
 $ultimosLanc = [];
-
 try {
   $st = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM vendas
-    WHERE feira_id = :f
-      AND DATE(data_hora) BETWEEN :i AND :e
-  ");
-  $st->execute([':f'=>$feiraId, ':i'=>$monthStart, ':e'=>$monthEnd]);
-  $totalLanc = (int)($st->fetchColumn() ?? 0);
-  $totalPagesLanc = max(1, (int)ceil($totalLanc / $perPage));
-  if ($pLanc > $totalPagesLanc) $pLanc = $totalPagesLanc;
-
-  $off = ($pLanc - 1) * $perPage;
-
-  $sql = "
     SELECT
       v.id,
       v.data_hora,
@@ -345,46 +306,35 @@ try {
       AND DATE(v.data_hora) BETWEEN :i AND :e
     GROUP BY v.id, v.data_hora, v.total
     ORDER BY v.data_hora DESC
-    LIMIT :lim OFFSET :off
-  ";
-  $st = $pdo->prepare($sql);
-  $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
-  $st->bindValue(':i', $monthStart, PDO::PARAM_STR);
-  $st->bindValue(':e', $monthEnd, PDO::PARAM_STR);
-  $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
-  $st->bindValue(':off', $off, PDO::PARAM_INT);
-  $st->execute();
-  $ultimosLanc = $st->fetchAll();
-} catch (Throwable $e) {
-  $ultimosLanc = [];
-  $totalLanc = 0;
-  $totalPagesLanc = 1;
-}
-
-/* ======================================================================
-   PAGINAÇÃO: Últimos itens vendidos (10 por página)
-   ====================================================================== */
-$pItens = intParam('p_itens', 1);
-$totalItens = 0;
-$totalPagesItens = 1;
-$ultimosItens = [];
-
-try {
-  $st = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM venda_itens vi
-    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
-    WHERE vi.feira_id = :f
-      AND DATE(v.data_hora) BETWEEN :i AND :e
+    LIMIT 6
   ");
   $st->execute([':f'=>$feiraId, ':i'=>$monthStart, ':e'=>$monthEnd]);
-  $totalItens = (int)($st->fetchColumn() ?? 0);
-  $totalPagesItens = max(1, (int)ceil($totalItens / $perPage));
-  if ($pItens > $totalPagesItens) $pItens = $totalPagesItens;
+  $ultimosLanc = $st->fetchAll();
+} catch (Throwable $e) { $ultimosLanc = []; }
 
-  $off = ($pItens - 1) * $perPage;
+/* ===== Lista de produtores (amostra real) ===== */
+$listaProdutores = [];
+try {
+  $st = $pdo->prepare("
+    SELECT
+      pr.nome,
+      COALESCE(c.nome,'') AS comunidade,
+      pr.ativo
+    FROM produtores pr
+    LEFT JOIN comunidades c
+      ON c.feira_id = pr.feira_id AND c.id = pr.comunidade_id
+    WHERE pr.feira_id = :f
+    ORDER BY pr.ativo DESC, pr.nome ASC
+    LIMIT 6
+  ");
+  $st->execute([':f'=>$feiraId]);
+  $listaProdutores = $st->fetchAll();
+} catch (Throwable $e) { $listaProdutores = []; }
 
-  $sql = "
+/* ===== Tabela avançada: últimos itens vendidos (FILTRADO PELO MÊS) ===== */
+$ultimosItens = [];
+try {
+  $st = $pdo->prepare("
     SELECT
       v.id AS venda_id,
       v.data_hora,
@@ -410,61 +360,16 @@ try {
     WHERE vi.feira_id = :f
       AND DATE(v.data_hora) BETWEEN :i AND :e
     ORDER BY v.data_hora DESC
-    LIMIT :lim OFFSET :off
-  ";
-  $st = $pdo->prepare($sql);
-  $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
-  $st->bindValue(':i', $monthStart, PDO::PARAM_STR);
-  $st->bindValue(':e', $monthEnd, PDO::PARAM_STR);
-  $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
-  $st->bindValue(':off', $off, PDO::PARAM_INT);
-  $st->execute();
+    LIMIT 30
+  ");
+  $st->execute([':f'=>$feiraId, ':i'=>$monthStart, ':e'=>$monthEnd]);
   $ultimosItens = $st->fetchAll();
-} catch (Throwable $e) {
-  $ultimosItens = [];
-  $totalItens = 0;
-  $totalPagesItens = 1;
-}
+} catch (Throwable $e) { $ultimosItens = []; }
 
-/* ===== helper: render paginação (bootstrap) ===== */
-function renderPagination(int $page, int $totalPages, string $paramName): void {
-  if ($totalPages <= 1) return;
-
-  $mkLink = function(int $p) use ($paramName): string {
-    return '?' . buildQuery([$paramName => $p]);
-  };
-
-  $prev = max(1, $page - 1);
-  $next = min($totalPages, $page + 1);
-
-  $start = max(1, $page - 2);
-  $end   = min($totalPages, $page + 2);
-
-  echo '<nav aria-label="Paginação" class="mt-2">';
-  echo '<ul class="pagination pagination-sm mb-0 justify-content-end">';
-
-  echo '<li class="page-item '.($page<=1?'disabled':'').'"><a class="page-link" href="'.h($mkLink($prev)).'">Anterior</a></li>';
-
-  if ($start > 1) {
-    echo '<li class="page-item"><a class="page-link" href="'.h($mkLink(1)).'">1</a></li>';
-    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">…</span></li>';
-  }
-
-  for ($i = $start; $i <= $end; $i++) {
-    $active = ($i === $page) ? 'active' : '';
-    echo '<li class="page-item '.$active.'"><a class="page-link" href="'.h($mkLink($i)).'">'.$i.'</a></li>';
-  }
-
-  if ($end < $totalPages) {
-    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">…</span></li>';
-    echo '<li class="page-item"><a class="page-link" href="'.h($mkLink($totalPages)).'">'.$totalPages.'</a></li>';
-  }
-
-  echo '<li class="page-item '.($page>=$totalPages?'disabled':'').'"><a class="page-link" href="'.h($mkLink($next)).'">Próximo</a></li>';
-
-  echo '</ul>';
-  echo '</nav>';
-}
+/* Para botões de navegação do mês */
+$mesAtual = date('Y-m');
+$mesAnterior = date('Y-m', strtotime($monthStart . ' -1 month'));
+$mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -497,30 +402,20 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
     }
     .table td, .table th { vertical-align: middle !important; }
 
-    .toolbar-top{
+    .mes-filter{
       display:flex;
-      gap:10px;
+      gap:8px;
       align-items:center;
-      justify-content:flex-end;
       flex-wrap:wrap;
+      justify-content:flex-end;
     }
-    .toolbar-top select{
+    .mes-filter input[type="month"]{
       height: 38px;
       border-radius: 10px;
       border: 1px solid rgba(0,0,0,.15);
       padding: 6px 10px;
       background:#fff;
-      min-width: 160px;
     }
-    .table thead th{
-      font-weight: 800;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .02em;
-      white-space: nowrap;
-    }
-    .table td{ font-size: 13px; }
-    .table td .brlist{ line-height: 1.25; }
   </style>
 </head>
 
@@ -552,6 +447,7 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
       </button>
     </div>
   </nav>
+  <!-- /NAVBAR -->
 
   <div class="container-fluid page-body-wrapper">
 
@@ -619,12 +515,13 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
         </li>
       </ul>
     </nav>
+    <!-- /SIDEBAR -->
 
     <!-- MAIN -->
     <div class="main-panel">
       <div class="content-wrapper">
 
-        <!-- HEADER + FILTRO (SELECT) -->
+        <!-- HEADER + FILTRO MENSAL -->
         <div class="row">
           <div class="col-md-12 grid-margin">
             <div class="row">
@@ -632,23 +529,26 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                 <h3 class="font-weight-bold">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
                 <h6 class="font-weight-normal mb-0">Painel administrativo da Feira do Produtor</h6>
                 <div class="mini-kpi mt-1">
-                  Mês: <b><?= h($mesLabel) ?></b> • <?= h(date('d/m/Y', strtotime($monthStart))) ?> até <?= h(date('d/m/Y', strtotime($monthEnd))) ?>
+                  Mês selecionado: <b><?= h($mesLabel) ?></b> • Período: <b><?= h(date('d/m/Y', strtotime($monthStart))) ?></b> até <b><?= h(date('d/m/Y', strtotime($monthEnd))) ?></b>
                 </div>
               </div>
 
               <div class="col-12 col-xl-5">
-                <div class="toolbar-top">
-                  <select onchange="location.href='?'+this.value">
-                    <?php foreach ($mesesSelect as $op): ?>
-                      <?php
-                        // ao trocar o mês: reseta páginas
-                        $qs = buildQuery(['mes'=>$op['value'], 'p_lanc'=>1, 'p_itens'=>1]);
-                      ?>
-                      <option value="<?= h($qs) ?>" <?= $op['value'] === $mes ? 'selected' : '' ?>>
-                        <?= h($op['label']) ?>
-                      </option>
-                    <?php endforeach; ?>
-                  </select>
+                <div class="mes-filter">
+                  <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesAnterior) ?>"><i class="ti-angle-left mr-1"></i> Mês anterior</a>
+
+                  <input
+                    type="month"
+                    value="<?= h($mes) ?>"
+                    onchange="location.href='?mes='+this.value"
+                    title="Filtrar mês"
+                  />
+
+                  <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesProximo) ?>">Próximo mês <i class="ti-angle-right ml-1"></i></a>
+
+                  <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesAtual) ?>">
+                    <i class="ti-calendar mr-1"></i> Mês atual
+                  </a>
 
                   <a class="btn btn-sm btn-light bg-white" href="./lancamentos.php?dia=<?= h($today) ?>">
                     <i class="ti-write mr-1"></i> Lançar hoje
@@ -659,7 +559,6 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                   </a>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -737,22 +636,21 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
           </div>
         </div>
 
-
-        <!-- Pagamento HOJE + Top Categorias -->
+        <!-- Pagamento HOJE + Top Categorias (MÊS FILTRADO) -->
         <div class="row">
           <div class="col-md-6 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
                 <p class="card-title mb-1">Resumo de Vendas (Hoje)</p>
-                <p class="mini-kpi mb-3">Distribuição por forma de pagamento</p>
+                <p class="mini-kpi mb-3">Distribuição por forma de pagamento (hoje)</p>
 
                 <div class="table-responsive">
-                  <table class="table table-borderless table-sm mb-0">
+                  <table class="table table-borderless mb-0">
                     <tbody>
                       <tr>
-                        <td style="width:120px;"><span class="badge badge-soft">PIX</span></td>
+                        <td><span class="badge badge-soft">PIX</span></td>
                         <td class="w-100 px-3"><div class="progress progress-md"><div class="progress-bar bg-success" role="progressbar" style="width: <?= (int)$payPct['PIX'] ?>%"></div></div></td>
-                        <td class="text-right font-weight-bold" style="width:60px;"><?= (int)$payPct['PIX'] ?>%</td>
+                        <td class="text-right font-weight-bold"><?= (int)$payPct['PIX'] ?>%</td>
                       </tr>
                       <tr>
                         <td><span class="badge badge-soft">Dinheiro</span></td>
@@ -803,7 +701,7 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                 <p class="mini-kpi mb-3">Ordenado por faturamento</p>
 
                 <div class="table-responsive">
-                  <table class="table table-striped table-borderless table-sm mb-0">
+                  <table class="table table-striped table-borderless mb-0">
                     <thead>
                       <tr>
                         <th>Categoria</th>
@@ -827,19 +725,21 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                   </table>
                 </div>
 
+                <hr>
+                <div class="mini-kpi">Filtro mensal aplicado em tudo que é “do mês”.</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Top Produtos + Produtores -->
+        <!-- TOP PRODUTOS (MÊS FILTRADO) + PRODUTORES + ÚLTIMOS LANÇAMENTOS -->
         <div class="row">
           <div class="col-md-7 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
                 <p class="card-title mb-0">Top Produtos (<?= h($mesLabel) ?>)</p>
                 <div class="table-responsive mt-3">
-                  <table class="table table-striped table-borderless table-sm mb-0">
+                  <table class="table table-striped table-borderless">
                     <thead>
                       <tr>
                         <th>Produto</th>
@@ -862,6 +762,8 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                     </tbody>
                   </table>
                 </div>
+
+                <div class="mini-kpi">Este bloco também está filtrado pelo mês.</div>
               </div>
             </div>
           </div>
@@ -871,7 +773,7 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
               <div class="card-body">
                 <p class="card-title mb-0">Produtores (amostra)</p>
                 <div class="table-responsive mt-3">
-                  <table class="table table-borderless table-sm mb-0">
+                  <table class="table table-borderless">
                     <thead>
                       <tr>
                         <th class="pl-0 pb-2 border-bottom">Produtor</th>
@@ -900,46 +802,39 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                     </tbody>
                   </table>
                 </div>
-                <div class="mini-kpi mt-2">Este bloco é cadastro (não depende do mês).</div>
+                <div class="mini-kpi">Este bloco não depende do mês (é cadastro).</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ÚLTIMOS LANÇAMENTOS (PAGINADO) -->
+        <!-- ÚLTIMOS LANÇAMENTOS (MÊS) -->
         <div class="row">
           <div class="col-md-12 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center flex-wrap">
-                  <div>
-                    <p class="card-title mb-0">Últimos lançamentos (<?= h($mesLabel) ?>)</p>
-                    <div class="mini-kpi">Total no mês: <b><?= (int)$totalLanc ?></b></div>
-                  </div>
-                </div>
-
+                <p class="card-title mb-0">Últimos lançamentos (<?= h($mesLabel) ?>)</p>
                 <div class="table-responsive mt-3">
-                  <table class="table table-striped table-borderless table-sm mb-0">
+                  <table class="table table-borderless">
                     <thead>
                       <tr>
-                        <th style="width:170px;">Data</th>
-                        <th>Feirantes</th>
-                        <th class="text-right" style="width:160px;">Total</th>
+                        <th class="pl-0 pb-2 border-bottom">Data</th>
+                        <th class="pb-2 border-bottom">Feirantes</th>
+                        <th class="pb-2 border-bottom text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       <?php if (empty($ultimosLanc)): ?>
-                        <tr><td colspan="3" class="text-center text-muted py-4">Sem lançamentos no mês.</td></tr>
+                        <tr><td colspan="3" class="text-center text-muted py-3">Sem lançamentos no mês.</td></tr>
                       <?php else: ?>
                         <?php foreach ($ultimosLanc as $v): ?>
                           <?php
                             $feirantes = (string)($v['feirantes'] ?? '');
-                            $feirantesEsc = h($feirantes);
-                            $feirantesHtml = $feirantes !== '' ? str_replace('||', '<br>', $feirantesEsc) : '—';
+                            $feirantesHtml = $feirantes !== '' ? str_replace('||', '<br>', h($feirantes)) : '—';
                           ?>
                           <tr>
-                            <td><?= h(date('d/m/Y H:i', strtotime((string)($v['data_hora'] ?? 'now')))) ?></td>
-                            <td><div class="brlist"><?= $feirantesHtml ?></div></td>
+                            <td class="pl-0"><?= h(date('d/m/Y H:i', strtotime((string)($v['data_hora'] ?? 'now')))) ?></td>
+                            <td><?= $feirantesHtml ?></td>
                             <td class="text-right font-weight-bold">R$ <?= money((float)($v['total'] ?? 0)) ?></td>
                           </tr>
                         <?php endforeach; ?>
@@ -947,42 +842,34 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                     </tbody>
                   </table>
                 </div>
-
-                <?php if ($totalLanc > 10): ?>
-                  <?php renderPagination($pLanc, $totalPagesLanc, 'p_lanc'); ?>
-                <?php endif; ?>
-
+                <div class="mini-kpi">Feirantes em linhas separadas quando houver mais de um.</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ÚLTIMOS ITENS (PAGINADO) -->
+        <!-- TABELA GRANDE (MÊS) -->
         <div class="row">
           <div class="col-md-12 grid-margin stretch-card">
             <div class="card">
               <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center flex-wrap">
-                  <div>
-                    <p class="card-title mb-0">Últimos itens vendidos (<?= h($mesLabel) ?>)</p>
-                    <div class="mini-kpi">Total de itens no mês: <b><?= (int)$totalItens ?></b></div>
-                  </div>
-                </div>
+                <p class="card-title">Últimos itens vendidos (<?= h($mesLabel) ?>)</p>
+                <p class="mini-kpi mb-3">Filtro mensal aplicado.</p>
 
-                <div class="table-responsive mt-3">
-                  <table class="table table-striped table-borderless table-sm mb-0" style="min-width:1100px;">
+                <div class="table-responsive">
+                  <table class="table table-striped table-borderless" style="width:100%">
                     <thead>
                       <tr>
-                        <th style="width:90px;">Venda</th>
-                        <th style="width:170px;">Data</th>
+                        <th>Venda</th>
+                        <th>Data</th>
                         <th>Produto</th>
                         <th>Categoria</th>
                         <th>Feirante</th>
-                        <th class="text-right" style="width:90px;">Qtd</th>
-                        <th style="width:70px;">Unid.</th>
-                        <th class="text-right" style="width:130px;">Subtotal</th>
-                        <th style="width:110px;">Pagamento</th>
-                        <th style="width:90px;">Status</th>
+                        <th class="text-right">Qtd</th>
+                        <th>Unid.</th>
+                        <th class="text-right">Subtotal</th>
+                        <th>Pagamento</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1002,9 +889,9 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                             <td><span class="badge badge-soft"><?= h($it['forma_pagamento'] ?? '—') ?></span></td>
                             <td>
                               <?php
-                                $stt = strtoupper(trim((string)($it['status'] ?? '')));
-                                if ($stt === 'CANCELADA' || $stt === 'CANCELADO') echo '<span class="badge badge-danger">Cancel</span>';
-                                elseif ($stt === 'PENDENTE') echo '<span class="badge badge-warning">Pend</span>';
+                                $st = strtoupper(trim((string)($it['status'] ?? '')));
+                                if ($st === 'CANCELADA' || $st === 'CANCELADO') echo '<span class="badge badge-danger">Cancelada</span>';
+                                elseif ($st === 'PENDENTE') echo '<span class="badge badge-warning">Pendente</span>';
                                 else echo '<span class="badge badge-success">OK</span>';
                               ?>
                             </td>
@@ -1014,10 +901,6 @@ function renderPagination(int $page, int $totalPages, string $paramName): void {
                     </tbody>
                   </table>
                 </div>
-
-                <?php if ($totalItens > 10): ?>
-                  <?php renderPagination($pItens, $totalPagesItens, 'p_itens'); ?>
-                <?php endif; ?>
 
               </div>
             </div>
