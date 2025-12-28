@@ -715,7 +715,90 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
     .pagination.pagination-sm .page-link {
       padding: .25rem .55rem;
     }
+
+    /* ===== Toolbar filtro mensal (somente select) ===== */
+    .mes-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: .6rem;
+      flex-wrap: wrap;
+    }
+
+    .mes-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, .12);
+      border-radius: 14px;
+      padding: .35rem .55rem;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, .03);
+    }
+
+    .mes-select-wrap i {
+      opacity: .75;
+    }
+
+    .mes-select {
+      height: 32px;
+      border: 0;
+      outline: none;
+      background: transparent;
+      font-weight: 900;
+      font-size: 12px;
+      min-width: 150px;
+      padding-right: .25rem;
+    }
+
+    .mes-actions {
+      display: inline-flex;
+      gap: .45rem;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      border-radius: 12px !important;
+      border: 1px solid rgba(0, 0, 0, .12) !important;
+      background: #fff !important;
+      padding: .45rem .65rem !important;
+      font-weight: 800;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      white-space: nowrap;
+    }
+
+    .action-btn:hover {
+      background: rgba(0, 0, 0, .03) !important;
+    }
+
+    @media (max-width: 575.98px) {
+      .mes-toolbar {
+        justify-content: flex-start;
+      }
+
+      .mes-select-wrap {
+        width: 100%;
+      }
+
+      .mes-select {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .mes-actions {
+        width: 100%;
+      }
+
+      .mes-actions a {
+        flex: 1;
+        justify-content: center;
+      }
+    }
   </style>
+
 </head>
 
 <body>
