@@ -77,14 +77,25 @@ function pct_change(float $current, float $previous): ?float {
   if ($previous == 0.0) { return ($current == 0.0) ? 0.0 : null; }
   return (($current - $previous) / $previous) * 100.0;
 }
+
+/* ===== Badge slim/organizado ===== */
 function variation_badge(?float $pct): array {
-  if ($pct === null) return ['<span class="badge badge-info ml-2" title="Comparação indefinida (valor anterior = 0)">novo</span>', 'novo'];
+  if ($pct === null) {
+    return ['<span class="badge-pill-soft" title="Comparação indefinida (valor anterior = 0)">novo</span>', 'novo'];
+  }
+
   $val = (float)$pct;
   $abs = abs($val);
   $fmt = number_format($abs, 1, ',', '.');
-  if ($val > 0.0001) return ['<span class="badge badge-success ml-2"><i class="ti-arrow-up"></i> '.$fmt.'%</span>', '+'.$fmt.'%'];
-  if ($val < -0.0001) return ['<span class="badge badge-danger ml-2"><i class="ti-arrow-down"></i> '.$fmt.'%</span>', '-'.$fmt.'%'];
-  return ['<span class="badge badge-secondary ml-2">0,0%</span>', '0,0%'];
+
+  if ($val > 0.0001) {
+    return ['<span class="badge-pill-soft" style="background:rgba(40,167,69,.22); border-color:rgba(40,167,69,.35);"><i class="ti-arrow-up"></i> '.$fmt.'%</span>', '+'.$fmt.'%'];
+  }
+  if ($val < -0.0001) {
+    return ['<span class="badge-pill-soft" style="background:rgba(220,53,69,.22); border-color:rgba(220,53,69,.35);"><i class="ti-arrow-down"></i> '.$fmt.'%</span>', '-'.$fmt.'%'];
+  }
+
+  return ['<span class="badge-pill-soft" style="background:rgba(108,117,125,.22); border-color:rgba(108,117,125,.35);">0,0%</span>', '0,0%'];
 }
 
 /* URL helper mantendo filtros */
@@ -483,20 +494,98 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
     /* ===== Slim / clean ===== */
     .content-wrapper { padding-top: 1rem !important; }
     .grid-margin { margin-bottom: 1rem !important; }
-    .card { border-radius: 14px !important; }
+
+    .card { border-radius: 16px !important; overflow: hidden; }
     .card-body { padding: 1rem !important; }
     .card-title { margin-bottom: .35rem !important; }
     hr { margin: .8rem 0 !important; }
-    .mini-kpi { font-size: 12px; color: #6c757d; margin-bottom: .35rem; }
+
+    .mini-kpi { font-size: 12px; color: #6c757d; margin-bottom: .35rem; line-height: 1.25; }
     .table th, .table td { padding: .55rem .6rem !important; vertical-align: middle !important; }
     .table thead th { font-size: 12px; text-transform: uppercase; letter-spacing: .02em; }
+
+    /* ===== Badges mais "finos" e consistentes ===== */
+    .badge-pill-soft{
+      display:inline-flex; align-items:center; gap:.35rem;
+      padding:.28rem .55rem;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 11px;
+      line-height: 1;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.14);
+      color: #fff;
+      white-space: nowrap;
+    }
+    .badge-pill-soft i{ font-size: 11px; }
+
     .badge-soft {
       background: rgba(0, 0, 0, 0.05);
       border: 1px solid rgba(0, 0, 0, 0.07);
-      font-weight: 600;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: .28rem .55rem;
     }
-    .kpi-compare { font-size: 12px; opacity: .95; margin-top: 4px; }
-    .kpi-compare .badge { font-weight: 700; }
+
+    /* ===== KPIs (cards) ===== */
+    .kpi-card{ position: relative; }
+    .kpi-title{
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      opacity: .9;
+      margin: 0;
+    }
+    .kpi-value{
+      font-size: 28px;
+      font-weight: 900;
+      margin: .25rem 0 .15rem 0;
+      line-height: 1.05;
+    }
+    .kpi-sub{ font-size: 12px; opacity: .95; margin: 0; }
+    .kpi-sub b{ font-weight: 900; }
+    .kpi-row{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:.75rem;
+    }
+
+    /* HERO: imagem com overlay + conteúdo mais limpo */
+    .kpi-hero{
+      min-height: 172px;
+      background: #111;
+      color: #fff;
+      position: relative;
+    }
+    .kpi-hero .hero-bg{
+      position:absolute; inset:0;
+      background-size: cover;
+      background-position: center;
+      filter: brightness(55%);
+      transform: scale(1.05);
+    }
+    .kpi-hero .hero-overlay{
+      position:absolute; inset:0;
+      background: linear-gradient(90deg, rgba(0,0,0,.45), rgba(0,0,0,.15));
+    }
+    .kpi-hero .hero-content{
+      position:relative;
+      padding: 1rem;
+    }
+    .kpi-hero .kpi-value{ font-size: 30px; }
+
+    /* Comparação (ontem / mês anterior) mais discreta */
+    .kpi-compare{
+      font-size: 12px;
+      opacity: .92;
+      margin-top: .35rem;
+      line-height: 1.25;
+    }
+
+    /* Pagamento */
+    .progress.progress-md{ height: 8px; border-radius: 999px; }
+    .progress .progress-bar{ border-radius: 999px; }
 
     /* Menu hover/cores */
     ul .nav-link:hover { color: blue !important; }
@@ -636,7 +725,6 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                 <h6 class="font-weight-normal mb-1">Painel administrativo da Feira do Produtor</h6>
                 <div class="mini-kpi">
                   Mês selecionado: <b><?= h($mesLabel) ?></b> • Período: <b><?= h(date('d/m/Y', strtotime($monthStart))) ?></b> até <b><?= h(date('d/m/Y', strtotime($monthEnd))) ?></b>
-                 
                 </div>
               </div>
 
@@ -645,8 +733,6 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                   <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesAnterior) ?>"><i class="ti-angle-left mr-1"></i> Anterior</a>
 
                   <input type="month" value="<?= h($mes) ?>" onchange="location.href='?mes='+this.value" title="Filtrar mês" />
-
-                  
 
                   <a class="btn btn-sm btn-light bg-white" href="./index.php?mes=<?= h($mesAtual) ?>">
                     <i class="ti-calendar mr-1"></i> Atual
@@ -665,90 +751,109 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           </div>
         </div>
 
-        <!-- KPIs -->
+        <!-- KPIs (layout melhorado / slim) -->
         <div class="row">
+
+          <!-- HERO (Hoje) -->
           <div class="col-md-6 grid-margin stretch-card">
-            <div class="card tale-bg">
-              <div class="card-people">
-                <div style="position: relative; margin-top: -30px;">
-                  <img src="../../../images/dashboard/produtor.jpeg" alt="people" style="filter: brightness(55%); margin-top: -30px;">
-                </div>
-                <div class="weather-info text-white font-weight-bold">
-                  <div class="d-flex">
+            <div class="card kpi-card">
+              <div class="kpi-hero">
+                <div class="hero-bg" style="background-image:url('../../../images/dashboard/produtor.jpeg');"></div>
+                <div class="hero-overlay"></div>
+
+                <div class="hero-content">
+                  <div class="kpi-row">
                     <div>
-                      <h2 class="mb-0 font-weight-normal">
-                        <i class="ti-stats-up mr-2"></i> R$ <?= money($kpi['vendas_hoje_total']) ?>
-                      </h2>
+                      <p class="kpi-title mb-1"><i class="ti-stats-up mr-1"></i> Vendas hoje</p>
+                      <div class="kpi-value">R$ <?= money($kpi['vendas_hoje_total']) ?></div>
+                      <p class="kpi-sub mb-0">
+                        <b><?= (int)$kpi['vendas_hoje_qtd'] ?></b> venda(s) • Ticket <b>R$ <?= money($kpi['ticket_hoje']) ?></b>
+                      </p>
                     </div>
-                    <div class="ml-2 text-white">
-                      <h4 class="location font-weight-normal mb-1">
-                        Vendas Hoje <?= $todayBadgeHtml ?>
-                      </h4>
-                      <h6 class="font-weight-normal mb-1">
-                        <?= (int)$kpi['vendas_hoje_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['ticket_hoje']) ?>
-                      </h6>
-                      <div class="kpi-compare text-white">
-                        Ontem (<?= h(date('d/m', strtotime($yesterday))) ?>): <b>R$ <?= money($kpi['vendas_ontem_total']) ?></b> • <?= (int)$kpi['vendas_ontem_qtd'] ?> venda(s)
-                      </div>
+
+                    <div class="text-right">
+                      <?= $todayBadgeHtml ?>
+                      <?php if ((int)$kpi['fechamento_pendente_ontem'] === 1): ?>
+                        <div class="mt-2">
+                          <span class="badge badge-warning">Fechamento pendente ontem</span>
+                        </div>
+                      <?php endif; ?>
                     </div>
                   </div>
-                  <div class="mt-2 mini-kpi text-white">
-                    Itens hoje: <b><?= number_format((float)$kpi['itens_hoje_qtd'], 3, ',', '.') ?></b> • Canceladas: <b><?= (int)$kpi['canceladas_hoje'] ?></b>
-                    <?php if ((int)$kpi['fechamento_pendente_ontem'] === 1): ?>
-                      <span class="badge badge-warning ml-2">Fechamento pendente ontem</span>
-                    <?php endif; ?>
+
+                  <div class="kpi-compare">
+                    Ontem (<?= h(date('d/m', strtotime($yesterday))) ?>): <b>R$ <?= money($kpi['vendas_ontem_total']) ?></b>
+                    • <?= (int)$kpi['vendas_ontem_qtd'] ?> venda(s)
+                    <span class="ml-2">• Itens: <b><?= number_format((float)$kpi['itens_hoje_qtd'], 3, ',', '.') ?></b></span>
+                    <span class="ml-2">• Canceladas: <b><?= (int)$kpi['canceladas_hoje'] ?></b></span>
                   </div>
+
                 </div>
               </div>
             </div>
           </div>
 
+          <!-- CARDS MENORES (grid) -->
           <div class="col-md-6 grid-margin transparent">
             <div class="row">
+
               <div class="col-md-6 mb-3 stretch-card transparent">
-                <div class="card card-tale">
+                <div class="card card-tale kpi-card">
                   <div class="card-body">
-                    <p class="mb-1">Vendas Hoje <?= $todayBadgeHtml ?></p>
-                    <p class="fs-30 mb-1">R$ <?= money($kpi['vendas_hoje_total']) ?></p>
-                    <p class="mini-kpi mb-0"><?= (int)$kpi['vendas_hoje_qtd'] ?> lançamento(s) • Ontem: R$ <?= money($kpi['vendas_ontem_total']) ?></p>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 mb-3 stretch-card transparent">
-                <div class="card card-dark-blue">
-                  <div class="card-body">
-                    <p class="mb-1">Total do Mês (<?= h($mesLabel) ?>) <?= $monthBadgeHtml ?></p>
-                    <p class="fs-30 mb-1">R$ <?= money($kpi['mes_total']) ?></p>
-                    <p class="mini-kpi mb-0">
-                      <?= (int)$kpi['mes_vendas_qtd'] ?> venda(s) • Ticket: R$ <?= money($kpi['mes_ticket']) ?><br>
-                      <?= h($prevMesLabel) ?>: <b>R$ <?= money($kpi['mes_ant_total']) ?></b> • <?= (int)$kpi['mes_ant_vendas_qtd'] ?> venda(s)
+                    <div class="kpi-row">
+                      <p class="kpi-title mb-0">Vendas hoje</p>
+                      <?= $todayBadgeHtml ?>
+                    </div>
+                    <div class="kpi-value">R$ <?= money($kpi['vendas_hoje_total']) ?></div>
+                    <p class="kpi-sub mb-0">
+                      <b><?= (int)$kpi['vendas_hoje_qtd'] ?></b> lançamento(s)
+                      <span class="d-block">Ontem: <b>R$ <?= money($kpi['vendas_ontem_total']) ?></b></span>
                     </p>
                   </div>
                 </div>
               </div>
+
+              <div class="col-md-6 mb-3 stretch-card transparent">
+                <div class="card card-dark-blue kpi-card">
+                  <div class="card-body">
+                    <div class="kpi-row">
+                      <p class="kpi-title mb-0">Total do mês (<?= h($mesLabel) ?>)</p>
+                      <?= $monthBadgeHtml ?>
+                    </div>
+                    <div class="kpi-value">R$ <?= money($kpi['mes_total']) ?></div>
+                    <p class="kpi-sub mb-0">
+                      <b><?= (int)$kpi['mes_vendas_qtd'] ?></b> venda(s) • Ticket <b>R$ <?= money($kpi['mes_ticket']) ?></b>
+                      <span class="d-block"><?= h($prevMesLabel) ?>: <b>R$ <?= money($kpi['mes_ant_total']) ?></b></span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <div class="row">
               <div class="col-md-6 mb-3 mb-lg-0 stretch-card transparent">
-                <div class="card card-light-blue">
+                <div class="card card-light-blue kpi-card">
                   <div class="card-body">
-                    <p class="mb-1">Produtores Ativos</p>
-                    <p class="fs-30 mb-1"><?= (int)$kpi['produtores_ativos'] ?></p>
-                    <p class="mini-kpi mb-0">Feira <?= (int)$feiraId ?></p>
+                    <p class="kpi-title mb-1">Produtores ativos</p>
+                    <div class="kpi-value"><?= (int)$kpi['produtores_ativos'] ?></div>
+                    <p class="kpi-sub mb-0">Feira <b><?= (int)$feiraId ?></b></p>
                   </div>
                 </div>
               </div>
+
               <div class="col-md-6 stretch-card transparent">
-                <div class="card card-light-danger">
+                <div class="card card-light-danger kpi-card">
                   <div class="card-body">
-                    <p class="mb-1">Produtos Ativos</p>
-                    <p class="fs-30 mb-1"><?= (int)$kpi['produtos_ativos'] ?></p>
-                    <p class="mini-kpi mb-0">Preço ref. zerado: <?= (int)$kpi['preco_ref_zero'] ?></p>
+                    <p class="kpi-title mb-1">Produtos ativos</p>
+                    <div class="kpi-value"><?= (int)$kpi['produtos_ativos'] ?></div>
+                    <p class="kpi-sub mb-0">Preço ref. zerado: <b><?= (int)$kpi['preco_ref_zero'] ?></b></p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
         </div>
 
         <!-- Pagamento HOJE + Top Categorias -->
@@ -762,24 +867,37 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
                 <div class="table-responsive">
                   <table class="table table-borderless mb-0">
                     <tbody>
+                      <tr><td class="py-1" colspan="3"></td></tr>
+
                       <tr>
                         <td style="width:110px"><span class="badge badge-soft">PIX</span></td>
-                        <td class="w-100 px-2"><div class="progress progress-md"><div class="progress-bar bg-success" role="progressbar" style="width: <?= (int)$payPct['PIX'] ?>%"></div></div></td>
+                        <td class="w-100 px-2">
+                          <div class="progress progress-md"><div class="progress-bar bg-success" role="progressbar" style="width: <?= (int)$payPct['PIX'] ?>%"></div></div>
+                        </td>
                         <td class="text-right font-weight-bold" style="width:60px"><?= (int)$payPct['PIX'] ?>%</td>
                       </tr>
+
                       <tr>
                         <td><span class="badge badge-soft">Dinheiro</span></td>
-                        <td class="w-100 px-2"><div class="progress progress-md"><div class="progress-bar bg-primary" role="progressbar" style="width: <?= (int)$payPct['DINHEIRO'] ?>%"></div></div></td>
+                        <td class="w-100 px-2">
+                          <div class="progress progress-md"><div class="progress-bar bg-primary" role="progressbar" style="width: <?= (int)$payPct['DINHEIRO'] ?>%"></div></div>
+                        </td>
                         <td class="text-right font-weight-bold"><?= (int)$payPct['DINHEIRO'] ?>%</td>
                       </tr>
+
                       <tr>
                         <td><span class="badge badge-soft">Cartão</span></td>
-                        <td class="w-100 px-2"><div class="progress progress-md"><div class="progress-bar bg-info" role="progressbar" style="width: <?= (int)$payPct['CARTAO'] ?>%"></div></div></td>
+                        <td class="w-100 px-2">
+                          <div class="progress progress-md"><div class="progress-bar bg-info" role="progressbar" style="width: <?= (int)$payPct['CARTAO'] ?>%"></div></div>
+                        </td>
                         <td class="text-right font-weight-bold"><?= (int)$payPct['CARTAO'] ?>%</td>
                       </tr>
+
                       <tr>
                         <td><span class="badge badge-soft">Outros</span></td>
-                        <td class="w-100 px-2"><div class="progress progress-md"><div class="progress-bar bg-warning" role="progressbar" style="width: <?= (int)$payPct['OUTROS'] ?>%"></div></div></td>
+                        <td class="w-100 px-2">
+                          <div class="progress progress-md"><div class="progress-bar bg-warning" role="progressbar" style="width: <?= (int)$payPct['OUTROS'] ?>%"></div></div>
+                        </td>
                         <td class="text-right font-weight-bold"><?= (int)$payPct['OUTROS'] ?>%</td>
                       </tr>
                     </tbody>
