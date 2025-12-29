@@ -22,14 +22,9 @@ try {
     }
 
     $pdo = db();
-    if (!($pdo instanceof PDO)) {
-        throw new RuntimeException("db() não retornou um PDO válido.");
-    }
-
 } catch (Throwable $e) {
     error_log("ERRO LOGIN (bootstrap/db): " . $e->getMessage());
-
-    $_SESSION['flash_erro'] = "Erro interno: " . $e->getMessage();
+    $_SESSION['flash_erro'] = "Erro interno. Tente novamente.";
     header("Location: {$index}");
     exit;
 }
@@ -39,33 +34,49 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$email = trim((string)($_POST['email'] ?? ''));
+/**
+ * Agora o campo pode ser "email OU nome"
+ * (você pode manter o name="email" no form, pra não mudar layout)
+ */
+$login = trim((string)($_POST['email'] ?? '')); // pode ser nome ou email
 $senha = (string)($_POST['senha'] ?? '');
 
-if ($email === '' || $senha === '') {
-    $_SESSION['flash_erro'] = 'Informe e-mail e senha.';
-    header("Location: {$index}");
-    exit;
-}
-
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    $_SESSION['flash_erro'] = 'Informe um e-mail válido.';
+if ($login === '' || $senha === '') {
+    $_SESSION['flash_erro'] = 'Informe seu e-mail ou nome e sua senha.';
     header("Location: {$index}");
     exit;
 }
 
 try {
-    $stmt = $pdo->prepare("
-        SELECT id, nome, email, senha_hash, ativo
-        FROM usuarios
-        WHERE email = :email
-        LIMIT 1
-    ");
-    $stmt->execute([':email' => $email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Detecta se é email
+    $isEmail = (strpos($login, '@') !== false) && filter_var($login, FILTER_VALIDATE_EMAIL);
+
+    if ($isEmail) {
+        // Login por EMAIL
+        $stmt = $pdo->prepare("
+            SELECT id, nome, email, senha_hash, ativo
+            FROM usuarios
+            WHERE email = :login
+            LIMIT 1
+        ");
+        $stmt->execute([':login' => $login]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    } else {
+        // Login por NOME (pode haver nomes repetidos -> pega o mais recente ativo)
+        // Se quiser exigir nome exato, está ok assim. Se quiser "parecido", dá pra mudar.
+        $stmt = $pdo->prepare("
+            SELECT id, nome, email, senha_hash, ativo
+            FROM usuarios
+            WHERE nome = :login
+            ORDER BY ativo DESC, id DESC
+            LIMIT 1
+        ");
+        $stmt->execute([':login' => $login]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
     if (!$user) {
-        $_SESSION['flash_erro'] = 'E-mail ou senha inválidos.';
+        $_SESSION['flash_erro'] = 'Usuário não encontrado.';
         header("Location: {$index}");
         exit;
     }
@@ -77,12 +88,12 @@ try {
     }
 
     if (!password_verify($senha, (string)$user['senha_hash'])) {
-        $_SESSION['flash_erro'] = 'E-mail ou senha inválidos.';
+        $_SESSION['flash_erro'] = 'E-mail/nome ou senha inválidos.';
         header("Location: {$index}");
         exit;
     }
 
-    // Carrega perfis do usuário
+    // Perfis do usuário
     $pstmt = $pdo->prepare("
         SELECT p.codigo
         FROM usuario_perfis up
@@ -92,21 +103,9 @@ try {
     $pstmt->execute([':uid' => (int)$user['id']]);
     $perfis = $pstmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
 
-    // Normaliza (trim + uppercase) e remove vazios
-    $perfis = array_values(array_filter(array_map(static function($v) {
-        $v = strtoupper(trim((string)$v));
-        return $v !== '' ? $v : null;
-    }, $perfis)));
-
-    // Só permite ADMIN e GESTOR_GERAL
-    $permitidos = ['ADMIN', 'GESTOR_GERAL'];
-    $temPerfilValido = false;
-    foreach ($perfis as $p) {
-        if (in_array($p, $permitidos, true)) { $temPerfilValido = true; break; }
-    }
-
-    if (!$temPerfilValido) {
-        $_SESSION['flash_erro'] = 'Seu usuário não possui perfil autorizado (Gestor Geral ou Administrador).';
+    // Se não tiver perfil, bloqueia (opcional, mas recomendado)
+    if (empty($perfis)) {
+        $_SESSION['flash_erro'] = 'Usuário sem perfil. Contate o administrador.';
         header("Location: {$index}");
         exit;
     }
@@ -118,16 +117,25 @@ try {
     $_SESSION['usuario_email']  = (string)$user['email'];
     $_SESSION['perfis']         = $perfis;
 
+    // Atualiza último login
     $upd = $pdo->prepare("UPDATE usuarios SET ultimo_login_em = NOW() WHERE id = :id");
     $upd->execute([':id' => (int)$user['id']]);
 
-    // Sem OPERADOR: ambos entram no painel ADM
-    header('Location: ../../painel/adm/index.php');
+    // Redireciona (sem operador)
+    // - Gestor Geral (ou outro nome que você escolher) e Admin -> painel ADM
+    if (in_array('GESTOR_GERAL', $perfis, true) || in_array('ADMIN', $perfis, true)) {
+        header('Location: ../../painel/adm/index.php');
+        exit;
+    }
+
+    // fallback: se tiver algum perfil inesperado
+    $_SESSION['flash_erro'] = 'Perfil não autorizado para acessar o painel.';
+    header("Location: {$index}");
     exit;
 
 } catch (Throwable $e) {
     error_log("ERRO LOGIN (query): " . $e->getMessage());
-    $_SESSION['flash_erro'] = "Erro interno no login: " . $e->getMessage();
+    $_SESSION['flash_erro'] = "Erro interno no login. Tente novamente.";
     header("Location: {$index}");
     exit;
 }
