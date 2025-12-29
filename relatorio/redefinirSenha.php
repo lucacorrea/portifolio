@@ -6,6 +6,7 @@ declare(strict_types=1);
    - Form + Processamento (POST) + envio de e-mail
    - Log em: php_error.log (na mesma pasta deste arquivo)
    - Usa sua conexão padrão: require ./assets/php/conexao.php -> db():PDO
+   - Busca SOMENTE por e-mail
    - Tabela: redefinir_senha_tokens (email, codigo, token_hash, expira_em, usado_em, criado_em, usuario_id nullable)
    ========================================================= */
 
@@ -81,10 +82,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
       throw new RuntimeException("CSRF inválido.");
     }
 
-    /* Entrada */
-    $login = trim((string)($_POST['login'] ?? ''));
-    if ($login === '' || str_len($login) < 3) {
-      $_SESSION['flash_erro'] = "Informe um e-mail ou nome válido.";
+    /* Entrada: SOMENTE EMAIL */
+    $email = trim((string)($_POST['login'] ?? ''));
+
+    if ($email === '' || str_len($email) < 6) {
+      $_SESSION['flash_erro'] = "Informe um e-mail válido.";
+      header("Location: ./redefinirSenha.php");
+      exit;
+    }
+
+    // valida formato do e-mail
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+      $_SESSION['flash_erro'] = "Informe um e-mail válido.";
       header("Location: ./redefinirSenha.php");
       exit;
     }
@@ -122,22 +131,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     /* mensagem padrão (não revela se existe) */
     $respostaOk = "Se existir uma conta ativa, enviaremos as instruções para o e-mail cadastrado.";
 
-    /* Procura usuário (email exato OU nome parecido) */
+    /* Procura usuário: SOMENTE EMAIL (case-insensitive) */
     $st = $pdo->prepare("
       SELECT id, nome, email, ativo
       FROM usuarios
       WHERE ativo = 1
-        AND (
-          LOWER(email) = LOWER(:login)
-          OR LOWER(nome) LIKE LOWER(:nomeLike)
-        )
-      ORDER BY (LOWER(email)=LOWER(:login)) DESC, id DESC
+        AND LOWER(email) = LOWER(:email)
       LIMIT 1
     ");
-    $st->execute([
-      ':login'    => $login,
-      ':nomeLike' => '%'.$login.'%',
-    ]);
+    $st->execute([':email' => $email]);
     $user = $st->fetch(PDO::FETCH_ASSOC);
 
     /* Se não encontrou, retorna OK do mesmo jeito */
@@ -151,8 +153,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $emailUser = (string)($user['email'] ?? '');
     $nomeUser  = (string)($user['nome'] ?? 'Usuário');
 
-    if ($emailUser === '' || str_len($emailUser) < 5) {
-      // não revela detalhe
+    if ($emailUser === '' || !filter_var($emailUser, FILTER_VALIDATE_EMAIL)) {
       $_SESSION['flash_ok'] = $respostaOk;
       header("Location: ./redefinirSenhaConfirmar.php");
       exit;
@@ -207,7 +208,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
       "Reply-To: {$FROM_EMAIL}\r\n" .
       "Content-Type: text/plain; charset=UTF-8\r\n";
 
-    // tenta enviar (se falhar, não quebra o fluxo)
+    /* tenta enviar (se falhar, não quebra o fluxo) */
     $sent = @mail($emailUser, $assunto, $mensagem, $headers);
     if (!$sent) {
       error_log("AVISO redefinirSenha: mail() falhou para {$emailUser} | IP=" . client_ip());
@@ -262,7 +263,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
             <h4 class="font-weight-bold text-center mb-1">Esqueceu sua senha?</h4>
             <p class="text-muted text-center mb-4">
-              Informe seu <b>e-mail</b> (ou <b>nome</b>) para receber um link/código de redefinição.
+              Informe seu <b>e-mail</b> para receber um link/código de redefinição.
             </p>
 
             <?php if ($erro): ?>
@@ -276,16 +277,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
               <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
               <div class="form-group">
-                <label class="font-weight-semibold">E-mail ou nome</label>
+                <label class="font-weight-semibold">E-mail</label>
                 <div class="input-group">
                   <div class="input-group-prepend">
                     <span class="input-group-text"><i class="ti-email"></i></span>
                   </div>
                   <input
-                    type="text"
+                    type="email"
                     name="login"
                     class="form-control"
-                    placeholder="Digite seu e-mail ou nome"
+                    placeholder="Digite seu e-mail"
                     required
                   >
                 </div>
@@ -313,7 +314,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
 <script src="./vendors/js/vendor.bundle.base.js"></script>
 <script src="./js/off-canvas.js"></script>
-<script src="./js/hoverable-collapse.js"></script>
 <script src="./js/hoverable-collapse.js"></script>
 <script src="./js/template.js"></script>
 <script src="./js/settings.js"></script>
