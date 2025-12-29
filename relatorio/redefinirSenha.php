@@ -2,7 +2,6 @@
 declare(strict_types=1);
 session_start();
 
-$token = trim((string)($_GET['token'] ?? ''));
 $erro  = $_SESSION['flash_erro'] ?? '';
 $ok    = $_SESSION['flash_ok'] ?? '';
 unset($_SESSION['flash_erro'], $_SESSION['flash_ok']);
@@ -11,10 +10,9 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
   <meta charset="utf-8">
-  <title>Nova senha - SIGRelatórios</title>
+  <title>Redefinir senha - SIGRelatórios</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
   <link rel="stylesheet" href="./vendors/feather/feather.css">
@@ -24,30 +22,14 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
   <link rel="shortcut icon" href="./images/3.png" />
 
   <style>
-    body { background: #f5f7fb; }
-    .auth-card {
-      border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.08);
-    }
-    .form-control {
-      height: 46px;
-      border-radius: 12px;
-    }
-    .btn-primary {
-      border-radius: 12px;
-      height: 46px;
-      font-weight: 700;
-    }
-    .brand-logo img {
-      max-height: 48px;
-    }
-    .hint {
-      font-size: 12px;
-      opacity: .75;
-    }
+    body{ background:#f5f7fb; }
+    .auth-card{ border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
+    .form-control{ height:46px; border-radius:12px; }
+    .btn-primary{ border-radius:12px; height:46px; font-weight:700; }
+    .brand-logo img{ max-height:48px; }
+    .hint{ font-size:12px; opacity:.75; }
   </style>
 </head>
-
 <body>
 <div class="container-scroller">
   <div class="container-fluid page-body-wrapper full-page-wrapper">
@@ -60,80 +42,46 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
               <img src="./images/3.png" alt="SIGRelatórios">
             </div>
 
-            <h4 class="font-weight-bold text-center mb-1">Criar nova senha</h4>
+            <h4 class="font-weight-bold text-center mb-1">Esqueceu sua senha?</h4>
             <p class="text-muted text-center mb-4">
-              Defina uma nova senha segura para sua conta.
+              Informe seu <b>e-mail</b> (ou <b>nome</b>) para receber um link/código de redefinição.
             </p>
 
             <?php if ($erro): ?>
               <div class="alert alert-danger"><?= h($erro) ?></div>
             <?php endif; ?>
-
             <?php if ($ok): ?>
               <div class="alert alert-success"><?= h($ok) ?></div>
             <?php endif; ?>
 
-            <?php if ($token): ?>
-              <form method="post" action="./controle/auth/resetar_senha.php" autocomplete="off">
-                <input type="hidden" name="token" value="<?= h($token) ?>">
-
-                <div class="form-group">
-                  <label class="font-weight-semibold">Nova senha</label>
-                  <div class="input-group">
-                    <div class="input-group-prepend">
-                      <span class="input-group-text"><i class="ti-lock"></i></span>
-                    </div>
-                    <input
-                      type="password"
-                      name="senha"
-                      class="form-control"
-                      minlength="6"
-                      placeholder="Digite a nova senha"
-                      required
-                    >
+            <form method="post" action="./controle/auth/enviarRedefinirSenha.php" autocomplete="off">
+              <div class="form-group">
+                <label class="font-weight-semibold">E-mail ou nome</label>
+                <div class="input-group">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text"><i class="ti-email"></i></span>
                   </div>
-                  <div class="hint">Mínimo de 6 caracteres</div>
+                  <input
+                    type="text"
+                    name="login"
+                    class="form-control"
+                    placeholder="Digite seu e-mail ou nome"
+                    required
+                  >
                 </div>
-
-                <div class="form-group">
-                  <label class="font-weight-semibold">Confirmar senha</label>
-                  <div class="input-group">
-                    <div class="input-group-prepend">
-                      <span class="input-group-text"><i class="ti-lock"></i></span>
-                    </div>
-                    <input
-                      type="password"
-                      name="senha2"
-                      class="form-control"
-                      minlength="6"
-                      placeholder="Confirme a nova senha"
-                      required
-                    >
-                  </div>
-                </div>
-
-                <div class="mt-4">
-                  <button class="btn btn-primary btn-block">
-                    <i class="ti-check mr-1"></i> Salvar nova senha
-                  </button>
-                </div>
-
-                <div class="text-center mt-4 small">
-                  <a href="./index.php" class="text-muted">
-                    Voltar para o login
-                  </a>
-                </div>
-              </form>
-            <?php else: ?>
-              <div class="alert alert-warning text-center">
-                Link inválido ou expirado.
+                <div class="hint">Se o usuário existir e estiver ativo, enviaremos as instruções.</div>
               </div>
-              <div class="text-center mt-3">
-                <a href="./redefinir-senha.php" class="btn btn-outline-primary btn-sm">
-                  Solicitar novo link
-                </a>
+
+              <div class="mt-4">
+                <button class="btn btn-primary btn-block">
+                  <i class="ti-arrow-right mr-1"></i> Enviar instruções
+                </button>
               </div>
-            <?php endif; ?>
+
+              <div class="text-center mt-4 small">
+                <a href="./index.php" class="text-muted">Voltar para o login</a>
+              </div>
+            </form>
 
           </div>
 
