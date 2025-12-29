@@ -2,11 +2,11 @@
 declare(strict_types=1);
 session_start();
 
-$erro  = $_SESSION['flash_erro'] ?? '';
-$ok    = $_SESSION['flash_ok'] ?? '';
+$erro  = (string)($_SESSION['flash_erro'] ?? '');
+$ok    = (string)($_SESSION['flash_ok'] ?? '');
 unset($_SESSION['flash_erro'], $_SESSION['flash_ok']);
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -69,7 +69,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
                     required
                   >
                 </div>
-                <div class="hint">Se o usuário existir e estiver ativo, enviaremos as instruções.</div>
+                <div class="hint">Se existir uma conta ativa, enviaremos as instruções.</div>
               </div>
 
               <div class="mt-4">

@@ -2,20 +2,11 @@
 declare(strict_types=1);
 session_start();
 
-$erro  = $_SESSION['flash_erro'] ?? '';
-$ok    = $_SESSION['flash_ok'] ?? '';
-$email = $_SESSION['redef_email'] ?? '';
+$erro  = (string)($_SESSION['flash_erro'] ?? '');
+$ok    = (string)($_SESSION['flash_ok'] ?? '');
 unset($_SESSION['flash_erro'], $_SESSION['flash_ok']);
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-
-function mask_email(string $email): string {
-  $email = trim($email);
-  if ($email === '' || strpos($email, '@') === false) return '';
-  [$u, $d] = explode('@', $email, 2);
-  $u2 = mb_substr($u, 0, 2, 'UTF-8') . str_repeat('*', max(0, mb_strlen($u, 'UTF-8') - 2));
-  return $u2 . '@' . $d;
-}
+function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -33,8 +24,8 @@ function mask_email(string $email): string {
   <style>
     body{ background:#f5f7fb; }
     .auth-card{ border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
+    .btn-primary{ border-radius:12px; height:46px; font-weight:700; }
     .brand-logo img{ max-height:48px; }
-    .btn{ border-radius:12px; height:46px; font-weight:700; }
   </style>
 </head>
 <body>
@@ -49,29 +40,26 @@ function mask_email(string $email): string {
               <img src="./images/3.png" alt="SIGRelatórios">
             </div>
 
-            <h4 class="font-weight-bold text-center mb-1">Confira seu e-mail</h4>
-            <p class="text-muted text-center mb-4">
-              Enviamos instruções para redefinir sua senha<?php if ($email): ?> em <b><?= h(mask_email($email)) ?></b><?php endif; ?>.
-            </p>
+            <h4 class="font-weight-bold text-center mb-2">Verifique seu e-mail</h4>
 
             <?php if ($erro): ?>
               <div class="alert alert-danger"><?= h($erro) ?></div>
             <?php endif; ?>
-            <?php if ($ok): ?>
-              <div class="alert alert-success"><?= h($ok) ?></div>
-            <?php endif; ?>
 
-            <div class="text-center mt-4">
-              <a href="./index.php" class="btn btn-outline-primary btn-block">
-                Voltar para o login
-              </a>
+            <div class="alert alert-success">
+              <?= h($ok ?: 'Se existir uma conta ativa, enviaremos as instruções para o e-mail cadastrado.') ?>
             </div>
 
-            <div class="text-center mt-3 small text-muted">
-              Não recebeu? Verifique spam ou solicite novamente.
-              <div class="mt-2">
-                <a href="./redefinirSenha.php">Solicitar novamente</a>
-              </div>
+            <p class="text-muted small mb-4">
+              Procure também na caixa de <b>spam</b> ou <b>lixo eletrônico</b>.
+            </p>
+
+            <a href="./redefinirSenha.php" class="btn btn-primary btn-block">
+              <i class="ti-reload mr-1"></i> Tentar novamente
+            </a>
+
+            <div class="text-center mt-4 small">
+              <a href="./index.php" class="text-muted">Voltar para o login</a>
             </div>
 
           </div>
@@ -84,6 +72,7 @@ function mask_email(string $email): string {
 
 <script src="./vendors/js/vendor.bundle.base.js"></script>
 <script src="./js/off-canvas.js"></script>
+<script src="./js/hoverable-collapse.js"></script>
 <script src="./js/hoverable-collapse.js"></script>
 <script src="./js/template.js"></script>
 <script src="./js/settings.js"></script>

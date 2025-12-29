@@ -3,11 +3,12 @@ declare(strict_types=1);
 session_start();
 
 $token = trim((string)($_GET['token'] ?? ''));
-$erro  = $_SESSION['flash_erro'] ?? '';
-$ok    = $_SESSION['flash_ok'] ?? '';
+
+$erro  = (string)($_SESSION['flash_erro'] ?? '');
+$ok    = (string)($_SESSION['flash_ok'] ?? '');
 unset($_SESSION['flash_erro'], $_SESSION['flash_ok']);
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -43,10 +44,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
               <img src="./images/3.png" alt="SIGRelatórios">
             </div>
 
-            <h4 class="font-weight-bold text-center mb-1">Criar nova senha</h4>
-            <p class="text-muted text-center mb-4">
-              Defina uma nova senha para sua conta.
-            </p>
+            <h4 class="font-weight-bold text-center mb-1">Definir nova senha</h4>
+            <p class="text-muted text-center mb-4">Informe o código recebido e crie sua nova senha.</p>
 
             <?php if ($erro): ?>
               <div class="alert alert-danger"><?= h($erro) ?></div>
@@ -55,50 +54,45 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
               <div class="alert alert-success"><?= h($ok) ?></div>
             <?php endif; ?>
 
-            <?php if ($token): ?>
-              <form method="post" action="./controle/auth/resetar_senha.php" autocomplete="off">
+            <?php if (!$token): ?>
+              <div class="alert alert-danger">Token ausente. Abra o link enviado no e-mail.</div>
+              <div class="text-center mt-3 small">
+                <a href="./redefinirSenha.php" class="text-muted">Voltar</a>
+              </div>
+            <?php else: ?>
+              <form method="post" action="./controle/auth/resetarSenha.php" autocomplete="off">
                 <input type="hidden" name="token" value="<?= h($token) ?>">
 
                 <div class="form-group">
-                  <label class="font-weight-semibold">Nova senha</label>
+                  <label class="font-weight-semibold">Código (6 dígitos)</label>
                   <div class="input-group">
                     <div class="input-group-prepend">
-                      <span class="input-group-text"><i class="ti-lock"></i></span>
+                      <span class="input-group-text"><i class="ti-key"></i></span>
                     </div>
-                    <input type="password" name="senha" class="form-control" minlength="6" placeholder="Digite a nova senha" required>
+                    <input type="text" name="codigo" class="form-control" inputmode="numeric" pattern="\d{6}" maxlength="6" placeholder="Ex.: 123456" required>
                   </div>
-                  <div class="hint">Mínimo de 6 caracteres</div>
+                  <div class="hint">O código expira em 30 minutos.</div>
+                </div>
+
+                <div class="form-group">
+                  <label class="font-weight-semibold">Nova senha</label>
+                  <input type="password" name="senha" class="form-control" minlength="6" required>
+                  <div class="hint">Mínimo 6 caracteres.</div>
                 </div>
 
                 <div class="form-group">
                   <label class="font-weight-semibold">Confirmar senha</label>
-                  <div class="input-group">
-                    <div class="input-group-prepend">
-                      <span class="input-group-text"><i class="ti-lock"></i></span>
-                    </div>
-                    <input type="password" name="senha2" class="form-control" minlength="6" placeholder="Confirme a nova senha" required>
-                  </div>
+                  <input type="password" name="senha2" class="form-control" minlength="6" required>
                 </div>
 
-                <div class="mt-4">
-                  <button class="btn btn-primary btn-block">
-                    <i class="ti-check mr-1"></i> Salvar nova senha
-                  </button>
-                </div>
+                <button class="btn btn-primary btn-block">
+                  <i class="ti-check mr-1"></i> Salvar nova senha
+                </button>
 
                 <div class="text-center mt-4 small">
                   <a href="./index.php" class="text-muted">Voltar para o login</a>
                 </div>
               </form>
-            <?php else: ?>
-              <div class="alert alert-warning text-center">
-                Link inválido ou expirado.
-              </div>
-              <div class="text-center mt-3">
-                <a href="./redefinirSenha.php" class="btn btn-outline-primary btn-sm">
-                  Solicitar novo link
-                </a>
-              </div>
             <?php endif; ?>
 
           </div>
