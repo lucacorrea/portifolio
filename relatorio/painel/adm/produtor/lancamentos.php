@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -15,10 +16,14 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function h($s)
+{
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
 
 /** Converte "1.234,56" -> 1234.56 */
-function to_decimal($v): float {
+function to_decimal($v): float
+{
   $s = trim((string)$v);
   if ($s === '') return 0.0;
   $s = str_replace(['R$', ' '], '', $s);
@@ -30,7 +35,8 @@ function to_decimal($v): float {
 }
 
 /* ✅ agora sem hora: mostra só data (d/m/Y) */
-function fmt_dt(string $s): string {
+function fmt_dt(string $s): string
+{
   if ($s === '') return '';
   try {
     $dt = new DateTime($s);
@@ -109,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     if ($id <= 0) {
       $_SESSION['flash_err'] = 'Lançamento inválido.';
-      header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia) . '&produtor=' . (int)$prodFiltro);
       exit;
     }
 
@@ -133,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $_SESSION['flash_err'] = 'Não foi possível excluir o lançamento agora.';
     }
 
-    header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia) . '&produtor=' . (int)$prodFiltro);
     exit;
   }
 
@@ -196,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($localErr !== '') {
       $_SESSION['flash_err'] = $localErr;
-      header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia) . '&produtor=' . (int)$prodFiltro);
       exit;
     }
 
@@ -245,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
     }
 
-    header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia) . '&produtor=' . (int)$prodFiltro);
     exit;
   }
 }
@@ -325,7 +331,7 @@ if ($verId > 0) {
 
     if (!$detalheVenda) {
       $_SESSION['flash_err'] = 'Lançamento não encontrado.';
-      header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia) . '&produtor=' . (int)$prodFiltro);
       exit;
     }
 
@@ -360,16 +366,16 @@ if ($verId > 0) {
     }
     $detalheProdutores = array_keys($map);
     sort($detalheProdutores, SORT_NATURAL | SORT_FLAG_CASE);
-
   } catch (Throwable $e) {
     $_SESSION['flash_err'] = 'Não foi possível carregar os detalhes agora.';
-    header('Location: ./lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro);
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia) . '&produtor=' . (int)$prodFiltro);
     exit;
   }
 }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -387,35 +393,84 @@ if ($verId > 0) {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
+    ul .nav-link:hover {
+      color: blue !important;
+    }
 
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
+    .nav-link {
+      color: black !important;
+    }
 
-    .form-control { height: 42px; }
-    .btn { height: 42px; }
-    .helper{ font-size: 12px; }
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
 
-    .acoes-wrap{ display:flex; flex-wrap:wrap; gap:8px; }
-    .btn-xs{ padding: .25rem .5rem; font-size: .75rem; line-height: 1.2; height:auto; }
-    .table td, .table th{ vertical-align: middle !important; }
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
 
-    .totbox{
-      border: 1px solid rgba(0,0,0,.08);
+    .form-control {
+      height: 42px;
+    }
+
+    .btn {
+      height: 42px;
+    }
+
+    .helper {
+      font-size: 12px;
+    }
+
+    .acoes-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn-xs {
+      padding: .25rem .5rem;
+      font-size: .75rem;
+      line-height: 1.2;
+      height: auto;
+    }
+
+    .table td,
+    .table th {
+      vertical-align: middle !important;
+    }
+
+    .totbox {
+      border: 1px solid rgba(0, 0, 0, .08);
       background: #fff;
       border-radius: 12px;
       padding: 10px 12px;
     }
-    .totlabel{ font-size: 12px; color: #6c757d; margin:0; }
-    .totvalue{ font-size: 20px; font-weight: 800; margin:0; }
+
+    .totlabel {
+      font-size: 12px;
+      color: #6c757d;
+      margin: 0;
+    }
+
+    .totvalue {
+      font-size: 20px;
+      font-weight: 800;
+      margin: 0;
+    }
 
     /* produtores em lista (compacto) */
-    .plist{ margin:0; padding-left: 18px; }
-    .plist li{ line-height: 1.1; margin: 2px 0; }
+    .plist {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .plist li {
+      line-height: 1.1;
+      margin: 2px 0;
+    }
 
     /* ===== Flash “Hostinger style” (top-right, ~6s) ===== */
-    .sig-flash-wrap{
+    .sig-flash-wrap {
       position: fixed;
       top: 78px;
       right: 18px;
@@ -424,13 +479,14 @@ if ($verId > 0) {
       z-index: 9999;
       pointer-events: none;
     }
-    .sig-toast.alert{
+
+    .sig-toast.alert {
       pointer-events: auto;
       border: 0 !important;
       border-left: 6px solid !important;
       border-radius: 14px !important;
       padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
 
@@ -438,365 +494,436 @@ if ($verId > 0) {
       transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
     }
-    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
-    .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
-    .sig-toast__icon i{ font-size:16px; margin-top:2px; }
-    .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
-    .sig-toast__text{ margin:0; line-height: 1.25; }
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important;
+    }
 
-    .sig-toast .close{ opacity:.55; font-size: 18px; line-height: 1; padding: 0 6px; }
-    .sig-toast .close:hover{ opacity:1; }
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important;
+    }
 
-    @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
-    @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .sig-toast__title {
+      font-weight: 800;
+      margin-bottom: 1px;
+      line-height: 1.1;
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    .sig-toast .close {
+      opacity: .55;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 6px;
+    }
+
+    .sig-toast .close:hover {
+      opacity: 1;
+    }
+
+    @keyframes sigToastIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes sigToastOut {
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden;
+      }
+    }
 
     /* modal */
-    .modal-content{ border-radius: 14px; }
-    .modal-header{ border-top-left-radius: 14px; border-top-right-radius: 14px; }
+    .modal-content {
+      border-radius: 14px;
+    }
+
+    .modal-header {
+      border-top-left-radius: 14px;
+      border-top-right-radius: 14px;
+    }
   </style>
 </head>
 
 <body>
-<div class="container-scroller">
+  <div class="container-scroller">
 
-  <!-- NAVBAR -->
-  <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-    <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-      <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-      <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
-    </div>
-    <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-      <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-        <span class="icon-menu"></span>
-      </button>
+    <!-- NAVBAR -->
+    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
+      </div>
+      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+          <span class="icon-menu"></span>
+        </button>
 
-      <ul class="navbar-nav mr-lg-2">
-        <li class="nav-item nav-search d-none d-lg-block"></li>
-      </ul>
+        <ul class="navbar-nav mr-lg-2">
+          <li class="nav-item nav-search d-none d-lg-block"></li>
+        </ul>
 
-      <ul class="navbar-nav navbar-nav-right"></ul>
+        <ul class="navbar-nav navbar-nav-right"></ul>
 
-      <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-        <span class="icon-menu"></span>
-      </button>
-    </div>
-  </nav>
-
-  <?php if ($msg || $err): ?>
-    <div class="sig-flash-wrap">
-      <?php if ($msg): ?>
-        <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
-          <div class="sig-toast__row">
-            <div class="sig-toast__icon"><i class="ti-check"></i></div>
-            <div>
-              <div class="sig-toast__title">Tudo certo!</div>
-              <p class="sig-toast__text"><?= h($msg) ?></p>
-            </div>
-          </div>
-          <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-      <?php endif; ?>
-
-      <?php if ($err): ?>
-        <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
-          <div class="sig-toast__row">
-            <div class="sig-toast__icon"><i class="ti-alert"></i></div>
-            <div>
-              <div class="sig-toast__title">Atenção!</div>
-              <p class="sig-toast__text"><?= h($err) ?></p>
-            </div>
-          </div>
-          <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-      <?php endif; ?>
-    </div>
-  <?php endif; ?>
-
-  <div class="container-fluid page-body-wrapper">
-
-    <div id="right-sidebar" class="settings-panel">
-      <i class="settings-close ti-close"></i>
-      <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-        <li class="nav-item">
-          <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
-        </li>
-      </ul>
-    </div>
-
-    <!-- SIDEBAR -->
-    <nav class="sidebar sidebar-offcanvas" id="sidebar">
-      <ul class="nav">
-
-        <li class="nav-item">
-          <a class="nav-link" href="index.php">
-            <i class="icon-grid menu-icon"></i>
-            <span class="menu-title">Dashboard</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
-            <i class="ti-id-badge menu-icon"></i>
-            <span class="menu-title">Cadastros</span>
-            <i class="menu-arrow"></i>
-          </a>
-
-          <div class="collapse" id="feiraCadastros">
-            <style>
-              .sub-menu .nav-item .nav-link { color: black !important; }
-              .sub-menu .nav-item .nav-link:hover { color: blue !important; }
-            </style>
-
-            <ul class="nav flex-column sub-menu" style="background: white !important;">
-              <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
-              <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
-              <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-              <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
-            </ul>
-          </div>
-        </li>
-
-        <!-- MOVIMENTO ATIVO -->
-        <li class="nav-item active">
-          <a class="nav-link open" data-toggle="collapse" href="#feiraMovimento" aria-expanded="true" aria-controls="feiraMovimento">
-            <i class="ti-exchange-vertical menu-icon"></i>
-            <span class="menu-title">Movimento</span>
-            <i class="menu-arrow"></i>
-          </a>
-
-          <div class="collapse show" id="feiraMovimento">
-            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-              <li class="nav-item active">
-                <a class="nav-link" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
-                  <i class="ti-write mr-2"></i> Lançamentos (Vendas)
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="./fechamentoDia.php">
-                  <i class="ti-check-box mr-2"></i> Fechamento do Dia
-                </a>
-              </li>
-            </ul>
-          </div>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-            <i class="ti-headphone-alt menu-icon"></i>
-            <span class="menu-title">Suporte</span>
-          </a>
-        </li>
-
-      </ul>
+        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+          <span class="icon-menu"></span>
+        </button>
+      </div>
     </nav>
 
-    <!-- MAIN -->
-    <div class="main-panel">
-      <div class="content-wrapper">
-
-        <div class="row">
-          <div class="col-12 mb-3">
-            <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
-            <h6 class="font-weight-normal mb-0">Sem hora no formulário e “Feirante(s)” sempre em linhas separadas quando tiver mais de um.</h6>
+    <?php if ($msg || $err): ?>
+      <div class="sig-flash-wrap">
+        <?php if ($msg): ?>
+          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-check"></i></div>
+              <div>
+                <div class="sig-toast__title">Tudo certo!</div>
+                <p class="sig-toast__text"><?= h($msg) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
-        </div>
+        <?php endif; ?>
 
-        <!-- NOVO LANÇAMENTO -->
-        <div class="row">
-          <div class="col-lg-12 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
+        <?php if ($err): ?>
+          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+              <div>
+                <div class="sig-toast__title">Atenção!</div>
+                <p class="sig-toast__text"><?= h($err) ?></p>
+              </div>
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
 
-                <div class="d-flex align-items-center justify-content-between flex-wrap">
-                  <div>
-                    <h4 class="card-title mb-0">Novo Lançamento</h4>
-                    <p class="card-description mb-0">Escolha a data, forma de pagamento, adicione itens e salve.</p>
+    <div class="container-fluid page-body-wrapper">
+
+      <div id="right-sidebar" class="settings-panel">
+        <i class="settings-close ti-close"></i>
+        <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
+          <li class="nav-item">
+            <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- SIDEBAR -->
+      <nav class="sidebar sidebar-offcanvas" id="sidebar">
+        <ul class="nav">
+
+          <li class="nav-item">
+            <a class="nav-link" href="index.php">
+              <i class="icon-grid menu-icon"></i>
+              <span class="menu-title">Dashboard</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
+              <i class="ti-id-badge menu-icon"></i>
+              <span class="menu-title">Cadastros</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse" id="feiraCadastros">
+              <style>
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
+              </style>
+
+              <ul class="nav flex-column sub-menu" style="background: white !important;">
+                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- MOVIMENTO ATIVO -->
+          <li class="nav-item active">
+            <a class="nav-link open" data-toggle="collapse" href="#feiraMovimento" aria-expanded="true" aria-controls="feiraMovimento">
+              <i class="ti-exchange-vertical menu-icon"></i>
+              <span class="menu-title">Movimento</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse show" id="feiraMovimento">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item active">
+                  <a class="nav-link" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
+                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./fechamentoDia.php">
+                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
+              <i class="ti-clipboard menu-icon"></i>
+              <span class="menu-title">Relatórios</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse text-black" id="feiraRelatorios">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
+                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
+              </ul>
+            </div>
+          </li>
+
+
+          <li class="nav-item">
+            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+              <i class="ti-headphone-alt menu-icon"></i>
+              <span class="menu-title">Suporte</span>
+            </a>
+          </li>
+
+        </ul>
+      </nav>
+
+      <!-- MAIN -->
+      <div class="main-panel">
+        <div class="content-wrapper">
+
+          <div class="row">
+            <div class="col-12 mb-3">
+              <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
+              <h6 class="font-weight-normal mb-0">Sem hora no formulário e “Feirante(s)” sempre em linhas separadas quando tiver mais de um.</h6>
+            </div>
+          </div>
+
+          <!-- NOVO LANÇAMENTO -->
+          <div class="row">
+            <div class="col-lg-12 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
+
+                  <div class="d-flex align-items-center justify-content-between flex-wrap">
+                    <div>
+                      <h4 class="card-title mb-0">Novo Lançamento</h4>
+                      <p class="card-description mb-0">Escolha a data, forma de pagamento, adicione itens e salve.</p>
+                    </div>
+                    <div class="totbox mt-2 mt-md-0">
+                      <p class="totlabel">Total</p>
+                      <p class="totvalue" id="jsTotal">R$ 0,00</p>
+                    </div>
                   </div>
-                  <div class="totbox mt-2 mt-md-0">
-                    <p class="totlabel">Total</p>
-                    <p class="totvalue" id="jsTotal">R$ 0,00</p>
-                  </div>
+
+                  <hr>
+
+                  <form method="post" action="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>" autocomplete="off">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                    <input type="hidden" name="acao" value="salvar">
+
+                    <div class="row">
+                      <div class="col-md-3 mb-3">
+                        <label class="mb-1">Data</label>
+                        <input type="date" class="form-control" name="data_venda" value="<?= h($dia) ?>" required>
+                      </div>
+
+                      <!-- ✅ HORA REMOVIDA -->
+
+                      <div class="col-md-3 mb-3">
+                        <label class="mb-1">Forma de Pagamento</label>
+                        <select class="form-control" name="forma_pagamento" required>
+                          <option value="" selected disabled>Selecione</option>
+                          <option value="DINHEIRO">Dinheiro</option>
+                          <option value="PIX">Pix</option>
+                          <option value="CARTAO">Cartão</option>
+                          <option value="OUTROS">Outros</option>
+                        </select>
+                      </div>
+
+                      <div class="col-md-6 mb-3">
+                        <label class="mb-1">Observação</label>
+                        <input type="text" class="form-control" name="observacao" placeholder="Opcional">
+                      </div>
+                    </div>
+
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="mb-1">Filtrar produtos por feirante (opcional)</label>
+                        <select class="form-control" id="jsFiltroProd">
+                          <option value="0">Todos</option>
+                          <?php foreach ($produtoresAtivos as $p): ?>
+                            <option value="<?= (int)$p['id'] ?>"><?= h($p['nome'] ?? '') ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted helper">Ajuda a achar o produto mais rápido. A venda pode ter itens de vários feirantes.</small>
+                      </div>
+                    </div>
+
+                    <div class="table-responsive">
+                      <table class="table table-striped table-hover mb-0" id="itensTable">
+                        <thead>
+                          <tr>
+                            <th>Produto</th>
+                            <th style="width:120px;">Qtd</th>
+                            <th style="width:160px;">Valor (R$)</th>
+                            <th style="width:120px;">Unid</th>
+                            <th style="width:220px;">Categoria</th>
+                            <th style="width:90px;" class="text-right">—</th>
+                          </tr>
+                        </thead>
+                        <tbody id="itensBody">
+                          <tr class="js-item-row">
+                            <td>
+                              <select class="form-control js-prod" name="produto_id[]">
+                                <option value="0">—</option>
+                                <?php foreach ($produtosAtivos as $pr): ?>
+                                  <option
+                                    value="<?= (int)$pr['id'] ?>"
+                                    data-prod="<?= (int)($pr['produtor_id'] ?? 0) ?>"
+                                    data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
+                                    data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
+                                    data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>">
+                                    <?= h($pr['nome'] ?? '') ?><?= ($pr['produtor_nome'] ?? '') ? ' — ' . h($pr['produtor_nome']) : '' ?>
+                                  </option>
+                                <?php endforeach; ?>
+                              </select>
+                            </td>
+                            <td><input type="text" class="form-control js-qtd" name="quantidade[]" value="1"></td>
+                            <td><input type="text" class="form-control js-vu" name="valor_unitario[]" placeholder="0,00"></td>
+                            <td><input type="text" class="form-control js-un" value="" readonly></td>
+                            <td><input type="text" class="form-control js-cat" value="" readonly></td>
+                            <td class="text-right">
+                              <button type="button" class="btn btn-light btn-xs js-remove" title="Remover linha" disabled>
+                                <i class="ti-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mt-3" style="gap:8px;">
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="button" class="btn btn-light" id="btnAddLinha">
+                          <i class="ti-plus mr-1"></i> Adicionar linha
+                        </button>
+                        <button type="button" class="btn btn-light" id="btnPrecoRef">
+                          <i class="ti-tag mr-1"></i> Preencher valor ref.
+                        </button>
+                      </div>
+
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="submit" class="btn btn-primary">
+                          <i class="ti-save mr-1"></i> Salvar
+                        </button>
+                        <a href="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>" class="btn btn-light">
+                          <i class="ti-close mr-1"></i> Limpar
+                        </a>
+                      </div>
+                    </div>
+
+                  </form>
+
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <hr>
+          <!-- LISTAGEM -->
+          <div class="row">
+            <div class="col-lg-12 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
 
-                <form method="post" action="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>" autocomplete="off">
-                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                  <input type="hidden" name="acao" value="salvar">
-
-                  <div class="row">
-                    <div class="col-md-3 mb-3">
-                      <label class="mb-1">Data</label>
-                      <input type="date" class="form-control" name="data_venda" value="<?= h($dia) ?>" required>
-                    </div>
-
-                    <!-- ✅ HORA REMOVIDA -->
-
-                    <div class="col-md-3 mb-3">
-                      <label class="mb-1">Forma de Pagamento</label>
-                      <select class="form-control" name="forma_pagamento" required>
-                        <option value="" selected disabled>Selecione</option>
-                        <option value="DINHEIRO">Dinheiro</option>
-                        <option value="PIX">Pix</option>
-                        <option value="CARTAO">Cartão</option>
-                        <option value="OUTROS">Outros</option>
-                      </select>
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                      <label class="mb-1">Observação</label>
-                      <input type="text" class="form-control" name="observacao" placeholder="Opcional">
+                  <div class="d-flex align-items-center justify-content-between flex-wrap">
+                    <div>
+                      <h4 class="card-title mb-0">Lançamentos</h4>
+                      <p class="card-description mb-0">Mostrando <?= (int)count($vendas) ?> registro(s).</p>
                     </div>
                   </div>
 
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label class="mb-1">Filtrar produtos por feirante (opcional)</label>
-                      <select class="form-control" id="jsFiltroProd">
+                  <div class="row mt-3">
+                    <div class="col-md-3 mb-2">
+                      <label class="mb-1">Dia</label>
+                      <input type="date" class="form-control" value="<?= h($dia) ?>" onchange="location.href='?dia='+this.value+'&produtor=<?= (int)$prodFiltro ?>';">
+                    </div>
+                    <div class="col-md-6 mb-2">
+                      <label class="mb-1">Feirante (filtra por itens)</label>
+                      <select class="form-control" onchange="location.href='?dia=<?= h($dia) ?>&produtor='+this.value;">
                         <option value="0">Todos</option>
-                        <?php foreach ($produtoresAtivos as $p): ?>
-                          <option value="<?= (int)$p['id'] ?>"><?= h($p['nome'] ?? '') ?></option>
+                        <?php foreach ($produtoresAtivos as $p): $pid = (int)$p['id']; ?>
+                          <option value="<?= $pid ?>" <?= $prodFiltro === $pid ? 'selected' : '' ?>><?= h($p['nome'] ?? '') ?></option>
                         <?php endforeach; ?>
                       </select>
-                      <small class="text-muted helper">Ajuda a achar o produto mais rápido. A venda pode ter itens de vários feirantes.</small>
+                      <small class="text-muted helper">Mostra vendas que tenham itens de produtos desse feirante.</small>
                     </div>
-                  </div>
-
-                  <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0" id="itensTable">
-                      <thead>
-                        <tr>
-                          <th>Produto</th>
-                          <th style="width:120px;">Qtd</th>
-                          <th style="width:160px;">Valor (R$)</th>
-                          <th style="width:120px;">Unid</th>
-                          <th style="width:220px;">Categoria</th>
-                          <th style="width:90px;" class="text-right">—</th>
-                        </tr>
-                      </thead>
-                      <tbody id="itensBody">
-                        <tr class="js-item-row">
-                          <td>
-                            <select class="form-control js-prod" name="produto_id[]">
-                              <option value="0">—</option>
-                              <?php foreach ($produtosAtivos as $pr): ?>
-                                <option
-                                  value="<?= (int)$pr['id'] ?>"
-                                  data-prod="<?= (int)($pr['produtor_id'] ?? 0) ?>"
-                                  data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
-                                  data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
-                                  data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>"
-                                >
-                                  <?= h($pr['nome'] ?? '') ?><?= ($pr['produtor_nome'] ?? '') ? ' — '.h($pr['produtor_nome']) : '' ?>
-                                </option>
-                              <?php endforeach; ?>
-                            </select>
-                          </td>
-                          <td><input type="text" class="form-control js-qtd" name="quantidade[]" value="1"></td>
-                          <td><input type="text" class="form-control js-vu" name="valor_unitario[]" placeholder="0,00"></td>
-                          <td><input type="text" class="form-control js-un" value="" readonly></td>
-                          <td><input type="text" class="form-control js-cat" value="" readonly></td>
-                          <td class="text-right">
-                            <button type="button" class="btn btn-light btn-xs js-remove" title="Remover linha" disabled>
-                              <i class="ti-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div class="d-flex flex-wrap justify-content-between align-items-center mt-3" style="gap:8px;">
-                    <div class="d-flex flex-wrap" style="gap:8px;">
-                      <button type="button" class="btn btn-light" id="btnAddLinha">
-                        <i class="ti-plus mr-1"></i> Adicionar linha
-                      </button>
-                      <button type="button" class="btn btn-light" id="btnPrecoRef">
-                        <i class="ti-tag mr-1"></i> Preencher valor ref.
-                      </button>
-                    </div>
-
-                    <div class="d-flex flex-wrap" style="gap:8px;">
-                      <button type="submit" class="btn btn-primary">
-                        <i class="ti-save mr-1"></i> Salvar
-                      </button>
-                      <a href="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>" class="btn btn-light">
-                        <i class="ti-close mr-1"></i> Limpar
+                    <div class="col-md-3 mb-2 d-flex align-items-end">
+                      <a class="btn btn-light w-100" href="./lancamentos.php">
+                        <i class="ti-close mr-1"></i> Limpar filtros
                       </a>
                     </div>
                   </div>
 
-                </form>
-
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- LISTAGEM -->
-        <div class="row">
-          <div class="col-lg-12 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
-
-                <div class="d-flex align-items-center justify-content-between flex-wrap">
-                  <div>
-                    <h4 class="card-title mb-0">Lançamentos</h4>
-                    <p class="card-description mb-0">Mostrando <?= (int)count($vendas) ?> registro(s).</p>
-                  </div>
-                </div>
-
-                <div class="row mt-3">
-                  <div class="col-md-3 mb-2">
-                    <label class="mb-1">Dia</label>
-                    <input type="date" class="form-control" value="<?= h($dia) ?>" onchange="location.href='?dia='+this.value+'&produtor=<?= (int)$prodFiltro ?>';">
-                  </div>
-                  <div class="col-md-6 mb-2">
-                    <label class="mb-1">Feirante (filtra por itens)</label>
-                    <select class="form-control" onchange="location.href='?dia=<?= h($dia) ?>&produtor='+this.value;">
-                      <option value="0">Todos</option>
-                      <?php foreach ($produtoresAtivos as $p): $pid=(int)$p['id']; ?>
-                        <option value="<?= $pid ?>" <?= $prodFiltro===$pid ? 'selected' : '' ?>><?= h($p['nome'] ?? '') ?></option>
-                      <?php endforeach; ?>
-                    </select>
-                    <small class="text-muted helper">Mostra vendas que tenham itens de produtos desse feirante.</small>
-                  </div>
-                  <div class="col-md-3 mb-2 d-flex align-items-end">
-                    <a class="btn btn-light w-100" href="./lancamentos.php">
-                      <i class="ti-close mr-1"></i> Limpar filtros
-                    </a>
-                  </div>
-                </div>
-
-                <div class="table-responsive pt-3">
-                  <table class="table table-striped table-hover">
-                    <thead>
-                      <tr>
-                        <th style="width:90px;">ID</th>
-                        <th style="width:170px;">Data</th>
-                        <th style="width:150px;">Pagamento</th>
-                        <th>Feirante(s)</th>
-                        <th style="width:160px;">Total</th>
-                        <th style="min-width:260px;">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php if (empty($vendas)): ?>
+                  <div class="table-responsive pt-3">
+                    <table class="table table-striped table-hover">
+                      <thead>
                         <tr>
-                          <td colspan="6" class="text-center text-muted py-4">Nenhum lançamento encontrado.</td>
+                          <th style="width:90px;">ID</th>
+                          <th style="width:170px;">Data</th>
+                          <th style="width:150px;">Pagamento</th>
+                          <th>Feirante(s)</th>
+                          <th style="width:160px;">Total</th>
+                          <th style="min-width:260px;">Ações</th>
                         </tr>
-                      <?php else: ?>
-                        <?php foreach ($vendas as $v): ?>
-                          <?php
+                      </thead>
+                      <tbody>
+                        <?php if (empty($vendas)): ?>
+                          <tr>
+                            <td colspan="6" class="text-center text-muted py-4">Nenhum lançamento encontrado.</td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($vendas as $v): ?>
+                            <?php
                             $vid = (int)($v['id'] ?? 0);
                             $tot = (float)($v['total'] ?? 0);
 
@@ -805,349 +932,367 @@ if ($verId > 0) {
                             $plist = array_values(array_filter(array_map('trim', $plistRaw !== '' ? explode('||', $plistRaw) : [])));
                             if (empty($plist)) $plist = ['—'];
 
-                            $urlView = './lancamentos.php?dia='.urlencode($dia).'&produtor='.(int)$prodFiltro.'&ver='.$vid;
-                          ?>
-                          <tr>
-                            <td><?= $vid ?></td>
-                            <td><?= h(fmt_dt((string)($v['data_hora'] ?? ''))) ?></td>
-                            <td><?= h((string)($v['forma_pagamento'] ?? '')) ?></td>
-                            <td>
-                              <?php if (count($plist) <= 1): ?>
-                                <?= h($plist[0] ?? '—') ?>
-                              <?php else: ?>
-                                <ul class="plist">
-                                  <?php foreach ($plist as $pn): ?>
-                                    <li><?= h($pn) ?></li>
-                                  <?php endforeach; ?>
-                                </ul>
-                              <?php endif; ?>
-                            </td>
-                            <td><b>R$ <?= number_format($tot, 2, ',', '.') ?></b></td>
-                            <td>
-                              <div class="acoes-wrap">
-                                <a class="btn btn-outline-primary btn-xs" href="<?= h($urlView) ?>">
-                                  <i class="ti-eye"></i> Visualizar
-                                </a>
+                            $urlView = './lancamentos.php?dia=' . urlencode($dia) . '&produtor=' . (int)$prodFiltro . '&ver=' . $vid;
+                            ?>
+                            <tr>
+                              <td><?= $vid ?></td>
+                              <td><?= h(fmt_dt((string)($v['data_hora'] ?? ''))) ?></td>
+                              <td><?= h((string)($v['forma_pagamento'] ?? '')) ?></td>
+                              <td>
+                                <?php if (count($plist) <= 1): ?>
+                                  <?= h($plist[0] ?? '—') ?>
+                                <?php else: ?>
+                                  <ul class="plist">
+                                    <?php foreach ($plist as $pn): ?>
+                                      <li><?= h($pn) ?></li>
+                                    <?php endforeach; ?>
+                                  </ul>
+                                <?php endif; ?>
+                              </td>
+                              <td><b>R$ <?= number_format($tot, 2, ',', '.') ?></b></td>
+                              <td>
+                                <div class="acoes-wrap">
+                                  <a class="btn btn-outline-primary btn-xs" href="<?= h($urlView) ?>">
+                                    <i class="ti-eye"></i> Visualizar
+                                  </a>
 
-                                <form method="post" class="m-0">
-                                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                  <input type="hidden" name="acao" value="excluir">
-                                  <input type="hidden" name="id" value="<?= $vid ?>">
-                                  <button type="submit" class="btn btn-outline-danger btn-xs"
-                                    onclick="return confirm('Excluir este lançamento? Essa ação não pode ser desfeita.');">
-                                    <i class="ti-trash"></i> Excluir
-                                  </button>
-                                </form>
-                              </div>
-                            </td>
-                          </tr>
-                        <?php endforeach; ?>
-                      <?php endif; ?>
-                    </tbody>
-                  </table>
+                                  <form method="post" class="m-0">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                    <input type="hidden" name="acao" value="excluir">
+                                    <input type="hidden" name="id" value="<?= $vid ?>">
+                                    <button type="submit" class="btn btn-outline-danger btn-xs"
+                                      onclick="return confirm('Excluir este lançamento? Essa ação não pode ser desfeita.');">
+                                      <i class="ti-trash"></i> Excluir
+                                    </button>
+                                  </form>
+                                </div>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
+
                 </div>
-
               </div>
             </div>
           </div>
+
         </div>
+
+        <footer class="footer">
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
+            <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
+              © <?= date('Y') ?> SIGRelatórios —
+              <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
+              Todos os direitos reservados.
+            </span>
+          </div>
+        </footer>
 
       </div>
-
-      <footer class="footer">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
-          <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
-            © <?= date('Y') ?> SIGRelatórios —
-            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
-            Todos os direitos reservados.
-          </span>
-        </div>
-      </footer>
-
     </div>
   </div>
-</div>
 
-<!-- MODAL: VISUALIZAR -->
-<div class="modal fade" id="modalDetalhes" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-xl" role="document">
-    <div class="modal-content">
+  <!-- MODAL: VISUALIZAR -->
+  <div class="modal fade" id="modalDetalhes" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+      <div class="modal-content">
 
-      <div class="modal-header">
-        <h5 class="modal-title">
-          Detalhes do Lançamento <?= $detalheVenda ? '#'.(int)$detalheVenda['id'] : '' ?>
-        </h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
+        <div class="modal-header">
+          <h5 class="modal-title">
+            Detalhes do Lançamento <?= $detalheVenda ? '#' . (int)$detalheVenda['id'] : '' ?>
+          </h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
 
-      <div class="modal-body">
-        <?php if (!$detalheVenda): ?>
-          <div class="text-muted">Nenhum detalhe para mostrar.</div>
-        <?php else: ?>
-          <?php
+        <div class="modal-body">
+          <?php if (!$detalheVenda): ?>
+            <div class="text-muted">Nenhum detalhe para mostrar.</div>
+          <?php else: ?>
+            <?php
             $vTot = (float)($detalheVenda['total'] ?? 0);
             $vObs = trim((string)($detalheVenda['observacao'] ?? ''));
-          ?>
-          <div class="row">
-            <div class="col-md-3 mb-2">
-              <div class="text-muted" style="font-size:12px;">Data</div>
-              <div style="font-weight:800;"><?= h(fmt_dt((string)$detalheVenda['data_hora'])) ?></div>
-            </div>
-            <div class="col-md-3 mb-2">
-              <div class="text-muted" style="font-size:12px;">Pagamento</div>
-              <div style="font-weight:800;"><?= h((string)$detalheVenda['forma_pagamento']) ?></div>
-            </div>
-            <div class="col-md-3 mb-2">
-              <div class="text-muted" style="font-size:12px;">Status</div>
-              <div style="font-weight:800;"><?= h((string)$detalheVenda['status']) ?></div>
-            </div>
-            <div class="col-md-3 mb-2">
-              <div class="text-muted" style="font-size:12px;">Total</div>
-              <div style="font-weight:900; font-size:18px;">R$ <?= number_format($vTot, 2, ',', '.') ?></div>
-            </div>
-          </div>
-
-          <hr class="my-2">
-
-          <div class="row">
-            <div class="col-md-6 mb-2">
-              <div class="text-muted" style="font-size:12px;">Feirante(s)</div>
-
-              <?php if (empty($detalheProdutores)): ?>
-                <div>—</div>
-              <?php elseif (count($detalheProdutores) === 1): ?>
-                <div><?= h($detalheProdutores[0]) ?></div>
-              <?php else: ?>
-                <ul class="plist">
-                  <?php foreach ($detalheProdutores as $pn): ?>
-                    <li><?= h($pn) ?></li>
-                  <?php endforeach; ?>
-                </ul>
-              <?php endif; ?>
+            ?>
+            <div class="row">
+              <div class="col-md-3 mb-2">
+                <div class="text-muted" style="font-size:12px;">Data</div>
+                <div style="font-weight:800;"><?= h(fmt_dt((string)$detalheVenda['data_hora'])) ?></div>
+              </div>
+              <div class="col-md-3 mb-2">
+                <div class="text-muted" style="font-size:12px;">Pagamento</div>
+                <div style="font-weight:800;"><?= h((string)$detalheVenda['forma_pagamento']) ?></div>
+              </div>
+              <div class="col-md-3 mb-2">
+                <div class="text-muted" style="font-size:12px;">Status</div>
+                <div style="font-weight:800;"><?= h((string)$detalheVenda['status']) ?></div>
+              </div>
+              <div class="col-md-3 mb-2">
+                <div class="text-muted" style="font-size:12px;">Total</div>
+                <div style="font-weight:900; font-size:18px;">R$ <?= number_format($vTot, 2, ',', '.') ?></div>
+              </div>
             </div>
 
-            <div class="col-md-6 mb-2">
-              <div class="text-muted" style="font-size:12px;">Observação</div>
-              <div><?= $vObs !== '' ? h($vObs) : '—' ?></div>
-            </div>
-          </div>
+            <hr class="my-2">
 
-          <hr class="my-2">
+            <div class="row">
+              <div class="col-md-6 mb-2">
+                <div class="text-muted" style="font-size:12px;">Feirante(s)</div>
 
-          <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0">
-              <thead>
-                <tr>
-                  <th>Produto</th>
-                  <th style="width:220px;">Feirante</th>
-                  <th style="width:110px;">Unid</th>
-                  <th style="width:220px;">Categoria</th>
-                  <th style="width:120px;">Qtd</th>
-                  <th style="width:140px;">Valor</th>
-                  <th style="width:140px;">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php if (empty($detalheItens)): ?>
-                  <tr><td colspan="7" class="text-center text-muted py-4">Sem itens.</td></tr>
+                <?php if (empty($detalheProdutores)): ?>
+                  <div>—</div>
+                <?php elseif (count($detalheProdutores) === 1): ?>
+                  <div><?= h($detalheProdutores[0]) ?></div>
                 <?php else: ?>
-                  <?php foreach ($detalheItens as $it): ?>
-                    <?php
+                  <ul class="plist">
+                    <?php foreach ($detalheProdutores as $pn): ?>
+                      <li><?= h($pn) ?></li>
+                    <?php endforeach; ?>
+                  </ul>
+                <?php endif; ?>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <div class="text-muted" style="font-size:12px;">Observação</div>
+                <div><?= $vObs !== '' ? h($vObs) : '—' ?></div>
+              </div>
+            </div>
+
+            <hr class="my-2">
+
+            <div class="table-responsive">
+              <table class="table table-striped table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th style="width:220px;">Feirante</th>
+                    <th style="width:110px;">Unid</th>
+                    <th style="width:220px;">Categoria</th>
+                    <th style="width:120px;">Qtd</th>
+                    <th style="width:140px;">Valor</th>
+                    <th style="width:140px;">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php if (empty($detalheItens)): ?>
+                    <tr>
+                      <td colspan="7" class="text-center text-muted py-4">Sem itens.</td>
+                    </tr>
+                  <?php else: ?>
+                    <?php foreach ($detalheItens as $it): ?>
+                      <?php
                       $q  = (float)($it['quantidade'] ?? 0);
                       $vu = (float)($it['valor_unitario'] ?? 0);
                       $sb = (float)($it['subtotal'] ?? 0);
-                    ?>
-                    <tr>
-                      <td><?= h((string)($it['produto_nome'] ?? '')) ?></td>
-                      <td><?= h((string)($it['produtor_nome'] ?? '')) ?></td>
-                      <td><?= h((string)($it['unidade_sigla'] ?? '')) ?></td>
-                      <td><?= h((string)($it['categoria_nome'] ?? '')) ?></td>
-                      <td><?= number_format($q, 3, ',', '.') ?></td>
-                      <td>R$ <?= number_format($vu, 2, ',', '.') ?></td>
-                      <td><b>R$ <?= number_format($sb, 2, ',', '.') ?></b></td>
-                    </tr>
-                  <?php endforeach; ?>
-                <?php endif; ?>
-              </tbody>
-            </table>
-          </div>
-        <?php endif; ?>
-      </div>
+                      ?>
+                      <tr>
+                        <td><?= h((string)($it['produto_nome'] ?? '')) ?></td>
+                        <td><?= h((string)($it['produtor_nome'] ?? '')) ?></td>
+                        <td><?= h((string)($it['unidade_sigla'] ?? '')) ?></td>
+                        <td><?= h((string)($it['categoria_nome'] ?? '')) ?></td>
+                        <td><?= number_format($q, 3, ',', '.') ?></td>
+                        <td>R$ <?= number_format($vu, 2, ',', '.') ?></td>
+                        <td><b>R$ <?= number_format($sb, 2, ',', '.') ?></b></td>
+                      </tr>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
+                </tbody>
+              </table>
+            </div>
+          <?php endif; ?>
+        </div>
 
-      <div class="modal-footer">
-        <a class="btn btn-light" href="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>">
-          <i class="ti-arrow-left mr-1"></i> Voltar
-        </a>
-        <button type="button" class="btn btn-primary" data-dismiss="modal">
-          <i class="ti-check mr-1"></i> Fechar
-        </button>
-      </div>
+        <div class="modal-footer">
+          <a class="btn btn-light" href="./lancamentos.php?dia=<?= h($dia) ?>&produtor=<?= (int)$prodFiltro ?>">
+            <i class="ti-arrow-left mr-1"></i> Voltar
+          </a>
+          <button type="button" class="btn btn-primary" data-dismiss="modal">
+            <i class="ti-check mr-1"></i> Fechar
+          </button>
+        </div>
 
+      </div>
     </div>
   </div>
-</div>
 
-<script src="../../../vendors/js/vendor.bundle.base.js"></script>
-<script src="../../../vendors/chart.js/Chart.min.js"></script>
+  <script src="../../../vendors/js/vendor.bundle.base.js"></script>
+  <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
-<script src="../../../js/off-canvas.js"></script>
-<script src="../../../js/hoverable-collapse.js"></script>
-<script src="../../../js/template.js"></script>
-<script src="../../../js/settings.js"></script>
-<script src="../../../js/todolist.js"></script>
+  <script src="../../../js/off-canvas.js"></script>
+  <script src="../../../js/hoverable-collapse.js"></script>
+  <script src="../../../js/template.js"></script>
+  <script src="../../../js/settings.js"></script>
+  <script src="../../../js/todolist.js"></script>
 
-<script src="../../../js/dashboard.js"></script>
-<script src="../../../js/Chart.roundedBarCharts.js"></script>
+  <script src="../../../js/dashboard.js"></script>
+  <script src="../../../js/Chart.roundedBarCharts.js"></script>
 
-<script>
-(function(){
-  const body = document.getElementById('itensBody');
-  const btnAdd = document.getElementById('btnAddLinha');
-  const btnRef = document.getElementById('btnPrecoRef');
-  const totalEl = document.getElementById('jsTotal');
-  const filtroProd = document.getElementById('jsFiltroProd');
+  <script>
+    (function() {
+      const body = document.getElementById('itensBody');
+      const btnAdd = document.getElementById('btnAddLinha');
+      const btnRef = document.getElementById('btnPrecoRef');
+      const totalEl = document.getElementById('jsTotal');
+      const filtroProd = document.getElementById('jsFiltroProd');
 
-  function brMoney(n){
-    try { return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-    catch(e){ const x = Math.round(n*100)/100; return String(x).replace('.', ','); }
-  }
+      function brMoney(n) {
+        try {
+          return n.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+        } catch (e) {
+          const x = Math.round(n * 100) / 100;
+          return String(x).replace('.', ',');
+        }
+      }
 
-  function toNum(s){
-    s = String(s || '').trim();
-    if (!s) return 0;
-    s = s.replace(/R\$/g,'').replace(/\s/g,'');
-    s = s.replace(/\./g,'').replace(',', '.');
-    s = s.replace(/[^0-9.\-]/g,'');
-    const v = parseFloat(s);
-    return isNaN(v) ? 0 : v;
-  }
+      function toNum(s) {
+        s = String(s || '').trim();
+        if (!s) return 0;
+        s = s.replace(/R\$/g, '').replace(/\s/g, '');
+        s = s.replace(/\./g, '').replace(',', '.');
+        s = s.replace(/[^0-9.\-]/g, '');
+        const v = parseFloat(s);
+        return isNaN(v) ? 0 : v;
+      }
 
-  function syncInfo(tr){
-    const sel = tr.querySelector('.js-prod');
-    const opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
-    const un  = (opt && opt.dataset) ? (opt.dataset.un || '') : '';
-    const cat = (opt && opt.dataset) ? (opt.dataset.cat || '') : '';
-    const unIn  = tr.querySelector('.js-un');
-    const catIn = tr.querySelector('.js-cat');
-    if (unIn) unIn.value = un;
-    if (catIn) catIn.value = cat;
-  }
+      function syncInfo(tr) {
+        const sel = tr.querySelector('.js-prod');
+        const opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
+        const un = (opt && opt.dataset) ? (opt.dataset.un || '') : '';
+        const cat = (opt && opt.dataset) ? (opt.dataset.cat || '') : '';
+        const unIn = tr.querySelector('.js-un');
+        const catIn = tr.querySelector('.js-cat');
+        if (unIn) unIn.value = un;
+        if (catIn) catIn.value = cat;
+      }
 
-  function calcTotal(){
-    let tot = 0;
-    document.querySelectorAll('.js-item-row').forEach(tr=>{
-      const pid = parseInt((tr.querySelector('.js-prod')||{}).value || '0', 10);
-      if (!pid) return;
-      const qtd = toNum((tr.querySelector('.js-qtd')||{}).value || '1') || 0;
-      const vu  = toNum((tr.querySelector('.js-vu')||{}).value || '0') || 0;
-      if (qtd > 0 && vu > 0) tot += (qtd * vu);
-    });
-    totalEl.textContent = 'R$ ' + brMoney(tot);
-  }
+      function calcTotal() {
+        let tot = 0;
+        document.querySelectorAll('.js-item-row').forEach(tr => {
+          const pid = parseInt((tr.querySelector('.js-prod') || {}).value || '0', 10);
+          if (!pid) return;
+          const qtd = toNum((tr.querySelector('.js-qtd') || {}).value || '1') || 0;
+          const vu = toNum((tr.querySelector('.js-vu') || {}).value || '0') || 0;
+          if (qtd > 0 && vu > 0) tot += (qtd * vu);
+        });
+        totalEl.textContent = 'R$ ' + brMoney(tot);
+      }
 
-  function updateRemoveButtons(){
-    const rows = document.querySelectorAll('.js-item-row');
-    rows.forEach((tr)=>{
-      const btn = tr.querySelector('.js-remove');
-      if (!btn) return;
-      btn.disabled = (rows.length <= 1);
-      btn.onclick = function(){
-        if (rows.length <= 1) return;
-        tr.remove();
-        updateRemoveButtons();
+      function updateRemoveButtons() {
+        const rows = document.querySelectorAll('.js-item-row');
+        rows.forEach((tr) => {
+          const btn = tr.querySelector('.js-remove');
+          if (!btn) return;
+          btn.disabled = (rows.length <= 1);
+          btn.onclick = function() {
+            if (rows.length <= 1) return;
+            tr.remove();
+            updateRemoveButtons();
+            calcTotal();
+          };
+        });
+      }
+
+      function wireRow(tr) {
+        const sel = tr.querySelector('.js-prod');
+        const qtd = tr.querySelector('.js-qtd');
+        const vu = tr.querySelector('.js-vu');
+
+        if (sel) sel.addEventListener('change', () => {
+          syncInfo(tr);
+          calcTotal();
+        });
+        if (qtd) qtd.addEventListener('input', calcTotal);
+        if (vu) vu.addEventListener('input', calcTotal);
+
+        syncInfo(tr);
+      }
+
+      function applyFiltroProdutos() {
+        const prodId = parseInt((filtroProd && filtroProd.value) ? filtroProd.value : '0', 10) || 0;
+        document.querySelectorAll('.js-item-row .js-prod').forEach(sel => {
+          const current = sel.value;
+          let hasCurrentVisible = false;
+
+          Array.from(sel.options).forEach(opt => {
+            if (!opt.value || opt.value === '0') {
+              opt.hidden = false;
+              return;
+            }
+            const p = parseInt(opt.dataset.prod || '0', 10) || 0;
+            const show = (prodId === 0) || (p === prodId);
+            opt.hidden = !show;
+            if (opt.value === current && show) hasCurrentVisible = true;
+          });
+
+          if (!hasCurrentVisible && current !== '0') {
+            sel.value = '0';
+            syncInfo(sel.closest('tr'));
+          }
+        });
+
         calcTotal();
-      };
-    });
-  }
+      }
 
-  function wireRow(tr){
-    const sel = tr.querySelector('.js-prod');
-    const qtd = tr.querySelector('.js-qtd');
-    const vu  = tr.querySelector('.js-vu');
+      btnAdd && btnAdd.addEventListener('click', function() {
+        const base = document.querySelector('.js-item-row');
+        if (!base) return;
+        const clone = base.cloneNode(true);
 
-    if (sel) sel.addEventListener('change', ()=>{ syncInfo(tr); calcTotal(); });
-    if (qtd) qtd.addEventListener('input', calcTotal);
-    if (vu)  vu.addEventListener('input', calcTotal);
+        (clone.querySelector('.js-prod') || {}).value = '0';
+        (clone.querySelector('.js-qtd') || {}).value = '1';
+        (clone.querySelector('.js-vu') || {}).value = '';
+        (clone.querySelector('.js-un') || {}).value = '';
+        (clone.querySelector('.js-cat') || {}).value = '';
 
-    syncInfo(tr);
-  }
-
-  function applyFiltroProdutos(){
-    const prodId = parseInt((filtroProd && filtroProd.value) ? filtroProd.value : '0', 10) || 0;
-    document.querySelectorAll('.js-item-row .js-prod').forEach(sel=>{
-      const current = sel.value;
-      let hasCurrentVisible = false;
-
-      Array.from(sel.options).forEach(opt=>{
-        if (!opt.value || opt.value === '0') { opt.hidden = false; return; }
-        const p = parseInt(opt.dataset.prod || '0', 10) || 0;
-        const show = (prodId === 0) || (p === prodId);
-        opt.hidden = !show;
-        if (opt.value === current && show) hasCurrentVisible = true;
+        body.appendChild(clone);
+        wireRow(clone);
+        updateRemoveButtons();
+        applyFiltroProdutos();
+        calcTotal();
       });
 
-      if (!hasCurrentVisible && current !== '0') {
-        sel.value = '0';
-        syncInfo(sel.closest('tr'));
-      }
-    });
+      btnRef && btnRef.addEventListener('click', function() {
+        document.querySelectorAll('.js-item-row').forEach(tr => {
+          const sel = tr.querySelector('.js-prod');
+          const vu = tr.querySelector('.js-vu');
+          if (!sel || !vu) return;
 
-    calcTotal();
-  }
+          const pid = parseInt(sel.value || '0', 10);
+          if (!pid) return;
 
-  btnAdd && btnAdd.addEventListener('click', function(){
-    const base = document.querySelector('.js-item-row');
-    if (!base) return;
-    const clone = base.cloneNode(true);
+          const opt = sel.options[sel.selectedIndex];
+          const ref = (opt && opt.dataset) ? (opt.dataset.preco || '') : '';
+          if (!vu.value && ref) {
+            const n = toNum(ref);
+            if (n > 0) vu.value = brMoney(n);
+          }
+        });
+        calcTotal();
+      });
 
-    (clone.querySelector('.js-prod')||{}).value = '0';
-    (clone.querySelector('.js-qtd')||{}).value = '1';
-    (clone.querySelector('.js-vu')||{}).value = '';
-    (clone.querySelector('.js-un')||{}).value = '';
-    (clone.querySelector('.js-cat')||{}).value = '';
+      filtroProd && filtroProd.addEventListener('change', applyFiltroProdutos);
 
-    body.appendChild(clone);
-    wireRow(clone);
-    updateRemoveButtons();
-    applyFiltroProdutos();
-    calcTotal();
-  });
+      document.querySelectorAll('.js-item-row').forEach(wireRow);
+      updateRemoveButtons();
+      applyFiltroProdutos();
+      calcTotal();
 
-  btnRef && btnRef.addEventListener('click', function(){
-    document.querySelectorAll('.js-item-row').forEach(tr=>{
-      const sel = tr.querySelector('.js-prod');
-      const vu  = tr.querySelector('.js-vu');
-      if (!sel || !vu) return;
-
-      const pid = parseInt(sel.value || '0', 10);
-      if (!pid) return;
-
-      const opt = sel.options[sel.selectedIndex];
-      const ref = (opt && opt.dataset) ? (opt.dataset.preco || '') : '';
-      if (!vu.value && ref) {
-        const n = toNum(ref);
-        if (n > 0) vu.value = brMoney(n);
-      }
-    });
-    calcTotal();
-  });
-
-  filtroProd && filtroProd.addEventListener('change', applyFiltroProdutos);
-
-  document.querySelectorAll('.js-item-row').forEach(wireRow);
-  updateRemoveButtons();
-  applyFiltroProdutos();
-  calcTotal();
-
-  // auto abrir modal se veio com ?ver=
-  <?php if ($verId > 0 && $detalheVenda): ?>
-    if (window.jQuery && jQuery.fn.modal) {
-      jQuery(function(){ jQuery('#modalDetalhes').modal('show'); });
-    }
-  <?php endif; ?>
-})();
-</script>
+      // auto abrir modal se veio com ?ver=
+      <?php if ($verId > 0 && $detalheVenda): ?>
+        if (window.jQuery && jQuery.fn.modal) {
+          jQuery(function() {
+            jQuery('#modalDetalhes').modal('show');
+          });
+        }
+      <?php endif; ?>
+    })();
+  </script>
 </body>
+
 </html>
