@@ -1,12 +1,190 @@
 <?php
 declare(strict_types=1);
-session_start();
 
-$erro  = (string)($_SESSION['flash_erro'] ?? '');
-$ok    = (string)($_SESSION['flash_ok'] ?? '');
+/* =========================================================
+   redefinirSenha.php  (TUDO AQUI DENTRO)
+   - Form + Processamento (POST) + envio de e-mail
+   - Log em: php_error.log (na mesma pasta deste arquivo)
+   - Usa sua conexão padrão: require ./assets/php/conexao.php -> db():PDO
+   - Tabela: redefinir_senha_tokens (pode estar vazia, normal)
+   ========================================================= */
+
+/* ===== LOG ===== */
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+@ini_set('error_log', __DIR__ . '/php_error.log');
+
+/* ===== SESSION ===== */
+if (session_status() !== PHP_SESSION_ACTIVE) {
+  // cookie válido pro site todo
+  if (PHP_VERSION_ID >= 70300) {
+    session_set_cookie_params([
+      'path' => '/',
+      'httponly' => true,
+      'samesite' => 'Lax',
+      'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    ]);
+  } else {
+    session_set_cookie_params(0, '/');
+  }
+  session_start();
+}
+
+/* ===== Helpers ===== */
+function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+function app_url(): string {
+  $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+  $scheme = $https ? 'https' : 'http';
+  $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+  return $scheme . '://' . $host;
+}
+
+/* ===== Flash ===== */
+$erro = (string)($_SESSION['flash_erro'] ?? '');
+$ok   = (string)($_SESSION['flash_ok'] ?? '');
 unset($_SESSION['flash_erro'], $_SESSION['flash_ok']);
 
-function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+/* ===== CSRF ===== */
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = (string)$_SESSION['csrf_token'];
+
+/* =========================================================
+   PROCESSAMENTO (POST) AQUI DENTRO
+   ========================================================= */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  try {
+    /* CSRF */
+    $token = (string)($_POST['csrf_token'] ?? '');
+    if (!hash_equals($csrf, $token)) {
+      throw new RuntimeException("CSRF inválido.");
+    }
+
+    /* Entrada */
+    $login = trim((string)($_POST['login'] ?? ''));
+    if ($login === '' || mb_strlen($login) < 3) {
+      $_SESSION['flash_erro'] = "Informe um e-mail ou nome válido.";
+      header("Location: ./redefinirSenha.php");
+      exit;
+    }
+
+    /* Conexão */
+    $conPath = __DIR__ . '/assets/php/conexao.php';
+    if (!is_file($conPath)) {
+      throw new RuntimeException("Não encontrei conexao.php em: {$conPath}");
+    }
+    require_once $conPath;
+    if (!function_exists('db')) {
+      throw new RuntimeException("Função db() não existe no conexao.php");
+    }
+    $pdo = db();
+    if (!($pdo instanceof PDO)) {
+      throw new RuntimeException("db() não retornou PDO");
+    }
+
+    /* Config e-mail */
+    $FROM_NAME  = "SIGRelatórios";
+    $FROM_EMAIL = "noreply@lucascorrea.pro";
+    $BASE_URL   = app_url();
+
+    // mensagem padrão (não revela se existe)
+    $respostaOk = "Se existir uma conta ativa, enviaremos as instruções para o e-mail cadastrado.";
+
+    /* Procura usuário (email exato OU nome parecido) */
+    $st = $pdo->prepare("
+      SELECT id, nome, email, ativo
+      FROM usuarios
+      WHERE ativo = 1
+        AND (
+          LOWER(email) = LOWER(:login)
+          OR LOWER(nome) LIKE LOWER(:nomeLike)
+        )
+      ORDER BY (LOWER(email)=LOWER(:login)) DESC, id DESC
+      LIMIT 1
+    ");
+    $st->execute([
+      ':login'    => $login,
+      ':nomeLike' => '%'.$login.'%',
+    ]);
+    $user = $st->fetch(PDO::FETCH_ASSOC);
+
+    /* Se não encontrou, retorna OK do mesmo jeito */
+    if (!$user) {
+      $_SESSION['flash_ok'] = $respostaOk;
+      header("Location: ./redefinirSenhaConfirmar.php");
+      exit;
+    }
+
+    /* Gera token forte + código */
+    $rawToken  = bin2hex(random_bytes(32));            // 64 chars
+    $tokenHash = password_hash($rawToken, PASSWORD_DEFAULT);
+    $codigo    = (string)random_int(100000, 999999);   // 6 dígitos
+    $expiraEm  = date('Y-m-d H:i:s', time() + (60 * 30)); // 30 min
+
+    /* Invalida tokens anteriores não usados (opcional) */
+    $upd = $pdo->prepare("
+      UPDATE redefinir_senha_tokens
+      SET usado_em = NOW()
+      WHERE email = :email AND usado_em IS NULL
+    ");
+    $upd->execute([':email' => (string)$user['email']]);
+
+    /* Salva o novo token */
+    $ins = $pdo->prepare("
+      INSERT INTO redefinir_senha_tokens (usuario_id, email, token_hash, codigo, expira_em)
+      VALUES (:uid, :email, :hash, :codigo, :expira)
+    ");
+    $ins->execute([
+      ':uid'    => (int)$user['id'],
+      ':email'  => (string)$user['email'],
+      ':hash'   => $tokenHash,
+      ':codigo' => $codigo,
+      ':expira' => $expiraEm,
+    ]);
+
+    /* Link (página que recebe token e define nova senha) */
+    $link = $BASE_URL . "/redefinirSenhaNova.php?token=" . urlencode($rawToken);
+
+    /* E-mail (texto simples) */
+    $assunto = "Redefinição de senha - SIGRelatórios";
+    $mensagem =
+      "Olá, " . (string)$user['nome'] . "!\n\n" .
+      "Recebemos um pedido para redefinir sua senha.\n\n" .
+      "Código: {$codigo}\n" .
+      "Link: {$link}\n\n" .
+      "Esse código/link expira em 30 minutos.\n" .
+      "Se você não solicitou, ignore este e-mail.\n\n" .
+      "SIGRelatórios\n";
+
+    $headers =
+      "From: {$FROM_NAME} <{$FROM_EMAIL}>\r\n" .
+      "Reply-To: {$FROM_EMAIL}\r\n" .
+      "Content-Type: text/plain; charset=UTF-8\r\n";
+
+    // tenta enviar (mesmo que falhe, não revela nada)
+    $sent = @mail((string)$user['email'], $assunto, $mensagem, $headers);
+    if (!$sent) {
+      error_log("AVISO redefinirSenha: mail() falhou para " . (string)$user['email']);
+    }
+
+    // guarda só para UX (opcional)
+    $_SESSION['redef_email'] = (string)$user['email'];
+
+    $_SESSION['flash_ok'] = $respostaOk;
+    header("Location: ./redefinirSenhaConfirmar.php");
+    exit;
+
+  } catch (Throwable $e) {
+    // log detalhado e mensagem genérica
+    error_log("ERRO redefinirSenha.php: " . $e->getMessage());
+    $_SESSION['flash_erro'] = "Erro ao processar. Tente novamente.";
+    header("Location: ./redefinirSenha.php");
+    exit;
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -54,7 +232,9 @@ function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'
               <div class="alert alert-success"><?= h($ok) ?></div>
             <?php endif; ?>
 
-            <form method="post" action="./controle/auth/enviarRedefinirSenha.php" autocomplete="off">
+            <form method="post" action="./redefinirSenha.php" autocomplete="off">
+              <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+
               <div class="form-group">
                 <label class="font-weight-semibold">E-mail ou nome</label>
                 <div class="input-group">
@@ -69,11 +249,11 @@ function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'
                     required
                   >
                 </div>
-                <div class="hint">Se existir uma conta ativa, enviaremos as instruções.</div>
+                <div class="hint">Se o usuário existir e estiver ativo, enviaremos as instruções.</div>
               </div>
 
               <div class="mt-4">
-                <button class="btn btn-primary btn-block">
+                <button class="btn btn-primary btn-block" type="submit">
                   <i class="ti-arrow-right mr-1"></i> Enviar instruções
                 </button>
               </div>
