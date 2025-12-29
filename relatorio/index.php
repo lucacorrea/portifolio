@@ -110,7 +110,7 @@ function h($s): string
                     </label>
                   </div>
 
-                  <a href="./redefine.php" class="auth-link text-black" title="Implemente recuperação se quiser">
+                  <a href="./redefinirSenha.php" class="auth-link text-black" title="Implemente recuperação se quiser">
                     Esqueci minha senha
                   </a>
                 </div>
