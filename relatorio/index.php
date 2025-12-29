@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -12,7 +13,8 @@ $erro = (string)($_SESSION['flash_erro'] ?? '');
 $ok   = (string)($_SESSION['flash_ok'] ?? '');
 unset($_SESSION['flash_erro'], $_SESSION['flash_ok']);
 
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 ?>
@@ -31,12 +33,32 @@ function h($s): string {
   <link rel="shortcut icon" href="./images/3.png" />
 
   <style>
-    .auth-form-light{ border-radius:16px; }
-    .brand-logo img{ max-height:46px; }
-    .form-control.form-control-lg{ border-radius:12px; height:46px; }
-    .auth-form-btn{ border-radius:12px; }
-    .login-title{ margin-bottom:4px; font-weight:800; }
-    .login-sub{ margin-bottom:0; opacity:.85; }
+    .auth-form-light {
+      border-radius: 16px;
+    }
+
+    .brand-logo img {
+      max-height: 46px;
+    }
+
+    .form-control.form-control-lg {
+      border-radius: 12px;
+      height: 46px;
+    }
+
+    .auth-form-btn {
+      border-radius: 12px;
+    }
+
+    .login-title {
+      margin-bottom: 4px;
+      font-weight: 800;
+    }
+
+    .login-sub {
+      margin-bottom: 0;
+      opacity: .85;
+    }
   </style>
 </head>
 
@@ -48,7 +70,7 @@ function h($s): string {
           <div class="col-lg-4 mx-auto">
 
             <div class="auth-form-light text-left py-5 px-4 px-sm-5">
-              
+
 
               <h4 class="login-title">Acessar o SIGRelatórios</h4>
               <h6 class="font-weight-light login-sub">Entre com seu e-mail e senha para continuar.</h6>
@@ -64,14 +86,14 @@ function h($s): string {
               <form class="pt-4" method="POST" action="./controle/auth/login.php" autocomplete="off">
                 <div class="form-group">
                   <label class="mb-1 text-muted">E-mail</label>
-                  <input type="email" class="form-control form-control-lg" name="email"
-                         placeholder="Digite seu e-mail" autocomplete="username" required>
+                  <input type="text" class="form-control form-control-lg" name="email" placeholder="E-mail ou nome" required>
+
                 </div>
 
                 <div class="form-group">
                   <label class="mb-1 text-muted">Senha</label>
                   <input type="password" class="form-control form-control-lg" name="senha"
-                         placeholder="Digite sua senha" autocomplete="current-password" required>
+                    placeholder="Digite sua senha" autocomplete="current-password" required>
                 </div>
 
                 <div class="mt-3">
@@ -112,4 +134,5 @@ function h($s): string {
   <script src="./js/settings.js"></script>
   <script src="./js/todolist.js"></script>
 </body>
+
 </html>
