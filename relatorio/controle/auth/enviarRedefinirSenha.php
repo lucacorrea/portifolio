@@ -5,9 +5,12 @@ session_start();
 $index   = '../../redefinirSenha.php';
 $confirm = '../../redefinirSenhaConfirmar.php';
 
-/* =========================
-   CONEXÃO (db(): PDO)
-   ========================= */
+/* LOG (ajuda muito em hospedagem) */
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+@ini_set('error_log', __DIR__ . '/php_error.log');
+
 try {
   require __DIR__ . '/../../assets/php/conexao.php';
   if (!function_exists('db')) throw new RuntimeException("db() não existe");
@@ -25,34 +28,40 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   exit;
 }
 
-/* =========================
-   INPUT (aceita nome OU email)
-   ========================= */
+/* ===== INPUT ===== */
 $login = trim((string)($_POST['login'] ?? ''));
-if ($login === '' || mb_strlen($login) < 3) {
+
+$len = function_exists('mb_strlen') ? mb_strlen($login) : strlen($login);
+if ($login === '' || $len < 3) {
   $_SESSION['flash_erro'] = "Informe um e-mail ou nome válido.";
   header("Location: {$index}");
   exit;
 }
 
-/* =========================
-   CONFIG E-MAIL / URL
-   ========================= */
+/* ===== CONFIG E-MAIL / URL ===== */
 $FROM_NAME  = "SIGRelatórios";
 $FROM_EMAIL = "noreply@lucascorrea.pro";
 
-/* Detecta URL base do app (respeita reverse proxy também) */
 $https = (
   (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
   || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
 );
 $APP_URL = ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost');
 
-/* =========================
-   PROCESSO
-   ========================= */
 try {
-  // Procura por email EXATO ou nome (like) - somente ativos
+  /* 1) Confere se tabela existe (se não existir, já sabemos o motivo) */
+  $st = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE()
+      AND table_name = 'redefinir_senha_tokens'
+  ");
+  $st->execute();
+  if ((int)$st->fetchColumn() <= 0) {
+    throw new RuntimeException("Tabela redefinir_senha_tokens não existe. Crie a tabela no banco.");
+  }
+
+  /* 2) Procura usuário ativo por email exato OU nome LIKE */
   $st = $pdo->prepare("
     SELECT id, nome, email, ativo
     FROM usuarios
@@ -69,7 +78,7 @@ try {
   ]);
   $user = $st->fetch(PDO::FETCH_ASSOC) ?: null;
 
-  // Resposta padrão (não revela se existe)
+  /* Resposta padrão (não revela se existe) */
   $respostaOk = "Se existir uma conta ativa, enviaremos as instruções para o e-mail cadastrado.";
 
   if (!$user) {
@@ -78,21 +87,21 @@ try {
     exit;
   }
 
-  // Token forte + código curto
-  $rawToken  = bin2hex(random_bytes(32));             // 64 chars
+  /* 3) Gera token e código */
+  $rawToken  = bin2hex(random_bytes(32)); // 64 chars
   $tokenHash = password_hash($rawToken, PASSWORD_DEFAULT);
 
-  $codigo   = (string)random_int(100000, 999999);     // 6 dígitos
-  $expiraEm = date('Y-m-d H:i:s', time() + 60 * 30);  // 30 minutos
+  $codigo   = (string)random_int(100000, 999999);
+  $expiraEm = date('Y-m-d H:i:s', time() + 60 * 30); // 30 min
 
-  // Invalida tokens anteriores não usados (opcional)
+  /* 4) Invalida tokens anteriores não usados */
   $pdo->prepare("
     UPDATE redefinir_senha_tokens
     SET usado_em = NOW()
     WHERE email = :email AND usado_em IS NULL
   ")->execute([':email' => (string)$user['email']]);
 
-  // Salva token
+  /* 5) Insere token */
   $ins = $pdo->prepare("
     INSERT INTO redefinir_senha_tokens (usuario_id, email, token_hash, codigo, expira_em)
     VALUES (:uid, :email, :hash, :codigo, :expira)
@@ -107,7 +116,7 @@ try {
 
   $link = $APP_URL . "/redefinirSenhaNova.php?token=" . urlencode($rawToken);
 
-  // Conteúdo do e-mail
+  /* 6) Monta e-mail */
   $assunto = "Redefinição de senha - SIGRelatórios";
   $mensagem =
     "Olá, {$user['nome']}!\n\n" .
@@ -118,19 +127,19 @@ try {
     "Se você não solicitou, ignore este e-mail.\n\n" .
     "SIGRelatórios";
 
-  // Envio (mail)
   $headers =
     "From: {$FROM_NAME} <{$FROM_EMAIL}>\r\n" .
     "Reply-To: {$FROM_EMAIL}\r\n" .
     "MIME-Version: 1.0\r\n" .
     "Content-Type: text/plain; charset=UTF-8\r\n";
 
-  @mail((string)$user['email'], $assunto, $mensagem, $headers);
+  /* 7) Envia (se falhar, não quebra fluxo) */
+  $sent = @mail((string)$user['email'], $assunto, $mensagem, $headers);
+  if (!$sent) {
+    error_log("AVISO enviarRedefinirSenha: mail() retornou false (servidor pode não estar com envio configurado). Email destino: {$user['email']}");
+  }
 
-  // Guarda e-mail (para a página confirmar)
   $_SESSION['redef_email'] = (string)$user['email'];
-
-  // Resposta genérica
   $_SESSION['flash_ok'] = $respostaOk;
   header("Location: {$confirm}");
   exit;
