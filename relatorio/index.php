@@ -85,7 +85,7 @@ function h($s): string
 
               <form class="pt-4" method="POST" action="./controle/auth/login.php" autocomplete="off">
                 <div class="form-group">
-                  <label class="mb-1 text-muted">E-mail</label>
+                  <label class="mb-1 text-muted">E-mail ou Nome</label>
                   <input type="text" class="form-control form-control-lg" name="email" placeholder="E-mail ou nome" required>
 
                 </div>
