@@ -48,9 +48,7 @@ function h($s): string {
           <div class="col-lg-4 mx-auto">
 
             <div class="auth-form-light text-left py-5 px-4 px-sm-5">
-              <div class="brand-logo mb-2">
-                <img src="./images/3.png" alt="SIGRelatórios">
-              </div>
+              
 
               <h4 class="login-title">Acessar o SIGRelatórios</h4>
               <h6 class="font-weight-light login-sub">Entre com seu e-mail e senha para continuar.</h6>
