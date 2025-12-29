@@ -1,14 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/* =========================================================
-   redefinirSenha.php  (TUDO AQUI DENTRO)
-   - Form + Processamento (POST) + envio de e-mail
-   - Log em: php_error.log (na mesma pasta deste arquivo)
-   - Usa sua conexão padrão: require ./assets/php/conexao.php -> db():PDO
-   - Busca SOMENTE por e-mail
-   - Tabela: redefinir_senha_tokens (email, codigo, token_hash, expira_em, usado_em, criado_em, usuario_id nullable)
-   ========================================================= */
 
 /* ===== LOG ===== */
 error_reporting(E_ALL);
@@ -33,13 +25,6 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 /* ===== Helpers ===== */
 function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-
-function app_url(): string {
-  $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-  $scheme = $https ? 'https' : 'http';
-  $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-  return $scheme . '://' . $host;
-}
 
 function str_len(string $s): int {
   return function_exists('mb_strlen') ? (int)mb_strlen($s, 'UTF-8') : (int)strlen($s);
@@ -85,14 +70,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     /* Entrada: SOMENTE EMAIL */
     $email = trim((string)($_POST['login'] ?? ''));
 
-    if ($email === '' || str_len($email) < 6) {
-      $_SESSION['flash_erro'] = "Informe um e-mail válido.";
-      header("Location: ./redefinirSenha.php");
-      exit;
-    }
-
-    // valida formato do e-mail
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if ($email === '' || str_len($email) < 6 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
       $_SESSION['flash_erro'] = "Informe um e-mail válido.";
       header("Location: ./redefinirSenha.php");
       exit;
@@ -100,9 +78,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     /* Conexão (tenta caminhos comuns) */
     $candidatos = [
-      __DIR__ . '/assets/php/conexao.php',             // quando está na raiz
-      dirname(__DIR__) . '/assets/php/conexao.php',    // quando está 1 pasta abaixo
-      dirname(__DIR__, 2) . '/assets/php/conexao.php', // quando está 2 pastas abaixo
+      __DIR__ . '/assets/php/conexao.php',
+      dirname(__DIR__) . '/assets/php/conexao.php',
+      dirname(__DIR__, 2) . '/assets/php/conexao.php',
     ];
 
     $conPath = '';
@@ -126,14 +104,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     /* Config e-mail */
     $FROM_NAME  = "SIGRelatórios";
     $FROM_EMAIL = "noreply@lucascorrea.pro";
-    $BASE_URL   = app_url();
 
     /* mensagem padrão (não revela se existe) */
-    $respostaOk = "Se existir uma conta ativa, enviaremos as instruções para o e-mail cadastrado.";
+    $respostaOk = "Se existir uma conta ativa, enviaremos o código para o e-mail cadastrado.";
 
     /* Procura usuário: SOMENTE EMAIL (case-insensitive) */
     $st = $pdo->prepare("
-      SELECT id, nome, email, ativo
+      SELECT id, nome, email
       FROM usuarios
       WHERE ativo = 1
         AND LOWER(email) = LOWER(:email)
@@ -149,7 +126,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
       exit;
     }
 
-    $uid       = isset($user['id']) ? (int)$user['id'] : null; // sua tabela aceita NULL
+    $uid       = isset($user['id']) ? (int)$user['id'] : null;
     $emailUser = (string)($user['email'] ?? '');
     $nomeUser  = (string)($user['nome'] ?? 'Usuário');
 
@@ -160,10 +137,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     }
 
     /* Gera token forte + código */
-    $rawToken  = bin2hex(random_bytes(32));               // 64 chars
+    $rawToken  = bin2hex(random_bytes(32));                 // guardado (token_hash), mas NÃO enviado por e-mail
     $tokenHash = password_hash($rawToken, PASSWORD_DEFAULT);
-    $codigo    = (string)random_int(100000, 999999);      // 6 dígitos (cabe no varchar(10))
-    $expiraEm  = date('Y-m-d H:i:s', time() + (60 * 30));  // 30 min
+    $codigo    = (string)random_int(100000, 999999);        // 6 dígitos
+    $expiraEm  = date('Y-m-d H:i:s', time() + (60 * 30));    // 30 min
+    $expiraMin = 30;
 
     /* Invalida tokens anteriores não usados (por email) */
     $upd = $pdo->prepare("
@@ -173,47 +151,146 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     ");
     $upd->execute([':email' => $emailUser]);
 
-    /* Salva o novo token (usuario_id pode ser NULL) */
+    /* Salva o novo token */
     $ins = $pdo->prepare("
       INSERT INTO redefinir_senha_tokens (usuario_id, email, token_hash, codigo, expira_em)
       VALUES (:uid, :email, :hash, :codigo, :expira)
     ");
-    if ($uid === null) {
-      $ins->bindValue(':uid', null, PDO::PARAM_NULL);
-    } else {
-      $ins->bindValue(':uid', $uid, PDO::PARAM_INT);
-    }
+    if ($uid === null) $ins->bindValue(':uid', null, PDO::PARAM_NULL);
+    else              $ins->bindValue(':uid', $uid, PDO::PARAM_INT);
+
     $ins->bindValue(':email',  $emailUser, PDO::PARAM_STR);
     $ins->bindValue(':hash',   $tokenHash, PDO::PARAM_STR);
     $ins->bindValue(':codigo', $codigo, PDO::PARAM_STR);
     $ins->bindValue(':expira', $expiraEm, PDO::PARAM_STR);
     $ins->execute();
 
-    /* Link (página que recebe token e define nova senha) */
-    $link = $BASE_URL . "/redefinirSenhaNova.php?token=" . urlencode($rawToken);
+    /* ===== E-mail HTML “estilo Hostinger” (azul) — SOMENTE CÓDIGO ===== */
+    $assunto = "Seu código de redefinição - SIGRelatórios";
 
-    /* E-mail (texto simples) */
-    $assunto = "Redefinição de senha - SIGRelatórios";
-    $mensagem =
-      "Olá, {$nomeUser}!\n\n" .
-      "Recebemos um pedido para redefinir sua senha.\n\n" .
-      "Código: {$codigo}\n" .
-      "Link: {$link}\n\n" .
-      "Esse código/link expira em 30 minutos.\n" .
-      "Se você não solicitou, ignore este e-mail.\n\n" .
-      "SIGRelatórios\n";
+    $ipInfo = client_ip();
+
+    // Importante: em e-mail não use classes externas; usar estilo inline
+    $html = '
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Código de redefinição</title>
+</head>
+<body style="margin:0;padding:0;background:#f2f6ff;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f6ff;padding:26px 0;">
+    <tr>
+      <td align="center">
+
+        <!-- header -->
+        <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:92vw;">
+          <tr>
+            <td style="padding:0 10px 14px 10px;text-align:left;">
+              <div style="display:inline-block;padding:10px 14px;border-radius:14px;background:linear-gradient(135deg,#0b5fff,#2b8cff);color:#ffffff;font-weight:800;font-size:14px;letter-spacing:.2px;">
+                SIGRelatórios
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- card -->
+        <table role="presentation" width="640" cellpadding="0" cellspacing="0"
+          style="width:640px;max-width:92vw;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 14px 36px rgba(11,95,255,.14);">
+          <tr>
+            <td style="padding:26px 26px 0 26px;">
+              <div style="font-size:12px;color:#2563eb;font-weight:800;letter-spacing:.35px;text-transform:uppercase;">
+                Redefinição de senha
+              </div>
+              <div style="margin-top:8px;font-size:20px;font-weight:900;color:#0f172a;line-height:1.25;">
+                Use este código para confirmar
+              </div>
+              <div style="margin-top:10px;font-size:14px;color:#334155;line-height:1.6;">
+                Olá, <b>'.h($nomeUser).'</b>!<br>
+                Digite o código abaixo na tela de confirmação para continuar a redefinição da senha.
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:18px 26px 0 26px;">
+              <div style="background:#f6f9ff;border:1px solid #dbeafe;border-radius:16px;padding:16px;text-align:center;">
+                <div style="font-size:12px;color:#1e40af;font-weight:800;letter-spacing:.3px;text-transform:uppercase;">
+                  Seu código
+                </div>
+                <div style="margin-top:10px;font-size:30px;font-weight:900;color:#0b5fff;letter-spacing:6px;">
+                  '.h($codigo).'
+                </div>
+                <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.5;">
+                  Este código expira em <b>'.$expiraMin.' minutos</b>.
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:18px 26px 0 26px;">
+              <div style="font-size:12px;color:#64748b;line-height:1.6;">
+                Se você não solicitou esta alteração, ignore este e-mail.
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:18px 26px 22px 26px;">
+              <div style="border-top:1px solid #eef2ff;padding-top:14px;font-size:12px;color:#94a3b8;line-height:1.6;">
+                IP da solicitação: '.h($ipInfo).'<br>
+                © '.date('Y').' SIGRelatórios • Mensagem automática, não responda.
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- footer -->
+        <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:92vw;">
+          <tr>
+            <td style="padding:14px 10px 0 10px;text-align:center;color:#94a3b8;font-size:12px;">
+              Se precisar de ajuda, entre em contato com o suporte do SIGRelatórios.
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+';
 
     $headers =
       "From: {$FROM_NAME} <{$FROM_EMAIL}>\r\n" .
       "Reply-To: {$FROM_EMAIL}\r\n" .
-      "Content-Type: text/plain; charset=UTF-8\r\n";
+      "MIME-Version: 1.0\r\n" .
+      "Content-Type: text/html; charset=UTF-8\r\n";
 
     /* tenta enviar (se falhar, não quebra o fluxo) */
-    $sent = @mail($emailUser, $assunto, $mensagem, $headers);
+    $sent = @mail($emailUser, $assunto, $html, $headers);
     if (!$sent) {
-      error_log("AVISO redefinirSenha: mail() falhou para {$emailUser} | IP=" . client_ip());
+      error_log("AVISO redefinirSenha: mail() HTML falhou para {$emailUser} | IP=" . client_ip());
+
+      // fallback texto (só código)
+      $texto =
+        "Olá, {$nomeUser}!\n\n".
+        "Seu código de redefinição é: {$codigo}\n".
+        "Ele expira em {$expiraMin} minutos.\n\n".
+        "SIGRelatórios\n";
+
+      $headersTxt =
+        "From: {$FROM_NAME} <{$FROM_EMAIL}>\r\n" .
+        "Reply-To: {$FROM_EMAIL}\r\n" .
+        "Content-Type: text/plain; charset=UTF-8\r\n";
+
+      $sent2 = @mail($emailUser, $assunto, $texto, $headersTxt);
+      if (!$sent2) error_log("AVISO redefinirSenha: mail() TEXTO falhou para {$emailUser}");
     }
 
+    /* já passa para outra página */
     $_SESSION['redef_email'] = $emailUser;
     $_SESSION['flash_ok'] = $respostaOk;
     header("Location: ./redefinirSenhaConfirmar.php");
@@ -263,7 +340,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
             <h4 class="font-weight-bold text-center mb-1">Esqueceu sua senha?</h4>
             <p class="text-muted text-center mb-4">
-              Informe seu <b>e-mail</b> para receber um link/código de redefinição.
+              Informe seu <b>e-mail</b> para receber o código de redefinição.
             </p>
 
             <?php if ($erro): ?>
@@ -290,12 +367,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     required
                   >
                 </div>
-                <div class="hint">Se o usuário existir e estiver ativo, enviaremos as instruções.</div>
+                <div class="hint">Se o usuário existir e estiver ativo, enviaremos o código.</div>
               </div>
 
               <div class="mt-4">
                 <button class="btn btn-primary btn-block" type="submit">
-                  <i class="ti-arrow-right mr-1"></i> Enviar instruções
+                  <i class="ti-arrow-right mr-1"></i> Enviar código
                 </button>
               </div>
 
