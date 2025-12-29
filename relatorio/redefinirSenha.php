@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 
+/* =========================================================
+   redefinirSenha.php
+   - Busca SOMENTE por e-mail
+   - Gera e salva token_hash + codigo + expira_em
+   - Envia e-mail HTML (estilo Hostinger, azul) com SOMENTE o CÓDIGO
+   - Redireciona DIRETO para redefinirSenhaConfirmar.php (tela de digitar o código)
+   - Log em: php_error.log (mesma pasta)
+   - Conexão: ./assets/php/conexao.php -> db():PDO
+   ========================================================= */
 
 /* ===== LOG ===== */
 error_reporting(E_ALL);
@@ -69,14 +78,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     /* Entrada: SOMENTE EMAIL */
     $email = trim((string)($_POST['login'] ?? ''));
-
     if ($email === '' || str_len($email) < 6 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
       $_SESSION['flash_erro'] = "Informe um e-mail válido.";
       header("Location: ./redefinirSenha.php");
       exit;
     }
 
-    /* Conexão (tenta caminhos comuns) */
+    /* Conexão */
     $candidatos = [
       __DIR__ . '/assets/php/conexao.php',
       dirname(__DIR__) . '/assets/php/conexao.php',
@@ -92,23 +100,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     }
 
     require_once $conPath;
-    if (!function_exists('db')) {
-      throw new RuntimeException("Função db() não existe no conexao.php");
-    }
+    if (!function_exists('db')) throw new RuntimeException("Função db() não existe no conexao.php");
 
     $pdo = db();
-    if (!($pdo instanceof PDO)) {
-      throw new RuntimeException("db() não retornou PDO");
-    }
+    if (!($pdo instanceof PDO)) throw new RuntimeException("db() não retornou PDO");
 
     /* Config e-mail */
     $FROM_NAME  = "SIGRelatórios";
     $FROM_EMAIL = "noreply@lucascorrea.pro";
 
-    /* mensagem padrão (não revela se existe) */
+    /* Mensagem padrão */
     $respostaOk = "Se existir uma conta ativa, enviaremos o código para o e-mail cadastrado.";
 
-    /* Procura usuário: SOMENTE EMAIL (case-insensitive) */
+    /* Procura usuário: SOMENTE EMAIL */
     $st = $pdo->prepare("
       SELECT id, nome, email
       FROM usuarios
@@ -119,9 +123,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $st->execute([':email' => $email]);
     $user = $st->fetch(PDO::FETCH_ASSOC);
 
-    /* Se não encontrou, retorna OK do mesmo jeito */
+    /* Se não encontrou, segue mesmo (não revela) */
     if (!$user) {
       $_SESSION['flash_ok'] = $respostaOk;
+      // Guarda email para UX na tela do código
+      $_SESSION['redef_email'] = $email;
       header("Location: ./redefinirSenhaConfirmar.php");
       exit;
     }
@@ -132,18 +138,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     if ($emailUser === '' || !filter_var($emailUser, FILTER_VALIDATE_EMAIL)) {
       $_SESSION['flash_ok'] = $respostaOk;
+      $_SESSION['redef_email'] = $email;
       header("Location: ./redefinirSenhaConfirmar.php");
       exit;
     }
 
-    /* Gera token forte + código */
-    $rawToken  = bin2hex(random_bytes(32));                 // guardado (token_hash), mas NÃO enviado por e-mail
+    /* Gera token + código */
+    $rawToken  = bin2hex(random_bytes(32));              // não enviado, só hash no BD
     $tokenHash = password_hash($rawToken, PASSWORD_DEFAULT);
-    $codigo    = (string)random_int(100000, 999999);        // 6 dígitos
-    $expiraEm  = date('Y-m-d H:i:s', time() + (60 * 30));    // 30 min
+    $codigo    = (string)random_int(100000, 999999);
+    $expiraEm  = date('Y-m-d H:i:s', time() + (60 * 30));
     $expiraMin = 30;
 
-    /* Invalida tokens anteriores não usados (por email) */
+    /* Invalida anteriores */
     $upd = $pdo->prepare("
       UPDATE redefinir_senha_tokens
       SET usado_em = NOW()
@@ -151,7 +158,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     ");
     $upd->execute([':email' => $emailUser]);
 
-    /* Salva o novo token */
+    /* Insere */
     $ins = $pdo->prepare("
       INSERT INTO redefinir_senha_tokens (usuario_id, email, token_hash, codigo, expira_em)
       VALUES (:uid, :email, :hash, :codigo, :expira)
@@ -165,103 +172,79 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $ins->bindValue(':expira', $expiraEm, PDO::PARAM_STR);
     $ins->execute();
 
-    /* ===== E-mail HTML “estilo Hostinger” (azul) — SOMENTE CÓDIGO ===== */
+    /* ===== Email HTML (Hostinger-like azul) — SÓ CÓDIGO ===== */
     $assunto = "Seu código de redefinição - SIGRelatórios";
+    $ipInfo  = client_ip();
 
-    $ipInfo = client_ip();
-
-    // Importante: em e-mail não use classes externas; usar estilo inline
     $html = '
 <!doctype html>
 <html lang="pt-br">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Código de redefinição</title>
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f2f6ff;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f6ff;padding:26px 0;">
-    <tr>
-      <td align="center">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f6ff;padding:28px 0;">
+    <tr><td align="center">
 
-        <!-- header -->
-        <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:92vw;">
-          <tr>
-            <td style="padding:0 10px 14px 10px;text-align:left;">
-              <div style="display:inline-block;padding:10px 14px;border-radius:14px;background:linear-gradient(135deg,#0b5fff,#2b8cff);color:#ffffff;font-weight:800;font-size:14px;letter-spacing:.2px;">
-                SIGRelatórios
-              </div>
-            </td>
-          </tr>
-        </table>
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:92vw;">
+        <tr>
+          <td style="padding:0 10px 14px 10px;text-align:left;">
+            <div style="display:inline-block;padding:10px 14px;border-radius:14px;background:linear-gradient(135deg,#0b5fff,#2b8cff);color:#fff;font-weight:900;font-size:14px;">
+              SIGRelatórios
+            </div>
+          </td>
+        </tr>
+      </table>
 
-        <!-- card -->
-        <table role="presentation" width="640" cellpadding="0" cellspacing="0"
-          style="width:640px;max-width:92vw;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 14px 36px rgba(11,95,255,.14);">
-          <tr>
-            <td style="padding:26px 26px 0 26px;">
-              <div style="font-size:12px;color:#2563eb;font-weight:800;letter-spacing:.35px;text-transform:uppercase;">
-                Redefinição de senha
-              </div>
-              <div style="margin-top:8px;font-size:20px;font-weight:900;color:#0f172a;line-height:1.25;">
-                Use este código para confirmar
-              </div>
-              <div style="margin-top:10px;font-size:14px;color:#334155;line-height:1.6;">
-                Olá, <b>'.h($nomeUser).'</b>!<br>
-                Digite o código abaixo na tela de confirmação para continuar a redefinição da senha.
-              </div>
-            </td>
-          </tr>
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0"
+        style="width:640px;max-width:92vw;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 14px 36px rgba(11,95,255,.14);">
+        <tr>
+          <td style="padding:26px 26px 0 26px;">
+            <div style="font-size:12px;color:#2563eb;font-weight:900;letter-spacing:.35px;text-transform:uppercase;">Redefinição de senha</div>
+            <div style="margin-top:8px;font-size:20px;font-weight:900;color:#0f172a;line-height:1.25;">Use este código para confirmar</div>
+            <div style="margin-top:10px;font-size:14px;color:#334155;line-height:1.6;">
+              Olá, <b>'.h($nomeUser).'</b>!<br>
+              Digite o código abaixo na tela de confirmação.
+            </div>
+          </td>
+        </tr>
 
-          <tr>
-            <td style="padding:18px 26px 0 26px;">
-              <div style="background:#f6f9ff;border:1px solid #dbeafe;border-radius:16px;padding:16px;text-align:center;">
-                <div style="font-size:12px;color:#1e40af;font-weight:800;letter-spacing:.3px;text-transform:uppercase;">
-                  Seu código
-                </div>
-                <div style="margin-top:10px;font-size:30px;font-weight:900;color:#0b5fff;letter-spacing:6px;">
-                  '.h($codigo).'
-                </div>
-                <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.5;">
-                  Este código expira em <b>'.$expiraMin.' minutos</b>.
-                </div>
-              </div>
-            </td>
-          </tr>
+        <tr>
+          <td style="padding:18px 26px 0 26px;">
+            <div style="background:#f6f9ff;border:1px solid #dbeafe;border-radius:16px;padding:16px;text-align:center;">
+              <div style="font-size:12px;color:#1e40af;font-weight:900;letter-spacing:.3px;text-transform:uppercase;">Seu código</div>
+              <div style="margin-top:10px;font-size:30px;font-weight:900;color:#0b5fff;letter-spacing:6px;">'.h($codigo).'</div>
+              <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.5;">Expira em <b>'.$expiraMin.' minutos</b>.</div>
+            </div>
+          </td>
+        </tr>
 
-          <tr>
-            <td style="padding:18px 26px 0 26px;">
-              <div style="font-size:12px;color:#64748b;line-height:1.6;">
-                Se você não solicitou esta alteração, ignore este e-mail.
-              </div>
-            </td>
-          </tr>
+        <tr>
+          <td style="padding:18px 26px 0 26px;">
+            <div style="font-size:12px;color:#64748b;line-height:1.6;">
+              Se você não solicitou esta alteração, ignore este e-mail.
+            </div>
+          </td>
+        </tr>
 
-          <tr>
-            <td style="padding:18px 26px 22px 26px;">
-              <div style="border-top:1px solid #eef2ff;padding-top:14px;font-size:12px;color:#94a3b8;line-height:1.6;">
-                IP da solicitação: '.h($ipInfo).'<br>
-                © '.date('Y').' SIGRelatórios • Mensagem automática, não responda.
-              </div>
-            </td>
-          </tr>
-        </table>
+        <tr>
+          <td style="padding:18px 26px 22px 26px;">
+            <div style="border-top:1px solid #eef2ff;padding-top:14px;font-size:12px;color:#94a3b8;line-height:1.6;">
+              IP da solicitação: '.h($ipInfo).'<br>
+              © '.date('Y').' SIGRelatórios • Mensagem automática, não responda.
+            </div>
+          </td>
+        </tr>
+      </table>
 
-        <!-- footer -->
-        <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:92vw;">
-          <tr>
-            <td style="padding:14px 10px 0 10px;text-align:center;color:#94a3b8;font-size:12px;">
-              Se precisar de ajuda, entre em contato com o suporte do SIGRelatórios.
-            </td>
-          </tr>
-        </table>
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:92vw;">
+        <tr><td style="padding:14px 10px 0 10px;text-align:center;color:#94a3b8;font-size:12px;">
+          Precisa de ajuda? Fale com o suporte do SIGRelatórios.
+        </td></tr>
+      </table>
 
-      </td>
-    </tr>
+    </td></tr>
   </table>
 </body>
-</html>
-';
+</html>';
 
     $headers =
       "From: {$FROM_NAME} <{$FROM_EMAIL}>\r\n" .
@@ -269,30 +252,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
       "MIME-Version: 1.0\r\n" .
       "Content-Type: text/html; charset=UTF-8\r\n";
 
-    /* tenta enviar (se falhar, não quebra o fluxo) */
     $sent = @mail($emailUser, $assunto, $html, $headers);
     if (!$sent) {
       error_log("AVISO redefinirSenha: mail() HTML falhou para {$emailUser} | IP=" . client_ip());
-
-      // fallback texto (só código)
       $texto =
         "Olá, {$nomeUser}!\n\n".
         "Seu código de redefinição é: {$codigo}\n".
         "Ele expira em {$expiraMin} minutos.\n\n".
         "SIGRelatórios\n";
-
       $headersTxt =
         "From: {$FROM_NAME} <{$FROM_EMAIL}>\r\n" .
         "Reply-To: {$FROM_EMAIL}\r\n" .
         "Content-Type: text/plain; charset=UTF-8\r\n";
-
-      $sent2 = @mail($emailUser, $assunto, $texto, $headersTxt);
-      if (!$sent2) error_log("AVISO redefinirSenha: mail() TEXTO falhou para {$emailUser}");
+      @mail($emailUser, $assunto, $texto, $headersTxt);
     }
 
-    /* já passa para outra página */
+    /* Já passa para tela de digitar o código */
     $_SESSION['redef_email'] = $emailUser;
-    $_SESSION['flash_ok'] = $respostaOk;
+    $_SESSION['flash_ok'] = "Enviamos um código de verificação para seu e-mail. Digite abaixo para continuar.";
     header("Location: ./redefinirSenhaConfirmar.php");
     exit;
 
