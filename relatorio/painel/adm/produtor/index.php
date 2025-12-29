@@ -45,9 +45,40 @@ try {
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
 
+/* ===== Lista de meses SOMENTE com cadastro (vendas) ===== */
+$mesOptions = [];
+$mesMap = []; // para validar rápido
+try {
+  $st = $pdo->prepare("
+    SELECT DISTINCT DATE_FORMAT(data_hora, '%Y-%m') AS ym
+    FROM vendas
+    WHERE feira_id = :f
+    ORDER BY ym DESC
+    LIMIT 48
+  ");
+  $st->execute([':f' => $feiraId]);
+  foreach ($st->fetchAll() as $row) {
+    $ym = (string)($row['ym'] ?? '');
+    if ($ym !== '' && preg_match('/^\d{4}-\d{2}$/', $ym)) {
+      $label = date('m/Y', strtotime($ym . '-01'));
+      $mesOptions[] = ['val' => $ym, 'label' => $label];
+      $mesMap[$ym] = true;
+    }
+  }
+} catch (Throwable $e) {
+  $mesOptions = [];
+  $mesMap = [];
+}
+
 /* ===== Filtro mensal (YYYY-MM) ===== */
-$mes = trim((string)($_GET['mes'] ?? date('Y-m')));
-if (!preg_match('/^\d{4}-\d{2}$/', $mes)) $mes = date('Y-m');
+$defaultMes = !empty($mesOptions) ? (string)$mesOptions[0]['val'] : date('Y-m');
+$mes = trim((string)($_GET['mes'] ?? $defaultMes));
+if (!preg_match('/^\d{4}-\d{2}$/', $mes)) $mes = $defaultMes;
+
+/* Se o mês escolhido não existir na lista (sem cadastro), volta pro mais recente */
+if (!empty($mesMap) && empty($mesMap[$mes])) {
+  $mes = $defaultMes;
+}
 
 $monthStart = $mes . '-01';
 $monthEnd   = date('Y-m-t', strtotime($monthStart));
@@ -493,14 +524,10 @@ try {
   $totalPages = 1;
 }
 
-/* ===== Lista de meses (ex.: últimos 24) ===== */
-$mesOptions = [];
-$base = strtotime(date('Y-m-01')); // mês atual
-for ($i = 0; $i < 24; $i++) {
-  $m = date('Y-m', strtotime("-{$i} month", $base));
-  $label = date('m/Y', strtotime($m . '-01'));
-  $mesOptions[] = ['val' => $m, 'label' => $label];
-}
+/* Navegação mês */
+$mesAtual    = date('Y-m');
+$mesAnterior = date('Y-m', strtotime($monthStart . ' -1 month'));
+$mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -922,15 +949,19 @@ for ($i = 0; $i < 24; $i++) {
                 <div class="col-12 col-xl-5">
                   <div class="mes-toolbar">
 
-                    <!-- Select de meses -->
+                    <!-- Select de meses (SÓ meses com cadastro) -->
                     <div class="mes-select-wrap" title="Filtrar por mês">
                       <i class="ti-calendar"></i>
                       <select class="mes-select" onchange="goMes(this.value)">
-                        <?php foreach ($mesOptions as $opt): ?>
-                          <option value="<?= h($opt['val']) ?>" <?= ($opt['val'] === $mes ? 'selected' : '') ?>>
-                            <?= h($opt['label']) ?>
-                          </option>
-                        <?php endforeach; ?>
+                        <?php if (empty($mesOptions)): ?>
+                          <option value="<?= h(date('Y-m')) ?>"><?= h(date('m/Y')) ?></option>
+                        <?php else: ?>
+                          <?php foreach ($mesOptions as $opt): ?>
+                            <option value="<?= h($opt['val']) ?>" <?= ($opt['val'] === $mes ? 'selected' : '') ?>>
+                              <?= h($opt['label']) ?>
+                            </option>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
                       </select>
                     </div>
 
@@ -964,7 +995,6 @@ for ($i = 0; $i < 24; $i++) {
               <div class="card kpi-card">
                 <div class="kpi-hero">
                   <div class="hero-bg" style="background-image:url('../../../images/dashboard/produtor.jpeg');"></div>
-
 
                   <div class="hero-content">
                     <div class="kpi-row">
