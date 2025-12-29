@@ -22,9 +22,11 @@ try {
     }
 
     $pdo = db();
+    if (!($pdo instanceof PDO)) {
+        throw new RuntimeException("db() não retornou um PDO válido.");
+    }
 
 } catch (Throwable $e) {
-    // registra no log do PHP/servidor
     error_log("ERRO LOGIN (bootstrap/db): " . $e->getMessage());
 
     $_SESSION['flash_erro'] = "Erro interno: " . $e->getMessage();
@@ -46,6 +48,12 @@ if ($email === '' || $senha === '') {
     exit;
 }
 
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $_SESSION['flash_erro'] = 'Informe um e-mail válido.';
+    header("Location: {$index}");
+    exit;
+}
+
 try {
     $stmt = $pdo->prepare("
         SELECT id, nome, email, senha_hash, ativo
@@ -54,14 +62,27 @@ try {
         LIMIT 1
     ");
     $stmt->execute([':email' => $email]);
-    $user = $stmt->fetch();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$user || (int)$user['ativo'] !== 1 || !password_verify($senha, $user['senha_hash'])) {
-        $_SESSION['flash_erro'] = 'E-mail ou senha inválidos (ou usuário inativo).';
+    if (!$user) {
+        $_SESSION['flash_erro'] = 'E-mail ou senha inválidos.';
         header("Location: {$index}");
         exit;
     }
 
+    if ((int)$user['ativo'] !== 1) {
+        $_SESSION['flash_erro'] = 'Usuário inativo. Procure o administrador.';
+        header("Location: {$index}");
+        exit;
+    }
+
+    if (!password_verify($senha, (string)$user['senha_hash'])) {
+        $_SESSION['flash_erro'] = 'E-mail ou senha inválidos.';
+        header("Location: {$index}");
+        exit;
+    }
+
+    // Carrega perfis do usuário
     $pstmt = $pdo->prepare("
         SELECT p.codigo
         FROM usuario_perfis up
@@ -70,6 +91,25 @@ try {
     ");
     $pstmt->execute([':uid' => (int)$user['id']]);
     $perfis = $pstmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+    // Normaliza (trim + uppercase) e remove vazios
+    $perfis = array_values(array_filter(array_map(static function($v) {
+        $v = strtoupper(trim((string)$v));
+        return $v !== '' ? $v : null;
+    }, $perfis)));
+
+    // Só permite ADMIN e GESTOR_GERAL
+    $permitidos = ['ADMIN', 'GESTOR_GERAL'];
+    $temPerfilValido = false;
+    foreach ($perfis as $p) {
+        if (in_array($p, $permitidos, true)) { $temPerfilValido = true; break; }
+    }
+
+    if (!$temPerfilValido) {
+        $_SESSION['flash_erro'] = 'Seu usuário não possui perfil autorizado (Gestor Geral ou Administrador).';
+        header("Location: {$index}");
+        exit;
+    }
 
     session_regenerate_id(true);
     $_SESSION['usuario_logado'] = true;
@@ -81,11 +121,8 @@ try {
     $upd = $pdo->prepare("UPDATE usuarios SET ultimo_login_em = NOW() WHERE id = :id");
     $upd->execute([':id' => (int)$user['id']]);
 
-    if (in_array('ADMIN', $perfis, true)) {
-        header('Location: ../../painel/adm/index.php');
-    } else {
-        header('Location: ../../painel/operador/index.php');
-    }
+    // Sem OPERADOR: ambos entram no painel ADM
+    header('Location: ../../painel/adm/index.php');
     exit;
 
 } catch (Throwable $e) {

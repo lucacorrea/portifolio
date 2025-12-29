@@ -3,43 +3,41 @@ declare(strict_types=1);
 session_start();
 
 /**
- * Se já estiver logado, manda pro painel certo
+ * NÃO REDIRECIONAR AUTOMATICAMENTE SE JÁ ESTIVER LOGADO
+ * (a tela sempre aparece)
  */
-if (!empty($_SESSION['usuario_logado'])) {
-  $perfis = $_SESSION['perfis'] ?? [];
-  if (in_array('ADMIN', $perfis, true)) {
-    header('Location: ./painel/adm/index.php');
-  } else {
-    header('Location: ./painel/operador/index.php');
-  }
-  exit;
-}
 
-/**
- * Flash de erro vindo do controller
- */
-$erro = $_SESSION['flash_erro'] ?? '';
-unset($_SESSION['flash_erro']);
+/* Flash */
+$erro = (string)($_SESSION['flash_erro'] ?? '');
+$ok   = (string)($_SESSION['flash_ok'] ?? '');
+unset($_SESSION['flash_erro'], $_SESSION['flash_ok']);
+
+function h($s): string {
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 
 <head>
-  <!-- Required meta tags -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>Skydash Admin</title>
+  <title>SIGRelatórios — Login</title>
 
-  <!-- plugins:css -->
   <link rel="stylesheet" href="./vendors/feather/feather.css">
   <link rel="stylesheet" href="./vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" href="./vendors/css/vendor.bundle.base.css">
-  <!-- endinject -->
-
-  <!-- inject:css -->
   <link rel="stylesheet" href="./css/vertical-layout-light/style.css">
-  <!-- endinject -->
-  <link rel="shortcut icon" href="./images/favicon.png" />
+  <link rel="shortcut icon" href="./images/3.png" />
+
+  <style>
+    .auth-form-light{ border-radius:16px; }
+    .brand-logo img{ max-height:46px; }
+    .form-control.form-control-lg{ border-radius:12px; height:46px; }
+    .auth-form-btn{ border-radius:12px; }
+    .login-title{ margin-bottom:4px; font-weight:800; }
+    .login-sub{ margin-bottom:0; opacity:.85; }
+  </style>
 </head>
 
 <body>
@@ -48,89 +46,72 @@ unset($_SESSION['flash_erro']);
       <div class="content-wrapper d-flex align-items-center auth px-0">
         <div class="row w-100 mx-0">
           <div class="col-lg-4 mx-auto">
+
             <div class="auth-form-light text-left py-5 px-4 px-sm-5">
-              <div class="brand-logo">
-                <img src="./images/logo.svg" alt="logo">
+              <div class="brand-logo mb-2">
+                <img src="./images/3.png" alt="SIGRelatórios">
               </div>
 
-              <h4>Hello! let's get started</h4>
-              <h6 class="font-weight-light">Sign in to continue.</h6>
+              <h4 class="login-title">Acessar o SIGRelatórios</h4>
+              <h6 class="font-weight-light login-sub">Entre com seu e-mail e senha para continuar.</h6>
 
-              <?php if (!empty($erro)): ?>
-                <div class="alert alert-danger mt-3" role="alert">
-                  <?= htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
-                </div>
+              <?php if ($ok !== ''): ?>
+                <div class="alert alert-success mt-3 mb-0" role="alert"><?= h($ok) ?></div>
               <?php endif; ?>
 
-              <form class="pt-3" method="POST" action="./controle/auth/login.php">
+              <?php if ($erro !== ''): ?>
+                <div class="alert alert-danger mt-3 mb-0" role="alert"><?= h($erro) ?></div>
+              <?php endif; ?>
+
+              <form class="pt-4" method="POST" action="./controle/auth/login.php" autocomplete="off">
                 <div class="form-group">
-                  <input
-                    type="email"
-                    class="form-control form-control-lg"
-                    name="email"
-                    placeholder="Email"
-                    autocomplete="username"
-                    required
-                  >
+                  <label class="mb-1 text-muted">E-mail</label>
+                  <input type="email" class="form-control form-control-lg" name="email"
+                         placeholder="Digite seu e-mail" autocomplete="username" required>
                 </div>
 
                 <div class="form-group">
-                  <input
-                    type="password"
-                    class="form-control form-control-lg"
-                    name="senha"
-                    placeholder="Senha"
-                    autocomplete="current-password"
-                    required
-                  >
+                  <label class="mb-1 text-muted">Senha</label>
+                  <input type="password" class="form-control form-control-lg" name="senha"
+                         placeholder="Digite sua senha" autocomplete="current-password" required>
                 </div>
 
                 <div class="mt-3">
                   <button type="submit" class="btn btn-block btn-primary btn-lg font-weight-medium auth-form-btn">
-                    SIGN IN
+                    Entrar
                   </button>
                 </div>
 
-                <div class="my-2 d-flex justify-content-between align-items-center">
-                  <div class="form-check">
+                <div class="my-3 d-flex justify-content-between align-items-center">
+                  <div class="form-check m-0">
                     <label class="form-check-label text-muted">
                       <input type="checkbox" class="form-check-input" name="manter_logado" value="1">
-                      Keep me signed in
+                      Manter conectado
                     </label>
                   </div>
-                  <a href="#" class="auth-link text-black">Forgot password?</a>
+
+                  <a href="#" class="auth-link text-black" title="Implemente recuperação se quiser">
+                    Esqueci minha senha
+                  </a>
                 </div>
 
-                <div class="mb-2">
-                  <button type="button" class="btn btn-block btn-facebook auth-form-btn" disabled>
-                    <i class="ti-facebook mr-2"></i>Connect using facebook
-                  </button>
-                </div>
-
-                <div class="text-center mt-4 font-weight-light">
-                  Don't have an account? <a href="#" class="text-primary">Create</a>
+                <div class="text-center mt-4 small text-muted">
+                  Acesso restrito • Perfis: <b>Gestor Geral</b> e <b>Administrador</b>
                 </div>
               </form>
-
             </div>
+
           </div>
         </div>
       </div>
-      <!-- content-wrapper ends -->
     </div>
-    <!-- page-body-wrapper ends -->
   </div>
 
-  <!-- plugins:js -->
   <script src="./vendors/js/vendor.bundle.base.js"></script>
-  <!-- endinject -->
-
-  <!-- inject:js -->
   <script src="./js/off-canvas.js"></script>
   <script src="./js/hoverable-collapse.js"></script>
   <script src="./js/template.js"></script>
   <script src="./js/settings.js"></script>
   <script src="./js/todolist.js"></script>
-  <!-- endinject -->
 </body>
 </html>
