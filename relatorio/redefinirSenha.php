@@ -2,136 +2,11 @@
 declare(strict_types=1);
 session_start();
 
-/* =========================
-   ERROR LOG (arquivo local)
-   ========================= */
-error_reporting(E_ALL);
-ini_set('display_errors', '0');
-ini_set('log_errors', '1');
-@ini_set('error_log', __DIR__ . '/php_error.log');
-
-/* Flash */
-$erro  = (string)($_SESSION['flash_erro'] ?? '');
-$ok    = (string)($_SESSION['flash_ok'] ?? '');
+$erro  = $_SESSION['flash_erro'] ?? '';
+$ok    = $_SESSION['flash_ok'] ?? '';
 unset($_SESSION['flash_erro'], $_SESSION['flash_ok']);
 
-function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-
-/* =========================
-   PROCESSAR POST AQUI
-   ========================= */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-  $login = trim((string)($_POST['login'] ?? ''));
-
-  if ($login === '' || mb_strlen($login) < 3) {
-    $_SESSION['flash_erro'] = "Informe um e-mail ou nome válido.";
-    header("Location: ./redefinirSenha.php");
-    exit;
-  }
-
-  // Resposta padrão (não revela se existe)
-  $respostaOk = "Se existir uma conta ativa, enviaremos as instruções para o e-mail cadastrado.";
-
-  // App URL base
-  $APP_URL = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://')
-           . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-
-  // Config e-mail (EXATAMENTE como você pediu)
-  $FROM_NAME  = "SIGRelatórios";
-  $FROM_EMAIL = "noreply@lucascorrea.pro";
-
-  try {
-    require __DIR__ . '/assets/php/conexao.php';
-    if (!function_exists('db')) {
-      throw new RuntimeException("Função db() não encontrada em conexao.php");
-    }
-    $pdo = db();
-
-    // Procura por email EXATO ou nome LIKE (somente ativos)
-    $st = $pdo->prepare("
-      SELECT id, nome, email, ativo
-      FROM usuarios
-      WHERE ativo = 1 AND (
-        LOWER(email) = LOWER(:login)
-        OR LOWER(nome) LIKE LOWER(:nomeLike)
-      )
-      ORDER BY (LOWER(email)=LOWER(:login)) DESC, id DESC
-      LIMIT 1
-    ");
-    $st->execute([
-      ':login' => $login,
-      ':nomeLike' => '%'.$login.'%',
-    ]);
-    $user = $st->fetch();
-
-    // Se não achar, responde igual
-    if (!$user) {
-      $_SESSION['flash_ok'] = $respostaOk;
-      header("Location: ./redefinirSenhaConfirmar.php");
-      exit;
-    }
-
-    // Token forte + código curto
-    $rawToken  = bin2hex(random_bytes(32));      // 64 chars
-    $tokenHash = password_hash($rawToken, PASSWORD_DEFAULT);
-
-    $codigo   = (string)random_int(100000, 999999);
-    $expiraEm = date('Y-m-d H:i:s', time() + (60 * 30)); // 30 minutos
-
-    // Invalida tokens anteriores não usados
-    $pdo->prepare("
-      UPDATE redefinir_senha_tokens
-      SET usado_em = NOW()
-      WHERE email = :email AND usado_em IS NULL
-    ")->execute([':email' => (string)$user['email']]);
-
-    // Insere token
-    $ins = $pdo->prepare("
-      INSERT INTO redefinir_senha_tokens (usuario_id, email, token_hash, codigo, expira_em, criado_em)
-      VALUES (:uid, :email, :hash, :codigo, :expira, NOW())
-    ");
-    $ins->execute([
-      ':uid'    => (int)$user['id'],
-      ':email'  => (string)$user['email'],
-      ':hash'   => $tokenHash,
-      ':codigo' => $codigo,
-      ':expira' => $expiraEm,
-    ]);
-
-    $link = $APP_URL . "/redefinirSenhaNova.php?token=" . urlencode($rawToken);
-
-    // Mensagem
-    $assunto  = "Redefinição de senha - SIGRelatórios";
-    $mensagem = "Olá, {$user['nome']}!\n\n"
-              . "Recebemos um pedido para redefinir sua senha.\n\n"
-              . "Código: {$codigo}\n"
-              . "Link: {$link}\n\n"
-              . "Esse código/link expira em 30 minutos.\n"
-              . "Se você não solicitou, ignore este e-mail.\n\n"
-              . "SIGRelatórios";
-
-    $headers = "From: {$FROM_NAME} <{$FROM_EMAIL}>\r\n"
-             . "Reply-To: {$FROM_EMAIL}\r\n"
-             . "Content-Type: text/plain; charset=UTF-8\r\n";
-
-    // Tenta enviar
-    @mail((string)$user['email'], $assunto, $mensagem, $headers);
-
-    // Guarda e-mail para a próxima página (opcional)
-    $_SESSION['redef_email'] = (string)$user['email'];
-
-    $_SESSION['flash_ok'] = $respostaOk;
-    header("Location: ./redefinirSenhaConfirmar.php");
-    exit;
-
-  } catch (Throwable $e) {
-    error_log("ERRO redefinirSenha.php (processo): " . $e->getMessage());
-    $_SESSION['flash_erro'] = "Erro ao processar. Tente novamente.";
-    header("Location: ./redefinirSenha.php");
-    exit;
-  }
-}
+function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -172,14 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               Informe seu <b>e-mail</b> (ou <b>nome</b>) para receber um link/código de redefinição.
             </p>
 
-            <?php if (!empty($erro)): ?>
+            <?php if ($erro): ?>
               <div class="alert alert-danger"><?= h($erro) ?></div>
             <?php endif; ?>
-            <?php if (!empty($ok)): ?>
+            <?php if ($ok): ?>
               <div class="alert alert-success"><?= h($ok) ?></div>
             <?php endif; ?>
 
-            <form method="post" action="./redefinirSenha.php" autocomplete="off">
+            <form method="post" action="./controle/auth/enviarRedefinirSenha.php" autocomplete="off">
               <div class="form-group">
                 <label class="font-weight-semibold">E-mail ou nome</label>
                 <div class="input-group">
