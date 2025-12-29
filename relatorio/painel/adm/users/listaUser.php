@@ -344,7 +344,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                             <span class="ml-1"><?= h($nomeTopo) ?></span>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
-                            <a class="dropdown-item" href="../../../assets/controle/auth/logout.php">
+                            <a class="dropdown-item" href="../../../controle/auth/logout.php">
                                 <i class="ti-power-off text-primary"></i> Sair
                             </a>
                         </div>
