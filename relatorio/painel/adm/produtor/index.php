@@ -877,7 +877,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           </li>
 
           <!-- Linha separadora -->
-          <li class="nav-item px-3">
+          <li class="nav-item px-1">
             <hr style="margin:5px 0; background:#000 !important; opacity:.25;">
           </li>
 
