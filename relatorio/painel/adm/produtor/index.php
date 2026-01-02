@@ -928,7 +928,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           <li class="nav-item" style="pointer-events:none;">
             <span style="
         display:block;
-        padding: 5px 5px 5px;
+        padding: 10px 5px 5px;
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 1px;
@@ -940,9 +940,7 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           </li>
 
           <!-- Linha abaixo do título -->
-          <li class="nav-item px-3">
-            <hr style="margin:6px 0; opacity:.25;">
-          </li>
+          
 
           <!-- Suporte -->
           <li class="nav-item">
