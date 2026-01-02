@@ -928,14 +928,14 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           <li class="nav-item" style="pointer-events:none;">
             <span style="
         display:block;
-        padding: 10px 20px 5px;
+        padding: 10px 10px 5px;
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 1px;
         color: #6c757d;
         text-transform: uppercase;
       ">
-              Diversos
+             Links Diversos
             </span>
           </li>
 
