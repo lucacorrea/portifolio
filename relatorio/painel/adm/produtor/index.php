@@ -941,10 +941,13 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
 
           <!-- Linha abaixo do título -->
           <li class="nav-item">
-            <a href="../index.php" class="nav-link">
-              <i class="icon-grid menu-icon"></i>
-              <span class="menu-title"> Principal</span>
+            <a class="nav-link" href="../index.php">
+              <i class="ti-home menu-icon"></i>
+              <span class="menu-title"> Painel Principal</span>
             </a>
+          </li>
+          <li class="nav-item">
+
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
