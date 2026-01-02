@@ -867,6 +867,8 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
       <!-- SIDEBAR -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
+
+          <!-- Dashboard -->
           <li class="nav-item active">
             <a class="nav-link" href="./index.php">
               <i class="icon-grid menu-icon"></i>
@@ -874,6 +876,12 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
             </a>
           </li>
 
+          <!-- Linha separadora -->
+          <li class="nav-item px-3">
+            <hr style="margin:10px 0; opacity:.25;">
+          </li>
+
+          <!-- Cadastros -->
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
               <i class="ti-id-badge menu-icon"></i>
@@ -882,14 +890,36 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
             </a>
             <div class="collapse" id="feiraCadastros">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaProduto.php">
+                    <i class="ti-clipboard mr-2"></i> Lista de Produtos
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaCategoria.php">
+                    <i class="ti-layers mr-2"></i> Categorias
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaUnidade.php">
+                    <i class="ti-ruler-pencil mr-2"></i> Unidades
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaProdutor.php">
+                    <i class="ti-user mr-2"></i> Produtores
+                  </a>
+                </li>
               </ul>
             </div>
           </li>
 
+          <!-- Linha separadora -->
+          <li class="nav-item px-3">
+            <hr style="margin:10px 0; opacity:.25;">
+          </li>
+
+          <!-- Movimento -->
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
               <i class="ti-exchange-vertical menu-icon"></i>
@@ -898,12 +928,26 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
             </a>
             <div class="collapse" id="feiraMovimento">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
-                <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./lancamentos.php">
+                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./fechamentoDia.php">
+                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                  </a>
+                </li>
               </ul>
             </div>
           </li>
 
+          <!-- Linha separadora -->
+          <li class="nav-item px-3">
+            <hr style="margin:10px 0; opacity:.25;">
+          </li>
+
+          <!-- Relatórios -->
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
               <i class="ti-clipboard menu-icon"></i>
@@ -912,22 +956,46 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
             </a>
             <div class="collapse text-black" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
-                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
-                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
-                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./relatorioFinanceiro.php">
+                    <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./relatorioProdutos.php">
+                    <i class="ti-list mr-2"></i> Produtos Comercializados
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./relatorioMensal.php">
+                    <i class="ti-calendar mr-2"></i> Resumo Mensal
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./configRelatorio.php">
+                    <i class="ti-settings mr-2"></i> Configurar
+                  </a>
+                </li>
               </ul>
             </div>
           </li>
 
+          <!-- Linha separadora final -->
+          <li class="nav-item px-3">
+            <hr style="margin:12px 0; opacity:.25;">
+          </li>
+
+          <!-- Suporte -->
           <li class="nav-item">
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
             </a>
           </li>
+
         </ul>
       </nav>
+
       <!-- /SIDEBAR -->
 
       <!-- MAIN -->
