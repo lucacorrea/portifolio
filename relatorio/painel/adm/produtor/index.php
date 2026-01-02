@@ -940,12 +940,9 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           </li>
 
           <!-- Linha abaixo do título -->
-
-
-          <!-- Suporte -->
           <li class="nav-item">
             <a href="../index.php" class="nav-link">
-              <i class="icon-gri menu-icon"></i>
+              <i class="icon-grid menu-icon"></i>
               <span class="menu-title"> Principal</span>
             </a>
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
