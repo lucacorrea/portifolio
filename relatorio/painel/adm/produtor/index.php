@@ -948,16 +948,16 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           </li>
           <li class="nav-item">
             <a href="../alternativa/" class="nav-link">
-              <i class="ti-shopping-cart">
+              <i class="ti-shopping-cart">  </i>
                 <span class="menu-title">Feira Alternativa</span>
-              </i>
+            
             </a>
           </li>
           <li class="nav-item">
             <a href="../mercado/" class="nav-link">
-              <i class="ti-shopping-cart">
+              <i class="ti-shopping-cart"></i>
                 <span class="menu-title">Mercado Municipal</span>
-              </i>
+              
             </a>
           </li>
           <li class="nav-item">
