@@ -935,15 +935,19 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
         color: #6c757d;
         text-transform: uppercase;
       ">
-             Links Diversos
+              Links Diversos
             </span>
           </li>
 
           <!-- Linha abaixo do título -->
-          
+
 
           <!-- Suporte -->
           <li class="nav-item">
+            <a href="../index.php" class="nav-link">
+              <i class="icon-gri menu-icon"></i>
+              <span class="menu-title"> Principal</span>
+            </a>
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
