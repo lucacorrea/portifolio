@@ -517,7 +517,7 @@ try {
           </li>
 
         </ul>
-      </nav>
+      </nav>  
 
       </ul>
       </nav>
