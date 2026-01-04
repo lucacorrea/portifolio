@@ -71,6 +71,19 @@ if (!in_array('ADMIN', $perfis, true)) {
         <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
           <span class="icon-menu"></span>
         </button>
+        <ul class="navbar-nav navbar-nav-right">
+          <li class="nav-item nav-profile dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
+              <i class="ti-user"></i>
+              <span class="ml-1"><?= h($nomeTopo) ?></span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+              <a class="dropdown-item" href="../../../controle/auth/logout.php">
+                <i class="ti-power-off text-primary"></i> Sair
+              </a>
+            </div>
+          </li>
+        </ul>
       </div>
     </nav>
     <!-- partial -->
