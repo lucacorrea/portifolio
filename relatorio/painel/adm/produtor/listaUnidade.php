@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -15,7 +16,10 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function h($s)
+{
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
@@ -94,7 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['flash_err'] = 'Ação inválida.';
     header('Location: ./listaUnidade.php');
     exit;
-
   } catch (PDOException $e) {
     $mysqlCode = (int)($e->errorInfo[1] ?? 0);
 
@@ -152,18 +155,42 @@ try {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
+    ul .nav-link:hover {
+      color: blue !important;
+    }
 
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
+    .nav-link {
+      color: black !important;
+    }
 
-    .acoes-wrap { display:flex; gap:8px; flex-wrap:wrap; }
-    .btn-xs { padding:.25rem .5rem; font-size:.75rem; line-height:1.2; height:auto; }
-    .table td, .table th { vertical-align: middle !important; }
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
+
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
+
+    .acoes-wrap {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-xs {
+      padding: .25rem .5rem;
+      font-size: .75rem;
+      line-height: 1.2;
+      height: auto;
+    }
+
+    .table td,
+    .table th {
+      vertical-align: middle !important;
+    }
 
     /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
-    .sig-flash-wrap{
+    .sig-flash-wrap {
       position: fixed;
       top: 78px;
       right: 18px;
@@ -172,13 +199,14 @@ try {
       z-index: 9999;
       pointer-events: none;
     }
-    .sig-toast.alert{
+
+    .sig-toast.alert {
       pointer-events: auto;
       border: 0 !important;
       border-left: 6px solid !important;
       border-radius: 14px !important;
       padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
 
@@ -188,19 +216,64 @@ try {
         sigToastIn .22s ease-out forwards,
         sigToastOut .25s ease-in forwards 5.75s;
     }
-    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
-    .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
 
-    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
-    .sig-toast__icon i{ font-size:16px; margin-top:2px; }
-    .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
-    .sig-toast__text{ margin:0; line-height: 1.25; }
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important;
+    }
 
-    .sig-toast .close{ opacity:.55; font-size: 18px; line-height: 1; padding: 0 6px; }
-    .sig-toast .close:hover{ opacity:1; }
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important;
+    }
 
-    @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
-    @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .sig-toast__title {
+      font-weight: 800;
+      margin-bottom: 1px;
+      line-height: 1.1;
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    .sig-toast .close {
+      opacity: .55;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 6px;
+    }
+
+    .sig-toast .close:hover {
+      opacity: 1;
+    }
+
+    @keyframes sigToastIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes sigToastOut {
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden;
+      }
+    }
   </style>
 </head>
 
@@ -300,8 +373,13 @@ try {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link { color: black !important; }
-                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -324,7 +402,7 @@ try {
                   </a>
                 </li>
 
-              
+
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProdutor.php">
@@ -394,8 +472,44 @@ try {
             </div>
           </li>
 
-          <!-- SUPORTE -->
+          <!-- Título DIVERSOS -->
+          <li class="nav-item" style="pointer-events:none;">
+            <span style="
+                  display:block;
+                  padding: 5px 15px 5px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  color: #6c757d;
+                  text-transform: uppercase;
+                ">
+              Links Diversos
+            </span>
+          </li>
+
+          <!-- Linha abaixo do título -->
           <li class="nav-item">
+            <a class="nav-link" href="../index.php">
+              <i class="ti-home menu-icon"></i>
+              <span class="menu-title"> Painel Principal</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../alternativa/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Feira Alternativa</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../mercado/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Mercado Municipal</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
@@ -403,6 +517,9 @@ try {
           </li>
 
         </ul>
+      </nav>
+
+      </ul>
       </nav>
 
       <!-- MAIN -->
@@ -453,10 +570,10 @@ try {
                         <?php else: ?>
                           <?php foreach ($unidades as $u): ?>
                             <?php
-                              $id = (int)($u['id'] ?? 0);
-                              $ativo = (int)($u['ativo'] ?? 0) === 1;
-                              $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
-                              $badgeText  = $ativo ? 'Ativo' : 'Inativo';
+                            $id = (int)($u['id'] ?? 0);
+                            $ativo = (int)($u['ativo'] ?? 0) === 1;
+                            $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
+                            $badgeText  = $ativo ? 'Ativo' : 'Inativo';
                             ?>
                             <tr>
                               <td><?= $id ?></td>

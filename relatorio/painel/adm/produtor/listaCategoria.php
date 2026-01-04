@@ -372,8 +372,13 @@ try {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link { color: black !important; }
-                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -462,7 +467,45 @@ try {
             </div>
           </li>
 
+
+          <!-- Título DIVERSOS -->
+          <li class="nav-item" style="pointer-events:none;">
+            <span style="
+                  display:block;
+                  padding: 5px 15px 5px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  color: #6c757d;
+                  text-transform: uppercase;
+                ">
+              Links Diversos
+            </span>
+          </li>
+
+          <!-- Linha abaixo do título -->
           <li class="nav-item">
+            <a class="nav-link" href="../index.php">
+              <i class="ti-home menu-icon"></i>
+              <span class="menu-title"> Painel Principal</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../alternativa/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Feira Alternativa</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../mercado/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Mercado Municipal</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
@@ -470,6 +513,8 @@ try {
           </li>
 
         </ul>
+      </nav>
+      </ul>
       </nav>
 
       <div class="main-panel">
@@ -537,7 +582,7 @@ try {
                               <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                               <td>
                                 <div class="acoes-wrap">
-                               
+
 
                                   <form method="post" class="m-0">
                                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">

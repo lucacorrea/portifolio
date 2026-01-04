@@ -927,14 +927,14 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           <!-- Título DIVERSOS -->
           <li class="nav-item" style="pointer-events:none;">
             <span style="
-        display:block;
-        padding: 5px 15px 5px;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        color: #6c757d;
-        text-transform: uppercase;
-      ">
+                  display:block;
+                  padding: 5px 15px 5px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  color: #6c757d;
+                  text-transform: uppercase;
+                ">
               Links Diversos
             </span>
           </li>
@@ -949,15 +949,15 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           <li class="nav-item">
             <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-                <span class="menu-title">Feira Alternativa</span>
-            
+              <span class="menu-title">Feira Alternativa</span>
+
             </a>
           </li>
           <li class="nav-item">
             <a href="../mercado/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-                <span class="menu-title">Mercado Municipal</span>
-              
+              <span class="menu-title">Mercado Municipal</span>
+
             </a>
           </li>
           <li class="nav-item">
