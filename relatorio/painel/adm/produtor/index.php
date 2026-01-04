@@ -528,6 +528,7 @@ try {
 $mesAtual    = date('Y-m');
 $mesAnterior = date('Y-m', strtotime($monthStart . ' -1 month'));
 $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
+$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
