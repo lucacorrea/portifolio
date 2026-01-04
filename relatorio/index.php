@@ -17,6 +17,7 @@ function h($s): string
 {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
+$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
