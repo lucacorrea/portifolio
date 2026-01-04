@@ -847,13 +847,11 @@ $mesProximo  = date('Y-m', strtotime($monthStart . ' +1 month'));
           <span class="icon-menu"></span>
         </button>
 
-        <ul class="navbar-nav navbar-nav-right">
-          <li class="nav-item">
-            <span class="nav-link">
-              <i class="ti-user mr-1"></i> <?= h($nomeUsuario) ?> (ADMIN)
-            </span>
-          </li>
-        </ul>
+        <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+          <a class="dropdown-item" href="../../../controle/auth/logout.php">
+            <i class="ti-power-off text-primary"></i> Sair
+          </a>
+        </div>
 
         <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
           <span class="icon-menu"></span>
