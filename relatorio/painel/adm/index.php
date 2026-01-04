@@ -15,6 +15,7 @@ if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../operador/index.php');
   exit;
 }
+$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 ?>
 
 <!DOCTYPE html>
