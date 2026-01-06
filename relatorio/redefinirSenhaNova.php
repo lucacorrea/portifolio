@@ -170,7 +170,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
           <div class="auth-form-light text-left py-5 px-4 px-sm-5 auth-card">
             <div class="brand-logo text-center mb-3">
-              <img src="./images/3.png" alt="SIGRelatórios">
+             
             </div>
 
             <h4 class="font-weight-bold text-center mb-1">Definir nova senha</h4>
