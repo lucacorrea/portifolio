@@ -483,69 +483,170 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
 
     <!-- SIDEBAR (NOVO MENU QUE VOCÊ MANDOU) -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
-      <ul class="nav">
-        <li class="nav-item">
-          <a class="nav-link" href="index.php">
-            <i class="icon-grid menu-icon"></i>
-            <span class="menu-title">Dashboard</span>
-          </a>
-        </li>
+        <ul class="nav">
 
-        <li class="nav-item">
-          <a class="nav-link" href="../adm/produtor/">
-            <i class="ti-shopping-cart menu-icon"></i>
-            <span class="menu-title">Feira do Produtor</span>
-          </a>
-        </li>
+          <li class="nav-item">
+            <a class="nav-link" href="index.php">
+              <i class="icon-grid menu-icon"></i>
+              <span class="menu-title">Dashboard</span>
+            </a>
+          </li>
 
-        <li class="nav-item">
-          <a class="nav-link" href="../adm/alternativa/">
-            <i class="ti-shopping-cart menu-icon"></i>
-            <span class="menu-title">Feira Alternativa</span>
-          </a>
-        </li>
+          <!-- CADASTROS (ATIVO) -->
+          <li class="nav-item active">
+            <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
+              <i class="ti-id-badge menu-icon"></i>
+              <span class="menu-title">Cadastros</span>
+              <i class="menu-arrow"></i>
+            </a>
 
-        <li class="nav-item">
-          <a class="nav-link" href="../adm/mercado/">
-            <i class="ti-home menu-icon"></i>
-            <span class="menu-title">Mercado Municipal</span>
-          </a>
-        </li>
+            <div class="collapse " id="feiraCadastros">
+              <style>
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
 
-        <!-- RELATÓRIOS (ATIVO) -->
-        <li class="nav-item active">
-          <a class="nav-link" href="../adm/relatorio/">
-            <i class="ti-agenda menu-icon"></i>
-            <span class="menu-title">Relatórios</span>
-          </a>
-        </li>
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
+              </style>
 
-        <li class="nav-item">
-          <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
-            <i class="ti-user menu-icon"></i>
-            <span class="menu-title">Usuários</span>
-            <i class="menu-arrow"></i>
-          </a>
-          <div class="collapse" id="ui-basic">
-            <style>
-              .sub-menu .nav-item .nav-link { color: black !important; }
-              .sub-menu .nav-item .nav-link:hover { color: blue !important; }
-            </style>
-            <ul class="nav flex-column sub-menu" style="background: white !important;">
-              <li class="nav-item"><a class="nav-link text-black" href="./users/listaUser.php">Lista de Adicionados</a></li>
-              <li class="nav-item"><a class="nav-link text-black" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
-            </ul>
-          </div>
-        </li>
+              <ul class="nav flex-column sub-menu" style="background: white !important;">
 
-        <li class="nav-item">
-          <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-            <i class="ti-headphone-alt menu-icon"></i>
-            <span class="menu-title">Suporte</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaProduto.php">
+                    <i class="ti-clipboard mr-2"></i> Lista de Produtos
+                  </a>
+                </li>
+
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaCategoria.php">
+                    <i class="ti-layers mr-2"></i> Categorias
+                  </a>
+                </li>
+
+                <li class="nav-item ">
+                  <a class="nav-link" href="./listaUnidade.php" style="color:white !important; background: #231475C5 !important;">
+                    <i class="ti-ruler-pencil mr-2"></i> Unidades
+                  </a>
+                </li>
+
+
+
+                <li class="nav-item">
+                  <a class="nav-link" href="./listaProdutor.php">
+                    <i class="ti-user mr-2"></i> Produtores
+                  </a>
+                </li>
+
+              </ul>
+            </div>
+          </li>
+
+          <!-- MOVIMENTO -->
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
+              <i class="ti-exchange-vertical menu-icon"></i>
+              <span class="menu-title">Movimento</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse" id="feiraMovimento">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item">
+                  <a class="nav-link" href="./lancamentos.php">
+                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./fechamentoDia.php">
+                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- RELATÓRIOS -->
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
+              <i class="ti-clipboard menu-icon"></i>
+              <span class="menu-title">Relatórios</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse text-black" id="feiraRelatorios">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item">
+                  <a class="nav-link active" href="./relatorioFinanceiro.php">
+                    <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./relatorioProdutos.php">
+                    <i class="ti-list mr-2"></i> Produtos Comercializados
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./relatorioMensal.php">
+                    <i class="ti-calendar mr-2"></i> Resumo Mensal
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="./configRelatorio.php">
+                    <i class="ti-settings mr-2"></i> Configurar
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- Título DIVERSOS -->
+          <li class="nav-item" style="pointer-events:none;">
+            <span style="
+                  display:block;
+                  padding: 5px 15px 5px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  color: #6c757d;
+                  text-transform: uppercase;
+                ">
+              Links Diversos
+            </span>
+          </li>
+
+          <!-- Linha abaixo do título -->
+          <li class="nav-item">
+            <a class="nav-link" href="../index.php">
+              <i class="ti-home menu-icon"></i>
+              <span class="menu-title"> Painel Principal</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../alternativa/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Feira Alternativa</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../mercado/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Mercado Municipal</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+
+            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+              <i class="ti-headphone-alt menu-icon"></i>
+              <span class="menu-title">Suporte</span>
+            </a>
+          </li>
+
+        </ul>
+      </nav>  
 
     <!-- MAIN -->
     <div class="main-panel">
