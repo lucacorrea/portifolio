@@ -501,15 +501,7 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
             </a>
 
             <div class="collapse " id="feiraCadastros">
-              <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
-              </style>
+             
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
 
@@ -577,6 +569,15 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
 
             <div class="collapse text-black show" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                 <style>
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
+              </style>
                 <li class="nav-item">
                   <a class="nav-link active" href="./relatorioFinanceiro.php">
                     <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
