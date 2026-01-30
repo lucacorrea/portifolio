@@ -493,7 +493,7 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
           </li>
 
           <!-- CADASTROS (ATIVO) -->
-          <li class="nav-item active">
+          <li class="nav-item ">
             <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
               <i class="ti-id-badge menu-icon"></i>
               <span class="menu-title">Cadastros</span>
@@ -575,7 +575,7 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
               <i class="menu-arrow"></i>
             </a>
 
-            <div class="collapse text-black" id="feiraRelatorios">
+            <div class="collapse text-black show" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
                   <a class="nav-link active" href="./relatorioFinanceiro.php">
