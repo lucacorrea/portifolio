@@ -494,7 +494,7 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
 
           <!-- CADASTROS (ATIVO) -->
           <li class="nav-item ">
-            <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
+            <a class="nav-link " data-toggle="collapse" href="#feiraCadastros" >
               <i class="ti-id-badge menu-icon"></i>
               <span class="menu-title">Cadastros</span>
               <i class="menu-arrow"></i>
