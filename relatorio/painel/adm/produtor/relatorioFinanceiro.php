@@ -518,7 +518,7 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
                 </li>
 
                 <li class="nav-item ">
-                  <a class="nav-link" href="./listaUnidade.php" style="color:white !important; background: #231475C5 !important;">
+                  <a class="nav-link" href="./listaUnidade.php" >
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
                   </a>
                 </li>
@@ -579,7 +579,7 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
                 }
               </style>
                 <li class="nav-item">
-                  <a class="nav-link active" href="./relatorioFinanceiro.php">
+                  <a class="nav-link active" href="./relatorioFinanceiro.php" style="color:white !important; background: #231475C5 !important;">
                     <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
                   </a>
                 </li>
