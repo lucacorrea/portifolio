@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -16,7 +17,10 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function h($s): string
+{
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
@@ -30,7 +34,8 @@ $pdo = db();
 /* ==========================
    Helpers: schema detection
 ========================== */
-function hasTable(PDO $pdo, string $table): bool {
+function hasTable(PDO $pdo, string $table): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.tables
@@ -39,7 +44,8 @@ function hasTable(PDO $pdo, string $table): bool {
   $st->execute([':t' => $table]);
   return ((int)$st->fetchColumn() > 0);
 }
-function hasColumn(PDO $pdo, string $table, string $column): bool {
+function hasColumn(PDO $pdo, string $table, string $column): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.columns
@@ -315,7 +321,8 @@ try {
 }
 
 /* Paginação links */
-function pagLinks(string $baseUrl, int $page, int $totalRows, int $perPage, string $pageParam): string {
+function pagLinks(string $baseUrl, int $page, int $totalRows, int $perPage, string $pageParam): string
+{
   $totalPages = (int)ceil(max(1, $totalRows) / $perPage);
   if ($totalPages <= 1) return '';
 
@@ -326,26 +333,27 @@ function pagLinks(string $baseUrl, int $page, int $totalRows, int $perPage, stri
   $disabledPrev = $page <= 1 ? ' disabled' : '';
   $disabledNext = $page >= $totalPages ? ' disabled' : '';
 
-  $html .= '<li class="page-item'.$disabledPrev.'"><a class="page-link" href="'.$baseUrl.'&'.$pageParam.'='.$prev.'">‹</a></li>';
+  $html .= '<li class="page-item' . $disabledPrev . '"><a class="page-link" href="' . $baseUrl . '&' . $pageParam . '=' . $prev . '">‹</a></li>';
 
   $start = max(1, $page - 2);
   $end   = min($totalPages, $page + 2);
 
   for ($p = $start; $p <= $end; $p++) {
     $active = $p === $page ? ' active' : '';
-    $html .= '<li class="page-item'.$active.'"><a class="page-link" href="'.$baseUrl.'&'.$pageParam.'='.$p.'">'.$p.'</a></li>';
+    $html .= '<li class="page-item' . $active . '"><a class="page-link" href="' . $baseUrl . '&' . $pageParam . '=' . $p . '">' . $p . '</a></li>';
   }
 
-  $html .= '<li class="page-item'.$disabledNext.'"><a class="page-link" href="'.$baseUrl.'&'.$pageParam.'='.$next.'">›</a></li>';
+  $html .= '<li class="page-item' . $disabledNext . '"><a class="page-link" href="' . $baseUrl . '&' . $pageParam . '=' . $next . '">›</a></li>';
   $html .= '</ul></nav>';
   return $html;
 }
 
 $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
-$baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
+$baseQS = '?local=' . urlencode($local) . '&mes=' . urlencode($mesSel);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -360,27 +368,58 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
+    ul .nav-link:hover {
+      color: blue !important;
+    }
 
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
+    .nav-link {
+      color: black !important;
+    }
 
-    .form-control { height: 42px; }
-    .btn { height: 42px; }
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
 
-    .mini-kpi{ font-size: 12px; color: #6c757d; }
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
 
-    .kpi-card{
-      border: 1px solid rgba(0,0,0,.08);
+    .form-control {
+      height: 42px;
+    }
+
+    .btn {
+      height: 42px;
+    }
+
+    .mini-kpi {
+      font-size: 12px;
+      color: #6c757d;
+    }
+
+    .kpi-card {
+      border: 1px solid rgba(0, 0, 0, .08);
       border-radius: 14px;
       padding: 14px;
       background: #fff;
     }
-    .kpi-label{ font-size: 12px; color:#6c757d; margin:0; }
-    .kpi-value{ font-size: 22px; font-weight: 800; margin:0; }
 
-    .table td, .table th{ vertical-align: middle !important; }
+    .kpi-label {
+      font-size: 12px;
+      color: #6c757d;
+      margin: 0;
+    }
+
+    .kpi-value {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .table td,
+    .table th {
+      vertical-align: middle !important;
+    }
 
     .badge-soft {
       background: rgba(0, 0, 0, 0.05);
@@ -389,100 +428,157 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
     }
 
     /* Flash top-right */
-    .sig-flash-wrap{
-      position: fixed; top: 78px; right: 18px; width: min(420px, calc(100vw - 36px));
-      z-index: 9999; pointer-events: none;
+    .sig-flash-wrap {
+      position: fixed;
+      top: 78px;
+      right: 18px;
+      width: min(420px, calc(100vw - 36px));
+      z-index: 9999;
+      pointer-events: none;
     }
-    .sig-toast.alert{
+
+    .sig-toast.alert {
       pointer-events: auto;
       border: 0 !important;
       border-left: 6px solid !important;
       border-radius: 14px !important;
       padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
       opacity: 0;
       transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
     }
-    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
-    .sig-toast--danger { background:#fff1f2 !important; border-left-color:#ef4444 !important; }
-    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
-    .sig-toast__icon i{ font-size:16px; margin-top:2px; }
-    .sig-toast__title{ font-weight:800; margin-bottom:1px; line-height: 1.1; }
-    .sig-toast__text{ margin:0; line-height: 1.25; }
-    .sig-toast .close{ opacity:.55; font-size: 18px; line-height: 1; padding: 0 6px; }
-    .sig-toast .close:hover{ opacity:1; }
-    @keyframes sigToastIn{ to{ opacity:1; transform: translateX(0); } }
-    @keyframes sigToastOut{ to{ opacity:0; transform: translateX(12px); visibility:hidden; } }
 
-    .feirantes-cell{ white-space: pre-line; } /* para quebrar \n em linhas */
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important;
+    }
+
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important;
+    }
+
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .sig-toast__title {
+      font-weight: 800;
+      margin-bottom: 1px;
+      line-height: 1.1;
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    .sig-toast .close {
+      opacity: .55;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 6px;
+    }
+
+    .sig-toast .close:hover {
+      opacity: 1;
+    }
+
+    @keyframes sigToastIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes sigToastOut {
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden;
+      }
+    }
+
+    .feirantes-cell {
+      white-space: pre-line;
+    }
+
+    /* para quebrar \n em linhas */
   </style>
 </head>
 
 <body>
-<div class="container-scroller">
+  <div class="container-scroller">
 
-  <!-- NAVBAR -->
-  <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-    <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-      <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-      <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
-    </div>
-    <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-      <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-        <span class="icon-menu"></span>
-      </button>
+    <!-- NAVBAR -->
+    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
+      </div>
+      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+          <span class="icon-menu"></span>
+        </button>
 
-      <ul class="navbar-nav navbar-nav-right">
-        <li class="nav-item">
-          <span class="nav-link">
-            <i class="ti-user mr-1"></i> <?= h($nomeUsuario) ?> (ADMIN)
-          </span>
-        </li>
-      </ul>
+        <ul class="navbar-nav navbar-nav-right">
+          <li class="nav-item">
+            <span class="nav-link">
+              <i class="ti-user mr-1"></i> <?= h($nomeUsuario) ?> (ADMIN)
+            </span>
+          </li>
+        </ul>
 
-      <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-        <span class="icon-menu"></span>
-      </button>
-    </div>
-  </nav>
+        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+          <span class="icon-menu"></span>
+        </button>
+      </div>
+    </nav>
 
-  <?php if ($msg || $err): ?>
-    <div class="sig-flash-wrap">
-      <?php if ($msg): ?>
-        <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
-          <div class="sig-toast__row">
-            <div class="sig-toast__icon"><i class="ti-check"></i></div>
-            <div>
-              <div class="sig-toast__title">Tudo certo!</div>
-              <p class="sig-toast__text"><?= h($msg) ?></p>
+    <?php if ($msg || $err): ?>
+      <div class="sig-flash-wrap">
+        <?php if ($msg): ?>
+          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-check"></i></div>
+              <div>
+                <div class="sig-toast__title">Tudo certo!</div>
+                <p class="sig-toast__text"><?= h($msg) ?></p>
+              </div>
             </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
           </div>
-          <button type="button" class="close" data-dismiss="alert" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
-        </div>
-      <?php endif; ?>
+        <?php endif; ?>
 
-      <?php if ($err): ?>
-        <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
-          <div class="sig-toast__row">
-            <div class="sig-toast__icon"><i class="ti-alert"></i></div>
-            <div>
-              <div class="sig-toast__title">Atenção!</div>
-              <p class="sig-toast__text"><?= h($err) ?></p>
+        <?php if ($err): ?>
+          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+              <div>
+                <div class="sig-toast__title">Atenção!</div>
+                <p class="sig-toast__text"><?= h($err) ?></p>
+              </div>
             </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
           </div>
-          <button type="button" class="close" data-dismiss="alert" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
-        </div>
-      <?php endif; ?>
-    </div>
-  <?php endif; ?>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
 
-  <div class="container-fluid page-body-wrapper">
+    <div class="container-fluid page-body-wrapper">
 
-    <!-- SIDEBAR (NOVO MENU QUE VOCÊ MANDOU) -->
-    <nav class="sidebar sidebar-offcanvas" id="sidebar">
+      <!-- SIDEBAR (NOVO MENU QUE VOCÊ MANDOU) -->
+      <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
 
           <li class="nav-item">
@@ -494,14 +590,14 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
 
           <!-- CADASTROS (ATIVO) -->
           <li class="nav-item ">
-            <a class="nav-link " data-toggle="collapse" href="#feiraCadastros" >
+            <a class="nav-link " data-toggle="collapse" href="#feiraCadastros">
               <i class="ti-id-badge menu-icon"></i>
               <span class="menu-title">Cadastros</span>
               <i class="menu-arrow"></i>
             </a>
 
             <div class="collapse " id="feiraCadastros">
-             
+
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
 
@@ -518,7 +614,7 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
                 </li>
 
                 <li class="nav-item ">
-                  <a class="nav-link" href="./listaUnidade.php" >
+                  <a class="nav-link" href="./listaUnidade.php">
                     <i class="ti-ruler-pencil mr-2"></i> Unidades
                   </a>
                 </li>
@@ -569,15 +665,15 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
 
             <div class="collapse text-black show" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                 <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
+                <style>
+                  .sub-menu .nav-item .nav-link {
+                    color: black !important;
+                  }
 
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
-              </style>
+                  .sub-menu .nav-item .nav-link:hover {
+                    color: blue !important;
+                  }
+                </style>
                 <li class="nav-item">
                   <a class="nav-link active" href="./relatorioFinanceiro.php" style="color:white !important; background: #231475C5 !important;">
                     <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
@@ -647,317 +743,250 @@ $baseQS = '?local='.urlencode($local).'&mes='.urlencode($mesSel);
           </li>
 
         </ul>
-      </nav>  
+      </nav>
 
-    <!-- MAIN -->
-    <div class="main-panel">
-      <div class="content-wrapper">
+      <!-- MAIN -->
+      <div class="main-panel">
+        <div class="content-wrapper">
 
-        <div class="row">
-          <div class="col-12 mb-3">
-            <h3 class="font-weight-bold mb-1">Relatório Financeiro</h3>
-            <div class="mini-kpi">
-              Mês selecionado: <b><?= h($mesSel) ?></b> • Período: <b><?= date('d/m/Y', strtotime($monthStart)) ?></b> até <b><?= date('d/m/Y', strtotime($monthEnd)) ?></b>
+          <!-- ======================
+         CABEÇALHO
+         ====================== -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <div>
+                  <h2 class="font-weight-bold mb-1">Relatório Financeiro</h2>
+                  <span class="badge badge-primary">
+                    <?= date('d/m/Y', strtotime($monthStart)) ?>
+                    a
+                    <?= date('d/m/Y', strtotime($monthEnd)) ?>
+                  </span>
+                </div>
+                <div class="text-muted mt-2 mt-md-0">
+                  Mês selecionado: <b><?= h($mesSel) ?></b>
+                </div>
+              </div>
+              <hr>
             </div>
           </div>
-        </div>
 
-        <!-- FILTROS -->
-        <div class="row">
-          <div class="col-lg-12 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
+          <!-- ======================
+         FILTROS
+         ====================== -->
+          <div class="card mb-4">
+            <div class="card-body py-3">
+              <div class="row align-items-end">
 
-                <div class="d-flex align-items-center justify-content-between flex-wrap">
-                  <div>
-                    <h4 class="card-title mb-0">Filtros</h4>
-                    <p class="card-description mb-0">Selecione o mês (meses anteriores) e o local (opcional).</p>
-                  </div>
+                <div class="col-md-4 mb-2">
+                  <label class="mb-1">Mês</label>
+                  <select class="form-control"
+                    onchange="location.href='?local=<?= h($local) ?>&mes='+this.value;">
+                    <?php foreach ($meses as $m): ?>
+                      <option value="<?= h($m['key']) ?>" <?= $mesSel === $m['key'] ? 'selected' : '' ?>>
+                        <?= h($m['label']) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
                 </div>
 
-                <div class="row mt-3">
-                  <div class="col-md-4 mb-2">
-                    <label class="mb-1">Mês</label>
-                    <select class="form-control" onchange="location.href='?local=<?= h($local) ?>&mes='+this.value;">
-                      <?php foreach ($meses as $m): ?>
-                        <option value="<?= h($m['key']) ?>" <?= $mesSel === $m['key'] ? 'selected' : '' ?>>
-                          <?= h($m['label']) ?>
-                        </option>
-                      <?php endforeach; ?>
-                    </select>
-                  </div>
+                <div class="col-md-4 mb-2">
+                  <label class="mb-1">Local</label>
+                  <select class="form-control"
+                    onchange="location.href='?local='+this.value+'&mes=<?= h($mesSel) ?>';">
+                    <option value="produtor" <?= $local === 'produtor' ? 'selected' : '' ?>>Feira do Produtor</option>
+                    <option value="alternativa" <?= $local === 'alternativa' ? 'selected' : '' ?>>Feira Alternativa</option>
+                    <option value="mercado" <?= $local === 'mercado' ? 'selected' : '' ?>>Mercado Municipal</option>
+                    <option value="todas" <?= $local === 'todas' ? 'selected' : '' ?>>Todas</option>
+                  </select>
+                </div>
 
-                  <div class="col-md-4 mb-2">
-                    <label class="mb-1">Local</label>
-                    <select class="form-control" onchange="location.href='?local='+this.value+'&mes=<?= h($mesSel) ?>';">
-                      <option value="produtor" <?= $local==='produtor' ? 'selected' : '' ?>>Feira do Produtor</option>
-                      <option value="alternativa" <?= $local==='alternativa' ? 'selected' : '' ?>>Feira Alternativa</option>
-                      <option value="mercado" <?= $local==='mercado' ? 'selected' : '' ?>>Mercado Municipal</option>
-                      <option value="todas" <?= $local==='todas' ? 'selected' : '' ?>>Todas (somar tudo)</option>
-                    </select>
-                    <small class="text-muted mini-kpi">Se o Mercado usar outro feira_id, ajuste no topo do arquivo.</small>
-                  </div>
-
-                  <div class="col-md-4 mb-2 d-flex align-items-end">
-                    <a class="btn btn-light w-100" href="./relatorioFinanceiro.php">
-                      <i class="ti-close mr-1"></i> Voltar para o mês atual
-                    </a>
-                  </div>
+                <div class="col-md-4 mb-2">
+                  <a href="./relatorioFinanceiro.php" class="btn btn-outline-secondary w-100">
+                    <i class="ti-reload mr-1"></i> Voltar para o mês atual
+                  </a>
                 </div>
 
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- KPIs -->
-        <div class="row">
-          <div class="col-md-4 mb-3">
-            <div class="kpi-card">
-              <p class="kpi-label">Total do mês</p>
-              <p class="kpi-value">R$ <?= number_format((float)$resumo['total'], 2, ',', '.') ?></p>
-              <div class="mini-kpi">Somatório das vendas no período</div>
+          <!-- ======================
+         KPIs
+         ====================== -->
+          <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+              <div class="kpi-card text-primary">
+                <p class="kpi-label">Total do mês</p>
+                <p class="kpi-value">
+                  R$ <?= number_format((float)$resumo['total'], 2, ',', '.') ?>
+                </p>
+                <div class="mini-kpi">Somatório das vendas</div>
+              </div>
+            </div>
+
+            <div class="col-md-4 mb-3">
+              <div class="kpi-card text-success">
+                <p class="kpi-label">Vendas</p>
+                <p class="kpi-value"><?= (int)$resumo['vendas_qtd'] ?></p>
+                <div class="mini-kpi">Registros no período</div>
+              </div>
+            </div>
+
+            <div class="col-md-4 mb-3">
+              <div class="kpi-card text-info">
+                <p class="kpi-label">Ticket médio</p>
+                <p class="kpi-value">
+                  R$ <?= number_format((float)$resumo['ticket'], 2, ',', '.') ?>
+                </p>
+                <div class="mini-kpi">Total ÷ vendas</div>
+              </div>
             </div>
           </div>
-          <div class="col-md-4 mb-3">
-            <div class="kpi-card">
-              <p class="kpi-label">Vendas (lançamentos)</p>
-              <p class="kpi-value"><?= (int)$resumo['vendas_qtd'] ?></p>
-              <div class="mini-kpi">Quantidade de registros</div>
-            </div>
-          </div>
-          <div class="col-md-4 mb-3">
-            <div class="kpi-card">
-              <p class="kpi-label">Ticket médio</p>
-              <p class="kpi-value">R$ <?= number_format((float)$resumo['ticket'], 2, ',', '.') ?></p>
-              <div class="mini-kpi">Total ÷ vendas</div>
-            </div>
-          </div>
-        </div>
 
-        <!-- POR PAGAMENTO + POR PRODUTOR -->
-        <div class="row">
-          <div class="col-lg-5 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
-                <h4 class="card-title mb-0">Por forma de pagamento</h4>
-                <p class="card-description mb-0">Distribuição do período.</p>
+          <!-- ======================
+         PAGAMENTO + PRODUTOR
+         ====================== -->
+          <div class="row">
+            <div class="col-lg-5 mb-4">
+              <div class="card h-100">
+                <div class="card-body">
+                  <h4 class="card-title">Por forma de pagamento</h4>
 
-                <div class="table-responsive pt-3">
-                  <table class="table table-striped table-hover">
-                    <thead>
-                      <tr>
-                        <th>Pagamento</th>
-                        <th style="width:110px;">Qtd</th>
-                        <th style="width:170px;">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php if (empty($porPagamento)): ?>
-                        <tr><td colspan="3" class="text-center text-muted py-4">Sem dados para o período.</td></tr>
-                      <?php else: ?>
-                        <?php foreach ($porPagamento as $p): ?>
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="thead-light">
+                        <tr>
+                          <th>Pagamento</th>
+                          <th class="text-center">Qtd</th>
+                          <th class="text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if (empty($porPagamento)): ?>
                           <tr>
-                            <td><span class="badge badge-soft"><?= h($p['pagamento'] ?? 'N/I') ?></span></td>
-                            <td><?= (int)($p['qtd'] ?? 0) ?></td>
-                            <td><b>R$ <?= number_format((float)($p['total'] ?? 0), 2, ',', '.') ?></b></td>
+                            <td colspan="3" class="text-center text-muted py-4">
+                              Sem dados no período
+                            </td>
                           </tr>
-                        <?php endforeach; ?>
-                      <?php endif; ?>
-                    </tbody>
-                  </table>
-                </div>
-
-                <?php if (!$colFormaPgto): ?>
-                  <div class="mini-kpi mt-2 text-muted">
-                    *Sua tabela vendas não tem a coluna <b>forma_pagamento</b>. Se quiser, eu ajusto para você.
+                          <?php else: foreach ($porPagamento as $p): ?>
+                            <tr>
+                              <td>
+                                <span class="badge badge-soft">
+                                  <?= h($p['pagamento'] ?? 'N/I') ?>
+                                </span>
+                              </td>
+                              <td class="text-center"><?= (int)$p['qtd'] ?></td>
+                              <td class="text-right">
+                                <b>R$ <?= number_format((float)$p['total'], 2, ',', '.') ?></b>
+                              </td>
+                            </tr>
+                        <?php endforeach;
+                        endif; ?>
+                      </tbody>
+                    </table>
                   </div>
-                <?php endif; ?>
-              </div>
-            </div>
-          </div>
 
-          <div class="col-lg-7 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
-                <h4 class="card-title mb-0">Resumo por feirante (produtor)</h4>
-                <p class="card-description mb-0">Cada feirante em uma linha.</p>
-
-                <div class="table-responsive pt-3">
-                  <table class="table table-striped table-hover">
-                    <thead>
-                      <tr>
-                        <th>Feirante</th>
-                        <th style="width:120px;">Vendas</th>
-                        <th style="width:180px;">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php if (empty($porProdutor)): ?>
-                        <tr><td colspan="3" class="text-center text-muted py-4">Sem dados para o período.</td></tr>
-                      <?php else: ?>
-                        <?php foreach ($porProdutor as $p): ?>
-                          <tr>
-                            <td><?= h($p['nome'] ?? '') ?></td>
-                            <td><?= (int)($p['vendas_qtd'] ?? 0) ?></td>
-                            <td><b>R$ <?= number_format((float)($p['total'] ?? 0), 2, ',', '.') ?></b></td>
-                          </tr>
-                        <?php endforeach; ?>
-                      <?php endif; ?>
-                    </tbody>
-                  </table>
                 </div>
+              </div>
+            </div>
 
+            <div class="col-lg-7 mb-4">
+              <div class="card h-100">
+                <div class="card-body">
+                  <h4 class="card-title">Resumo por feirante</h4>
+
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="thead-light">
+                        <tr>
+                          <th>Feirante</th>
+                          <th class="text-center">Vendas</th>
+                          <th class="text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if (empty($porProdutor)): ?>
+                          <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                              Sem dados no período
+                            </td>
+                          </tr>
+                          <?php else: foreach ($porProdutor as $p): ?>
+                            <tr>
+                              <td><?= h($p['nome']) ?></td>
+                              <td class="text-center"><?= (int)$p['vendas_qtd'] ?></td>
+                              <td class="text-right">
+                                <b>R$ <?= number_format((float)$p['total'], 2, ',', '.') ?></b>
+                              </td>
+                            </tr>
+                        <?php endforeach;
+                        endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
+
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- ======================
+         RESUMO POR DIA
+         ====================== -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <h4 class="card-title">Resumo por dia</h4>
+
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="thead-light">
+                    <tr>
+                      <th>Dia</th>
+                      <th class="text-center">Vendas</th>
+                      <th class="text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($porDia as $d): ?>
+                      <tr>
+                        <td><?= date('d/m/Y', strtotime($d['dia'])) ?></td>
+                        <td class="text-center"><?= (int)$d['vendas_qtd'] ?></td>
+                        <td class="text-right">
+                          <b>R$ <?= number_format((float)$d['total'], 2, ',', '.') ?></b>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+
         </div>
 
-        <!-- POR DIA (PAGINADO) -->
-        <div class="row">
-          <div class="col-lg-12 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between flex-wrap">
-                  <div>
-                    <h4 class="card-title mb-0">Resumo por dia</h4>
-                    <p class="card-description mb-0">
-                      Se passar de 10 linhas, pagina automaticamente.
-                      <?php if ($totalRowsDia > 0): ?>
-                        <span class="mini-kpi ml-2">Total de dias no mês: <b><?= (int)$totalRowsDia ?></b></span>
-                      <?php endif; ?>
-                    </p>
-                  </div>
-                  <div>
-                    <?= pagLinks($baseQS.'&p_v='.$pageVen, $pageDia, $totalRowsDia, $PER_PAGE, 'p_dia') ?>
-                  </div>
-                </div>
-
-                <div class="table-responsive pt-3">
-                  <table class="table table-striped table-hover">
-                    <thead>
-                      <tr>
-                        <th style="width:160px;">Dia</th>
-                        <th style="width:140px;">Vendas</th>
-                        <th style="width:180px;">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php if (empty($porDia)): ?>
-                        <tr><td colspan="3" class="text-center text-muted py-4">Sem dados para o período.</td></tr>
-                      <?php else: ?>
-                        <?php foreach ($porDia as $d): ?>
-                          <tr>
-                            <td><?= h(date('d/m/Y', strtotime((string)$d['dia']))) ?></td>
-                            <td><?= (int)($d['vendas_qtd'] ?? 0) ?></td>
-                            <td><b>R$ <?= number_format((float)($d['total'] ?? 0), 2, ',', '.') ?></b></td>
-                          </tr>
-                        <?php endforeach; ?>
-                      <?php endif; ?>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="d-flex justify-content-end mt-2">
-                  <?= pagLinks($baseQS.'&p_v='.$pageVen, $pageDia, $totalRowsDia, $PER_PAGE, 'p_dia') ?>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- VENDAS (PAGINADO) -->
-        <div class="row">
-          <div class="col-lg-12 grid-margin stretch-card">
-            <div class="card">
-              <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between flex-wrap">
-                  <div>
-                    <h4 class="card-title mb-0">Vendas do período</h4>
-                    <p class="card-description mb-0">
-                      Mostrando <b><?= (int)count($vendasRows) ?></b> de <b><?= (int)$totalRowsVen ?></b> (paginação após 10).
-                    </p>
-                  </div>
-                  <div>
-                    <?= pagLinks($baseQS.'&p_dia='.$pageDia, $pageVen, $totalRowsVen, $PER_PAGE, 'p_v') ?>
-                  </div>
-                </div>
-
-                <div class="table-responsive pt-3">
-                  <table class="table table-striped table-hover">
-                    <thead>
-                      <tr>
-                        <th style="width:90px;">ID</th>
-                        <th style="width:140px;">Data</th>
-                        <th>Feirante(s)</th>
-                        <th style="width:160px;">Pagamento</th>
-                        <th style="width:140px;">Status</th>
-                        <th style="width:160px;">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php if (empty($vendasRows)): ?>
-                        <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma venda no período.</td></tr>
-                      <?php else: ?>
-                        <?php foreach ($vendasRows as $v): ?>
-                          <?php
-                            $id = (int)($v['id'] ?? 0);
-                            $dataRef = (string)($v['data_ref'] ?? '');
-                            $pg = (string)($v['forma_pagamento'] ?? '');
-                            $stt = (string)($v['status'] ?? '');
-                            $tot = (float)($v['total'] ?? 0);
-                            $feirantes = (string)($v['feirantes'] ?? '');
-                            if ($feirantes === '') $feirantes = '—';
-                          ?>
-                          <tr>
-                            <td><?= $id ?></td>
-                            <td><?= $dataRef ? h(date('d/m/Y', strtotime($dataRef))) : '—' ?></td>
-                            <td class="feirantes-cell"><?= h($feirantes) ?></td>
-                            <td><?= $pg !== '' ? '<span class="badge badge-soft">'.h($pg).'</span>' : '—' ?></td>
-                            <td><?= $stt !== '' ? h($stt) : '—' ?></td>
-                            <td><b>R$ <?= number_format($tot, 2, ',', '.') ?></b></td>
-                          </tr>
-                        <?php endforeach; ?>
-                      <?php endif; ?>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="d-flex justify-content-end mt-2">
-                  <?= pagLinks($baseQS.'&p_dia='.$pageDia, $pageVen, $totalRowsVen, $PER_PAGE, 'p_v') ?>
-                </div>
-
-                <div class="mini-kpi mt-2">
-                  *Feirantes em linhas diferentes: se a venda tiver itens de mais de um produtor, eles aparecem separados por linha.
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- ======================
+       FOOTER
+       ====================== -->
+        <footer class="footer">
+          <span class="text-muted">
+            © <?= date('Y') ?> SIGRelatórios —
+            <a href="https://www.lucascorrea.pro/" target="_blank">lucascorrea.pro</a>
+          </span>
+        </footer>
 
       </div>
 
-      <footer class="footer">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
-          <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
-            © <?= date('Y') ?> SIGRelatórios —
-            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
-            Todos os direitos reservados.
-          </span>
-        </div>
-      </footer>
-
     </div>
   </div>
-</div>
 
-<script src="../../../vendors/js/vendor.bundle.base.js"></script>
-<script src="../../../js/off-canvas.js"></script>
-<script src="../../../js/hoverable-collapse.js"></script>
-<script src="../../../js/template.js"></script>
-<script src="../../../js/settings.js"></script>
-<script src="../../../js/todolist.js"></script>
+  <script src="../../../vendors/js/vendor.bundle.base.js"></script>
+  <script src="../../../js/off-canvas.js"></script>
+  <script src="../../../js/hoverable-collapse.js"></script>
+  <script src="../../../js/template.js"></script>
+  <script src="../../../js/settings.js"></script>
+  <script src="../../../js/todolist.js"></script>
 </body>
+
 </html>
