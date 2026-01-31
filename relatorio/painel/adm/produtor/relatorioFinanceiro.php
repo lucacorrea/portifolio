@@ -110,7 +110,7 @@ for ($i = 0; $i < 18; $i++) {
 /* ==========================
    Estruturas
 ========================== */
-$resumo = ['vendas_qtd'=>0,'total'=>0,'ticket'=>0];
+$resumo = ['vendas_qtd' => 0, 'total' => 0, 'ticket' => 0];
 $porPagamento = $porProdutor = $porDia = $vendasRows = [];
 
 /* Paginação */
@@ -625,6 +625,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div>
                   <h2 class="font-weight-bold mb-1">Relatório Financeiro</h2>
                   <span class="badge badge-primary">
+                    Feira do Produtor —
                     <?= date('d/m/Y', strtotime($monthStart)) ?>
                     a
                     <?= date('d/m/Y', strtotime($monthEnd)) ?>
@@ -639,16 +640,16 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           </div>
 
           <!-- ======================
-         FILTROS
+         FILTRO (APENAS MÊS)
          ====================== -->
           <div class="card mb-4">
             <div class="card-body py-3">
               <div class="row align-items-end">
 
-                <div class="col-md-4 mb-2">
+                <div class="col-md-6 mb-2">
                   <label class="mb-1">Mês</label>
                   <select class="form-control"
-                    onchange="location.href='?local=<?= h($local) ?>&mes='+this.value;">
+                    onchange="location.href='?mes='+this.value;">
                     <?php foreach ($meses as $m): ?>
                       <option value="<?= h($m['key']) ?>" <?= $mesSel === $m['key'] ? 'selected' : '' ?>>
                         <?= h($m['label']) ?>
@@ -657,18 +658,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                   </select>
                 </div>
 
-                <div class="col-md-4 mb-2">
-                  <label class="mb-1">Local</label>
-                  <select class="form-control"
-                    onchange="location.href='?local='+this.value+'&mes=<?= h($mesSel) ?>';">
-                    <option value="produtor" <?= $local === 'produtor' ? 'selected' : '' ?>>Feira do Produtor</option>
-                    <option value="alternativa" <?= $local === 'alternativa' ? 'selected' : '' ?>>Feira Alternativa</option>
-                    <option value="mercado" <?= $local === 'mercado' ? 'selected' : '' ?>>Mercado Municipal</option>
-                    <option value="todas" <?= $local === 'todas' ? 'selected' : '' ?>>Todas</option>
-                  </select>
-                </div>
-
-                <div class="col-md-4 mb-2">
+                <div class="col-md-6 mb-2">
                   <a href="./relatorioFinanceiro.php" class="btn btn-outline-secondary w-100">
                     <i class="ti-reload mr-1"></i> Voltar para o mês atual
                   </a>
@@ -712,7 +702,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           </div>
 
           <!-- ======================
-         PAGAMENTO + PRODUTOR
+         PAGAMENTO + FEIRANTES
          ====================== -->
           <div class="row">
             <div class="col-lg-5 mb-4">
@@ -844,6 +834,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
         </footer>
 
       </div>
+
 
     </div>
   </div>
