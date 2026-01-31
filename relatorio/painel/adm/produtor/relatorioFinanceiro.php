@@ -27,7 +27,7 @@ $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 
-/* Conexão (padrão do seu sistema) */
+/* Conexão */
 require '../../../assets/php/conexao.php';
 $pdo = db();
 
@@ -44,6 +44,7 @@ function hasTable(PDO $pdo, string $table): bool
   $st->execute([':t' => $table]);
   return ((int)$st->fetchColumn() > 0);
 }
+
 function hasColumn(PDO $pdo, string $table, string $column): bool
 {
   $st = $pdo->prepare("
@@ -56,23 +57,17 @@ function hasColumn(PDO $pdo, string $table, string $column): bool
 }
 
 /* ==========================
-   Feira / Escopo
-   (ajuste se quiser)
+   Feira FIXA
+   SOMENTE Feira do Produtor
 ========================== */
-$local = (string)($_GET['local'] ?? 'produtor'); // produtor | alternativa | mercado | todas
-$mapLocalFeira = [
-  'produtor'    => 1,
-  'alternativa' => 2,
-  'mercado'     => 3, // se o Mercado Municipal usar outro id, troque aqui
-];
-$feiraId = $mapLocalFeira[$local] ?? 1;
-$usarFeira = ($local !== 'todas');
+$feiraId   = 1;     // Feira do Produtor
+$usarFeira = true;
 
 /* ==========================
    Detecta campos da tabela vendas
 ========================== */
 if (!hasTable($pdo, 'vendas') || !hasTable($pdo, 'venda_itens')) {
-  $err = $err ?: 'Tabelas vendas/venda_itens não existem. Rode o SQL do banco.';
+  $err = $err ?: 'Tabelas vendas/venda_itens não existem.';
 }
 
 $colDataVenda  = hasColumn($pdo, 'vendas', 'data_venda');
@@ -81,61 +76,50 @@ $colProdutorId = hasColumn($pdo, 'vendas', 'produtor_id');
 $colFormaPgto  = hasColumn($pdo, 'vendas', 'forma_pagamento');
 $colTotal      = hasColumn($pdo, 'vendas', 'total');
 $colStatus     = hasColumn($pdo, 'vendas', 'status');
-$colObs        = hasColumn($pdo, 'vendas', 'observacao');
 
-/* Campo de data que vamos usar */
+/* Campo de data */
 if ($colDataVenda) {
   $dateExpr = "v.data_venda";
 } elseif ($colDataHora) {
   $dateExpr = "DATE(v.data_hora)";
 } else {
-  // fallback: usa criado_em se existir
   $dateExpr = hasColumn($pdo, 'vendas', 'criado_em') ? "DATE(v.criado_em)" : "DATE(NOW())";
 }
 
 /* ==========================
-   Filtro mensal (select)
+   Filtro mensal
 ========================== */
-$mesSel = trim((string)($_GET['mes'] ?? date('Y-m'))); // YYYY-MM
+$mesSel = trim((string)($_GET['mes'] ?? date('Y-m')));
 if (!preg_match('/^\d{4}-\d{2}$/', $mesSel)) {
   $mesSel = date('Y-m');
 }
 $monthStart = $mesSel . '-01';
 $monthEnd   = date('Y-m-t', strtotime($monthStart));
 
-/* Lista de meses anteriores */
+/* Lista de meses */
 $meses = [];
 $base = new DateTimeImmutable(date('Y-m-01'));
 for ($i = 0; $i < 18; $i++) {
   $m = $base->modify("-{$i} months");
-  $k = $m->format('Y-m');
   $meses[] = [
-    'key' => $k,
+    'key' => $m->format('Y-m'),
     'label' => $m->format('m/Y'),
   ];
 }
 
 /* ==========================
-   Resumos
+   Estruturas
 ========================== */
-$resumo = [
-  'vendas_qtd' => 0,
-  'total' => 0.0,
-  'ticket' => 0.0,
-];
-$porPagamento = [];
-$porProdutor  = [];
-$porDia       = [];
-$vendasRows   = [];
+$resumo = ['vendas_qtd'=>0,'total'=>0,'ticket'=>0];
+$porPagamento = $porProdutor = $porDia = $vendasRows = [];
 
-/* Paginação (porDia e vendas) */
+/* Paginação */
 $PER_PAGE = 10;
 $pageDia = max(1, (int)($_GET['p_dia'] ?? 1));
 $pageVen = max(1, (int)($_GET['p_v'] ?? 1));
 $offsetDia = ($pageDia - 1) * $PER_PAGE;
 $offsetVen = ($pageVen - 1) * $PER_PAGE;
-$totalRowsDia = 0;
-$totalRowsVen = 0;
+$totalRowsDia = $totalRowsVen = 0;
 
 try {
   if (!$err) {
@@ -146,38 +130,34 @@ try {
       ':ini' => $monthStart,
       ':fim' => $monthEnd,
     ];
-    if ($usarFeira && hasColumn($pdo, 'vendas', 'feira_id')) {
+
+    if (hasColumn($pdo, 'vendas', 'feira_id')) {
       $where .= " AND v.feira_id = :f";
-      $params[':f'] = $feiraId;
+      $params[':f'] = 1;
     }
 
-    /* -------- Resumo geral do mês -------- */
+    /* ===== Resumo ===== */
     if ($colTotal) {
       $st = $pdo->prepare("
-        SELECT
-          COUNT(*) AS vendas_qtd,
-          COALESCE(SUM(v.total),0) AS total
-        FROM vendas v
-        {$where}
+        SELECT COUNT(*) qtd, COALESCE(SUM(v.total),0) total
+        FROM vendas v {$where}
       ");
       $st->execute($params);
-      $r = $st->fetch() ?: null;
+      $r = $st->fetch();
       if ($r) {
-        $resumo['vendas_qtd'] = (int)$r['vendas_qtd'];
-        $resumo['total']      = (float)$r['total'];
-        $resumo['ticket']     = $resumo['vendas_qtd'] > 0 ? ($resumo['total'] / $resumo['vendas_qtd']) : 0.0;
+        $resumo['vendas_qtd'] = (int)$r['qtd'];
+        $resumo['total'] = (float)$r['total'];
+        $resumo['ticket'] = $resumo['vendas_qtd'] > 0 ? $resumo['total'] / $resumo['vendas_qtd'] : 0;
       }
     }
 
-    /* -------- Por pagamento -------- */
+    /* ===== Por pagamento ===== */
     if ($colFormaPgto && $colTotal) {
       $st = $pdo->prepare("
-        SELECT
-          UPPER(COALESCE(NULLIF(TRIM(v.forma_pagamento),''),'N/I')) AS pagamento,
-          COUNT(*) AS qtd,
-          COALESCE(SUM(v.total),0) AS total
-        FROM vendas v
-        {$where}
+        SELECT UPPER(COALESCE(v.forma_pagamento,'N/I')) pagamento,
+               COUNT(*) qtd,
+               SUM(v.total) total
+        FROM vendas v {$where}
         GROUP BY pagamento
         ORDER BY total DESC
       ");
@@ -185,170 +165,57 @@ try {
       $porPagamento = $st->fetchAll();
     }
 
-    /* -------- Por produtor (prioriza vendas.produtor_id; se não houver, tenta via produtos.produtor_id) -------- */
-    if ($colTotal) {
-      if ($colProdutorId && hasTable($pdo, 'produtores')) {
-        $st = $pdo->prepare("
-          SELECT
-            p.id,
-            p.nome,
-            COUNT(v.id) AS vendas_qtd,
-            COALESCE(SUM(v.total),0) AS total
-          FROM vendas v
-          JOIN produtores p ON p.id = v.produtor_id
-          {$where}
-          GROUP BY p.id, p.nome
-          ORDER BY total DESC, p.nome ASC
-          LIMIT 200
-        ");
-        $st->execute($params);
-        $porProdutor = $st->fetchAll();
-      } else {
-        // fallback: agrupa por produtores através dos itens -> produtos -> produtor_id
-        if (hasTable($pdo, 'produtos') && hasColumn($pdo, 'produtos', 'produtor_id')) {
-          $st = $pdo->prepare("
-            SELECT
-              pr.id,
-              pr.nome,
-              COUNT(DISTINCT v.id) AS vendas_qtd,
-              COALESCE(SUM(vi.subtotal),0) AS total
-            FROM vendas v
-            JOIN venda_itens vi ON vi.venda_id = v.id
-            JOIN produtos pd ON pd.id = vi.produto_id
-            JOIN produtores pr ON pr.id = pd.produtor_id
-            {$where}
-            GROUP BY pr.id, pr.nome
-            ORDER BY total DESC, pr.nome ASC
-            LIMIT 200
-          ");
-          $st->execute($params);
-          $porProdutor = $st->fetchAll();
-        }
-      }
-    }
-
-    /* -------- Por dia (com paginação) -------- */
-    if ($colTotal) {
-      // total linhas
-      $stC = $pdo->prepare("
-        SELECT COUNT(*) FROM (
-          SELECT {$dateExpr} AS dia
-          FROM vendas v
-          {$where}
-          GROUP BY dia
-        ) x
-      ");
-      $stC->execute($params);
-      $totalRowsDia = (int)$stC->fetchColumn();
-
+    /* ===== Por produtor ===== */
+    if ($colProdutorId && hasTable($pdo, 'produtores')) {
       $st = $pdo->prepare("
-        SELECT
-          {$dateExpr} AS dia,
-          COUNT(*) AS vendas_qtd,
-          COALESCE(SUM(v.total),0) AS total
+        SELECT p.id, p.nome,
+               COUNT(v.id) vendas_qtd,
+               SUM(v.total) total
         FROM vendas v
+        JOIN produtores p ON p.id = v.produtor_id
         {$where}
-        GROUP BY dia
-        ORDER BY dia DESC
-        LIMIT {$PER_PAGE} OFFSET {$offsetDia}
+        GROUP BY p.id, p.nome
+        ORDER BY total DESC
       ");
       $st->execute($params);
-      $porDia = $st->fetchAll();
+      $porProdutor = $st->fetchAll();
     }
 
-    /* -------- Vendas do mês (tabela com paginação) -------- */
-    if ($colTotal) {
-      $stC = $pdo->prepare("SELECT COUNT(*) FROM vendas v {$where}");
-      $stC->execute($params);
-      $totalRowsVen = (int)$stC->fetchColumn();
+    /* ===== Por dia ===== */
+    $st = $pdo->prepare("
+      SELECT {$dateExpr} dia,
+             COUNT(*) vendas_qtd,
+             SUM(v.total) total
+      FROM vendas v {$where}
+      GROUP BY dia
+      ORDER BY dia DESC
+      LIMIT {$PER_PAGE} OFFSET {$offsetDia}
+    ");
+    $st->execute($params);
+    $porDia = $st->fetchAll();
 
-      // produtores em linhas diferentes (lista separada por <br>)
-      // tenta pegar multi-produtores via itens->produtos->produtor_id
-      $canMultiProd =
-        hasTable($pdo, 'produtos')
-        && hasTable($pdo, 'produtores')
-        && hasColumn($pdo, 'produtos', 'produtor_id')
-        && hasColumn($pdo, 'venda_itens', 'produto_id');
-
-      if ($canMultiProd) {
-        $sql = "
-          SELECT
-            v.id,
-            {$dateExpr} AS data_ref,
-            " . ($colFormaPgto ? "v.forma_pagamento" : "NULL") . " AS forma_pagamento,
-            " . ($colStatus ? "v.status" : "NULL") . " AS status,
-            v.total,
-            (
-              SELECT GROUP_CONCAT(DISTINCT pr2.nome ORDER BY pr2.nome SEPARATOR '\n')
-              FROM venda_itens vi2
-              JOIN produtos pd2   ON pd2.id = vi2.produto_id
-              JOIN produtores pr2 ON pr2.id = pd2.produtor_id
-              WHERE vi2.venda_id = v.id
-            ) AS feirantes
-          FROM vendas v
-          {$where}
-          ORDER BY v.id DESC
-          LIMIT {$PER_PAGE} OFFSET {$offsetVen}
-        ";
-        $st = $pdo->prepare($sql);
-        $st->execute($params);
-        $vendasRows = $st->fetchAll();
-      } else {
-        // fallback: 1 produtor por venda
-        $joinProd = ($colProdutorId && hasTable($pdo, 'produtores')) ? "LEFT JOIN produtores p ON p.id = v.produtor_id" : "";
-        $sql = "
-          SELECT
-            v.id,
-            {$dateExpr} AS data_ref,
-            " . ($colFormaPgto ? "v.forma_pagamento" : "NULL") . " AS forma_pagamento,
-            " . ($colStatus ? "v.status" : "NULL") . " AS status,
-            v.total,
-            " . ($joinProd ? "p.nome AS feirantes" : "NULL AS feirantes") . "
-          FROM vendas v
-          {$joinProd}
-          {$where}
-          ORDER BY v.id DESC
-          LIMIT {$PER_PAGE} OFFSET {$offsetVen}
-        ";
-        $st = $pdo->prepare($sql);
-        $st->execute($params);
-        $vendasRows = $st->fetchAll();
-      }
-    }
+    /* ===== Vendas ===== */
+    $st = $pdo->prepare("
+      SELECT v.id,
+             {$dateExpr} data_ref,
+             v.forma_pagamento,
+             v.status,
+             v.total
+      FROM vendas v {$where}
+      ORDER BY v.id DESC
+      LIMIT {$PER_PAGE} OFFSET {$offsetVen}
+    ");
+    $st->execute($params);
+    $vendasRows = $st->fetchAll();
   }
 } catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar o relatório financeiro agora.';
+  $err = 'Erro ao carregar relatório.';
 }
 
-/* Paginação links */
-function pagLinks(string $baseUrl, int $page, int $totalRows, int $perPage, string $pageParam): string
-{
-  $totalPages = (int)ceil(max(1, $totalRows) / $perPage);
-  if ($totalPages <= 1) return '';
-
-  $html = '<nav><ul class="pagination pagination-sm mb-0">';
-  $prev = max(1, $page - 1);
-  $next = min($totalPages, $page + 1);
-
-  $disabledPrev = $page <= 1 ? ' disabled' : '';
-  $disabledNext = $page >= $totalPages ? ' disabled' : '';
-
-  $html .= '<li class="page-item' . $disabledPrev . '"><a class="page-link" href="' . $baseUrl . '&' . $pageParam . '=' . $prev . '">‹</a></li>';
-
-  $start = max(1, $page - 2);
-  $end   = min($totalPages, $page + 2);
-
-  for ($p = $start; $p <= $end; $p++) {
-    $active = $p === $page ? ' active' : '';
-    $html .= '<li class="page-item' . $active . '"><a class="page-link" href="' . $baseUrl . '&' . $pageParam . '=' . $p . '">' . $p . '</a></li>';
-  }
-
-  $html .= '<li class="page-item' . $disabledNext . '"><a class="page-link" href="' . $baseUrl . '&' . $pageParam . '=' . $next . '">›</a></li>';
-  $html .= '</ul></nav>';
-  return $html;
-}
-
+/* Base QS */
+$baseQS = '?mes=' . urlencode($mesSel);
 $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
+
 $baseQS = '?local=' . urlencode($local) . '&mes=' . urlencode($mesSel);
 ?>
 <!DOCTYPE html>
