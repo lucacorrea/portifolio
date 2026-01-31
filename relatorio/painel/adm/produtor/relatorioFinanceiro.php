@@ -232,7 +232,6 @@ try {
 $baseQS = '?mes=' . urlencode($mesSel);
 $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -764,72 +763,44 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
               </div>
             </div>
 
-            <!-- ======================
-     RESUMO POR FEIRANTES
-     ====================== -->
-            <div class="card mb-4">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                  <i class="bi bi-people-fill me-2"></i>
-                  Resumo por Feirantes
-                </h5>
-                <small class="text-muted">
-                  Feira do Produtor
-                </small>
-              </div>
+            <div class="col-lg-7 mb-4">
+              <div class="card h-100">
+                <div class="card-body">
+                  <h4 class="card-title">Resumo por feirante</h4>
 
-              <div class="card-body p-0">
-                <?php if (empty($porProdutor)): ?>
-                  <div class="p-3 text-muted text-center">
-                    Nenhuma venda registrada para este período.
-                  </div>
-                <?php else: ?>
                   <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0">
-                      <thead class="table-light">
+                    <table class="table table-hover">
+                      <thead class="thead-light">
                         <tr>
                           <th>Feirante</th>
-                          <th class="text-center">Qtd. Vendas</th>
-                          <th class="text-end">Total Vendido</th>
-                          <th class="text-end">Ticket Médio</th>
+                          <th class="text-center">Vendas</th>
+                          <th class="text-right">Total</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <?php foreach ($porProdutor as $p):
-                          $qtd = (int)$p['vendas_qtd'];
-                          $total = (float)$p['total'];
-                          $ticket = $qtd > 0 ? $total / $qtd : 0;
-                        ?>
+                        <?php if (empty($porProdutor)): ?>
                           <tr>
-                            <td><?= h($p['nome']) ?></td>
-                            <td class="text-center"><?= $qtd ?></td>
-                            <td class="text-end">
-                              R$ <?= number_format($total, 2, ',', '.') ?>
-                            </td>
-                            <td class="text-end text-muted">
-                              R$ <?= number_format($ticket, 2, ',', '.') ?>
+                            <td colspan="3" class="text-center text-muted py-4">
+                              Sem dados no período
                             </td>
                           </tr>
-                        <?php endforeach; ?>
+                          <?php else: foreach ($porProdutor as $p): ?>
+                            <tr>
+                              <td><?= h($p['nome']) ?></td>
+                              <td class="text-center"><?= (int)$p['vendas_qtd'] ?></td>
+                              <td class="text-right">
+                                <b>R$ <?= number_format((float)$p['total'], 2, ',', '.') ?></b>
+                              </td>
+                            </tr>
+                        <?php endforeach;
+                        endif; ?>
                       </tbody>
-                      <tfoot class="table-light">
-                        <tr>
-                          <th>Total</th>
-                          <th class="text-center">
-                            <?= array_sum(array_column($porProdutor, 'vendas_qtd')) ?>
-                          </th>
-                          <th class="text-end">
-                            R$ <?= number_format(array_sum(array_column($porProdutor, 'total')), 2, ',', '.') ?>
-                          </th>
-                          <th></th>
-                        </tr>
-                      </tfoot>
                     </table>
                   </div>
-                <?php endif; ?>
+
+                </div>
               </div>
             </div>
-
           </div>
 
           <!-- ======================
