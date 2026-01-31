@@ -212,11 +212,11 @@ try {
   $err = 'Erro ao carregar relatório.';
 }
 
+
 /* Base QS */
 $baseQS = '?mes=' . urlencode($mesSel);
 $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
-$baseQS = '?local=' . urlencode($local) . '&mes=' . urlencode($mesSel);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
