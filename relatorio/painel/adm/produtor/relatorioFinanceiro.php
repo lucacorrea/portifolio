@@ -18,7 +18,8 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
@@ -38,7 +39,8 @@ $pdo = db();
 /* ======================
    HELPERS (SCHEMA)
 ====================== */
-function hasTable(PDO $pdo, string $table): bool {
+function hasTable(PDO $pdo, string $table): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.tables
@@ -49,7 +51,8 @@ function hasTable(PDO $pdo, string $table): bool {
   return (int)$st->fetchColumn() > 0;
 }
 
-function hasColumn(PDO $pdo, string $table, string $column): bool {
+function hasColumn(PDO $pdo, string $table, string $column): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.columns
@@ -242,7 +245,6 @@ try {
     $st->execute($params);
     $vendasRows = $st->fetchAll();
   }
-
 } catch (Throwable $e) {
   $err = 'Erro ao carregar relatório: ' . $e->getMessage();
 }
@@ -682,17 +684,17 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
          ====================== -->
           <div class="card mb-4">
             <div class="card-body py-3">
-              
+
               <!-- Botões de alternância -->
               <div class="row mb-3">
                 <div class="col-12">
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     <label class="btn btn-outline-primary <?= $tipoFiltro === 'mes' ? 'active' : '' ?>">
-                      <input type="radio" name="tipo_filtro" value="mes" <?= $tipoFiltro === 'mes' ? 'checked' : '' ?>> 
+                      <input type="radio" name="tipo_filtro" value="mes" <?= $tipoFiltro === 'mes' ? 'checked' : '' ?>>
                       <i class="ti-calendar mr-1"></i> Filtrar por Mês
                     </label>
                     <label class="btn btn-outline-primary <?= $tipoFiltro === 'dia' ? 'active' : '' ?>">
-                      <input type="radio" name="tipo_filtro" value="dia" <?= $tipoFiltro === 'dia' ? 'checked' : '' ?>> 
+                      <input type="radio" name="tipo_filtro" value="dia" <?= $tipoFiltro === 'dia' ? 'checked' : '' ?>>
                       <i class="ti-time mr-1"></i> Filtrar por Dia
                     </label>
                   </div>
@@ -700,18 +702,17 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
               </div>
 
               <div class="row align-items-end">
-                
+
                 <!-- Campo de data (muda entre mês e dia) -->
                 <div class="col-md-6 mb-2">
                   <label class="mb-1" id="label-data">
                     <?= $tipoFiltro === 'dia' ? 'Data' : 'Mês' ?>
                   </label>
-                  <input 
-                    type="<?= $tipoFiltro === 'dia' ? 'date' : 'month' ?>" 
-                    class="form-control" 
+                  <input
+                    type="<?= $tipoFiltro === 'dia' ? 'date' : 'month' ?>"
+                    class="form-control"
                     id="input-data"
-                    value="<?= h($tipoFiltro === 'dia' ? $dataSel : substr($dataSel, 0, 7)) ?>"
-                  >
+                    value="<?= h($tipoFiltro === 'dia' ? $dataSel : substr($dataSel, 0, 7)) ?>">
                 </div>
 
                 <div class="col-md-3 mb-2">
@@ -810,85 +811,128 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
               </div>
             </div>
 
-            <div class="col-lg-7 mb-4">
-              <div class="card h-100">
-                <div class="card-body">
-                  <h4 class="card-title">Resumo por feirante</h4>
+            <div class="content-wrapper">
+              <div class="container-fluid">
 
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead class="thead-light">
-                        <tr>
-                          <th>Feirante</th>
-                          <th class="text-center">Vendas</th>
-                          <th class="text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php if (empty($porProdutor)): ?>
-                          <tr>
-                            <td colspan="3" class="text-center text-muted py-4">
-                              Sem dados no período
-                            </td>
-                          </tr>
-                          <?php else: foreach ($porProdutor as $p): ?>
-                            <tr>
-                              <td><?= h($p['nome']) ?></td>
-                              <td class="text-center"><?= (int)$p['vendas_qtd'] ?></td>
-                              <td class="text-right">
-                                <b>R$ <?= number_format((float)$p['total'], 2, ',', '.') ?></b>
-                              </td>
-                            </tr>
-                        <?php endforeach;
-                        endif; ?>
-                      </tbody>
-                    </table>
+                <!-- TÍTULO -->
+                <div class="row mb-3">
+                  <div class="col-12">
+                    <h3 class="mb-0">Resumo por Feirante</h3>
+                    <small class="text-muted">
+                      Período: <?= date('d/m/Y', strtotime($data_ini)) ?>
+                      até <?= date('d/m/Y', strtotime($data_fim)) ?>
+                    </small>
+                  </div>
+                </div>
+
+                <!-- FILTRO -->
+                <form method="get" class="row mb-4">
+                  <div class="col-md-3">
+                    <label>Data inicial</label>
+                    <input type="date" name="data_ini" class="form-control" value="<?= h($data_ini) ?>">
                   </div>
 
+                  <div class="col-md-3">
+                    <label>Data final</label>
+                    <input type="date" name="data_fim" class="form-control" value="<?= h($data_fim) ?>">
+                  </div>
+
+                  <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary w-100">
+                      Filtrar
+                    </button>
+                  </div>
+                </form>
+
+                <!-- CARD -->
+                <div class="row">
+                  <div class="col-lg-7 mb-4">
+                    <div class="card h-100">
+                      <div class="card-body">
+
+                        <h4 class="card-title mb-3">Resumo por feirante</h4>
+
+                        <div class="table-responsive">
+                          <table class="table table-hover">
+                            <thead class="thead-light">
+                              <tr>
+                                <th>Feirante</th>
+                                <th class="text-center">Vendas</th>
+                                <th class="text-right">Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+
+                              <?php if (empty($porProdutor)): ?>
+                                <tr>
+                                  <td colspan="3" class="text-center text-muted py-4">
+                                    Sem dados no período
+                                  </td>
+                                </tr>
+                                <?php else: foreach ($porProdutor as $p): ?>
+                                  <tr>
+                                    <td><?= h($p['nome']) ?></td>
+                                    <td class="text-center"><?= (int)$p['vendas_qtd'] ?></td>
+                                    <td class="text-right">
+                                      <b>R$ <?= number_format((float)$p['total'], 2, ',', '.') ?></b>
+                                    </td>
+                                  </tr>
+                              <?php endforeach;
+                              endif; ?>
+
+                            </tbody>
+                          </table>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </div>
+
           </div>
 
           <!-- ======================
          RESUMO POR DIA (só mostra no filtro mensal)
          ====================== -->
           <?php if ($tipoFiltro === 'mes' && !empty($porDia)): ?>
-          <div class="card mb-4">
-            <div class="card-body">
-              <h4 class="card-title">Resumo por dia</h4>
+            <div class="card mb-4">
+              <div class="card-body">
+                <h4 class="card-title">Resumo por dia</h4>
 
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead class="thead-light">
-                    <tr>
-                      <th>Dia</th>
-                      <th class="text-center">Vendas</th>
-                      <th class="text-right">Total</th>
-                      <th class="text-center">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php foreach ($porDia as $d): ?>
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead class="thead-light">
                       <tr>
-                        <td><?= date('d/m/Y', strtotime($d['dia'])) ?></td>
-                        <td class="text-center"><?= (int)$d['vendas_qtd'] ?></td>
-                        <td class="text-right">
-                          <b>R$ <?= number_format((float)$d['total'], 2, ',', '.') ?></b>
-                        </td>
-                        <td class="text-center">
-                          <a href="?tipo=dia&data=<?= h($d['dia']) ?>" class="btn btn-sm btn-outline-primary">
-                            <i class="ti-eye"></i> Ver detalhes
-                          </a>
-                        </td>
+                        <th>Dia</th>
+                        <th class="text-center">Vendas</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-center">Ações</th>
                       </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      <?php foreach ($porDia as $d): ?>
+                        <tr>
+                          <td><?= date('d/m/Y', strtotime($d['dia'])) ?></td>
+                          <td class="text-center"><?= (int)$d['vendas_qtd'] ?></td>
+                          <td class="text-right">
+                            <b>R$ <?= number_format((float)$d['total'], 2, ',', '.') ?></b>
+                          </td>
+                          <td class="text-center">
+                            <a href="?tipo=dia&data=<?= h($d['dia']) ?>" class="btn btn-sm btn-outline-primary">
+                              <i class="ti-eye"></i> Ver detalhes
+                            </a>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
 
+              </div>
             </div>
-          </div>
           <?php endif; ?>
 
           <!-- ======================
@@ -916,25 +960,26 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                           Nenhuma venda encontrada no período
                         </td>
                       </tr>
-                    <?php else: foreach ($vendasRows as $v): ?>
-                      <tr>
-                        <td><?= h($v['id']) ?></td>
-                        <td><?= date('d/m/Y', strtotime($v['data_ref'])) ?></td>
-                        <td>
-                          <span class="badge badge-soft">
-                            <?= h($v['forma_pagamento'] ?? 'N/I') ?>
-                          </span>
-                        </td>
-                        <td>
-                          <span class="badge badge-<?= $v['status'] === 'concluida' ? 'success' : 'warning' ?>">
-                            <?= h($v['status'] ?? 'N/I') ?>
-                          </span>
-                        </td>
-                        <td class="text-right">
-                          <b>R$ <?= number_format((float)$v['total'], 2, ',', '.') ?></b>
-                        </td>
-                      </tr>
-                    <?php endforeach; endif; ?>
+                      <?php else: foreach ($vendasRows as $v): ?>
+                        <tr>
+                          <td><?= h($v['id']) ?></td>
+                          <td><?= date('d/m/Y', strtotime($v['data_ref'])) ?></td>
+                          <td>
+                            <span class="badge badge-soft">
+                              <?= h($v['forma_pagamento'] ?? 'N/I') ?>
+                            </span>
+                          </td>
+                          <td>
+                            <span class="badge badge-<?= $v['status'] === 'concluida' ? 'success' : 'warning' ?>">
+                              <?= h($v['status'] ?? 'N/I') ?>
+                            </span>
+                          </td>
+                          <td class="text-right">
+                            <b>R$ <?= number_format((float)$v['total'], 2, ',', '.') ?></b>
+                          </td>
+                        </tr>
+                    <?php endforeach;
+                    endif; ?>
                   </tbody>
                 </table>
               </div>
@@ -978,7 +1023,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
       function atualizarTipoFiltro() {
         const tipo = radioDia.checked ? 'dia' : 'mes';
-        
+
         if (tipo === 'dia') {
           inputData.type = 'date';
           labelData.textContent = 'Data';
@@ -1000,7 +1045,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       btnFiltrar.addEventListener('click', function() {
         const tipo = radioDia.checked ? 'dia' : 'mes';
         const data = inputData.value;
-        
+
         if (!data) {
           alert('Por favor, selecione uma data.');
           return;
