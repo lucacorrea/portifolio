@@ -67,7 +67,7 @@ function hasColumn(PDO $pdo, string $table, string $column): bool {
 $feiraId = 1;
 
 /* ======================
-   TABELAS OBRIGATÓRIAS
+   TABELAS
 ====================== */
 if (
   !hasTable($pdo, 'vendas') ||
@@ -86,7 +86,7 @@ $colDataHora  = hasColumn($pdo, 'vendas', 'data_hora');
 $colFormaPgto = hasColumn($pdo, 'vendas', 'forma_pagamento');
 $colStatus    = hasColumn($pdo, 'vendas', 'status');
 
-/* Data referência */
+/* Data base */
 if ($colDataVenda) {
   $dateExpr = "v.data_venda";
 } elseif ($colDataHora) {
@@ -96,7 +96,7 @@ if ($colDataVenda) {
 }
 
 /* ======================
-   FILTRO (MÊS / DIA)
+   FILTRO
 ====================== */
 $tipoFiltro = $_GET['tipo'] ?? 'mes';
 $dataSel = $_GET['data'] ?? date('Y-m-d');
@@ -117,7 +117,20 @@ if ($tipoFiltro === 'dia') {
 }
 
 /* ======================
-   ESTRUTURAS
+   PAGINAÇÃO
+====================== */
+$PER_PAGE = 10;
+
+$pageProdutor = max(1, (int)($_GET['page_produtor'] ?? 1));
+$pageDia      = max(1, (int)($_GET['page_dia'] ?? 1));
+$pageVendas   = max(1, (int)($_GET['page_vendas'] ?? 1));
+
+$offsetProdutor = ($pageProdutor - 1) * $PER_PAGE;
+$offsetDia      = ($pageDia - 1) * $PER_PAGE;
+$offsetVendas   = ($pageVendas - 1) * $PER_PAGE;
+
+/* ======================
+   DADOS
 ====================== */
 $resumo       = ['vendas_qtd' => 0, 'total' => 0, 'ticket' => 0];
 $porPagamento = [];
@@ -125,19 +138,9 @@ $porProdutor  = [];
 $porDia       = [];
 $vendasRows   = [];
 
-/* ======================
-   PAGINAÇÃO
-====================== */
-$PER_PAGE = 10;
-$pageDia = max(1, (int)($_GET['p_dia'] ?? 1));
-$pageVen = max(1, (int)($_GET['p_v'] ?? 1));
-$offsetDia = ($pageDia - 1) * $PER_PAGE;
-$offsetVen = ($pageVen - 1) * $PER_PAGE;
-
 try {
   if (!$err) {
 
-    /* WHERE DINÂMICO */
     $params = [
       ':ini' => $periodStart,
       ':f'   => $feiraId,
@@ -154,8 +157,7 @@ try {
        RESUMO GERAL
     ====================== */
     $st = $pdo->prepare("
-      SELECT COUNT(*) qtd,
-             COALESCE(SUM(v.total),0) total
+      SELECT COUNT(*) qtd, COALESCE(SUM(v.total),0) total
       FROM vendas v {$where}
     ");
     $st->execute($params);
@@ -163,8 +165,8 @@ try {
 
     if ($r) {
       $resumo['vendas_qtd'] = (int)$r['qtd'];
-      $resumo['total']     = (float)$r['total'];
-      $resumo['ticket']    = $resumo['vendas_qtd'] > 0
+      $resumo['total'] = (float)$r['total'];
+      $resumo['ticket'] = $resumo['vendas_qtd'] > 0
         ? $resumo['total'] / $resumo['vendas_qtd']
         : 0;
     }
@@ -186,33 +188,37 @@ try {
     }
 
     /* ======================
-       POR FEIRANTE
+       POR FEIRANTE (PAGINADO)
     ====================== */
     $st = $pdo->prepare("
-      SELECT
-        p.id,
+      SELECT SQL_CALC_FOUND_ROWS
         p.nome,
         COUNT(DISTINCT v.id) vendas_qtd,
         SUM(vi.subtotal) total
       FROM vendas v
       JOIN venda_itens vi ON vi.venda_id = v.id
-      JOIN produtos pr    ON pr.id = vi.produto_id
-      JOIN produtores p   ON p.id = pr.produtor_id
+      JOIN produtos pr ON pr.id = vi.produto_id
+      JOIN produtores p ON p.id = pr.produtor_id
       {$where}
-      GROUP BY p.id, p.nome
+      GROUP BY p.id
       ORDER BY total DESC
+      LIMIT {$PER_PAGE} OFFSET {$offsetProdutor}
     ");
     $st->execute($params);
     $porProdutor = $st->fetchAll();
 
+    $totalProdutor = (int)$pdo->query("SELECT FOUND_ROWS()")->fetchColumn();
+    $totalPagesProdutor = (int)ceil($totalProdutor / $PER_PAGE);
+
     /* ======================
-       POR DIA (SÓ NO MÊS)
+       POR DIA (PAGINADO)
     ====================== */
     if ($tipoFiltro === 'mes') {
       $st = $pdo->prepare("
-        SELECT {$dateExpr} dia,
-               COUNT(*) vendas_qtd,
-               SUM(v.total) total
+        SELECT SQL_CALC_FOUND_ROWS
+          {$dateExpr} dia,
+          COUNT(*) vendas_qtd,
+          SUM(v.total) total
         FROM vendas v {$where}
         GROUP BY dia
         ORDER BY dia DESC
@@ -220,29 +226,34 @@ try {
       ");
       $st->execute($params);
       $porDia = $st->fetchAll();
+
+      $totalDia = (int)$pdo->query("SELECT FOUND_ROWS()")->fetchColumn();
+      $totalPagesDia = (int)ceil($totalDia / $PER_PAGE);
     }
 
     /* ======================
-       LISTA DE VENDAS
+       VENDAS (PAGINADO)
     ====================== */
     $selectPagamento = $colFormaPgto ? "v.forma_pagamento" : "NULL AS forma_pagamento";
-    $selectStatus    = $colStatus    ? "v.status"           : "'N/I' AS status";
+    $selectStatus    = $colStatus    ? "v.status" : "'N/I' AS status";
 
     $st = $pdo->prepare("
-      SELECT
+      SELECT SQL_CALC_FOUND_ROWS
         v.id,
-        {$dateExpr} AS data_ref,
+        {$dateExpr} data_ref,
         {$selectPagamento},
         {$selectStatus},
         v.total
       FROM vendas v {$where}
       ORDER BY v.id DESC
-      LIMIT {$PER_PAGE} OFFSET {$offsetVen}
+      LIMIT {$PER_PAGE} OFFSET {$offsetVendas}
     ");
     $st->execute($params);
     $vendasRows = $st->fetchAll();
-  }
 
+    $totalVendas = (int)$pdo->query("SELECT FOUND_ROWS()")->fetchColumn();
+    $totalPagesVendas = (int)ceil($totalVendas / $PER_PAGE);
+  }
 } catch (Throwable $e) {
   $err = 'Erro ao carregar relatório: ' . $e->getMessage();
 }
@@ -251,6 +262,7 @@ try {
    FINAL
 ====================== */
 $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
+
 
 ?>
 <!DOCTYPE html>
@@ -682,17 +694,17 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
          ====================== -->
           <div class="card mb-4">
             <div class="card-body py-3">
-              
+
               <!-- Botões de alternância -->
               <div class="row mb-3">
                 <div class="col-12">
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     <label class="btn btn-outline-primary <?= $tipoFiltro === 'mes' ? 'active' : '' ?>">
-                      <input type="radio" name="tipo_filtro" value="mes" <?= $tipoFiltro === 'mes' ? 'checked' : '' ?>> 
+                      <input type="radio" name="tipo_filtro" value="mes" <?= $tipoFiltro === 'mes' ? 'checked' : '' ?>>
                       <i class="ti-calendar mr-1"></i> Filtrar por Mês
                     </label>
                     <label class="btn btn-outline-primary <?= $tipoFiltro === 'dia' ? 'active' : '' ?>">
-                      <input type="radio" name="tipo_filtro" value="dia" <?= $tipoFiltro === 'dia' ? 'checked' : '' ?>> 
+                      <input type="radio" name="tipo_filtro" value="dia" <?= $tipoFiltro === 'dia' ? 'checked' : '' ?>>
                       <i class="ti-time mr-1"></i> Filtrar por Dia
                     </label>
                   </div>
@@ -700,18 +712,17 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
               </div>
 
               <div class="row align-items-end">
-                
+
                 <!-- Campo de data (muda entre mês e dia) -->
                 <div class="col-md-6 mb-2">
                   <label class="mb-1" id="label-data">
                     <?= $tipoFiltro === 'dia' ? 'Data' : 'Mês' ?>
                   </label>
-                  <input 
-                    type="<?= $tipoFiltro === 'dia' ? 'date' : 'month' ?>" 
-                    class="form-control" 
+                  <input
+                    type="<?= $tipoFiltro === 'dia' ? 'date' : 'month' ?>"
+                    class="form-control"
                     id="input-data"
-                    value="<?= h($tipoFiltro === 'dia' ? $dataSel : substr($dataSel, 0, 7)) ?>"
-                  >
+                    value="<?= h($tipoFiltro === 'dia' ? $dataSel : substr($dataSel, 0, 7)) ?>">
                 </div>
 
                 <div class="col-md-3 mb-2">
@@ -845,102 +856,146 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     </table>
                   </div>
 
+                  <?php if ($totalPagesProdutor > 1): ?>
+                    <nav>
+                      <ul class="pagination justify-content-end mt-3">
+                        <?php for ($i = 1; $i <= $totalPagesProdutor; $i++): ?>
+                          <li class="page-item <?= $i == $pageProdutor ? 'active' : '' ?>">
+                            <a class="page-link"
+                              href="?<?= http_build_query(array_merge($_GET, ['page_produtor' => $i])) ?>">
+                              <?= $i ?>
+                            </a>
+                          </li>
+                        <?php endfor; ?>
+                      </ul>
+                    </nav>
+                  <?php endif; ?>
+
                 </div>
               </div>
             </div>
+
           </div>
 
           <!-- ======================
          RESUMO POR DIA (só mostra no filtro mensal)
          ====================== -->
           <?php if ($tipoFiltro === 'mes' && !empty($porDia)): ?>
-          <div class="card mb-4">
-            <div class="card-body">
-              <h4 class="card-title">Resumo por dia</h4>
+            <div class="card mb-4">
+              <div class="card-body">
+                <h4 class="card-title">Resumo por dia</h4>
 
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead class="thead-light">
-                    <tr>
-                      <th>Dia</th>
-                      <th class="text-center">Vendas</th>
-                      <th class="text-right">Total</th>
-                      <th class="text-center">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php foreach ($porDia as $d): ?>
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead class="thead-light">
                       <tr>
-                        <td><?= date('d/m/Y', strtotime($d['dia'])) ?></td>
-                        <td class="text-center"><?= (int)$d['vendas_qtd'] ?></td>
-                        <td class="text-right">
-                          <b>R$ <?= number_format((float)$d['total'], 2, ',', '.') ?></b>
-                        </td>
-                        <td class="text-center">
-                          <a href="?tipo=dia&data=<?= h($d['dia']) ?>" class="btn btn-sm btn-outline-primary">
-                            <i class="ti-eye"></i> Ver detalhes
-                          </a>
-                        </td>
+                        <th>Dia</th>
+                        <th class="text-center">Vendas</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-center">Ações</th>
                       </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      <?php foreach ($porDia as $d): ?>
+                        <tr>
+                          <td><?= date('d/m/Y', strtotime($d['dia'])) ?></td>
+                          <td class="text-center"><?= (int)$d['vendas_qtd'] ?></td>
+                          <td class="text-right">
+                            <b>R$ <?= number_format((float)$d['total'], 2, ',', '.') ?></b>
+                          </td>
+                          <td class="text-center">
+                            <a href="?<?= http_build_query(array_merge($_GET, [
+                                        'tipo' => 'dia',
+                                        'data' => $d['dia']
+                                      ])) ?>" class="btn btn-sm btn-outline-primary">
+                              <i class="ti-eye"></i> Ver detalhes
+                            </a>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
 
+                <?php if ($totalPagesDia > 1): ?>
+                  <nav>
+                    <ul class="pagination justify-content-end mt-3">
+                      <?php for ($i = 1; $i <= $totalPagesDia; $i++): ?>
+                        <li class="page-item <?= $i == $pageDia ? 'active' : '' ?>">
+                          <a class="page-link"
+                            href="?<?= http_build_query(array_merge($_GET, ['page_dia' => $i])) ?>">
+                            <?= $i ?>
+                          </a>
+                        </li>
+                      <?php endfor; ?>
+                    </ul>
+                  </nav>
+                <?php endif; ?>
+
+              </div>
             </div>
-          </div>
           <?php endif; ?>
+
 
           <!-- ======================
          LISTA DE VENDAS
          ====================== -->
-          <div class="card mb-4">
-            <div class="card-body">
-              <h4 class="card-title">Vendas do período</h4>
+          <?php if ($tipoFiltro === 'mes' && !empty($porDia)): ?>
+            <div class="card mb-4">
+              <div class="card-body">
+                <h4 class="card-title">Resumo por dia</h4>
 
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead class="thead-light">
-                    <tr>
-                      <th>ID</th>
-                      <th>Data</th>
-                      <th>Pagamento</th>
-                      <th>Status</th>
-                      <th class="text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php if (empty($vendasRows)): ?>
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead class="thead-light">
                       <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
-                          Nenhuma venda encontrada no período
-                        </td>
+                        <th>Dia</th>
+                        <th class="text-center">Vendas</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-center">Ações</th>
                       </tr>
-                    <?php else: foreach ($vendasRows as $v): ?>
-                      <tr>
-                        <td><?= h($v['id']) ?></td>
-                        <td><?= date('d/m/Y', strtotime($v['data_ref'])) ?></td>
-                        <td>
-                          <span class="badge badge-soft">
-                            <?= h($v['forma_pagamento'] ?? 'N/I') ?>
-                          </span>
-                        </td>
-                        <td>
-                          <span class="badge badge-<?= $v['status'] === 'concluida' ? 'success' : 'warning' ?>">
-                            <?= h($v['status'] ?? 'N/I') ?>
-                          </span>
-                        </td>
-                        <td class="text-right">
-                          <b>R$ <?= number_format((float)$v['total'], 2, ',', '.') ?></b>
-                        </td>
-                      </tr>
-                    <?php endforeach; endif; ?>
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      <?php foreach ($porDia as $d): ?>
+                        <tr>
+                          <td><?= date('d/m/Y', strtotime($d['dia'])) ?></td>
+                          <td class="text-center"><?= (int)$d['vendas_qtd'] ?></td>
+                          <td class="text-right">
+                            <b>R$ <?= number_format((float)$d['total'], 2, ',', '.') ?></b>
+                          </td>
+                          <td class="text-center">
+                            <a href="?<?= http_build_query(array_merge($_GET, [
+                                        'tipo' => 'dia',
+                                        'data' => $d['dia']
+                                      ])) ?>" class="btn btn-sm btn-outline-primary">
+                              <i class="ti-eye"></i> Ver detalhes
+                            </a>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+
+                <?php if ($totalPagesDia > 1): ?>
+                  <nav>
+                    <ul class="pagination justify-content-end mt-3">
+                      <?php for ($i = 1; $i <= $totalPagesDia; $i++): ?>
+                        <li class="page-item <?= $i == $pageDia ? 'active' : '' ?>">
+                          <a class="page-link"
+                            href="?<?= http_build_query(array_merge($_GET, ['page_dia' => $i])) ?>">
+                            <?= $i ?>
+                          </a>
+                        </li>
+                      <?php endfor; ?>
+                    </ul>
+                  </nav>
+                <?php endif; ?>
+
               </div>
-
             </div>
-          </div>
+          <?php endif; ?>
+
 
         </div>
 
@@ -978,7 +1033,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
       function atualizarTipoFiltro() {
         const tipo = radioDia.checked ? 'dia' : 'mes';
-        
+
         if (tipo === 'dia') {
           inputData.type = 'date';
           labelData.textContent = 'Data';
@@ -1000,7 +1055,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       btnFiltrar.addEventListener('click', function() {
         const tipo = radioDia.checked ? 'dia' : 'mes';
         const data = inputData.value;
-        
+
         if (!data) {
           alert('Por favor, selecione uma data.');
           return;
