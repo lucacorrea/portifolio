@@ -97,15 +97,28 @@ if ($colDataVenda) {
 }
 
 /* ======================
-   FILTRO MENSAL
+   FILTRO POR DIA
 ====================== */
-$mesSel = trim((string)($_GET['mes'] ?? date('Y-m')));
-if (!preg_match('/^\d{4}-\d{2}$/', $mesSel)) {
-  $mesSel = date('Y-m');
+$tipoFiltro = trim((string)($_GET['tipo'] ?? 'mes')); // 'mes' ou 'dia'
+$dataSel = trim((string)($_GET['data'] ?? date('Y-m-d')));
+
+// Validar data
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataSel)) {
+  $dataSel = date('Y-m-d');
 }
 
-$monthStart = $mesSel . '-01';
-$monthEnd   = date('Y-m-t', strtotime($monthStart));
+// Definir período baseado no tipo de filtro
+if ($tipoFiltro === 'dia') {
+  $periodStart = $dataSel;
+  $periodEnd   = $dataSel;
+  $labelPeriodo = date('d/m/Y', strtotime($dataSel));
+} else {
+  // Filtro mensal (padrão)
+  $mesSel = substr($dataSel, 0, 7); // YYYY-MM
+  $periodStart = $mesSel . '-01';
+  $periodEnd   = date('Y-m-t', strtotime($periodStart));
+  $labelPeriodo = date('m/Y', strtotime($periodStart));
+}
 
 /* ======================
    ESTRUTURAS
@@ -131,8 +144,8 @@ try {
     /* WHERE BASE */
     $where = "WHERE {$dateExpr} BETWEEN :ini AND :fim AND v.feira_id = :f";
     $params = [
-      ':ini' => $monthStart,
-      ':fim' => $monthEnd,
+      ':ini' => $periodStart,
+      ':fim' => $periodEnd,
       ':f'   => $feiraId,
     ];
 
@@ -191,19 +204,21 @@ try {
     $porProdutor = $st->fetchAll();
 
     /* ======================
-       POR DIA
+       POR DIA (só mostrar se filtro for mensal)
     ====================== */
-    $st = $pdo->prepare("
-      SELECT {$dateExpr} dia,
-             COUNT(*) vendas_qtd,
-             SUM(v.total) total
-      FROM vendas v {$where}
-      GROUP BY dia
-      ORDER BY dia DESC
-      LIMIT {$PER_PAGE} OFFSET {$offsetDia}
-    ");
-    $st->execute($params);
-    $porDia = $st->fetchAll();
+    if ($tipoFiltro === 'mes') {
+      $st = $pdo->prepare("
+        SELECT {$dateExpr} dia,
+               COUNT(*) vendas_qtd,
+               SUM(v.total) total
+        FROM vendas v {$where}
+        GROUP BY dia
+        ORDER BY dia DESC
+        LIMIT {$PER_PAGE} OFFSET {$offsetDia}
+      ");
+      $st->execute($params);
+      $porDia = $st->fetchAll();
+    }
 
     /* ======================
        VENDAS
@@ -223,13 +238,12 @@ try {
 
   }
 } catch (Throwable $e) {
-  $err = 'Erro ao carregar relatório.';
+  $err = 'Erro ao carregar relatório: ' . $e->getMessage();
 }
 
 /* ======================
    FINAL
 ====================== */
-$baseQS = '?mes=' . urlencode($mesSel);
 $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
 ?>
@@ -395,7 +409,16 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       white-space: pre-line;
     }
 
-    /* para quebrar \n em linhas */
+    .btn-group-toggle .btn {
+      border-radius: 8px;
+      margin-right: 8px;
+    }
+
+    .btn-group-toggle .btn.active {
+      background: #231475 !important;
+      color: white !important;
+      border-color: #231475 !important;
+    }
   </style>
 </head>
 
@@ -640,14 +663,8 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div>
                   <h2 class="font-weight-bold mb-1">Relatório Financeiro</h2>
                   <span class="badge badge-primary">
-                    Feira do Produtor —
-                    <?= date('d/m/Y', strtotime($monthStart)) ?>
-                    a
-                    <?= date('d/m/Y', strtotime($monthEnd)) ?>
+                    Feira do Produtor — <?= h($labelPeriodo) ?>
                   </span>
-                </div>
-                <div class="text-muted mt-2 mt-md-0">
-                  Mês selecionado: <b><?= h($mesSel) ?></b>
                 </div>
               </div>
               <hr>
@@ -655,27 +672,51 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           </div>
 
           <!-- ======================
-         FILTRO (APENAS MÊS)
+         FILTRO (MÊS OU DIA)
          ====================== -->
           <div class="card mb-4">
             <div class="card-body py-3">
-              <div class="row align-items-end">
+              
+              <!-- Botões de alternância -->
+              <div class="row mb-3">
+                <div class="col-12">
+                  <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-outline-primary <?= $tipoFiltro === 'mes' ? 'active' : '' ?>">
+                      <input type="radio" name="tipo_filtro" value="mes" <?= $tipoFiltro === 'mes' ? 'checked' : '' ?>> 
+                      <i class="ti-calendar mr-1"></i> Filtrar por Mês
+                    </label>
+                    <label class="btn btn-outline-primary <?= $tipoFiltro === 'dia' ? 'active' : '' ?>">
+                      <input type="radio" name="tipo_filtro" value="dia" <?= $tipoFiltro === 'dia' ? 'checked' : '' ?>> 
+                      <i class="ti-time mr-1"></i> Filtrar por Dia
+                    </label>
+                  </div>
+                </div>
+              </div>
 
+              <div class="row align-items-end">
+                
+                <!-- Campo de data (muda entre mês e dia) -->
                 <div class="col-md-6 mb-2">
-                  <label class="mb-1">Mês</label>
-                  <select class="form-control"
-                    onchange="location.href='?mes='+this.value;">
-                    <?php foreach ($meses as $m): ?>
-                      <option value="<?= h($m['key']) ?>" <?= $mesSel === $m['key'] ? 'selected' : '' ?>>
-                        <?= h($m['label']) ?>
-                      </option>
-                    <?php endforeach; ?>
-                  </select>
+                  <label class="mb-1" id="label-data">
+                    <?= $tipoFiltro === 'dia' ? 'Data' : 'Mês' ?>
+                  </label>
+                  <input 
+                    type="<?= $tipoFiltro === 'dia' ? 'date' : 'month' ?>" 
+                    class="form-control" 
+                    id="input-data"
+                    value="<?= h($tipoFiltro === 'dia' ? $dataSel : substr($dataSel, 0, 7)) ?>"
+                  >
                 </div>
 
-                <div class="col-md-6 mb-2">
+                <div class="col-md-3 mb-2">
+                  <button type="button" class="btn btn-primary w-100" id="btn-filtrar">
+                    <i class="ti-search mr-1"></i> Filtrar
+                  </button>
+                </div>
+
+                <div class="col-md-3 mb-2">
                   <a href="./relatorioFinanceiro.php" class="btn btn-outline-secondary w-100">
-                    <i class="ti-reload mr-1"></i> Voltar para o mês atual
+                    <i class="ti-reload mr-1"></i> Limpar
                   </a>
                 </div>
 
@@ -689,7 +730,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           <div class="row mb-4">
             <div class="col-md-4 mb-3">
               <div class="kpi-card text-primary">
-                <p class="kpi-label">Total do mês</p>
+                <p class="kpi-label">Total do período</p>
                 <p class="kpi-value">
                   R$ <?= number_format((float)$resumo['total'], 2, ',', '.') ?>
                 </p>
@@ -804,8 +845,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           </div>
 
           <!-- ======================
-         RESUMO POR DIA
+         RESUMO POR DIA (só mostra no filtro mensal)
          ====================== -->
+          <?php if ($tipoFiltro === 'mes' && !empty($porDia)): ?>
           <div class="card mb-4">
             <div class="card-body">
               <h4 class="card-title">Resumo por dia</h4>
@@ -817,6 +859,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                       <th>Dia</th>
                       <th class="text-center">Vendas</th>
                       <th class="text-right">Total</th>
+                      <th class="text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -827,8 +870,65 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                         <td class="text-right">
                           <b>R$ <?= number_format((float)$d['total'], 2, ',', '.') ?></b>
                         </td>
+                        <td class="text-center">
+                          <a href="?tipo=dia&data=<?= h($d['dia']) ?>" class="btn btn-sm btn-outline-primary">
+                            <i class="ti-eye"></i> Ver detalhes
+                          </a>
+                        </td>
                       </tr>
                     <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+          <?php endif; ?>
+
+          <!-- ======================
+         LISTA DE VENDAS
+         ====================== -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <h4 class="card-title">Vendas do período</h4>
+
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="thead-light">
+                    <tr>
+                      <th>ID</th>
+                      <th>Data</th>
+                      <th>Pagamento</th>
+                      <th>Status</th>
+                      <th class="text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php if (empty($vendasRows)): ?>
+                      <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                          Nenhuma venda encontrada no período
+                        </td>
+                      </tr>
+                    <?php else: foreach ($vendasRows as $v): ?>
+                      <tr>
+                        <td><?= h($v['id']) ?></td>
+                        <td><?= date('d/m/Y', strtotime($v['data_ref'])) ?></td>
+                        <td>
+                          <span class="badge badge-soft">
+                            <?= h($v['forma_pagamento'] ?? 'N/I') ?>
+                          </span>
+                        </td>
+                        <td>
+                          <span class="badge badge-<?= $v['status'] === 'concluida' ? 'success' : 'warning' ?>">
+                            <?= h($v['status'] ?? 'N/I') ?>
+                          </span>
+                        </td>
+                        <td class="text-right">
+                          <b>R$ <?= number_format((float)$v['total'], 2, ',', '.') ?></b>
+                        </td>
+                      </tr>
+                    <?php endforeach; endif; ?>
                   </tbody>
                 </table>
               </div>
@@ -860,6 +960,53 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
   <script src="../../../js/template.js"></script>
   <script src="../../../js/settings.js"></script>
   <script src="../../../js/todolist.js"></script>
+
+  <script>
+    // Lógica para alternar entre filtro de mês e dia
+    document.addEventListener('DOMContentLoaded', function() {
+      const radioMes = document.querySelector('input[value="mes"]');
+      const radioDia = document.querySelector('input[value="dia"]');
+      const inputData = document.getElementById('input-data');
+      const labelData = document.getElementById('label-data');
+      const btnFiltrar = document.getElementById('btn-filtrar');
+
+      function atualizarTipoFiltro() {
+        const tipo = radioDia.checked ? 'dia' : 'mes';
+        
+        if (tipo === 'dia') {
+          inputData.type = 'date';
+          labelData.textContent = 'Data';
+          if (inputData.value.length === 7) { // formato YYYY-MM
+            inputData.value = inputData.value + '-01';
+          }
+        } else {
+          inputData.type = 'month';
+          labelData.textContent = 'Mês';
+          if (inputData.value.length === 10) { // formato YYYY-MM-DD
+            inputData.value = inputData.value.substring(0, 7);
+          }
+        }
+      }
+
+      radioMes.addEventListener('change', atualizarTipoFiltro);
+      radioDia.addEventListener('change', atualizarTipoFiltro);
+
+      btnFiltrar.addEventListener('click', function() {
+        const tipo = radioDia.checked ? 'dia' : 'mes';
+        const data = inputData.value;
+        
+        if (!data) {
+          alert('Por favor, selecione uma data.');
+          return;
+        }
+
+        window.location.href = '?tipo=' + tipo + '&data=' + data;
+      });
+
+      // Inicializar o estado correto
+      atualizarTipoFiltro();
+    });
+  </script>
 </body>
 
 </html>
