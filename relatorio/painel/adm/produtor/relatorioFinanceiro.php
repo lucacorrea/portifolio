@@ -64,7 +64,7 @@ function hasColumn(PDO $pdo, string $table, string $column): bool {
 /* ======================
    FEIRA FIXA
 ====================== */
-$feiraId = 1; // Feira do Produtor
+$feiraId = 1;
 
 /* ======================
    TABELAS OBRIGATÓRIAS
@@ -79,12 +79,11 @@ if (
 }
 
 /* ======================
-   CAMPOS
+   CAMPOS OPCIONAIS
 ====================== */
 $colDataVenda = hasColumn($pdo, 'vendas', 'data_venda');
 $colDataHora  = hasColumn($pdo, 'vendas', 'data_hora');
 $colFormaPgto = hasColumn($pdo, 'vendas', 'forma_pagamento');
-$colTotal     = hasColumn($pdo, 'vendas', 'total');
 $colStatus    = hasColumn($pdo, 'vendas', 'status');
 
 /* Data referência */
@@ -97,24 +96,21 @@ if ($colDataVenda) {
 }
 
 /* ======================
-   FILTRO POR DIA
+   FILTRO (MÊS / DIA)
 ====================== */
-$tipoFiltro = trim((string)($_GET['tipo'] ?? 'mes')); // 'mes' ou 'dia'
-$dataSel = trim((string)($_GET['data'] ?? date('Y-m-d')));
+$tipoFiltro = $_GET['tipo'] ?? 'mes';
+$dataSel = $_GET['data'] ?? date('Y-m-d');
 
-// Validar data
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataSel)) {
+if (!preg_match('/^\d{4}-\d{2}(-\d{2})?$/', $dataSel)) {
   $dataSel = date('Y-m-d');
 }
 
-// Definir período baseado no tipo de filtro
 if ($tipoFiltro === 'dia') {
   $periodStart = $dataSel;
   $periodEnd   = $dataSel;
   $labelPeriodo = date('d/m/Y', strtotime($dataSel));
 } else {
-  // Filtro mensal (padrão)
-  $mesSel = substr($dataSel, 0, 7); // YYYY-MM
+  $mesSel = substr($dataSel, 0, 7);
   $periodStart = $mesSel . '-01';
   $periodEnd   = date('Y-m-t', strtotime($periodStart));
   $labelPeriodo = date('m/Y', strtotime($periodStart));
@@ -123,11 +119,11 @@ if ($tipoFiltro === 'dia') {
 /* ======================
    ESTRUTURAS
 ====================== */
-$resumo        = ['vendas_qtd' => 0, 'total' => 0, 'ticket' => 0];
-$porPagamento  = [];
-$porProdutor   = [];
-$porDia        = [];
-$vendasRows    = [];
+$resumo       = ['vendas_qtd' => 0, 'total' => 0, 'ticket' => 0];
+$porPagamento = [];
+$porProdutor  = [];
+$porDia       = [];
+$vendasRows   = [];
 
 /* ======================
    PAGINAÇÃO
@@ -141,13 +137,18 @@ $offsetVen = ($pageVen - 1) * $PER_PAGE;
 try {
   if (!$err) {
 
-    /* WHERE BASE */
-    $where = "WHERE {$dateExpr} BETWEEN :ini AND :fim AND v.feira_id = :f";
+    /* WHERE DINÂMICO */
     $params = [
       ':ini' => $periodStart,
-      ':fim' => $periodEnd,
       ':f'   => $feiraId,
     ];
+
+    if ($tipoFiltro === 'dia') {
+      $where = "WHERE {$dateExpr} = :ini AND v.feira_id = :f";
+    } else {
+      $where = "WHERE {$dateExpr} BETWEEN :ini AND :fim AND v.feira_id = :f";
+      $params[':fim'] = $periodEnd;
+    }
 
     /* ======================
        RESUMO GERAL
@@ -159,6 +160,7 @@ try {
     ");
     $st->execute($params);
     $r = $st->fetch();
+
     if ($r) {
       $resumo['vendas_qtd'] = (int)$r['qtd'];
       $resumo['total']     = (float)$r['total'];
@@ -184,14 +186,14 @@ try {
     }
 
     /* ======================
-       POR FEIRANTE (CORRETO)
+       POR FEIRANTE
     ====================== */
     $st = $pdo->prepare("
       SELECT
         p.id,
         p.nome,
-        COUNT(DISTINCT v.id) AS vendas_qtd,
-        SUM(vi.subtotal)     AS total
+        COUNT(DISTINCT v.id) vendas_qtd,
+        SUM(vi.subtotal) total
       FROM vendas v
       JOIN venda_itens vi ON vi.venda_id = v.id
       JOIN produtos pr    ON pr.id = vi.produto_id
@@ -204,7 +206,7 @@ try {
     $porProdutor = $st->fetchAll();
 
     /* ======================
-       POR DIA (só mostrar se filtro for mensal)
+       POR DIA (SÓ NO MÊS)
     ====================== */
     if ($tipoFiltro === 'mes') {
       $st = $pdo->prepare("
@@ -221,22 +223,26 @@ try {
     }
 
     /* ======================
-       VENDAS
+       LISTA DE VENDAS
     ====================== */
+    $selectPagamento = $colFormaPgto ? "v.forma_pagamento" : "NULL AS forma_pagamento";
+    $selectStatus    = $colStatus    ? "v.status"           : "'N/I' AS status";
+
     $st = $pdo->prepare("
-      SELECT v.id,
-             {$dateExpr} data_ref,
-             v.forma_pagamento,
-             v.status,
-             v.total
+      SELECT
+        v.id,
+        {$dateExpr} AS data_ref,
+        {$selectPagamento},
+        {$selectStatus},
+        v.total
       FROM vendas v {$where}
       ORDER BY v.id DESC
       LIMIT {$PER_PAGE} OFFSET {$offsetVen}
     ");
     $st->execute($params);
     $vendasRows = $st->fetchAll();
-
   }
+
 } catch (Throwable $e) {
   $err = 'Erro ao carregar relatório: ' . $e->getMessage();
 }
