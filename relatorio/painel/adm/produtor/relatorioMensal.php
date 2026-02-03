@@ -651,7 +651,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <div class="row">
                       <div class="col-6">
                         <button type="submit" name="gerar" value="1" class="btn btn-primary w-100">
-                          <i class="ti-file mr-1"></i> Gerar Relatório
+                          <i class="ti-file mr-1"></i> Filtrar
                         </button>
                       </div>
                       <div class="col-6">
