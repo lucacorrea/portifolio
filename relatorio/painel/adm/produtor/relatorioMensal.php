@@ -806,7 +806,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     Clique no botão abaixo para visualizar e imprimir o relatório oficial<br>
                     no formato do documento da prefeitura
                   </p>
-                  <a href="gerarRelatorioEscrito.php?data_inicio=<?= h($dataInicio) ?>&data_fim=<?= h($dataFim) ?>" 
+                  <a href="relatorioEscrito.php?data_inicio=<?= h($dataInicio) ?>&data_fim=<?= h($dataFim) ?>" 
                      target="_blank" 
                      class="btn btn-generate">
                     <i class="ti-printer mr-2"></i>
