@@ -83,7 +83,6 @@ if (
 ====================== */
 $colDataVenda = hasColumn($pdo, 'vendas', 'data_venda');
 $colDataHora  = hasColumn($pdo, 'vendas', 'data_hora');
-$colCategoria = hasColumn($pdo, 'produtos', 'categoria_id');
 
 /* Data base */
 if ($colDataVenda) {
@@ -101,6 +100,8 @@ $dataInicio = $_GET['data_inicio'] ?? '';
 $dataFim = $_GET['data_fim'] ?? '';
 $gerarRelatorio = isset($_GET['gerar']) && $dataInicio && $dataFim;
 
+$labelPeriodo = '';
+
 // Validar datas
 if ($gerarRelatorio) {
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInicio) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataFim)) {
@@ -109,13 +110,15 @@ if ($gerarRelatorio) {
   } elseif (strtotime($dataInicio) > strtotime($dataFim)) {
     $err = 'Data inicial não pode ser maior que data final';
     $gerarRelatorio = false;
+  } else {
+    $labelPeriodo = date('d/m/Y', strtotime($dataInicio)) . ' a ' . date('d/m/Y', strtotime($dataFim));
   }
 }
 
 /* ======================
    BUSCAR DADOS
 ====================== */
-$dadosRelatorio = [];
+$resumo = ['total_vendas' => 0, 'valor_total' => 0];
 
 if ($gerarRelatorio && !$err) {
   try {
@@ -135,80 +138,7 @@ if ($gerarRelatorio && !$err) {
         AND v.feira_id = :f
     ");
     $st->execute($params);
-    $dadosRelatorio['resumo'] = $st->fetch();
-
-    // Por mês
-    $st = $pdo->prepare("
-      SELECT 
-        DATE_FORMAT({$dateExpr}, '%m/%Y') as mes_ano,
-        DATE_FORMAT({$dateExpr}, '%Y-%m-01') as mes_order,
-        SUM(v.total) as total
-      FROM vendas v
-      WHERE {$dateExpr} BETWEEN :ini AND :fim
-        AND v.feira_id = :f
-      GROUP BY DATE_FORMAT({$dateExpr}, '%Y-%m')
-      ORDER BY mes_order
-    ");
-    $st->execute($params);
-    $dadosRelatorio['por_mes'] = $st->fetchAll();
-
-    // Produtos mais vendidos
-    $st = $pdo->prepare("
-      SELECT 
-        pr.nome as produto,
-        SUM(vi.quantidade) as quantidade,
-        SUM(vi.subtotal) as total
-      FROM vendas v
-      JOIN venda_itens vi ON vi.venda_id = v.id
-      JOIN produtos pr ON pr.id = vi.produto_id
-      WHERE {$dateExpr} BETWEEN :ini AND :fim
-        AND v.feira_id = :f
-      GROUP BY pr.id
-      ORDER BY quantidade DESC
-      LIMIT 20
-    ");
-    $st->execute($params);
-    $dadosRelatorio['produtos'] = $st->fetchAll();
-
-    // Por categoria (se existir)
-    if ($colCategoria && hasTable($pdo, 'categorias')) {
-      $st = $pdo->prepare("
-        SELECT 
-          COALESCE(c.nome, 'Sem categoria') as categoria,
-          COUNT(DISTINCT pr.id) as produtos_distintos,
-          SUM(vi.quantidade) as quantidade,
-          SUM(vi.subtotal) as total
-        FROM vendas v
-        JOIN venda_itens vi ON vi.venda_id = v.id
-        JOIN produtos pr ON pr.id = vi.produto_id
-        LEFT JOIN categorias c ON c.id = pr.categoria_id
-        WHERE {$dateExpr} BETWEEN :ini AND :fim
-          AND v.feira_id = :f
-        GROUP BY pr.categoria_id
-        ORDER BY total DESC
-      ");
-      $st->execute($params);
-      $dadosRelatorio['categorias'] = $st->fetchAll();
-    }
-
-    // Top feirantes
-    $st = $pdo->prepare("
-      SELECT 
-        p.nome as feirante,
-        COUNT(DISTINCT v.id) as vendas,
-        SUM(vi.subtotal) as total
-      FROM vendas v
-      JOIN venda_itens vi ON vi.venda_id = v.id
-      JOIN produtos pr ON pr.id = vi.produto_id
-      JOIN produtores p ON p.id = pr.produtor_id
-      WHERE {$dateExpr} BETWEEN :ini AND :fim
-        AND v.feira_id = :f
-      GROUP BY p.id
-      ORDER BY total DESC
-      LIMIT 10
-    ");
-    $st->execute($params);
-    $dadosRelatorio['feirantes'] = $st->fetchAll();
+    $resumo = $st->fetch();
 
   } catch (Exception $e) {
     $err = 'Erro ao buscar dados: ' . $e->getMessage();
@@ -261,6 +191,11 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       height: 42px;
     }
 
+    .mini-kpi {
+      font-size: 12px;
+      color: #6c757d;
+    }
+
     .kpi-card {
       border: 1px solid rgba(0, 0, 0, .08);
       border-radius: 14px;
@@ -278,11 +213,6 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       font-size: 22px;
       font-weight: 800;
       margin: 0;
-    }
-
-    .table td,
-    .table th {
-      vertical-align: middle !important;
     }
 
     /* Flash top-right */
@@ -367,14 +297,15 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       }
     }
 
-    .period-badge {
-      background: #e3f2fd;
-      color: #1976d2;
-      padding: 8px 16px;
+    .btn-group-toggle .btn {
       border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .btn-group-toggle .btn.active {
+      background: #231475 !important;
+      color: white !important;
+      border-color: #231475 !important;
     }
 
     .no-data {
@@ -387,6 +318,44 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       font-size: 64px;
       margin-bottom: 20px;
       opacity: 0.3;
+    }
+
+    .generate-report-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 14px;
+      padding: 40px;
+      color: white;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .generate-report-card h4 {
+      color: white;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+
+    .generate-report-card p {
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 25px;
+    }
+
+    .btn-generate {
+      background: white;
+      color: #667eea;
+      font-weight: 700;
+      font-size: 16px;
+      padding: 12px 40px;
+      border-radius: 8px;
+      border: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+
+    .btn-generate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      color: #667eea;
     }
   </style>
 </head>
@@ -618,9 +587,11 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
               <div class="d-flex flex-wrap align-items-center justify-content-between">
                 <div>
                   <h2 class="font-weight-bold mb-1">Resumo Mensal</h2>
-                  <p class="text-muted mb-0">
-                    Selecione o período e gere o relatório detalhado
-                  </p>
+                  <?php if ($gerarRelatorio): ?>
+                    <span class="badge badge-primary">
+                      Feira do Produtor — <?= h($labelPeriodo) ?>
+                    </span>
+                  <?php endif; ?>
                 </div>
               </div>
               <hr>
@@ -628,30 +599,46 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           </div>
 
           <!-- ======================
-         SELEÇÃO DE PERÍODO
+         FILTRO
          ====================== -->
           <div class="card mb-4">
             <div class="card-body py-3">
+
+              <!-- Botão de período -->
+              <div class="row mb-3">
+                <div class="col-12">
+                  <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-outline-primary active">
+                      <input type="radio" name="tipo_filtro" value="periodo" checked>
+                      <i class="ti-calendar mr-1"></i> Período Personalizado
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               <form method="GET" action="">
                 <div class="row align-items-end">
-                  
+
+                  <!-- Data Inicial -->
                   <div class="col-md-4 mb-2">
                     <label class="mb-1">Data Inicial *</label>
                     <input type="date" name="data_inicio" class="form-control" 
                            value="<?= h($dataInicio) ?>" required>
                   </div>
 
+                  <!-- Data Final -->
                   <div class="col-md-4 mb-2">
                     <label class="mb-1">Data Final *</label>
                     <input type="date" name="data_fim" class="form-control" 
                            value="<?= h($dataFim) ?>" required>
                   </div>
 
+                  <!-- Botões -->
                   <div class="col-md-4 mb-2">
                     <div class="row">
                       <div class="col-6">
                         <button type="submit" name="gerar" value="1" class="btn btn-primary w-100">
-                          <i class="ti-file mr-1"></i> Filtrar
+                          <i class="ti-search mr-1"></i> Buscar
                         </button>
                       </div>
                       <div class="col-6">
@@ -672,19 +659,11 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             <div class="no-data">
               <i class="ti-calendar"></i>
               <h4>Selecione um período</h4>
-              <p>Escolha as datas inicial e final para gerar o relatório mensal</p>
+              <p>Escolha as datas inicial e final para consultar os dados e gerar o relatório mensal</p>
             </div>
 
           <?php else: ?>
             
-            <!-- PERÍODO SELECIONADO -->
-            <div class="text-center mb-4">
-              <span class="period-badge">
-                <i class="ti-calendar mr-2"></i>
-                Período: <?= date('d/m/Y', strtotime($dataInicio)) ?> a <?= date('d/m/Y', strtotime($dataFim)) ?>
-              </span>
-            </div>
-
             <!-- ======================
                KPIs
             ====================== -->
@@ -692,7 +671,8 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
               <div class="col-md-6 mb-3">
                 <div class="kpi-card text-success">
                   <p class="kpi-label">Total de vendas no período</p>
-                  <p class="kpi-value"><?= number_format((int)$dadosRelatorio['resumo']['total_vendas'], 0, ',', '.') ?></p>
+                  <p class="kpi-value"><?= number_format((int)$resumo['total_vendas'], 0, ',', '.') ?></p>
+                  <div class="mini-kpi">Número de transações realizadas</div>
                 </div>
               </div>
 
@@ -700,200 +680,34 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div class="kpi-card text-primary">
                   <p class="kpi-label">Valor total arrecadado</p>
                   <p class="kpi-value">
-                    R$ <?= number_format((float)$dadosRelatorio['resumo']['valor_total'], 2, ',', '.') ?>
+                    R$ <?= number_format((float)$resumo['valor_total'], 2, ',', '.') ?>
                   </p>
+                  <div class="mini-kpi">Receita bruta do período</div>
                 </div>
               </div>
             </div>
 
             <!-- ======================
-               BOTÃO GERAR RELATÓRIO ESCRITO
+               GERAR RELATÓRIO ESCRITO
             ====================== -->
-            <div class="row mb-4">
-              <div class="col-12">
-                <div class="card bg-light">
-                  <div class="card-body text-center py-4">
-                    <h5 class="mb-3">
-                      <i class="ti-files mr-2"></i>
-                      Relatório Formatado
-                    </h5>
-                    <p class="text-muted mb-3">
-                      Gere o relatório no formato do documento oficial com todos os dados do período
-                    </p>
-                    <a href="relatorioEscrito.php?data_inicio=<?= h($dataInicio) ?>&data_fim=<?= h($dataFim) ?>" 
-                       target="_blank" 
-                       class="btn btn-success btn-lg">
-                      <i class="ti-download mr-2"></i>
-                      Gerar Relatório Escrito
-                    </a>
-                  </div>
+            <div class="card mb-4">
+              <div class="card-body p-0">
+                <div class="generate-report-card">
+                  <i class="ti-files" style="font-size: 48px; margin-bottom: 20px;"></i>
+                  <h4>Relatório Formatado Pronto!</h4>
+                  <p>
+                    Clique no botão abaixo para visualizar e imprimir o relatório oficial<br>
+                    no formato do documento da prefeitura
+                  </p>
+                  <a href="gerarRelatorioEscrito.php?data_inicio=<?= h($dataInicio) ?>&data_fim=<?= h($dataFim) ?>" 
+                     target="_blank" 
+                     class="btn btn-generate">
+                    <i class="ti-printer mr-2"></i>
+                    Gerar Relatório Escrito
+                  </a>
                 </div>
               </div>
             </div>
-
-            <!-- ======================
-               RESUMO POR MÊS
-            ====================== -->
-            <?php if (!empty($dadosRelatorio['por_mes'])): ?>
-              <div class="card mb-4">
-                <div class="card-body">
-                  <h4 class="card-title">Resumo por Mês</h4>
-
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead class="thead-light">
-                        <tr>
-                          <th>Mês</th>
-                          <th class="text-right">Total (R$)</th>
-                          <th class="text-right">% do Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php 
-                        $totalGeral = (float)$dadosRelatorio['resumo']['valor_total'];
-                        foreach ($dadosRelatorio['por_mes'] as $mes): 
-                          $percentual = $totalGeral > 0 ? ($mes['total'] / $totalGeral) * 100 : 0;
-                        ?>
-                          <tr>
-                            <td><strong><?= h($mes['mes_ano']) ?></strong></td>
-                            <td class="text-right">
-                              R$ <?= number_format((float)$mes['total'], 2, ',', '.') ?>
-                            </td>
-                            <td class="text-right">
-                              <span class="badge badge-primary">
-                                <?= number_format($percentual, 1, ',', '.') ?>%
-                              </span>
-                            </td>
-                          </tr>
-                        <?php endforeach; ?>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            <?php endif; ?>
-
-            <!-- ======================
-               PRODUTOS MAIS VENDIDOS
-            ====================== -->
-            <?php if (!empty($dadosRelatorio['produtos'])): ?>
-              <div class="card mb-4">
-                <div class="card-body">
-                  <h4 class="card-title">Top 20 Produtos Mais Vendidos</h4>
-
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead class="thead-light">
-                        <tr>
-                          <th width="50">#</th>
-                          <th>Produto</th>
-                          <th class="text-center">Quantidade</th>
-                          <th class="text-right">Total (R$)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php 
-                        $posicao = 1;
-                        foreach ($dadosRelatorio['produtos'] as $prod): 
-                        ?>
-                          <tr>
-                            <td class="text-center"><strong><?= $posicao++ ?>º</strong></td>
-                            <td><?= h($prod['produto']) ?></td>
-                            <td class="text-center">
-                              <?= number_format((float)$prod['quantidade'], 2, ',', '.') ?>
-                            </td>
-                            <td class="text-right">
-                              <strong>R$ <?= number_format((float)$prod['total'], 2, ',', '.') ?></strong>
-                            </td>
-                          </tr>
-                        <?php endforeach; ?>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            <?php endif; ?>
-
-            <!-- ======================
-               POR CATEGORIA
-            ====================== -->
-            <?php if (!empty($dadosRelatorio['categorias'])): ?>
-              <div class="card mb-4">
-                <div class="card-body">
-                  <h4 class="card-title">Vendas por Categoria</h4>
-
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead class="thead-light">
-                        <tr>
-                          <th>Categoria</th>
-                          <th class="text-center">Produtos distintos</th>
-                          <th class="text-center">Quantidade</th>
-                          <th class="text-right">Total (R$)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php foreach ($dadosRelatorio['categorias'] as $cat): ?>
-                          <tr>
-                            <td><strong><?= h($cat['categoria']) ?></strong></td>
-                            <td class="text-center">
-                              <span class="badge badge-info"><?= (int)$cat['produtos_distintos'] ?></span>
-                            </td>
-                            <td class="text-center">
-                              <?= number_format((float)$cat['quantidade'], 2, ',', '.') ?>
-                            </td>
-                            <td class="text-right">
-                              <strong>R$ <?= number_format((float)$cat['total'], 2, ',', '.') ?></strong>
-                            </td>
-                          </tr>
-                        <?php endforeach; ?>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            <?php endif; ?>
-
-            <!-- ======================
-               TOP FEIRANTES
-            ====================== -->
-            <?php if (!empty($dadosRelatorio['feirantes'])): ?>
-              <div class="card mb-4">
-                <div class="card-body">
-                  <h4 class="card-title">Top 10 Feirantes</h4>
-
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead class="thead-light">
-                        <tr>
-                          <th width="50">#</th>
-                          <th>Feirante</th>
-                          <th class="text-center">Vendas</th>
-                          <th class="text-right">Total (R$)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php 
-                        $posicao = 1;
-                        foreach ($dadosRelatorio['feirantes'] as $feira): 
-                        ?>
-                          <tr>
-                            <td class="text-center"><strong><?= $posicao++ ?>º</strong></td>
-                            <td><?= h($feira['feirante']) ?></td>
-                            <td class="text-center">
-                              <span class="badge badge-success"><?= (int)$feira['vendas'] ?></span>
-                            </td>
-                            <td class="text-right">
-                              <strong>R$ <?= number_format((float)$feira['total'], 2, ',', '.') ?></strong>
-                            </td>
-                          </tr>
-                        <?php endforeach; ?>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            <?php endif; ?>
 
           <?php endif; ?>
 
