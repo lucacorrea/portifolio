@@ -720,7 +720,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <p class="text-muted mb-3">
                       Gere o relatório no formato do documento oficial com todos os dados do período
                     </p>
-                    <a href="gerarRelatorioEscrito.php?data_inicio=<?= h($dataInicio) ?>&data_fim=<?= h($dataFim) ?>" 
+                    <a href="relatorioEscrito.php?data_inicio=<?= h($dataInicio) ?>&data_fim=<?= h($dataFim) ?>" 
                        target="_blank" 
                        class="btn btn-success btn-lg">
                       <i class="ti-download mr-2"></i>
