@@ -425,7 +425,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
     }
 
     .page {
-      padding: 45mm 30mm 35mm;
+      padding: 10mm 30mm 35mm;
       position: relative;
     }
 
