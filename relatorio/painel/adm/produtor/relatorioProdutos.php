@@ -121,7 +121,7 @@ if ($tipoFiltro === 'dia') {
 /* ======================
    PAGINAÇÃO
 ====================== */
-$PER_PAGE = 15;
+$PER_PAGE = 8;
 
 $pageProdutos = max(1, (int)($_GET['page_produtos'] ?? 1));
 $pageCategoria = max(1, (int)($_GET['page_categoria'] ?? 1));
