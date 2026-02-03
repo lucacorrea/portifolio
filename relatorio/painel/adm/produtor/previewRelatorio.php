@@ -116,6 +116,96 @@ $vars = [
 ];
 
 /* ======================
+   FUNÇÃO PARA VALOR POR EXTENSO
+====================== */
+function valorPorExtenso(float $valor): string {
+  $valor = number_format($valor, 2, '.', '');
+  list($inteiro, $centavos) = explode('.', $valor);
+  
+  $unidade = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+  $dez = ['dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+  $dezena = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+  $centena = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+  
+  $extenso = '';
+  $inteiro = str_pad($inteiro, 12, '0', STR_PAD_LEFT);
+  
+  // Bilhões
+  $bilhao = (int)substr($inteiro, 0, 3);
+  if ($bilhao > 0) {
+    $extenso .= converterGrupo($bilhao, $unidade, $dez, $dezena, $centena);
+    $extenso .= $bilhao > 1 ? ' bilhões' : ' bilhão';
+  }
+  
+  // Milhões
+  $milhao = (int)substr($inteiro, 3, 3);
+  if ($milhao > 0) {
+    if ($extenso) $extenso .= $milhao > 0 && $bilhao > 0 ? ', ' : ' e ';
+    $extenso .= converterGrupo($milhao, $unidade, $dez, $dezena, $centena);
+    $extenso .= $milhao > 1 ? ' milhões' : ' milhão';
+  }
+  
+  // Milhares
+  $milhar = (int)substr($inteiro, 6, 3);
+  if ($milhar > 0) {
+    if ($extenso) $extenso .= ', ';
+    if ($milhar == 1) {
+      $extenso .= 'mil';
+    } else {
+      $extenso .= converterGrupo($milhar, $unidade, $dez, $dezena, $centena) . ' mil';
+    }
+  }
+  
+  // Centenas
+  $cent = (int)substr($inteiro, 9, 3);
+  if ($cent > 0) {
+    if ($extenso && $milhar == 0 && $milhao == 0 && $bilhao == 0) {
+      $extenso .= ' e ';
+    } elseif ($extenso) {
+      $extenso .= $milhar > 0 || $milhao > 0 || $bilhao > 0 ? ', ' : ' e ';
+    }
+    $extenso .= converterGrupo($cent, $unidade, $dez, $dezena, $centena);
+  }
+  
+  $extenso .= ' reais';
+  
+  return $extenso;
+}
+
+function converterGrupo(int $numero, array $unidade, array $dez, array $dezena, array $centena): string {
+  $texto = '';
+  
+  $c = (int)($numero / 100);
+  $d = (int)(($numero % 100) / 10);
+  $u = $numero % 10;
+  
+  if ($c > 0) {
+    if ($numero == 100) {
+      $texto .= 'cem';
+    } else {
+      $texto .= $centena[$c];
+    }
+  }
+  
+  if ($d > 0) {
+    if ($texto) $texto .= ' e ';
+    if ($d == 1) {
+      $texto .= $dez[$u];
+      return $texto;
+    } else {
+      $texto .= $dezena[$d];
+    }
+  }
+  
+  if ($u > 0) {
+    if ($texto) $texto .= ' e ';
+    $texto .= $unidade[$u];
+  }
+  
+  return $texto;
+}
+
+/* ======================
    BUSCAR DADOS REAIS (EXEMPLO)
 ====================== */
 $dadosFinanceiros = [];
@@ -229,19 +319,20 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
     }
     
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
+      color: #000;
+      background: #e0e0e0;
       padding: 20px;
     }
     
     .preview-container {
-      max-width: 1000px;
+      max-width: 210mm; /* A4 width */
       margin: 0 auto;
       background: white;
-      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
       position: relative;
+      min-height: 297mm; /* A4 height */
     }
     
     .watermark {
@@ -249,9 +340,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) rotate(-45deg);
-      font-size: 80px;
+      font-size: 100px;
       font-weight: 900;
-      color: rgba(255, 0, 0, 0.08);
+      color: rgba(255, 0, 0, 0.05);
       pointer-events: none;
       z-index: 9999;
       white-space: nowrap;
@@ -259,7 +350,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
     }
     
     .page {
-      padding: 60px 80px;
+      padding: 50px 60px;
       background: white;
       position: relative;
     }
@@ -267,100 +358,106 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
     /* Cabeçalho */
     .header {
       text-align: center;
-      border-bottom: 3px solid #231475;
-      padding-bottom: 30px;
-      margin-bottom: 40px;
+      margin-bottom: 25px;
     }
     
     .logos {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 40px;
-      margin-bottom: 20px;
+      gap: 30px;
+      margin-bottom: 15px;
     }
     
     .logos img {
-      max-height: 80px;
-      max-width: 200px;
+      max-height: 70px;
+      max-width: 180px;
     }
     
     .header h1 {
-      font-size: 20px;
-      color: #231475;
-      margin: 10px 0 5px;
+      font-size: 12px;
+      color: #000;
+      margin: 3px 0;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .header .secretaria {
+      font-size: 11px;
+      color: #000;
+      margin: 2px 0;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .header h2 {
+      font-size: 13px;
+      color: #000;
+      margin: 8px 0 3px;
       font-weight: 700;
       text-transform: uppercase;
     }
     
-    .header h2 {
-      font-size: 24px;
-      color: #000;
-      margin: 5px 0;
-      font-weight: 800;
-    }
-    
     .header h3 {
-      font-size: 16px;
-      color: #666;
+      font-size: 12px;
+      color: #000;
       font-weight: 400;
       font-style: italic;
+      margin-bottom: 15px;
     }
     
-    .header .secretaria {
-      font-size: 13px;
-      color: #666;
-      margin-top: 10px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+    .header-divider {
+      width: 100%;
+      height: 1px;
+      background: #000;
+      margin: 15px 0 20px;
     }
     
     /* Seções */
     .section {
-      margin-bottom: 40px;
+      margin-bottom: 18px;
     }
     
     .section-title {
-      font-size: 18px;
+      font-size: 12px;
       font-weight: 700;
-      color: #231475;
-      margin-bottom: 15px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #231475;
+      color: #000;
+      margin-bottom: 8px;
     }
     
     .intro, .conclusao {
       text-align: justify;
-      line-height: 1.8;
-      font-size: 14px;
+      line-height: 1.4;
+      font-size: 11px;
+      margin-bottom: 12px;
     }
     
-    /* Tabela */
+    /* Tabela - Estilo exato do PDF */
     table {
-      width: 100%;
+      width: 60%;
+      margin: 15px auto;
       border-collapse: collapse;
-      margin: 20px 0;
-      font-size: 14px;
+      font-size: 11px;
     }
     
     table thead {
-      background: #231475;
+      background: #4472C4;
       color: white;
     }
     
     table th {
-      padding: 12px;
+      padding: 6px 10px;
       text-align: left;
-      font-weight: 600;
+      font-weight: 700;
+      border: 1px solid #2F5597;
     }
     
     table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    
-    table tbody tr:hover {
-      background: #f8f9fa;
+      padding: 6px 10px;
+      border: 1px solid #8EAADB;
+      background: #DEEBF7;
     }
     
     .text-right {
@@ -371,108 +468,51 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       text-align: center;
     }
     
-    .total-row {
-      background: #f0f0f0;
-      font-weight: 700;
+    .total-extenso {
+      text-align: center;
+      font-size: 11px;
+      color: #4472C4;
+      font-style: italic;
+      margin-top: 10px;
     }
     
-    /* Produtos */
+    /* Produtos - estilo lista simples */
+    .produtos-texto {
+      font-size: 11px;
+      line-height: 1.4;
+      text-align: justify;
+      margin-bottom: 10px;
+    }
+    
     .produtos-lista {
-      column-count: 2;
-      column-gap: 40px;
-      margin: 20px 0;
+      font-size: 11px;
+      line-height: 1.6;
+      margin-left: 15px;
     }
     
-    .categoria-grupo {
-      break-inside: avoid;
-      margin-bottom: 25px;
+    .produtos-lista p {
+      margin: 4px 0;
+      text-align: justify;
     }
     
     .categoria-titulo {
       font-weight: 700;
-      color: #231475;
-      margin-bottom: 8px;
-      font-size: 15px;
-    }
-    
-    .produtos-lista ul {
-      list-style: none;
-      padding-left: 0;
-    }
-    
-    .produtos-lista li {
-      padding: 4px 0 4px 20px;
-      position: relative;
-      font-size: 13px;
-    }
-    
-    .produtos-lista li:before {
-      content: "•";
-      position: absolute;
-      left: 0;
-      color: #231475;
-      font-weight: 700;
-    }
-    
-    /* Gráfico simulado */
-    .chart {
-      margin: 30px 0;
-    }
-    
-    .chart-bar {
-      display: flex;
-      align-items: center;
-      margin: 10px 0;
-    }
-    
-    .chart-label {
-      width: 120px;
-      font-size: 13px;
-      font-weight: 600;
-    }
-    
-    .chart-bar-fill {
-      height: 30px;
-      background: linear-gradient(90deg, #231475, #4a3ba5);
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      padding: 0 10px;
-      color: white;
-      font-size: 12px;
-      font-weight: 700;
+      display: inline;
     }
     
     /* Assinatura */
     .assinatura {
-      margin-top: 60px;
-      text-align: center;
-    }
-    
-    .assinatura-linha {
-      width: 300px;
-      margin: 0 auto 10px;
-      border-top: 2px solid #000;
-    }
-    
-    .assinatura-nome {
-      font-weight: 700;
-      font-size: 14px;
-    }
-    
-    .assinatura-cargo {
-      font-size: 13px;
-      color: #666;
+      margin-top: 40px;
+      text-align: left;
+      font-size: 11px;
     }
     
     /* Rodapé */
     .footer {
-      text-align: center;
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 2px solid #e0e0e0;
-      font-size: 12px;
-      color: #666;
+      text-align: left;
+      margin-top: 30px;
+      font-size: 11px;
+      color: #000;
     }
     
     /* Ações de impressão */
@@ -490,7 +530,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
     .btn {
       display: inline-block;
       padding: 10px 20px;
-      background: #231475;
+      background: #4472C4;
       color: white;
       text-decoration: none;
       border-radius: 6px;
@@ -502,7 +542,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
     }
     
     .btn:hover {
-      background: #1a0f5a;
+      background: #2F5597;
     }
     
     .btn-secondary {
@@ -521,6 +561,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       
       .preview-container {
         box-shadow: none;
+        max-width: 100%;
       }
       
       .print-actions {
@@ -532,8 +573,13 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       }
       
       .page {
-        page-break-after: always;
+        padding: 50px 60px;
       }
+    }
+    
+    @page {
+      size: A4;
+      margin: 0;
     }
   </style>
 </head>
@@ -566,14 +612,15 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           </div>
         <?php endif; ?>
         
-        <h1>Prefeitura Municipal de <?= h($config['municipio']) ?> – <?= h($config['estado']) ?></h1>
+        <h1>PREFEITURA MUNICIPAL DE <?= strtoupper(h($config['municipio'])) ?> – <?= strtoupper(h($config['estado'])) ?></h1>
         <?php if ($config['secretaria']): ?>
-          <div class="secretaria"><?= h($config['secretaria']) ?></div>
+          <div class="secretaria"><?= strtoupper(h($config['secretaria'])) ?></div>
         <?php endif; ?>
-        <h2>Relatório da <?= h($config['titulo_feira']) ?></h2>
+        <h2>RELATÓRIO DA <?= strtoupper(h($config['titulo_feira'])) ?></h2>
         <?php if ($config['subtitulo_feira']): ?>
           <h3><?= h($config['subtitulo_feira']) ?></h3>
         <?php endif; ?>
+        <div class="header-divider"></div>
       </div>
       
       <!-- INTRODUÇÃO -->
@@ -587,31 +634,18 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       <?php endif; ?>
       
       <!-- PRODUTOS COMERCIALIZADOS -->
-      <?php if ($config['incluir_produtos_comercializados'] && !empty($produtosComercializados)): ?>
+      <?php if ($config['incluir_produtos_comercializados']): ?>
         <div class="section">
           <div class="section-title">Produtos Comercializados</div>
-          <p style="margin-bottom: 20px;">Os agricultores locais comercializaram uma grande variedade de itens durante o período:</p>
+          <p class="produtos-texto">Os agricultores locais comercializaram uma grande variedade de itens durante o período, tais como:</p>
           
-          <?php if ($config['produtos_detalhados']): ?>
-            <div class="produtos-lista">
-              <?php foreach ($produtosPorCategoria as $categoria => $produtos): ?>
-                <div class="categoria-grupo">
-                  <div class="categoria-titulo"><?= h($categoria) ?>:</div>
-                  <ul>
-                    <?php foreach ($produtos as $produto): ?>
-                      <li><?= h($produto) ?></li>
-                    <?php endforeach; ?>
-                  </ul>
-                </div>
-              <?php endforeach; ?>
-            </div>
-          <?php else: ?>
-            <ul style="column-count: 3; column-gap: 30px;">
-              <?php foreach ($produtosComercializados as $produto): ?>
-                <li><?= h($produto) ?></li>
-              <?php endforeach; ?>
-            </ul>
-          <?php endif; ?>
+          <div class="produtos-lista">
+            <p><span class="categoria-titulo">- Frutas:</span> abacaxi, laranja, tangerina, limão, mamão, maracujá, cupuaçu, abiu, abacate, banana, melancia, melão, goiaba.</p>
+            <p><span class="categoria-titulo">- Produtos derivados da mandioca:</span> macaxeira, farinha de mandioca, goma.</p>
+            <p><span class="categoria-titulo">- Legumes e hortaliças:</span> jerimum, pimenta doce, pepino, alface, cebola de palha, tomate, couve, repolho.</p>
+            <p><span class="categoria-titulo">- Grãos e outros:</span> milho verde.</p>
+            <p><span class="categoria-titulo">- Diversos:</span> produtos regionais variados.</p>
+          </div>
         </div>
       <?php endif; ?>
       
@@ -634,16 +668,12 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                   <td class="text-right"><?= number_format((float)$dado['total'], 2, ',', '.') ?></td>
                 </tr>
               <?php endforeach; ?>
-              <tr class="total-row">
-                <td><strong>Soma Total do Período:</strong></td>
-                <td class="text-right"><strong>R$ <?= number_format($totalGeral, 2, ',', '.') ?></strong></td>
-              </tr>
             </tbody>
           </table>
           
-          <p style="text-align: center; font-size: 13px; margin-top: 10px;">
-            <strong>por extenso:</strong> 
-            <em><?= number_format($totalGeral, 2, ',', '.') ?> reais</em>
+          <p class="total-extenso">
+            <strong>Soma Total do Período: R$ <?= number_format($totalGeral, 2, ',', '.') ?></strong> 
+            <em>por extenso: <?= valorPorExtenso($totalGeral) ?>.</em>
           </p>
         <?php else: ?>
           <p style="text-align: center; color: #999; padding: 40px 0;">
@@ -652,55 +682,6 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
         <?php endif; ?>
       </div>
       
-      <!-- GRÁFICOS / VISUALIZAÇÕES -->
-      <?php if ($config['mostrar_graficos']): ?>
-        
-        <!-- Por Categoria -->
-        <?php if ($config['mostrar_por_categoria'] && !empty($porCategoria)): ?>
-          <div class="section">
-            <div class="section-title">Vendas por Categoria</div>
-            <div class="chart">
-              <?php 
-              $maxValor = max(array_column($porCategoria, 'total'));
-              foreach ($porCategoria as $cat): 
-                $percentual = $maxValor > 0 ? ($cat['total'] / $maxValor) * 100 : 0;
-              ?>
-                <div class="chart-bar">
-                  <div class="chart-label"><?= h($cat['categoria']) ?></div>
-                  <div class="chart-bar-fill" style="width: <?= $percentual ?>%;">
-                    R$ <?= number_format((float)$cat['total'], 2, ',', '.') ?>
-                  </div>
-                </div>
-              <?php endforeach; ?>
-            </div>
-          </div>
-        <?php endif; ?>
-        
-        <!-- Por Feirante -->
-        <?php if ($config['mostrar_por_feirante'] && !empty($porFeirante)): ?>
-          <div class="section">
-            <div class="section-title">Top 5 Feirantes</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Feirante</th>
-                  <th class="text-right">Total (R$)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($porFeirante as $feirante): ?>
-                  <tr>
-                    <td><?= h($feirante['nome']) ?></td>
-                    <td class="text-right"><?= number_format((float)$feirante['total'], 2, ',', '.') ?></td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        <?php endif; ?>
-        
-      <?php endif; ?>
-      
       <!-- CONCLUSÃO -->
       <?php if ($config['incluir_conclusao']): ?>
         <div class="section">
@@ -708,17 +689,6 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           <div class="conclusao">
             <?= nl2br(h(substituirVariaveis($config['texto_conclusao'], $vars))) ?>
           </div>
-        </div>
-      <?php endif; ?>
-      
-      <!-- ASSINATURA -->
-      <?php if ($config['assinatura_nome']): ?>
-        <div class="assinatura">
-          <div class="assinatura-linha"></div>
-          <div class="assinatura-nome"><?= h($config['assinatura_nome']) ?></div>
-          <?php if ($config['assinatura_cargo']): ?>
-            <div class="assinatura-cargo"><?= h($config['assinatura_cargo']) ?></div>
-          <?php endif; ?>
         </div>
       <?php endif; ?>
       
