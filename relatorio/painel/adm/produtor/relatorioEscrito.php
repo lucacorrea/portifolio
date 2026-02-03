@@ -628,8 +628,8 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
     }
 
     .logos img {
-      max-height: 120px;
-      max-width: 280px;
+      max-height: 90px;
+      max-width: 190px;
     }
 
     @media print {
