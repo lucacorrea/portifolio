@@ -36,6 +36,14 @@ require '../../../assets/php/conexao.php';
 $pdo = db();
 
 /* ======================
+   DIRETÓRIO DE UPLOADS
+====================== */
+$uploadDir = '../../../uploads/relatorios/';
+if (!is_dir($uploadDir)) {
+  mkdir($uploadDir, 0755, true);
+}
+
+/* ======================
    CARREGAR CONFIGURAÇÕES
 ====================== */
 $config = [
@@ -82,6 +90,43 @@ try {
   }
 } catch (Exception $e) {
   // Tabela não existe ainda
+}
+
+/* ======================
+   UPLOAD DE ARQUIVOS
+====================== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_logo'])) {
+  $tipoLogo = $_POST['tipo_logo'] ?? 'prefeitura';
+  $file = $_FILES['upload_logo'];
+  
+  if ($file['error'] === UPLOAD_ERR_OK) {
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    $maxSize = 5 * 1024 * 1024; // 5MB
+    
+    if (!in_array($file['type'], $allowedTypes)) {
+      echo json_encode(['success' => false, 'error' => 'Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WebP.']);
+      exit;
+    }
+    
+    if ($file['size'] > $maxSize) {
+      echo json_encode(['success' => false, 'error' => 'Arquivo muito grande. Máximo: 5MB']);
+      exit;
+    }
+    
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = $tipoLogo . '_' . time() . '.' . $extension;
+    $filepath = $uploadDir . $filename;
+    
+    if (move_uploaded_file($file['tmp_name'], $filepath)) {
+      $url = '../../../uploads/relatorios/' . $filename;
+      echo json_encode(['success' => true, 'url' => $url, 'filename' => $filename]);
+    } else {
+      echo json_encode(['success' => false, 'error' => 'Erro ao salvar arquivo']);
+    }
+  } else {
+    echo json_encode(['success' => false, 'error' => 'Erro no upload']);
+  }
+  exit;
 }
 
 /* ======================
@@ -247,6 +292,100 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       min-height: 100px;
     }
 
+    /* Multi-step progress */
+    .step-progress {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      position: relative;
+    }
+
+    .step-progress::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #e9ecef;
+      z-index: 0;
+    }
+
+    .step-progress-fill {
+      position: absolute;
+      top: 20px;
+      left: 0;
+      height: 3px;
+      background: #231475;
+      z-index: 1;
+      transition: width 0.3s ease;
+    }
+
+    .step-item {
+      flex: 1;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .step-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #e9ecef;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #6c757d;
+      transition: all 0.3s ease;
+    }
+
+    .step-item.active .step-circle {
+      background: #231475;
+      border-color: #231475;
+      color: white;
+    }
+
+    .step-item.completed .step-circle {
+      background: #22c55e;
+      border-color: #22c55e;
+      color: white;
+    }
+
+    .step-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6c757d;
+    }
+
+    .step-item.active .step-label {
+      color: #231475;
+    }
+
+    /* Step content */
+    .step-content {
+      display: none;
+    }
+
+    .step-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     .config-section {
       border-left: 4px solid #231475;
       padding-left: 20px;
@@ -312,6 +451,57 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       font-size: 12px;
       margin: 2px;
       display: inline-block;
+    }
+
+    /* Upload área */
+    .upload-area {
+      border: 2px dashed #dee2e6;
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      background: #f8f9fa;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .upload-area:hover {
+      border-color: #231475;
+      background: #f1f3ff;
+    }
+
+    .upload-area.dragover {
+      border-color: #231475;
+      background: #e8ebff;
+    }
+
+    .upload-area i {
+      font-size: 48px;
+      color: #231475;
+      margin-bottom: 15px;
+    }
+
+    .upload-area input[type="file"] {
+      display: none;
+    }
+
+    .image-preview {
+      margin-top: 20px;
+      display: none;
+    }
+
+    .image-preview.show {
+      display: block;
+    }
+
+    .preview-img {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .preview-actions {
+      margin-top: 15px;
     }
 
     /* Flash top-right */
@@ -394,6 +584,24 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
         transform: translateX(12px);
         visibility: hidden;
       }
+    }
+
+    .btn-navigation {
+      min-width: 120px;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -629,232 +837,389 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     Personalize o cabeçalho, textos e informações dos relatórios mensais gerados
                   </p>
                 </div>
+                <div>
+                  <a href="previewRelatorio.php" target="_blank" class="btn btn-outline-primary">
+                    <i class="ti-eye mr-1"></i> Pré-visualizar
+                  </a>
+                </div>
               </div>
               <hr>
             </div>
           </div>
 
+          <!-- PROGRESS STEPS -->
+          <div class="step-progress">
+            <div class="step-progress-fill" id="progressFill"></div>
+            <div class="step-item active" data-step="1">
+              <div class="step-circle">1</div>
+              <div class="step-label">Informações Gerais</div>
+            </div>
+            <div class="step-item" data-step="2">
+              <div class="step-circle">2</div>
+              <div class="step-label">Logotipos</div>
+            </div>
+            <div class="step-item" data-step="3">
+              <div class="step-circle">3</div>
+              <div class="step-label">Textos</div>
+            </div>
+            <div class="step-item" data-step="4">
+              <div class="step-circle">4</div>
+              <div class="step-label">Conteúdo</div>
+            </div>
+            <div class="step-item" data-step="5">
+              <div class="step-circle">5</div>
+              <div class="step-label">Revisão</div>
+            </div>
+          </div>
+
           <!-- FORMULÁRIO -->
-          <form method="POST" action="">
+          <form method="POST" action="" id="configForm">
             
             <!-- ======================
-               INFORMAÇÕES GERAIS
+               STEP 1: INFORMAÇÕES GERAIS
             ====================== -->
-            <div class="config-section">
-              <h5><i class="ti-info-alt mr-2"></i>Informações Gerais</h5>
-              
-              <div class="row">
-                <div class="col-md-6 mb-3">
-                  <label class="form-label">Nome da Feira *</label>
-                  <input type="text" name="titulo_feira" class="form-control" 
-                         value="<?= h($config['titulo_feira']) ?>" required>
-                  <small class="form-text">Ex: Feira do Produtor Rural</small>
-                </div>
+            <div class="step-content active" data-step="1">
+              <div class="card">
+                <div class="card-body">
+                  <div class="config-section">
+                    <h5><i class="ti-info-alt mr-2"></i>Informações Gerais</h5>
+                    
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Nome da Feira *</label>
+                        <input type="text" name="titulo_feira" class="form-control" 
+                               value="<?= h($config['titulo_feira']) ?>" required>
+                        <small class="form-text">Ex: Feira do Produtor Rural</small>
+                      </div>
 
-                <div class="col-md-6 mb-3">
-                  <label class="form-label">Subtítulo / Nome popular</label>
-                  <input type="text" name="subtitulo_feira" class="form-control" 
-                         value="<?= h($config['subtitulo_feira']) ?>">
-                  <small class="form-text">Ex: Francisco Lopes da Silva – "Folha"</small>
-                </div>
-              </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Subtítulo / Nome popular</label>
+                        <input type="text" name="subtitulo_feira" class="form-control" 
+                               value="<?= h($config['subtitulo_feira']) ?>">
+                        <small class="form-text">Ex: Francisco Lopes da Silva – "Folha"</small>
+                      </div>
+                    </div>
 
-              <div class="row">
-                <div class="col-md-8 mb-3">
-                  <label class="form-label">Secretaria / Órgão Responsável</label>
-                  <input type="text" name="secretaria" class="form-control" 
-                         value="<?= h($config['secretaria']) ?>">
-                  <small class="form-text">Ex: Secretaria de Desenvolvimento Rural e Econômico</small>
-                </div>
+                    <div class="row">
+                      <div class="col-md-12 mb-3">
+                        <label class="form-label">Secretaria / Órgão Responsável</label>
+                        <input type="text" name="secretaria" class="form-control" 
+                               value="<?= h($config['secretaria']) ?>">
+                        <small class="form-text">Ex: Secretaria de Desenvolvimento Rural e Econômico</small>
+                      </div>
+                    </div>
 
-                <div class="col-md-3 mb-3">
-                  <label class="form-label">Município *</label>
-                  <input type="text" name="municipio" class="form-control" 
-                         value="<?= h($config['municipio']) ?>" required>
-                </div>
+                    <div class="row">
+                      <div class="col-md-10 mb-3">
+                        <label class="form-label">Município *</label>
+                        <input type="text" name="municipio" class="form-control" 
+                               value="<?= h($config['municipio']) ?>" required>
+                      </div>
 
-                <div class="col-md-1 mb-3">
-                  <label class="form-label">UF *</label>
-                  <input type="text" name="estado" class="form-control" 
-                         value="<?= h($config['estado']) ?>" maxlength="2" required>
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="col-md-6 mb-3">
-                  <label class="form-label">URL do Logotipo da Prefeitura</label>
-                  <input type="text" name="logotipo_prefeitura" class="form-control" 
-                         value="<?= h($config['logotipo_prefeitura']) ?>" 
-                         placeholder="https://exemplo.com/logo-prefeitura.png">
-                  <small class="form-text">Opcional: imagem do cabeçalho do relatório</small>
-                </div>
-
-                <div class="col-md-6 mb-3">
-                  <label class="form-label">URL do Logotipo da Feira</label>
-                  <input type="text" name="logotipo_feira" class="form-control" 
-                         value="<?= h($config['logotipo_feira']) ?>" 
-                         placeholder="https://exemplo.com/logo-feira.png">
-                  <small class="form-text">Opcional: imagem adicional do cabeçalho</small>
-                </div>
-              </div>
-            </div>
-
-            <!-- ======================
-               INTRODUÇÃO
-            ====================== -->
-            <div class="config-section">
-              <h5><i class="ti-file mr-2"></i>Introdução do Relatório</h5>
-
-              <div class="custom-control custom-switch mb-3">
-                <input type="checkbox" class="custom-control-input" id="incluir_introducao" 
-                       name="incluir_introducao" <?= $config['incluir_introducao'] ? 'checked' : '' ?>>
-                <label class="custom-control-label" for="incluir_introducao">
-                  Incluir seção de introdução no relatório
-                </label>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Texto da Introdução</label>
-                <textarea name="texto_introducao" class="form-control" rows="4"><?= h($config['texto_introducao']) ?></textarea>
-                
-                <div class="preview-box">
-                  <h6>Variáveis disponíveis:</h6>
-                  <span class="variable-tag">{titulo_feira}</span>
-                  <span class="variable-tag">{subtitulo_feira}</span>
-                  <span class="variable-tag">{municipio}</span>
-                  <span class="variable-tag">{estado}</span>
-                  <span class="variable-tag">{periodo}</span>
-                  <p class="mt-2 mb-0 small">Essas variáveis serão substituídas automaticamente no relatório final.</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- ======================
-               PRODUTOS COMERCIALIZADOS
-            ====================== -->
-            <div class="config-section">
-              <h5><i class="ti-shopping-cart mr-2"></i>Produtos Comercializados</h5>
-
-              <div class="custom-control custom-switch mb-3">
-                <input type="checkbox" class="custom-control-input" id="incluir_produtos_comercializados" 
-                       name="incluir_produtos_comercializados" <?= $config['incluir_produtos_comercializados'] ? 'checked' : '' ?>>
-                <label class="custom-control-label" for="incluir_produtos_comercializados">
-                  Listar produtos comercializados no período
-                </label>
-              </div>
-
-              <div class="custom-control custom-switch mb-3">
-                <input type="checkbox" class="custom-control-input" id="produtos_detalhados" 
-                       name="produtos_detalhados" <?= $config['produtos_detalhados'] ? 'checked' : '' ?>>
-                <label class="custom-control-label" for="produtos_detalhados">
-                  Mostrar produtos organizados por categoria (frutas, legumes, etc.)
-                </label>
-              </div>
-            </div>
-
-            <!-- ======================
-               CONTEÚDO DO RELATÓRIO
-            ====================== -->
-            <div class="config-section">
-              <h5><i class="ti-layout mr-2"></i>Conteúdo e Visualização</h5>
-
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="custom-control custom-switch mb-3">
-                    <input type="checkbox" class="custom-control-input" id="mostrar_graficos" 
-                           name="mostrar_graficos" <?= $config['mostrar_graficos'] ? 'checked' : '' ?>>
-                    <label class="custom-control-label" for="mostrar_graficos">
-                      Incluir gráficos e visualizações
-                    </label>
-                  </div>
-
-                  <div class="custom-control custom-switch mb-3">
-                    <input type="checkbox" class="custom-control-input" id="mostrar_por_categoria" 
-                           name="mostrar_por_categoria" <?= $config['mostrar_por_categoria'] ? 'checked' : '' ?>>
-                    <label class="custom-control-label" for="mostrar_por_categoria">
-                      Exibir resumo por categoria de produto
-                    </label>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <div class="custom-control custom-switch mb-3">
-                    <input type="checkbox" class="custom-control-input" id="mostrar_por_feirante" 
-                           name="mostrar_por_feirante" <?= $config['mostrar_por_feirante'] ? 'checked' : '' ?>>
-                    <label class="custom-control-label" for="mostrar_por_feirante">
-                      Exibir vendas por feirante
-                    </label>
+                      <div class="col-md-2 mb-3">
+                        <label class="form-label">UF *</label>
+                        <input type="text" name="estado" class="form-control text-uppercase" 
+                               value="<?= h($config['estado']) ?>" maxlength="2" required>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- ======================
-               CONCLUSÃO
+               STEP 2: LOGOTIPOS
             ====================== -->
-            <div class="config-section">
-              <h5><i class="ti-check-box mr-2"></i>Conclusão do Relatório</h5>
+            <div class="step-content" data-step="2">
+              <div class="card">
+                <div class="card-body">
+                  <div class="config-section">
+                    <h5><i class="ti-image mr-2"></i>Logotipos</h5>
+                    
+                    <div class="row">
+                      <!-- Logotipo Prefeitura -->
+                      <div class="col-md-6 mb-4">
+                        <label class="form-label">Logotipo da Prefeitura</label>
+                        <div class="upload-area" id="uploadAreaPrefeitura">
+                          <i class="ti-upload"></i>
+                          <h6>Arraste ou clique para fazer upload</h6>
+                          <p class="text-muted mb-0">JPG, PNG, GIF ou WebP (máx. 5MB)</p>
+                          <input type="file" id="fileInputPrefeitura" accept="image/*">
+                        </div>
+                        <input type="hidden" name="logotipo_prefeitura" id="urlLogoPrefeitura" 
+                               value="<?= h($config['logotipo_prefeitura']) ?>">
+                        
+                        <div class="image-preview <?= $config['logotipo_prefeitura'] ? 'show' : '' ?>" id="previewPrefeitura">
+                          <img src="<?= h($config['logotipo_prefeitura']) ?>" class="preview-img" alt="Preview">
+                          <div class="preview-actions">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeImage('prefeitura')">
+                              <i class="ti-trash mr-1"></i> Remover
+                            </button>
+                          </div>
+                        </div>
+                      </div>
 
-              <div class="custom-control custom-switch mb-3">
-                <input type="checkbox" class="custom-control-input" id="incluir_conclusao" 
-                       name="incluir_conclusao" <?= $config['incluir_conclusao'] ? 'checked' : '' ?>>
-                <label class="custom-control-label" for="incluir_conclusao">
-                  Incluir seção de conclusão no relatório
-                </label>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Texto da Conclusão</label>
-                <textarea name="texto_conclusao" class="form-control" rows="4"><?= h($config['texto_conclusao']) ?></textarea>
-                
-                <div class="preview-box">
-                  <h6>Variáveis disponíveis:</h6>
-                  <span class="variable-tag">{titulo_feira}</span>
-                  <span class="variable-tag">{subtitulo_feira}</span>
-                  <span class="variable-tag">{municipio}</span>
-                  <span class="variable-tag">{estado}</span>
-                  <span class="variable-tag">{total_periodo}</span>
-                  <p class="mt-2 mb-0 small">Essas variáveis serão substituídas automaticamente no relatório final.</p>
+                      <!-- Logotipo Feira -->
+                      <div class="col-md-6 mb-4">
+                        <label class="form-label">Logotipo da Feira</label>
+                        <div class="upload-area" id="uploadAreaFeira">
+                          <i class="ti-upload"></i>
+                          <h6>Arraste ou clique para fazer upload</h6>
+                          <p class="text-muted mb-0">JPG, PNG, GIF ou WebP (máx. 5MB)</p>
+                          <input type="file" id="fileInputFeira" accept="image/*">
+                        </div>
+                        <input type="hidden" name="logotipo_feira" id="urlLogoFeira" 
+                               value="<?= h($config['logotipo_feira']) ?>">
+                        
+                        <div class="image-preview <?= $config['logotipo_feira'] ? 'show' : '' ?>" id="previewFeira">
+                          <img src="<?= h($config['logotipo_feira']) ?>" class="preview-img" alt="Preview">
+                          <div class="preview-actions">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeImage('feira')">
+                              <i class="ti-trash mr-1"></i> Remover
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- ======================
-               ASSINATURA
+               STEP 3: TEXTOS
             ====================== -->
-            <div class="config-section">
-              <h5><i class="ti-pencil-alt mr-2"></i>Assinatura</h5>
+            <div class="step-content" data-step="3">
+              <div class="card">
+                <div class="card-body">
+                  
+                  <!-- Introdução -->
+                  <div class="config-section">
+                    <h5><i class="ti-file mr-2"></i>Introdução do Relatório</h5>
 
-              <div class="row">
-                <div class="col-md-6 mb-3">
-                  <label class="form-label">Nome do Responsável</label>
-                  <input type="text" name="assinatura_nome" class="form-control" 
-                         value="<?= h($config['assinatura_nome']) ?>" 
-                         placeholder="Ex: João Silva">
-                  <small class="form-text">Opcional: nome para rodapé do relatório</small>
-                </div>
+                    <div class="custom-control custom-switch mb-3">
+                      <input type="checkbox" class="custom-control-input" id="incluir_introducao" 
+                             name="incluir_introducao" <?= $config['incluir_introducao'] ? 'checked' : '' ?>>
+                      <label class="custom-control-label" for="incluir_introducao">
+                        Incluir seção de introdução no relatório
+                      </label>
+                    </div>
 
-                <div class="col-md-6 mb-3">
-                  <label class="form-label">Cargo</label>
-                  <input type="text" name="assinatura_cargo" class="form-control" 
-                         value="<?= h($config['assinatura_cargo']) ?>" 
-                         placeholder="Ex: Secretário de Agricultura">
-                  <small class="form-text">Opcional: cargo do responsável</small>
+                    <div class="mb-3">
+                      <label class="form-label">Texto da Introdução</label>
+                      <textarea name="texto_introducao" class="form-control" rows="4"><?= h($config['texto_introducao']) ?></textarea>
+                      
+                      <div class="preview-box">
+                        <h6>Variáveis disponíveis:</h6>
+                        <span class="variable-tag">{titulo_feira}</span>
+                        <span class="variable-tag">{subtitulo_feira}</span>
+                        <span class="variable-tag">{municipio}</span>
+                        <span class="variable-tag">{estado}</span>
+                        <span class="variable-tag">{periodo}</span>
+                        <p class="mt-2 mb-0 small">Essas variáveis serão substituídas automaticamente no relatório final.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Conclusão -->
+                  <div class="config-section">
+                    <h5><i class="ti-check-box mr-2"></i>Conclusão do Relatório</h5>
+
+                    <div class="custom-control custom-switch mb-3">
+                      <input type="checkbox" class="custom-control-input" id="incluir_conclusao" 
+                             name="incluir_conclusao" <?= $config['incluir_conclusao'] ? 'checked' : '' ?>>
+                      <label class="custom-control-label" for="incluir_conclusao">
+                        Incluir seção de conclusão no relatório
+                      </label>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label">Texto da Conclusão</label>
+                      <textarea name="texto_conclusao" class="form-control" rows="4"><?= h($config['texto_conclusao']) ?></textarea>
+                      
+                      <div class="preview-box">
+                        <h6>Variáveis disponíveis:</h6>
+                        <span class="variable-tag">{titulo_feira}</span>
+                        <span class="variable-tag">{subtitulo_feira}</span>
+                        <span class="variable-tag">{municipio}</span>
+                        <span class="variable-tag">{estado}</span>
+                        <span class="variable-tag">{total_periodo}</span>
+                        <p class="mt-2 mb-0 small">Essas variáveis serão substituídas automaticamente no relatório final.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Assinatura -->
+                  <div class="config-section">
+                    <h5><i class="ti-pencil-alt mr-2"></i>Assinatura</h5>
+
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Nome do Responsável</label>
+                        <input type="text" name="assinatura_nome" class="form-control" 
+                               value="<?= h($config['assinatura_nome']) ?>" 
+                               placeholder="Ex: João Silva">
+                        <small class="form-text">Opcional: nome para rodapé do relatório</small>
+                      </div>
+
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Cargo</label>
+                        <input type="text" name="assinatura_cargo" class="form-control" 
+                               value="<?= h($config['assinatura_cargo']) ?>" 
+                               placeholder="Ex: Secretário de Agricultura">
+                        <small class="form-text">Opcional: cargo do responsável</small>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
 
             <!-- ======================
-               BOTÕES
+               STEP 4: CONTEÚDO
             ====================== -->
-            <div class="row">
+            <div class="step-content" data-step="4">
+              <div class="card">
+                <div class="card-body">
+                  
+                  <div class="config-section">
+                    <h5><i class="ti-shopping-cart mr-2"></i>Produtos Comercializados</h5>
+
+                    <div class="custom-control custom-switch mb-3">
+                      <input type="checkbox" class="custom-control-input" id="incluir_produtos_comercializados" 
+                             name="incluir_produtos_comercializados" <?= $config['incluir_produtos_comercializados'] ? 'checked' : '' ?>>
+                      <label class="custom-control-label" for="incluir_produtos_comercializados">
+                        Listar produtos comercializados no período
+                      </label>
+                    </div>
+
+                    <div class="custom-control custom-switch mb-3">
+                      <input type="checkbox" class="custom-control-input" id="produtos_detalhados" 
+                             name="produtos_detalhados" <?= $config['produtos_detalhados'] ? 'checked' : '' ?>>
+                      <label class="custom-control-label" for="produtos_detalhados">
+                        Mostrar produtos organizados por categoria (frutas, legumes, etc.)
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="config-section">
+                    <h5><i class="ti-layout mr-2"></i>Visualização e Gráficos</h5>
+
+                    <div class="row">
+                      <div class="col-md-6">
+                        <div class="custom-control custom-switch mb-3">
+                          <input type="checkbox" class="custom-control-input" id="mostrar_graficos" 
+                                 name="mostrar_graficos" <?= $config['mostrar_graficos'] ? 'checked' : '' ?>>
+                          <label class="custom-control-label" for="mostrar_graficos">
+                            Incluir gráficos e visualizações
+                          </label>
+                        </div>
+
+                        <div class="custom-control custom-switch mb-3">
+                          <input type="checkbox" class="custom-control-input" id="mostrar_por_categoria" 
+                                 name="mostrar_por_categoria" <?= $config['mostrar_por_categoria'] ? 'checked' : '' ?>>
+                          <label class="custom-control-label" for="mostrar_por_categoria">
+                            Exibir resumo por categoria de produto
+                          </label>
+                        </div>
+                      </div>
+
+                      <div class="col-md-6">
+                        <div class="custom-control custom-switch mb-3">
+                          <input type="checkbox" class="custom-control-input" id="mostrar_por_feirante" 
+                                 name="mostrar_por_feirante" <?= $config['mostrar_por_feirante'] ? 'checked' : '' ?>>
+                          <label class="custom-control-label" for="mostrar_por_feirante">
+                            Exibir vendas por feirante
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- ======================
+               STEP 5: REVISÃO
+            ====================== -->
+            <div class="step-content" data-step="5">
+              <div class="card">
+                <div class="card-body">
+                  <div class="config-section">
+                    <h5><i class="ti-check mr-2"></i>Revisão Final</h5>
+                    
+                    <div class="alert alert-info">
+                      <i class="ti-info-alt mr-2"></i>
+                      Revise todas as informações antes de salvar. Você pode voltar às etapas anteriores para fazer alterações.
+                    </div>
+
+                    <div class="table-responsive">
+                      <table class="table table-borderless">
+                        <tr>
+                          <td width="200"><strong>Nome da Feira:</strong></td>
+                          <td id="review-titulo-feira"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Subtítulo:</strong></td>
+                          <td id="review-subtitulo"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Localização:</strong></td>
+                          <td id="review-localizacao"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Secretaria:</strong></td>
+                          <td id="review-secretaria"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Logo Prefeitura:</strong></td>
+                          <td id="review-logo-prefeitura"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Logo Feira:</strong></td>
+                          <td id="review-logo-feira"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Introdução:</strong></td>
+                          <td id="review-introducao"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Conclusão:</strong></td>
+                          <td id="review-conclusao"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Assinatura:</strong></td>
+                          <td id="review-assinatura"></td>
+                        </tr>
+                      </table>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ======================
+               NAVEGAÇÃO
+            ====================== -->
+            <div class="row mt-4">
               <div class="col-12">
-                <button type="submit" name="salvar_config" class="btn btn-primary btn-lg px-5">
-                  <i class="ti-save mr-2"></i> Salvar Configurações
-                </button>
-                <a href="relatorioMensal.php" class="btn btn-outline-secondary btn-lg px-4 ml-2">
-                  <i class="ti-eye mr-2"></i> Visualizar Relatório
-                </a>
+                <div class="d-flex justify-content-between">
+                  <button type="button" class="btn btn-outline-secondary btn-navigation" id="btnPrev" style="visibility: hidden;">
+                    <i class="ti-arrow-left mr-1"></i> Anterior
+                  </button>
+                  
+                  <div>
+                    <button type="button" class="btn btn-primary btn-navigation" id="btnNext">
+                      Próximo <i class="ti-arrow-right ml-1"></i>
+                    </button>
+                    <button type="submit" name="salvar_config" class="btn btn-success btn-navigation px-4" id="btnSave" style="display: none;">
+                      <i class="ti-check mr-1"></i> Salvar Tudo
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -884,6 +1249,208 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
   <script src="../../../js/settings.js"></script>
   <script src="../../../js/todolist.js"></script>
 
+  <script>
+    // Multi-step form
+    let currentStep = 1;
+    const totalSteps = 5;
+
+    function updateProgress() {
+      const percentage = ((currentStep - 1) / (totalSteps - 1)) * 100;
+      document.getElementById('progressFill').style.width = percentage + '%';
+
+      // Update step items
+      document.querySelectorAll('.step-item').forEach((item, index) => {
+        const step = index + 1;
+        if (step < currentStep) {
+          item.classList.add('completed');
+          item.classList.remove('active');
+        } else if (step === currentStep) {
+          item.classList.add('active');
+          item.classList.remove('completed');
+        } else {
+          item.classList.remove('active', 'completed');
+        }
+      });
+
+      // Update buttons
+      document.getElementById('btnPrev').style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+      
+      if (currentStep === totalSteps) {
+        document.getElementById('btnNext').style.display = 'none';
+        document.getElementById('btnSave').style.display = 'inline-block';
+        updateReview();
+      } else {
+        document.getElementById('btnNext').style.display = 'inline-block';
+        document.getElementById('btnSave').style.display = 'none';
+      }
+    }
+
+    function showStep(step) {
+      document.querySelectorAll('.step-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      
+      const targetStep = document.querySelector(`.step-content[data-step="${step}"]`);
+      if (targetStep) {
+        targetStep.classList.add('active');
+      }
+      
+      currentStep = step;
+      updateProgress();
+      window.scrollTo(0, 0);
+    }
+
+    document.getElementById('btnNext').addEventListener('click', () => {
+      if (currentStep < totalSteps) {
+        showStep(currentStep + 1);
+      }
+    });
+
+    document.getElementById('btnPrev').addEventListener('click', () => {
+      if (currentStep > 1) {
+        showStep(currentStep - 1);
+      }
+    });
+
+    // Click on step circles
+    document.querySelectorAll('.step-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const step = parseInt(item.dataset.step);
+        showStep(step);
+      });
+    });
+
+    // Upload handling
+    function setupUpload(tipo) {
+      const uploadArea = document.getElementById(`uploadArea${tipo}`);
+      const fileInput = document.getElementById(`fileInput${tipo}`);
+      const preview = document.getElementById(`preview${tipo}`);
+      const urlInput = document.getElementById(`urlLogo${tipo}`);
+
+      // Click to upload
+      uploadArea.addEventListener('click', () => fileInput.click());
+
+      // Drag & drop
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+      });
+
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+      });
+
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleFileUpload(files[0], tipo);
+        }
+      });
+
+      // File input change
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          handleFileUpload(e.target.files[0], tipo);
+        }
+      });
+    }
+
+    function handleFileUpload(file, tipo) {
+      const formData = new FormData();
+      formData.append('upload_logo', file);
+      formData.append('tipo_logo', tipo.toLowerCase());
+
+      const uploadArea = document.getElementById(`uploadArea${tipo}`);
+      uploadArea.innerHTML = '<div class="loading-spinner"></div><p class="mt-3">Enviando...</p>';
+
+      fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById(`urlLogo${tipo}`).value = data.url;
+          const preview = document.getElementById(`preview${tipo}`);
+          preview.querySelector('img').src = data.url;
+          preview.classList.add('show');
+          
+          uploadArea.innerHTML = `
+            <i class="ti-check" style="color: #22c55e;"></i>
+            <h6 style="color: #22c55e;">Upload concluído!</h6>
+            <p class="text-muted mb-0">${data.filename}</p>
+          `;
+        } else {
+          alert('Erro: ' + data.error);
+          resetUploadArea(tipo);
+        }
+      })
+      .catch(error => {
+        alert('Erro ao fazer upload');
+        resetUploadArea(tipo);
+      });
+    }
+
+    function resetUploadArea(tipo) {
+      const uploadArea = document.getElementById(`uploadArea${tipo}`);
+      uploadArea.innerHTML = `
+        <i class="ti-upload"></i>
+        <h6>Arraste ou clique para fazer upload</h6>
+        <p class="text-muted mb-0">JPG, PNG, GIF ou WebP (máx. 5MB)</p>
+      `;
+    }
+
+    function removeImage(tipo) {
+      const tipoCapitalized = tipo.charAt(0).toUpperCase() + tipo.slice(1);
+      document.getElementById(`urlLogo${tipoCapitalized}`).value = '';
+      document.getElementById(`preview${tipoCapitalized}`).classList.remove('show');
+      resetUploadArea(tipoCapitalized);
+    }
+
+    // Setup uploads
+    setupUpload('Prefeitura');
+    setupUpload('Feira');
+
+    // Update review
+    function updateReview() {
+      const tituloFeira = document.querySelector('[name="titulo_feira"]').value;
+      const subtitulo = document.querySelector('[name="subtitulo_feira"]').value;
+      const municipio = document.querySelector('[name="municipio"]').value;
+      const estado = document.querySelector('[name="estado"]').value;
+      const secretaria = document.querySelector('[name="secretaria"]').value;
+      const logoPrefeitura = document.querySelector('[name="logotipo_prefeitura"]').value;
+      const logoFeira = document.querySelector('[name="logotipo_feira"]').value;
+      const incluirIntro = document.querySelector('[name="incluir_introducao"]').checked;
+      const incluirConclusao = document.querySelector('[name="incluir_conclusao"]').checked;
+      const assinaturaNome = document.querySelector('[name="assinatura_nome"]').value;
+      const assinaturaCargo = document.querySelector('[name="assinatura_cargo"]').value;
+
+      document.getElementById('review-titulo-feira').textContent = tituloFeira || '(não preenchido)';
+      document.getElementById('review-subtitulo').textContent = subtitulo || '(não preenchido)';
+      document.getElementById('review-localizacao').textContent = `${municipio} - ${estado}`;
+      document.getElementById('review-secretaria').textContent = secretaria || '(não preenchido)';
+      document.getElementById('review-logo-prefeitura').innerHTML = logoPrefeitura 
+        ? '<span class="badge badge-success">✓ Configurado</span>' 
+        : '<span class="badge badge-secondary">Não configurado</span>';
+      document.getElementById('review-logo-feira').innerHTML = logoFeira 
+        ? '<span class="badge badge-success">✓ Configurado</span>' 
+        : '<span class="badge badge-secondary">Não configurado</span>';
+      document.getElementById('review-introducao').innerHTML = incluirIntro 
+        ? '<span class="badge badge-success">✓ Incluir</span>' 
+        : '<span class="badge badge-secondary">Não incluir</span>';
+      document.getElementById('review-conclusao').innerHTML = incluirConclusao 
+        ? '<span class="badge badge-success">✓ Incluir</span>' 
+        : '<span class="badge badge-secondary">Não incluir</span>';
+      document.getElementById('review-assinatura').textContent = assinaturaNome 
+        ? `${assinaturaNome} - ${assinaturaCargo}` 
+        : '(não configurado)';
+    }
+
+    // Initialize
+    updateProgress();
+  </script>
 </body>
 
 </html>
