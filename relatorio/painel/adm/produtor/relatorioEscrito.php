@@ -627,7 +627,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       }
 
       .page {
-        padding: 0mm 30mm 35mm;
+        padding: 5mm 30mm 35mm;
       }
     }
 
