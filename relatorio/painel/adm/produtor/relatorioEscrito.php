@@ -396,6 +396,9 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
   <title>Relatório - <?= h($config['titulo_feira']) ?></title>
 
   <style>
+    /* ======================
+   RESET E BASE
+====================== */
     * {
       margin: 0;
       padding: 0;
@@ -403,224 +406,46 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
     }
 
     body {
-      font-family: Arial, sans-serif;
-      line-height: 1.5;
+      font-family: "Times New Roman", Georgia, serif;
+      line-height: 1.6;
       color: #000;
-      background: #e0e0e0;
+      background: #dcdcdc;
       padding: 20px;
     }
 
+    /* ======================
+   CONTAINER A4
+====================== */
     .preview-container {
       max-width: 210mm;
-      margin: 0 auto;
-      background: white;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-      position: relative;
       min-height: 297mm;
+      margin: 0 auto;
+      background: #fff;
+      box-shadow: 0 0 22px rgba(0, 0, 0, 0.25);
     }
 
     .page {
-      padding: 50px 60px;
-      background: white;
+      padding: 45mm 30mm 35mm;
       position: relative;
     }
 
+    /* ======================
+   CABEÇALHO
+====================== */
     .header {
       text-align: center;
-      margin-bottom: 25px;
+      margin-bottom: 26px;
     }
-
-    .logos {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 30px;
-      margin-bottom: 15px;
-    }
-
-    .logos img {
-      max-height: 70px;
-      max-width: 180px;
-    }
-
-    .header h1 {
-      font-size: 12px;
-      color: #000;
-      margin: 3px 0;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .header .secretaria {
-      font-size: 11px;
-      color: #000;
-      margin: 2px 0;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .header h2 {
-      font-size: 13px;
-      color: #000;
-      margin: 8px 0 3px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .header h3 {
-      font-size: 12px;
-      color: #000;
-      font-weight: 400;
-      font-style: italic;
-      margin-bottom: 15px;
-    }
-
-    .header-divider {
-      width: 100%;
-      height: 1px;
-      background: #000;
-      margin: 15px 0 20px;
-    }
-
-    .section {
-      margin-bottom: 18px;
-    }
-
-    .section-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: #000;
-      margin-bottom: 8px;
-    }
-
-    .intro,
-    .conclusao {
-      text-align: justify;
-      line-height: 1.4;
-      font-size: 11px;
-      margin-bottom: 12px;
-    }
-
-    table {
-      width: 60%;
-      margin: 15px auto;
-      border-collapse: collapse;
-      font-size: 11px;
-    }
-
-    table thead {
-      background: #4472C4;
-      color: white;
-    }
-
-    table th {
-      padding: 6px 10px;
-      text-align: left;
-      font-weight: 700;
-      border: 1px solid #2F5597;
-    }
-
-    table td {
-      padding: 6px 10px;
-      border: 1px solid #8EAADB;
-      background: #DEEBF7;
-    }
-
-    .text-right {
-      text-align: right;
-    }
-
-    .total-extenso {
-      text-align: center;
-      font-size: 11px;
-      color: #4472C4;
-      font-style: italic;
-      margin-top: 10px;
-    }
-
-    .produtos-texto {
-      font-size: 11px;
-      line-height: 1.4;
-      text-align: justify;
-      margin-bottom: 10px;
-    }
-
-    .produtos-lista {
-      font-size: 11px;
-      line-height: 1.6;
-      margin-left: 15px;
-    }
-
-    .produtos-lista p {
-      margin: 4px 0;
-      text-align: justify;
-    }
-
-    .categoria-titulo {
-      font-weight: 700;
-      display: inline;
-    }
-
-    .footer {
-      text-align: left;
-      margin-top: 30px;
-      font-size: 11px;
-      color: #000;
-    }
-
-    .print-actions {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 10000;
-    }
-
-    .btn {
-      display: inline-block;
-      padding: 10px 20px;
-      background: #4472C4;
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      border: none;
-      cursor: pointer;
-      margin: 0 5px;
-    }
-
-    .btn:hover {
-      background: #2F5597;
-    }
-
-    .btn-secondary {
-      background: #6c757d;
-    }
-
-    .btn-secondary:hover {
-      background: #5a6268;
-    }
-
 
     .logos {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 14px;
     }
 
     .logo-left {
       text-align: left;
-    }
-
-    .logo-center {
-      text-align: center;
     }
 
     .logo-right {
@@ -628,19 +453,173 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
     }
 
     .logos img {
-      max-height: 90px;
-      max-width: 190px;
+      max-height: 80px;
+      max-width: 180px;
     }
 
+    /* Textos do cabeçalho */
+    .header h1 {
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin: 4px 0;
+    }
+
+    .header .secretaria {
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+    }
+
+    .header h2 {
+      font-size: 14px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+
+    .header h3 {
+      font-size: 12px;
+      font-style: italic;
+      font-weight: normal;
+      margin-top: 4px;
+    }
+
+    /* Linha institucional */
+    .header-divider {
+      margin-top: 14px;
+      border-top: 1px solid #000;
+    }
+
+    /* ======================
+   SEÇÕES
+====================== */
+    .section {
+      margin-bottom: 22px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    /* Textos longos */
+    .intro,
+    .conclusao,
+    .produtos-texto,
+    .produtos-lista p {
+      font-size: 11px;
+      text-align: justify;
+      line-height: 1.55;
+    }
+
+    /* ======================
+   TABELA FINANCEIRA
+====================== */
+    table {
+      width: 65%;
+      margin: 14px auto 10px;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    table th {
+      background: #f2f2f2;
+      border: 1px solid #000;
+      padding: 6px 8px;
+      font-weight: bold;
+    }
+
+    table td {
+      border: 1px solid #000;
+      padding: 6px 8px;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    /* Total */
+    .total-extenso {
+      text-align: right;
+      font-size: 11px;
+      font-style: italic;
+      margin-top: 6px;
+    }
+
+    /* ======================
+   LISTA DE PRODUTOS
+====================== */
+    .produtos-lista {
+      margin-left: 14px;
+    }
+
+    .categoria-titulo {
+      font-weight: bold;
+    }
+
+    /* ======================
+   RODAPÉ
+====================== */
+    .footer {
+      margin-top: 30px;
+      font-size: 11px;
+      text-align: left;
+    }
+
+    /* ======================
+   BOTÕES (SÓ NA TELA)
+====================== */
+    .print-actions {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #fff;
+      padding: 14px;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      z-index: 10000;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      background: #2f5597;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #1f3f73;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+    }
+
+    .btn-secondary:hover {
+      background: #545b62;
+    }
+
+    /* ======================
+   IMPRESSÃO
+====================== */
     @media print {
       body {
-        background: white;
+        background: #fff;
         padding: 0;
       }
 
       .preview-container {
         box-shadow: none;
-        max-width: 100%;
       }
 
       .print-actions {
@@ -648,7 +627,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       }
 
       .page {
-        padding: 50px 60px;
+        padding: 45mm 30mm 35mm;
       }
     }
 
