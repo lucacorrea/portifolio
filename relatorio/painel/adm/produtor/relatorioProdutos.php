@@ -810,7 +810,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                       </div>
                       <div class="col-6">
                         <a href="./relatorioProdutos.php" class="btn btn-outline-secondary w-100">
-                          <i class="ti-reload mr-1"></i> Limpar
+                          <i class="ti-reload mr-1"></i>Limpar
                         </a>
                       </div>
                     </div>
