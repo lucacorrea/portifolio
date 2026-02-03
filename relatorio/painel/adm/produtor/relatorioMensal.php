@@ -96,29 +96,55 @@ if ($colDataVenda) {
 /* ======================
    PROCESSAMENTO
 ====================== */
+$tipoFiltro = $_GET['tipo'] ?? 'periodo';
 $dataInicio = $_GET['data_inicio'] ?? '';
 $dataFim = $_GET['data_fim'] ?? '';
-$gerarRelatorio = isset($_GET['gerar']) && $dataInicio && $dataFim;
+$dataSel = $_GET['data'] ?? date('Y-m-d');
 
+$gerarRelatorio = false;
 $labelPeriodo = '';
 
-// Validar datas
-if ($gerarRelatorio) {
+// Validar e processar conforme o tipo de filtro
+if ($tipoFiltro === 'mes') {
+  if (!preg_match('/^\d{4}-\d{2}$/', $dataSel)) {
+    $dataSel = date('Y-m');
+  }
+  $dataInicio = $dataSel . '-01';
+  $dataFim = date('Y-m-t', strtotime($dataInicio));
+  $labelPeriodo = date('m/Y', strtotime($dataInicio));
+  $gerarRelatorio = true;
+  
+} elseif ($tipoFiltro === 'dia') {
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataSel)) {
+    $dataSel = date('Y-m-d');
+  }
+  $dataInicio = $dataSel;
+  $dataFim = $dataSel;
+  $labelPeriodo = date('d/m/Y', strtotime($dataSel));
+  $gerarRelatorio = true;
+  
+} elseif ($tipoFiltro === 'periodo' && $dataInicio && $dataFim) {
+  // Validar datas do período personalizado
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInicio) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataFim)) {
     $err = 'Datas inválidas';
-    $gerarRelatorio = false;
   } elseif (strtotime($dataInicio) > strtotime($dataFim)) {
     $err = 'Data inicial não pode ser maior que data final';
-    $gerarRelatorio = false;
   } else {
     $labelPeriodo = date('d/m/Y', strtotime($dataInicio)) . ' a ' . date('d/m/Y', strtotime($dataFim));
+    $gerarRelatorio = true;
   }
 }
 
 /* ======================
    BUSCAR DADOS
 ====================== */
-$resumo = ['total_vendas' => 0, 'valor_total' => 0];
+$resumo = [
+  'total_vendas' => 0, 
+  'valor_total' => 0,
+  'produtos_distintos' => 0,
+  'quantidade_total' => 0,
+  'valor_produtos' => 0
+];
 
 if ($gerarRelatorio && !$err) {
   try {
@@ -128,7 +154,7 @@ if ($gerarRelatorio && !$err) {
       ':f'   => $feiraId,
     ];
 
-    // Total geral
+    // Total de vendas
     $st = $pdo->prepare("
       SELECT 
         COUNT(*) as total_vendas,
@@ -138,7 +164,32 @@ if ($gerarRelatorio && !$err) {
         AND v.feira_id = :f
     ");
     $st->execute($params);
-    $resumo = $st->fetch();
+    $r = $st->fetch();
+    
+    if ($r) {
+      $resumo['total_vendas'] = (int)$r['total_vendas'];
+      $resumo['valor_total'] = (float)$r['valor_total'];
+    }
+
+    // Dados de produtos
+    $st = $pdo->prepare("
+      SELECT 
+        COUNT(DISTINCT vi.produto_id) produtos_distintos,
+        SUM(vi.quantidade) quantidade_total,
+        SUM(vi.subtotal) valor_produtos
+      FROM vendas v
+      JOIN venda_itens vi ON vi.venda_id = v.id
+      WHERE {$dateExpr} BETWEEN :ini AND :fim
+        AND v.feira_id = :f
+    ");
+    $st->execute($params);
+    $r = $st->fetch();
+    
+    if ($r) {
+      $resumo['produtos_distintos'] = (int)$r['produtos_distintos'];
+      $resumo['quantidade_total'] = (float)$r['quantidade_total'];
+      $resumo['valor_produtos'] = (float)$r['valor_produtos'];
+    }
 
   } catch (Exception $e) {
     $err = 'Erro ao buscar dados: ' . $e->getMessage();
@@ -604,40 +655,65 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           <div class="card mb-4">
             <div class="card-body py-3">
 
-              <!-- Botão de período -->
+              <!-- Botões de alternância -->
               <div class="row mb-3">
                 <div class="col-12">
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                    <label class="btn btn-outline-primary active">
-                      <input type="radio" name="tipo_filtro" value="periodo" checked>
+                    <label class="btn btn-outline-primary <?= $tipoFiltro === 'mes' ? 'active' : '' ?>">
+                      <input type="radio" name="tipo_filtro" value="mes" <?= $tipoFiltro === 'mes' ? 'checked' : '' ?>>
+                      <i class="ti-calendar mr-1"></i> Filtrar por Mês
+                    </label>
+                    <label class="btn btn-outline-primary <?= $tipoFiltro === 'dia' ? 'active' : '' ?>">
+                      <input type="radio" name="tipo_filtro" value="dia" <?= $tipoFiltro === 'dia' ? 'checked' : '' ?>>
+                      <i class="ti-time mr-1"></i> Filtrar por Dia
+                    </label>
+                    <label class="btn btn-outline-primary <?= $tipoFiltro === 'periodo' ? 'active' : '' ?>">
+                      <input type="radio" name="tipo_filtro" value="periodo" <?= $tipoFiltro === 'periodo' ? 'checked' : '' ?>>
                       <i class="ti-calendar mr-1"></i> Período Personalizado
                     </label>
                   </div>
                 </div>
               </div>
 
-              <form method="GET" action="">
+              <form method="GET" action="" id="formFiltro">
+                <input type="hidden" name="tipo" id="input-tipo" value="<?= h($tipoFiltro) ?>">
+                
                 <div class="row align-items-end">
 
-                  <!-- Data Inicial -->
-                  <div class="col-md-4 mb-2">
-                    <label class="mb-1">Data Inicial *</label>
-                    <input type="date" name="data_inicio" class="form-control" 
-                           value="<?= h($dataInicio) ?>" required>
+                  <!-- Campo de data (muda entre mês, dia e período) -->
+                  <div id="filtro-mes-dia" class="col-md-8 mb-2" style="<?= $tipoFiltro === 'periodo' ? 'display:none;' : '' ?>">
+                    <label class="mb-1" id="label-data">
+                      <?= $tipoFiltro === 'dia' ? 'Data' : 'Mês' ?>
+                    </label>
+                    <input
+                      type="<?= $tipoFiltro === 'dia' ? 'date' : 'month' ?>"
+                      class="form-control"
+                      name="data"
+                      id="input-data"
+                      value="<?= h($tipoFiltro === 'dia' ? $dataSel : substr($dataSel, 0, 7)) ?>">
                   </div>
 
-                  <!-- Data Final -->
-                  <div class="col-md-4 mb-2">
-                    <label class="mb-1">Data Final *</label>
-                    <input type="date" name="data_fim" class="form-control" 
-                           value="<?= h($dataFim) ?>" required>
+                  <!-- Período personalizado -->
+                  <div id="filtro-periodo" class="col-md-8 mb-2" style="<?= $tipoFiltro !== 'periodo' ? 'display:none;' : '' ?>">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <label class="mb-1">Data Inicial *</label>
+                        <input type="date" name="data_inicio" class="form-control" 
+                               value="<?= h($dataInicio) ?>">
+                      </div>
+                      <div class="col-md-6">
+                        <label class="mb-1">Data Final *</label>
+                        <input type="date" name="data_fim" class="form-control" 
+                               value="<?= h($dataFim) ?>">
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Botões -->
                   <div class="col-md-4 mb-2">
                     <div class="row">
                       <div class="col-6">
-                        <button type="submit" name="gerar" value="1" class="btn btn-primary w-100">
+                        <button type="submit" class="btn btn-primary w-100">
                           <i class="ti-search mr-1"></i> Buscar
                         </button>
                       </div>
@@ -665,7 +741,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           <?php else: ?>
             
             <!-- ======================
-               KPIs
+               KPIs PRINCIPAIS
             ====================== -->
             <div class="row mb-4">
               <div class="col-md-6 mb-3">
@@ -683,6 +759,37 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     R$ <?= number_format((float)$resumo['valor_total'], 2, ',', '.') ?>
                   </p>
                   <div class="mini-kpi">Receita bruta do período</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ======================
+               KPIs DE PRODUTOS
+            ====================== -->
+            <div class="row mb-4">
+              <div class="col-md-4 mb-3">
+                <div class="kpi-card text-success">
+                  <p class="kpi-label">Produtos diferentes vendidos</p>
+                  <p class="kpi-value"><?= (int)$resumo['produtos_distintos'] ?></p>
+                  <div class="mini-kpi">Variedade de produtos</div>
+                </div>
+              </div>
+
+              <div class="col-md-4 mb-3">
+                <div class="kpi-card text-primary">
+                  <p class="kpi-label">Quantidade total comercializada</p>
+                  <p class="kpi-value"><?= number_format((float)$resumo['quantidade_total'], 2, ',', '.') ?></p>
+                  <div class="mini-kpi">Soma de todas as unidades</div>
+                </div>
+              </div>
+
+              <div class="col-md-4 mb-3">
+                <div class="kpi-card text-info">
+                  <p class="kpi-label">Valor total dos produtos</p>
+                  <p class="kpi-value">
+                    R$ <?= number_format((float)$resumo['valor_produtos'], 2, ',', '.') ?>
+                  </p>
+                  <div class="mini-kpi">Receita gerada pelos produtos</div>
                 </div>
               </div>
             </div>
@@ -734,6 +841,63 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
   <script src="../../../js/template.js"></script>
   <script src="../../../js/settings.js"></script>
   <script src="../../../js/todolist.js"></script>
+
+  <script>
+    // Lógica para alternar entre filtro de mês, dia e período
+    document.addEventListener('DOMContentLoaded', function() {
+      const radioMes = document.querySelector('input[value="mes"]');
+      const radioDia = document.querySelector('input[value="dia"]');
+      const radioPeriodo = document.querySelector('input[value="periodo"]');
+      const inputData = document.getElementById('input-data');
+      const labelData = document.getElementById('label-data');
+      const inputTipo = document.getElementById('input-tipo');
+      const filtroMesDia = document.getElementById('filtro-mes-dia');
+      const filtroPeriodo = document.getElementById('filtro-periodo');
+
+      function atualizarTipoFiltro() {
+        let tipo = 'periodo';
+        
+        if (radioDia.checked) {
+          tipo = 'dia';
+        } else if (radioMes.checked) {
+          tipo = 'mes';
+        }
+        
+        inputTipo.value = tipo;
+
+        if (tipo === 'periodo') {
+          // Mostrar campos de período
+          filtroMesDia.style.display = 'none';
+          filtroPeriodo.style.display = 'block';
+        } else {
+          // Mostrar campo único de data
+          filtroMesDia.style.display = 'block';
+          filtroPeriodo.style.display = 'none';
+          
+          if (tipo === 'dia') {
+            inputData.type = 'date';
+            labelData.textContent = 'Data';
+            if (inputData.value.length === 7) {
+              inputData.value = inputData.value + '-01';
+            }
+          } else {
+            inputData.type = 'month';
+            labelData.textContent = 'Mês';
+            if (inputData.value.length === 10) {
+              inputData.value = inputData.value.substring(0, 7);
+            }
+          }
+        }
+      }
+
+      radioMes.addEventListener('change', atualizarTipoFiltro);
+      radioDia.addEventListener('change', atualizarTipoFiltro);
+      radioPeriodo.addEventListener('change', atualizarTipoFiltro);
+
+      // Inicializar o estado correto
+      atualizarTipoFiltro();
+    });
+  </script>
 
 </body>
 
