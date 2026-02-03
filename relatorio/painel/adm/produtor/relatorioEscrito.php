@@ -612,7 +612,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       align-items: center;
-      margin-bottom: 10px;
+     
     }
 
     .logo-left {
