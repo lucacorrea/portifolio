@@ -410,7 +410,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       line-height: 1.6;
       color: #000;
       background: #dcdcdc;
-      padding: 20px;
+    
     }
 
     /* ======================
