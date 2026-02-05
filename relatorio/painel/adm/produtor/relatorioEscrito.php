@@ -345,82 +345,43 @@ foreach ($dadosMensais as &$dado) {
 // Total
 $totalPeriodo = array_sum(array_column($dadosMensais, 'total'));
 
-// Produtos comercializados
+// Produtos comercializados organizados por categoria
 $st = $pdo->prepare("
-  SELECT DISTINCT pr.nome
+  SELECT 
+    COALESCE(c.nome, 'Diversos') AS categoria,
+    GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR ', ') AS produtos
   FROM venda_itens vi
   JOIN produtos pr ON pr.id = vi.produto_id
+  LEFT JOIN categorias c ON c.id = pr.categoria_id AND c.feira_id = pr.feira_id
   JOIN vendas v ON v.id = vi.venda_id
   WHERE {$dateExpr} BETWEEN :ini AND :fim
     AND v.feira_id = :f
-  ORDER BY pr.nome
+  GROUP BY COALESCE(c.id, 999), COALESCE(c.nome, 'Diversos')
+  ORDER BY 
+    CASE COALESCE(c.nome, 'Diversos')
+      WHEN 'Frutas' THEN 1
+      WHEN 'Produtos derivados da mandioca' THEN 2
+      WHEN 'Legumes e hortaliças' THEN 3
+      WHEN 'Grãos e outros' THEN 4
+      ELSE 5
+    END
 ");
 $st->execute($params);
-$produtos = $st->fetchAll(PDO::FETCH_COLUMN);
+$produtosPorCategoria = $st->fetchAll(PDO::FETCH_ASSOC);
 
-// Organizar produtos
-$produtosAgrupados = [
-  'Frutas' => [],
-  'Produtos derivados da mandioca' => [],
-  'Legumes e hortaliças' => [],
-  'Grãos e outros' => [],
-  'Diversos' => [],
-];
-
-$categoriasFrutas = ['abacaxi', 'laranja', 'tangerina', 'limão', 'mamão', 'maracujá', 'cupuaçu', 'abiu', 'abacate', 'banana', 'melancia', 'melão', 'goiaba', 'açaí', 'caju', 'cubiu', 'tucumã', 'buriti', 'pupunha', 'graviola'];
-$categoriasMandioca = ['macaxeira', 'farinha', 'goma', 'tapioca', 'beiju', 'tucupi'];
-$categoriasLegumes = ['jerimum', 'pimenta', 'pepino', 'alface', 'cebola', 'tomate', 'couve', 'repolho', 'cheiro-verde', 'chicória', 'maxixe', 'jambu', 'cará', 'cebolinha'];
-$categoriasGraos = ['milho'];
-
-foreach ($produtos as $prod) {
-  $prodLower = strtolower($prod);
-  $encontrou = false;
-
-  foreach ($categoriasFrutas as $fruta) {
-    if (strpos($prodLower, $fruta) !== false) {
-      $produtosAgrupados['Frutas'][] = $prod;
-      $encontrou = true;
-      break;
-    }
-  }
-
-  if (!$encontrou) {
-    foreach ($categoriasMandioca as $man) {
-      if (strpos($prodLower, $man) !== false) {
-        $produtosAgrupados['Produtos derivados da mandioca'][] = $prod;
-        $encontrou = true;
-        break;
-      }
-    }
-  }
-
-  if (!$encontrou) {
-    foreach ($categoriasLegumes as $leg) {
-      if (strpos($prodLower, $leg) !== false) {
-        $produtosAgrupados['Legumes e hortaliças'][] = $prod;
-        $encontrou = true;
-        break;
-      }
-    }
-  }
-
-  if (!$encontrou) {
-    foreach ($categoriasGraos as $grao) {
-      if (strpos($prodLower, $grao) !== false) {
-        $produtosAgrupados['Grãos e outros'][] = $prod;
-        $encontrou = true;
-        break;
-      }
-    }
-  }
-
-  if (!$encontrou) {
-    $produtosAgrupados['Diversos'][] = $prod;
+// Organizar em array associativo
+$produtosAgrupados = [];
+foreach ($produtosPorCategoria as $row) {
+  if (!empty($row['produtos'])) {
+    $produtosAgrupados[$row['categoria']] = explode(', ', $row['produtos']);
   }
 }
 
-// Remover categorias vazias
-$produtosAgrupados = array_filter($produtosAgrupados);
+// Pegar todos os produtos (para contagem)
+$produtos = [];
+foreach ($produtosAgrupados as $prods) {
+  $produtos = array_merge($produtos, $prods);
+}
 
 // Variáveis para substituição
 $vars = [
