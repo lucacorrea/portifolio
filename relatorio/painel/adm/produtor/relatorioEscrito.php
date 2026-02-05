@@ -302,10 +302,10 @@ if ($inicio->format('Y-m') == $fim->format('Y-m')) {
   if (count($mesesPeriodo) > 1) {
     $ultimo = array_pop($mesesPeriodo);
     $periodoTexto = implode(', ', $mesesPeriodo) . ' e ' . $ultimo;
-
+    
     $ultimoCapitalizado = array_pop($mesesPeriodoCapitalizados);
     $periodoTextoCapitalizado = implode(' a ', array_slice($mesesPeriodoCapitalizados, 0, 1)) . ' a ' . $ultimoCapitalizado . ' de ' . $inicio->format('Y');
-
+    
     // Ajuste para quando houver mais de 2 meses
     if (count($mesesPeriodoCapitalizados) > 1) {
       $periodoTextoCapitalizado = $mesesPeriodoCapitalizados[0] . ' a ' . $ultimoCapitalizado . ' de ' . $inicio->format('Y');
@@ -314,7 +314,7 @@ if ($inicio->format('Y-m') == $fim->format('Y-m')) {
     $periodoTexto = $mesesPeriodo[0];
     $periodoTextoCapitalizado = $mesesPeriodoCapitalizados[0];
   }
-
+  
   if (count($mesesPeriodo) <= 1) {
     $periodoTexto .= ' de ' . $inicio->format('Y');
     $periodoTextoCapitalizado .= ' de ' . $inicio->format('Y');
