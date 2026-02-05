@@ -397,7 +397,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
 
   <style>
     /* ======================
-   RESET
+   RESET E BASE
 ====================== */
     * {
       margin: 0;
@@ -405,18 +405,16 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       box-sizing: border-box;
     }
 
-    /* ======================
-   BODY
-====================== */
     body {
       font-family: "Times New Roman", Georgia, serif;
       line-height: 1.6;
       color: #000;
       background: #dcdcdc;
+    
     }
 
     /* ======================
-   ÁREA DE PRÉ-VISUALIZAÇÃO
+   CONTAINER A4
 ====================== */
     .preview-container {
       max-width: 210mm;
@@ -459,6 +457,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       max-width: 180px;
     }
 
+    /* Textos do cabeçalho */
     .header h1 {
       font-size: 12px;
       font-weight: bold;
@@ -492,7 +491,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
     /* Linha institucional */
     .header-divider {
       margin-top: 14px;
-      border-top: 2px solid #2f5597;
+      border-top: 1px solid #000;
     }
 
     /* ======================
@@ -507,10 +506,9 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       font-weight: bold;
       text-transform: uppercase;
       margin-bottom: 6px;
-      color: #2f5597;
     }
 
-    /* Textos */
+    /* Textos longos */
     .intro,
     .conclusao,
     .produtos-texto,
@@ -521,74 +519,41 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
     }
 
     /* ======================
-   TABELA (MELHORADA)
+   TABELA FINANCEIRA
 ====================== */
     table {
       width: 65%;
-      margin: 18px auto 14px;
+      margin: 14px auto 10px;
       border-collapse: collapse;
       font-size: 11px;
-      background: #ffffff;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
     }
 
-    /* Cabeçalho */
-    table thead th {
-      background: #2f5597;
-      color: #ffffff;
-      border: 1px solid #1f3f73;
-      padding: 8px 10px;
+    table th {
+      background: #f2f2f2;
+      border: 1px solid #000;
+      padding: 6px 8px;
       font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
     }
 
-    /* Corpo */
-    table tbody td {
-      border: 1px solid #c3c9d4;
-      padding: 7px 10px;
-      vertical-align: middle;
+    table td {
+      border: 1px solid #000;
+      padding: 6px 8px;
     }
 
-    /* Linhas zebrada */
-    table tbody tr:nth-child(even) {
-      background: #f4f6fa;
-    }
-
-    table tbody tr:nth-child(odd) {
-      background: #ffffff;
-    }
-
-    /* Hover (somente na tela) */
-    @media screen {
-      table tbody tr:hover {
-        background: #e9effb;
-      }
-    }
-
-    /* Alinhamento */
     .text-right {
       text-align: right;
     }
 
-    /* Linha de total */
-    tr.total-row td {
-      background: #e1e7f5;
-      font-weight: bold;
-      border-top: 2px solid #2f5597;
-    }
-
-    /* Total por extenso */
+    /* Total */
     .total-extenso {
       text-align: right;
       font-size: 11px;
       font-style: italic;
       margin-top: 6px;
-      color: #333;
     }
 
     /* ======================
-   LISTAS
+   LISTA DE PRODUTOS
 ====================== */
     .produtos-lista {
       margin-left: 14px;
@@ -608,7 +573,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
     }
 
     /* ======================
-   BOTÕES DE AÇÃO
+   BOTÕES (SÓ NA TELA)
 ====================== */
     .print-actions {
       position: fixed;
@@ -645,7 +610,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
     }
 
     /* ======================
-   PRINT
+   IMPRESSÃO
 ====================== */
     @media print {
       body {
@@ -664,10 +629,6 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       .page {
         padding: 5mm 30mm 35mm;
       }
-
-      table {
-        box-shadow: none;
-      }
     }
 
     @page {
@@ -675,7 +636,6 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       margin: 0;
     }
   </style>
-
 </head>
 
 <body>
