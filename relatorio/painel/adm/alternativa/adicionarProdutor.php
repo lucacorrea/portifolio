@@ -433,9 +433,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </a>
           </li>
           <li class="nav-item">
-            <a href="../alternativa/" class="nav-link">
+            <a href="../produtor/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira Alternativa</span>
+              <span class="menu-title">Feira do Produtor</span>
 
             </a>
           </li>
