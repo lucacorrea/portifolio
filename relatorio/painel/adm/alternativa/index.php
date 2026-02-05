@@ -43,7 +43,7 @@ try {
 }
 
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
-$feiraId = 1;
+$feiraId = 2;
 
 /* ===== Lista de meses SOMENTE com cadastro (vendas) ===== */
 $mesOptions = [];

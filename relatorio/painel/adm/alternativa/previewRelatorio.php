@@ -31,7 +31,7 @@ $pdo = db();
 /* ======================
    FEIRA FIXA
 ====================== */
-$feiraId = 1;
+$feiraId = 2;
 
 /* ======================
    CARREGAR CONFIGURAÇÕES

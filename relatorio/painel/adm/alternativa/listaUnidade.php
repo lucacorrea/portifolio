@@ -37,7 +37,7 @@ require '../../../assets/php/conexao.php';
 $pdo = db();
 
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
-$feiraId = 1;
+$feiraId = 2;
 
 /* ===== Ações (Ativar/Desativar e Excluir) ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

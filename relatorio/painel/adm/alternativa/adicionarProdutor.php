@@ -39,7 +39,7 @@ function only_digits(string $s): string
 }
 
 /* Feira padrão desta página */
-$FEIRA_ID = 1; // 1=Feira do Produtor | 2=Feira Alternativa
+$FEIRA_ID = 2; // 1=Feira do Produtor | 2=Feira Alternativa
 
 /* Detecção opcional pela pasta (se você separou em pastas) */
 $dirLower = strtolower((string)__DIR__);
