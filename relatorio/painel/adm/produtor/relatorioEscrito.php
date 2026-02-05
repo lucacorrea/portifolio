@@ -60,7 +60,7 @@ function hasColumn(PDO $pdo, string $table, string $column): bool
 /* ======================
    FEIRA ID
 ====================== */
-$feiraId = 1; // Feira do Produtor
+$feiraId = 1;
 
 /* ======================
    CARREGAR CONFIGURAÇÕES
@@ -215,11 +215,6 @@ if (!$dataInicio || !$dataFim) {
 }
 
 /* ======================
-   FEIRA
-====================== */
-$feiraId = 1;
-
-/* ======================
    CAMPOS
 ====================== */
 $colDataVenda = hasColumn($pdo, 'vendas', 'data_venda');
@@ -251,35 +246,13 @@ $interval = new DateInterval('P1M');
 $period = new DatePeriod($inicio, $interval, $fim->modify('+1 day'));
 
 $mesesNomes = [
-  '',
-  'janeiro',
-  'fevereiro',
-  'março',
-  'abril',
-  'maio',
-  'junho',
-  'julho',
-  'agosto',
-  'setembro',
-  'outubro',
-  'novembro',
-  'dezembro'
+  '', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
 ];
 
 $mesesNomesCapitalizados = [
-  '',
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro'
+  '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
 $periodoTexto = '';
@@ -304,15 +277,10 @@ if ($inicio->format('Y-m') == $fim->format('Y-m')) {
     $periodoTexto = implode(', ', $mesesPeriodo) . ' e ' . $ultimo;
     
     $ultimoCapitalizado = array_pop($mesesPeriodoCapitalizados);
-    $periodoTextoCapitalizado = implode(' a ', array_slice($mesesPeriodoCapitalizados, 0, 1)) . ' a ' . $ultimoCapitalizado . ' de ' . $inicio->format('Y');
-    
-    // Ajuste para quando houver mais de 2 meses
-    if (count($mesesPeriodoCapitalizados) > 1) {
-      $periodoTextoCapitalizado = $mesesPeriodoCapitalizados[0] . ' a ' . $ultimoCapitalizado . ' de ' . $inicio->format('Y');
-    }
+    $periodoTextoCapitalizado = $mesesPeriodoCapitalizados[0] . ' a ' . $ultimoCapitalizado . ' de ' . $inicio->format('Y');
   } else {
-    $periodoTexto = $mesesPeriodo[0];
-    $periodoTextoCapitalizado = $mesesPeriodoCapitalizados[0];
+    $periodoTexto = $mesesPeriodo[0] ?? '';
+    $periodoTextoCapitalizado = $mesesPeriodoCapitalizados[0] ?? '';
   }
   
   if (count($mesesPeriodo) <= 1) {
@@ -335,14 +303,12 @@ $st = $pdo->prepare("
 $st->execute($params);
 $dadosMensais = $st->fetchAll();
 
-// Formatar mês/ano para exibição
 foreach ($dadosMensais as &$dado) {
   list($mes, $ano) = explode('/', $dado['mes_ano']);
   $mesNome = $mesesNomesCapitalizados[(int)$mes];
   $dado['mes_ano_formatado'] = $mesNome . '/' . $ano;
 }
 
-// Total
 $totalPeriodo = array_sum(array_column($dadosMensais, 'total'));
 
 // Produtos comercializados organizados por categoria
@@ -357,19 +323,11 @@ $st = $pdo->prepare("
   WHERE {$dateExpr} BETWEEN :ini AND :fim
     AND v.feira_id = :f
   GROUP BY COALESCE(c.id, 999), COALESCE(c.nome, 'Diversos')
-  ORDER BY 
-    CASE COALESCE(c.nome, 'Diversos')
-      WHEN 'Frutas' THEN 1
-      WHEN 'Produtos derivados da mandioca' THEN 2
-      WHEN 'Legumes e hortaliças' THEN 3
-      WHEN 'Grãos e outros' THEN 4
-      ELSE 5
-    END
+  ORDER BY c.nome ASC
 ");
 $st->execute($params);
 $produtosPorCategoria = $st->fetchAll(PDO::FETCH_ASSOC);
 
-// Organizar em array associativo
 $produtosAgrupados = [];
 foreach ($produtosPorCategoria as $row) {
   if (!empty($row['produtos'])) {
@@ -377,13 +335,11 @@ foreach ($produtosPorCategoria as $row) {
   }
 }
 
-// Pegar todos os produtos (para contagem)
 $produtos = [];
 foreach ($produtosAgrupados as $prods) {
   $produtos = array_merge($produtos, $prods);
 }
 
-// Variáveis para substituição
 $vars = [
   'titulo_feira' => $config['subtitulo_feira'] ?: $config['titulo_feira'],
   'subtitulo_feira' => $config['subtitulo_feira'],
@@ -404,281 +360,517 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Relatório - <?= h($config['titulo_feira']) ?></title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
     /* ======================
-   RESET
-====================== */
-    * {
+       CSS VARIABLES
+    ====================== */
+    :root {
+      --color-primary: #1e3a5f;
+      --color-primary-light: #2d5a8a;
+      --color-primary-dark: #0f1f33;
+      --color-accent: #2e7d32;
+      --color-accent-light: #4caf50;
+      --color-gold: #c9a227;
+      --color-text: #1a1a1a;
+      --color-text-muted: #555;
+      --color-border: #ddd;
+      --color-bg-light: #f8f9fa;
+      --color-white: #fff;
+      --font-serif: 'Merriweather', Georgia, serif;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+      --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    /* ======================
+       RESET & BASE
+    ====================== */
+    *, *::before, *::after {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
-    /* ======================
-   BODY
-====================== */
     body {
-      font-family: "Times New Roman", Georgia, serif;
-      line-height: 1.5;
-      color: #000;
-      background: #525659;
-      padding: 20px 0;
+      font-family: var(--font-serif);
+      font-size: 11pt;
+      line-height: 1.7;
+      color: var(--color-text);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
     }
 
     /* ======================
-   ÁREA DE PRÉ-VISUALIZAÇÃO
-====================== */
-    .preview-container {
-      max-width: 210mm;
-      min-height: 297mm;
-      margin: 0 auto;
-      background: #fff;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+       FLOATING ACTIONS
+    ====================== */
+    .print-actions {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      gap: 12px;
+      z-index: 1000;
     }
 
-    .page {
-      padding: 20mm 25mm;
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+      color: var(--color-white);
+      box-shadow: var(--shadow-md), 0 4px 15px rgba(30, 58, 95, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg), 0 6px 20px rgba(30, 58, 95, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--color-white);
+      color: var(--color-text);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary:hover {
+      background: var(--color-bg-light);
+      transform: translateY(-2px);
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ======================
+       DOCUMENT CONTAINER
+    ====================== */
+    .document-container {
+      max-width: 210mm;
+      margin: 0 auto;
+      background: var(--color-white);
+      box-shadow: var(--shadow-lg);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .document {
+      padding: 25mm 28mm;
       position: relative;
     }
 
     /* ======================
-   CABEÇALHO
-====================== */
+       HEADER
+    ====================== */
     .header {
       text-align: center;
-      margin-bottom: 28px;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid var(--color-primary);
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 4px;
+      background: var(--color-gold);
+      border-radius: 2px;
     }
 
     .logos {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 20px;
+      padding: 0 10px;
     }
 
-    .logo-left {
-      text-align: left;
-    }
-
-    .logo-right {
-      text-align: right;
+    .logo-wrapper {
+      flex: 0 0 auto;
     }
 
     .logos img {
-      max-height: 70px;
-      max-width: 170px;
+      max-height: 75px;
+      max-width: 180px;
+      object-fit: contain;
+    }
+
+    .header-content {
+      padding: 0 20px;
     }
 
     .header h1 {
-      font-size: 12pt;
-      font-weight: bold;
+      font-family: var(--font-sans);
+      font-size: 13pt;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0px;
-      margin: 0;
-      line-height: 1.2;
-    }
-
-    .header .secretaria {
-      font-size: 12pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0px;
-      margin: 0;
-      line-height: 1.2;
-    }
-
-    .header h2 {
-      font-size: 12pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      margin: 0;
-      line-height: 1.2;
-    }
-
-    .header h3 {
-      font-size: 12pt;
-      font-style: italic;
-      font-weight: normal;
-      margin: 0;
-      line-height: 1.2;
-    }
-
-    /* Linha institucional - removida */
-    .header-divider {
-      display: none;
-    }
-
-    /* ======================
-   SEÇÕES
-====================== */
-    .section {
-      margin-bottom: 18px;
-    }
-
-    .section-title {
-      font-size: 12pt;
-      font-weight: bold;
-      margin-bottom: 8px;
-      color: #000;
-    }
-
-    /* Textos */
-    .intro,
-    .conclusao,
-    .produtos-texto,
-    .produtos-lista p {
-      font-size: 12pt;
-      text-align: justify;
-      line-height: 1.4;
-      margin-bottom: 0;
-    }
-
-    .intro p,
-    .conclusao p {
-      margin-bottom: 8px;
-    }
-
-    .intro p:last-child,
-    .conclusao p:last-child {
-      margin-bottom: 0;
-    }
-
-    /* ======================
-   TABELA
-====================== */
-    table {
-      width: 60%;
-      margin: 16px auto;
-      border-collapse: collapse;
-      font-size: 12pt;
-    }
-
-    /* Cabeçalho */
-    table thead th {
-      background: #000;
-      color: #fff;
-      border: 1px solid #000;
-      padding: 6px 10px;
-      font-weight: bold;
-      text-align: left;
-    }
-
-    /* Corpo */
-    table tbody td {
-      border: 1px solid #000;
-      padding: 6px 10px;
-      vertical-align: middle;
-      background: #fff;
-    }
-
-    /* Alinhamento */
-    .text-right {
-      text-align: right;
-    }
-
-    /* Total por extenso */
-    .total-extenso {
-      text-align: left;
-      font-size: 12pt;
-      margin-top: 8px;
-      color: #000;
-      line-height: 1.4;
-    }
-
-    .total-extenso strong {
-      font-weight: bold;
-    }
-
-    /* ======================
-   LISTAS
-====================== */
-    .produtos-lista {
-      margin-left: 0;
-      margin-top: 8px;
-    }
-
-    .produtos-lista p {
+      letter-spacing: 1px;
+      color: var(--color-primary);
       margin-bottom: 4px;
     }
 
-    .categoria-titulo {
-      font-weight: normal;
+    .header .secretaria {
+      font-family: var(--font-sans);
+      font-size: 10pt;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-muted);
+      margin-bottom: 16px;
     }
 
-    /* ======================
-   RODAPÉ
-====================== */
-    .footer {
-      margin-top: 24px;
+    .header h2 {
+      font-family: var(--font-sans);
+      font-size: 15pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--color-primary-dark);
+      margin-bottom: 6px;
+      position: relative;
+      display: inline-block;
+    }
+
+    .header h3 {
+      font-family: var(--font-serif);
       font-size: 12pt;
-      text-align: left;
-      line-height: 1.4;
+      font-style: italic;
+      font-weight: 400;
+      color: var(--color-accent);
     }
 
     /* ======================
-   BOTÕES DE AÇÃO
-====================== */
-    .print-actions {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #fff;
-      padding: 14px;
-      border-radius: 8px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-      z-index: 10000;
+       SECTIONS
+    ====================== */
+    .section {
+      margin-bottom: 28px;
     }
 
-    .btn {
-      padding: 10px 18px;
-      background: #2f5597;
-      color: #fff;
-      border-radius: 6px;
-      font-size: 14px;
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .section-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-white);
+      flex-shrink: 0;
+    }
+
+    .section-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .section-title {
+      font-family: var(--font-sans);
+      font-size: 13pt;
+      font-weight: 700;
+      color: var(--color-primary-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .section-content {
+      padding-left: 44px;
+    }
+
+    .section-content p {
+      text-align: justify;
+      margin-bottom: 10px;
+      line-height: 1.8;
+    }
+
+    .section-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* ======================
+       PRODUCTS LIST
+    ====================== */
+    .produtos-intro {
+      margin-bottom: 16px;
+      color: var(--color-text);
+    }
+
+    .produtos-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .categoria-card {
+      background: var(--color-bg-light);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      border-left: 4px solid var(--color-accent);
+    }
+
+    .categoria-nome {
+      font-family: var(--font-sans);
+      font-size: 10pt;
       font-weight: 600;
-      border: none;
-      cursor: pointer;
-      margin-right: 8px;
+      color: var(--color-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
     }
 
-    .btn:hover {
-      background: #1f3f73;
-    }
-
-    .btn-secondary {
-      background: #6c757d;
-      margin-right: 0;
-    }
-
-    .btn-secondary:hover {
-      background: #545b62;
+    .categoria-produtos {
+      font-size: 10.5pt;
+      color: var(--color-text);
+      line-height: 1.6;
     }
 
     /* ======================
-   PRINT
-====================== */
+       FINANCIAL TABLE
+    ====================== */
+    .table-wrapper {
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--color-border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11pt;
+    }
+
+    thead {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    }
+
+    thead th {
+      padding: 14px 20px;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 10pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-white);
+      text-align: left;
+    }
+
+    thead th:last-child {
+      text-align: right;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--color-border);
+      transition: background 0.15s ease;
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody tr:nth-child(even) {
+      background: var(--color-bg-light);
+    }
+
+    tbody tr:hover {
+      background: #e8f4e8;
+    }
+
+    tbody td {
+      padding: 14px 20px;
+      vertical-align: middle;
+    }
+
+    tbody td:last-child {
+      text-align: right;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    /* ======================
+       TOTAL BOX
+    ====================== */
+    .total-box {
+      background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      margin-top: 20px;
+      color: var(--color-white);
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .total-label {
+      font-family: var(--font-sans);
+      font-size: 11pt;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.9;
+    }
+
+    .total-value {
+      font-family: var(--font-sans);
+      font-size: 20pt;
+      font-weight: 700;
+      color: var(--color-gold);
+    }
+
+    .total-extenso {
+      font-size: 10pt;
+      font-style: italic;
+      opacity: 0.85;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* ======================
+       CONCLUSION
+    ====================== */
+    .conclusao-content {
+      background: linear-gradient(135deg, #f0f7f0 0%, #e8f5e9 100%);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      border-left: 4px solid var(--color-accent);
+    }
+
+    .conclusao-content p {
+      margin-bottom: 12px;
+    }
+
+    .conclusao-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* ======================
+       FOOTER
+    ====================== */
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .footer-location {
+      font-family: var(--font-sans);
+      font-size: 10pt;
+      color: var(--color-text-muted);
+    }
+
+    .footer-signature {
+      text-align: center;
+      min-width: 200px;
+    }
+
+    .signature-line {
+      width: 100%;
+      height: 1px;
+      background: var(--color-text);
+      margin-bottom: 8px;
+    }
+
+    .signature-name {
+      font-family: var(--font-sans);
+      font-size: 10pt;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .signature-cargo {
+      font-size: 9pt;
+      color: var(--color-text-muted);
+    }
+
+    /* ======================
+       PRINT STYLES
+    ====================== */
     @media print {
       body {
-        background: #fff;
+        background: white;
         padding: 0;
-      }
-
-      .preview-container {
-        box-shadow: none;
-        max-width: 100%;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
 
       .print-actions {
-        display: none;
+        display: none !important;
       }
 
-      .page {
-        padding: 20mm 25mm;
+      .document-container {
+        box-shadow: none;
+        border-radius: 0;
+        max-width: 100%;
       }
 
-      table {
-        page-break-inside: avoid;
+      .document {
+        padding: 15mm 20mm;
+      }
+
+      .section-icon {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      thead {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .total-box {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .categoria-card {
+        break-inside: avoid;
+      }
+
+      .table-wrapper {
+        break-inside: avoid;
       }
     }
 
@@ -687,34 +879,40 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
       margin: 0;
     }
   </style>
-
 </head>
 
 <body>
 
+  <!-- FLOATING ACTIONS -->
   <div class="print-actions">
-    <button onclick="window.print()" class="btn">
-      🖨️ Imprimir / Salvar PDF
+    <button onclick="window.print()" class="btn btn-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+      </svg>
+      Imprimir / PDF
     </button>
     <button onclick="window.close()" class="btn btn-secondary">
-      ✕ Fechar
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+      Fechar
     </button>
   </div>
 
-  <div class="preview-container">
-    <div class="page">
+  <!-- DOCUMENT -->
+  <div class="document-container">
+    <div class="document">
 
-      <!-- CABEÇALHO -->
-      <div class="header">
+      <!-- HEADER -->
+      <header class="header">
         <?php if ($config['logotipo_prefeitura'] || $config['logotipo_feira']): ?>
           <div class="logos">
-            <div class="logo-left">
+            <div class="logo-wrapper">
               <?php if ($config['logotipo_prefeitura']): ?>
                 <img src="<?= h($config['logotipo_prefeitura']) ?>" alt="Logo Prefeitura">
               <?php endif; ?>
             </div>
-            <div class="logo-center"></div>
-            <div class="logo-right">
+            <div class="logo-wrapper">
               <?php if ($config['logotipo_feira']): ?>
                 <img src="<?= h($config['logotipo_feira']) ?>" alt="Logo Feira">
               <?php endif; ?>
@@ -722,90 +920,146 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'portuguese');
           </div>
         <?php endif; ?>
 
-        <h1>PREFEITURA MUNICIPAL DE <?= strtoupper(h($config['municipio'])) ?> – <?= strtoupper(h($config['estado'])) ?></h1>
-        <?php if ($config['secretaria']): ?>
-          <div class="secretaria"><?= strtoupper(h($config['secretaria'])) ?></div>
-        <?php endif; ?>
-        <h2>RELATÓRIO DA <?= strtoupper(h($config['titulo_feira'])) ?></h2>
-        <?php if ($config['subtitulo_feira']): ?>
-          <h3><?= h($config['subtitulo_feira']) ?></h3>
-        <?php endif; ?>
-        <div class="header-divider"></div>
-      </div>
+        <div class="header-content">
+          <h1>Prefeitura Municipal de <?= h($config['municipio']) ?> – <?= h($config['estado']) ?></h1>
+          <?php if ($config['secretaria']): ?>
+            <div class="secretaria"><?= h($config['secretaria']) ?></div>
+          <?php endif; ?>
+          <h2>Relatório da <?= h($config['titulo_feira']) ?></h2>
+          <?php if ($config['subtitulo_feira']): ?>
+            <h3><?= h($config['subtitulo_feira']) ?></h3>
+          <?php endif; ?>
+        </div>
+      </header>
 
       <!-- INTRODUÇÃO -->
       <?php if ($config['incluir_introducao']): ?>
-        <div class="section">
-          <div class="section-title">Introdução</div>
-          <div class="intro">
+        <section class="section">
+          <div class="section-header">
+            <div class="section-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 class="section-title">Introdução</h2>
+          </div>
+          <div class="section-content">
             <p><?= nl2br(h(substituirVariaveis($config['texto_introducao'], $vars))) ?> Este relatório apresenta os resultados financeiros referentes <?= count($dadosMensais) == 1 ? 'ao mês' : 'aos meses' ?> de <?= h($periodoTextoCapitalizado) ?>, com destaque para os principais produtos e valores arrecadados.</p>
           </div>
-        </div>
+        </section>
       <?php endif; ?>
 
       <!-- PRODUTOS COMERCIALIZADOS -->
       <?php if ($config['incluir_produtos_comercializados'] && !empty($produtos)): ?>
-        <div class="section">
-          <div class="section-title">Produtos Comercializados</div>
-          <p class="produtos-texto">Os agricultores locais comercializaram uma grande variedade de itens durante o período, tais como:</p>
-
-          <div class="produtos-lista">
-            <?php foreach ($produtosAgrupados as $categoria => $prods): ?>
-              <?php if (!empty($prods)): ?>
-                <p><span class="categoria-titulo">- <?= h($categoria) ?>:</span> <?= implode(', ', array_map('h', $prods)) ?>.</p>
-              <?php endif; ?>
-            <?php endforeach; ?>
+        <section class="section">
+          <div class="section-header">
+            <div class="section-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <h2 class="section-title">Produtos Comercializados</h2>
           </div>
-        </div>
+          <div class="section-content">
+            <p class="produtos-intro">Os agricultores locais comercializaram uma grande variedade de itens durante o período, organizados nas seguintes categorias:</p>
+            
+            <div class="produtos-grid">
+              <?php foreach ($produtosAgrupados as $categoria => $prods): ?>
+                <?php if (!empty($prods)): ?>
+                  <div class="categoria-card">
+                    <div class="categoria-nome"><?= h($categoria) ?></div>
+                    <div class="categoria-produtos"><?= implode(', ', array_map('h', $prods)) ?>.</div>
+                  </div>
+                <?php endif; ?>
+              <?php endforeach; ?>
+            </div>
+          </div>
+        </section>
       <?php endif; ?>
 
       <!-- RESULTADOS FINANCEIROS -->
-      <div class="section">
-        <div class="section-title">Resultados Financeiros</div>
+      <section class="section">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 class="section-title">Resultados Financeiros</h2>
+        </div>
+        <div class="section-content">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Período</th>
+                  <th>Valor Arrecadado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($dadosMensais as $dado): ?>
+                  <tr>
+                    <td><?= h($dado['mes_ano_formatado']) ?></td>
+                    <td>R$ <?= number_format((float)$dado['total'], 2, ',', '.') ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Mês</th>
-              <th class="text-right">Valor (R$)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($dadosMensais as $dado): ?>
-              <tr>
-                <td><?= h($dado['mes_ano_formatado']) ?></td>
-                <td class="text-right"><?= number_format((float)$dado['total'], 2, ',', '.') ?></td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-
-        <p class="total-extenso">
-          <strong>Soma Total do Período: R$ <?= number_format($totalPeriodo, 2, ',', '.') ?></strong> por extenso: <?= valorPorExtenso($totalPeriodo) ?>.
-        </p>
-      </div>
+          <div class="total-box">
+            <div class="total-row">
+              <span class="total-label">Total do Período</span>
+              <span class="total-value">R$ <?= number_format($totalPeriodo, 2, ',', '.') ?></span>
+            </div>
+            <div class="total-extenso">
+              Por extenso: <?= valorPorExtenso($totalPeriodo) ?>.
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- CONCLUSÃO -->
       <?php if ($config['incluir_conclusao']): ?>
-        <div class="section">
-          <div class="section-title">Conclusão</div>
-          <div class="conclusao">
-            <p><?= nl2br(h(substituirVariaveis($config['texto_conclusao'], $vars))) ?></p>
-            <?php if (!empty($config['texto_conclusao_extra'])): ?>
-              <p><?= nl2br(h(substituirVariaveis($config['texto_conclusao_extra'], $vars))) ?></p>
-            <?php endif; ?>
+        <section class="section">
+          <div class="section-header">
+            <div class="section-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 class="section-title">Conclusão</h2>
           </div>
-        </div>
+          <div class="section-content">
+            <div class="conclusao-content">
+              <p><?= nl2br(h(substituirVariaveis($config['texto_conclusao'], $vars))) ?></p>
+              <?php if (!empty($config['texto_conclusao_extra'])): ?>
+                <p><?= nl2br(h(substituirVariaveis($config['texto_conclusao_extra'], $vars))) ?></p>
+              <?php endif; ?>
+            </div>
+          </div>
+        </section>
       <?php endif; ?>
 
-      <!-- RODAPÉ -->
-      <div class="footer">
-        <?= h($config['municipio']) ?>-<?= h($config['estado']) ?>, <?= strftime('%B de %Y', time()) ?>
-      </div>
+      <!-- FOOTER -->
+      <footer class="footer">
+        <div class="footer-location">
+          <?= h($config['municipio']) ?>-<?= h($config['estado']) ?>, <?= strftime('%d de %B de %Y', time()) ?>
+        </div>
+        
+        <?php if (!empty($config['assinatura_nome'])): ?>
+          <div class="footer-signature">
+            <div class="signature-line"></div>
+            <div class="signature-name"><?= h($config['assinatura_nome']) ?></div>
+            <?php if (!empty($config['assinatura_cargo'])): ?>
+              <div class="signature-cargo"><?= h($config['assinatura_cargo']) ?></div>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+      </footer>
 
     </div>
   </div>
 
 </body>
-
 </html>
