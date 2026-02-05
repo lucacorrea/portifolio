@@ -47,7 +47,7 @@ if (!is_dir($uploadDir)) {
    CARREGAR CONFIGURAÇÕES
 ====================== */
 $config = [
-  'titulo_feira' => 'Feira do Produtor Rural',
+  'titulo_feira' => 'Feira Alternativa',
   'subtitulo_feira' => 'Francisco Lopes da Silva – "Folha"',
   'municipio' => 'Coari',
   'estado' => 'AM',
@@ -55,7 +55,7 @@ $config = [
   'logotipo_prefeitura' => '',
   'logotipo_feira' => '',
   'incluir_introducao' => 1,
-  'texto_introducao' => 'A Feira do Produtor Rural "{titulo_feira}" é um espaço de valorização da agricultura familiar e de comercialização de alimentos cultivados no município de {municipio}-{estado}.',
+  'texto_introducao' => 'A Feira Alternativa "{titulo_feira}" é um espaço de valorização da agricultura familiar e de comercialização de alimentos cultivados no município de {municipio}-{estado}.',
   'incluir_produtos_comercializados' => 1,
   'incluir_conclusao' => 1,
   'texto_conclusao' => 'O levantamento demonstra a relevância da {titulo_feira} para a economia agrícola do município, garantindo escoamento da produção, geração de renda e acesso da população a alimentos saudáveis.',
@@ -889,7 +889,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                         <label class="form-label">Nome da Feira *</label>
                         <input type="text" name="titulo_feira" class="form-control" 
                                value="<?= h($config['titulo_feira']) ?>" required>
-                        <small class="form-text">Ex: Feira do Produtor Rural</small>
+                        <small class="form-text">Ex: Feira Alternativa</small>
                       </div>
 
                       <div class="col-md-6 mb-3">

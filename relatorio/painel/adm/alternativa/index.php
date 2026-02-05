@@ -536,7 +536,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Feira do Produtor</title>
+  <title>SIGRelatórios Feira Alternativa</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -991,7 +991,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
               <div class="row">
                 <div class="col-12 col-xl-7 mb-3 mb-xl-0">
                   <h3 class="font-weight-bold mb-1">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
-                  <h6 class="font-weight-normal mb-1">Painel administrativo da Feira do Produtor</h6>
+                  <h6 class="font-weight-normal mb-1">Painel administrativo da Feira Alternativa</h6>
                   <div class="mini-kpi">
                     Mês selecionado: <b><?= h($mesLabel) ?></b> • Período: <b><?= h(date('d/m/Y', strtotime($monthStart))) ?></b> até <b><?= h(date('d/m/Y', strtotime($monthEnd))) ?></b>
                   </div>

@@ -725,7 +725,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div>
                   <h2 class="font-weight-bold mb-1">Produtos Comercializados</h2>
                   <span class="badge badge-primary">
-                    Feira do Produtor — <?= h($labelPeriodo) ?>
+                    Feira Alternativa — <?= h($labelPeriodo) ?>
                   </span>
                 </div>
               </div>
