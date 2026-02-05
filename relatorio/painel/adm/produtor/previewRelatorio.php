@@ -59,16 +59,17 @@ $config = [
 
 try {
   $st = $pdo->query("
-    SELECT COUNT(*) 
-    FROM information_schema.tables 
-    WHERE table_schema = DATABASE() 
-      AND table_name = 'relatorio_config'
+    SELECT COUNT(*)
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE()
+      AND table_name = 'config_relatorio'
   ");
-  
+
   if ((int)$st->fetchColumn() > 0) {
-    $st = $pdo->query("SELECT * FROM relatorio_config WHERE id = 1");
+    $st = $pdo->prepare("SELECT * FROM config_relatorio WHERE feira_id = :feira_id");
+    $st->execute([':feira_id' => $feiraId]);
     $savedConfig = $st->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($savedConfig) {
       foreach ($config as $key => $defaultValue) {
         if (isset($savedConfig[$key])) {

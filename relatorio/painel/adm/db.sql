@@ -583,7 +583,7 @@ CREATE TABLE `redefinir_senha_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `config_relatorio` (
-  `id` bigint(20) UNSIGNED NOT NULL,
+  `id` bigint(20) UNSIGNED AUTO_INCREMENT NOT NULL PRIMARY KEY,
   `feira_id` tinyint(3) UNSIGNED NOT NULL,
   `titulo_feira` varchar(160) NOT NULL DEFAULT '',
   `subtitulo_feira` varchar(160) DEFAULT NULL,
