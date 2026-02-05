@@ -581,3 +581,70 @@ CREATE TABLE `redefinir_senha_tokens` (
   `usado_em` datetime DEFAULT NULL,
   `criado_em` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `config_relatorio` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `feira_id` tinyint(3) UNSIGNED NOT NULL,
+  `titulo_feira` varchar(160) NOT NULL DEFAULT '',
+  `subtitulo_feira` varchar(160) DEFAULT NULL,
+  `municipio` varchar(100) NOT NULL DEFAULT '',
+  `estado` char(2) NOT NULL DEFAULT '',
+  `secretaria` varchar(200) DEFAULT NULL,
+  `logotipo_prefeitura` varchar(255) DEFAULT NULL,
+  `logotipo_feira` varchar(255) DEFAULT NULL,
+  `incluir_introducao` tinyint(1) NOT NULL DEFAULT 1,
+  `texto_introducao` text DEFAULT NULL,
+  `incluir_produtos_comercializados` tinyint(1) NOT NULL DEFAULT 1,
+  `incluir_conclusao` tinyint(1) NOT NULL DEFAULT 1,
+  `texto_conclusao` text DEFAULT NULL,
+  `assinatura_nome` varchar(160) DEFAULT NULL,
+  `assinatura_cargo` varchar(160) DEFAULT NULL,
+  `mostrar_graficos` tinyint(1) NOT NULL DEFAULT 1,
+  `mostrar_por_categoria` tinyint(1) NOT NULL DEFAULT 1,
+  `mostrar_por_feirante` tinyint(1) NOT NULL DEFAULT 1,
+  `produtos_detalhados` tinyint(1) NOT NULL DEFAULT 1,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `config_relatorio` (
+  `id`,
+  `feira_id`,
+  `titulo_feira`,
+  `subtitulo_feira`,
+  `municipio`,
+  `estado`,
+  `secretaria`,
+  `incluir_introducao`,
+  `texto_introducao`,
+  `incluir_produtos_comercializados`,
+  `incluir_conclusao`,
+  `texto_conclusao`
+) VALUES (
+  1,
+  1,
+  'Feira do Produtor Rural',
+  'Francisco Lopes da Silva – "Folha"',
+  'Coari',
+  'AM',
+  'Secretaria de Desenvolvimento Rural e Econômico',
+  1,
+  'A Feira do Produtor Rural "{titulo_feira}" é um espaço de valorização da agricultura familiar e de comercialização de alimentos cultivados no município de {municipio}-{estado}.',
+  1,
+  1,
+  'O levantamento demonstra a relevância da {titulo_feira} para a economia agrícola do município, garantindo escoamento da produção, geração de renda e acesso da população a alimentos saudáveis.'
+),
+(
+  2,
+  2,
+  'Feira Alternativa',
+  'Francisco Lopes da Silva – "Folha"',
+  'Coari',
+  'AM',
+  'Secretaria de Desenvolvimento Rural e Econômico',
+  1,
+  'A Feira Alternativa "{titulo_feira}" é um espaço de valorização da agricultura familiar e de comercialização de alimentos cultivados no município de {municipio}-{estado}.',
+  1,
+  1,
+  'O levantamento demonstra a relevância da {titulo_feira} para a economia agrícola do município, garantindo escoamento da produção, geração de renda e acesso da população a alimentos saudáveis.'
+);

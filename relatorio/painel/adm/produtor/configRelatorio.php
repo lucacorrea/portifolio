@@ -36,6 +36,11 @@ require '../../../assets/php/conexao.php';
 $pdo = db();
 
 /* ======================
+   FEIRA ID
+====================== */
+$feiraId = 1; // Feira do Produtor
+
+/* ======================
    DIRETÓRIO DE UPLOADS
 ====================== */
 $uploadDir = '../../../uploads/relatorios/';
@@ -70,16 +75,17 @@ $config = [
 // Tentar carregar do banco se existir tabela de configurações
 try {
   $st = $pdo->query("
-    SELECT COUNT(*) 
-    FROM information_schema.tables 
-    WHERE table_schema = DATABASE() 
-      AND table_name = 'relatorio_config'
+    SELECT COUNT(*)
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE()
+      AND table_name = 'config_relatorio'
   ");
-  
+
   if ((int)$st->fetchColumn() > 0) {
-    $st = $pdo->query("SELECT * FROM relatorio_config WHERE id = 1");
+    $st = $pdo->prepare("SELECT * FROM config_relatorio WHERE feira_id = :feira_id");
+    $st->execute([':feira_id' => $feiraId]);
     $savedConfig = $st->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($savedConfig) {
       foreach ($config as $key => $defaultValue) {
         if (isset($savedConfig[$key])) {
@@ -184,13 +190,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_config'])) {
     ];
 
     // Verificar se já existe configuração
-    $st = $pdo->query("SELECT COUNT(*) FROM relatorio_config WHERE id = 1");
+    $st = $pdo->prepare("SELECT COUNT(*) FROM config_relatorio WHERE feira_id = :feira_id");
+    $st->execute([':feira_id' => $feiraId]);
     $existe = (int)$st->fetchColumn() > 0;
+
+    // Adicionar feira_id aos dados
+    $dados['feira_id'] = $feiraId;
 
     if ($existe) {
       // UPDATE
       $sql = "
-        UPDATE relatorio_config SET
+        UPDATE config_relatorio SET
           titulo_feira = :titulo_feira,
           subtitulo_feira = :subtitulo_feira,
           municipio = :municipio,
@@ -209,19 +219,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_config'])) {
           mostrar_por_categoria = :mostrar_por_categoria,
           mostrar_por_feirante = :mostrar_por_feirante,
           produtos_detalhados = :produtos_detalhados
-        WHERE id = 1
+        WHERE feira_id = :feira_id
       ";
     } else {
       // INSERT
       $sql = "
-        INSERT INTO relatorio_config (
-          id, titulo_feira, subtitulo_feira, municipio, estado, secretaria,
+        INSERT INTO config_relatorio (
+          feira_id, titulo_feira, subtitulo_feira, municipio, estado, secretaria,
           logotipo_prefeitura, logotipo_feira, incluir_introducao, texto_introducao,
           incluir_produtos_comercializados, incluir_conclusao, texto_conclusao,
           assinatura_nome, assinatura_cargo, mostrar_graficos, mostrar_por_categoria,
           mostrar_por_feirante, produtos_detalhados
         ) VALUES (
-          1, :titulo_feira, :subtitulo_feira, :municipio, :estado, :secretaria,
+          :feira_id, :titulo_feira, :subtitulo_feira, :municipio, :estado, :secretaria,
           :logotipo_prefeitura, :logotipo_feira, :incluir_introducao, :texto_introducao,
           :incluir_produtos_comercializados, :incluir_conclusao, :texto_conclusao,
           :assinatura_nome, :assinatura_cargo, :mostrar_graficos, :mostrar_por_categoria,
