@@ -672,7 +672,7 @@ if ($verId > 0) {
                 <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
                 <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
                 <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Permissionários</a></li>
               </ul>
             </div>
           </li>
@@ -771,7 +771,7 @@ if ($verId > 0) {
           <div class="row">
             <div class="col-12 mb-3">
               <h3 class="font-weight-bold">Lançamentos (Vendas)</h3>
-              <h6 class="font-weight-normal mb-0">Sem hora no formulário e “Feirante(s)” sempre em linhas separadas quando tiver mais de um.</h6>
+              <h6 class="font-weight-normal mb-0">Sem hora no formulário e "Permissionário(s)" sempre em linhas separadas quando tiver mais de um.</h6>
             </div>
           </div>
 
@@ -925,14 +925,14 @@ if ($verId > 0) {
                       <input type="date" class="form-control" value="<?= h($dia) ?>" onchange="location.href='?dia='+this.value+'&produtor=<?= (int)$prodFiltro ?>';">
                     </div>
                     <div class="col-md-6 mb-2">
-                      <label class="mb-1">Feirante (filtra por itens)</label>
+                      <label class="mb-1">Permissionário (filtra por itens)</label>
                       <select class="form-control" onchange="location.href='?dia=<?= h($dia) ?>&produtor='+this.value;">
                         <option value="0">Todos</option>
                         <?php foreach ($produtoresAtivos as $p): $pid = (int)$p['id']; ?>
                           <option value="<?= $pid ?>" <?= $prodFiltro === $pid ? 'selected' : '' ?>><?= h($p['nome'] ?? '') ?></option>
                         <?php endforeach; ?>
                       </select>
-                      <small class="text-muted helper">Mostra vendas que tenham itens de produtos desse feirante.</small>
+                      <small class="text-muted helper">Mostra vendas que tenham itens de produtos desse permissionário.</small>
                     </div>
                     <div class="col-md-3 mb-2 d-flex align-items-end">
                       <a class="btn btn-light w-100" href="./lancamentos.php">
@@ -948,7 +948,7 @@ if ($verId > 0) {
                           <th style="width:90px;">ID</th>
                           <th style="width:170px;">Data</th>
                           <th style="width:150px;">Pagamento</th>
-                          <th>Feirante(s)</th>
+                          <th>Permissionário(s)</th>
                           <th style="width:160px;">Total</th>
                           <th style="min-width:260px;">Ações</th>
                         </tr>
@@ -1077,7 +1077,7 @@ if ($verId > 0) {
 
             <div class="row">
               <div class="col-md-6 mb-2">
-                <div class="text-muted" style="font-size:12px;">Feirante(s)</div>
+                <div class="text-muted" style="font-size:12px;">Permissionário(s)</div>
 
                 <?php if (empty($detalheProdutores)): ?>
                   <div>—</div>
@@ -1105,7 +1105,7 @@ if ($verId > 0) {
                 <thead>
                   <tr>
                     <th>Produto</th>
-                    <th style="width:220px;">Feirante</th>
+                    <th style="width:220px;">Permissionário</th>
                     <th style="width:110px;">Unid</th>
                     <th style="width:220px;">Categoria</th>
                     <th style="width:120px;">Qtd</th>

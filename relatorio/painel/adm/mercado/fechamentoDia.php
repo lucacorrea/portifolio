@@ -534,7 +534,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
                 <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
                 <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Permissionários</a></li>
               </ul>
             </div>
           </li>
@@ -691,9 +691,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="col-md-3 mb-3">
               <div class="kpi-card">
-                <p class="kpi-label">Feirantes</p>
+                <p class="kpi-label">Permissionários</p>
                 <p class="kpi-value"><?= (int)$resumo['feirantes_qtd'] ?></p>
-                <div class="kpi-sub">Feirantes com itens no dia</div>
+                <div class="kpi-sub">Permissionários com itens no dia</div>
               </div>
             </div>
             <div class="col-md-3 mb-3">
@@ -812,8 +812,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
-                      <h4 class="card-title mb-0">Resumo por Feirante</h4>
-                      <p class="card-description mb-0">Soma dos itens por produtor (no dia).</p>
+                      <h4 class="card-title mb-0">Resumo por Permissionário</h4>
+                      <p class="card-description mb-0">Soma dos itens por permissionário (no dia).</p>
                     </div>
                   </div>
 
@@ -821,7 +821,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <table class="table table-striped table-hover">
                       <thead>
                         <tr>
-                          <th>Feirante</th>
+                          <th>Permissionário</th>
                           <th style="width:120px;">Vendas</th>
                           <th style="width:170px;">Total</th>
                         </tr>

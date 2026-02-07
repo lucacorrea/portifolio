@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $okCom = (int)$chk->fetchColumn() > 0;
 
       if (!$okCom) {
-        $err = 'Comunidade inválida (não encontrada ou inativa).';
+        $err = 'Bairro / Origem inválido (não encontrado ou inativo).';
       } else {
         $sql = "INSERT INTO produtores
                   (feira_id, nome, contato, comunidade_id, documento, ativo, observacao)
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           ':observacao'    => ($observacao !== '' ? $observacao : null),
         ]);
 
-        $_SESSION['flash_ok'] = 'Produtor cadastrado com sucesso!';
+        $_SESSION['flash_ok'] = 'Permissionário cadastrado com sucesso!';
         header('Location: ./listaProdutor.php');
         exit;
       }
@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Mercado Municipal — Adicionar Produtor</title>
+  <title>SIGRelatórios Mercado Municipal — Adicionar Permissionário</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -341,13 +341,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProdutor.php">
-                    <i class="ti-user mr-2"></i> Produtores
+                    <i class="ti-user mr-2"></i> Permissionários
                   </a>
                 </li>
 
                 <li class="nav-item active">
                   <a class="nav-link" href="./adicionarProdutor.php" style="color:white !important; background: #231475C5 !important;">
-                    <i class="ti-plus mr-2"></i> Adicionar Produtor
+                    <i class="ti-plus mr-2"></i> Adicionar Permissionário
                   </a>
                 </li>
               </ul>
@@ -463,8 +463,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <div class="row">
             <div class="col-12 mb-3">
-              <h3 class="font-weight-bold">Adicionar Produtor</h3>
-              <h6 class="font-weight-normal mb-0">Cadastro de produtor rural (feirante).</h6>
+              <h3 class="font-weight-bold">Adicionar Permissionário</h3>
+              <h6 class="font-weight-normal mb-0">Cadastro de permissionário.</h6>
             </div>
           </div>
 
@@ -482,9 +482,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <div class="card-title-row">
                     <div>
-                      <h4 class="card-title mb-0">Dados do Produtor</h4>
+                      <h4 class="card-title mb-0">Dados do Permissionário</h4>
                       <p class="card-description mb-0">
-                        Comunidade é obrigatória e vem do cadastro de comunidades.
+                        Bairro / Origem é obrigatório e vem do cadastro.
                         <span class="req-badge">Obrigatório</span>
                       </p>
                     </div>
@@ -495,8 +495,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <?php if (empty($comunidades)): ?>
                     <div class="alert alert-warning mt-3">
-                      Nenhuma comunidade ativa cadastrada para esta feira.
-                      Cadastre comunidades primeiro para poder cadastrar produtores.
+                      Nenhum bairro / origem ativo cadastrado.
+                      Cadastre bairros / origens primeiro para poder cadastrar permissionários.
                     </div>
                   <?php endif; ?>
 
@@ -510,7 +510,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                       <div class="row">
                         <div class="col-md-6 mb-3">
-                          <label>Nome do produtor <span class="text-danger">*</span></label>
+                          <label>Nome do permissionário <span class="text-danger">*</span></label>
                           <input
                             name="nome"
                             type="text"
@@ -518,7 +518,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             placeholder="Ex.: João Batista da Silva"
                             required
                             value="<?= h($old['nome']) ?>">
-                          <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
+                          <small class="text-muted help-hint">Nome completo ou como é conhecido no mercado.</small>
                         </div>
 
                         <div class="col-md-3 mb-3">
@@ -547,12 +547,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="form-section">
                       <div class="section-title">
-                        <i class="ti-map-alt"></i> Comunidade
+                        <i class="ti-map-alt"></i> Bairro / Origem
                       </div>
 
                       <div class="row">
                         <div class="col-md-6 mb-3">
-                          <label>Comunidade <span class="text-danger">*</span></label>
+                          <label>Bairro / Origem <span class="text-danger">*</span></label>
                           <select
                             name="comunidade_id"
                             class="form-control"

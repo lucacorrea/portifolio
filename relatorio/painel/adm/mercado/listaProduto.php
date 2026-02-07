@@ -584,7 +584,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProdutor.php">
-                    <i class="ti-user mr-2"></i> Produtores
+                    <i class="ti-user mr-2"></i> Permissionários
                   </a>
                 </li>
               </ul>
@@ -762,7 +762,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
                           <th>Produto</th>
                           <th>Categoria</th>
                           <th>Unidade</th>
-                          <th>Produtor</th>
+                          <th>Permissionário</th>
                           <th style="width:140px;">Preço</th>
                           <th style="width:160px;">Status</th>
                           <th style="min-width:220px;">Ações</th>

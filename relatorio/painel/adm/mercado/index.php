@@ -894,7 +894,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                 <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
                 <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
                 <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Permissionários</a></li>
               </ul>
             </div>
           </li>
@@ -1121,7 +1121,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                 <div class="col-md-6 mb-3 mb-lg-0 stretch-card transparent">
                   <div class="card card-light-blue kpi-card">
                     <div class="card-body">
-                      <p class="kpi-title mb-1">Produtores ativos</p>
+                      <p class="kpi-title mb-1">Permissionários ativos</p>
                       <div class="kpi-value"><?= (int)$kpi['produtores_ativos'] ?></div>
                       <p class="kpi-sub mb-0">Feira <b><?= (int)$feiraId ?></b></p>
                     </div>
@@ -1262,7 +1262,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             </div>
           </div>
 
-          <!-- Top Produtos + Produtores -->
+          <!-- Top Produtos + Permissionários -->
           <div class="row">
             <div class="col-md-7 grid-margin stretch-card">
               <div class="card">
@@ -1302,13 +1302,13 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             <div class="col-md-5 grid-margin stretch-card">
               <div class="card">
                 <div class="card-body">
-                  <p class="card-title mb-1">Produtores (amostra)</p>
+                  <p class="card-title mb-1">Permissionários (amostra)</p>
                   <div class="table-responsive">
                     <table class="table table-borderless mb-0">
                       <thead>
                         <tr>
-                          <th class="pl-0 pb-2 border-bottom">Produtor</th>
-                          <th class="pb-2 border-bottom">Comunidade</th>
+                          <th class="pl-0 pb-2 border-bottom">Permissionário</th>
+                          <th class="pb-2 border-bottom">Bairro / Origem</th>
                           <th class="pb-2 border-bottom text-right">Status</th>
                         </tr>
                       </thead>
@@ -1352,7 +1352,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                       <thead>
                         <tr>
                           <th class="pl-0 pb-2 border-bottom">Data</th>
-                          <th class="pb-2 border-bottom">Feirantes</th>
+                          <th class="pb-2 border-bottom">Permissionários</th>
                           <th class="pb-2 border-bottom text-right">Total</th>
                         </tr>
                       </thead>
@@ -1377,7 +1377,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                       </tbody>
                     </table>
                   </div>
-                  <div class="mini-kpi mt-2 mb-0">Feirantes em linhas separadas quando houver mais de um.</div>
+                  <div class="mini-kpi mt-2 mb-0">Permissionários em linhas separadas quando houver mais de um.</div>
                 </div>
               </div>
             </div>
@@ -1408,7 +1408,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                           <th>Data</th>
                           <th>Produto</th>
                           <th>Categoria</th>
-                          <th>Feirante</th>
+                          <th>Permissionário</th>
                           <th class="text-right">Qtd</th>
                           <th>Unid.</th>
                           <th class="text-right">Subtotal</th>

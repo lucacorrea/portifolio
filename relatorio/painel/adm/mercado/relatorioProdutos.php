@@ -598,7 +598,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProdutor.php">
-                    <i class="ti-user mr-2"></i> Produtores
+                    <i class="ti-user mr-2"></i> Permissionários
                   </a>
                 </li>
               </ul>
@@ -776,11 +776,11 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <input type="hidden" name="tipo" id="input-tipo" value="<?= h($tipoFiltro) ?>">
                   </div>
 
-                  <!-- Produtor -->
+                  <!-- Permissionário -->
                   <div class="col-md-3 mb-2">
-                    <label class="mb-1">Feirante (opcional)</label>
+                    <label class="mb-1">Permissionário (opcional)</label>
                     <select name="produtor" class="form-control">
-                      <option value="0">Todos os feirantes</option>
+                      <option value="0">Todos os permissionários</option>
                       <?php foreach ($listaProdutores as $p): ?>
                         <option value="<?= $p['id'] ?>" <?= $produtorFiltro == $p['id'] ? 'selected' : '' ?>>
                           <?= h($p['nome']) ?>
@@ -872,7 +872,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <tr>
                       <th width="50" class="text-center">#</th>
                       <th>Produto</th>
-                      <th>Feirante</th>
+                      <th>Permissionário</th>
                       <th class="text-center">Qtd. vendida</th>
                       <th class="text-center">Nº vendas</th>
                       <th class="text-right">Valor total</th>

@@ -133,7 +133,7 @@ try {
       $curAtv = $st->fetchColumn();
 
       if ($curAtv === false) {
-        $_SESSION['flash_err'] = 'Produtor não encontrado.';
+        $_SESSION['flash_err'] = 'Permissionário não encontrado.';
       } else {
         $newAtv = ((int)$curAtv === 1) ? 0 : 1;
         $up = $pdo->prepare("UPDATE produtores SET ativo = :a WHERE id = :id AND feira_id = :feira");
@@ -141,7 +141,7 @@ try {
         $up->bindValue(':id', $id, PDO::PARAM_INT);
         $up->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
         $up->execute();
-        $_SESSION['flash_ok'] = $newAtv ? 'Produtor ativado com sucesso!' : 'Produtor desativado com sucesso!';
+        $_SESSION['flash_ok'] = $newAtv ? 'Permissionário ativado com sucesso!' : 'Permissionário desativado com sucesso!';
       }
 
       header('Location: ' . buildUrl(['p' => $page]));
@@ -175,7 +175,7 @@ try {
         $chk->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
         $chk->execute();
         if ((int)$chk->fetchColumn() <= 0) {
-          $_SESSION['flash_err'] = 'Comunidade inválida (não encontrada ou inativa).';
+          $_SESSION['flash_err'] = 'Bairro / Origem inválido (não encontrado ou inativo).';
           header('Location: ' . buildUrl(['p' => $page]));
           exit;
         }
@@ -191,7 +191,7 @@ try {
       $dupe->bindValue(':id', $id, PDO::PARAM_INT);
       $dupe->execute();
       if ((int)$dupe->fetchColumn() > 0) {
-        $_SESSION['flash_err'] = 'Já existe um produtor com esse nome nesta feira.';
+        $_SESSION['flash_err'] = 'Já existe um permissionário com esse nome.';
         header('Location: ' . buildUrl(['p' => $page]));
         exit;
       }
@@ -225,7 +225,7 @@ try {
         ]);
       }
 
-      $_SESSION['flash_ok'] = 'Produtor atualizado com sucesso!';
+      $_SESSION['flash_ok'] = 'Permissionário atualizado com sucesso!';
       header('Location: ' . buildUrl(['p' => $page]));
       exit;
     }
@@ -353,7 +353,7 @@ try {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Mercado Municipal — Produtores</title>
+  <title>SIGRelatórios Mercado Municipal — Permissionários</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -634,7 +634,7 @@ try {
 
                 <li class="nav-item active">
                   <a class="nav-link" href="./listaProdutor.php" style="color:white !important; background: #231475C5 !important;">
-                    <i class="ti-user mr-2"></i> Produtores
+                    <i class="ti-user mr-2"></i> Permissionários
                   </a>
                 </li>
 
@@ -726,8 +726,8 @@ try {
 
           <div class="row">
             <div class="col-12 mb-3">
-              <h3 class="font-weight-bold">Produtores</h3>
-              <h6 class="font-weight-normal mb-0">Pesquisa funciona por nome, comunidade, contato e documento.</h6>
+              <h3 class="font-weight-bold">Permissionários</h3>
+              <h6 class="font-weight-normal mb-0">Pesquisa funciona por nome, bairro / origem, contato e documento.</h6>
             </div>
           </div>
 
@@ -773,7 +773,7 @@ try {
 
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
-                      <h4 class="card-title mb-0">Lista de Produtores</h4>
+                      <h4 class="card-title mb-0">Lista de Permissionários</h4>
                       <p class="card-description mb-0">
                         Total: <?= (int)$totalRows ?> — Página <?= (int)$page ?> de <?= (int)$totalPages ?>.
                       </p>
@@ -788,8 +788,8 @@ try {
                       <thead>
                         <tr>
                           <th style="width:90px;">ID</th>
-                          <th>Produtor</th>
-                          <th>Comunidade</th>
+                          <th>Permissionário</th>
+                          <th>Bairro / Origem</th>
                           <th>Contato</th>
                           <th>Status</th>
                           <th style="min-width: 320px;">Ações</th>
@@ -932,7 +932,7 @@ try {
         <input type="hidden" name="id" id="edit_id" value="">
 
         <div class="modal-header">
-          <h5 class="modal-title" id="modalEditProdutorLabel"><i class="ti-pencil"></i> Editar Produtor</h5>
+          <h5 class="modal-title" id="modalEditProdutorLabel"><i class="ti-pencil"></i> Editar Permissionário</h5>
           <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
         </div>
 
@@ -961,20 +961,20 @@ try {
           <div class="row">
             <?php if (!empty($comunidades)): ?>
               <div class="col-md-6 mb-3">
-                <label>Comunidade <span class="text-danger">*</span></label>
+                <label>Bairro / Origem <span class="text-danger">*</span></label>
                 <select name="comunidade_id" id="edit_comunidade_id" class="form-control" required>
                   <option value="">Selecione</option>
                   <?php foreach ($comunidades as $c): ?>
                     <option value="<?= (int)$c['id'] ?>"><?= h($c['nome']) ?></option>
                   <?php endforeach; ?>
                 </select>
-                <small class="text-muted">Somente comunidades ativas.</small>
+                <small class="text-muted">Somente bairros / origens ativos.</small>
               </div>
             <?php else: ?>
               <div class="col-md-6 mb-3">
-                <label>Comunidade</label>
-                <input type="text" class="form-control" value="Tabela comunidades não encontrada" disabled>
-                <small class="text-muted">Cadastre comunidades para habilitar este campo.</small>
+                <label>Bairro / Origem</label>
+                <input type="text" class="form-control" value="Tabela de bairros / origens não encontrada" disabled>
+                <small class="text-muted">Cadastre bairros / origens para habilitar este campo.</small>
               </div>
             <?php endif; ?>
 

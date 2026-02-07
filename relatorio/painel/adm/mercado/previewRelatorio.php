@@ -677,14 +677,14 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           </div>
         <?php endif; ?>
         
-        <!-- Por Feirante -->
+        <!-- Por Permissionário -->
         <?php if ($config['mostrar_por_feirante'] && !empty($porFeirante)): ?>
           <div class="section">
-            <div class="section-title">Top 5 Feirantes</div>
+            <div class="section-title">Top 5 Permissionários</div>
             <table>
               <thead>
                 <tr>
-                  <th>Feirante</th>
+                  <th>Permissionário</th>
                   <th class="text-right">Total (R$)</th>
                 </tr>
               </thead>

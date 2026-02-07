@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       $stmt = $pdo->prepare("SELECT 1 FROM produtores WHERE feira_id = :feira AND id = :id LIMIT 1");
       $stmt->execute([':feira' => $feiraId, ':id' => $produtorInt]);
-      if (!$stmt->fetchColumn()) throw new RuntimeException('Produtor inválido para esta feira.');
+      if (!$stmt->fetchColumn()) throw new RuntimeException('Permissionário inválido.');
 
       // Evitar duplicado por feira (nome)
       $chk = $pdo->prepare("SELECT id FROM produtos WHERE feira_id = :feira AND nome = :nome LIMIT 1");
@@ -203,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       } elseif ($mysqlCode === 1062) {
         $err = 'Já existe um produto com esse nome nesta feira.';
       } elseif ($mysqlCode === 1452) {
-        $err = 'Categoria/Unidade/Produtor inválido (FK).';
+        $err = 'Categoria/Unidade/Permissionário inválido (FK).';
       } else {
         $sqlState = (string)$e->getCode();
         $err = "Não foi possível salvar o produto agora. (SQLSTATE {$sqlState} / MySQL {$mysqlCode})";
@@ -478,7 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProdutor.php">
-                    <i class="ti-user mr-2"></i> Produtores
+                    <i class="ti-user mr-2"></i> Permissionários
                   </a>
                 </li>
 
@@ -673,7 +673,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                       <div class="col-md-6">
                         <div class="form-group">
-                          <label>Produtor (Feirante) *</label>
+                          <label>Permissionário *</label>
                           <select class="form-control" name="produtor_id" required>
                             <option value="" disabled <?= $produtorId === '' ? 'selected' : '' ?>>Selecione...</option>
                             <?php foreach ($produtores as $p): ?>
@@ -683,7 +683,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                               </option>
                             <?php endforeach; ?>
                           </select>
-                          <small class="text-muted">Produtores rurais cadastrados no sistema.</small>
+                          <small class="text-muted">Permissionários cadastrados no sistema.</small>
                         </div>
                       </div>
 
@@ -727,7 +727,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <?php if (empty($categorias) || empty($unidades) || empty($produtores)): ?>
                       <small class="text-muted d-block mt-3">
-                        Obs.: Se algum select estiver vazio, cadastre primeiro: Categoria / Unidade / Produtor.
+                        Obs.: Se algum select estiver vazio, cadastre primeiro: Categoria / Unidade / Permissionário.
                       </small>
                     <?php endif; ?>
 

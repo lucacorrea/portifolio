@@ -549,7 +549,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
                 <li class="nav-item">
                   <a class="nav-link" href="./listaProdutor.php">
-                    <i class="ti-user mr-2"></i> Produtores
+                    <i class="ti-user mr-2"></i> Permissionários
                   </a>
                 </li>
 
@@ -827,13 +827,13 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             <div class="col-lg-7 mb-4">
               <div class="card h-100">
                 <div class="card-body">
-                  <h4 class="card-title">Resumo por feirante</h4>
+                  <h4 class="card-title">Resumo por permissionário</h4>
 
                   <div class="table-responsive">
                     <table class="table table-hover">
                       <thead class="thead-light">
                         <tr>
-                          <th>Feirante</th>
+                          <th>Permissionário</th>
                           <th class="text-center">Vendas</th>
                           <th class="text-right">Total</th>
                         </tr>
