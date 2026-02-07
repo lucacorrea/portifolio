@@ -638,7 +638,7 @@ try {
                   </a>
                 </li>
 
-                
+
               </ul>
             </div>
           </li>
@@ -669,7 +669,7 @@ try {
             </div>
           </li>
 
-          
+
           <!-- Título DIVERSOS -->
           <li class="nav-item" style="pointer-events:none;">
             <span style="
@@ -700,9 +700,9 @@ try {
             </a>
           </li>
           <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
+            <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
+              <span class="menu-title">Feira Alternativa</span>
 
             </a>
           </li>
@@ -717,7 +717,7 @@ try {
         </ul>
       </nav>
 
-        </ul>
+      </ul>
       </nav>
 
       <!-- MAIN -->
@@ -755,9 +755,9 @@ try {
                       <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
                         <button type="submit" class="btn btn-primary"><i class="ti-search mr-1"></i> Pesquisar</button>
                         <a class="btn btn-light" href="<?= h(buildUrl(['q' => null, 'p' => null])) ?>"><i class="ti-close mr-1"></i> Limpar</a>
-                       
+
                       </div>
-                      
+
                     </div>
                   </form>
                 </div>
@@ -778,7 +778,7 @@ try {
                         Total: <?= (int)$totalRows ?> — Página <?= (int)$page ?> de <?= (int)$totalPages ?>.
                       </p>
                     </div>
-                      <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                    <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
                       <i class="ti-plus"></i> Adicionar
                     </a>
                   </div>

@@ -18,7 +18,8 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
@@ -104,25 +105,25 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_logo'])) {
   $tipoLogo = $_POST['tipo_logo'] ?? 'prefeitura';
   $file = $_FILES['upload_logo'];
-  
+
   if ($file['error'] === UPLOAD_ERR_OK) {
     $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     $maxSize = 5 * 1024 * 1024; // 5MB
-    
+
     if (!in_array($file['type'], $allowedTypes)) {
       echo json_encode(['success' => false, 'error' => 'Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WebP.']);
       exit;
     }
-    
+
     if ($file['size'] > $maxSize) {
       echo json_encode(['success' => false, 'error' => 'Arquivo muito grande. Máximo: 5MB']);
       exit;
     }
-    
+
     $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = $tipoLogo . '_' . time() . '.' . $extension;
     $filepath = $uploadDir . $filename;
-    
+
     if (move_uploaded_file($file['tmp_name'], $filepath)) {
       $url = '../../../uploads/relatorios/' . $filename;
       echo json_encode(['success' => true, 'url' => $url, 'filename' => $filename]);
@@ -246,7 +247,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_config'])) {
     $_SESSION['flash_ok'] = 'Configurações salvas com sucesso!';
     header('Location: configRelatorio.php');
     exit;
-
   } catch (Exception $e) {
     $err = 'Erro ao salvar configurações: ' . $e->getMessage();
   }
@@ -390,6 +390,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
         opacity: 0;
         transform: translateY(10px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -507,7 +508,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       max-width: 100%;
       max-height: 200px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .preview-actions {
@@ -611,7 +612,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
   </style>
 </head>
@@ -816,9 +819,10 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             </a>
           </li>
           <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
+            <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
+              <span class="menu-title">Feira Alternativa</span>
+
             </a>
           </li>
           <li class="nav-item">
@@ -884,7 +888,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
           <!-- FORMULÁRIO -->
           <form method="POST" action="" id="configForm">
-            
+
             <!-- ======================
                STEP 1: INFORMAÇÕES GERAIS
             ====================== -->
@@ -893,19 +897,19 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div class="card-body">
                   <div class="config-section">
                     <h5><i class="ti-info-alt mr-2"></i>Informações Gerais</h5>
-                    
+
                     <div class="row">
                       <div class="col-md-6 mb-3">
                         <label class="form-label">Nome do Mercado Municipal *</label>
-                        <input type="text" name="titulo_feira" class="form-control" 
-                               value="<?= h($config['titulo_feira']) ?>" required>
+                        <input type="text" name="titulo_feira" class="form-control"
+                          value="<?= h($config['titulo_feira']) ?>" required>
                         <small class="form-text">Ex: Mercado Municipal de São Paulo</small>
                       </div>
 
                       <div class="col-md-6 mb-3">
                         <label class="form-label">Subtítulo / Nome popular</label>
-                        <input type="text" name="subtitulo_feira" class="form-control" 
-                               value="<?= h($config['subtitulo_feira']) ?>">
+                        <input type="text" name="subtitulo_feira" class="form-control"
+                          value="<?= h($config['subtitulo_feira']) ?>">
                         <small class="form-text">Ex: Francisco Lopes da Silva – "Folha"</small>
                       </div>
                     </div>
@@ -913,8 +917,8 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <div class="row">
                       <div class="col-md-12 mb-3">
                         <label class="form-label">Secretaria / Órgão Responsável</label>
-                        <input type="text" name="secretaria" class="form-control" 
-                               value="<?= h($config['secretaria']) ?>">
+                        <input type="text" name="secretaria" class="form-control"
+                          value="<?= h($config['secretaria']) ?>">
                         <small class="form-text">Ex: Secretaria de Desenvolvimento Rural e Econômico</small>
                       </div>
                     </div>
@@ -922,14 +926,14 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <div class="row">
                       <div class="col-md-10 mb-3">
                         <label class="form-label">Município *</label>
-                        <input type="text" name="municipio" class="form-control" 
-                               value="<?= h($config['municipio']) ?>" required>
+                        <input type="text" name="municipio" class="form-control"
+                          value="<?= h($config['municipio']) ?>" required>
                       </div>
 
                       <div class="col-md-2 mb-3">
                         <label class="form-label">UF *</label>
-                        <input type="text" name="estado" class="form-control text-uppercase" 
-                               value="<?= h($config['estado']) ?>" maxlength="2" required>
+                        <input type="text" name="estado" class="form-control text-uppercase"
+                          value="<?= h($config['estado']) ?>" maxlength="2" required>
                       </div>
                     </div>
                   </div>
@@ -945,7 +949,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div class="card-body">
                   <div class="config-section">
                     <h5><i class="ti-image mr-2"></i>Logotipos</h5>
-                    
+
                     <div class="row">
                       <!-- Logotipo Prefeitura -->
                       <div class="col-md-6 mb-4">
@@ -956,9 +960,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                           <p class="text-muted mb-0">JPG, PNG, GIF ou WebP (máx. 5MB)</p>
                           <input type="file" id="fileInputPrefeitura" accept="image/*">
                         </div>
-                        <input type="hidden" name="logotipo_prefeitura" id="urlLogoPrefeitura" 
-                               value="<?= h($config['logotipo_prefeitura']) ?>">
-                        
+                        <input type="hidden" name="logotipo_prefeitura" id="urlLogoPrefeitura"
+                          value="<?= h($config['logotipo_prefeitura']) ?>">
+
                         <div class="image-preview <?= $config['logotipo_prefeitura'] ? 'show' : '' ?>" id="previewPrefeitura">
                           <img src="<?= h($config['logotipo_prefeitura']) ?>" class="preview-img" alt="Preview">
                           <div class="preview-actions">
@@ -978,9 +982,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                           <p class="text-muted mb-0">JPG, PNG, GIF ou WebP (máx. 5MB)</p>
                           <input type="file" id="fileInputFeira" accept="image/*">
                         </div>
-                        <input type="hidden" name="logotipo_feira" id="urlLogoFeira" 
-                               value="<?= h($config['logotipo_feira']) ?>">
-                        
+                        <input type="hidden" name="logotipo_feira" id="urlLogoFeira"
+                          value="<?= h($config['logotipo_feira']) ?>">
+
                         <div class="image-preview <?= $config['logotipo_feira'] ? 'show' : '' ?>" id="previewFeira">
                           <img src="<?= h($config['logotipo_feira']) ?>" class="preview-img" alt="Preview">
                           <div class="preview-actions">
@@ -1002,14 +1006,14 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             <div class="step-content" data-step="3">
               <div class="card">
                 <div class="card-body">
-                  
+
                   <!-- Introdução -->
                   <div class="config-section">
                     <h5><i class="ti-file mr-2"></i>Introdução do Relatório</h5>
 
                     <div class="custom-control custom-switch mb-3">
-                      <input type="checkbox" class="custom-control-input" id="incluir_introducao" 
-                             name="incluir_introducao" <?= $config['incluir_introducao'] ? 'checked' : '' ?>>
+                      <input type="checkbox" class="custom-control-input" id="incluir_introducao"
+                        name="incluir_introducao" <?= $config['incluir_introducao'] ? 'checked' : '' ?>>
                       <label class="custom-control-label" for="incluir_introducao">
                         Incluir seção de introdução no relatório
                       </label>
@@ -1018,7 +1022,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <div class="mb-3">
                       <label class="form-label">Texto da Introdução</label>
                       <textarea name="texto_introducao" class="form-control" rows="4"><?= h($config['texto_introducao']) ?></textarea>
-                      
+
                       <div class="preview-box">
                         <h6>Variáveis disponíveis:</h6>
                         <span class="variable-tag">{titulo_feira}</span>
@@ -1036,8 +1040,8 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <h5><i class="ti-check-box mr-2"></i>Conclusão do Relatório</h5>
 
                     <div class="custom-control custom-switch mb-3">
-                      <input type="checkbox" class="custom-control-input" id="incluir_conclusao" 
-                             name="incluir_conclusao" <?= $config['incluir_conclusao'] ? 'checked' : '' ?>>
+                      <input type="checkbox" class="custom-control-input" id="incluir_conclusao"
+                        name="incluir_conclusao" <?= $config['incluir_conclusao'] ? 'checked' : '' ?>>
                       <label class="custom-control-label" for="incluir_conclusao">
                         Incluir seção de conclusão no relatório
                       </label>
@@ -1046,7 +1050,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <div class="mb-3">
                       <label class="form-label">Texto da Conclusão</label>
                       <textarea name="texto_conclusao" class="form-control" rows="4"><?= h($config['texto_conclusao']) ?></textarea>
-                      
+
                       <div class="preview-box">
                         <h6>Variáveis disponíveis:</h6>
                         <span class="variable-tag">{titulo_feira}</span>
@@ -1066,17 +1070,17 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <div class="row">
                       <div class="col-md-6 mb-3">
                         <label class="form-label">Nome do Responsável</label>
-                        <input type="text" name="assinatura_nome" class="form-control" 
-                               value="<?= h($config['assinatura_nome']) ?>" 
-                               placeholder="Ex: João Silva">
+                        <input type="text" name="assinatura_nome" class="form-control"
+                          value="<?= h($config['assinatura_nome']) ?>"
+                          placeholder="Ex: João Silva">
                         <small class="form-text">Opcional: nome para rodapé do relatório</small>
                       </div>
 
                       <div class="col-md-6 mb-3">
                         <label class="form-label">Cargo</label>
-                        <input type="text" name="assinatura_cargo" class="form-control" 
-                               value="<?= h($config['assinatura_cargo']) ?>" 
-                               placeholder="Ex: Secretário de Agricultura">
+                        <input type="text" name="assinatura_cargo" class="form-control"
+                          value="<?= h($config['assinatura_cargo']) ?>"
+                          placeholder="Ex: Secretário de Agricultura">
                         <small class="form-text">Opcional: cargo do responsável</small>
                       </div>
                     </div>
@@ -1092,21 +1096,21 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             <div class="step-content" data-step="4">
               <div class="card">
                 <div class="card-body">
-                  
+
                   <div class="config-section">
                     <h5><i class="ti-shopping-cart mr-2"></i>Produtos Comercializados</h5>
 
                     <div class="custom-control custom-switch mb-3">
-                      <input type="checkbox" class="custom-control-input" id="incluir_produtos_comercializados" 
-                             name="incluir_produtos_comercializados" <?= $config['incluir_produtos_comercializados'] ? 'checked' : '' ?>>
+                      <input type="checkbox" class="custom-control-input" id="incluir_produtos_comercializados"
+                        name="incluir_produtos_comercializados" <?= $config['incluir_produtos_comercializados'] ? 'checked' : '' ?>>
                       <label class="custom-control-label" for="incluir_produtos_comercializados">
                         Listar produtos comercializados no período
                       </label>
                     </div>
 
                     <div class="custom-control custom-switch mb-3">
-                      <input type="checkbox" class="custom-control-input" id="produtos_detalhados" 
-                             name="produtos_detalhados" <?= $config['produtos_detalhados'] ? 'checked' : '' ?>>
+                      <input type="checkbox" class="custom-control-input" id="produtos_detalhados"
+                        name="produtos_detalhados" <?= $config['produtos_detalhados'] ? 'checked' : '' ?>>
                       <label class="custom-control-label" for="produtos_detalhados">
                         Mostrar produtos organizados por categoria (frutas, legumes, etc.)
                       </label>
@@ -1119,16 +1123,16 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <div class="row">
                       <div class="col-md-6">
                         <div class="custom-control custom-switch mb-3">
-                          <input type="checkbox" class="custom-control-input" id="mostrar_graficos" 
-                                 name="mostrar_graficos" <?= $config['mostrar_graficos'] ? 'checked' : '' ?>>
+                          <input type="checkbox" class="custom-control-input" id="mostrar_graficos"
+                            name="mostrar_graficos" <?= $config['mostrar_graficos'] ? 'checked' : '' ?>>
                           <label class="custom-control-label" for="mostrar_graficos">
                             Incluir gráficos e visualizações
                           </label>
                         </div>
 
                         <div class="custom-control custom-switch mb-3">
-                          <input type="checkbox" class="custom-control-input" id="mostrar_por_categoria" 
-                                 name="mostrar_por_categoria" <?= $config['mostrar_por_categoria'] ? 'checked' : '' ?>>
+                          <input type="checkbox" class="custom-control-input" id="mostrar_por_categoria"
+                            name="mostrar_por_categoria" <?= $config['mostrar_por_categoria'] ? 'checked' : '' ?>>
                           <label class="custom-control-label" for="mostrar_por_categoria">
                             Exibir resumo por categoria de produto
                           </label>
@@ -1137,8 +1141,8 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
                       <div class="col-md-6">
                         <div class="custom-control custom-switch mb-3">
-                          <input type="checkbox" class="custom-control-input" id="mostrar_por_feirante" 
-                                 name="mostrar_por_feirante" <?= $config['mostrar_por_feirante'] ? 'checked' : '' ?>>
+                          <input type="checkbox" class="custom-control-input" id="mostrar_por_feirante"
+                            name="mostrar_por_feirante" <?= $config['mostrar_por_feirante'] ? 'checked' : '' ?>>
                           <label class="custom-control-label" for="mostrar_por_feirante">
                             Exibir vendas por feirante
                           </label>
@@ -1159,7 +1163,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div class="card-body">
                   <div class="config-section">
                     <h5><i class="ti-check mr-2"></i>Revisão Final</h5>
-                    
+
                     <div class="alert alert-info">
                       <i class="ti-info-alt mr-2"></i>
                       Revise todas as informações antes de salvar. Você pode voltar às etapas anteriores para fazer alterações.
@@ -1220,7 +1224,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                   <button type="button" class="btn btn-outline-secondary btn-navigation" id="btnPrev" style="visibility: hidden;">
                     <i class="ti-arrow-left mr-1"></i> Anterior
                   </button>
-                  
+
                   <div>
                     <button type="button" class="btn btn-primary btn-navigation" id="btnNext">
                       Próximo <i class="ti-arrow-right ml-1"></i>
@@ -1284,7 +1288,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
       // Update buttons
       document.getElementById('btnPrev').style.visibility = currentStep === 1 ? 'hidden' : 'visible';
-      
+
       if (currentStep === totalSteps) {
         document.getElementById('btnNext').style.display = 'none';
         document.getElementById('btnSave').style.display = 'inline-block';
@@ -1299,12 +1303,12 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       document.querySelectorAll('.step-content').forEach(content => {
         content.classList.remove('active');
       });
-      
+
       const targetStep = document.querySelector(`.step-content[data-step="${step}"]`);
       if (targetStep) {
         targetStep.classList.add('active');
       }
-      
+
       currentStep = step;
       updateProgress();
       window.scrollTo(0, 0);
@@ -1376,31 +1380,31 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       uploadArea.innerHTML = '<div class="loading-spinner"></div><p class="mt-3">Enviando...</p>';
 
       fetch(window.location.href, {
-        method: 'POST',
-        body: formData
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          document.getElementById(`urlLogo${tipo}`).value = data.url;
-          const preview = document.getElementById(`preview${tipo}`);
-          preview.querySelector('img').src = data.url;
-          preview.classList.add('show');
-          
-          uploadArea.innerHTML = `
+          method: 'POST',
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            document.getElementById(`urlLogo${tipo}`).value = data.url;
+            const preview = document.getElementById(`preview${tipo}`);
+            preview.querySelector('img').src = data.url;
+            preview.classList.add('show');
+
+            uploadArea.innerHTML = `
             <i class="ti-check" style="color: #22c55e;"></i>
             <h6 style="color: #22c55e;">Upload concluído!</h6>
             <p class="text-muted mb-0">${data.filename}</p>
           `;
-        } else {
-          alert('Erro: ' + data.error);
+          } else {
+            alert('Erro: ' + data.error);
+            resetUploadArea(tipo);
+          }
+        })
+        .catch(error => {
+          alert('Erro ao fazer upload');
           resetUploadArea(tipo);
-        }
-      })
-      .catch(error => {
-        alert('Erro ao fazer upload');
-        resetUploadArea(tipo);
-      });
+        });
     }
 
     function resetUploadArea(tipo) {
@@ -1441,21 +1445,21 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       document.getElementById('review-subtitulo').textContent = subtitulo || '(não preenchido)';
       document.getElementById('review-localizacao').textContent = `${municipio} - ${estado}`;
       document.getElementById('review-secretaria').textContent = secretaria || '(não preenchido)';
-      document.getElementById('review-logo-prefeitura').innerHTML = logoPrefeitura 
-        ? '<span class="badge badge-success">✓ Configurado</span>' 
-        : '<span class="badge badge-secondary">Não configurado</span>';
-      document.getElementById('review-logo-feira').innerHTML = logoFeira 
-        ? '<span class="badge badge-success">✓ Configurado</span>' 
-        : '<span class="badge badge-secondary">Não configurado</span>';
-      document.getElementById('review-introducao').innerHTML = incluirIntro 
-        ? '<span class="badge badge-success">✓ Incluir</span>' 
-        : '<span class="badge badge-secondary">Não incluir</span>';
-      document.getElementById('review-conclusao').innerHTML = incluirConclusao 
-        ? '<span class="badge badge-success">✓ Incluir</span>' 
-        : '<span class="badge badge-secondary">Não incluir</span>';
-      document.getElementById('review-assinatura').textContent = assinaturaNome 
-        ? `${assinaturaNome} - ${assinaturaCargo}` 
-        : '(não configurado)';
+      document.getElementById('review-logo-prefeitura').innerHTML = logoPrefeitura ?
+        '<span class="badge badge-success">✓ Configurado</span>' :
+        '<span class="badge badge-secondary">Não configurado</span>';
+      document.getElementById('review-logo-feira').innerHTML = logoFeira ?
+        '<span class="badge badge-success">✓ Configurado</span>' :
+        '<span class="badge badge-secondary">Não configurado</span>';
+      document.getElementById('review-introducao').innerHTML = incluirIntro ?
+        '<span class="badge badge-success">✓ Incluir</span>' :
+        '<span class="badge badge-secondary">Não incluir</span>';
+      document.getElementById('review-conclusao').innerHTML = incluirConclusao ?
+        '<span class="badge badge-success">✓ Incluir</span>' :
+        '<span class="badge badge-secondary">Não incluir</span>';
+      document.getElementById('review-assinatura').textContent = assinaturaNome ?
+        `${assinaturaNome} - ${assinaturaCargo}` :
+        '(não configurado)';
     }
 
     // Initialize

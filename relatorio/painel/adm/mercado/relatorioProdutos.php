@@ -18,7 +18,8 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
@@ -38,7 +39,8 @@ $pdo = db();
 /* ======================
    HELPERS (SCHEMA)
 ====================== */
-function hasTable(PDO $pdo, string $table): bool {
+function hasTable(PDO $pdo, string $table): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.tables
@@ -49,7 +51,8 @@ function hasTable(PDO $pdo, string $table): bool {
   return (int)$st->fetchColumn() > 0;
 }
 
-function hasColumn(PDO $pdo, string $table, string $column): bool {
+function hasColumn(PDO $pdo, string $table, string $column): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.columns
@@ -194,7 +197,7 @@ try {
     ====================== */
     $unidadeJoin = "";
     $unidadeSelect = "'UN' as unidade_nome";
-    
+
     if ($colUnidade && hasTable($pdo, 'unidades')) {
       $unidadeJoin = "LEFT JOIN unidades u ON u.id = pr.unidade_id";
       $unidadeSelect = "COALESCE(u.nome, 'UN') as unidade_nome";
@@ -697,9 +700,10 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             </a>
           </li>
           <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
+            <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
+              <span class="menu-title">Feira Alternativa</span>
+
             </a>
           </li>
           <li class="nav-item">
@@ -881,14 +885,14 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                           Nenhum produto comercializado no período
                         </td>
                       </tr>
-                    <?php else:
+                      <?php else:
                       $position = $offsetProdutos + 1;
                       foreach ($porProduto as $prod):
                         $rankingClass = 'ranking-other';
                         if ($position == 1) $rankingClass = 'ranking-1';
                         elseif ($position == 2) $rankingClass = 'ranking-2';
                         elseif ($position == 3) $rankingClass = 'ranking-3';
-                    ?>
+                      ?>
                         <tr>
                           <td class="text-center">
                             <span class="ranking-badge <?= $rankingClass ?>">

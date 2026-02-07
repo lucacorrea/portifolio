@@ -18,7 +18,8 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
@@ -38,7 +39,8 @@ $pdo = db();
 /* ======================
    HELPERS (SCHEMA)
 ====================== */
-function hasTable(PDO $pdo, string $table): bool {
+function hasTable(PDO $pdo, string $table): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.tables
@@ -49,7 +51,8 @@ function hasTable(PDO $pdo, string $table): bool {
   return (int)$st->fetchColumn() > 0;
 }
 
-function hasColumn(PDO $pdo, string $table, string $column): bool {
+function hasColumn(PDO $pdo, string $table, string $column): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.columns
@@ -113,7 +116,6 @@ if ($tipoFiltro === 'mes') {
   $dataFim = date('Y-m-t', strtotime($dataInicio));
   $labelPeriodo = date('m/Y', strtotime($dataInicio));
   $gerarRelatorio = true;
-  
 } elseif ($tipoFiltro === 'dia') {
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataSel)) {
     $dataSel = date('Y-m-d');
@@ -122,7 +124,6 @@ if ($tipoFiltro === 'mes') {
   $dataFim = $dataSel;
   $labelPeriodo = date('d/m/Y', strtotime($dataSel));
   $gerarRelatorio = true;
-  
 } elseif ($tipoFiltro === 'periodo' && $dataInicio && $dataFim) {
   // Validar datas do período personalizado
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInicio) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataFim)) {
@@ -139,7 +140,7 @@ if ($tipoFiltro === 'mes') {
    BUSCAR DADOS
 ====================== */
 $resumo = [
-  'total_vendas' => 0, 
+  'total_vendas' => 0,
   'valor_total' => 0,
   'produtos_distintos' => 0,
   'quantidade_total' => 0,
@@ -165,7 +166,7 @@ if ($gerarRelatorio && !$err) {
     ");
     $st->execute($params);
     $r = $st->fetch();
-    
+
     if ($r) {
       $resumo['total_vendas'] = (int)$r['total_vendas'];
       $resumo['valor_total'] = (float)$r['valor_total'];
@@ -184,13 +185,12 @@ if ($gerarRelatorio && !$err) {
     ");
     $st->execute($params);
     $r = $st->fetch();
-    
+
     if ($r) {
       $resumo['produtos_distintos'] = (int)$r['produtos_distintos'];
       $resumo['quantidade_total'] = (float)$r['quantidade_total'];
       $resumo['valor_produtos'] = (float)$r['valor_produtos'];
     }
-
   } catch (Exception $e) {
     $err = 'Erro ao buscar dados: ' . $e->getMessage();
     $gerarRelatorio = false;
@@ -387,7 +387,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
     }
 
     .generate-report-card p {
-      color: rgba(255,255,255,0.9);
+      color: rgba(255, 255, 255, 0.9);
       margin-bottom: 25px;
     }
 
@@ -399,13 +399,13 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
       padding: 12px 40px;
       border-radius: 8px;
       border: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       transition: all 0.3s ease;
     }
 
     .btn-generate:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
       color: #667eea;
     }
   </style>
@@ -611,9 +611,10 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             </a>
           </li>
           <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
+            <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
+              <span class="menu-title">Feira Alternativa</span>
+
             </a>
           </li>
           <li class="nav-item">
@@ -677,7 +678,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
               <form method="GET" action="" id="formFiltro">
                 <input type="hidden" name="tipo" id="input-tipo" value="<?= h($tipoFiltro) ?>">
-                
+
                 <div class="row align-items-end">
 
                   <!-- Campo de data (muda entre mês, dia e período) -->
@@ -698,13 +699,13 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <div class="row">
                       <div class="col-md-6">
                         <label class="mb-1">Data Inicial *</label>
-                        <input type="date" name="data_inicio" class="form-control" 
-                               value="<?= h($dataInicio) ?>">
+                        <input type="date" name="data_inicio" class="form-control"
+                          value="<?= h($dataInicio) ?>">
                       </div>
                       <div class="col-md-6">
                         <label class="mb-1">Data Final *</label>
-                        <input type="date" name="data_fim" class="form-control" 
-                               value="<?= h($dataFim) ?>">
+                        <input type="date" name="data_fim" class="form-control"
+                          value="<?= h($dataFim) ?>">
                       </div>
                     </div>
                   </div>
@@ -739,7 +740,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             </div>
 
           <?php else: ?>
-            
+
             <!-- ======================
                KPIs PRINCIPAIS
             ====================== -->
@@ -806,9 +807,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     Clique no botão abaixo para visualizar e imprimir o relatório oficial<br>
                     no formato do documento da prefeitura
                   </p>
-                  <a href="relatorioEscrito.php?data_inicio=<?= h($dataInicio) ?>&data_fim=<?= h($dataFim) ?>" 
-                     target="_blank" 
-                     class="btn btn-generate">
+                  <a href="relatorioEscrito.php?data_inicio=<?= h($dataInicio) ?>&data_fim=<?= h($dataFim) ?>"
+                    target="_blank"
+                    class="btn btn-generate">
                     <i class="ti-printer mr-2"></i>
                     Gerar Relatório Escrito
                   </a>
@@ -856,13 +857,13 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
       function atualizarTipoFiltro() {
         let tipo = 'periodo';
-        
+
         if (radioDia.checked) {
           tipo = 'dia';
         } else if (radioMes.checked) {
           tipo = 'mes';
         }
-        
+
         inputTipo.value = tipo;
 
         if (tipo === 'periodo') {
@@ -873,7 +874,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
           // Mostrar campo único de data
           filtroMesDia.style.display = 'block';
           filtroPeriodo.style.display = 'none';
-          
+
           if (tipo === 'dia') {
             inputData.type = 'date';
             labelData.textContent = 'Data';

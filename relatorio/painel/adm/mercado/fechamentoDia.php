@@ -609,12 +609,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </a>
           </li>
           <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
+                        <a href="../alternativa/" class="nav-link">
+                            <i class="ti-shopping-cart menu-icon"></i>
+                            <span class="menu-title">Feira Alternativa</span>
 
-            </a>
-          </li>
+                        </a>
+                    </li>
           <li class="nav-item">
 
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">

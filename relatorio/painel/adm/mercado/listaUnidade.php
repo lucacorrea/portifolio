@@ -502,9 +502,9 @@ try {
             </a>
           </li>
           <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
+            <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
+              <span class="menu-title">Feira Alternativa</span>
 
             </a>
           </li>
@@ -517,7 +517,7 @@ try {
           </li>
 
         </ul>
-      </nav>  
+      </nav>
 
       </ul>
       </nav>

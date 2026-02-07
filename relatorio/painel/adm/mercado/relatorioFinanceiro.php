@@ -18,7 +18,8 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
@@ -38,7 +39,8 @@ $pdo = db();
 /* ======================
    HELPERS (SCHEMA)
 ====================== */
-function hasTable(PDO $pdo, string $table): bool {
+function hasTable(PDO $pdo, string $table): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.tables
@@ -49,7 +51,8 @@ function hasTable(PDO $pdo, string $table): bool {
   return (int)$st->fetchColumn() > 0;
 }
 
-function hasColumn(PDO $pdo, string $table, string $column): bool {
+function hasColumn(PDO $pdo, string $table, string $column): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.columns
@@ -651,9 +654,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             </a>
           </li>
           <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
+            <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
+              <span class="menu-title">Feira Alternativa</span>
 
             </a>
           </li>
@@ -681,7 +684,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div>
                   <h2 class="font-weight-bold mb-1">Relatório Financeiro</h2>
                   <span class="badge badge-primary">
-                   Mercado Municipal — <?= h($labelPeriodo) ?>
+                    Mercado Municipal — <?= h($labelPeriodo) ?>
                   </span>
                 </div>
               </div>
