@@ -691,9 +691,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             </a>
           </li>
           <li class="nav-item">
-            <a href="../produtor/" class="nav-link">
+            <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira do Produtor</span>
+              <span class="menu-title">Feira do Alternativa</span>
             </a>
           </li>
           <li class="nav-item">
