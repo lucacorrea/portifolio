@@ -640,7 +640,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                   <h2 class="font-weight-bold mb-1">Resumo Mensal</h2>
                   <?php if ($gerarRelatorio): ?>
                     <span class="badge badge-primary">
-                      Feira Alternativa — <?= h($labelPeriodo) ?>
+                      Feira do Produtor — <?= h($labelPeriodo) ?>
                     </span>
                   <?php endif; ?>
                 </div>

@@ -681,7 +681,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                 <div>
                   <h2 class="font-weight-bold mb-1">Relatório Financeiro</h2>
                   <span class="badge badge-primary">
-                    Feira Alternativa — <?= h($labelPeriodo) ?>
+                    Feira do Produtor — <?= h($labelPeriodo) ?>
                   </span>
                 </div>
               </div>
