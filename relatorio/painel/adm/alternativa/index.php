@@ -961,7 +961,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             </a>
           </li>
           <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
+            <a href="../../mercado/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Mercado Municipal</span>
 
