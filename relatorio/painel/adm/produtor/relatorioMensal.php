@@ -64,7 +64,7 @@ function hasColumn(PDO $pdo, string $table, string $column): bool {
 /* ======================
    FEIRA FIXA
 ====================== */
-$feiraId = 1;
+$feiraId = 2;
 
 /* ======================
    TABELAS
@@ -605,9 +605,9 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
             </a>
           </li>
           <li class="nav-item">
-            <a href="../alternativa/" class="nav-link">
+            <a href="../produtor/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira Alternativa</span>
+              <span class="menu-title">Feira do Produtor</span>
             </a>
           </li>
           <li class="nav-item">
@@ -640,7 +640,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                   <h2 class="font-weight-bold mb-1">Resumo Mensal</h2>
                   <?php if ($gerarRelatorio): ?>
                     <span class="badge badge-primary">
-                      Feira do Produtor — <?= h($labelPeriodo) ?>
+                      Feira Alternativa — <?= h($labelPeriodo) ?>
                     </span>
                   <?php endif; ?>
                 </div>

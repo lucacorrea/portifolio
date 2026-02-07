@@ -37,7 +37,7 @@ require '../../../assets/php/conexao.php';
 $pdo = db();
 
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
-$feiraId = 1;
+$feiraId = 2;
 
 /* ===========================
    PAGINAÇÃO PADRÃO SIG (REUSO)
@@ -323,7 +323,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Feira do Produtor — Lista de Produtos</title>
+  <title>SIGRelatórios Feira Alternativa — Lista de Produtos</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -669,9 +669,9 @@ $fim = min($offset + $porPagina, $totalRegistros);
             </a>
           </li>
           <li class="nav-item">
-            <a href="../alternativa/" class="nav-link">
+            <a href="../produtor/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira Alternativa</span>
+              <span class="menu-title">Feira do Produtor</span>
 
             </a>
           </li>

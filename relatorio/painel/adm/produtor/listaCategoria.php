@@ -37,7 +37,7 @@ require '../../../assets/php/conexao.php';
 $pdo = db();
 
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
-$feiraId = 1;
+$feiraId = 2;
 
 /* ===== Ações (Ativar/Desativar e Excluir) ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -144,7 +144,7 @@ try {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Feira do Produtor — Categorias</title>
+  <title>SIGRelatórios Feira Alternativa — Categorias</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -491,9 +491,9 @@ try {
             </a>
           </li>
           <li class="nav-item">
-            <a href="../alternativa/" class="nav-link">
+            <a href="../produtor/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira Alternativa</span>
+              <span class="menu-title">Feira do Produtor</span>
 
             </a>
           </li>

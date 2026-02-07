@@ -30,7 +30,7 @@ function only_digits(string $s): string
 }
 
 /* Feira padrão desta página */
-$FEIRA_ID = 1; // 1=Feira do Produtor | 2=Feira Alternativa
+$FEIRA_ID = 2; // 1=Feira do Produtor | 2=Feira Alternativa
 
 /* Detecção opcional pela pasta (se você separou em pastas) */
 $dirLower = strtolower((string)__DIR__);
@@ -353,7 +353,7 @@ try {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Feira do Produtor — Produtores</title>
+  <title>SIGRelatórios Feira Alternativa — Produtores</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -693,9 +693,9 @@ try {
             </a>
           </li>
           <li class="nav-item">
-            <a href="../alternativa/" class="nav-link">
+            <a href="../produtor/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira Alternativa</span>
+              <span class="menu-title">Feira do Produtor</span>
 
             </a>
           </li>
