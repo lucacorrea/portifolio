@@ -64,7 +64,7 @@ function hasColumn(PDO $pdo, string $table, string $column): bool {
 /* ======================
    FEIRA FIXA
 ====================== */
-$feiraId = 2;
+$feiraId = 3;
 
 /* ======================
    TABELAS

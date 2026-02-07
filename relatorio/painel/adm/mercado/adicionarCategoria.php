@@ -28,7 +28,7 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-$feiraId = 2;
+$feiraId = 3;
 
 $nome = '';
 $ativo = '1';

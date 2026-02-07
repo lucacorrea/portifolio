@@ -38,7 +38,7 @@ $pdo = db();
 /* ======================
    FEIRA ID
 ====================== */
-$feiraId = 2; // Feira Alternativa
+$feiraId = 3; // Feira Alternativa
 
 /* ======================
    DIRETÓRIO DE UPLOADS
