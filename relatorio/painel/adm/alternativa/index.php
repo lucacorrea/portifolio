@@ -1045,7 +1045,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             <div class="col-md-6 grid-margin stretch-card">
               <div class="card kpi-card">
                 <div class="kpi-hero">
-                  <div class="hero-bg" style="background-image:url('../../../images/dashboard/produtor.jpeg');"></div>
+                  <div class="hero-bg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)"></div>
 
                   <div class="hero-content">
                     <div class="kpi-row">
