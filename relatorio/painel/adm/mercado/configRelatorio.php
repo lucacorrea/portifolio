@@ -896,10 +896,10 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     
                     <div class="row">
                       <div class="col-md-6 mb-3">
-                        <label class="form-label">Nome da Feira *</label>
+                        <label class="form-label">Nome do Mercado Municipal *</label>
                         <input type="text" name="titulo_feira" class="form-control" 
                                value="<?= h($config['titulo_feira']) ?>" required>
-                        <small class="form-text">Ex: Feira Alternativa</small>
+                        <small class="form-text">Ex: Mercado Municipal de São Paulo</small>
                       </div>
 
                       <div class="col-md-6 mb-3">

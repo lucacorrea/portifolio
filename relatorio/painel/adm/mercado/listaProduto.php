@@ -323,7 +323,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Feira Alternativa — Lista de Produtos</title>
+  <title>SIGRelatórios Mercado Municipal — Lista de Produtos</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
