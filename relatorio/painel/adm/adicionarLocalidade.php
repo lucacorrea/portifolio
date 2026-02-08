@@ -247,8 +247,8 @@ try {
                             <span class="menu-title">Relatórios</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="./localidades.php">
+                    <li class="nav-item active">
+                        <a class="nav-link"  href="./localidades.php">
                             <i class="ti-map menu-icon"></i>
                             <span class="menu-title">Localidades</span>
                         </a>
