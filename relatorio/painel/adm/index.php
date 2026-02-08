@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
@@ -15,155 +14,238 @@ if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../operador/index.php');
   exit;
 }
+
 $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 
-// Conexão com banco de dados
+// Conexão com banco
 require_once '../../assets/php/conexao.php';
 
-// Filtro de feira selecionada
+/**
+ * Segurança: garantir que o PDO joga exceções (evita "500 silencioso")
+ * (Se seu conexao.php já faz isso, não tem problema repetir.)
+ */
+try {
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+  // Se aqui falhar, a conexão nem está ok
+}
+
+/**
+ * Debug (DEV): habilite temporariamente se quiser ver erro na tela
+ * Em produção, deixe false.
+ */
+$DEBUG = false;
+if ($DEBUG) {
+  ini_set('display_errors', '1');
+  ini_set('display_startup_errors', '1');
+  error_reporting(E_ALL);
+}
+
+/** Filtro de feira selecionada */
 $feira_selecionada = isset($_GET['feira_id']) ? (int)$_GET['feira_id'] : 0;
 
-// Função helper
-function h($s) {
+/** Helper HTML */
+function h($s): string {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
-try {
-    // Buscar todas as feiras
-    $sql_feiras = "SELECT id, codigo, nome FROM feiras WHERE ativo = 1 ORDER BY nome";
-    $stmt_feiras = $pdo->query($sql_feiras);
-    $feiras = $stmt_feiras->fetchAll(PDO::FETCH_ASSOC);
-
-    // Preparar condição WHERE para feira
-    $where_feira_com_and = "";
-    $where_feira_apenas = "";
-    
-    if ($feira_selecionada > 0) {
-        $where_feira_com_and = " AND feira_id = :feira_id";
-        $where_feira_apenas = " WHERE feira_id = :feira_id";
-    }
-
-    // Total de vendas do dia
-    $sql_vendas_hoje = "SELECT COUNT(*) as total, COALESCE(SUM(total), 0) as valor_total 
-                        FROM vendas 
-                        WHERE DATE(data_hora) = CURDATE()" . $where_feira_com_and;
-    $stmt_vendas_hoje = $pdo->prepare($sql_vendas_hoje);
-    if ($feira_selecionada > 0) {
-        $stmt_vendas_hoje->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-    }
-    $stmt_vendas_hoje->execute();
-    $vendas_hoje = $stmt_vendas_hoje->fetch(PDO::FETCH_ASSOC);
-
-    // Total de vendas do mês
-    $sql_vendas_mes = "SELECT COUNT(*) as total, COALESCE(SUM(total), 0) as valor_total 
-                       FROM vendas 
-                       WHERE MONTH(data_hora) = MONTH(CURDATE()) 
-                       AND YEAR(data_hora) = YEAR(CURDATE())" . $where_feira_com_and;
-    $stmt_vendas_mes = $pdo->prepare($sql_vendas_mes);
-    if ($feira_selecionada > 0) {
-        $stmt_vendas_mes->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-    }
-    $stmt_vendas_mes->execute();
-    $vendas_mes = $stmt_vendas_mes->fetch(PDO::FETCH_ASSOC);
-
-    // Total de produtores
-    $sql_produtores = "SELECT COUNT(*) as total FROM produtores WHERE ativo = 1" . $where_feira_com_and;
-    $stmt_produtores = $pdo->prepare($sql_produtores);
-    if ($feira_selecionada > 0) {
-        $stmt_produtores->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-    }
-    $stmt_produtores->execute();
-    $total_produtores = $stmt_produtores->fetch(PDO::FETCH_ASSOC)['total'];
-
-    // Total de produtos
-    $sql_produtos = "SELECT COUNT(*) as total FROM produtos WHERE ativo = 1" . $where_feira_com_and;
-    $stmt_produtos = $pdo->prepare($sql_produtos);
-    if ($feira_selecionada > 0) {
-        $stmt_produtos->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-    }
-    $stmt_produtos->execute();
-    $total_produtos = $stmt_produtos->fetch(PDO::FETCH_ASSOC)['total'];
-
-    // Vendas por forma de pagamento (para gráfico)
-    $sql_forma_pagamento = "SELECT forma_pagamento, COALESCE(SUM(total), 0) as valor_total 
-                            FROM vendas 
-                            WHERE MONTH(data_hora) = MONTH(CURDATE()) 
-                            AND YEAR(data_hora) = YEAR(CURDATE())" . $where_feira_com_and . "
-                            GROUP BY forma_pagamento";
-    $stmt_forma_pagamento = $pdo->prepare($sql_forma_pagamento);
-    if ($feira_selecionada > 0) {
-        $stmt_forma_pagamento->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-    }
-    $stmt_forma_pagamento->execute();
-    $vendas_forma_pagamento = $stmt_forma_pagamento->fetchAll(PDO::FETCH_ASSOC);
-
-    // Vendas por categoria (para gráfico)
-    $where_feira_vi = $feira_selecionada > 0 ? " AND vi.feira_id = :feira_id" : "";
-    $sql_vendas_categoria = "SELECT c.nome, COUNT(vi.id) as qtd_vendas, COALESCE(SUM(vi.subtotal), 0) as valor_total
-                             FROM venda_itens vi
-                             INNER JOIN produtos p ON vi.produto_id = p.id
-                             INNER JOIN categorias c ON p.categoria_id = c.id
-                             WHERE MONTH(vi.criado_em) = MONTH(CURDATE())
-                             AND YEAR(vi.criado_em) = YEAR(CURDATE())" . $where_feira_vi . "
-                             GROUP BY c.id, c.nome
-                             ORDER BY valor_total DESC
-                             LIMIT 10";
-    $stmt_vendas_categoria = $pdo->prepare($sql_vendas_categoria);
-    if ($feira_selecionada > 0) {
-        $stmt_vendas_categoria->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-    }
-    $stmt_vendas_categoria->execute();
-    $vendas_categoria = $stmt_vendas_categoria->fetchAll(PDO::FETCH_ASSOC);
-
-    // Top 10 produtos mais vendidos
-    $sql_top_produtos = "SELECT p.nome, COUNT(vi.id) as qtd_vendas, COALESCE(SUM(vi.subtotal), 0) as valor_total
-                         FROM venda_itens vi
-                         INNER JOIN produtos p ON vi.produto_id = p.id
-                         WHERE MONTH(vi.criado_em) = MONTH(CURDATE())
-                         AND YEAR(vi.criado_em) = YEAR(CURDATE())" . $where_feira_vi . "
-                         GROUP BY p.id, p.nome
-                         ORDER BY qtd_vendas DESC
-                         LIMIT 10";
-    $stmt_top_produtos = $pdo->prepare($sql_top_produtos);
-    if ($feira_selecionada > 0) {
-        $stmt_top_produtos->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-    }
-    $stmt_top_produtos->execute();
-    $top_produtos = $stmt_top_produtos->fetchAll(PDO::FETCH_ASSOC);
-
-    // Vendas dos últimos 7 dias (para gráfico de linha)
-    $sql_vendas_semana = "SELECT DATE(data_hora) as data, COUNT(*) as qtd, COALESCE(SUM(total), 0) as valor
-                          FROM vendas
-                          WHERE data_hora >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)" . $where_feira_com_and . "
-                          GROUP BY DATE(data_hora)
-                          ORDER BY data";
-    $stmt_vendas_semana = $pdo->prepare($sql_vendas_semana);
-    if ($feira_selecionada > 0) {
-        $stmt_vendas_semana->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-    }
-    $stmt_vendas_semana->execute();
-    $vendas_semana = $stmt_vendas_semana->fetchAll(PDO::FETCH_ASSOC);
-
-} catch (Exception $e) {
-    // Log do erro
-    error_log("Erro no dashboard: " . $e->getMessage());
-    
-    // Inicializar variáveis vazias para evitar erros
-    $feiras = [];
-    $vendas_hoje = ['total' => 0, 'valor_total' => 0];
-    $vendas_mes = ['total' => 0, 'valor_total' => 0];
-    $total_produtores = 0;
-    $total_produtos = 0;
-    $vendas_forma_pagamento = [];
-    $vendas_categoria = [];
-    $top_produtos = [];
-    $vendas_semana = [];
-    
-    // Exibir mensagem de erro (remover em produção)
-    // echo "<div class='alert alert-danger'>Erro ao carregar dados: " . h($e->getMessage()) . "</div>";
+/**
+ * Verifica se uma coluna existe numa tabela (MySQL/MariaDB).
+ * Isso impede estourar 500 por "Unknown column feira_id".
+ */
+function columnExists(PDO $pdo, string $table, string $column): bool {
+  $sql = "
+    SELECT COUNT(*) AS c
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = :t
+      AND COLUMN_NAME = :c
+  ";
+  $st = $pdo->prepare($sql);
+  $st->execute([':t' => $table, ':c' => $column]);
+  return (int)$st->fetchColumn() > 0;
 }
 
+/**
+ * Executa query com bind condicional de feira_id
+ */
+function execWithOptionalFeira(PDO $pdo, string $sql, int $feira_id): PDOStatement {
+  $st = $pdo->prepare($sql);
+  if ($feira_id > 0 && strpos($sql, ':feira_id') !== false) {
+    $st->bindValue(':feira_id', $feira_id, PDO::PARAM_INT);
+  }
+  $st->execute();
+  return $st;
+}
+
+/** Defaults (pra nunca quebrar layout) */
+$feiras = [];
+$vendas_hoje = ['total' => 0, 'valor_total' => 0];
+$vendas_mes  = ['total' => 0, 'valor_total' => 0];
+$total_produtores = 0;
+$total_produtos = 0;
+$vendas_forma_pagamento = [];
+$vendas_categoria = [];
+$top_produtos = [];
+$vendas_semana = [];
+
+try {
+  /** 1) Listar feiras */
+  $sql_feiras = "SELECT id, codigo, nome FROM feiras WHERE ativo = 1 ORDER BY nome";
+  $feiras = $pdo->query($sql_feiras)->fetchAll();
+
+  /**
+   * 2) Montar filtro de feira para VENDAS
+   *    (só aplica se a coluna existir)
+   */
+  $vendasTemFeiraId = columnExists($pdo, 'vendas', 'feira_id');
+
+  $where_vendas_and = '';
+  if ($feira_selecionada > 0 && $vendasTemFeiraId) {
+    $where_vendas_and = " AND feira_id = :feira_id";
+  }
+
+  /** 3) Total de vendas do dia */
+  $sql_vendas_hoje = "
+    SELECT COUNT(*) AS total, COALESCE(SUM(total), 0) AS valor_total
+    FROM vendas
+    WHERE DATE(data_hora) = CURDATE()
+    $where_vendas_and
+  ";
+  $vendas_hoje = execWithOptionalFeira($pdo, $sql_vendas_hoje, $feira_selecionada)->fetch() ?: $vendas_hoje;
+
+  /** 4) Total de vendas do mês */
+  $sql_vendas_mes = "
+    SELECT COUNT(*) AS total, COALESCE(SUM(total), 0) AS valor_total
+    FROM vendas
+    WHERE MONTH(data_hora) = MONTH(CURDATE())
+      AND YEAR(data_hora)  = YEAR(CURDATE())
+    $where_vendas_and
+  ";
+  $vendas_mes = execWithOptionalFeira($pdo, $sql_vendas_mes, $feira_selecionada)->fetch() ?: $vendas_mes;
+
+  /**
+   * 5) Total de produtores
+   *    - Se produtores tiver feira_id -> filtra direto
+   *    - Senão: NÃO filtra (evita erro) e retorna total geral
+   *    (Se você tiver tabela pivô produtor_feira, eu adapto pra filtrar certinho.)
+   */
+  $produtoresTemFeiraId = columnExists($pdo, 'produtores', 'feira_id');
+
+  if ($feira_selecionada > 0 && $produtoresTemFeiraId) {
+    $sql_produtores = "SELECT COUNT(*) AS total FROM produtores WHERE ativo = 1 AND feira_id = :feira_id";
+    $total_produtores = (int) execWithOptionalFeira($pdo, $sql_produtores, $feira_selecionada)->fetchColumn();
+  } else {
+    $sql_produtores = "SELECT COUNT(*) AS total FROM produtores WHERE ativo = 1";
+    $total_produtores = (int) $pdo->query($sql_produtores)->fetchColumn();
+  }
+
+  /**
+   * 6) Total de produtos
+   *    - Se produtos tiver feira_id -> filtra direto
+   *    - Senão: NÃO filtra (evita erro)
+   */
+  $produtosTemFeiraId = columnExists($pdo, 'produtos', 'feira_id');
+
+  if ($feira_selecionada > 0 && $produtosTemFeiraId) {
+    $sql_produtos = "SELECT COUNT(*) AS total FROM produtos WHERE ativo = 1 AND feira_id = :feira_id";
+    $total_produtos = (int) execWithOptionalFeira($pdo, $sql_produtos, $feira_selecionada)->fetchColumn();
+  } else {
+    $sql_produtos = "SELECT COUNT(*) AS total FROM produtos WHERE ativo = 1";
+    $total_produtos = (int) $pdo->query($sql_produtos)->fetchColumn();
+  }
+
+  /** 7) Vendas por forma de pagamento (mês) */
+  $sql_forma_pagamento = "
+    SELECT forma_pagamento, COALESCE(SUM(total), 0) AS valor_total
+    FROM vendas
+    WHERE MONTH(data_hora) = MONTH(CURDATE())
+      AND YEAR(data_hora)  = YEAR(CURDATE())
+    $where_vendas_and
+    GROUP BY forma_pagamento
+  ";
+  $vendas_forma_pagamento = execWithOptionalFeira($pdo, $sql_forma_pagamento, $feira_selecionada)->fetchAll();
+
+  /**
+   * 8) Vendas por categoria (mês)
+   *    Aqui é o ponto que mais dá 500: venda_itens normalmente NÃO tem feira_id.
+   *    Então filtramos por feira em vendas v (se existir v.feira_id).
+   */
+  $vendaItensTemVendaId = columnExists($pdo, 'venda_itens', 'venda_id');
+  $where_feira_vi = '';
+  $join_vendas_vi = '';
+
+  if ($vendaItensTemVendaId) {
+    $join_vendas_vi = "INNER JOIN vendas v ON v.id = vi.venda_id";
+    if ($feira_selecionada > 0 && $vendasTemFeiraId) {
+      $where_feira_vi = " AND v.feira_id = :feira_id";
+    }
+  } else {
+    // Se sua tabela venda_itens não tem venda_id, precisa ajustar schema/joins.
+    // Mantemos sem join pra não quebrar.
+    $join_vendas_vi = "";
+    $where_feira_vi = "";
+  }
+
+  $sql_vendas_categoria = "
+    SELECT c.nome,
+           COUNT(vi.id) AS qtd_vendas,
+           COALESCE(SUM(vi.subtotal), 0) AS valor_total
+    FROM venda_itens vi
+    $join_vendas_vi
+    INNER JOIN produtos p   ON vi.produto_id = p.id
+    INNER JOIN categorias c ON p.categoria_id = c.id
+    WHERE MONTH(vi.criado_em) = MONTH(CURDATE())
+      AND YEAR(vi.criado_em)  = YEAR(CURDATE())
+      $where_feira_vi
+    GROUP BY c.id, c.nome
+    ORDER BY valor_total DESC
+    LIMIT 10
+  ";
+  $vendas_categoria = execWithOptionalFeira($pdo, $sql_vendas_categoria, $feira_selecionada)->fetchAll();
+
+  /** 9) Top 10 produtos mais vendidos (mês) */
+  $sql_top_produtos = "
+    SELECT p.nome,
+           COUNT(vi.id) AS qtd_vendas,
+           COALESCE(SUM(vi.subtotal), 0) AS valor_total
+    FROM venda_itens vi
+    $join_vendas_vi
+    INNER JOIN produtos p ON vi.produto_id = p.id
+    WHERE MONTH(vi.criado_em) = MONTH(CURDATE())
+      AND YEAR(vi.criado_em)  = YEAR(CURDATE())
+      $where_feira_vi
+    GROUP BY p.id, p.nome
+    ORDER BY qtd_vendas DESC
+    LIMIT 10
+  ";
+  $top_produtos = execWithOptionalFeira($pdo, $sql_top_produtos, $feira_selecionada)->fetchAll();
+
+  /** 10) Vendas últimos 7 dias */
+  $sql_vendas_semana = "
+    SELECT DATE(data_hora) AS data, COUNT(*) AS qtd, COALESCE(SUM(total), 0) AS valor
+    FROM vendas
+    WHERE data_hora >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    $where_vendas_and
+    GROUP BY DATE(data_hora)
+    ORDER BY data
+  ";
+  $vendas_semana = execWithOptionalFeira($pdo, $sql_vendas_semana, $feira_selecionada)->fetchAll();
+
+} catch (Throwable $e) {
+  error_log("Erro no dashboard: " . $e->getMessage());
+
+  if ($DEBUG) {
+    echo "<div style='padding:12px;border:1px solid #f00;color:#900;background:#fee'>";
+    echo "<strong>Erro ao carregar dados:</strong> " . h($e->getMessage());
+    echo "</div>";
+  }
+
+  // As variáveis já estão com default seguro acima
+}
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-BR">
