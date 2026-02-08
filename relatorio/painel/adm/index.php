@@ -946,6 +946,12 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
               <span class="menu-title">Relatórios</span>
             </a>
           </li>
+            <li class="nav-item">
+            <a class="nav-link" href="./localicadades.php">
+              <i class="ti-map menu-icon"></i>
+              <span class="menu-title">Localidades</span>
+            </a>
+          </li>
 
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
