@@ -1,88 +1,85 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
 /* Login */
 if (empty($_SESSION['usuario_logado'])) {
-    header('Location: ../../index.php');
-    exit;
+  header('Location: ../../index.php');
+  exit;
 }
 
 /* ADMIN */
 if (!in_array('ADMIN', $_SESSION['perfis'] ?? [], true)) {
-    header('Location: ../operador/index.php');
-    exit;
+  header('Location: ../operador/index.php');
+  exit;
 }
 
 require_once '../../assets/php/conexao.php';
 
-/* Helper */
-function h($v): string
-{
-    return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+function h($v): string {
+  return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
 }
 
 /* CSRF */
 if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = $_SESSION['csrf_token'];
 
-/* CONFIG */
-$TABELA = 'comunidades'; // <<< MUDE AQUI se sua tabela tiver outro nome
+/* ✅ TABELA CERTA */
+$TABELA = 'comunidades';
 
 $msgErro = '';
 $msgSucesso = '';
-$localidades = [];
+$comunidades = [];
 
-/* (DEV) se quiser ver o erro real na tela */
+/* DEV opcional (se quiser ver erro real) */
 $DEBUG = false;
 
 /* Ações */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-        $msgErro = 'Token de segurança inválido.';
-    } else {
-        $acao = $_POST['acao'] ?? '';
-        $id = (int)($_POST['id'] ?? 0);
+  if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    $msgErro = 'Token de segurança inválido.';
+  } else {
+    $acao = $_POST['acao'] ?? '';
+    $id = (int)($_POST['id'] ?? 0);
 
-        if ($id <= 0) {
-            $msgErro = 'ID inválido.';
+    if ($id <= 0) {
+      $msgErro = 'ID inválido.';
+    } else {
+      try {
+        if ($acao === 'toggle') {
+          $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = IF(ativo=1,0,1), atualizado_em = NOW() WHERE id = :id");
+          $st->execute([':id' => $id]);
+          $msgSucesso = 'Status atualizado com sucesso.';
+        } elseif ($acao === 'excluir') {
+          $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE id = :id");
+          $st->execute([':id' => $id]);
+          $msgSucesso = 'Registro excluído com sucesso.';
         } else {
-            try {
-                if ($acao === 'toggle') {
-                    $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = IF(ativo=1,0,1), atualizado_em = NOW() WHERE id = :id");
-                    $st->execute([':id' => $id]);
-                    $msgSucesso = 'Status atualizado com sucesso.';
-                } elseif ($acao === 'excluir') {
-                    $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE id = :id");
-                    $st->execute([':id' => $id]);
-                    $msgSucesso = 'Registro excluído com sucesso.';
-                } else {
-                    $msgErro = 'Ação inválida.';
-                }
-            } catch (Throwable $e) {
-                error_log("Erro em localidades.php (acao): " . $e->getMessage());
-                $msgErro = 'Erro ao executar ação. Verifique o error_log.';
-                if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
-            }
+          $msgErro = 'Ação inválida.';
         }
+      } catch (Throwable $e) {
+        error_log("Erro em comunidades(lista): " . $e->getMessage());
+        $msgErro = 'Erro ao executar ação. Verifique o error_log.';
+        if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
+      }
     }
+  }
 }
 
 /* Listar */
 try {
-    $sql = "
+  $sql = "
     SELECT id, feira_id, nome, ativo, observacao, criado_em, atualizado_em
     FROM {$TABELA}
     ORDER BY id DESC
   ";
-    $localidades = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+  $comunidades = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-    error_log("Erro ao listar localidades: " . $e->getMessage());
-    $msgErro = $msgErro ?: 'Erro ao carregar a lista.';
-    if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
+  error_log("Erro ao listar comunidades: " . $e->getMessage());
+  $msgErro = $msgErro ?: 'Erro ao carregar a lista.';
+  if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
 }
 ?>
 
