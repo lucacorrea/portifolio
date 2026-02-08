@@ -1123,7 +1123,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
                     <div class="card-body">
                       <p class="kpi-title mb-1">Permissionários ativos</p>
                       <div class="kpi-value"><?= (int)$kpi['produtores_ativos'] ?></div>
-                      <p class="kpi-sub mb-0">Feira <b><?= (int)$feiraId ?></b></p>
+                      
                     </div>
                   </div>
                 </div>
