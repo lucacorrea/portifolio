@@ -259,106 +259,106 @@ try {
 </head>
 
 <body>
-    <div class="container-scroller">
+  <div class="container-scroller">
 
-        <!-- NAVBAR -->
-        <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-            <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-                <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-                <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../images/3.png" alt="logo" /></a>
+    <!-- NAVBAR -->
+    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../images/3.png" alt="logo" /></a>
+      </div>
+
+      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+          <span class="icon-menu"></span>
+        </button>
+
+        <ul class="navbar-nav navbar-nav-right">
+          <li class="nav-item nav-profile dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
+              <i class="ti-user"></i>
+              <span class="ml-1"><?= h($nomeTopo) ?></span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+              <a class="dropdown-item" href="../../controle/auth/logout.php">
+                <i class="ti-power-off text-primary"></i> Sair
+              </a>
             </div>
+          </li>
+        </ul>
 
-            <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-                <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-                    <span class="icon-menu"></span>
-                </button>
+        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+          <span class="icon-menu"></span>
+        </button>
+      </div>
+    </nav>
 
-                <ul class="navbar-nav navbar-nav-right">
-                    <li class="nav-item nav-profile dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
-                            <i class="ti-user"></i>
-                            <span class="ml-1"><?= h($nomeTopo) ?></span>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
-                            <a class="dropdown-item" href="../../controle/auth/logout.php">
-                                <i class="ti-power-off text-primary"></i> Sair
-                            </a>
-                        </div>
-                    </li>
-                </ul>
+    <div class="container-fluid page-body-wrapper">
 
-                <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-                    <span class="icon-menu"></span>
-                </button>
+      <nav class="sidebar sidebar-offcanvas" id="sidebar">
+        <ul class="nav">
+          <li class="nav-item active">
+            <a class="nav-link" href="./index.php">
+              <i class="icon-grid menu-icon"></i>
+              <span class="menu-title">Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="./produtor/">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Feira do Produtor</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="./alternativa/">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Feira Alternativa</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="./mercado/">
+              <i class="ti-home menu-icon"></i>
+              <span class="menu-title">Mercado Municipal</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="./relatorio/">
+              <i class="ti-agenda menu-icon"></i>
+              <span class="menu-title">Relatórios</span>
+            </a>
+          </li>
+            <li class="nav-item">
+            <a class="nav-link" href="./localidades.php">
+              <i class="ti-map menu-icon"></i>
+              <span class="menu-title">Localidades</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+              <i class="ti-user menu-icon"></i>
+              <span class="menu-title">Usuários</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse" id="ui-basic">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./users/listaUser.php">Lista de Adicionados</a></li>
+                <li class="nav-item"><a class="nav-link" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
+              </ul>
             </div>
-        </nav>
+          </li>
 
-        <div class="container-fluid page-body-wrapper">
-
-            <nav class="sidebar sidebar-offcanvas" id="sidebar">
-                <ul class="nav">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="./index.php">
-                            <i class="icon-grid menu-icon"></i>
-                            <span class="menu-title">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="./produtor/">
-                            <i class="ti-shopping-cart menu-icon"></i>
-                            <span class="menu-title">Feira do Produtor</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="./alternativa/">
-                            <i class="ti-shopping-cart menu-icon"></i>
-                            <span class="menu-title">Feira Alternativa</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="./mercado/">
-                            <i class="ti-home menu-icon"></i>
-                            <span class="menu-title">Mercado Municipal</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="./relatorio/">
-                            <i class="ti-agenda menu-icon"></i>
-                            <span class="menu-title">Relatórios</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="./localidades.php">
-                            <i class="ti-map menu-icon"></i>
-                            <span class="menu-title">Localidades</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
-                            <i class="ti-user menu-icon"></i>
-                            <span class="menu-title">Usuários</span>
-                            <i class="menu-arrow"></i>
-                        </a>
-                        <div class="collapse" id="ui-basic">
-                            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                                <li class="nav-item"><a class="nav-link" href="./users/listaUser.php">Lista de Adicionados</a></li>
-                                <li class="nav-item"><a class="nav-link" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
-                            </ul>
-                        </div>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-                            <i class="ti-headphone-alt menu-icon"></i>
-                            <span class="menu-title">Suporte</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+          <li class="nav-item">
+            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+              <i class="ti-headphone-alt menu-icon"></i>
+              <span class="menu-title">Suporte</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
 
 
             <div class="main-panel">
