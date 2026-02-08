@@ -16,10 +16,117 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
+
+// Conexão com banco de dados (ajuste conforme sua configuração)
+require_once '../../controle/config/database.php';
+
+// Filtro de feira selecionada
+$feira_selecionada = isset($_GET['feira_id']) ? (int)$_GET['feira_id'] : 0;
+
+// Buscar todas as feiras
+$sql_feiras = "SELECT id, codigo, nome FROM feiras WHERE ativo = 1 ORDER BY nome";
+$stmt_feiras = $pdo->query($sql_feiras);
+$feiras = $stmt_feiras->fetchAll(PDO::FETCH_ASSOC);
+
+// Função helper
+function h($s) {
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
+
+// Dados do dashboard (filtrados por feira se selecionada)
+$where_feira = $feira_selecionada > 0 ? "WHERE feira_id = :feira_id" : "";
+
+// Total de vendas do dia
+$sql_vendas_hoje = "SELECT COUNT(*) as total, COALESCE(SUM(total), 0) as valor_total 
+                    FROM vendas 
+                    $where_feira AND DATE(data_hora) = CURDATE()";
+$stmt_vendas_hoje = $pdo->prepare($sql_vendas_hoje);
+if ($feira_selecionada > 0) $stmt_vendas_hoje->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+$stmt_vendas_hoje->execute();
+$vendas_hoje = $stmt_vendas_hoje->fetch(PDO::FETCH_ASSOC);
+
+// Total de vendas do mês
+$sql_vendas_mes = "SELECT COUNT(*) as total, COALESCE(SUM(total), 0) as valor_total 
+                   FROM vendas 
+                   $where_feira AND MONTH(data_hora) = MONTH(CURDATE()) AND YEAR(data_hora) = YEAR(CURDATE())";
+$stmt_vendas_mes = $pdo->prepare($sql_vendas_mes);
+if ($feira_selecionada > 0) $stmt_vendas_mes->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+$stmt_vendas_mes->execute();
+$vendas_mes = $stmt_vendas_mes->fetch(PDO::FETCH_ASSOC);
+
+// Total de produtores
+$sql_produtores = "SELECT COUNT(*) as total FROM produtores $where_feira AND ativo = 1";
+$stmt_produtores = $pdo->prepare($sql_produtores);
+if ($feira_selecionada > 0) $stmt_produtores->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+$stmt_produtores->execute();
+$total_produtores = $stmt_produtores->fetch(PDO::FETCH_ASSOC)['total'];
+
+// Total de produtos
+$sql_produtos = "SELECT COUNT(*) as total FROM produtos $where_feira AND ativo = 1";
+$stmt_produtos = $pdo->prepare($sql_produtos);
+if ($feira_selecionada > 0) $stmt_produtos->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+$stmt_produtos->execute();
+$total_produtos = $stmt_produtos->fetch(PDO::FETCH_ASSOC)['total'];
+
+// Vendas por forma de pagamento (para gráfico)
+$sql_forma_pagamento = "SELECT forma_pagamento, COALESCE(SUM(total), 0) as valor_total 
+                        FROM vendas 
+                        $where_feira 
+                        AND MONTH(data_hora) = MONTH(CURDATE()) 
+                        AND YEAR(data_hora) = YEAR(CURDATE())
+                        GROUP BY forma_pagamento";
+$stmt_forma_pagamento = $pdo->prepare($sql_forma_pagamento);
+if ($feira_selecionada > 0) $stmt_forma_pagamento->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+$stmt_forma_pagamento->execute();
+$vendas_forma_pagamento = $stmt_forma_pagamento->fetchAll(PDO::FETCH_ASSOC);
+
+// Vendas por categoria (para gráfico)
+$sql_vendas_categoria = "SELECT c.nome, COUNT(vi.id) as qtd_vendas, COALESCE(SUM(vi.subtotal), 0) as valor_total
+                         FROM venda_itens vi
+                         INNER JOIN produtos p ON vi.produto_id = p.id
+                         INNER JOIN categorias c ON p.categoria_id = c.id
+                         WHERE 1=1 " . ($feira_selecionada > 0 ? "AND vi.feira_id = :feira_id" : "") . "
+                         AND MONTH(vi.criado_em) = MONTH(CURDATE())
+                         AND YEAR(vi.criado_em) = YEAR(CURDATE())
+                         GROUP BY c.id, c.nome
+                         ORDER BY valor_total DESC
+                         LIMIT 10";
+$stmt_vendas_categoria = $pdo->prepare($sql_vendas_categoria);
+if ($feira_selecionada > 0) $stmt_vendas_categoria->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+$stmt_vendas_categoria->execute();
+$vendas_categoria = $stmt_vendas_categoria->fetchAll(PDO::FETCH_ASSOC);
+
+// Top 10 produtos mais vendidos
+$sql_top_produtos = "SELECT p.nome, COUNT(vi.id) as qtd_vendas, COALESCE(SUM(vi.subtotal), 0) as valor_total
+                     FROM venda_itens vi
+                     INNER JOIN produtos p ON vi.produto_id = p.id
+                     WHERE 1=1 " . ($feira_selecionada > 0 ? "AND vi.feira_id = :feira_id" : "") . "
+                     AND MONTH(vi.criado_em) = MONTH(CURDATE())
+                     AND YEAR(vi.criado_em) = YEAR(CURDATE())
+                     GROUP BY p.id, p.nome
+                     ORDER BY qtd_vendas DESC
+                     LIMIT 10";
+$stmt_top_produtos = $pdo->prepare($sql_top_produtos);
+if ($feira_selecionada > 0) $stmt_top_produtos->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+$stmt_top_produtos->execute();
+$top_produtos = $stmt_top_produtos->fetchAll(PDO::FETCH_ASSOC);
+
+// Vendas dos últimos 7 dias (para gráfico de linha)
+$sql_vendas_semana = "SELECT DATE(data_hora) as data, COUNT(*) as qtd, COALESCE(SUM(total), 0) as valor
+                      FROM vendas
+                      $where_feira
+                      AND data_hora >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                      GROUP BY DATE(data_hora)
+                      ORDER BY data";
+$stmt_vendas_semana = $pdo->prepare($sql_vendas_semana);
+if ($feira_selecionada > 0) $stmt_vendas_semana->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+$stmt_vendas_semana->execute();
+$vendas_semana = $stmt_vendas_semana->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
   <!-- Required meta tags -->
@@ -43,6 +150,24 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
   <style>
     .nav-link.text-black:hover {
       color: blue !important;
+    }
+    .card-stats {
+      transition: transform 0.2s;
+    }
+    .card-stats:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 20px 0;
+    }
+    .filter-section {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
     }
   </style>
 </head>
@@ -182,713 +307,186 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
           <div class="row">
             <div class="col-md-12 grid-margin">
               <div class="row">
-                <?php
-                $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
-
-                function h($s)
-                {
-                  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-                }
-                ?>
                 <div class="col-12 col-xl-8 mb-4 mb-xl-0">
-                  <h3 class="font-weight-bold">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
+                  <h3 class="font-weight-bold">Bem-vindo(a) <?= h($_SESSION['usuario_nome'] ?? 'Usuário') ?></h3>
                   <h6 class="font-weight-normal mb-0">
                     Todos os sistemas estão funcionando normalmente!
-                    <!-- se quiser remover essa parte, pode -->
                   </h6>
                 </div>
-
 
                 <div class="col-12 col-xl-4">
                   <div class="justify-content-end d-flex">
                     <div class="dropdown flex-md-grow-1 flex-xl-grow-0">
                       <button class="btn btn-sm btn-light bg-white dropdown-toggle" type="button" id="dropdownMenuDate2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                        <i class="mdi mdi-calendar"></i> Today (10 Jan 2021)
+                        <i class="mdi mdi-calendar"></i> <?= date('d M Y') ?>
                       </button>
-                      <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuDate2">
-                        <a class="dropdown-item" href="#">January - March</a>
-                        <a class="dropdown-item" href="#">March - June</a>
-                        <a class="dropdown-item" href="#">June - August</a>
-                        <a class="dropdown-item" href="#">August - November</a>
-                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- Filtro de Feira -->
           <div class="row">
-            <div class="col-md-6 grid-margin stretch-card">
-              <div class="card tale-bg">
-                <div class="card-people mt-auto">
-                  <img src="../../images/dashboard/people.svg" alt="people">
-                  <div class="weather-info">
-                    <div class="d-flex">
-                      <div>
-                        <h2 class="mb-0 font-weight-normal"><i class="icon-sun mr-2"></i>31<sup>C</sup></h2>
-                      </div>
-                      <div class="ml-2">
-                        <h4 class="location font-weight-normal">Bangalore</h4>
-                        <h6 class="font-weight-normal">India</h6>
-                      </div>
-                    </div>
-                  </div>
+            <div class="col-md-12">
+              <div class="filter-section">
+                <form method="GET" action="index.php" class="form-inline">
+                  <label class="mr-2"><strong>Filtrar por Feira:</strong></label>
+                  <select name="feira_id" class="form-control mr-2" onchange="this.form.submit()">
+                    <option value="0">Todas as Feiras</option>
+                    <?php foreach ($feiras as $feira): ?>
+                      <option value="<?= $feira['id'] ?>" <?= $feira_selecionada == $feira['id'] ? 'selected' : '' ?>>
+                        <?= h($feira['nome']) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                  <button type="submit" class="btn btn-primary btn-sm">Aplicar Filtro</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cards de Estatísticas -->
+          <div class="row">
+            <div class="col-md-3 mb-4 stretch-card transparent">
+              <div class="card card-tale card-stats">
+                <div class="card-body">
+                  <p class="mb-4">Vendas Hoje</p>
+                  <p class="fs-30 mb-2"><?= $vendas_hoje['total'] ?></p>
+                  <p>R$ <?= number_format($vendas_hoje['valor_total'], 2, ',', '.') ?></p>
                 </div>
               </div>
             </div>
-            <div class="col-md-6 grid-margin transparent">
-              <div class="row">
-                <div class="col-md-6 mb-4 stretch-card transparent">
-                  <div class="card card-tale">
-                    <div class="card-body">
-                      <p class="mb-4">Today’s Bookings</p>
-                      <p class="fs-30 mb-2">4006</p>
-                      <p>10.00% (30 days)</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-4 stretch-card transparent">
-                  <div class="card card-dark-blue">
-                    <div class="card-body">
-                      <p class="mb-4">Total Bookings</p>
-                      <p class="fs-30 mb-2">61344</p>
-                      <p>22.00% (30 days)</p>
-                    </div>
-                  </div>
+            <div class="col-md-3 mb-4 stretch-card transparent">
+              <div class="card card-dark-blue card-stats">
+                <div class="card-body">
+                  <p class="mb-4">Vendas do Mês</p>
+                  <p class="fs-30 mb-2"><?= $vendas_mes['total'] ?></p>
+                  <p>R$ <?= number_format($vendas_mes['valor_total'], 2, ',', '.') ?></p>
                 </div>
               </div>
-              <div class="row">
-                <div class="col-md-6 mb-4 mb-lg-0 stretch-card transparent">
-                  <div class="card card-light-blue">
-                    <div class="card-body">
-                      <p class="mb-4">Number of Meetings</p>
-                      <p class="fs-30 mb-2">34040</p>
-                      <p>2.00% (30 days)</p>
-                    </div>
-                  </div>
+            </div>
+            <div class="col-md-3 mb-4 stretch-card transparent">
+              <div class="card card-light-blue card-stats">
+                <div class="card-body">
+                  <p class="mb-4">Total de Produtores</p>
+                  <p class="fs-30 mb-2"><?= $total_produtores ?></p>
+                  <p>Ativos no sistema</p>
                 </div>
-                <div class="col-md-6 stretch-card transparent">
-                  <div class="card card-light-danger">
-                    <div class="card-body">
-                      <p class="mb-4">Number of Clients</p>
-                      <p class="fs-30 mb-2">47033</p>
-                      <p>0.22% (30 days)</p>
-                    </div>
-                  </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-4 stretch-card transparent">
+              <div class="card card-light-danger card-stats">
+                <div class="card-body">
+                  <p class="mb-4">Total de Produtos</p>
+                  <p class="fs-30 mb-2"><?= $total_produtos ?></p>
+                  <p>Cadastrados</p>
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- Gráficos -->
           <div class="row">
             <div class="col-md-6 grid-margin stretch-card">
               <div class="card">
                 <div class="card-body">
-                  <p class="card-title">Order Details</p>
-                  <p class="font-weight-500">The total number of sessions within the date range. It is the period time a user is actively engaged with your website, page or app, etc</p>
-                  <div class="d-flex flex-wrap mb-5">
-                    <div class="mr-5 mt-3">
-                      <p class="text-muted">Order value</p>
-                      <h3 class="text-primary fs-30 font-weight-medium">12.3k</h3>
-                    </div>
-                    <div class="mr-5 mt-3">
-                      <p class="text-muted">Orders</p>
-                      <h3 class="text-primary fs-30 font-weight-medium">14k</h3>
-                    </div>
-                    <div class="mr-5 mt-3">
-                      <p class="text-muted">Users</p>
-                      <h3 class="text-primary fs-30 font-weight-medium">71.56%</h3>
-                    </div>
-                    <div class="mt-3">
-                      <p class="text-muted">Downloads</p>
-                      <h3 class="text-primary fs-30 font-weight-medium">34040</h3>
-                    </div>
+                  <p class="card-title">Vendas por Forma de Pagamento (Mês Atual)</p>
+                  <div class="chart-container">
+                    <canvas id="formaPagamentoChart"></canvas>
                   </div>
-                  <canvas id="order-chart"></canvas>
                 </div>
               </div>
             </div>
             <div class="col-md-6 grid-margin stretch-card">
               <div class="card">
                 <div class="card-body">
-                  <div class="d-flex justify-content-between">
-                    <p class="card-title">Sales Report</p>
-                    <a href="#" class="text-info">View all</a>
+                  <p class="card-title">Vendas dos Últimos 7 Dias</p>
+                  <div class="chart-container">
+                    <canvas id="vendasSemanaChart"></canvas>
                   </div>
-                  <p class="font-weight-500">The total number of sessions within the date range. It is the period time a user is actively engaged with your website, page or app, etc</p>
-                  <div id="sales-legend" class="chartjs-legend mt-4 mb-2"></div>
-                  <canvas id="sales-chart"></canvas>
                 </div>
               </div>
             </div>
           </div>
+
           <div class="row">
             <div class="col-md-12 grid-margin stretch-card">
-              <div class="card position-relative">
+              <div class="card">
                 <div class="card-body">
-                  <div id="detailedReports" class="carousel slide detailed-report-carousel position-static pt-2" data-ride="carousel">
-                    <div class="carousel-inner">
-                      <div class="carousel-item active">
-                        <div class="row">
-                          <div class="col-md-12 col-xl-3 d-flex flex-column justify-content-start">
-                            <div class="ml-xl-4 mt-3">
-                              <p class="card-title">Detailed Reports</p>
-                              <h1 class="text-primary">$34040</h1>
-                              <h3 class="font-weight-500 mb-xl-4 text-primary">North America</h3>
-                              <p class="mb-2 mb-xl-0">The total number of sessions within the date range. It is the period time a user is actively engaged with your website, page or app, etc</p>
-                            </div>
-                          </div>
-                          <div class="col-md-12 col-xl-9">
-                            <div class="row">
-                              <div class="col-md-6 border-right">
-                                <div class="table-responsive mb-3 mb-md-0 mt-3">
-                                  <table class="table table-borderless report-table">
-                                    <tr>
-                                      <td class="text-muted">Illinois</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-primary" role="progressbar" style="width: 70%" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">713</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">Washington</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-warning" role="progressbar" style="width: 30%" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">583</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">Mississippi</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-danger" role="progressbar" style="width: 95%" aria-valuenow="95" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">924</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">California</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-info" role="progressbar" style="width: 60%" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">664</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">Maryland</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-primary" role="progressbar" style="width: 40%" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">560</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">Alaska</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-danger" role="progressbar" style="width: 75%" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">793</h5>
-                                      </td>
-                                    </tr>
-                                  </table>
-                                </div>
-                              </div>
-                              <div class="col-md-6 mt-3">
-                                <canvas id="north-america-chart"></canvas>
-                                <div id="north-america-legend"></div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="carousel-item">
-                        <div class="row">
-                          <div class="col-md-12 col-xl-3 d-flex flex-column justify-content-start">
-                            <div class="ml-xl-4 mt-3">
-                              <p class="card-title">Detailed Reports</p>
-                              <h1 class="text-primary">$34040</h1>
-                              <h3 class="font-weight-500 mb-xl-4 text-primary">North America</h3>
-                              <p class="mb-2 mb-xl-0">The total number of sessions within the date range. It is the period time a user is actively engaged with your website, page or app, etc</p>
-                            </div>
-                          </div>
-                          <div class="col-md-12 col-xl-9">
-                            <div class="row">
-                              <div class="col-md-6 border-right">
-                                <div class="table-responsive mb-3 mb-md-0 mt-3">
-                                  <table class="table table-borderless report-table">
-                                    <tr>
-                                      <td class="text-muted">Illinois</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-primary" role="progressbar" style="width: 70%" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">713</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">Washington</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-warning" role="progressbar" style="width: 30%" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">583</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">Mississippi</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-danger" role="progressbar" style="width: 95%" aria-valuenow="95" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">924</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">California</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-info" role="progressbar" style="width: 60%" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">664</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">Maryland</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-primary" role="progressbar" style="width: 40%" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">560</h5>
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td class="text-muted">Alaska</td>
-                                      <td class="w-100 px-0">
-                                        <div class="progress progress-md mx-4">
-                                          <div class="progress-bar bg-danger" role="progressbar" style="width: 75%" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <h5 class="font-weight-bold mb-0">793</h5>
-                                      </td>
-                                    </tr>
-                                  </table>
-                                </div>
-                              </div>
-                              <div class="col-md-6 mt-3">
-                                <canvas id="south-america-chart"></canvas>
-                                <div id="south-america-legend"></div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <a class="carousel-control-prev" href="#detailedReports" role="button" data-slide="prev">
-                      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                      <span class="sr-only">Previous</span>
-                    </a>
-                    <a class="carousel-control-next" href="#detailedReports" role="button" data-slide="next">
-                      <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                      <span class="sr-only">Next</span>
-                    </a>
+                  <p class="card-title">Top 10 Categorias (Mês Atual)</p>
+                  <div class="chart-container">
+                    <canvas id="categoriaChart"></canvas>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- Tabelas -->
           <div class="row">
-            <div class="col-md-7 grid-margin stretch-card">
+            <div class="col-md-12 grid-margin stretch-card">
               <div class="card">
                 <div class="card-body">
-                  <p class="card-title mb-0">Top Products</p>
+                  <p class="card-title">Top 10 Produtos Mais Vendidos (Mês Atual)</p>
                   <div class="table-responsive">
-                    <table class="table table-striped table-borderless">
+                    <table class="table table-striped table-borderless" id="topProdutosTable">
                       <thead>
                         <tr>
-                          <th>Product</th>
-                          <th>Price</th>
-                          <th>Date</th>
-                          <th>Status</th>
+                          <th>Produto</th>
+                          <th class="text-center">Quantidade Vendida</th>
+                          <th class="text-right">Valor Total</th>
                         </tr>
                       </thead>
                       <tbody>
+                        <?php foreach ($top_produtos as $produto): ?>
                         <tr>
-                          <td>Search Engine Marketing</td>
-                          <td class="font-weight-bold">$362</td>
-                          <td>21 Sep 2018</td>
-                          <td class="font-weight-medium">
-                            <div class="badge badge-success">Completed</div>
-                          </td>
+                          <td><?= h($produto['nome']) ?></td>
+                          <td class="text-center font-weight-bold"><?= $produto['qtd_vendas'] ?></td>
+                          <td class="text-right">R$ <?= number_format($produto['valor_total'], 2, ',', '.') ?></td>
                         </tr>
-                        <tr>
-                          <td>Search Engine Optimization</td>
-                          <td class="font-weight-bold">$116</td>
-                          <td>13 Jun 2018</td>
-                          <td class="font-weight-medium">
-                            <div class="badge badge-success">Completed</div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Display Advertising</td>
-                          <td class="font-weight-bold">$551</td>
-                          <td>28 Sep 2018</td>
-                          <td class="font-weight-medium">
-                            <div class="badge badge-warning">Pending</div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Pay Per Click Advertising</td>
-                          <td class="font-weight-bold">$523</td>
-                          <td>30 Jun 2018</td>
-                          <td class="font-weight-medium">
-                            <div class="badge badge-warning">Pending</div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>E-Mail Marketing</td>
-                          <td class="font-weight-bold">$781</td>
-                          <td>01 Nov 2018</td>
-                          <td class="font-weight-medium">
-                            <div class="badge badge-danger">Cancelled</div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Referral Marketing</td>
-                          <td class="font-weight-bold">$283</td>
-                          <td>20 Mar 2018</td>
-                          <td class="font-weight-medium">
-                            <div class="badge badge-warning">Pending</div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Social media marketing</td>
-                          <td class="font-weight-bold">$897</td>
-                          <td>26 Oct 2018</td>
-                          <td class="font-weight-medium">
-                            <div class="badge badge-success">Completed</div>
-                          </td>
-                        </tr>
+                        <?php endforeach; ?>
                       </tbody>
                     </table>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="col-md-5 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-                  <h4 class="card-title">To Do Lists</h4>
-                  <div class="list-wrapper pt-2">
-                    <ul class="d-flex flex-column-reverse todo-list todo-list-custom">
-                      <li>
-                        <div class="form-check form-check-flat">
-                          <label class="form-check-label">
-                            <input class="checkbox" type="checkbox">
-                            Meeting with Urban Team
-                          </label>
-                        </div>
-                        <i class="remove ti-close"></i>
-                      </li>
-                      <li class="completed">
-                        <div class="form-check form-check-flat">
-                          <label class="form-check-label">
-                            <input class="checkbox" type="checkbox" checked>
-                            Duplicate a project for new customer
-                          </label>
-                        </div>
-                        <i class="remove ti-close"></i>
-                      </li>
-                      <li>
-                        <div class="form-check form-check-flat">
-                          <label class="form-check-label">
-                            <input class="checkbox" type="checkbox">
-                            Project meeting with CEO
-                          </label>
-                        </div>
-                        <i class="remove ti-close"></i>
-                      </li>
-                      <li class="completed">
-                        <div class="form-check form-check-flat">
-                          <label class="form-check-label">
-                            <input class="checkbox" type="checkbox" checked>
-                            Follow up of team zilla
-                          </label>
-                        </div>
-                        <i class="remove ti-close"></i>
-                      </li>
-                      <li>
-                        <div class="form-check form-check-flat">
-                          <label class="form-check-label">
-                            <input class="checkbox" type="checkbox">
-                            Level up for Antony
-                          </label>
-                        </div>
-                        <i class="remove ti-close"></i>
-                      </li>
-                    </ul>
-                  </div>
-                  <div class="add-items d-flex mb-0 mt-2">
-                    <input type="text" class="form-control todo-list-input" placeholder="Add new task">
-                    <button class="add btn btn-icon text-primary todo-list-add-btn bg-transparent"><i class="icon-circle-plus"></i></button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
-          <div class="row">
-            <div class="col-md-4 stretch-card grid-margin">
-              <div class="card">
-                <div class="card-body">
-                  <p class="card-title mb-0">Projects</p>
-                  <div class="table-responsive">
-                    <table class="table table-borderless">
-                      <thead>
-                        <tr>
-                          <th class="pl-0  pb-2 border-bottom">Places</th>
-                          <th class="border-bottom pb-2">Orders</th>
-                          <th class="border-bottom pb-2">Users</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td class="pl-0">Kentucky</td>
-                          <td>
-                            <p class="mb-0"><span class="font-weight-bold mr-2">65</span>(2.15%)</p>
-                          </td>
-                          <td class="text-muted">65</td>
-                        </tr>
-                        <tr>
-                          <td class="pl-0">Ohio</td>
-                          <td>
-                            <p class="mb-0"><span class="font-weight-bold mr-2">54</span>(3.25%)</p>
-                          </td>
-                          <td class="text-muted">51</td>
-                        </tr>
-                        <tr>
-                          <td class="pl-0">Nevada</td>
-                          <td>
-                            <p class="mb-0"><span class="font-weight-bold mr-2">22</span>(2.22%)</p>
-                          </td>
-                          <td class="text-muted">32</td>
-                        </tr>
-                        <tr>
-                          <td class="pl-0">North Carolina</td>
-                          <td>
-                            <p class="mb-0"><span class="font-weight-bold mr-2">46</span>(3.27%)</p>
-                          </td>
-                          <td class="text-muted">15</td>
-                        </tr>
-                        <tr>
-                          <td class="pl-0">Montana</td>
-                          <td>
-                            <p class="mb-0"><span class="font-weight-bold mr-2">17</span>(1.25%)</p>
-                          </td>
-                          <td class="text-muted">25</td>
-                        </tr>
-                        <tr>
-                          <td class="pl-0">Nevada</td>
-                          <td>
-                            <p class="mb-0"><span class="font-weight-bold mr-2">52</span>(3.11%)</p>
-                          </td>
-                          <td class="text-muted">71</td>
-                        </tr>
-                        <tr>
-                          <td class="pl-0 pb-0">Louisiana</td>
-                          <td class="pb-0">
-                            <p class="mb-0"><span class="font-weight-bold mr-2">25</span>(1.32%)</p>
-                          </td>
-                          <td class="pb-0">14</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-4 stretch-card grid-margin">
-              <div class="row">
-                <div class="col-md-12 grid-margin stretch-card">
-                  <div class="card">
-                    <div class="card-body">
-                      <p class="card-title">Charts</p>
-                      <div class="charts-data">
-                        <div class="mt-3">
-                          <p class="mb-0">Data 1</p>
-                          <div class="d-flex justify-content-between align-items-center">
-                            <div class="progress progress-md flex-grow-1 mr-4">
-                              <div class="progress-bar bg-inf0" role="progressbar" style="width: 95%" aria-valuenow="95" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <p class="mb-0">5k</p>
-                          </div>
-                        </div>
-                        <div class="mt-3">
-                          <p class="mb-0">Data 2</p>
-                          <div class="d-flex justify-content-between align-items-center">
-                            <div class="progress progress-md flex-grow-1 mr-4">
-                              <div class="progress-bar bg-info" role="progressbar" style="width: 35%" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <p class="mb-0">1k</p>
-                          </div>
-                        </div>
-                        <div class="mt-3">
-                          <p class="mb-0">Data 3</p>
-                          <div class="d-flex justify-content-between align-items-center">
-                            <div class="progress progress-md flex-grow-1 mr-4">
-                              <div class="progress-bar bg-info" role="progressbar" style="width: 48%" aria-valuenow="48" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <p class="mb-0">992</p>
-                          </div>
-                        </div>
-                        <div class="mt-3">
-                          <p class="mb-0">Data 4</p>
-                          <div class="d-flex justify-content-between align-items-center">
-                            <div class="progress progress-md flex-grow-1 mr-4">
-                              <div class="progress-bar bg-info" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <p class="mb-0">687</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-12 stretch-card grid-margin grid-margin-md-0">
-                  <div class="card data-icon-card-primary">
-                    <div class="card-body">
-                      <p class="card-title text-white">Number of Meetings</p>
-                      <div class="row">
-                        <div class="col-8 text-white">
-                          <h3>34040</h3>
-                          <p class="text-white font-weight-500 mb-0">The total number of sessions within the date range.It is calculated as the sum . </p>
-                        </div>
-                        <div class="col-4 background-icon">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-4 stretch-card grid-margin">
-              <div class="card">
-                <div class="card-body">
-                  <p class="card-title">Notifications</p>
-                  <ul class="icon-data-list">
-                    <li>
-                      <div class="d-flex">
-                        <img src="../../images/faces/face1.jpg" alt="user">
-                        <div>
-                          <p class="text-info mb-1">Isabella Becker</p>
-                          <p class="mb-0">Sales dashboard have been created</p>
-                          <small>9:30 am</small>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <div class="d-flex">
-                        <img src="../../images/faces/face2.jpg" alt="user">
-                        <div>
-                          <p class="text-info mb-1">Adam Warren</p>
-                          <p class="mb-0">You have done a great job #TW111</p>
-                          <small>10:30 am</small>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <div class="d-flex">
-                        <img src="../../images/faces/face3.jpg" alt="user">
-                        <div>
-                          <p class="text-info mb-1">Leonard Thornton</p>
-                          <p class="mb-0">Sales dashboard have been created</p>
-                          <small>11:30 am</small>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <div class="d-flex">
-                        <img src="../../images/faces/face4.jpg" alt="user">
-                        <div>
-                          <p class="text-info mb-1">George Morrison</p>
-                          <p class="mb-0">Sales dashboard have been created</p>
-                          <small>8:50 am</small>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <div class="d-flex">
-                        <img src="../../images/faces/face5.jpg" alt="user">
-                        <div>
-                          <p class="text-info mb-1">Ryan Cortez</p>
-                          <p class="mb-0">Herbs are fun and easy to grow.</p>
-                          <small>9:00 am</small>
-                        </div>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
+
+          <!-- Tabela Avançada com DataTables -->
           <div class="row">
             <div class="col-md-12 grid-margin stretch-card">
               <div class="card">
                 <div class="card-body">
-                  <p class="card-title">Advanced Table</p>
+                  <p class="card-title">Últimas Vendas</p>
                   <div class="row">
                     <div class="col-12">
                       <div class="table-responsive">
-                        <table id="example" class="display expandable-table" style="width:100%">
+                        <table id="vendasTable" class="table table-striped table-bordered" style="width:100%">
                           <thead>
                             <tr>
-                              <th>Quote#</th>
-                              <th>Product</th>
-                              <th>Business type</th>
-                              <th>Policy holder</th>
-                              <th>Premium</th>
+                              <th>ID</th>
+                              <th>Data/Hora</th>
+                              <th>Forma Pagamento</th>
+                              <th>Total</th>
                               <th>Status</th>
-                              <th>Updated at</th>
-                              <th></th>
+                              <th>Ações</th>
                             </tr>
                           </thead>
+                          <tbody>
+                            <!-- Dados carregados via AJAX -->
+                          </tbody>
                         </table>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-
-
             </div>
           </div>
+
         </div>
         <!-- content-wrapper ends -->
         <!-- partial:partials/_footer.html -->
@@ -917,9 +515,8 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
   <!-- endinject -->
   <!-- Plugin js for this page -->
   <script src="../../vendors/chart.js/Chart.min.js"></script>
-
-
-
+  <script src="../../vendors/datatables.net/jquery.dataTables.js"></script>
+  <script src="../../vendors/datatables.net-bs4/dataTables.bootstrap4.js"></script>
   <!-- End plugin js for this page -->
   <!-- inject:js -->
   <script src="../../js/off-canvas.js"></script>
@@ -932,6 +529,191 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
   <script src="../../js/dashboard.js"></script>
   <script src="../../js/Chart.roundedBarCharts.js"></script>
   <!-- End custom js for this page-->
+
+  <script>
+    // Dados PHP para JavaScript
+    const formaPagamentoData = <?= json_encode($vendas_forma_pagamento) ?>;
+    const categoriaData = <?= json_encode($vendas_categoria) ?>;
+    const vendasSemanaData = <?= json_encode($vendas_semana) ?>;
+    const feiraId = <?= $feira_selecionada ?>;
+
+    // Gráfico de Forma de Pagamento
+    const ctxFormaPagamento = document.getElementById('formaPagamentoChart').getContext('2d');
+    new Chart(ctxFormaPagamento, {
+      type: 'doughnut',
+      data: {
+        labels: formaPagamentoData.map(item => item.forma_pagamento),
+        datasets: [{
+          label: 'Valor Total',
+          data: formaPagamentoData.map(item => parseFloat(item.valor_total)),
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 206, 86, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    });
+
+    // Gráfico de Vendas da Semana
+    const ctxVendasSemana = document.getElementById('vendasSemanaChart').getContext('2d');
+    new Chart(ctxVendasSemana, {
+      type: 'line',
+      data: {
+        labels: vendasSemanaData.map(item => {
+          const date = new Date(item.data);
+          return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        }),
+        datasets: [{
+          label: 'Quantidade',
+          data: vendasSemanaData.map(item => parseInt(item.qtd)),
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          yAxisID: 'y'
+        }, {
+          label: 'Valor (R$)',
+          data: vendasSemanaData.map(item => parseFloat(item.valor)),
+          borderColor: 'rgba(255, 99, 132, 1)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          yAxisID: 'y1'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Quantidade'
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Valor (R$)'
+            },
+            grid: {
+              drawOnChartArea: false
+            }
+          }
+        }
+      }
+    });
+
+    // Gráfico de Categorias
+    const ctxCategoria = document.getElementById('categoriaChart').getContext('2d');
+    new Chart(ctxCategoria, {
+      type: 'bar',
+      data: {
+        labels: categoriaData.map(item => item.nome),
+        datasets: [{
+          label: 'Valor Total (R$)',
+          data: categoriaData.map(item => parseFloat(item.valor_total)),
+          backgroundColor: 'rgba(54, 162, 235, 0.8)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Valor (R$)'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+
+    // DataTable para últimas vendas
+    $(document).ready(function() {
+      $('#vendasTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+          url: 'ajax/vendas_datatable.php',
+          type: 'POST',
+          data: function(d) {
+            d.feira_id = feiraId;
+          }
+        },
+        columns: [
+          { data: 'id' },
+          { data: 'data_hora' },
+          { data: 'forma_pagamento' },
+          { 
+            data: 'total',
+            render: function(data) {
+              return 'R$ ' + parseFloat(data).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+          },
+          { 
+            data: 'status',
+            render: function(data) {
+              let badgeClass = 'badge-success';
+              if (data === 'CANCELADA') badgeClass = 'badge-danger';
+              if (data === 'ABERTA') badgeClass = 'badge-warning';
+              return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+            }
+          },
+          { 
+            data: null,
+            render: function(data, type, row) {
+              return '<button class="btn btn-sm btn-primary" onclick="verDetalhes(' + row.id + ')">Ver</button>';
+            }
+          }
+        ],
+        order: [[0, 'desc']],
+        language: {
+          url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
+        },
+        pageLength: 25
+      });
+
+      // DataTable para produtos
+      $('#topProdutosTable').DataTable({
+        pageLength: 10,
+        language: {
+          url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
+        }
+      });
+    });
+
+    function verDetalhes(vendaId) {
+      window.location.href = 'vendas/detalhes.php?id=' + vendaId;
+    }
+  </script>
 </body>
 
 </html>
