@@ -15,7 +15,10 @@ if (!in_array('ADMIN', $_SESSION['perfis'] ?? [], true)) {
     exit;
 }
 
+$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
+
 require_once '../../assets/php/conexao.php';
+$pdo = db(); // ✅ CORREÇÃO: seu conexao.php expõe db()
 
 /* Helper */
 function h($v): string
@@ -29,8 +32,8 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = $_SESSION['csrf_token'];
 
-/* CONFIG */
-$TABELA = 'localidades'; // <<< MUDE se sua tabela tiver outro nome
+/* ✅ CONFIG (tabela real) */
+$TABELA = 'comunidades';
 
 /* Defaults */
 $tipo = $_POST['tipo'] ?? '';
@@ -62,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
      * - Comunidade -> feira_id = 1 ou 2 (escolhido)
      * - Bairro     -> feira_id = 3 (automático)
      */
+    $feira_id_final = 0;
     if ($msgErro === '') {
         if ($tipo === 'bairro') {
             $feira_id_final = 3;
@@ -103,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 $msgSucesso = 'Cadastro realizado com sucesso!';
+
                 // limpar
                 $tipo = '';
                 $feira_id = '';
@@ -111,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $observacao = '';
             }
         } catch (Throwable $e) {
-            error_log("Erro ao inserir localidade: " . $e->getMessage());
+            error_log("Erro ao inserir em {$TABELA}: " . $e->getMessage());
             $msgErro = 'Erro ao salvar no banco. Verifique o error_log.';
         }
     }
@@ -126,9 +131,11 @@ try {
     LIMIT 15
   ")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
+    error_log("Erro ao listar últimos: " . $e->getMessage());
     $lista = [];
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-br">
