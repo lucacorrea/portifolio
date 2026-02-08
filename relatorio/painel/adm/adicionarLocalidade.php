@@ -243,7 +243,7 @@ try {
 
                    
                     <li class="nav-item active">
-                        <a class="nav-link"  href="./localidades.php">
+                        <a class="nav-link"  href="#">
                             <i class="ti-map menu-icon"></i>
                             <span class="menu-title">Localidades</span>
                         </a>

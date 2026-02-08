@@ -202,19 +202,61 @@ try {
 
         <div class="container-fluid page-body-wrapper">
 
-            <!-- SIDEBAR (mantenha como o seu; deixei mínimo) -->
             <nav class="sidebar sidebar-offcanvas" id="sidebar">
                 <ul class="nav">
-                    <li class="nav-item">
+                    <li class="nav-item ">
                         <a class="nav-link" href="./index.php">
                             <i class="icon-grid menu-icon"></i>
                             <span class="menu-title">Dashboard</span>
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="./produtor/">
+                            <i class="ti-shopping-cart menu-icon"></i>
+                            <span class="menu-title">Feira do Produtor</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="./alternativa/">
+                            <i class="ti-shopping-cart menu-icon"></i>
+                            <span class="menu-title">Feira Alternativa</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="./mercado/">
+                            <i class="ti-home menu-icon"></i>
+                            <span class="menu-title">Mercado Municipal</span>
+                        </a>
+                    </li>
+
+
+                    <li class="nav-item active">
                         <a class="nav-link" href="./localidades.php">
                             <i class="ti-map menu-icon"></i>
                             <span class="menu-title">Localidades</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+                            <i class="ti-user menu-icon"></i>
+                            <span class="menu-title">Usuários</span>
+                            <i class="menu-arrow"></i>
+                        </a>
+                        <div class="collapse" id="ui-basic">
+                            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                                <li class="nav-item"><a class="nav-link" href="./users/listaUser.php">Lista de Adicionados</a></li>
+                                <li class="nav-item"><a class="nav-link" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+                            <i class="ti-headphone-alt menu-icon"></i>
+                            <span class="menu-title">Suporte</span>
                         </a>
                     </li>
                 </ul>
