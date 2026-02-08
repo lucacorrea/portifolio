@@ -18,7 +18,7 @@ if (!in_array('ADMIN', $perfis, true)) {
 $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 
 // Conexão com banco de dados (ajuste conforme sua configuração)
-require_once '../../assets/conexao.php';
+require_once '../assets/php/conexao.php';
 
 // Filtro de feira selecionada
 $feira_selecionada = isset($_GET['feira_id']) ? (int)$_GET['feira_id'] : 0;
