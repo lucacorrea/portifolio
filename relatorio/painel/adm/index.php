@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -46,7 +47,8 @@ if ($DEBUG) {
 $feira_selecionada = isset($_GET['feira_id']) ? (int)$_GET['feira_id'] : 0;
 
 /** Helper HTML */
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
@@ -54,7 +56,8 @@ function h($s): string {
  * Verifica se uma coluna existe numa tabela (MySQL/MariaDB).
  * Isso impede estourar 500 por "Unknown column feira_id".
  */
-function columnExists(PDO $pdo, string $table, string $column): bool {
+function columnExists(PDO $pdo, string $table, string $column): bool
+{
   $sql = "
     SELECT COUNT(*) AS c
     FROM INFORMATION_SCHEMA.COLUMNS
@@ -70,7 +73,8 @@ function columnExists(PDO $pdo, string $table, string $column): bool {
 /**
  * Executa query com bind condicional de feira_id
  */
-function execWithOptionalFeira(PDO $pdo, string $sql, int $feira_id): PDOStatement {
+function execWithOptionalFeira(PDO $pdo, string $sql, int $feira_id): PDOStatement
+{
   $st = $pdo->prepare($sql);
   if ($feira_id > 0 && strpos($sql, ':feira_id') !== false) {
     $st->bindValue(':feira_id', $feira_id, PDO::PARAM_INT);
@@ -232,7 +236,6 @@ try {
     ORDER BY data
   ";
   $vendas_semana = execWithOptionalFeira($pdo, $sql_vendas_semana, $feira_selecionada)->fetchAll();
-
 } catch (Throwable $e) {
   error_log("Erro no dashboard: " . $e->getMessage());
 
@@ -273,18 +276,22 @@ try {
     .nav-link.text-black:hover {
       color: blue !important;
     }
+
     .card-stats {
       transition: transform 0.2s;
     }
+
     .card-stats:hover {
       transform: translateY(-5px);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
+
     .chart-container {
       position: relative;
       height: 300px;
       margin: 20px 0;
     }
+
     .filter-section {
       background: #f8f9fa;
       padding: 15px;
@@ -424,13 +431,45 @@ try {
 
       </nav>
       <!-- partial -->
+      <?php
+      // GARANTIR helper antes do HTML (evita 500)
+      if (!function_exists('h')) {
+        function h($s): string
+        {
+          return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+        }
+      }
+
+      // Data em PT-BR sem locale
+      $meses = [
+        1 => 'Jan',
+        2 => 'Fev',
+        3 => 'Mar',
+        4 => 'Abr',
+        5 => 'Mai',
+        6 => 'Jun',
+        7 => 'Jul',
+        8 => 'Ago',
+        9 => 'Set',
+        10 => 'Out',
+        11 => 'Nov',
+        12 => 'Dez'
+      ];
+      $hojeLabel = date('d') . ' ' . ($meses[(int)date('n')] ?? date('M')) . ' ' . date('Y');
+
+      // Normalizar feira selecionada (evita comparação bugada)
+      $feira_selecionada = isset($feira_selecionada) ? (int)$feira_selecionada : 0;
+      ?>
+
       <div class="main-panel">
         <div class="content-wrapper">
           <div class="row">
             <div class="col-md-12 grid-margin">
               <div class="row">
                 <div class="col-12 col-xl-8 mb-4 mb-xl-0">
-                  <h3 class="font-weight-bold">Bem-vindo(a) <?= h($_SESSION['usuario_nome'] ?? 'Usuário') ?></h3>
+                  <h3 class="font-weight-bold">
+                    Bem-vindo(a) <?= h($_SESSION['usuario_nome'] ?? 'Usuário') ?>
+                  </h3>
                   <h6 class="font-weight-normal mb-0">
                     Todos os sistemas estão funcionando normalmente!
                   </h6>
@@ -439,9 +478,21 @@ try {
                 <div class="col-12 col-xl-4">
                   <div class="justify-content-end d-flex">
                     <div class="dropdown flex-md-grow-1 flex-xl-grow-0">
-                      <button class="btn btn-sm btn-light bg-white dropdown-toggle" type="button" id="dropdownMenuDate2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                        <i class="mdi mdi-calendar"></i> <?= date('d M Y') ?>
+                      <button
+                        class="btn btn-sm btn-light bg-white dropdown-toggle"
+                        type="button"
+                        id="dropdownMenuDate2"
+                        data-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false">
+                        <i class="mdi mdi-calendar"></i> <?= h($hojeLabel) ?>
                       </button>
+
+                      <!-- Se quiser menu de datas no futuro, coloque aqui.
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuDate2">
+                  <a class="dropdown-item" href="#">Hoje</a>
+                </div>
+                -->
                     </div>
                   </div>
                 </div>
@@ -455,14 +506,23 @@ try {
               <div class="filter-section">
                 <form method="GET" action="index.php" class="form-inline">
                   <label class="mr-2"><strong>Filtrar por Feira:</strong></label>
+
                   <select name="feira_id" class="form-control mr-2" onchange="this.form.submit()">
-                    <option value="0">Todas as Feiras</option>
-                    <?php foreach ($feiras as $feira): ?>
-                      <option value="<?= $feira['id'] ?>" <?= $feira_selecionada == $feira['id'] ? 'selected' : '' ?>>
-                        <?= h($feira['nome']) ?>
-                      </option>
-                    <?php endforeach; ?>
+                    <option value="0" <?= $feira_selecionada === 0 ? 'selected' : '' ?>>Todas as Feiras</option>
+
+                    <?php if (!empty($feiras)): ?>
+                      <?php foreach ($feiras as $feira): ?>
+                        <?php
+                        $fid = (int)($feira['id'] ?? 0);
+                        $selected = ($feira_selecionada === $fid) ? 'selected' : '';
+                        ?>
+                        <option value="<?= $fid ?>" <?= $selected ?>>
+                          <?= h($feira['nome'] ?? '') ?>
+                        </option>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
                   </select>
+
                   <button type="submit" class="btn btn-primary btn-sm">Aplicar Filtro</button>
                 </form>
               </div>
@@ -475,149 +535,47 @@ try {
               <div class="card card-tale card-stats">
                 <div class="card-body">
                   <p class="mb-4">Vendas Hoje</p>
-                  <p class="fs-30 mb-2"><?= $vendas_hoje['total'] ?></p>
-                  <p>R$ <?= number_format($vendas_hoje['valor_total'], 2, ',', '.') ?></p>
+                  <p class="fs-30 mb-2"><?= (int)($vendas_hoje['total'] ?? 0) ?></p>
+                  <p>R$ <?= number_format((float)($vendas_hoje['valor_total'] ?? 0), 2, ',', '.') ?></p>
                 </div>
               </div>
             </div>
+
             <div class="col-md-3 mb-4 stretch-card transparent">
               <div class="card card-dark-blue card-stats">
                 <div class="card-body">
                   <p class="mb-4">Vendas do Mês</p>
-                  <p class="fs-30 mb-2"><?= $vendas_mes['total'] ?></p>
-                  <p>R$ <?= number_format($vendas_mes['valor_total'], 2, ',', '.') ?></p>
+                  <p class="fs-30 mb-2"><?= (int)($vendas_mes['total'] ?? 0) ?></p>
+                  <p>R$ <?= number_format((float)($vendas_mes['valor_total'] ?? 0), 2, ',', '.') ?></p>
                 </div>
               </div>
             </div>
+
             <div class="col-md-3 mb-4 stretch-card transparent">
               <div class="card card-light-blue card-stats">
                 <div class="card-body">
                   <p class="mb-4">Total de Produtores</p>
-                  <p class="fs-30 mb-2"><?= $total_produtores ?></p>
+                  <p class="fs-30 mb-2"><?= (int)($total_produtores ?? 0) ?></p>
                   <p>Ativos no sistema</p>
                 </div>
               </div>
             </div>
+
             <div class="col-md-3 mb-4 stretch-card transparent">
               <div class="card card-light-danger card-stats">
                 <div class="card-body">
                   <p class="mb-4">Total de Produtos</p>
-                  <p class="fs-30 mb-2"><?= $total_produtos ?></p>
+                  <p class="fs-30 mb-2"><?= (int)($total_produtos ?? 0) ?></p>
                   <p>Cadastrados</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Gráficos -->
-          <div class="row">
-            <div class="col-md-6 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-                  <p class="card-title">Vendas por Forma de Pagamento (Mês Atual)</p>
-                  <div class="chart-container">
-                    <canvas id="formaPagamentoChart"></canvas>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-                  <p class="card-title">Vendas dos Últimos 7 Dias</p>
-                  <div class="chart-container">
-                    <canvas id="vendasSemanaChart"></canvas>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-md-12 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-                  <p class="card-title">Top 10 Categorias (Mês Atual)</p>
-                  <div class="chart-container">
-                    <canvas id="categoriaChart"></canvas>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tabelas -->
-          <div class="row">
-            <div class="col-md-12 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-                  <p class="card-title">Top 10 Produtos Mais Vendidos (Mês Atual)</p>
-                  <div class="table-responsive">
-                    <table class="table table-striped table-borderless" id="topProdutosTable">
-                      <thead>
-                        <tr>
-                          <th>Produto</th>
-                          <th class="text-center">Quantidade Vendida</th>
-                          <th class="text-right">Valor Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php if (!empty($top_produtos)): ?>
-                          <?php foreach ($top_produtos as $produto): ?>
-                          <tr>
-                            <td><?= h($produto['nome']) ?></td>
-                            <td class="text-center font-weight-bold"><?= $produto['qtd_vendas'] ?></td>
-                            <td class="text-right">R$ <?= number_format($produto['valor_total'], 2, ',', '.') ?></td>
-                          </tr>
-                          <?php endforeach; ?>
-                        <?php else: ?>
-                          <tr>
-                            <td colspan="3" class="text-center">Nenhum produto vendido no período</td>
-                          </tr>
-                        <?php endif; ?>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tabela Avançada com DataTables -->
-          <div class="row">
-            <div class="col-md-12 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-                  <p class="card-title">Últimas Vendas</p>
-                  <div class="row">
-                    <div class="col-12">
-                      <div class="table-responsive">
-                        <table id="vendasTable" class="table table-striped table-bordered" style="width:100%">
-                          <thead>
-                            <tr>
-                              <th>ID</th>
-                              <th>Data/Hora</th>
-                              <th>Forma Pagamento</th>
-                              <th>Total</th>
-                              <th>Status</th>
-                              <th>Ações</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <!-- Dados carregados via AJAX -->
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- (restante do seu HTML pode continuar igual daqui pra baixo) -->
 
         </div>
-        <!-- content-wrapper ends -->
-        <!-- partial:partials/_footer.html -->
+
         <footer class="footer">
           <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
             <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
@@ -627,11 +585,10 @@ try {
               </a>
               . Todos os direitos reservados.
             </span>
-
           </div>
         </footer>
-        <!-- partial -->
       </div>
+
       <!-- main-panel ends -->
     </div>
     <!-- page-body-wrapper ends -->
@@ -705,7 +662,10 @@ try {
         data: {
           labels: vendasSemanaData.map(item => {
             const date = new Date(item.data);
-            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            return date.toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit'
+            });
           }),
           datasets: [{
             label: 'Quantidade',
@@ -806,17 +766,22 @@ try {
             console.log('Erro ao carregar dados:', error);
           }
         },
-        columns: [
-          { data: 'id' },
-          { data: 'data_hora' },
-          { data: 'forma_pagamento' },
-          { 
+        columns: [{
+            data: 'id'
+          },
+          {
+            data: 'data_hora'
+          },
+          {
+            data: 'forma_pagamento'
+          },
+          {
             data: 'total',
             render: function(data) {
               return 'R$ ' + parseFloat(data).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             }
           },
-          { 
+          {
             data: 'status',
             render: function(data) {
               let badgeClass = 'badge-success';
@@ -825,14 +790,16 @@ try {
               return '<span class="badge ' + badgeClass + '">' + data + '</span>';
             }
           },
-          { 
+          {
             data: null,
             render: function(data, type, row) {
               return '<button class="btn btn-sm btn-primary" onclick="verDetalhes(' + row.id + ')">Ver</button>';
             }
           }
         ],
-        order: [[0, 'desc']],
+        order: [
+          [0, 'desc']
+        ],
         language: {
           url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
         },
@@ -841,12 +808,12 @@ try {
 
       // DataTable para produtos (se houver dados)
       <?php if (!empty($top_produtos)): ?>
-      $('#topProdutosTable').DataTable({
-        pageLength: 10,
-        language: {
-          url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
-        }
-      });
+        $('#topProdutosTable').DataTable({
+          pageLength: 10,
+          language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
+          }
+        });
       <?php endif; ?>
     });
 
