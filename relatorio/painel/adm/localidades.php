@@ -250,7 +250,7 @@ try {
 
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
-          <li class="nav-item active">
+          <li class="nav-item ">
             <a class="nav-link" href="./index.php">
               <i class="icon-grid menu-icon"></i>
               <span class="menu-title">Dashboard</span>
