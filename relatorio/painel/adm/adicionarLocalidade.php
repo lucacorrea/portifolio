@@ -468,56 +468,8 @@ try {
                         </div>
                     </div>
 
-                    <!-- Lista -->
-                    <div class="row">
-                        <div class="col-lg-12 grid-margin stretch-card">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h4 class="card-title mb-0">Últimos cadastrados</h4>
-                                    <p class="card-description">Mostrando os 15 mais recentes.</p>
-
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-borderless">
-                                            <thead>
-                                                <tr>
-                                                    <th>ID</th>
-                                                    <th>Tipo</th>
-                                                    <th>Feira</th>
-                                                    <th>Nome</th>
-                                                    <th>Status</th>
-                                                    <th>Criado em</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php if (!empty($lista)): ?>
-                                                    <?php foreach ($lista as $row): ?>
-                                                        <?php
-                                                        $f = (int)($row['feira_id'] ?? 0);
-                                                        $tipoLabel = ($f === 3) ? 'Bairro' : 'Comunidade';
-                                                        $statusLabel = ((int)($row['ativo'] ?? 0) === 1) ? 'Ativo' : 'Inativo';
-                                                        ?>
-                                                        <tr>
-                                                            <td><?= (int)($row['id'] ?? 0) ?></td>
-                                                            <td><?= h($tipoLabel) ?></td>
-                                                            <td><?= $f ?></td>
-                                                            <td><?= h($row['nome'] ?? '') ?></td>
-                                                            <td><?= h($statusLabel) ?></td>
-                                                            <td><?= h($row['criado_em'] ?? '') ?></td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                <?php else: ?>
-                                                    <tr>
-                                                        <td colspan="6" class="text-center">Nenhum registro encontrado.</td>
-                                                    </tr>
-                                                <?php endif; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+             
+                 
 
                 </div>
 
