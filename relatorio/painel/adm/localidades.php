@@ -1,17 +1,18 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
 /* Login */
 if (empty($_SESSION['usuario_logado'])) {
-  header('Location: ../../index.php');
-  exit;
+    header('Location: ../../index.php');
+    exit;
 }
 
 /* ADMIN */
 if (!in_array('ADMIN', $_SESSION['perfis'] ?? [], true)) {
-  header('Location: ../operador/index.php');
-  exit;
+    header('Location: ../operador/index.php');
+    exit;
 }
 
 $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
@@ -19,13 +20,14 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 require_once '../../assets/php/conexao.php';
 $pdo = db(); // ✅ AQUI É A CORREÇÃO
 
-function h($v): string {
-  return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+function h($v): string
+{
+    return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
 }
 
 /* CSRF */
 if (empty($_SESSION['csrf_token'])) {
-  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = $_SESSION['csrf_token'];
 
@@ -37,46 +39,55 @@ $comunidades = [];
 
 /* Ações */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-    $msgErro = 'Token de segurança inválido.';
-  } else {
-    $acao = $_POST['acao'] ?? '';
-    $id = (int)($_POST['id'] ?? 0);
-
-    if ($id <= 0) {
-      $msgErro = 'ID inválido.';
+    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+        $msgErro = 'Token de segurança inválido.';
     } else {
-      try {
-        if ($acao === 'toggle') {
-          $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = IF(ativo=1,0,1) WHERE id = :id");
-          $st->execute([':id' => $id]);
-          $msgSucesso = 'Status atualizado com sucesso.';
-        } elseif ($acao === 'excluir') {
-          $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE id = :id");
-          $st->execute([':id' => $id]);
-          $msgSucesso = 'Registro excluído com sucesso.';
+        $acao = $_POST['acao'] ?? '';
+        $id = (int)($_POST['id'] ?? 0);
+
+        if ($id <= 0) {
+            $msgErro = 'ID inválido.';
         } else {
-          $msgErro = 'Ação inválida.';
+            try {
+                if ($acao === 'toggle') {
+                    $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = IF(ativo=1,0,1) WHERE id = :id");
+                    $st->execute([':id' => $id]);
+                    $msgSucesso = 'Status atualizado com sucesso.';
+                } elseif ($acao === 'excluir') {
+                    $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE id = :id");
+                    $st->execute([':id' => $id]);
+                    $msgSucesso = 'Registro excluído com sucesso.';
+                } else {
+                    $msgErro = 'Ação inválida.';
+                }
+            } catch (Throwable $e) {
+                error_log("Erro em localidades.php (acao): " . $e->getMessage());
+                $msgErro = 'Erro ao executar ação. Verifique o error_log.';
+            }
         }
-      } catch (Throwable $e) {
-        error_log("Erro em localidades.php (acao): " . $e->getMessage());
-        $msgErro = 'Erro ao executar ação. Verifique o error_log.';
-      }
     }
-  }
 }
 
 /* Listar */
 try {
-  $sql = "
-    SELECT id, feira_id, nome, ativo, observacao, criado_em, atualizado_em
-    FROM {$TABELA}
-    ORDER BY id DESC
-  ";
-  $comunidades = $pdo->query($sql)->fetchAll();
+    $sql = "
+  SELECT
+    c.id,
+    c.feira_id,
+    c.nome,
+    c.ativo,
+    c.observacao,
+    c.criado_em,
+    c.atualizado_em,
+    f.nome AS feira_nome
+  FROM {$TABELA} c
+  LEFT JOIN feiras f ON f.id = c.feira_id
+  ORDER BY c.id DESC
+";
+    $comunidades = $pdo->query($sql)->fetchAll();
 } catch (Throwable $e) {
-  error_log("Erro ao listar comunidades: " . $e->getMessage());
-  $msgErro = 'Erro ao carregar a lista.';
+    error_log("Erro ao listar comunidades: " . $e->getMessage());
+    $msgErro = 'Erro ao carregar a lista.';
 }
 ?>
 
@@ -380,6 +391,8 @@ try {
 
                                                         $tipoLabel = ($f === 3) ? 'Bairro' : 'Comunidade';
                                                         $obs = trim((string)($l['observacao'] ?? ''));
+                                                        $feiraNome = (string)($l['feira_nome'] ?? '');
+                                                        if ($feiraNome === '') $feiraNome = 'Feira ' . $f;
                                                         ?>
                                                         <tr>
                                                             <td><?= $id ?></td>
@@ -392,37 +405,16 @@ try {
                                                             </td>
 
                                                             <td><?= h($tipoLabel) ?></td>
-                                                            <td><?= $f ?></td>
+                                                            <td><?= h($feiraNome) ?></td>
 
                                                             <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
 
                                                             <td>
-                                                                <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
-
-                                                                    <form method="post" class="m-0">
-                                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                                                        <input type="hidden" name="acao" value="toggle">
-                                                                        <input type="hidden" name="id" value="<?= $id ?>">
-                                                                        <button type="submit" class="btn btn-outline-warning btn-xs"
-                                                                            onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> este registro?');">
-                                                                            <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
-                                                                        </button>
-                                                                    </form>
-
-                                                                    <form method="post" class="m-0">
-                                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                                                        <input type="hidden" name="acao" value="excluir">
-                                                                        <input type="hidden" name="id" value="<?= $id ?>">
-                                                                        <button type="submit" class="btn btn-outline-danger btn-xs"
-                                                                            onclick="return confirm('Tem certeza que deseja EXCLUIR este registro?');">
-                                                                            <i class="ti-trash"></i> Excluir
-                                                                        </button>
-                                                                    </form>
-
-                                                                </div>
+                                                                <!-- ações iguais -->
                                                             </td>
                                                         </tr>
                                                     <?php endforeach; ?>
+
                                                 <?php endif; ?>
                                             </tbody>
 
