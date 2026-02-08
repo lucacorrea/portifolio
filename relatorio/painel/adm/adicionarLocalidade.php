@@ -280,7 +280,7 @@ try {
                         <div class="col-12 mb-3">
                             <h3 class="font-weight-bold">Adicionar Comunidade / Bairro</h3>
                             <h6 class="font-weight-normal mb-0">
-                                Comunidade: Feira 1, Feira 2 ou Todas (1 e 2). Bairro: Feira 3 automático.
+                                Comunidade: Feira Alternativa e do Produto. Bairro: Mercado Municipal.
                             </h6>
                         </div>
                     </div>
@@ -331,9 +331,9 @@ try {
                                                     <label>Feira (somente para Comunidade) *</label>
                                                     <select class="form-control" name="feira_id" id="feira_id">
                                                         <option value="">Selecione a feira...</option>
-                                                        <option value="all" <?= $feira_id === 'all' ? 'selected' : '' ?>>Todas (Feira 1 e 2)</option>
-                                                        <option value="1" <?= $feira_id === '1' ? 'selected' : '' ?>>Feira 1</option>
-                                                        <option value="2" <?= $feira_id === '2' ? 'selected' : '' ?>>Feira 2</option>
+                                                        <option value="all" <?= $feira_id === 'all' ? 'selected' : '' ?>>Todas as Ferias</option>
+                                                        <option value="1" <?= $feira_id === '1' ? 'selected' : '' ?>>Feira Alternativa</option>
+                                                        <option value="2" <?= $feira_id === '2' ? 'selected' : '' ?>>Feira do Produto</option>
                                                     </select>
                                                     <small class="text-muted">Bairro não precisa: será Feira 3 automaticamente.</small>
                                                 </div>
