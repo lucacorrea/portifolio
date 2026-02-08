@@ -30,7 +30,7 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf = $_SESSION['csrf_token'];
 
 /* CONFIG */
-$TABELA = 'localidades'; // <<< MUDE AQUI se sua tabela tiver outro nome
+$TABELA = 'comunidades'; // <<< MUDE AQUI se sua tabela tiver outro nome
 
 $msgErro = '';
 $msgSucesso = '';
