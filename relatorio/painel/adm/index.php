@@ -17,111 +17,151 @@ if (!in_array('ADMIN', $perfis, true)) {
 }
 $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 
-// Conexão com banco de dados (ajuste conforme sua configuração)
+// Conexão com banco de dados
 require_once '../../assets/php/conexao.php';
 
 // Filtro de feira selecionada
 $feira_selecionada = isset($_GET['feira_id']) ? (int)$_GET['feira_id'] : 0;
-
-// Buscar todas as feiras
-$sql_feiras = "SELECT id, codigo, nome FROM feiras WHERE ativo = 1 ORDER BY nome";
-$stmt_feiras = $pdo->query($sql_feiras);
-$feiras = $stmt_feiras->fetchAll(PDO::FETCH_ASSOC);
 
 // Função helper
 function h($s) {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
-// Dados do dashboard (filtrados por feira se selecionada)
-$where_feira = $feira_selecionada > 0 ? "WHERE feira_id = :feira_id" : "";
+try {
+    // Buscar todas as feiras
+    $sql_feiras = "SELECT id, codigo, nome FROM feiras WHERE ativo = 1 ORDER BY nome";
+    $stmt_feiras = $pdo->query($sql_feiras);
+    $feiras = $stmt_feiras->fetchAll(PDO::FETCH_ASSOC);
 
-// Total de vendas do dia
-$sql_vendas_hoje = "SELECT COUNT(*) as total, COALESCE(SUM(total), 0) as valor_total 
-                    FROM vendas 
-                    $where_feira AND DATE(data_hora) = CURDATE()";
-$stmt_vendas_hoje = $pdo->prepare($sql_vendas_hoje);
-if ($feira_selecionada > 0) $stmt_vendas_hoje->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-$stmt_vendas_hoje->execute();
-$vendas_hoje = $stmt_vendas_hoje->fetch(PDO::FETCH_ASSOC);
+    // Preparar condição WHERE para feira
+    $where_feira_com_and = "";
+    $where_feira_apenas = "";
+    
+    if ($feira_selecionada > 0) {
+        $where_feira_com_and = " AND feira_id = :feira_id";
+        $where_feira_apenas = " WHERE feira_id = :feira_id";
+    }
 
-// Total de vendas do mês
-$sql_vendas_mes = "SELECT COUNT(*) as total, COALESCE(SUM(total), 0) as valor_total 
-                   FROM vendas 
-                   $where_feira AND MONTH(data_hora) = MONTH(CURDATE()) AND YEAR(data_hora) = YEAR(CURDATE())";
-$stmt_vendas_mes = $pdo->prepare($sql_vendas_mes);
-if ($feira_selecionada > 0) $stmt_vendas_mes->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-$stmt_vendas_mes->execute();
-$vendas_mes = $stmt_vendas_mes->fetch(PDO::FETCH_ASSOC);
-
-// Total de produtores
-$sql_produtores = "SELECT COUNT(*) as total FROM produtores $where_feira AND ativo = 1";
-$stmt_produtores = $pdo->prepare($sql_produtores);
-if ($feira_selecionada > 0) $stmt_produtores->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-$stmt_produtores->execute();
-$total_produtores = $stmt_produtores->fetch(PDO::FETCH_ASSOC)['total'];
-
-// Total de produtos
-$sql_produtos = "SELECT COUNT(*) as total FROM produtos $where_feira AND ativo = 1";
-$stmt_produtos = $pdo->prepare($sql_produtos);
-if ($feira_selecionada > 0) $stmt_produtos->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-$stmt_produtos->execute();
-$total_produtos = $stmt_produtos->fetch(PDO::FETCH_ASSOC)['total'];
-
-// Vendas por forma de pagamento (para gráfico)
-$sql_forma_pagamento = "SELECT forma_pagamento, COALESCE(SUM(total), 0) as valor_total 
+    // Total de vendas do dia
+    $sql_vendas_hoje = "SELECT COUNT(*) as total, COALESCE(SUM(total), 0) as valor_total 
                         FROM vendas 
-                        $where_feira 
-                        AND MONTH(data_hora) = MONTH(CURDATE()) 
-                        AND YEAR(data_hora) = YEAR(CURDATE())
-                        GROUP BY forma_pagamento";
-$stmt_forma_pagamento = $pdo->prepare($sql_forma_pagamento);
-if ($feira_selecionada > 0) $stmt_forma_pagamento->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-$stmt_forma_pagamento->execute();
-$vendas_forma_pagamento = $stmt_forma_pagamento->fetchAll(PDO::FETCH_ASSOC);
+                        WHERE DATE(data_hora) = CURDATE()" . $where_feira_com_and;
+    $stmt_vendas_hoje = $pdo->prepare($sql_vendas_hoje);
+    if ($feira_selecionada > 0) {
+        $stmt_vendas_hoje->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+    }
+    $stmt_vendas_hoje->execute();
+    $vendas_hoje = $stmt_vendas_hoje->fetch(PDO::FETCH_ASSOC);
 
-// Vendas por categoria (para gráfico)
-$sql_vendas_categoria = "SELECT c.nome, COUNT(vi.id) as qtd_vendas, COALESCE(SUM(vi.subtotal), 0) as valor_total
+    // Total de vendas do mês
+    $sql_vendas_mes = "SELECT COUNT(*) as total, COALESCE(SUM(total), 0) as valor_total 
+                       FROM vendas 
+                       WHERE MONTH(data_hora) = MONTH(CURDATE()) 
+                       AND YEAR(data_hora) = YEAR(CURDATE())" . $where_feira_com_and;
+    $stmt_vendas_mes = $pdo->prepare($sql_vendas_mes);
+    if ($feira_selecionada > 0) {
+        $stmt_vendas_mes->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+    }
+    $stmt_vendas_mes->execute();
+    $vendas_mes = $stmt_vendas_mes->fetch(PDO::FETCH_ASSOC);
+
+    // Total de produtores
+    $sql_produtores = "SELECT COUNT(*) as total FROM produtores WHERE ativo = 1" . $where_feira_com_and;
+    $stmt_produtores = $pdo->prepare($sql_produtores);
+    if ($feira_selecionada > 0) {
+        $stmt_produtores->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+    }
+    $stmt_produtores->execute();
+    $total_produtores = $stmt_produtores->fetch(PDO::FETCH_ASSOC)['total'];
+
+    // Total de produtos
+    $sql_produtos = "SELECT COUNT(*) as total FROM produtos WHERE ativo = 1" . $where_feira_com_and;
+    $stmt_produtos = $pdo->prepare($sql_produtos);
+    if ($feira_selecionada > 0) {
+        $stmt_produtos->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+    }
+    $stmt_produtos->execute();
+    $total_produtos = $stmt_produtos->fetch(PDO::FETCH_ASSOC)['total'];
+
+    // Vendas por forma de pagamento (para gráfico)
+    $sql_forma_pagamento = "SELECT forma_pagamento, COALESCE(SUM(total), 0) as valor_total 
+                            FROM vendas 
+                            WHERE MONTH(data_hora) = MONTH(CURDATE()) 
+                            AND YEAR(data_hora) = YEAR(CURDATE())" . $where_feira_com_and . "
+                            GROUP BY forma_pagamento";
+    $stmt_forma_pagamento = $pdo->prepare($sql_forma_pagamento);
+    if ($feira_selecionada > 0) {
+        $stmt_forma_pagamento->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+    }
+    $stmt_forma_pagamento->execute();
+    $vendas_forma_pagamento = $stmt_forma_pagamento->fetchAll(PDO::FETCH_ASSOC);
+
+    // Vendas por categoria (para gráfico)
+    $where_feira_vi = $feira_selecionada > 0 ? " AND vi.feira_id = :feira_id" : "";
+    $sql_vendas_categoria = "SELECT c.nome, COUNT(vi.id) as qtd_vendas, COALESCE(SUM(vi.subtotal), 0) as valor_total
+                             FROM venda_itens vi
+                             INNER JOIN produtos p ON vi.produto_id = p.id
+                             INNER JOIN categorias c ON p.categoria_id = c.id
+                             WHERE MONTH(vi.criado_em) = MONTH(CURDATE())
+                             AND YEAR(vi.criado_em) = YEAR(CURDATE())" . $where_feira_vi . "
+                             GROUP BY c.id, c.nome
+                             ORDER BY valor_total DESC
+                             LIMIT 10";
+    $stmt_vendas_categoria = $pdo->prepare($sql_vendas_categoria);
+    if ($feira_selecionada > 0) {
+        $stmt_vendas_categoria->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+    }
+    $stmt_vendas_categoria->execute();
+    $vendas_categoria = $stmt_vendas_categoria->fetchAll(PDO::FETCH_ASSOC);
+
+    // Top 10 produtos mais vendidos
+    $sql_top_produtos = "SELECT p.nome, COUNT(vi.id) as qtd_vendas, COALESCE(SUM(vi.subtotal), 0) as valor_total
                          FROM venda_itens vi
                          INNER JOIN produtos p ON vi.produto_id = p.id
-                         INNER JOIN categorias c ON p.categoria_id = c.id
-                         WHERE 1=1 " . ($feira_selecionada > 0 ? "AND vi.feira_id = :feira_id" : "") . "
-                         AND MONTH(vi.criado_em) = MONTH(CURDATE())
-                         AND YEAR(vi.criado_em) = YEAR(CURDATE())
-                         GROUP BY c.id, c.nome
-                         ORDER BY valor_total DESC
+                         WHERE MONTH(vi.criado_em) = MONTH(CURDATE())
+                         AND YEAR(vi.criado_em) = YEAR(CURDATE())" . $where_feira_vi . "
+                         GROUP BY p.id, p.nome
+                         ORDER BY qtd_vendas DESC
                          LIMIT 10";
-$stmt_vendas_categoria = $pdo->prepare($sql_vendas_categoria);
-if ($feira_selecionada > 0) $stmt_vendas_categoria->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-$stmt_vendas_categoria->execute();
-$vendas_categoria = $stmt_vendas_categoria->fetchAll(PDO::FETCH_ASSOC);
+    $stmt_top_produtos = $pdo->prepare($sql_top_produtos);
+    if ($feira_selecionada > 0) {
+        $stmt_top_produtos->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+    }
+    $stmt_top_produtos->execute();
+    $top_produtos = $stmt_top_produtos->fetchAll(PDO::FETCH_ASSOC);
 
-// Top 10 produtos mais vendidos
-$sql_top_produtos = "SELECT p.nome, COUNT(vi.id) as qtd_vendas, COALESCE(SUM(vi.subtotal), 0) as valor_total
-                     FROM venda_itens vi
-                     INNER JOIN produtos p ON vi.produto_id = p.id
-                     WHERE 1=1 " . ($feira_selecionada > 0 ? "AND vi.feira_id = :feira_id" : "") . "
-                     AND MONTH(vi.criado_em) = MONTH(CURDATE())
-                     AND YEAR(vi.criado_em) = YEAR(CURDATE())
-                     GROUP BY p.id, p.nome
-                     ORDER BY qtd_vendas DESC
-                     LIMIT 10";
-$stmt_top_produtos = $pdo->prepare($sql_top_produtos);
-if ($feira_selecionada > 0) $stmt_top_produtos->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-$stmt_top_produtos->execute();
-$top_produtos = $stmt_top_produtos->fetchAll(PDO::FETCH_ASSOC);
+    // Vendas dos últimos 7 dias (para gráfico de linha)
+    $sql_vendas_semana = "SELECT DATE(data_hora) as data, COUNT(*) as qtd, COALESCE(SUM(total), 0) as valor
+                          FROM vendas
+                          WHERE data_hora >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)" . $where_feira_com_and . "
+                          GROUP BY DATE(data_hora)
+                          ORDER BY data";
+    $stmt_vendas_semana = $pdo->prepare($sql_vendas_semana);
+    if ($feira_selecionada > 0) {
+        $stmt_vendas_semana->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
+    }
+    $stmt_vendas_semana->execute();
+    $vendas_semana = $stmt_vendas_semana->fetchAll(PDO::FETCH_ASSOC);
 
-// Vendas dos últimos 7 dias (para gráfico de linha)
-$sql_vendas_semana = "SELECT DATE(data_hora) as data, COUNT(*) as qtd, COALESCE(SUM(total), 0) as valor
-                      FROM vendas
-                      $where_feira
-                      AND data_hora >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                      GROUP BY DATE(data_hora)
-                      ORDER BY data";
-$stmt_vendas_semana = $pdo->prepare($sql_vendas_semana);
-if ($feira_selecionada > 0) $stmt_vendas_semana->bindValue(':feira_id', $feira_selecionada, PDO::PARAM_INT);
-$stmt_vendas_semana->execute();
-$vendas_semana = $stmt_vendas_semana->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    // Log do erro
+    error_log("Erro no dashboard: " . $e->getMessage());
+    
+    // Inicializar variáveis vazias para evitar erros
+    $feiras = [];
+    $vendas_hoje = ['total' => 0, 'valor_total' => 0];
+    $vendas_mes = ['total' => 0, 'valor_total' => 0];
+    $total_produtores = 0;
+    $total_produtos = 0;
+    $vendas_forma_pagamento = [];
+    $vendas_categoria = [];
+    $top_produtos = [];
+    $vendas_semana = [];
+    
+    // Exibir mensagem de erro (remover em produção)
+    // echo "<div class='alert alert-danger'>Erro ao carregar dados: " . h($e->getMessage()) . "</div>";
+}
 
 ?>
 
@@ -440,13 +480,19 @@ $vendas_semana = $stmt_vendas_semana->fetchAll(PDO::FETCH_ASSOC);
                         </tr>
                       </thead>
                       <tbody>
-                        <?php foreach ($top_produtos as $produto): ?>
-                        <tr>
-                          <td><?= h($produto['nome']) ?></td>
-                          <td class="text-center font-weight-bold"><?= $produto['qtd_vendas'] ?></td>
-                          <td class="text-right">R$ <?= number_format($produto['valor_total'], 2, ',', '.') ?></td>
-                        </tr>
-                        <?php endforeach; ?>
+                        <?php if (!empty($top_produtos)): ?>
+                          <?php foreach ($top_produtos as $produto): ?>
+                          <tr>
+                            <td><?= h($produto['nome']) ?></td>
+                            <td class="text-center font-weight-bold"><?= $produto['qtd_vendas'] ?></td>
+                            <td class="text-right">R$ <?= number_format($produto['valor_total'], 2, ',', '.') ?></td>
+                          </tr>
+                          <?php endforeach; ?>
+                        <?php else: ?>
+                          <tr>
+                            <td colspan="3" class="text-center">Nenhum produto vendido no período</td>
+                          </tr>
+                        <?php endif; ?>
                       </tbody>
                     </table>
                   </div>
@@ -537,124 +583,131 @@ $vendas_semana = $stmt_vendas_semana->fetchAll(PDO::FETCH_ASSOC);
     const vendasSemanaData = <?= json_encode($vendas_semana) ?>;
     const feiraId = <?= $feira_selecionada ?>;
 
-    // Gráfico de Forma de Pagamento
-    const ctxFormaPagamento = document.getElementById('formaPagamentoChart').getContext('2d');
-    new Chart(ctxFormaPagamento, {
-      type: 'doughnut',
-      data: {
-        labels: formaPagamentoData.map(item => item.forma_pagamento),
-        datasets: [{
-          label: 'Valor Total',
-          data: formaPagamentoData.map(item => parseFloat(item.valor_total)),
-          backgroundColor: [
-            'rgba(255, 99, 132, 0.8)',
-            'rgba(54, 162, 235, 0.8)',
-            'rgba(255, 206, 86, 0.8)',
-            'rgba(75, 192, 192, 0.8)',
-            'rgba(153, 102, 255, 0.8)'
-          ]
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom'
+    // Verificar se há dados antes de criar gráficos
+    if (formaPagamentoData && formaPagamentoData.length > 0) {
+      // Gráfico de Forma de Pagamento
+      const ctxFormaPagamento = document.getElementById('formaPagamentoChart').getContext('2d');
+      new Chart(ctxFormaPagamento, {
+        type: 'doughnut',
+        data: {
+          labels: formaPagamentoData.map(item => item.forma_pagamento),
+          datasets: [{
+            label: 'Valor Total',
+            data: formaPagamentoData.map(item => parseFloat(item.valor_total)),
+            backgroundColor: [
+              'rgba(255, 99, 132, 0.8)',
+              'rgba(54, 162, 235, 0.8)',
+              'rgba(255, 206, 86, 0.8)',
+              'rgba(75, 192, 192, 0.8)',
+              'rgba(153, 102, 255, 0.8)'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
           }
         }
-      }
-    });
+      });
+    }
 
-    // Gráfico de Vendas da Semana
-    const ctxVendasSemana = document.getElementById('vendasSemanaChart').getContext('2d');
-    new Chart(ctxVendasSemana, {
-      type: 'line',
-      data: {
-        labels: vendasSemanaData.map(item => {
-          const date = new Date(item.data);
-          return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-        }),
-        datasets: [{
-          label: 'Quantidade',
-          data: vendasSemanaData.map(item => parseInt(item.qtd)),
-          borderColor: 'rgba(75, 192, 192, 1)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          yAxisID: 'y'
-        }, {
-          label: 'Valor (R$)',
-          data: vendasSemanaData.map(item => parseFloat(item.valor)),
-          borderColor: 'rgba(255, 99, 132, 1)',
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          yAxisID: 'y1'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false
+    if (vendasSemanaData && vendasSemanaData.length > 0) {
+      // Gráfico de Vendas da Semana
+      const ctxVendasSemana = document.getElementById('vendasSemanaChart').getContext('2d');
+      new Chart(ctxVendasSemana, {
+        type: 'line',
+        data: {
+          labels: vendasSemanaData.map(item => {
+            const date = new Date(item.data);
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+          }),
+          datasets: [{
+            label: 'Quantidade',
+            data: vendasSemanaData.map(item => parseInt(item.qtd)),
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            yAxisID: 'y'
+          }, {
+            label: 'Valor (R$)',
+            data: vendasSemanaData.map(item => parseFloat(item.valor)),
+            borderColor: 'rgba(255, 99, 132, 1)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            yAxisID: 'y1'
+          }]
         },
-        scales: {
-          y: {
-            type: 'linear',
-            display: true,
-            position: 'left',
-            title: {
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          scales: {
+            y: {
+              type: 'linear',
               display: true,
-              text: 'Quantidade'
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Quantidade'
+              }
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'Valor (R$)'
+              },
+              grid: {
+                drawOnChartArea: false
+              }
+            }
+          }
+        }
+      });
+    }
+
+    if (categoriaData && categoriaData.length > 0) {
+      // Gráfico de Categorias
+      const ctxCategoria = document.getElementById('categoriaChart').getContext('2d');
+      new Chart(ctxCategoria, {
+        type: 'bar',
+        data: {
+          labels: categoriaData.map(item => item.nome),
+          datasets: [{
+            label: 'Valor Total (R$)',
+            data: categoriaData.map(item => parseFloat(item.valor_total)),
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Valor (R$)'
+              }
             }
           },
-          y1: {
-            type: 'linear',
-            display: true,
-            position: 'right',
-            title: {
-              display: true,
-              text: 'Valor (R$)'
-            },
-            grid: {
-              drawOnChartArea: false
+          plugins: {
+            legend: {
+              display: false
             }
           }
         }
-      }
-    });
-
-    // Gráfico de Categorias
-    const ctxCategoria = document.getElementById('categoriaChart').getContext('2d');
-    new Chart(ctxCategoria, {
-      type: 'bar',
-      data: {
-        labels: categoriaData.map(item => item.nome),
-        datasets: [{
-          label: 'Valor Total (R$)',
-          data: categoriaData.map(item => parseFloat(item.valor_total)),
-          backgroundColor: 'rgba(54, 162, 235, 0.8)',
-          borderColor: 'rgba(54, 162, 235, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Valor (R$)'
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            display: false
-          }
-        }
-      }
-    });
+      });
+    }
 
     // DataTable para últimas vendas
     $(document).ready(function() {
@@ -666,6 +719,9 @@ $vendas_semana = $stmt_vendas_semana->fetchAll(PDO::FETCH_ASSOC);
           type: 'POST',
           data: function(d) {
             d.feira_id = feiraId;
+          },
+          error: function(xhr, error, code) {
+            console.log('Erro ao carregar dados:', error);
           }
         },
         columns: [
@@ -701,16 +757,19 @@ $vendas_semana = $stmt_vendas_semana->fetchAll(PDO::FETCH_ASSOC);
         pageLength: 25
       });
 
-      // DataTable para produtos
+      // DataTable para produtos (se houver dados)
+      <?php if (!empty($top_produtos)): ?>
       $('#topProdutosTable').DataTable({
         pageLength: 10,
         language: {
           url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
         }
       });
+      <?php endif; ?>
     });
 
     function verDetalhes(vendaId) {
+      // Ajuste o caminho conforme sua estrutura
       window.location.href = 'vendas/detalhes.php?id=' + vendaId;
     }
   </script>
