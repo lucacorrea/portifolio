@@ -89,18 +89,18 @@ try {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>SIGRelatórios Feira do Produtor — Adicionar Categoria</title>
+    <title>SIGRelatórios Feira do Produtor — Localidades</title>
 
-    <link rel="stylesheet" href="../../../vendors/feather/feather.css">
-    <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
-    <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
+    <link rel="stylesheet" href="../../vendors/feather/feather.css">
+    <link rel="stylesheet" href="../../vendors/ti-icons/css/themify-icons.css">
+    <link rel="stylesheet" href="../../vendors/css/vendor.bundle.base.css">
 
-    <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
-    <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
-    <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
+    <link rel="stylesheet" href="../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="../../vendors/ti-icons/css/themify-icons.css">
+    <link rel="stylesheet" type="text/css" href="../../js/select.dataTables.min.css">
 
-    <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
-    <link rel="shortcut icon" href="../../../images/3.png" />
+    <link rel="stylesheet" href="../../css/vertical-layout-light/style.css">
+    <link rel="shortcut icon" href="../../images/3.png" />
 
     <style>
         ul .nav-link:hover {
@@ -217,7 +217,7 @@ try {
         <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
             <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
                 <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-                <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
+                <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../images/3.png" alt="logo" /></a>
             </div>
             <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
                 <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
@@ -483,15 +483,15 @@ try {
         </div>
     </div>
 
-    <script src="../../../vendors/js/vendor.bundle.base.js"></script>
-    <script src="../../../vendors/chart.js/Chart.min.js"></script>
-    <script src="../../../js/off-canvas.js"></script>
-    <script src="../../../js/hoverable-collapse.js"></script>
-    <script src="../../../js/template.js"></script>
-    <script src="../../../js/settings.js"></script>
-    <script src="../../../js/todolist.js"></script>
-    <script src="../../../js/dashboard.js"></script>
-    <script src="../../../js/Chart.roundedBarCharts.js"></script>
+    <script src="../../vendors/js/vendor.bundle.base.js"></script>
+    <script src="../../vendors/chart.js/Chart.min.js"></script>
+    <script src="../../js/off-canvas.js"></script>
+    <script src="../../js/hoverable-collapse.js"></script>
+    <script src="../../js/template.js"></script>
+    <script src="../../js/settings.js"></script>
+    <script src="../../js/todolist.js"></script>
+    <script src="../../js/dashboard.js"></script>
+    <script src="../../js/Chart.roundedBarCharts.js"></script>
 </body>
 
 </html>
