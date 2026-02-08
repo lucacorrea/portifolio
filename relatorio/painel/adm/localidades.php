@@ -30,12 +30,16 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf = $_SESSION['csrf_token'];
 
 /* CONFIG */
-$TABELA = 'localidades'; // <<< MUDE se a sua tabela tiver outro nome
+$TABELA = 'localidades'; // <<< MUDE AQUI se sua tabela tiver outro nome
 
 $msgErro = '';
 $msgSucesso = '';
+$localidades = [];
 
-/* Ações (toggle / excluir) */
+/* (DEV) se quiser ver o erro real na tela */
+$DEBUG = false;
+
+/* Ações */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
         $msgErro = 'Token de segurança inválido.';
@@ -48,7 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 if ($acao === 'toggle') {
-                    // inverte ativo (1->0, 0->1)
                     $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = IF(ativo=1,0,1), atualizado_em = NOW() WHERE id = :id");
                     $st->execute([':id' => $id]);
                     $msgSucesso = 'Status atualizado com sucesso.';
@@ -60,14 +63,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $msgErro = 'Ação inválida.';
                 }
             } catch (Throwable $e) {
-                error_log("Erro em localidades.php: " . $e->getMessage());
+                error_log("Erro em localidades.php (acao): " . $e->getMessage());
                 $msgErro = 'Erro ao executar ação. Verifique o error_log.';
+                if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
             }
         }
     }
 }
 
-/* Buscar registros */
+/* Listar */
 try {
     $sql = "
     SELECT id, feira_id, nome, ativo, observacao, criado_em, atualizado_em
@@ -77,11 +81,11 @@ try {
     $localidades = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     error_log("Erro ao listar localidades: " . $e->getMessage());
-    $localidades = [];
     $msgErro = $msgErro ?: 'Erro ao carregar a lista.';
+    if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
 }
 ?>
->
+
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -212,106 +216,106 @@ try {
 </head>
 
 <body>
-  <div class="container-scroller">
+    <div class="container-scroller">
 
-    <!-- NAVBAR -->
-    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../images/3.png" alt="logo" /></a>
-      </div>
-
-      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-          <span class="icon-menu"></span>
-        </button>
-
-        <ul class="navbar-nav navbar-nav-right">
-          <li class="nav-item nav-profile dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
-              <i class="ti-user"></i>
-              <span class="ml-1"><?= h($nomeTopo) ?></span>
-            </a>
-            <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
-              <a class="dropdown-item" href="../../controle/auth/logout.php">
-                <i class="ti-power-off text-primary"></i> Sair
-              </a>
+        <!-- NAVBAR -->
+        <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+            <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+                <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+                <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../images/3.png" alt="logo" /></a>
             </div>
-          </li>
-        </ul>
 
-        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-          <span class="icon-menu"></span>
-        </button>
-      </div>
-    </nav>
+            <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+                <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+                    <span class="icon-menu"></span>
+                </button>
 
-    <div class="container-fluid page-body-wrapper">
+                <ul class="navbar-nav navbar-nav-right">
+                    <li class="nav-item nav-profile dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
+                            <i class="ti-user"></i>
+                            <span class="ml-1"><?= h($nomeTopo) ?></span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+                            <a class="dropdown-item" href="../../controle/auth/logout.php">
+                                <i class="ti-power-off text-primary"></i> Sair
+                            </a>
+                        </div>
+                    </li>
+                </ul>
 
-      <nav class="sidebar sidebar-offcanvas" id="sidebar">
-        <ul class="nav">
-          <li class="nav-item ">
-            <a class="nav-link" href="./index.php">
-              <i class="icon-grid menu-icon"></i>
-              <span class="menu-title">Dashboard</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="./produtor/">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira do Produtor</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="./alternativa/">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira Alternativa</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="./mercado/">
-              <i class="ti-home menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="./relatorio/">
-              <i class="ti-agenda menu-icon"></i>
-              <span class="menu-title">Relatórios</span>
-            </a>
-          </li>
-            <li class="nav-item">
-            <a class="nav-link" href="./localidades.php">
-              <i class="ti-map menu-icon"></i>
-              <span class="menu-title">Localidades</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
-              <i class="ti-user menu-icon"></i>
-              <span class="menu-title">Usuários</span>
-              <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse" id="ui-basic">
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./users/listaUser.php">Lista de Adicionados</a></li>
-                <li class="nav-item"><a class="nav-link" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
-              </ul>
+                <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+                    <span class="icon-menu"></span>
+                </button>
             </div>
-          </li>
+        </nav>
 
-          <li class="nav-item">
-            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-              <i class="ti-headphone-alt menu-icon"></i>
-              <span class="menu-title">Suporte</span>
-            </a>
-          </li>
-        </ul>
-      </nav>
+        <div class="container-fluid page-body-wrapper">
+
+            <nav class="sidebar sidebar-offcanvas" id="sidebar">
+                <ul class="nav">
+                    <li class="nav-item ">
+                        <a class="nav-link" href="./index.php">
+                            <i class="icon-grid menu-icon"></i>
+                            <span class="menu-title">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="./produtor/">
+                            <i class="ti-shopping-cart menu-icon"></i>
+                            <span class="menu-title">Feira do Produtor</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="./alternativa/">
+                            <i class="ti-shopping-cart menu-icon"></i>
+                            <span class="menu-title">Feira Alternativa</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="./mercado/">
+                            <i class="ti-home menu-icon"></i>
+                            <span class="menu-title">Mercado Municipal</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="./relatorio/">
+                            <i class="ti-agenda menu-icon"></i>
+                            <span class="menu-title">Relatórios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="./localidades.php">
+                            <i class="ti-map menu-icon"></i>
+                            <span class="menu-title">Localidades</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+                            <i class="ti-user menu-icon"></i>
+                            <span class="menu-title">Usuários</span>
+                            <i class="menu-arrow"></i>
+                        </a>
+                        <div class="collapse" id="ui-basic">
+                            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                                <li class="nav-item"><a class="nav-link" href="./users/listaUser.php">Lista de Adicionados</a></li>
+                                <li class="nav-item"><a class="nav-link" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+                            <i class="ti-headphone-alt menu-icon"></i>
+                            <span class="menu-title">Suporte</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
 
 
             <div class="main-panel">
@@ -320,7 +324,9 @@ try {
                     <div class="row">
                         <div class="col-12 mb-3">
                             <h3 class="font-weight-bold">Localidades</h3>
-                            <h6 class="font-weight-normal mb-0">Cadastre e gerencie Comunidades (feira 1/2) e Bairros (feira 3).</h6>
+                            <h6 class="font-weight-normal mb-0">
+                                Cadastre e gerencie Comunidades (feira 1/2) e Bairros (feira 3).
+                            </h6>
                         </div>
                     </div>
 
@@ -360,6 +366,7 @@ try {
                                                     <th style="min-width: 260px;">Ações</th>
                                                 </tr>
                                             </thead>
+
                                             <tbody>
                                                 <?php if (empty($localidades)): ?>
                                                     <tr>
@@ -393,9 +400,7 @@ try {
                                                             <td><?= h($tipoLabel) ?></td>
                                                             <td><?= $f ?></td>
 
-                                                            <td>
-                                                                <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label>
-                                                            </td>
+                                                            <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
 
                                                             <td>
                                                                 <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -426,6 +431,7 @@ try {
                                                     <?php endforeach; ?>
                                                 <?php endif; ?>
                                             </tbody>
+
                                         </table>
                                     </div>
 
@@ -446,6 +452,7 @@ try {
                     </div>
                 </footer>
             </div>
+
 
 
             <script>
