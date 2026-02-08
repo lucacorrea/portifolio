@@ -947,7 +947,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             </a>
           </li>
             <li class="nav-item">
-            <a class="nav-link" href="./localicadades.php">
+            <a class="nav-link" href="./localidades.php">
               <i class="ti-map menu-icon"></i>
               <span class="menu-title">Localidades</span>
             </a>
