@@ -1,28 +1,30 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
 /* Login */
 if (empty($_SESSION['usuario_logado'])) {
-  header('Location: ../../index.php');
-  exit;
+    header('Location: ../../index.php');
+    exit;
 }
 
 /* ADMIN */
 if (!in_array('ADMIN', $_SESSION['perfis'] ?? [], true)) {
-  header('Location: ../operador/index.php');
-  exit;
+    header('Location: ../operador/index.php');
+    exit;
 }
 
 require_once '../../assets/php/conexao.php';
 
-function h($v): string {
-  return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+function h($v): string
+{
+    return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
 }
 
 /* CSRF */
 if (empty($_SESSION['csrf_token'])) {
-  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = $_SESSION['csrf_token'];
 
@@ -38,48 +40,48 @@ $DEBUG = false;
 
 /* Ações */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-    $msgErro = 'Token de segurança inválido.';
-  } else {
-    $acao = $_POST['acao'] ?? '';
-    $id = (int)($_POST['id'] ?? 0);
-
-    if ($id <= 0) {
-      $msgErro = 'ID inválido.';
+    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+        $msgErro = 'Token de segurança inválido.';
     } else {
-      try {
-        if ($acao === 'toggle') {
-          $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = IF(ativo=1,0,1), atualizado_em = NOW() WHERE id = :id");
-          $st->execute([':id' => $id]);
-          $msgSucesso = 'Status atualizado com sucesso.';
-        } elseif ($acao === 'excluir') {
-          $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE id = :id");
-          $st->execute([':id' => $id]);
-          $msgSucesso = 'Registro excluído com sucesso.';
+        $acao = $_POST['acao'] ?? '';
+        $id = (int)($_POST['id'] ?? 0);
+
+        if ($id <= 0) {
+            $msgErro = 'ID inválido.';
         } else {
-          $msgErro = 'Ação inválida.';
+            try {
+                if ($acao === 'toggle') {
+                    $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = IF(ativo=1,0,1), atualizado_em = NOW() WHERE id = :id");
+                    $st->execute([':id' => $id]);
+                    $msgSucesso = 'Status atualizado com sucesso.';
+                } elseif ($acao === 'excluir') {
+                    $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE id = :id");
+                    $st->execute([':id' => $id]);
+                    $msgSucesso = 'Registro excluído com sucesso.';
+                } else {
+                    $msgErro = 'Ação inválida.';
+                }
+            } catch (Throwable $e) {
+                error_log("Erro em comunidades(lista): " . $e->getMessage());
+                $msgErro = 'Erro ao executar ação. Verifique o error_log.';
+                if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
+            }
         }
-      } catch (Throwable $e) {
-        error_log("Erro em comunidades(lista): " . $e->getMessage());
-        $msgErro = 'Erro ao executar ação. Verifique o error_log.';
-        if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
-      }
     }
-  }
 }
 
 /* Listar */
 try {
-  $sql = "
+    $sql = "
     SELECT id, feira_id, nome, ativo, observacao, criado_em, atualizado_em
     FROM {$TABELA}
     ORDER BY id DESC
   ";
-  $comunidades = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    $comunidades = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-  error_log("Erro ao listar comunidades: " . $e->getMessage());
-  $msgErro = $msgErro ?: 'Erro ao carregar a lista.';
-  if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
+    error_log("Erro ao listar comunidades: " . $e->getMessage());
+    $msgErro = $msgErro ?: 'Erro ao carregar a lista.';
+    if ($DEBUG) $msgErro .= ' | ' . $e->getMessage();
 }
 ?>
 
@@ -322,7 +324,7 @@ try {
                         <div class="col-12 mb-3">
                             <h3 class="font-weight-bold">Localidades</h3>
                             <h6 class="font-weight-normal mb-0">
-                                Cadastre e gerencie Comunidades (feira 1/2) e Bairros (feira 3).
+                                Comunidades (feira 1/2) e Bairros (feira 3).
                             </h6>
                         </div>
                     </div>
@@ -335,7 +337,7 @@ try {
                                     <div class="d-flex align-items-center justify-content-between flex-wrap">
                                         <div>
                                             <h4 class="card-title mb-0">Lista de Localidades</h4>
-                                            <p class="card-description mb-0">Mostrando <?= (int)count($localidades) ?> registro(s).</p>
+                                            <p class="card-description mb-0">Mostrando <?= (int)count($comunidades) ?> registro(s).</p>
                                         </div>
 
                                         <a href="./adicionarLocalidade.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
@@ -365,19 +367,19 @@ try {
                                             </thead>
 
                                             <tbody>
-                                                <?php if (empty($localidades)): ?>
+                                                <?php if (empty($comunidades)): ?>
                                                     <tr>
                                                         <td colspan="6" class="text-center text-muted py-4">
-                                                            Nenhuma localidade cadastrada ainda.
+                                                            Nenhum registro encontrado.
                                                         </td>
                                                     </tr>
                                                 <?php else: ?>
-                                                    <?php foreach ($localidades as $l): ?>
+                                                    <?php foreach ($comunidades as $l): ?>
                                                         <?php
                                                         $id = (int)($l['id'] ?? 0);
                                                         $f  = (int)($l['feira_id'] ?? 0);
 
-                                                        $ativoBool = (int)($l['ativo'] ?? 0) === 1;
+                                                        $ativoBool  = (int)($l['ativo'] ?? 0) === 1;
                                                         $badgeClass = $ativoBool ? 'badge-success' : 'badge-danger';
                                                         $badgeText  = $ativoBool ? 'Ativo' : 'Inativo';
 
@@ -407,7 +409,7 @@ try {
                                                                         <input type="hidden" name="acao" value="toggle">
                                                                         <input type="hidden" name="id" value="<?= $id ?>">
                                                                         <button type="submit" class="btn btn-outline-warning btn-xs"
-                                                                            onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> esta localidade?');">
+                                                                            onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> este registro?');">
                                                                             <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
                                                                         </button>
                                                                     </form>
@@ -417,7 +419,7 @@ try {
                                                                         <input type="hidden" name="acao" value="excluir">
                                                                         <input type="hidden" name="id" value="<?= $id ?>">
                                                                         <button type="submit" class="btn btn-outline-danger btn-xs"
-                                                                            onclick="return confirm('Tem certeza que deseja EXCLUIR esta localidade?');">
+                                                                            onclick="return confirm('Tem certeza que deseja EXCLUIR este registro?');">
                                                                             <i class="ti-trash"></i> Excluir
                                                                         </button>
                                                                     </form>
