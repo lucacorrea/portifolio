@@ -391,9 +391,11 @@ try {
 
                                                         $tipoLabel = ($f === 3) ? 'Bairro' : 'Comunidade';
                                                         $obs = trim((string)($l['observacao'] ?? ''));
+
                                                         $feiraNome = (string)($l['feira_nome'] ?? '');
                                                         if ($feiraNome === '') $feiraNome = 'Feira ' . $f;
                                                         ?>
+
                                                         <tr>
                                                             <td><?= $id ?></td>
 
@@ -407,13 +409,43 @@ try {
                                                             <td><?= h($tipoLabel) ?></td>
                                                             <td><?= h($feiraNome) ?></td>
 
-                                                            <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                                                            <td>
+                                                                <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label>
+                                                            </td>
 
                                                             <td>
-                                                                <!-- ações iguais -->
+                                                                <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
+
+                                                                    <!-- ATIVAR/DESATIVAR -->
+                                                                    <form method="post" class="m-0">
+                                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                                        <input type="hidden" name="acao" value="toggle">
+                                                                        <input type="hidden" name="id" value="<?= $id ?>">
+
+                                                                        <button type="submit" class="btn btn-outline-warning btn-xs"
+                                                                            onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> este registro?');">
+                                                                            <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
+                                                                        </button>
+                                                                    </form>
+
+                                                                    <!-- EXCLUIR -->
+                                                                    <form method="post" class="m-0">
+                                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                                        <input type="hidden" name="acao" value="excluir">
+                                                                        <input type="hidden" name="id" value="<?= $id ?>">
+
+                                                                        <button type="submit" class="btn btn-outline-danger btn-xs"
+                                                                            onclick="return confirm('Tem certeza que deseja EXCLUIR este registro?');">
+                                                                            <i class="ti-trash"></i> Excluir
+                                                                        </button>
+                                                                    </form>
+
+                                                                </div>
                                                             </td>
                                                         </tr>
+
                                                     <?php endforeach; ?>
+
 
                                                 <?php endif; ?>
                                             </tbody>
