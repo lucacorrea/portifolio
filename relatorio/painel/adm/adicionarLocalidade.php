@@ -335,7 +335,7 @@ try {
                                                         <option value="1" <?= $feira_id === '1' ? 'selected' : '' ?>>Feira Alternativa</option>
                                                         <option value="2" <?= $feira_id === '2' ? 'selected' : '' ?>>Feira do Produto</option>
                                                     </select>
-                                                    <small class="text-muted">Bairro não precisa: será Feira 3 automaticamente.</small>
+                                                  
                                                 </div>
                                             </div>
 
