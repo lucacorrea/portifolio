@@ -29,7 +29,7 @@ function money($n): string
 }
 
 /* DB */
-require '/../assets/php/conexao.php'; // ajuste se o caminho do seu index for diferente
+require '../../assets/php/conexao.php'; // ajuste se o caminho do seu index for diferente
 $pdo = db();
 
 /* Feiras que entram no dashboard */
