@@ -3,6 +3,13 @@
 declare(strict_types=1);
 session_start();
 
+/* ======================================================================
+   TIMEZONE (AMAZONAS)
+   - PHP: America/Manaus (UTC-04)
+   - MySQL (nesta página): -04:00
+   ====================================================================== */
+date_default_timezone_set('America/Manaus');
+
 /* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
   header('Location: ../../index.php');
@@ -11,321 +18,877 @@ if (empty($_SESSION['usuario_logado'])) {
 
 /* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../operador/index.php');
   exit;
 }
 
-$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
+/* Nome usuário */
+$nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
 
-// Conexão com banco
-require_once '../../assets/php/conexao.php';
-
-/**
- * Segurança: garantir que o PDO joga exceções (evita "500 silencioso")
- * (Se seu conexao.php já faz isso, não tem problema repetir.)
- */
-try {
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-} catch (Throwable $e) {
-  // Se aqui falhar, a conexão nem está ok
-}
-
-/**
- * Debug (DEV): habilite temporariamente se quiser ver erro na tela
- * Em produção, deixe false.
- */
-$DEBUG = false;
-if ($DEBUG) {
-  ini_set('display_errors', '1');
-  ini_set('display_startup_errors', '1');
-  error_reporting(E_ALL);
-}
-
-/** Filtro de feira selecionada */
-$feira_selecionada = isset($_GET['feira_id']) ? (int)$_GET['feira_id'] : 0;
-
-/** Helper HTML */
 function h($s): string
 {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
-/**
- * Verifica se uma coluna existe numa tabela (MySQL/MariaDB).
- * Isso impede estourar 500 por "Unknown column feira_id".
- */
-function columnExists(PDO $pdo, string $table, string $column): bool
-{
-  $sql = "
-    SELECT COUNT(*) AS c
-    FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = :t
-      AND COLUMN_NAME = :c
-  ";
-  $st = $pdo->prepare($sql);
-  $st->execute([':t' => $table, ':c' => $column]);
-  return (int)$st->fetchColumn() > 0;
+/* ===== Conexão ===== */
+require '../../assets/php/conexao.php';
+$pdo = db();
+
+/* Força timezone do MySQL */
+try {
+  $pdo->exec("SET time_zone = '-04:00'");
+} catch (Throwable $e) {
 }
 
-/**
- * Executa query com bind condicional de feira_id
- */
-function execWithOptionalFeira(PDO $pdo, string $sql, int $feira_id): PDOStatement
-{
-  $st = $pdo->prepare($sql);
-  if ($feira_id > 0 && strpos($sql, ':feira_id') !== false) {
-    $st->bindValue(':feira_id', $feira_id, PDO::PARAM_INT);
-  }
-  $st->execute();
-  return $st;
-}
+/* ===== FILTRO DE FEIRA ===== */
+$feiraId = isset($_GET['feira_id']) ? (int)$_GET['feira_id'] : 0;
 
-/** Defaults (pra nunca quebrar layout) */
+// Buscar feiras disponíveis
 $feiras = [];
-$vendas_hoje = ['total' => 0, 'valor_total' => 0];
-$vendas_mes  = ['total' => 0, 'valor_total' => 0];
-$total_produtores = 0;
-$total_produtos = 0;
-$vendas_forma_pagamento = [];
-$vendas_categoria = [];
-$top_produtos = [];
-$vendas_semana = [];
+try {
+  $st = $pdo->query("SELECT id, codigo, nome FROM feiras WHERE ativo = 1 ORDER BY id");
+  $feiras = $st->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+  $feiras = [];
+}
+
+// Se não selecionou feira, pega a primeira
+if ($feiraId === 0 && !empty($feiras)) {
+  $feiraId = (int)$feiras[0]['id'];
+}
+
+// Nome da feira selecionada
+$feiraNome = 'Todas as Feiras';
+foreach ($feiras as $f) {
+  if ((int)$f['id'] === $feiraId) {
+    $feiraNome = $f['nome'];
+    break;
+  }
+}
+
+/* ===== Lista de meses SOMENTE com cadastro (vendas) ===== */
+$mesOptions = [];
+$mesMap = [];
+try {
+  $whereF = $feiraId > 0 ? "WHERE feira_id = :f" : "";
+  $st = $pdo->prepare("
+    SELECT DISTINCT DATE_FORMAT(data_hora, '%Y-%m') AS ym
+    FROM vendas
+    $whereF
+    ORDER BY ym DESC
+    LIMIT 48
+  ");
+  if ($feiraId > 0) {
+    $st->execute([':f' => $feiraId]);
+  } else {
+    $st->execute();
+  }
+
+  foreach ($st->fetchAll() as $row) {
+    $ym = (string)($row['ym'] ?? '');
+    if ($ym !== '' && preg_match('/^\d{4}-\d{2}$/', $ym)) {
+      $label = date('m/Y', strtotime($ym . '-01'));
+      $mesOptions[] = ['val' => $ym, 'label' => $label];
+      $mesMap[$ym] = true;
+    }
+  }
+} catch (Throwable $e) {
+  $mesOptions = [];
+  $mesMap = [];
+}
+
+/* ===== Filtro mensal (YYYY-MM) ===== */
+$defaultMes = !empty($mesOptions) ? (string)$mesOptions[0]['val'] : date('Y-m');
+$mes = trim((string)($_GET['mes'] ?? $defaultMes));
+if (!preg_match('/^\d{4}-\d{2}$/', $mes)) $mes = $defaultMes;
+
+if (!empty($mesMap) && empty($mesMap[$mes])) {
+  $mes = $defaultMes;
+}
+
+$monthStart = $mes . '-01';
+$monthEnd   = date('Y-m-t', strtotime($monthStart));
+$mesLabel   = date('m/Y', strtotime($monthStart));
+
+/* Datas base */
+$today      = date('Y-m-d');
+$yesterday  = date('Y-m-d', strtotime('-1 day'));
+
+/* Mes anterior */
+$prevMonthStart = date('Y-m-01', strtotime($monthStart . ' -1 month'));
+$prevMonthEnd   = date('Y-m-t',  strtotime($monthStart . ' -1 month'));
+$prevMesLabel   = date('m/Y', strtotime($prevMonthStart));
+
+/* Detecta tabela fechamento_dia */
+$hasFechamentoDia = false;
+try {
+  $st = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = 'fechamento_dia'
+  ");
+  $st->execute();
+  $hasFechamentoDia = ((int)$st->fetchColumn() > 0);
+} catch (Throwable $e) {
+  $hasFechamentoDia = false;
+}
+
+/* Helpers */
+function money($n): string
+{
+  return number_format((float)$n, 2, ',', '.');
+}
+function pct_change(float $current, float $previous): ?float
+{
+  if ($previous == 0.0) {
+    return ($current == 0.0) ? 0.0 : null;
+  }
+  return (($current - $previous) / $previous) * 100.0;
+}
+
+function variation_badge(?float $pct): array
+{
+  if ($pct === null) {
+    return ['<span class="badge-pill-soft" title="Comparação indefinida">novo</span>', 'novo'];
+  }
+
+  $val = (float)$pct;
+  $abs = abs($val);
+  $fmt = number_format($abs, 1, ',', '.');
+
+  if ($val > 0.0001) {
+    return ['<span class="badge-pill-soft" style="background:rgba(40,167,69,.22); border-color:rgba(40,167,69,.35);"><i class="ti-arrow-up"></i> ' . $fmt . '%</span>', '+' . $fmt . '%'];
+  }
+  if ($val < -0.0001) {
+    return ['<span class="badge-pill-soft" style="background:rgba(220,53,69,.22); border-color:rgba(220,53,69,.35);"><i class="ti-arrow-down"></i> ' . $fmt . '%</span>', '-' . $fmt . '%'];
+  }
+
+  return ['<span class="badge-pill-soft" style="background:rgba(108,117,125,.22); border-color:rgba(108,117,125,.35);">0,0%</span>', '0,0%'];
+}
+
+function url_with(array $add): string
+{
+  $q = $_GET;
+  foreach ($add as $k => $v) {
+    if ($v === null) unset($q[$k]);
+    else $q[$k] = $v;
+  }
+  return '?' . http_build_query($q);
+}
+
+/* ===== Paginação ===== */
+$perPage = 6;
+$page = (int)($_GET['p'] ?? 1);
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $perPage;
+
+$totalRows = 0;
+$totalPages = 1;
+
+/* ===== KPIs ===== */
+$kpi = [
+  'vendas_hoje_total' => 0.0,
+  'vendas_hoje_qtd'   => 0,
+  'itens_hoje_qtd'    => 0.0,
+  'ticket_hoje'       => 0.0,
+
+  'vendas_ontem_total' => 0.0,
+  'vendas_ontem_qtd'   => 0,
+  'ticket_ontem'       => 0.0,
+
+  'mes_total'         => 0.0,
+  'mes_vendas_qtd'    => 0,
+  'mes_ticket'        => 0.0,
+
+  'mes_ant_total'      => 0.0,
+  'mes_ant_vendas_qtd' => 0,
+  'mes_ant_ticket'     => 0.0,
+
+  'produtores_ativos' => 0,
+  'produtos_ativos'   => 0,
+
+  'canceladas_hoje'   => 0,
+
+  'sem_pagto_mes'     => 0,
+  'preco_ref_zero'    => 0,
+
+  'fechamento_pendente_ontem' => 0,
+];
+
+$payHoje = [
+  'PIX'      => 0.0,
+  'DINHEIRO' => 0.0,
+  'CARTAO'   => 0.0,
+  'OUTROS'   => 0.0,
+];
 
 try {
-  /** 1) Listar feiras */
-  $sql_feiras = "SELECT id, codigo, nome FROM feiras WHERE ativo = 1 ORDER BY nome";
-  $feiras = $pdo->query($sql_feiras)->fetchAll();
+  $whereF = $feiraId > 0 ? " AND feira_id = :f" : "";
 
-  /**
-   * 2) Montar filtro de feira para VENDAS
-   *    (só aplica se a coluna existir)
-   */
-  $vendasTemFeiraId = columnExists($pdo, 'vendas', 'feira_id');
-
-  $where_vendas_and = '';
-  if ($feira_selecionada > 0 && $vendasTemFeiraId) {
-    $where_vendas_and = " AND feira_id = :feira_id";
-  }
-
-  /** 3) Total de vendas do dia */
-  $sql_vendas_hoje = "
-    SELECT COUNT(*) AS total, COALESCE(SUM(total), 0) AS valor_total
+  /* Vendas Hoje */
+  $st = $pdo->prepare("
+    SELECT COUNT(*) AS qtd, COALESCE(SUM(total),0) AS total
     FROM vendas
-    WHERE DATE(data_hora) = CURDATE()
-    $where_vendas_and
-  ";
-  $vendas_hoje = execWithOptionalFeira($pdo, $sql_vendas_hoje, $feira_selecionada)->fetch() ?: $vendas_hoje;
+    WHERE DATE(data_hora) = :d
+      AND UPPER(status) <> 'CANCELADA'
+      $whereF
+  ");
+  $params = [':d' => $today];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $r = $st->fetch() ?: ['qtd' => 0, 'total' => 0];
+  $kpi['vendas_hoje_qtd']   = (int)$r['qtd'];
+  $kpi['vendas_hoje_total'] = (float)$r['total'];
+  $kpi['ticket_hoje']       = $kpi['vendas_hoje_qtd'] > 0 ? ($kpi['vendas_hoje_total'] / $kpi['vendas_hoje_qtd']) : 0.0;
 
-  /** 4) Total de vendas do mês */
-  $sql_vendas_mes = "
-    SELECT COUNT(*) AS total, COALESCE(SUM(total), 0) AS valor_total
-    FROM vendas
-    WHERE MONTH(data_hora) = MONTH(CURDATE())
-      AND YEAR(data_hora)  = YEAR(CURDATE())
-    $where_vendas_and
-  ";
-  $vendas_mes = execWithOptionalFeira($pdo, $sql_vendas_mes, $feira_selecionada)->fetch() ?: $vendas_mes;
+  /* Vendas Ontem */
+  $params[':d'] = $yesterday;
+  $st->execute($params);
+  $r = $st->fetch() ?: ['qtd' => 0, 'total' => 0];
+  $kpi['vendas_ontem_qtd']   = (int)$r['qtd'];
+  $kpi['vendas_ontem_total'] = (float)$r['total'];
+  $kpi['ticket_ontem']       = $kpi['vendas_ontem_qtd'] > 0 ? ($kpi['vendas_ontem_total'] / $kpi['vendas_ontem_qtd']) : 0.0;
 
-  /**
-   * 5) Total de produtores
-   *    - Se produtores tiver feira_id -> filtra direto
-   *    - Senão: NÃO filtra (evita erro) e retorna total geral
-   *    (Se você tiver tabela pivô produtor_feira, eu adapto pra filtrar certinho.)
-   */
-  $produtoresTemFeiraId = columnExists($pdo, 'produtores', 'feira_id');
-
-  if ($feira_selecionada > 0 && $produtoresTemFeiraId) {
-    $sql_produtores = "SELECT COUNT(*) AS total FROM produtores WHERE ativo = 1 AND feira_id = :feira_id";
-    $total_produtores = (int) execWithOptionalFeira($pdo, $sql_produtores, $feira_selecionada)->fetchColumn();
-  } else {
-    $sql_produtores = "SELECT COUNT(*) AS total FROM produtores WHERE ativo = 1";
-    $total_produtores = (int) $pdo->query($sql_produtores)->fetchColumn();
-  }
-
-  /**
-   * 6) Total de produtos
-   *    - Se produtos tiver feira_id -> filtra direto
-   *    - Senão: NÃO filtra (evita erro)
-   */
-  $produtosTemFeiraId = columnExists($pdo, 'produtos', 'feira_id');
-
-  if ($feira_selecionada > 0 && $produtosTemFeiraId) {
-    $sql_produtos = "SELECT COUNT(*) AS total FROM produtos WHERE ativo = 1 AND feira_id = :feira_id";
-    $total_produtos = (int) execWithOptionalFeira($pdo, $sql_produtos, $feira_selecionada)->fetchColumn();
-  } else {
-    $sql_produtos = "SELECT COUNT(*) AS total FROM produtos WHERE ativo = 1";
-    $total_produtos = (int) $pdo->query($sql_produtos)->fetchColumn();
-  }
-
-  /** 7) Vendas por forma de pagamento (mês) */
-  $sql_forma_pagamento = "
-    SELECT forma_pagamento, COALESCE(SUM(total), 0) AS valor_total
-    FROM vendas
-    WHERE MONTH(data_hora) = MONTH(CURDATE())
-      AND YEAR(data_hora)  = YEAR(CURDATE())
-    $where_vendas_and
-    GROUP BY forma_pagamento
-  ";
-  $vendas_forma_pagamento = execWithOptionalFeira($pdo, $sql_forma_pagamento, $feira_selecionada)->fetchAll();
-
-  /**
-   * 8) Vendas por categoria (mês)
-   *    Aqui é o ponto que mais dá 500: venda_itens normalmente NÃO tem feira_id.
-   *    Então filtramos por feira em vendas v (se existir v.feira_id).
-   */
-  $vendaItensTemVendaId = columnExists($pdo, 'venda_itens', 'venda_id');
-  $where_feira_vi = '';
-  $join_vendas_vi = '';
-
-  if ($vendaItensTemVendaId) {
-    $join_vendas_vi = "INNER JOIN vendas v ON v.id = vi.venda_id";
-    if ($feira_selecionada > 0 && $vendasTemFeiraId) {
-      $where_feira_vi = " AND v.feira_id = :feira_id";
-    }
-  } else {
-    // Se sua tabela venda_itens não tem venda_id, precisa ajustar schema/joins.
-    // Mantemos sem join pra não quebrar.
-    $join_vendas_vi = "";
-    $where_feira_vi = "";
-  }
-
-  $sql_vendas_categoria = "
-    SELECT c.nome,
-           COUNT(vi.id) AS qtd_vendas,
-           COALESCE(SUM(vi.subtotal), 0) AS valor_total
+  /* Itens vendidos HOJE */
+  $st2 = $pdo->prepare("
+    SELECT COALESCE(SUM(vi.quantidade),0) AS itens
     FROM venda_itens vi
-    $join_vendas_vi
-    INNER JOIN produtos p   ON vi.produto_id = p.id
-    INNER JOIN categorias c ON p.categoria_id = c.id
-    WHERE MONTH(vi.criado_em) = MONTH(CURDATE())
-      AND YEAR(vi.criado_em)  = YEAR(CURDATE())
-      $where_feira_vi
-    GROUP BY c.id, c.nome
-    ORDER BY valor_total DESC
-    LIMIT 10
-  ";
-  $vendas_categoria = execWithOptionalFeira($pdo, $sql_vendas_categoria, $feira_selecionada)->fetchAll();
+    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    WHERE DATE(v.data_hora) = :d
+      AND UPPER(v.status) <> 'CANCELADA'
+      $whereF
+  ");
+  $params[':d'] = $today;
+  $st2->execute($params);
+  $kpi['itens_hoje_qtd'] = (float)($st2->fetchColumn() ?? 0);
 
-  /** 9) Top 10 produtos mais vendidos (mês) */
-  $sql_top_produtos = "
-    SELECT p.nome,
-           COUNT(vi.id) AS qtd_vendas,
-           COALESCE(SUM(vi.subtotal), 0) AS valor_total
-    FROM venda_itens vi
-    $join_vendas_vi
-    INNER JOIN produtos p ON vi.produto_id = p.id
-    WHERE MONTH(vi.criado_em) = MONTH(CURDATE())
-      AND YEAR(vi.criado_em)  = YEAR(CURDATE())
-      $where_feira_vi
-    GROUP BY p.id, p.nome
-    ORDER BY qtd_vendas DESC
-    LIMIT 10
-  ";
-  $top_produtos = execWithOptionalFeira($pdo, $sql_top_produtos, $feira_selecionada)->fetchAll();
-
-  /** 10) Vendas últimos 7 dias */
-  $sql_vendas_semana = "
-    SELECT DATE(data_hora) AS data, COUNT(*) AS qtd, COALESCE(SUM(total), 0) AS valor
+  /* Canceladas HOJE */
+  $st3 = $pdo->prepare("
+    SELECT COUNT(*)
     FROM vendas
-    WHERE data_hora >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-    $where_vendas_and
-    GROUP BY DATE(data_hora)
-    ORDER BY data
-  ";
-  $vendas_semana = execWithOptionalFeira($pdo, $sql_vendas_semana, $feira_selecionada)->fetchAll();
+    WHERE DATE(data_hora) = :d
+      AND UPPER(status) = 'CANCELADA'
+      $whereF
+  ");
+  $st3->execute($params);
+  $kpi['canceladas_hoje'] = (int)($st3->fetchColumn() ?? 0);
+
+  /* Total do MÊS */
+  $st4 = $pdo->prepare("
+    SELECT COUNT(*) AS qtd, COALESCE(SUM(total),0) AS total
+    FROM vendas
+    WHERE DATE(data_hora) BETWEEN :i AND :e
+      AND UPPER(status) <> 'CANCELADA'
+      $whereF
+  ");
+  $params = [':i' => $monthStart, ':e' => $monthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st4->execute($params);
+  $r = $st4->fetch() ?: ['qtd' => 0, 'total' => 0];
+  $kpi['mes_vendas_qtd'] = (int)$r['qtd'];
+  $kpi['mes_total']      = (float)$r['total'];
+  $kpi['mes_ticket']     = $kpi['mes_vendas_qtd'] > 0 ? ($kpi['mes_total'] / $kpi['mes_vendas_qtd']) : 0.0;
+
+  /* Total do MÊS ANTERIOR */
+  $params = [':i' => $prevMonthStart, ':e' => $prevMonthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st4->execute($params);
+  $r = $st4->fetch() ?: ['qtd' => 0, 'total' => 0];
+  $kpi['mes_ant_vendas_qtd'] = (int)$r['qtd'];
+  $kpi['mes_ant_total']      = (float)$r['total'];
+  $kpi['mes_ant_ticket']     = $kpi['mes_ant_vendas_qtd'] > 0 ? ($kpi['mes_ant_total'] / $kpi['mes_ant_vendas_qtd']) : 0.0;
+
+  /* Produtores ativos */
+  $st = $pdo->prepare("SELECT COUNT(*) FROM produtores WHERE ativo = 1 $whereF");
+  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
+  else $st->execute();
+  $kpi['produtores_ativos'] = (int)($st->fetchColumn() ?? 0);
+
+  /* Produtos ativos */
+  $st = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE ativo = 1 $whereF");
+  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
+  else $st->execute();
+  $kpi['produtos_ativos'] = (int)($st->fetchColumn() ?? 0);
+
+  /* Vendas sem forma_pagamento */
+  $st = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM vendas
+    WHERE DATE(data_hora) BETWEEN :i AND :e
+      AND UPPER(status) <> 'CANCELADA'
+      AND (forma_pagamento IS NULL OR TRIM(forma_pagamento) = '')
+      $whereF
+  ");
+  $params = [':i' => $monthStart, ':e' => $monthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $kpi['sem_pagto_mes'] = (int)($st->fetchColumn() ?? 0);
+
+  /* Produtos com preço ref zero */
+  $st = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM produtos
+    WHERE ativo = 1
+      AND (preco_referencia IS NULL OR preco_referencia <= 0)
+      $whereF
+  ");
+  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
+  else $st->execute();
+  $kpi['preco_ref_zero'] = (int)($st->fetchColumn() ?? 0);
+
+  /* Breakdown pagamento HOJE */
+  $st = $pdo->prepare("
+    SELECT
+      UPPER(COALESCE(NULLIF(TRIM(forma_pagamento),''),'OUTROS')) AS fp,
+      COALESCE(SUM(total),0) AS total
+    FROM vendas
+    WHERE DATE(data_hora) = :d
+      AND UPPER(status) <> 'CANCELADA'
+      $whereF
+    GROUP BY fp
+  ");
+  $params = [':d' => $today];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  foreach ($st->fetchAll() as $row) {
+    $fp = (string)($row['fp'] ?? 'OUTROS');
+    $val = (float)($row['total'] ?? 0);
+    if ($fp === 'PIX') $payHoje['PIX'] += $val;
+    elseif ($fp === 'DINHEIRO') $payHoje['DINHEIRO'] += $val;
+    elseif ($fp === 'CARTAO' || $fp === 'CARTÃO') $payHoje['CARTAO'] += $val;
+    else $payHoje['OUTROS'] += $val;
+  }
+
+  /* Fechamento pendente ontem */
+  if ($hasFechamentoDia && $feiraId > 0) {
+    $st = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM vendas
+      WHERE feira_id = :f
+        AND DATE(data_hora) = :d
+        AND UPPER(status) <> 'CANCELADA'
+    ");
+    $st->execute([':f' => $feiraId, ':d' => $yesterday]);
+    $ontemVendas = (int)($st->fetchColumn() ?? 0);
+
+    $st = $pdo->prepare("SELECT COUNT(*) FROM fechamento_dia WHERE feira_id = :f AND data_ref = :d");
+    $st->execute([':f' => $feiraId, ':d' => $yesterday]);
+    $ontemFechado = (int)($st->fetchColumn() ?? 0);
+
+    $kpi['fechamento_pendente_ontem'] = ($ontemVendas > 0 && $ontemFechado <= 0) ? 1 : 0;
+  }
 } catch (Throwable $e) {
-  error_log("Erro no dashboard: " . $e->getMessage());
+  // Mantém zeros
+}
 
-  if ($DEBUG) {
-    echo "<div style='padding:12px;border:1px solid #f00;color:#900;background:#fee'>";
-    echo "<strong>Erro ao carregar dados:</strong> " . h($e->getMessage());
-    echo "</div>";
+/* Percentuais pagamento HOJE */
+$totalPayHoje = $payHoje['PIX'] + $payHoje['DINHEIRO'] + $payHoje['CARTAO'] + $payHoje['OUTROS'];
+$payPct = [
+  'PIX'      => $totalPayHoje > 0 ? (int)round(($payHoje['PIX'] / $totalPayHoje) * 100) : 0,
+  'DINHEIRO' => $totalPayHoje > 0 ? (int)round(($payHoje['DINHEIRO'] / $totalPayHoje) * 100) : 0,
+  'CARTAO'   => $totalPayHoje > 0 ? (int)round(($payHoje['CARTAO'] / $totalPayHoje) * 100) : 0,
+  'OUTROS'   => $totalPayHoje > 0 ? (int)round(($payHoje['OUTROS'] / $totalPayHoje) * 100) : 0,
+];
+
+/* Badges comparação */
+$todayPct = pct_change((float)$kpi['vendas_hoje_total'], (float)$kpi['vendas_ontem_total']);
+[$todayBadgeHtml] = variation_badge($todayPct);
+
+$monthPct = pct_change((float)$kpi['mes_total'], (float)$kpi['mes_ant_total']);
+[$monthBadgeHtml] = variation_badge($monthPct);
+
+/* ===== Top categorias (mês) ===== */
+$topCategorias = [];
+try {
+  $whereF = $feiraId > 0 ? " AND vi.feira_id = :f" : "";
+  $st = $pdo->prepare("
+    SELECT
+      c.nome AS categoria,
+      COALESCE(SUM(vi.quantidade),0) AS itens,
+      COALESCE(SUM(vi.subtotal),0)   AS total
+    FROM venda_itens vi
+    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    LEFT JOIN categorias c ON c.feira_id = p.feira_id AND c.id = p.categoria_id
+    WHERE DATE(v.data_hora) BETWEEN :i AND :e
+      AND UPPER(v.status) <> 'CANCELADA'
+      $whereF
+    GROUP BY c.nome
+    ORDER BY total DESC
+    LIMIT 5
+  ");
+  $params = [':i' => $monthStart, ':e' => $monthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $topCategorias = $st->fetchAll();
+} catch (Throwable $e) {
+  $topCategorias = [];
+}
+
+/* ===== Top produtos (mês) ===== */
+$topProdutos = [];
+try {
+  $whereF = $feiraId > 0 ? " AND vi.feira_id = :f" : "";
+  $st = $pdo->prepare("
+    SELECT
+      p.nome AS produto,
+      COALESCE(SUM(vi.quantidade),0) AS itens,
+      COALESCE(SUM(vi.subtotal),0)   AS total
+    FROM venda_itens vi
+    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    WHERE DATE(v.data_hora) BETWEEN :i AND :e
+      AND UPPER(v.status) <> 'CANCELADA'
+      $whereF
+    GROUP BY p.id, p.nome
+    ORDER BY total DESC
+    LIMIT 7
+  ");
+  $params = [':i' => $monthStart, ':e' => $monthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $topProdutos = $st->fetchAll();
+} catch (Throwable $e) {
+  $topProdutos = [];
+}
+
+/* ===== Últimos lançamentos (mês) ===== */
+$ultimosLanc = [];
+try {
+  $whereF = $feiraId > 0 ? " AND v.feira_id = :f" : "";
+  $st = $pdo->prepare("
+    SELECT
+      v.id,
+      v.data_hora,
+      v.total,
+      GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR '||') AS feirantes
+    FROM vendas v
+    LEFT JOIN venda_itens vi ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
+    LEFT JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    LEFT JOIN produtores pr ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
+    WHERE DATE(v.data_hora) BETWEEN :i AND :e
+      $whereF
+    GROUP BY v.id, v.data_hora, v.total
+    ORDER BY v.data_hora DESC
+    LIMIT 6
+  ");
+  $params = [':i' => $monthStart, ':e' => $monthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $ultimosLanc = $st->fetchAll();
+} catch (Throwable $e) {
+  $ultimosLanc = [];
+}
+
+/* ===== Lista produtores (amostra) ===== */
+$listaProdutores = [];
+try {
+  $whereF = $feiraId > 0 ? " WHERE pr.feira_id = :f" : "";
+  $st = $pdo->prepare("
+    SELECT
+      pr.nome,
+      COALESCE(c.nome,'') AS comunidade,
+      pr.ativo
+    FROM produtores pr
+    LEFT JOIN comunidades c ON c.feira_id = pr.feira_id AND c.id = pr.comunidade_id
+    $whereF
+    ORDER BY pr.ativo DESC, pr.nome ASC
+    LIMIT 6
+  ");
+  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
+  else $st->execute();
+  $listaProdutores = $st->fetchAll();
+} catch (Throwable $e) {
+  $listaProdutores = [];
+}
+
+/* ===== Tabela grande (mês) com paginação 6 ===== */
+$ultimosItens = [];
+try {
+  $whereF = $feiraId > 0 ? " AND vi.feira_id = :f" : "";
+  $st = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM venda_itens vi
+    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    WHERE DATE(v.data_hora) BETWEEN :i AND :e
+      $whereF
+  ");
+  $params = [':i' => $monthStart, ':e' => $monthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $totalRows = (int)($st->fetchColumn() ?? 0);
+
+  $totalPages = max(1, (int)ceil($totalRows / $perPage));
+  if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $perPage;
   }
 
-  // As variáveis já estão com default seguro acima
+  $st = $pdo->prepare("
+    SELECT
+      v.id AS venda_id,
+      v.data_hora,
+      p.nome AS produto,
+      COALESCE(cat.nome,'') AS categoria,
+      COALESCE(pr.nome,'') AS feirante,
+      vi.quantidade,
+      COALESCE(u.sigla,'') AS unid,
+      vi.subtotal,
+      COALESCE(NULLIF(TRIM(v.forma_pagamento),''),'—') AS forma_pagamento,
+      COALESCE(NULLIF(TRIM(v.status),''),'—') AS status
+    FROM venda_itens vi
+    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+    LEFT JOIN categorias cat ON cat.feira_id = p.feira_id AND cat.id = p.categoria_id
+    LEFT JOIN unidades u ON u.feira_id = p.feira_id AND u.id = p.unidade_id
+    LEFT JOIN produtores pr ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
+    WHERE DATE(v.data_hora) BETWEEN :i AND :e
+      $whereF
+    ORDER BY v.data_hora DESC
+    LIMIT :lim OFFSET :off
+  ");
+  $st->bindValue(':i', $monthStart, PDO::PARAM_STR);
+  $st->bindValue(':e', $monthEnd, PDO::PARAM_STR);
+  if ($feiraId > 0) $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
+  $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
+  $st->bindValue(':off', $offset, PDO::PARAM_INT);
+  $st->execute();
+  $ultimosItens = $st->fetchAll();
+} catch (Throwable $e) {
+  $ultimosItens = [];
+  $totalRows = 0;
+  $totalPages = 1;
 }
+
+$mesAtual = date('Y-m');
+$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
 ?>
-
-
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 
 <head>
-  <!-- Required meta tags -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>SIGRelatórios Admin</title>
-  <!-- plugins:css -->
+
   <link rel="stylesheet" href="../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" href="../../vendors/css/vendor.bundle.base.css">
-  <!-- endinject -->
-  <!-- Plugin css for this page -->
   <link rel="stylesheet" href="../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
-  <link rel="stylesheet" href="../../vendors/ti-icons/css/themify-icons.css">
-  <link rel="stylesheet" type="text/css" href="../../js/select.dataTables.min.css">
-  <!-- End plugin css for this page -->
-  <!-- inject:css -->
   <link rel="stylesheet" href="../../css/vertical-layout-light/style.css">
-  <!-- endinject -->
   <link rel="shortcut icon" href="../../images/3.png" />
+
   <style>
-    .nav-link.text-black:hover {
+    .content-wrapper {
+      padding-top: 1rem !important;
+    }
+
+    .grid-margin {
+      margin-bottom: 1rem !important;
+    }
+
+    .card {
+      border-radius: 16px !important;
+      overflow: hidden;
+    }
+
+    .card-body {
+      padding: 1rem !important;
+    }
+
+    .card-title {
+      margin-bottom: .35rem !important;
+    }
+
+    hr {
+      margin: .8rem 0 !important;
+    }
+
+    .mini-kpi {
+      font-size: 12px;
+      color: #6c757d;
+      margin-bottom: .35rem;
+      line-height: 1.25;
+    }
+
+    .table th,
+    .table td {
+      padding: .55rem .6rem !important;
+      vertical-align: middle !important;
+    }
+
+    .table thead th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+
+    .badge-pill-soft {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .28rem .55rem;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 11px;
+      line-height: 1;
+      border: 1px solid rgba(255, 255, 255, .22);
+      background: rgba(255, 255, 255, .14);
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .badge-pill-soft i {
+      font-size: 11px;
+    }
+
+    .badge-soft {
+      background: rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(0, 0, 0, 0.07);
+      font-weight: 700;
+      border-radius: 999px;
+      padding: .28rem .55rem;
+    }
+
+    .kpi-card {
+      position: relative;
+    }
+
+    .kpi-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      opacity: .9;
+      margin: 0;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 900;
+      margin: .25rem 0 .15rem 0;
+      line-height: 1.05;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      opacity: .95;
+      margin: 0;
+    }
+
+    .kpi-sub b {
+      font-weight: 900;
+    }
+
+    .kpi-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .75rem;
+    }
+
+    .kpi-hero {
+      min-height: 172px;
+      background: #111;
+      color: #fff;
+      position: relative;
+    }
+
+    .kpi-hero .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      height: 180% !important;
+      background-position: center;
+      filter: brightness(70%);
+      transform: scale(1.05);
+    }
+
+    .kpi-hero .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(0, 0, 0, .45), rgba(0, 0, 0, .15));
+    }
+
+    .kpi-hero .hero-content {
+      position: relative;
+      padding: 1rem;
+    }
+
+    .kpi-hero .kpi-value {
+      font-size: 30px;
+    }
+
+    .kpi-compare {
+      font-size: 12px;
+      opacity: .92;
+      margin-top: .35rem;
+      line-height: 1.25;
+    }
+
+    .progress.progress-md {
+      height: 8px;
+      border-radius: 999px;
+    }
+
+    .progress .progress-bar {
+      border-radius: 999px;
+    }
+
+    ul .nav-link:hover {
       color: blue !important;
     }
 
-    .card-stats {
-      transition: transform 0.2s;
+    .nav-link {
+      color: black !important;
     }
 
-    .card-stats:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
     }
 
-    .chart-container {
-      position: relative;
-      height: 300px;
-      margin: 20px 0;
+    .sidebar .sub-menu li {
+      list-style: none !important;
     }
 
-    .filter-section {
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
+    .mes-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: .6rem;
+      flex-wrap: wrap;
+    }
+
+    .mes-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, .12);
+      border-radius: 14px;
+      padding: .35rem .55rem;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, .03);
+    }
+
+    .mes-select-wrap i {
+      opacity: .75;
+    }
+
+    .mes-select {
+      height: 32px;
+      border: 0;
+      outline: none;
+      background: transparent;
+      font-weight: 900;
+      font-size: 12px;
+      min-width: 150px;
+      padding-right: .25rem;
+    }
+
+    .mes-actions {
+      display: inline-flex;
+      gap: .45rem;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      border-radius: 12px !important;
+      border: 1px solid rgba(0, 0, 0, .12) !important;
+      background: #fff !important;
+      padding: .45rem .65rem !important;
+      font-weight: 800;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      white-space: nowrap;
+    }
+
+    .action-btn:hover {
+      background: rgba(0, 0, 0, .03) !important;
+    }
+
+    /* Filtro de feira */
+    .feira-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 14px;
+      padding: .45rem .75rem;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, .25);
+      color: #fff;
+    }
+
+    .feira-select-wrap i {
+      opacity: .95;
+      font-size: 16px;
+    }
+
+    .feira-select {
+      height: 32px;
+      border: 0;
+      outline: none;
+      background: transparent;
+      font-weight: 900;
+      font-size: 13px;
+      min-width: 180px;
+      padding-right: .25rem;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .feira-select option {
+      background: #fff;
+      color: #333;
+    }
+
+    @media (max-width: 575.98px) {
+      .mes-toolbar {
+        justify-content: flex-start;
+      }
+
+      .mes-select-wrap,
+      .feira-select-wrap {
+        width: 100%;
+      }
+
+      .mes-select,
+      .feira-select {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .mes-actions {
+        width: 100%;
+      }
+
+      .mes-actions a {
+        flex: 1;
+        justify-content: center;
+      }
     }
   </style>
+
 </head>
 
 <body>
   <div class="container-scroller">
-    <!-- partial:partials/_navbar.html -->
+
+    <!-- NAVBAR -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
         <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../images/3.png" alt="logo" /></a>
       </div>
+
       <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
         <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
           <span class="icon-menu"></span>
         </button>
-        <ul class="navbar-nav mr-lg-2">
-          <li class="nav-item nav-search d-none d-lg-block">
 
-          </li>
-        </ul>
-        <ul class="navbar-nav navbar-nav-right">
-
-
-
-        </ul>
-        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-          <span class="icon-menu"></span>
-        </button>
         <ul class="navbar-nav navbar-nav-right">
           <li class="nav-item nav-profile dropdown">
             <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
@@ -339,61 +902,51 @@ try {
             </div>
           </li>
         </ul>
+
+        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+          <span class="icon-menu"></span>
+        </button>
       </div>
     </nav>
-    <!-- partial -->
+
     <div class="container-fluid page-body-wrapper">
-      <!-- partial:partials/_settings-panel.html -->
 
-      <div id="right-sidebar" class="settings-panel">
-        <i class="settings-close ti-close"></i>
-        <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-          <li class="nav-item">
-            <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
-          </li>
-        </ul>
-
-      </div>
-      <!-- partial -->
-      <!-- partial:partials/_sidebar.html -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
-          <li class="nav-item">
-            <a class="nav-link" href="index.php">
+          <li class="nav-item active">
+            <a class="nav-link" href="./index.php">
               <i class="icon-grid menu-icon"></i>
               <span class="menu-title">Dashboard</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="../adm/produtor/">
+            <a class="nav-link" href="./adm/produtor/">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira do Produtor</span>
             </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link" href="../adm/alternativa/">
+            <a class="nav-link" href="./adm/alternativa/">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira Alternativa</span>
             </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link" href="../adm/mercado/">
+            <a class="nav-link" href="./adm/mercado/">
               <i class="ti-home menu-icon"></i>
               <span class="menu-title">Mercado Municipal</span>
             </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link" href="../adm/relatorio/">
+            <a class="nav-link" href="./adm/relatorio/">
               <i class="ti-agenda menu-icon"></i>
               <span class="menu-title">Relatórios</span>
             </a>
           </li>
+
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
               <i class="ti-user menu-icon"></i>
@@ -401,178 +954,541 @@ try {
               <i class="menu-arrow"></i>
             </a>
             <div class="collapse" id="ui-basic">
-              <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-
-                  color: blue !important;
-                }
-              </style>
-              <ul class="nav flex-column sub-menu " style=" background: white !important; ">
-                <li class="nav-item"> <a class="nav-link text-black" href="./users/listaUser.php">Lista de Adicionados</a></li>
-                <li class="nav-item"> <a class="nav-link text-black" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
-
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./users/listaUser.php">Lista de Adicionados</a></li>
+                <li class="nav-item"><a class="nav-link" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
               </ul>
             </div>
           </li>
+
           <li class="nav-item">
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
             </a>
           </li>
-
-
         </ul>
-
-
       </nav>
-      <!-- partial -->
-      <?php
-      // GARANTIR helper antes do HTML (evita 500)
-      if (!function_exists('h')) {
-        function h($s): string
-        {
-          return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-        }
-      }
 
-      // Data em PT-BR sem locale
-      $meses = [
-        1 => 'Jan',
-        2 => 'Fev',
-        3 => 'Mar',
-        4 => 'Abr',
-        5 => 'Mai',
-        6 => 'Jun',
-        7 => 'Jul',
-        8 => 'Ago',
-        9 => 'Set',
-        10 => 'Out',
-        11 => 'Nov',
-        12 => 'Dez'
-      ];
-      $hojeLabel = date('d') . ' ' . ($meses[(int)date('n')] ?? date('M')) . ' ' . date('Y');
-
-      // Normalizar feira selecionada (evita comparação bugada)
-      $feira_selecionada = isset($feira_selecionada) ? (int)$feira_selecionada : 0;
-      ?>
-
+      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
+
+          <!-- HEADER + FILTROS -->
           <div class="row">
             <div class="col-md-12 grid-margin">
               <div class="row">
-                <div class="col-12 col-xl-8 mb-4 mb-xl-0">
-                  <h3 class="font-weight-bold">
-                    Bem-vindo(a) <?= h($_SESSION['usuario_nome'] ?? 'Usuário') ?>
-                  </h3>
-                  <h6 class="font-weight-normal mb-0">
-                    Todos os sistemas estão funcionando normalmente!
-                  </h6>
+                <div class="col-12 col-xl-6 mb-3 mb-xl-0">
+                  <h3 class="font-weight-bold mb-1">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
+                  <h6 class="font-weight-normal mb-1">Painel Administrativo - <?= h($feiraNome) ?></h6>
+                  <div class="mini-kpi">
+                    Mês: <b><?= h($mesLabel) ?></b> • Período: <b><?= h(date('d/m', strtotime($monthStart))) ?></b> até <b><?= h(date('d/m', strtotime($monthEnd))) ?></b>
+                  </div>
                 </div>
 
-                <div class="col-12 col-xl-4">
-                  <div class="justify-content-end d-flex">
-                    <div class="dropdown flex-md-grow-1 flex-xl-grow-0">
-                      <button
-                        class="btn btn-sm btn-light bg-white dropdown-toggle"
-                        type="button"
-                        id="dropdownMenuDate2"
-                        data-toggle="dropdown"
-                        aria-haspopup="true"
-                        aria-expanded="false">
-                        <i class="mdi mdi-calendar"></i> <?= h($hojeLabel) ?>
-                      </button>
+                <div class="col-12 col-xl-6">
+                  <div class="mes-toolbar">
 
-                      <!-- Se quiser menu de datas no futuro, coloque aqui.
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuDate2">
-                  <a class="dropdown-item" href="#">Hoje</a>
+                    <!-- Filtro de Feira -->
+                    <div class="feira-select-wrap" title="Selecionar feira">
+                      <i class="ti-bag"></i>
+                      <select class="feira-select" onchange="goFeira(this.value)">
+                        <option value="0" <?= $feiraId === 0 ? 'selected' : '' ?>>Todas as Feiras</option>
+                        <?php foreach ($feiras as $f): ?>
+                          <option value="<?= (int)$f['id'] ?>" <?= (int)$f['id'] === $feiraId ? 'selected' : '' ?>>
+                            <?= h($f['nome']) ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                    </div>
+
+                    <!-- Select de meses -->
+                    <div class="mes-select-wrap" title="Filtrar por mês">
+                      <i class="ti-calendar"></i>
+                      <select class="mes-select" onchange="goMes(this.value)">
+                        <?php if (empty($mesOptions)): ?>
+                          <option value="<?= h(date('Y-m')) ?>"><?= h(date('m/Y')) ?></option>
+                        <?php else: ?>
+                          <?php foreach ($mesOptions as $opt): ?>
+                            <option value="<?= h($opt['val']) ?>" <?= ($opt['val'] === $mes ? 'selected' : '') ?>>
+                              <?= h($opt['label']) ?>
+                            </option>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </select>
+                    </div>
+
+                    <!-- Ações -->
+                    <div class="mes-actions">
+                      <a class="action-btn" href="<?= url_with(['mes' => $mesAtual, 'p' => null]) ?>" title="Ir para o mês atual">
+                        <i class="ti-target"></i> Atual
+                      </a>
+                    </div>
+
+                  </div>
                 </div>
-                -->
+
+              </div>
+            </div>
+          </div>
+
+          <!-- RESTO DO CONTEÚDO CONTINUA IGUAL... -->
+          <!-- KPIs -->
+          <div class="row">
+
+            <!-- HERO (Hoje) -->
+            <div class="col-md-6 grid-margin stretch-card">
+              <div class="card kpi-card">
+                <div class="kpi-hero">
+                  <div class="hero-bg" style="background-image:url('../../images/dashboard/people.svg');"></div>
+
+                  <div class="hero-content">
+                    <div class="kpi-row">
+                      <div>
+                        <p class="kpi-title mb-1"><i class="ti-stats-up mr-1"></i> Vendas hoje</p>
+                        <div class="kpi-value">R$ <?= money($kpi['vendas_hoje_total']) ?></div>
+                        <p class="kpi-sub mb-0">
+                          <b><?= (int)$kpi['vendas_hoje_qtd'] ?></b> venda(s) • Ticket <b>R$ <?= money($kpi['ticket_hoje']) ?></b>
+                        </p>
+                      </div>
+
+                      <div class="text-right">
+                        <?= $todayBadgeHtml ?>
+                        <?php if ((int)$kpi['fechamento_pendente_ontem'] === 1): ?>
+                          <div class="mt-2">
+                            <span class="badge badge-warning">Fechamento pendente ontem</span>
+                          </div>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+
+                    <div class="kpi-compare">
+                      Ontem (<?= h(date('d/m', strtotime($yesterday))) ?>): <b>R$ <?= money($kpi['vendas_ontem_total']) ?></b>
+                      • <?= (int)$kpi['vendas_ontem_qtd'] ?> venda(s)
+                      <span class="ml-2">• Itens: <b><?= number_format((float)$kpi['itens_hoje_qtd'], 3, ',', '.') ?></b></span>
+                      <span class="ml-2">• Canceladas: <b><?= (int)$kpi['canceladas_hoje'] ?></b></span>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARDS MENORES (grid) -->
+            <div class="col-md-6 grid-margin transparent">
+              <div class="row">
+
+                <div class="col-md-6 mb-3 stretch-card transparent">
+                  <div class="card card-tale kpi-card">
+                    <div class="card-body">
+                      <div class="kpi-row">
+                        <p class="kpi-title mb-0">Vendas hoje</p>
+                        <?= $todayBadgeHtml ?>
+                      </div>
+                      <div class="kpi-value">R$ <?= money($kpi['vendas_hoje_total']) ?></div>
+                      <p class="kpi-sub mb-0">
+                        <b><?= (int)$kpi['vendas_hoje_qtd'] ?></b> lançamento(s)
+                        <span class="d-block">Ontem: <b>R$ <?= money($kpi['vendas_ontem_total']) ?></b></span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6 mb-3 stretch-card transparent">
+                  <div class="card card-dark-blue kpi-card">
+                    <div class="card-body">
+                      <div class="kpi-row">
+                        <p class="kpi-title mb-0">Total (<?= h($mesLabel) ?>)</p>
+                        <?= $monthBadgeHtml ?>
+                      </div>
+                      <div class="kpi-value">R$ <?= money($kpi['mes_total']) ?></div>
+                      <p class="kpi-sub mb-0">
+                        <b><?= (int)$kpi['mes_vendas_qtd'] ?></b> venda(s) • Ticket <b>R$ <?= money($kpi['mes_ticket']) ?></b>
+                        <span class="d-block"><?= h($prevMesLabel) ?>: <b>R$ <?= money($kpi['mes_ant_total']) ?></b></span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3 mb-lg-0 stretch-card transparent">
+                  <div class="card card-light-blue kpi-card">
+                    <div class="card-body">
+                      <p class="kpi-title mb-1">Produtores ativos</p>
+                      <div class="kpi-value"><?= (int)$kpi['produtores_ativos'] ?></div>
+                      <p class="kpi-sub mb-0"><?= h($feiraNome) ?></p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6 stretch-card transparent">
+                  <div class="card card-light-danger kpi-card">
+                    <div class="card-body">
+                      <p class="kpi-title mb-1">Produtos ativos</p>
+                      <div class="kpi-value"><?= (int)$kpi['produtos_ativos'] ?></div>
+                      <p class="kpi-sub mb-0">Preço ref. zerado: <b><?= (int)$kpi['preco_ref_zero'] ?></b></p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
           </div>
 
-          <!-- Filtro de Feira -->
+          <!-- Pagamento HOJE + Top Categorias -->
           <div class="row">
-            <div class="col-md-12">
-              <div class="filter-section">
-                <form method="GET" action="index.php" class="form-inline">
-                  <label class="mr-2"><strong>Filtrar por Feira:</strong></label>
+            <div class="col-md-6 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
+                  <p class="card-title mb-1">Resumo de Vendas (Hoje)</p>
+                  <p class="mini-kpi mb-2">Distribuição por forma de pagamento</p>
 
-                  <select name="feira_id" class="form-control mr-2" onchange="this.form.submit()">
-                    <option value="0" <?= $feira_selecionada === 0 ? 'selected' : '' ?>>Todas as Feiras</option>
+                  <div class="table-responsive">
+                    <table class="table table-borderless mb-0">
+                      <tbody>
+                        <tr>
+                          <td class="py-1" colspan="3"></td>
+                        </tr>
 
-                    <?php if (!empty($feiras)): ?>
-                      <?php foreach ($feiras as $feira): ?>
-                        <?php
-                        $fid = (int)($feira['id'] ?? 0);
-                        $selected = ($feira_selecionada === $fid) ? 'selected' : '';
-                        ?>
-                        <option value="<?= $fid ?>" <?= $selected ?>>
-                          <?= h($feira['nome'] ?? '') ?>
-                        </option>
-                      <?php endforeach; ?>
-                    <?php endif; ?>
-                  </select>
+                        <tr>
+                          <td style="width:110px"><span class="badge badge-soft">PIX</span></td>
+                          <td class="w-100 px-2">
+                            <div class="progress progress-md">
+                              <div class="progress-bar bg-success" role="progressbar" style="width: <?= (int)$payPct['PIX'] ?>%"></div>
+                            </div>
+                          </td>
+                          <td class="text-right font-weight-bold" style="width:60px"><?= (int)$payPct['PIX'] ?>%</td>
+                        </tr>
 
-                  <button type="submit" class="btn btn-primary btn-sm">Aplicar Filtro</button>
-                </form>
+                        <tr>
+                          <td><span class="badge badge-soft">Dinheiro</span></td>
+                          <td class="w-100 px-2">
+                            <div class="progress progress-md">
+                              <div class="progress-bar bg-primary" role="progressbar" style="width: <?= (int)$payPct['DINHEIRO'] ?>%"></div>
+                            </div>
+                          </td>
+                          <td class="text-right font-weight-bold"><?= (int)$payPct['DINHEIRO'] ?>%</td>
+                        </tr>
+
+                        <tr>
+                          <td><span class="badge badge-soft">Cartão</span></td>
+                          <td class="w-100 px-2">
+                            <div class="progress progress-md">
+                              <div class="progress-bar bg-info" role="progressbar" style="width: <?= (int)$payPct['CARTAO'] ?>%"></div>
+                            </div>
+                          </td>
+                          <td class="text-right font-weight-bold"><?= (int)$payPct['CARTAO'] ?>%</td>
+                        </tr>
+
+                        <tr>
+                          <td><span class="badge badge-soft">Outros</span></td>
+                          <td class="w-100 px-2">
+                            <div class="progress progress-md">
+                              <div class="progress-bar bg-warning" role="progressbar" style="width: <?= (int)$payPct['OUTROS'] ?>%"></div>
+                            </div>
+                          </td>
+                          <td class="text-right font-weight-bold"><?= (int)$payPct['OUTROS'] ?>%</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <hr>
+                  <div class="d-flex flex-wrap">
+                    <div class="mr-4 mt-1">
+                      <div class="mini-kpi">Sem pagamento (<?= h($mesLabel) ?>)</div>
+                      <div class="font-weight-bold"><?= (int)$kpi['sem_pagto_mes'] ?></div>
+                    </div>
+                    <div class="mr-4 mt-1">
+                      <div class="mini-kpi">Canceladas hoje</div>
+                      <div class="font-weight-bold"><?= (int)$kpi['canceladas_hoje'] ?></div>
+                    </div>
+                    <div class="mt-1">
+                      <div class="mini-kpi">Preço ref. zerado</div>
+                      <div class="font-weight-bold"><?= (int)$kpi['preco_ref_zero'] ?></div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <p class="card-title mb-1">Top Categorias (<?= h($mesLabel) ?>)</p>
+                  </div>
+                  <p class="mini-kpi mb-2">Ordenado por faturamento</p>
+
+                  <div class="table-responsive">
+                    <table class="table table-striped table-borderless mb-0">
+                      <thead>
+                        <tr>
+                          <th>Categoria</th>
+                          <th class="text-right">Itens</th>
+                          <th class="text-right">Faturamento</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if (empty($topCategorias)): ?>
+                          <tr>
+                            <td colspan="3" class="text-center text-muted py-3">Sem dados no mês.</td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($topCategorias as $c): ?>
+                            <tr>
+                              <td><?= h($c['categoria'] ?? '—') ?></td>
+                              <td class="text-right"><?= number_format((float)($c['itens'] ?? 0), 3, ',', '.') ?></td>
+                              <td class="text-right font-weight-bold">R$ <?= money((float)($c['total'] ?? 0)) ?></td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="mini-kpi mt-2 mb-0">Filtro mensal aplicado.</div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Cards de Estatísticas -->
+          <!-- Top Produtos + Produtores -->
           <div class="row">
-            <div class="col-md-3 mb-4 stretch-card transparent">
-              <div class="card card-tale card-stats">
+            <div class="col-md-7 grid-margin stretch-card">
+              <div class="card">
                 <div class="card-body">
-                  <p class="mb-4">Vendas Hoje</p>
-                  <p class="fs-30 mb-2"><?= (int)($vendas_hoje['total'] ?? 0) ?></p>
-                  <p>R$ <?= number_format((float)($vendas_hoje['valor_total'] ?? 0), 2, ',', '.') ?></p>
+                  <p class="card-title mb-1">Top Produtos (<?= h($mesLabel) ?>)</p>
+                  <div class="table-responsive">
+                    <table class="table table-striped table-borderless mb-0">
+                      <thead>
+                        <tr>
+                          <th>Produto</th>
+                          <th class="text-right">Itens</th>
+                          <th class="text-right">Faturamento</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if (empty($topProdutos)): ?>
+                          <tr>
+                            <td colspan="3" class="text-center text-muted py-3">Sem dados no mês.</td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($topProdutos as $tp): ?>
+                            <tr>
+                              <td><?= h($tp['produto'] ?? '—') ?></td>
+                              <td class="text-right"><?= number_format((float)($tp['itens'] ?? 0), 3, ',', '.') ?></td>
+                              <td class="text-right font-weight-bold">R$ <?= money((float)($tp['total'] ?? 0)) ?></td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="mini-kpi mt-2 mb-0">Filtro mensal aplicado.</div>
                 </div>
               </div>
             </div>
 
-            <div class="col-md-3 mb-4 stretch-card transparent">
-              <div class="card card-dark-blue card-stats">
+            <div class="col-md-5 grid-margin stretch-card">
+              <div class="card">
                 <div class="card-body">
-                  <p class="mb-4">Vendas do Mês</p>
-                  <p class="fs-30 mb-2"><?= (int)($vendas_mes['total'] ?? 0) ?></p>
-                  <p>R$ <?= number_format((float)($vendas_mes['valor_total'] ?? 0), 2, ',', '.') ?></p>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-3 mb-4 stretch-card transparent">
-              <div class="card card-light-blue card-stats">
-                <div class="card-body">
-                  <p class="mb-4">Total de Produtores</p>
-                  <p class="fs-30 mb-2"><?= (int)($total_produtores ?? 0) ?></p>
-                  <p>Ativos no sistema</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-3 mb-4 stretch-card transparent">
-              <div class="card card-light-danger card-stats">
-                <div class="card-body">
-                  <p class="mb-4">Total de Produtos</p>
-                  <p class="fs-30 mb-2"><?= (int)($total_produtos ?? 0) ?></p>
-                  <p>Cadastrados</p>
+                  <p class="card-title mb-1">Produtores (amostra)</p>
+                  <div class="table-responsive">
+                    <table class="table table-borderless mb-0">
+                      <thead>
+                        <tr>
+                          <th class="pl-0 pb-2 border-bottom">Produtor</th>
+                          <th class="pb-2 border-bottom">Comunidade</th>
+                          <th class="pb-2 border-bottom text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if (empty($listaProdutores)): ?>
+                          <tr>
+                            <td colspan="3" class="text-center text-muted py-3">Sem produtores.</td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($listaProdutores as $p): ?>
+                            <tr>
+                              <td class="pl-0"><?= h($p['nome'] ?? '') ?></td>
+                              <td><?= h($p['comunidade'] ?? '') ?></td>
+                              <td class="text-right">
+                                <?php if ((int)($p['ativo'] ?? 0) === 1): ?>
+                                  <span class="badge badge-success">Ativo</span>
+                                <?php else: ?>
+                                  <span class="badge badge-danger">Inativo</span>
+                                <?php endif; ?>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="mini-kpi mt-2 mb-0">Cadastro (não depende do mês).</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- (restante do seu HTML pode continuar igual daqui pra baixo) -->
+          <!-- Últimos lançamentos -->
+          <div class="row">
+            <div class="col-md-12 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
+                  <p class="card-title mb-1">Últimos lançamentos (<?= h($mesLabel) ?>)</p>
+                  <div class="table-responsive">
+                    <table class="table table-borderless mb-0">
+                      <thead>
+                        <tr>
+                          <th class="pl-0 pb-2 border-bottom">Data</th>
+                          <th class="pb-2 border-bottom">Feirantes</th>
+                          <th class="pb-2 border-bottom text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if (empty($ultimosLanc)): ?>
+                          <tr>
+                            <td colspan="3" class="text-center text-muted py-3">Sem lançamentos no mês.</td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($ultimosLanc as $v): ?>
+                            <?php
+                            $feirantes = (string)($v['feirantes'] ?? '');
+                            $feirantesHtml = $feirantes !== '' ? str_replace('||', '<br>', h($feirantes)) : '—';
+                            ?>
+                            <tr>
+                              <td class="pl-0"><?= h(date('d/m/Y H:i', strtotime((string)($v['data_hora'] ?? 'now')))) ?></td>
+                              <td><?= $feirantesHtml ?></td>
+                              <td class="text-right font-weight-bold">R$ <?= money((float)($v['total'] ?? 0)) ?></td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="mini-kpi mt-2 mb-0">Feirantes em linhas separadas quando houver mais de um.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TABELA GRANDE COM PAGINAÇÃO -->
+          <div class="row">
+            <div class="col-md-12 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
+                  <div class="d-flex flex-wrap justify-content-between align-items-end">
+                    <div>
+                      <p class="card-title mb-1">Últimos itens vendidos (<?= h($mesLabel) ?>)</p>
+                      <p class="mini-kpi mb-0">
+                        Mostrando <b><?= (int)min($perPage, max(0, $totalRows - $offset)) ?></b> de <b><?= (int)$totalRows ?></b> • Página <b><?= (int)$page ?></b> / <b><?= (int)$totalPages ?></b>
+                      </p>
+                    </div>
+                    <div class="mini-kpi mt-2"><span class="badge badge-soft">6 por página</span></div>
+                  </div>
+
+                  <hr>
+
+                  <div class="table-responsive">
+                    <table class="table table-striped table-borderless" style="width:100%">
+                      <thead>
+                        <tr>
+                          <th>Venda</th>
+                          <th>Data</th>
+                          <th>Produto</th>
+                          <th>Categoria</th>
+                          <th>Feirante</th>
+                          <th class="text-right">Qtd</th>
+                          <th>Unid.</th>
+                          <th class="text-right">Subtotal</th>
+                          <th>Pagamento</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if (empty($ultimosItens)): ?>
+                          <tr>
+                            <td colspan="10" class="text-center text-muted py-4">Sem registros no mês.</td>
+                          </tr>
+                        <?php else: ?>
+                          <?php foreach ($ultimosItens as $it): ?>
+                            <tr>
+                              <td>#<?= (int)($it['venda_id'] ?? 0) ?></td>
+                              <td><?= h(date('d/m/Y H:i', strtotime((string)($it['data_hora'] ?? 'now')))) ?></td>
+                              <td><?= h($it['produto'] ?? '') ?></td>
+                              <td><?= h($it['categoria'] ?? '') ?></td>
+                              <td><?= h($it['feirante'] ?? '') ?></td>
+                              <td class="text-right"><?= number_format((float)($it['quantidade'] ?? 0), 3, ',', '.') ?></td>
+                              <td><?= h($it['unid'] ?? '') ?></td>
+                              <td class="text-right font-weight-bold">R$ <?= money((float)($it['subtotal'] ?? 0)) ?></td>
+                              <td><span class="badge badge-soft"><?= h($it['forma_pagamento'] ?? '—') ?></span></td>
+                              <td>
+                                <?php
+                                $stt = strtoupper(trim((string)($it['status'] ?? '')));
+                                if ($stt === 'CANCELADA' || $stt === 'CANCELADO') echo '<span class="badge badge-danger">Cancelada</span>';
+                                elseif ($stt === 'PENDENTE') echo '<span class="badge badge-warning">Pendente</span>';
+                                else echo '<span class="badge badge-success">OK</span>';
+                                ?>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <?php if ($totalPages > 1): ?>
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+                      <div class="mini-kpi mb-2">Paginação mantém o filtro.</div>
+
+                      <nav aria-label="Paginação">
+                        <ul class="pagination pagination-sm mb-0">
+                          <?php
+                          $prevDisabled = ($page <= 1) ? ' disabled' : '';
+                          $nextDisabled = ($page >= $totalPages) ? ' disabled' : '';
+                          ?>
+                          <li class="page-item<?= $prevDisabled ?>">
+                            <a class="page-link" href="<?= h($page <= 1 ? '#' : url_with(['p' => $page - 1])) ?>">«</a>
+                          </li>
+
+                          <?php
+                          $win = 2;
+                          $start = max(1, $page - $win);
+                          $end   = min($totalPages, $page + $win);
+
+                          if ($start > 1) {
+                            echo '<li class="page-item"><a class="page-link" href="' . h(url_with(['p' => 1])) . '">1</a></li>';
+                            if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                          }
+
+                          for ($i = $start; $i <= $end; $i++) {
+                            $active = ($i === $page) ? ' active' : '';
+                            echo '<li class="page-item' . $active . '"><a class="page-link" href="' . h(url_with(['p' => $i])) . '">' . (int)$i . '</a></li>';
+                          }
+
+                          if ($end < $totalPages) {
+                            if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                            echo '<li class="page-item"><a class="page-link" href="' . h(url_with(['p' => $totalPages])) . '">' . (int)$totalPages . '</a></li>';
+                          }
+                          ?>
+
+                          <li class="page-item<?= $nextDisabled ?>">
+                            <a class="page-link" href="<?= h($page >= $totalPages ? '#' : url_with(['p' => $page + 1])) ?>">»</a>
+                          </li>
+                        </ul>
+                      </nav>
+                    </div>
+                  <?php endif; ?>
+
+                </div>
+              </div>
+            </div>
+          </div>
 
         </div>
 
@@ -580,248 +1496,45 @@ try {
           <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
             <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
               © <?= date('Y') ?> SIGRelatórios —
-              <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">
-                lucascorrea.pro
-              </a>
-              . Todos os direitos reservados.
+              <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
+              Todos os direitos reservados.
             </span>
           </div>
         </footer>
+
       </div>
-
-      <!-- main-panel ends -->
     </div>
-    <!-- page-body-wrapper ends -->
   </div>
-  <!-- container-scroller -->
 
-  <!-- plugins:js -->
+  <script>
+    function goFeira(feiraId) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('feira_id', feiraId);
+      url.searchParams.delete('p'); // reset paginação
+      url.searchParams.delete('mes'); // reset mês para carregar meses da feira
+      window.location.href = url.toString();
+    }
+
+    function goMes(val) {
+      if (!val) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('mes', val);
+      url.searchParams.delete('p'); // reset paginação
+      window.location.href = url.toString();
+    }
+  </script>
+
   <script src="../../vendors/js/vendor.bundle.base.js"></script>
-  <!-- endinject -->
-  <!-- Plugin js for this page -->
   <script src="../../vendors/chart.js/Chart.min.js"></script>
-  <script src="../../vendors/datatables.net/jquery.dataTables.js"></script>
-  <script src="../../vendors/datatables.net-bs4/dataTables.bootstrap4.js"></script>
-  <!-- End plugin js for this page -->
-  <!-- inject:js -->
+
   <script src="../../js/off-canvas.js"></script>
   <script src="../../js/hoverable-collapse.js"></script>
   <script src="../../js/template.js"></script>
   <script src="../../js/settings.js"></script>
   <script src="../../js/todolist.js"></script>
-  <!-- endinject -->
-  <!-- Custom js for this page-->
+
   <script src="../../js/dashboard.js"></script>
   <script src="../../js/Chart.roundedBarCharts.js"></script>
-  <!-- End custom js for this page-->
-
-  <script>
-    // Dados PHP para JavaScript
-    const formaPagamentoData = <?= json_encode($vendas_forma_pagamento) ?>;
-    const categoriaData = <?= json_encode($vendas_categoria) ?>;
-    const vendasSemanaData = <?= json_encode($vendas_semana) ?>;
-    const feiraId = <?= $feira_selecionada ?>;
-
-    // Verificar se há dados antes de criar gráficos
-    if (formaPagamentoData && formaPagamentoData.length > 0) {
-      // Gráfico de Forma de Pagamento
-      const ctxFormaPagamento = document.getElementById('formaPagamentoChart').getContext('2d');
-      new Chart(ctxFormaPagamento, {
-        type: 'doughnut',
-        data: {
-          labels: formaPagamentoData.map(item => item.forma_pagamento),
-          datasets: [{
-            label: 'Valor Total',
-            data: formaPagamentoData.map(item => parseFloat(item.valor_total)),
-            backgroundColor: [
-              'rgba(255, 99, 132, 0.8)',
-              'rgba(54, 162, 235, 0.8)',
-              'rgba(255, 206, 86, 0.8)',
-              'rgba(75, 192, 192, 0.8)',
-              'rgba(153, 102, 255, 0.8)'
-            ]
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'bottom'
-            }
-          }
-        }
-      });
-    }
-
-    if (vendasSemanaData && vendasSemanaData.length > 0) {
-      // Gráfico de Vendas da Semana
-      const ctxVendasSemana = document.getElementById('vendasSemanaChart').getContext('2d');
-      new Chart(ctxVendasSemana, {
-        type: 'line',
-        data: {
-          labels: vendasSemanaData.map(item => {
-            const date = new Date(item.data);
-            return date.toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit'
-            });
-          }),
-          datasets: [{
-            label: 'Quantidade',
-            data: vendasSemanaData.map(item => parseInt(item.qtd)),
-            borderColor: 'rgba(75, 192, 192, 1)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            yAxisID: 'y'
-          }, {
-            label: 'Valor (R$)',
-            data: vendasSemanaData.map(item => parseFloat(item.valor)),
-            borderColor: 'rgba(255, 99, 132, 1)',
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            yAxisID: 'y1'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          scales: {
-            y: {
-              type: 'linear',
-              display: true,
-              position: 'left',
-              title: {
-                display: true,
-                text: 'Quantidade'
-              }
-            },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              title: {
-                display: true,
-                text: 'Valor (R$)'
-              },
-              grid: {
-                drawOnChartArea: false
-              }
-            }
-          }
-        }
-      });
-    }
-
-    if (categoriaData && categoriaData.length > 0) {
-      // Gráfico de Categorias
-      const ctxCategoria = document.getElementById('categoriaChart').getContext('2d');
-      new Chart(ctxCategoria, {
-        type: 'bar',
-        data: {
-          labels: categoriaData.map(item => item.nome),
-          datasets: [{
-            label: 'Valor Total (R$)',
-            data: categoriaData.map(item => parseFloat(item.valor_total)),
-            backgroundColor: 'rgba(54, 162, 235, 0.8)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Valor (R$)'
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: false
-            }
-          }
-        }
-      });
-    }
-
-    // DataTable para últimas vendas
-    $(document).ready(function() {
-      $('#vendasTable').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-          url: 'ajax/vendas_datatable.php',
-          type: 'POST',
-          data: function(d) {
-            d.feira_id = feiraId;
-          },
-          error: function(xhr, error, code) {
-            console.log('Erro ao carregar dados:', error);
-          }
-        },
-        columns: [{
-            data: 'id'
-          },
-          {
-            data: 'data_hora'
-          },
-          {
-            data: 'forma_pagamento'
-          },
-          {
-            data: 'total',
-            render: function(data) {
-              return 'R$ ' + parseFloat(data).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            }
-          },
-          {
-            data: 'status',
-            render: function(data) {
-              let badgeClass = 'badge-success';
-              if (data === 'CANCELADA') badgeClass = 'badge-danger';
-              if (data === 'ABERTA') badgeClass = 'badge-warning';
-              return '<span class="badge ' + badgeClass + '">' + data + '</span>';
-            }
-          },
-          {
-            data: null,
-            render: function(data, type, row) {
-              return '<button class="btn btn-sm btn-primary" onclick="verDetalhes(' + row.id + ')">Ver</button>';
-            }
-          }
-        ],
-        order: [
-          [0, 'desc']
-        ],
-        language: {
-          url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
-        },
-        pageLength: 25
-      });
-
-      // DataTable para produtos (se houver dados)
-      <?php if (!empty($top_produtos)): ?>
-        $('#topProdutosTable').DataTable({
-          pageLength: 10,
-          language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
-          }
-        });
-      <?php endif; ?>
-    });
-
-    function verDetalhes(vendaId) {
-      // Ajuste o caminho conforme sua estrutura
-      window.location.href = 'vendas/detalhes.php?id=' + vendaId;
-    }
-  </script>
 </body>
 
 </html>
