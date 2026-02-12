@@ -590,7 +590,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <label>CPF / Documento</label>
                           <input
                             name="documento"
-                            type="text"
+                            type="number"
                             class="form-control"
                             placeholder="Somente números"
                             value="<?= h($old['documento']) ?>">
