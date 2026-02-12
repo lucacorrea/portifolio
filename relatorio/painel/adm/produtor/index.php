@@ -991,7 +991,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
               <div class="row">
                 <div class="col-12 col-xl-7 mb-3 mb-xl-0">
                   <h3 class="font-weight-bold mb-1">Bem-vindo(a) <?= h($nomeUsuario) ?></h3>
-                  <h6 class="font-weight-normal mb-1">Painel administrativo da Feira Alternativa</h6>
+                  <h6 class="font-weight-normal mb-1">Painel administrativo da Feira do <?= h($nomeFeira) ?></h6>
                   <div class="mini-kpi">
                     Mês selecionado: <b><?= h($mesLabel) ?></b> • Período: <b><?= h(date('d/m/Y', strtotime($monthStart))) ?></b> até <b><?= h(date('d/m/Y', strtotime($monthEnd))) ?></b>
                   </div>
