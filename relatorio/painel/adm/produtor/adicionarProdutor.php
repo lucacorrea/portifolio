@@ -1,7 +1,11 @@
 <?php
-
 declare(strict_types=1);
 session_start();
+
+/*
+  ✅ Banco (rode 1x):
+  ALTER TABLE produtores ADD COLUMN foto VARCHAR(255) DEFAULT NULL AFTER documento;
+*/
 
 /* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
@@ -11,6 +15,7 @@ if (empty($_SESSION['usuario_logado'])) {
 
 /* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
@@ -38,10 +43,26 @@ function only_digits(string $s): string
   return $out !== null ? $out : '';
 }
 
+function ensure_dir(string $absDir): bool
+{
+  if (is_dir($absDir)) return true;
+  return @mkdir($absDir, 0755, true);
+}
+
+function ext_from_mime(string $mime): ?string
+{
+  return match ($mime) {
+    'image/jpeg' => 'jpg',
+    'image/png'  => 'png',
+    'image/webp' => 'webp',
+    default      => null,
+  };
+}
+
 /* Feira padrão desta página */
 $FEIRA_ID = 1; // 1=Feira do Produtor | 2=Feira Alternativa
 
-/* Detecção opcional pela pasta (se você separou em pastas) */
+/* Detecção opcional pela pasta */
 $dirLower = strtolower((string)__DIR__);
 if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
 if (strpos($dirLower, 'produtor') !== false) $FEIRA_ID = 1;
@@ -84,6 +105,11 @@ $old = [
   'observacao'    => '',
 ];
 
+/* Upload settings */
+$UPLOAD_REL_DIR = 'uploads/produtores';                 // relativo ao "document root" do site (ajuste se precisar)
+$UPLOAD_ABS_DIR = realpath(__DIR__ . '/../../../') . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR; // baseando na sua estrutura
+$MAX_BYTES = 3 * 1024 * 1024; // 3MB
+
 /* POST */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $tokenPost = (string)($_POST['csrf_token'] ?? '');
@@ -108,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome = trunc255($old['nome']);
     $contato = trunc255($old['contato']);
 
-    // documento: salva somente dígitos (mais limpo)
+    // documento: salva somente dígitos
     $docDigits = only_digits($old['documento']);
     $documento = $docDigits !== '' ? trunc255($docDigits) : null;
 
@@ -116,47 +142,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ativo = ($old['ativo'] === '1') ? 1 : 0;
     $comunidadeId = (int)$old['comunidade_id'];
 
-    try {
-      // Garante que a comunidade existe e é da mesma feira e está ativa
-      $chk = $pdo->prepare("SELECT COUNT(*)
-                            FROM comunidades
-                            WHERE id = :id AND feira_id = :feira AND ativo = 1");
-      $chk->bindValue(':id', $comunidadeId, PDO::PARAM_INT);
-      $chk->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
-      $chk->execute();
-      $okCom = (int)$chk->fetchColumn() > 0;
+    /* ========= Foto (opcional) ========= */
+    $fotoDbValue = null;
 
-      if (!$okCom) {
-        $err = 'Comunidade inválida (não encontrada ou inativa).';
-      } else {
-        $sql = "INSERT INTO produtores
-                  (feira_id, nome, contato, comunidade_id, documento, ativo, observacao)
-                VALUES
-                  (:feira_id, :nome, :contato, :comunidade_id, :documento, :ativo, :observacao)";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-          ':feira_id'      => $FEIRA_ID,
-          ':nome'          => $nome,
-          ':contato'       => ($contato !== '' ? $contato : null),
-          ':comunidade_id' => $comunidadeId,
-          ':documento'     => $documento,
-          ':ativo'         => $ativo,
-          ':observacao'    => ($observacao !== '' ? $observacao : null),
-        ]);
+    if (!empty($_FILES['foto']) && isset($_FILES['foto']['error'])) {
+      $f = $_FILES['foto'];
 
-        $_SESSION['flash_ok'] = 'Produtor cadastrado com sucesso!';
-        header('Location: ./listaProdutor.php');
-        exit;
+      if ($f['error'] !== UPLOAD_ERR_NO_FILE) {
+        if ($f['error'] !== UPLOAD_ERR_OK) {
+          $err = 'Erro no upload da foto.';
+        } elseif (!is_uploaded_file($f['tmp_name'])) {
+          $err = 'Upload inválido da foto.';
+        } elseif (($f['size'] ?? 0) > $MAX_BYTES) {
+          $err = 'Foto muito grande. Máximo: 3MB.';
+        } else {
+          $mime = @mime_content_type($f['tmp_name']) ?: '';
+          $ext = ext_from_mime($mime);
+          if ($ext === null) {
+            $err = 'Formato de foto inválido. Use JPG, PNG ou WEBP.';
+          } else {
+            // cria pasta
+            if (!ensure_dir($UPLOAD_ABS_DIR)) {
+              $err = 'Não foi possível criar a pasta de upload.';
+            } else {
+              // nome único
+              $safeName = 'produtor_' . bin2hex(random_bytes(8)) . '.' . $ext;
+              $destAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $safeName;
+
+              if (!@move_uploaded_file($f['tmp_name'], $destAbs)) {
+                $err = 'Falha ao salvar a foto no servidor.';
+              } else {
+                // valor para banco (caminho relativo)
+                $fotoDbValue = $UPLOAD_REL_DIR . '/' . $safeName;
+              }
+            }
+          }
+        }
       }
-    } catch (Throwable $e) {
-      $err = 'Erro ao salvar produtor: ' . $e->getMessage();
+    }
+
+    if ($err === '') {
+      try {
+        // Garante que a comunidade existe e é da mesma feira e está ativa
+        $chk = $pdo->prepare("SELECT COUNT(*)
+                              FROM comunidades
+                              WHERE id = :id AND feira_id = :feira AND ativo = 1");
+        $chk->bindValue(':id', $comunidadeId, PDO::PARAM_INT);
+        $chk->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
+        $chk->execute();
+        $okCom = (int)$chk->fetchColumn() > 0;
+
+        if (!$okCom) {
+          $err = 'Comunidade inválida (não encontrada ou inativa).';
+          // se salvou foto e deu erro depois, opcional: remover arquivo
+          if ($fotoDbValue) {
+            @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
+          }
+        } else {
+          $sql = "INSERT INTO produtores
+                    (feira_id, nome, contato, comunidade_id, documento, foto, ativo, observacao)
+                  VALUES
+                    (:feira_id, :nome, :contato, :comunidade_id, :documento, :foto, :ativo, :observacao)";
+          $stmt = $pdo->prepare($sql);
+          $stmt->execute([
+            ':feira_id'      => $FEIRA_ID,
+            ':nome'          => $nome,
+            ':contato'       => ($contato !== '' ? $contato : null),
+            ':comunidade_id' => $comunidadeId,
+            ':documento'     => $documento,
+            ':foto'          => $fotoDbValue, // ✅ salva caminho/arquivo
+            ':ativo'         => $ativo,
+            ':observacao'    => ($observacao !== '' ? $observacao : null),
+          ]);
+
+          $_SESSION['flash_ok'] = 'Produtor cadastrado com sucesso!';
+          header('Location: ./listaProdutor.php');
+          exit;
+        }
+      } catch (Throwable $e) {
+        // se salvou foto e deu erro no banco, remove arquivo
+        if ($fotoDbValue) {
+          @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
+        }
+        $err = 'Erro ao salvar produtor: ' . $e->getMessage();
+      }
     }
   }
 }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -174,33 +249,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover {
-      color: blue !important;
-    }
+    ul .nav-link:hover { color: blue !important; }
+    .nav-link { color: black !important; }
+    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
+    .sidebar .sub-menu li { list-style: none !important; }
 
-    .nav-link {
-      color: black !important;
-    }
+    /* ✅ Não force altura fixa em inputs no mobile */
+    .form-control { min-height: 42px; height: auto; }
+    .btn { min-height: 42px; }
 
-    .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -35px !important;
-    }
-
-    .sidebar .sub-menu li {
-      list-style: none !important;
-    }
-
-    .form-control {
-      height: 42px;
-    }
-
-    .btn {
-      height: 42px;
-    }
-
-    .help-hint {
-      font-size: 12px;
-    }
+    .help-hint { font-size: 12px; }
 
     .card-title-row {
       display: flex;
@@ -246,6 +304,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       gap: 8px;
       align-items: center;
       justify-content: flex-start;
+    }
+
+    .foto-preview {
+      display: none;
+      max-width: 140px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,.08);
+      background: #fff;
+    }
+
+    /* ✅ Mobile: botões 100% */
+    @media (max-width: 576px) {
+      .content-wrapper { padding: 1rem !important; }
+      .form-actions .btn { width: 100%; }
+      .card-title-row a.btn { width: 100%; }
     }
   </style>
 </head>
@@ -311,13 +384,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
+                .sub-menu .nav-item .nav-link { color: black !important; }
+                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -425,7 +493,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </span>
           </li>
 
-          <!-- Linha abaixo do título -->
           <li class="nav-item">
             <a class="nav-link" href="../index.php">
               <i class="ti-home menu-icon"></i>
@@ -436,18 +503,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira do Alternativa</span>
-
             </a>
           </li>
           <li class="nav-item">
             <a href="../mercado/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Mercado Municipal</span>
-
             </a>
           </li>
           <li class="nav-item">
-
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
@@ -500,7 +564,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                   <?php endif; ?>
 
-                  <form class="pt-4" method="post" action="">
+                  <!-- ✅ enctype para upload + layout responsivo no grid -->
+                  <form class="pt-4" method="post" action="" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
                     <div class="form-section">
@@ -509,7 +574,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       </div>
 
                       <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-12 col-lg-6 mb-3">
                           <label>Nome do produtor <span class="text-danger">*</span></label>
                           <input
                             name="nome"
@@ -521,7 +586,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
                         </div>
 
-                        <div class="col-md-3 mb-3">
+                        <div class="col-12 col-md-6 col-lg-3 mb-3">
                           <label>CPF / Documento</label>
                           <input
                             name="documento"
@@ -532,7 +597,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <small class="text-muted help-hint">Opcional (salvo em <b>produtores.documento</b>).</small>
                         </div>
 
-                        <div class="col-md-3 mb-3">
+                        <div class="col-12 col-md-6 col-lg-3 mb-3">
                           <label>Telefone / WhatsApp</label>
                           <input
                             name="contato"
@@ -541,6 +606,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             placeholder="Ex.: 92991112222"
                             value="<?= h($old['contato']) ?>">
                           <small class="text-muted help-hint">Opcional (salvo em <b>produtores.contato</b>).</small>
+                        </div>
+
+                        <!-- ✅ FOTO (câmera do celular) -->
+                        <div class="col-12 col-md-6 col-lg-4 mb-3">
+                          <label>Foto do produtor</label>
+                          <input
+                            type="file"
+                            name="foto"
+                            class="form-control"
+                            accept="image/*"
+                            capture="environment">
+                          <small class="text-muted help-hint">
+                            No celular abre a câmera (traseira). Formatos: JPG/PNG/WEBP. Máx 3MB.
+                          </small>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-4 mb-3 d-flex align-items-end">
+                          <img id="previewFoto" class="foto-preview" src="" alt="Prévia da foto">
                         </div>
                       </div>
                     </div>
@@ -551,7 +634,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       </div>
 
                       <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-12 col-lg-6 mb-3">
                           <label>Comunidade <span class="text-danger">*</span></label>
                           <select
                             name="comunidade_id"
@@ -571,7 +654,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           </small>
                         </div>
 
-                        <div class="col-md-3 mb-3">
+                        <div class="col-12 col-md-6 col-lg-3 mb-3">
                           <label>Status</label>
                           <select name="ativo" class="form-control">
                             <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
@@ -580,7 +663,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <small class="text-muted help-hint">Você pode desativar sem excluir.</small>
                         </div>
 
-                        <div class="col-md-12 mb-3">
+                        <div class="col-12 mb-3">
                           <label>Observações</label>
                           <textarea
                             name="observacao"
@@ -640,6 +723,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
-</body>
 
+  <!-- ✅ Preview da foto (mobile/desktop) -->
+  <script>
+    (function () {
+      const input = document.querySelector('input[name="foto"]');
+      const img = document.getElementById('previewFoto');
+      if (!input || !img) return;
+
+      input.addEventListener('change', function (e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) {
+          img.style.display = 'none';
+          img.src = '';
+          return;
+        }
+        const url = URL.createObjectURL(file);
+        img.src = url;
+        img.style.display = 'block';
+      });
+    })();
+  </script>
+</body>
 </html>
