@@ -1,10 +1,15 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
 /*
-  ✅ Banco (rode 1x):
-  ALTER TABLE produtores ADD COLUMN foto VARCHAR(255) DEFAULT NULL AFTER documento;
+✅ 1) Rode 1x no banco:
+ALTER TABLE produtores ADD COLUMN foto VARCHAR(255) DEFAULT NULL AFTER documento;
+
+✅ 2) Crie a pasta (se não existir):
+/uploads/produtores
+e dê permissão de escrita no servidor.
 */
 
 /* Obrigatório estar logado */
@@ -47,16 +52,6 @@ function ensure_dir(string $absDir): bool
 {
   if (is_dir($absDir)) return true;
   return @mkdir($absDir, 0755, true);
-}
-
-function ext_from_mime(string $mime): ?string
-{
-  return match ($mime) {
-    'image/jpeg' => 'jpg',
-    'image/png'  => 'png',
-    'image/webp' => 'webp',
-    default      => null,
-  };
 }
 
 /* Feira padrão desta página */
@@ -105,10 +100,11 @@ $old = [
   'observacao'    => '',
 ];
 
-/* Upload settings */
-$UPLOAD_REL_DIR = 'uploads/produtores';                 // relativo ao "document root" do site (ajuste se precisar)
-$UPLOAD_ABS_DIR = realpath(__DIR__ . '/../../../') . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR; // baseando na sua estrutura
-$MAX_BYTES = 3 * 1024 * 1024; // 3MB
+/* Upload (base64 da câmera via navegador) */
+$BASE_DIR = realpath(__DIR__ . '/../../../');
+$UPLOAD_REL_DIR = 'uploads/produtores';
+$UPLOAD_ABS_DIR = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR) : null;
+$MAX_BASE64_BYTES = 3 * 1024 * 1024; // 3MB em bytes decodificados
 
 /* POST */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -142,39 +138,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ativo = ($old['ativo'] === '1') ? 1 : 0;
     $comunidadeId = (int)$old['comunidade_id'];
 
-    /* ========= Foto (opcional) ========= */
+    /* ========= Foto (base64 vinda da câmera) ========= */
     $fotoDbValue = null;
 
-    if (!empty($_FILES['foto']) && isset($_FILES['foto']['error'])) {
-      $f = $_FILES['foto'];
+    if (!empty($_POST['foto_base64'])) {
+      $dataUrl = (string)$_POST['foto_base64'];
 
-      if ($f['error'] !== UPLOAD_ERR_NO_FILE) {
-        if ($f['error'] !== UPLOAD_ERR_OK) {
-          $err = 'Erro no upload da foto.';
-        } elseif (!is_uploaded_file($f['tmp_name'])) {
-          $err = 'Upload inválido da foto.';
-        } elseif (($f['size'] ?? 0) > $MAX_BYTES) {
+      // aceita jpeg/png/webp; você pode limitar só jpeg para ficar mais leve
+      if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl, $m) !== 1) {
+        $err = 'Foto inválida (formato não suportado).';
+      } else {
+        $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
+        $bin = base64_decode($base64, true);
+
+        if ($bin === false) {
+          $err = 'Foto inválida (base64).';
+        } elseif (strlen($bin) > $MAX_BASE64_BYTES) {
           $err = 'Foto muito grande. Máximo: 3MB.';
+        } elseif (!$UPLOAD_ABS_DIR) {
+          $err = 'Diretório base não encontrado para upload.';
         } else {
-          $mime = @mime_content_type($f['tmp_name']) ?: '';
-          $ext = ext_from_mime($mime);
-          if ($ext === null) {
-            $err = 'Formato de foto inválido. Use JPG, PNG ou WEBP.';
+          if (!ensure_dir($UPLOAD_ABS_DIR)) {
+            $err = 'Não foi possível criar a pasta de upload.';
           } else {
-            // cria pasta
-            if (!ensure_dir($UPLOAD_ABS_DIR)) {
-              $err = 'Não foi possível criar a pasta de upload.';
-            } else {
-              // nome único
-              $safeName = 'produtor_' . bin2hex(random_bytes(8)) . '.' . $ext;
-              $destAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $safeName;
+            // por padrão salvamos como jpg (mais leve), mesmo que venha png/webp
+            // como o JS gera JPEG, vai cair aqui como jpeg quase sempre.
+            $fileName = 'produtor_' . bin2hex(random_bytes(10)) . '.jpg';
+            $destAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $fileName;
 
-              if (!@move_uploaded_file($f['tmp_name'], $destAbs)) {
-                $err = 'Falha ao salvar a foto no servidor.';
-              } else {
-                // valor para banco (caminho relativo)
-                $fotoDbValue = $UPLOAD_REL_DIR . '/' . $safeName;
-              }
+            if (@file_put_contents($destAbs, $bin) === false) {
+              $err = 'Falha ao salvar a foto no servidor.';
+            } else {
+              $fotoDbValue = $UPLOAD_REL_DIR . '/' . $fileName;
             }
           }
         }
@@ -193,11 +188,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $okCom = (int)$chk->fetchColumn() > 0;
 
         if (!$okCom) {
-          $err = 'Comunidade inválida (não encontrada ou inativa).';
-          // se salvou foto e deu erro depois, opcional: remover arquivo
+          // se salvou foto e deu erro depois, remove arquivo
           if ($fotoDbValue) {
             @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
           }
+          $err = 'Comunidade inválida (não encontrada ou inativa).';
         } else {
           $sql = "INSERT INTO produtores
                     (feira_id, nome, contato, comunidade_id, documento, foto, ativo, observacao)
@@ -210,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':contato'       => ($contato !== '' ? $contato : null),
             ':comunidade_id' => $comunidadeId,
             ':documento'     => $documento,
-            ':foto'          => $fotoDbValue, // ✅ salva caminho/arquivo
+            ':foto'          => $fotoDbValue,
             ':ativo'         => $ativo,
             ':observacao'    => ($observacao !== '' ? $observacao : null),
           ]);
@@ -221,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       } catch (Throwable $e) {
         // se salvou foto e deu erro no banco, remove arquivo
-        if ($fotoDbValue) {
+        if ($fotoDbValue && $UPLOAD_ABS_DIR) {
           @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
         }
         $err = 'Erro ao salvar produtor: ' . $e->getMessage();
@@ -232,6 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -249,16 +245,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
+    ul .nav-link:hover {
+      color: blue !important;
+    }
 
-    /* ✅ Não force altura fixa em inputs no mobile */
-    .form-control { min-height: 42px; height: auto; }
-    .btn { min-height: 42px; }
+    .nav-link {
+      color: black !important;
+    }
 
-    .help-hint { font-size: 12px; }
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
+
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
+
+    .form-control {
+      min-height: 42px;
+      height: auto;
+    }
+
+    .btn {
+      min-height: 42px;
+    }
+
+    .help-hint {
+      font-size: 12px;
+    }
 
     .card-title-row {
       display: flex;
@@ -306,19 +320,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       justify-content: flex-start;
     }
 
-    .foto-preview {
-      display: none;
-      max-width: 140px;
-      border-radius: 10px;
-      border: 1px solid rgba(0,0,0,.08);
-      background: #fff;
+    .cam-box {
+      border: 1px solid rgba(0, 0, 0, .08);
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8f9fa;
     }
 
-    /* ✅ Mobile: botões 100% */
+    #cameraVideo,
+    #fotoPreview {
+      width: 100%;
+      border-radius: 10px;
+      background: #111;
+    }
+
+    #cameraVideo {
+      display: none;
+    }
+
+    #fotoPreview {
+      display: none;
+    }
+
     @media (max-width: 576px) {
-      .content-wrapper { padding: 1rem !important; }
-      .form-actions .btn { width: 100%; }
-      .card-title-row a.btn { width: 100%; }
+      .content-wrapper {
+        padding: 1rem !important;
+      }
+
+      .form-actions .btn {
+        width: 100%;
+      }
+
+      .card-title-row a.btn {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -336,13 +371,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
           <span class="icon-menu"></span>
         </button>
-
         <ul class="navbar-nav mr-lg-2">
           <li class="nav-item nav-search d-none d-lg-block"></li>
         </ul>
-
         <ul class="navbar-nav navbar-nav-right"></ul>
-
         <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
           <span class="icon-menu"></span>
         </button>
@@ -384,8 +416,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="collapse show" id="feiraCadastros">
               <style>
-                .sub-menu .nav-item .nav-link { color: black !important; }
-                .sub-menu .nav-item .nav-link:hover { color: blue !important; }
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
               </style>
 
               <ul class="nav flex-column sub-menu" style="background: white !important;">
@@ -478,17 +515,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
           </li>
 
-          <!-- Título DIVERSOS -->
           <li class="nav-item" style="pointer-events:none;">
-            <span style="
-                  display:block;
-                  padding: 5px 15px 5px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  color: #6c757d;
-                  text-transform: uppercase;
-                ">
+            <span style="display:block;padding:5px 15px 5px;font-size:11px;font-weight:600;letter-spacing:1px;color:#6c757d;text-transform:uppercase;">
               Links Diversos
             </span>
           </li>
@@ -564,9 +592,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                   <?php endif; ?>
 
-                  <!-- ✅ enctype para upload + layout responsivo no grid -->
-                  <form class="pt-4" method="post" action="" enctype="multipart/form-data">
+                  <form class="pt-4" method="post" action="">
                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+
+                    <!-- ✅ Foto em base64 vai aqui -->
+                    <input type="hidden" name="foto_base64" id="foto_base64" value="">
 
                     <div class="form-section">
                       <div class="section-title">
@@ -586,6 +616,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
                         </div>
 
+                        <!-- ✅ CPF como NUMBER -->
                         <div class="col-12 col-md-6 col-lg-3 mb-3">
                           <label>CPF / Documento</label>
                           <input
@@ -593,6 +624,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             type="number"
                             class="form-control"
                             placeholder="Somente números"
+                            inputmode="numeric"
+                            min="0"
+                            step="1"
                             value="<?= h($old['documento']) ?>">
                           <small class="text-muted help-hint">Opcional (salvo em <b>produtores.documento</b>).</small>
                         </div>
@@ -608,22 +642,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <small class="text-muted help-hint">Opcional (salvo em <b>produtores.contato</b>).</small>
                         </div>
 
-                        <!-- ✅ FOTO (câmera do celular) -->
-                        <div class="col-12 col-md-6 col-lg-4 mb-3">
-                          <label>Foto do produtor</label>
-                          <input
-                            type="file"
-                            name="foto"
-                            class="form-control"
-                            accept="image/*"
-                            capture="environment">
-                          <small class="text-muted help-hint">
-                            No celular abre a câmera (traseira). Formatos: JPG/PNG/WEBP. Máx 3MB.
-                          </small>
-                        </div>
+                        <!-- ✅ CÂMERA DENTRO DO NAVEGADOR (LEVE) -->
+                        <div class="col-12 col-lg-6 mb-3">
+                          <label>Foto do produtor (câmera)</label>
 
-                        <div class="col-12 col-md-6 col-lg-4 mb-3 d-flex align-items-end">
-                          <img id="previewFoto" class="foto-preview" src="" alt="Prévia da foto">
+                          <div class="cam-box">
+                            <video id="cameraVideo" autoplay playsinline></video>
+                            <canvas id="cameraCanvas" style="display:none;"></canvas>
+                            <img id="fotoPreview" alt="Prévia da foto">
+                          </div>
+
+                          <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnAbrirCam">
+                              <i class="ti-camera mr-1"></i> Abrir Câmera
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm" id="btnTirarFoto" disabled>
+                              <i class="ti-image mr-1"></i> Tirar Foto
+                            </button>
+                            <button type="button" class="btn btn-light btn-sm" id="btnRefazer" disabled>
+                              <i class="ti-reload mr-1"></i> Refazer
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" id="btnFecharCam" disabled>
+                              <i class="ti-close mr-1"></i> Fechar
+                            </button>
+                          </div>
+
+                          <small class="text-muted help-hint d-block mt-1">
+                            A foto é comprimida em JPEG antes de enviar (bem mais leve).
+                          </small>
                         </div>
                       </div>
                     </div>
@@ -681,7 +727,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       <button type="submit" class="btn btn-primary" <?= empty($comunidades) ? 'disabled' : '' ?>>
                         <i class="ti-save mr-1"></i> Salvar
                       </button>
-                      <button type="reset" class="btn btn-light">
+                      <button type="reset" class="btn btn-light" id="btnLimparForm">
                         <i class="ti-close mr-1"></i> Limpar
                       </button>
                     </div>
@@ -720,29 +766,148 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <script src="../../../js/template.js"></script>
   <script src="../../../js/settings.js"></script>
   <script src="../../../js/todolist.js"></script>
-
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
 
-  <!-- ✅ Preview da foto (mobile/desktop) -->
   <script>
-    (function () {
-      const input = document.querySelector('input[name="foto"]');
-      const img = document.getElementById('previewFoto');
-      if (!input || !img) return;
+    (function() {
+      let stream = null;
 
-      input.addEventListener('change', function (e) {
-        const file = e.target.files && e.target.files[0];
-        if (!file) {
-          img.style.display = 'none';
-          img.src = '';
-          return;
+      const video = document.getElementById('cameraVideo');
+      const canvas = document.getElementById('cameraCanvas');
+      const preview = document.getElementById('fotoPreview');
+      const inputBase64 = document.getElementById('foto_base64');
+
+      const btnAbrir = document.getElementById('btnAbrirCam');
+      const btnTirar = document.getElementById('btnTirarFoto');
+      const btnFechar = document.getElementById('btnFecharCam');
+      const btnRefazer = document.getElementById('btnRefazer');
+      const btnLimpar = document.getElementById('btnLimparForm');
+
+      function setState({
+        camOn,
+        hasPhoto
+      }) {
+        // câmera
+        video.style.display = camOn ? 'block' : 'none';
+        btnTirar.disabled = !camOn;
+
+        // fechar
+        btnFechar.disabled = !camOn;
+
+        // foto
+        preview.style.display = hasPhoto ? 'block' : 'none';
+        btnRefazer.disabled = !hasPhoto;
+
+        // abrir
+        btnAbrir.disabled = camOn;
+      }
+
+      async function abrirCamera() {
+        try {
+          // precisa HTTPS ou localhost
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: {
+                ideal: 'environment'
+              }
+            },
+            audio: false
+          });
+
+          video.srcObject = stream;
+          await video.play();
+          setState({
+            camOn: true,
+            hasPhoto: false
+          });
+        } catch (e) {
+          alert('Não foi possível acessar a câmera. Verifique permissão/HTTPS.');
+          setState({
+            camOn: false,
+            hasPhoto: false
+          });
         }
-        const url = URL.createObjectURL(file);
-        img.src = url;
-        img.style.display = 'block';
+      }
+
+      function fecharCamera() {
+        if (stream) {
+          stream.getTracks().forEach(t => t.stop());
+          stream = null;
+        }
+        video.srcObject = null;
+        setState({
+          camOn: false,
+          hasPhoto: (inputBase64.value !== '')
+        });
+      }
+
+      function tirarFoto() {
+        if (!video.videoWidth || !video.videoHeight) return;
+
+        // ✅ Reduz largura para ficar leve
+        const targetW = 720; // pode baixar pra 600 se quiser mais leve ainda
+        const ratio = video.videoHeight / video.videoWidth;
+        const targetH = Math.round(targetW * ratio);
+
+        canvas.width = targetW;
+        canvas.height = targetH;
+
+        const ctx = canvas.getContext('2d', {
+          alpha: false
+        });
+        ctx.drawImage(video, 0, 0, targetW, targetH);
+
+        // ✅ JPEG comprimido (0.65 ~ bem leve)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+
+        preview.src = dataUrl;
+        inputBase64.value = dataUrl;
+
+        setState({
+          camOn: true,
+          hasPhoto: true
+        });
+        fecharCamera(); // fecha pra economizar bateria
+      }
+
+      function refazerFoto() {
+        inputBase64.value = '';
+        preview.src = '';
+        preview.style.display = 'none';
+        abrirCamera();
+      }
+
+      function limparFoto() {
+        inputBase64.value = '';
+        preview.src = '';
+        setState({
+          camOn: false,
+          hasPhoto: false
+        });
+        fecharCamera();
+      }
+
+      btnAbrir.addEventListener('click', abrirCamera);
+      btnFechar.addEventListener('click', fecharCamera);
+      btnTirar.addEventListener('click', tirarFoto);
+      btnRefazer.addEventListener('click', refazerFoto);
+
+      // Se resetar o form, limpa foto também
+      btnLimpar.addEventListener('click', function() {
+        setTimeout(limparFoto, 0);
       });
+
+      // Estado inicial
+      setState({
+        camOn: false,
+        hasPhoto: false
+      });
+
+      // Se sair da página, fecha câmera
+      window.addEventListener('beforeunload', fecharCamera);
     })();
   </script>
 </body>
+
 </html>
