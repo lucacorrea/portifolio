@@ -548,10 +548,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <i class="menu-arrow"></i>
             </a>
 
-            <div class="collapse show active" id="feiraMovimento" style="color:white !important; background: #231475C5 !important;">
+            <div class="collapse show active" id="feiraMovimento">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
-                  <a class="nav-link" href="./lancamentos.php">
+                  <a class="nav-link" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
                     <i class="ti-write mr-2"></i> Lançamentos (Vendas)
                   </a>
                 </li>
