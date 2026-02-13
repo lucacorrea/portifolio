@@ -594,84 +594,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
           </div>
 
-          <!-- LINHA BASE -->
-          <div class="line-card js-line">
-            <div class="row">
+          <div class="row">
+            <div class="col-lg-12 grid-margin stretch-card">
+              <div class="card">
+                <div class="card-body">
 
-              <!-- linha 1: 3 colunas -->
-              <div class="col-lg-4 col-md-6 mb-3">
-                <label class="mb-1">Produtor</label>
-                <select class="form-control js-produtor" name="produtor_id[]">
-                  <option value="0">Selecione</option>
-                  <?php foreach ($produtoresAtivos as $p): ?>
-                    <option value="<?= (int)$p['id'] ?>"><?= h($p['nome'] ?? '') ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
+                  <div class="card-header-lite">
+                    <div>
+                      <h4 class="card-title mb-0">Lançar Remessas</h4>
+                      <p class="card-description mb-0">Preencha as linhas. Foto é opcional (1 por linha).</p>
+                    </div>
 
-              <div class="col-lg-4 col-md-6 mb-3">
-                <label class="mb-1">Produto</label>
-                <select class="form-control js-produto" name="produto_id[]">
-                  <option value="0">Selecione</option>
-                  <?php foreach ($produtosAtivos as $pr): ?>
-                    <option value="<?= (int)$pr['id'] ?>"
-                      data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
-                      data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
-                      data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>">
-                      <?= h($pr['nome'] ?? '') ?>
-                    </option>
-                  <?php endforeach; ?>
-                </select>
-                <small class="helper text-muted">Unid/Categoria preenche automático.</small>
-              </div>
+                    <div class="d-flex align-items-center" style="gap:10px;">
+                      <div>
+                        <label class="mb-1 muted" style="font-size:12px;">Data</label>
+                        <input type="date" class="form-control mini" value="<?= h($dia) ?>"
+                          onchange="location.href='?dia='+this.value;">
+                      </div>
 
-              <div class="col-lg-4 col-md-6 mb-3">
-                <label class="mb-1">Qtd</label>
-                <input type="text" class="form-control js-qtd" name="quantidade_entrada[]" value="1">
-              </div>
-
-              <!-- linha 2: 3 colunas -->
-              <div class="col-lg-4 col-md-6 mb-3">
-                <label class="mb-1">Preço</label>
-                <input type="text" class="form-control js-preco" name="preco_unitario_dia[]" placeholder="0,00">
-              </div>
-
-              <div class="col-lg-4 col-md-6 mb-3">
-                <label class="mb-1">Unid</label>
-                <input type="text" class="form-control js-un" value="" readonly>
-              </div>
-
-              <div class="col-lg-4 col-md-6 mb-3">
-                <label class="mb-1">Categoria</label>
-                <input type="text" class="form-control js-cat" value="" readonly>
-              </div>
-
-              <!-- linha 3: ações -->
-              <div class="col-12">
-                <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:10px;">
-                  <div class="d-flex align-items-center" style="gap:10px;">
-                    <img class="photo-thumb js-thumb" src="" alt="">
-                    <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
+                      <div class="totbox">
+                        <p class="totlabel">Total estimado</p>
+                        <p class="totvalue" id="jsTotal">R$ 0,00</p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div class="d-flex" style="gap:8px;">
-                    <button type="button" class="btn btn-light btn-xs js-foto">
-                      <i class="ti-camera"></i> Foto
-                    </button>
-                    <button type="button" class="btn btn-light btn-xs js-remove" disabled>
-                      <i class="ti-trash"></i>
-                    </button>
-                  </div>
+                  <form method="post" action="./romaneioEntrada.php?dia=<?= h($dia) ?>" autocomplete="off" id="formEntrada">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                    <input type="hidden" name="acao" value="salvar">
+                    <input type="hidden" name="data_ref" value="<?= h($dia) ?>">
+
+                    <div id="linesWrap">
+
+                      <!-- LINHA BASE -->
+                      <div class="line-card js-line">
+                        <div class="row">
+
+                          <!-- linha 1: 3 colunas -->
+                          <div class="col-lg-4 col-md-6 mb-3">
+                            <label class="mb-1">Produtor</label>
+                            <select class="form-control js-produtor" name="produtor_id[]">
+                              <option value="0">Selecione</option>
+                              <?php foreach ($produtoresAtivos as $p): ?>
+                                <option value="<?= (int)$p['id'] ?>"><?= h($p['nome'] ?? '') ?></option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
+
+                          <div class="col-lg-4 col-md-6 mb-3">
+                            <label class="mb-1">Produto</label>
+                            <select class="form-control js-produto" name="produto_id[]">
+                              <option value="0">Selecione</option>
+                              <?php foreach ($produtosAtivos as $pr): ?>
+                                <option value="<?= (int)$pr['id'] ?>"
+                                  data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
+                                  data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
+                                  data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>">
+                                  <?= h($pr['nome'] ?? '') ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </select>
+                            <small class="helper text-muted">Unid/Categoria preenche automático.</small>
+                          </div>
+
+                          <div class="col-lg-4 col-md-6 mb-3">
+                            <label class="mb-1">Qtd</label>
+                            <input type="text" class="form-control js-qtd" name="quantidade_entrada[]" value="1">
+                          </div>
+
+                          <!-- linha 2: 3 colunas -->
+                          <div class="col-lg-4 col-md-6 mb-3">
+                            <label class="mb-1">Preço</label>
+                            <input type="text" class="form-control js-preco" name="preco_unitario_dia[]" placeholder="0,00">
+                          </div>
+
+                          <div class="col-lg-4 col-md-6 mb-3">
+                            <label class="mb-1">Unid</label>
+                            <input type="text" class="form-control js-un" value="" readonly>
+                          </div>
+
+                          <div class="col-lg-4 col-md-6 mb-3">
+                            <label class="mb-1">Categoria</label>
+                            <input type="text" class="form-control js-cat" value="" readonly>
+                          </div>
+
+                          <!-- linha 3: ações -->
+                          <div class="col-12">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:10px;">
+                              <div class="d-flex align-items-center" style="gap:10px;">
+                                <img class="photo-thumb js-thumb" src="" alt="">
+                                <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
+                              </div>
+
+                              <div class="d-flex" style="gap:8px;">
+                                <button type="button" class="btn btn-light btn-xs js-foto">
+                                  <i class="ti-camera"></i> Foto
+                                </button>
+                                <button type="button" class="btn btn-light btn-xs js-remove" disabled>
+                                  <i class="ti-trash"></i>
+                                </button>
+                              </div>
+                            </div>
+
+                            <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
+                            <input type="hidden" name="observacao_item[]" value="">
+                          </div>
+
+                        </div>
+                      </div>
+                      <!-- /LINHA BASE -->
+
+
+                    </div>
+
+                    <div class="sticky-actions">
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
+                        <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
+                        <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
+                      </div>
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
+                        <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
+                      </div>
+                    </div>
+
+                  </form>
+
+                  <small class="text-muted d-block mt-3 helper">
+                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost). A foto é comprimida pra ficar leve.
+                  </small>
+
                 </div>
-
-                <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
-                <input type="hidden" name="observacao_item[]" value="">
               </div>
-
             </div>
           </div>
-          <!-- /LINHA BASE -->
-
 
         </div>
 
