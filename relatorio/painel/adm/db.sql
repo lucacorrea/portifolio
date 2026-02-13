@@ -101,54 +101,7 @@ CREATE TABLE `produtores` (
   `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-  (
-    1,
-    1,
-    'João Batista da Silva',
-    '92991112222',
-    1,
-    NULL,
-    1,
-    'Produtor de farinha tradicional',
-    '2025-12-27 18:36:59',
-    NULL
-  ),
-  (
-    2,
-    1,
-    'Maria do Socorro Lima',
-    '92992223333',
-    2,
-    NULL,
-    1,
-    'Produção artesanal de goma',
-    '2025-12-27 18:36:59',
-    NULL
-  ),
-  (
-    3,
-    1,
-    'José Raimundo Pereira',
-    '92993334444',
-    3,
-    NULL,
-    1,
-    'Especialista em tucupi',
-    '2025-12-27 18:36:59',
-    NULL
-  ),
-  (
-    4,
-    1,
-    'Antônia Alves Costa',
-    '92994445555',
-    4,
-    NULL,
-    1,
-    'Venda de derivados diversos',
-    '2025-12-27 18:36:59',
-    NULL
-  );
+
 
 CREATE TABLE `produtos` (
   `id` bigint(20) UNSIGNED NOT NULL,
@@ -255,4 +208,55 @@ CREATE TABLE `config_relatorio` (
   `produtos_detalhados` tinyint(1) NOT NULL DEFAULT 1,
   `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
   `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE romaneio_dia (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  feira_id TINYINT UNSIGNED NOT NULL,
+  data_ref DATE NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ABERTO', -- ABERTO | FECHADO
+  observacao VARCHAR(255) DEFAULT NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  atualizado_em DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(),
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_romaneio (feira_id, data_ref)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE romaneio_itens (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  feira_id TINYINT UNSIGNED NOT NULL,
+  romaneio_id BIGINT UNSIGNED NOT NULL,
+  produtor_id BIGINT UNSIGNED NOT NULL,
+  produto_id BIGINT UNSIGNED NOT NULL,
+
+  quantidade_entrada DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+  preco_unitario_dia DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+
+  -- fechamento (preenchido no final do dia)
+  quantidade_sobra DECIMAL(10,3) DEFAULT NULL,
+  quantidade_vendida DECIMAL(10,3) DEFAULT NULL,
+  total_bruto DECIMAL(10,2) DEFAULT NULL,
+
+  observacao VARCHAR(255) DEFAULT NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  atualizado_em DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(),
+
+  PRIMARY KEY (id),
+  KEY idx_romaneio (romaneio_id),
+  KEY idx_produtor (produtor_id),
+  KEY idx_produto (produto_id),
+
+  CONSTRAINT fk_ri_romaneio FOREIGN KEY (romaneio_id) REFERENCES romaneio_dia(id),
+  CONSTRAINT fk_ri_produtor FOREIGN KEY (produtor_id) REFERENCES produtores(id),
+  CONSTRAINT fk_ri_produto FOREIGN KEY (produto_id) REFERENCES produtos(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE romaneio_item_fotos (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  romaneio_item_id BIGINT UNSIGNED NOT NULL,
+  caminho VARCHAR(255) NOT NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  PRIMARY KEY (id),
+  KEY idx_item (romaneio_item_id),
+  CONSTRAINT fk_rif_item FOREIGN KEY (romaneio_item_id) REFERENCES romaneio_itens(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
