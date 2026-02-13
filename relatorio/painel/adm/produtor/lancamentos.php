@@ -515,6 +515,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         justify-content: flex-start;
       }
     }
+
+    /* === Mobile first: melhorar toque/legibilidade === */
+    @media (max-width: 576px) {
+      .card-header-lite {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 10px !important;
+      }
+
+      .totbox {
+        width: 100%;
+      }
+
+      .totvalue {
+        font-size: 22px;
+      }
+
+      .line-card {
+        padding: 14px;
+      }
+
+      .line-card label {
+        font-weight: 700;
+      }
+
+      /* Botões grandes */
+      .btn-mobile {
+        height: 52px !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        border-radius: 12px !important;
+        padding: 10px 14px !important;
+      }
+
+      .btn-mobile i {
+        font-size: 18px;
+        margin-right: 6px;
+      }
+
+      /* Ações viram bloco */
+      .line-actions-mobile {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      /* Foto preview maior no celular */
+      .photo-thumb {
+        width: 100% !important;
+        height: 160px !important;
+        border-radius: 12px !important;
+      }
+
+      .helper {
+        font-size: 13px;
+      }
+
+      /* Sticky actions em coluna */
+      .sticky-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .sticky-actions>div {
+        width: 100%;
+        justify-content: stretch !important;
+      }
+
+      .sticky-actions .btn {
+        width: 100%;
+      }
+    }
+
+    /* Desktop/tablet: botão Foto maior também, mas não gigante */
+    .btn-foto-big {
+      height: 46px;
+      font-size: 14px;
+      font-weight: 800;
+      border-radius: 12px;
+      padding: 10px 14px;
+    }
   </style>
 </head>
 
@@ -686,38 +768,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
                               </div>
 
-                              <div class="d-flex" style="gap:8px;">
-                                <button type="button" class="btn btn-light btn-xs js-foto">
-                                  <i class="ti-camera"></i> Foto
-                                </button>
-                                <button type="button" class="btn btn-light btn-xs js-remove" disabled>
-                                  <i class="ti-trash"></i>
-                                </button>
-                              </div>
-                            </div>
+                              <!-- linha 3: ações -->
+                              <div class="col-12">
+                                <div class="row">
+                                  <div class="col-12 mb-2">
+                                    <img class="photo-thumb js-thumb" src="" alt="">
+                                  </div>
 
-                            <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
-                            <input type="hidden" name="observacao_item[]" value="">
+                                  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:10px;">
+                                    <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
+
+                                    <div class="line-actions-mobile">
+                                      <button type="button" class="btn btn-primary btn-mobile btn-foto-big js-foto">
+                                        <i class="ti-camera"></i> Tirar Foto
+                                      </button>
+
+                                      <button type="button" class="btn btn-light btn-mobile js-remove" disabled>
+                                        <i class="ti-trash"></i> Remover
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
+                                <input type="hidden" name="observacao_item[]" value="">
+                              </div>
+
+
+                            </div>
                           </div>
+                          <!-- /LINHA BASE -->
+
 
                         </div>
-                      </div>
-                      <!-- /LINHA BASE -->
 
-
-                    </div>
-
-                    <div class="sticky-actions">
-                      <div class="d-flex flex-wrap" style="gap:8px;">
-                        <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
-                        <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
-                        <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
-                      </div>
-                      <div class="d-flex flex-wrap" style="gap:8px;">
-                        <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
-                        <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
-                      </div>
-                    </div>
+                        <div class="sticky-actions">
+                          <div class="d-flex flex-wrap" style="gap:8px;">
+                            <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
+                            <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
+                            <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
+                          </div>
+                          <div class="d-flex flex-wrap" style="gap:8px;">
+                            <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
+                            <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
+                          </div>
+                        </div>
 
                   </form>
 
