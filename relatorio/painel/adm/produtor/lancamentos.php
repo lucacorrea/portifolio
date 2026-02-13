@@ -289,6 +289,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
+    ul .nav-link:hover {
+      color: blue !important;
+    }
+
+    .nav-link {
+      color: black !important;
+    }
+
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
+
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
+
     .form-control {
       height: 42px;
     }
@@ -297,124 +313,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       height: 42px;
     }
 
-    .helper {
-      font-size: 12px;
-    }
-
-    .card {
-      border-radius: 14px;
-    }
-
-    .card-header-lite {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      border-bottom: 1px solid rgba(0, 0, 0, .06);
-      padding-bottom: 12px;
-      margin-bottom: 12px;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      background: #eef2ff;
-      color: #1f2a6b;
-    }
-
-    .totbox {
+    .kpi-card {
       border: 1px solid rgba(0, 0, 0, .08);
+      border-radius: 14px;
+      padding: 14px;
       background: #fff;
-      border-radius: 12px;
-      padding: 10px 12px;
-      min-width: 170px;
+      height: 100%;
     }
 
-    .totlabel {
+    .kpi-label {
       font-size: 12px;
       color: #6c757d;
       margin: 0;
     }
 
-    .totvalue {
-      font-size: 20px;
-      font-weight: 900;
+    .kpi-value {
+      font-size: 22px;
+      font-weight: 800;
       margin: 0;
     }
 
-    .line-card {
-      border: 1px solid rgba(0, 0, 0, .08);
-      background: #fff;
-      border-radius: 14px;
-      padding: 12px;
-      margin-bottom: 10px;
-    }
-
-    .line-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1.4fr .5fr .6fr .5fr 1fr auto;
-      gap: 10px;
-      align-items: end;
-    }
-
-    .line-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .mini {
-      height: 38px !important;
-    }
-
-    .muted {
+    .kpi-sub {
+      font-size: 12px;
       color: #6c757d;
+      margin-top: 6px;
     }
 
-    .photo-thumb {
-      width: 76px;
-      height: 52px;
-      object-fit: cover;
-      border-radius: 10px;
-      border: 1px solid rgba(0, 0, 0, .12);
-      display: none;
+    .table td,
+    .table th {
+      vertical-align: middle !important;
     }
 
-    .btn-xs {
-      padding: .25rem .5rem;
-      font-size: .75rem;
-      line-height: 1.2;
-      height: auto;
-    }
-
-    .sticky-actions {
-      position: sticky;
-      bottom: 10px;
-      z-index: 3;
-      background: rgba(255, 255, 255, .92);
-      border: 1px solid rgba(0, 0, 0, .08);
-      border-radius: 14px;
-      padding: 10px;
-      backdrop-filter: blur(6px);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-    }
-
-    /* Flash */
+    /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
     .sig-flash-wrap {
       position: fixed;
       top: 78px;
       right: 18px;
+      left: auto;
       width: min(420px, calc(100vw - 36px));
       z-index: 9999;
       pointer-events: none;
@@ -429,6 +364,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
+
       opacity: 0;
       transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
@@ -456,7 +392,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     .sig-toast__title {
-      font-weight: 900;
+      font-weight: 800;
       margin-bottom: 1px;
       line-height: 1.1;
     }
@@ -464,6 +400,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .sig-toast__text {
       margin: 0;
       line-height: 1.25;
+    }
+
+    .sig-toast .close {
+      opacity: .55;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 6px;
+    }
+
+    .sig-toast .close:hover {
+      opacity: 1;
     }
 
     @keyframes sigToastIn {
@@ -481,121 +428,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    /* Camera */
-    .cam-box {
-      border: 1px solid rgba(0, 0, 0, .08);
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 10px;
-    }
-
-    #camVideo,
-    #camPreview {
-      width: 100%;
-      border-radius: 10px;
-      background: #111;
-    }
-
-    #camPreview {
-      display: none;
-    }
-
-    @media (max-width: 1200px) {
-      .line-grid {
-        grid-template-columns: 1fr 1fr .6fr .7fr .5fr 1fr auto;
-      }
-    }
-
-    @media (max-width: 992px) {
-      .line-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .line-actions {
-        justify-content: flex-start;
-      }
-    }
-
-    /* === Mobile first: melhorar toque/legibilidade === */
-    @media (max-width: 576px) {
-      .card-header-lite {
-        flex-direction: column;
-        align-items: stretch !important;
-        gap: 10px !important;
-      }
-
-      .totbox {
-        width: 100%;
-      }
-
-      .totvalue {
-        font-size: 22px;
-      }
-
-      .line-card {
-        padding: 14px;
-      }
-
-      .line-card label {
-        font-weight: 700;
-      }
-
-      /* Botões grandes */
-      .btn-mobile {
-        height: 52px !important;
-        font-size: 16px !important;
-        font-weight: 800 !important;
-        border-radius: 12px !important;
-        padding: 10px 14px !important;
-      }
-
-      .btn-mobile i {
-        font-size: 18px;
-        margin-right: 6px;
-      }
-
-      /* Ações viram bloco */
-      .line-actions-mobile {
-        width: 100%;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-
-      /* Foto preview maior no celular */
-      .photo-thumb {
-        width: 100% !important;
-        height: 160px !important;
-        border-radius: 12px !important;
-      }
-
-      .helper {
-        font-size: 13px;
-      }
-
-      /* Sticky actions em coluna */
-      .sticky-actions {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .sticky-actions>div {
-        width: 100%;
-        justify-content: stretch !important;
-      }
-
-      .sticky-actions .btn {
-        width: 100%;
-      }
-    }
-
-    /* Desktop/tablet: botão Foto maior também, mas não gigante */
-    .btn-foto-big {
-      height: 46px;
-      font-size: 14px;
-      font-weight: 800;
-      border-radius: 12px;
-      padding: 10px 14px;
+    .mini {
+      font-size: 12px;
+      color: #6c757d;
     }
   </style>
 </head>
