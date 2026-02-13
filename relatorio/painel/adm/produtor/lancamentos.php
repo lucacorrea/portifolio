@@ -616,6 +616,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <ul class="navbar-nav mr-lg-2">
           <li class="nav-item nav-search d-none d-lg-block"></li>
         </ul>
+        <ul class="navbar-nav navbar-nav-right"></ul>
         <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
           <span class="icon-menu"></span>
         </button>
@@ -625,7 +626,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($msg || $err): ?>
       <div class="sig-flash-wrap">
         <?php if ($msg): ?>
-          <div class="alert sig-toast sig-toast--success" role="alert">
+          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
             <div class="sig-toast__row">
               <div class="sig-toast__icon"><i class="ti-check"></i></div>
               <div>
@@ -633,10 +634,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="sig-toast__text"><?= h($msg) ?></p>
               </div>
             </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
         <?php endif; ?>
+
         <?php if ($err): ?>
-          <div class="alert sig-toast sig-toast--danger" role="alert">
+          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
             <div class="sig-toast__row">
               <div class="sig-toast__icon"><i class="ti-alert"></i></div>
               <div>
@@ -644,22 +649,146 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="sig-toast__text"><?= h($err) ?></p>
               </div>
             </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
         <?php endif; ?>
       </div>
     <?php endif; ?>
 
     <div class="container-fluid page-body-wrapper">
-      <!-- SIDEBAR (mantive simples aqui; se quiser eu encaixo no seu completo) -->
+
+      <div id="right-sidebar" class="settings-panel">
+        <i class="settings-close ti-close"></i>
+        <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
+          <li class="nav-item"><a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab">TO DO LIST</a></li>
+          <li class="nav-item"><a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab">CHATS</a></li>
+        </ul>
+      </div>
+
+      <!-- SIDEBAR (mantida no padrão) -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
-          <li class="nav-item"><a class="nav-link" href="index.php"><i class="icon-grid menu-icon"></i><span class="menu-title">Dashboard</span></a></li>
-          <li class="nav-item active">
-            <a class="nav-link" href="./romaneioEntrada.php" style="color:white !important; background: #231475C5 !important;">
-              <i class="ti-write menu-icon"></i><span class="menu-title">Romaneio (Entrada)</span>
+
+          <li class="nav-item">
+            <a class="nav-link" href="index.php">
+              <i class="icon-grid menu-icon"></i>
+              <span class="menu-title">Dashboard</span>
             </a>
           </li>
-          <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box menu-icon"></i><span class="menu-title">Fechamento</span></a></li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
+              <i class="ti-id-badge menu-icon"></i>
+              <span class="menu-title">Cadastros</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse" id="feiraCadastros">
+              <style>
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
+              </style>
+
+              <ul class="nav flex-column sub-menu" style="background: white !important;">
+                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- MOVIMENTO (ATIVO) -->
+          <li class="nav-item active">
+            <a class="nav-link open" data-toggle="collapse" href="#feiraMovimento" aria-expanded="true" aria-controls="feiraMovimento">
+              <i class="ti-exchange-vertical menu-icon"></i>
+              <span class="menu-title">Movimento</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse show" id="feiraMovimento">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item">
+                  <a class="nav-link" href="./lancamentos.php">
+                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                  </a>
+                </li>
+                <li class="nav-item active">
+                  <a class="nav-link" href="./fechamentoDia.php" style="color:white !important; background: #231475C5 !important;">
+                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
+              <i class="ti-clipboard menu-icon"></i>
+              <span class="menu-title">Relatórios</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse text-black" id="feiraRelatorios">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
+                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- Título DIVERSOS -->
+          <li class="nav-item" style="pointer-events:none;">
+            <span style="
+                  display:block;
+                  padding: 5px 15px 5px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  color: #6c757d;
+                  text-transform: uppercase;
+                ">
+              Links Diversos
+            </span>
+          </li>
+
+          <!-- Linha abaixo do título -->
+          <li class="nav-item">
+            <a class="nav-link" href="../index.php">
+              <i class="ti-home menu-icon"></i>
+              <span class="menu-title"> Painel Principal</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../alternativa/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Feira do Alternativa</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../mercado/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Mercado Municipal</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+
+            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+              <i class="ti-headphone-alt menu-icon"></i>
+              <span class="menu-title">Suporte</span>
+            </a>
+          </li>
+
         </ul>
       </nav>
 
