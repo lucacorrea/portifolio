@@ -772,7 +772,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
                             <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
                           </div>
-                          <div class="d-flex flex-wrap" style="gap:8px;">
+                          <div class="d-flex flex-wrap mt-2" style="gap:8px;">
                             <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
                             <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
                           </div>
