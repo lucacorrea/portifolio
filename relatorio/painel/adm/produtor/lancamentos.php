@@ -305,6 +305,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       color: black !important;
     }
 
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
+
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
+
     .helper {
       font-size: 12px;
     }
