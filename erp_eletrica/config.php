@@ -2,10 +2,10 @@
 session_start();
 
 // DEPOIS (para funcionar na hospedagem)
-define('DB_HOST', 'mysql.suahospedagem.com'); // ou 'localhost' (teste primeiro)
-define('DB_USER', 'usuario_do_banco');        // usuário que você criar no painel
-define('DB_PASS', 'senha_do_banco');          // senha que você definir
-define('DB_NAME', 'nome_do_banco');           // nome que você der ao banco
+define('DB_HOST', 'localhost'); // ou 'localhost' (teste primeiro)
+define('DB_USER', 'u784961086_pdv');        // usuário que você criar no painel
+define('DB_PASS', 'X9#ZC#n^');          // senha que você definir
+define('DB_NAME', 'u784961086_pdv');           // nome que você der ao banco
 
 // Conexão com o banco de dados
 try {
