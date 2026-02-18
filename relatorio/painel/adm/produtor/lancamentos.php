@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
@@ -159,12 +158,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  $prodIds   = $_POST['produtor_id'] ?? [];
+  $prodIds    = $_POST['produtor_id'] ?? [];
   $produtoIds = $_POST['produto_id'] ?? [];
-  $qtds      = $_POST['quantidade_entrada'] ?? [];
-  $precos    = $_POST['preco_unitario_dia'] ?? [];
-  $obsArr    = $_POST['observacao_item'] ?? [];
-  $fotosArr  = $_POST['foto_base64'] ?? [];
+  $qtds       = $_POST['quantidade_entrada'] ?? [];
+  $precos     = $_POST['preco_unitario_dia'] ?? [];
+  $obsArr     = $_POST['observacao_item'] ?? [];
+  $fotosArr   = $_POST['foto_base64'] ?? [];
 
   $itens = [];
   $n = max(count((array)$prodIds), count((array)$produtoIds), count((array)$qtds), count((array)$precos));
@@ -244,8 +243,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       if ($it['foto'] !== '') {
         $fileName = 'item_' . $itemId . '_1.jpg';
-        $absPath = $dayAbs . DIRECTORY_SEPARATOR . $fileName;
-        $relPath = $dayRel . '/' . $fileName;
+        $absPath  = $dayAbs . DIRECTORY_SEPARATOR . $fileName;
+        $relPath  = $dayRel . '/' . $fileName;
 
         if (save_base64_image($it['foto'], $absPath, $MAX_IMG_BYTES)) {
           $insFoto->execute([
@@ -276,7 +275,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -289,37 +287,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    .form-control {
-      height: 42px;
-    }
+    .form-control { height: 42px; }
+    .btn { height: 42px; }
+    .helper { font-size: 12px; }
+    .card { border-radius: 14px; }
 
-    .btn {
-      height: 42px;
-    }
-
-    .helper {
-      font-size: 12px;
-    }
-
-    .card {
-      border-radius: 14px;
-    }
-
-    .card-header-lite {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      border-bottom: 1px solid rgba(0, 0, 0, .06);
+    .card-header-lite{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      border-bottom: 1px solid rgba(0,0,0,.06);
       padding-bottom: 12px;
       margin-bottom: 12px;
     }
 
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
       padding: 6px 10px;
       border-radius: 999px;
       font-size: 12px;
@@ -328,90 +315,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       color: #1f2a6b;
     }
 
-    .totbox {
-      border: 1px solid rgba(0, 0, 0, .08);
+    .totbox{
+      border: 1px solid rgba(0,0,0,.08);
       background: #fff;
       border-radius: 12px;
       padding: 10px 12px;
       min-width: 170px;
     }
+    .totlabel{ font-size:12px; color:#6c757d; margin:0; }
+    .totvalue{ font-size:20px; font-weight:900; margin:0; }
 
-    .totlabel {
-      font-size: 12px;
-      color: #6c757d;
-      margin: 0;
-    }
-
-    .totvalue {
-      font-size: 20px;
-      font-weight: 900;
-      margin: 0;
-    }
-
-    .line-card {
-      border: 1px solid rgba(0, 0, 0, .08);
-      background: #fff;
+    .line-card{
+      border: 1px solid rgba(0,0,0,.08);
+      background:#fff;
       border-radius: 14px;
       padding: 12px;
       margin-bottom: 10px;
     }
 
-    .line-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1.4fr .5fr .6fr .5fr 1fr auto;
-      gap: 10px;
-      align-items: end;
-    }
+    .mini{ height: 38px !important; }
+    .muted{ color:#6c757d; }
 
-    .line-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .mini {
-      height: 38px !important;
-    }
-
-    .muted {
-      color: #6c757d;
-    }
-
-    .photo-thumb {
+    .photo-thumb{
       width: 76px;
       height: 52px;
       object-fit: cover;
       border-radius: 10px;
-      border: 1px solid rgba(0, 0, 0, .12);
-      display: none;
+      border: 1px solid rgba(0,0,0,.12);
+      display:none;
     }
 
-    .btn-xs {
-      padding: .25rem .5rem;
-      font-size: .75rem;
-      line-height: 1.2;
-      height: auto;
-    }
-
-    .sticky-actions {
+    .sticky-actions{
       position: sticky;
       bottom: 10px;
       z-index: 3;
-      background: rgba(255, 255, 255, .92);
-      border: 1px solid rgba(0, 0, 0, .08);
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(0,0,0,.08);
       border-radius: 14px;
       padding: 10px;
       backdrop-filter: blur(6px);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: space-between;
-      align-items: center;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:space-between;
+      align-items:center;
       margin-top: 12px;
     }
 
     /* Flash */
-    .sig-flash-wrap {
+    .sig-flash-wrap{
       position: fixed;
       top: 78px;
       right: 18px;
@@ -419,183 +371,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       z-index: 9999;
       pointer-events: none;
     }
-
-    .sig-toast.alert {
+    .sig-toast.alert{
       pointer-events: auto;
       border: 0 !important;
       border-left: 6px solid !important;
       border-radius: 14px !important;
       padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
+      box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
       opacity: 0;
       transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
     }
+    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
+    .sig-toast--danger{ background:#fff1f2 !important; border-left-color:#ef4444 !important; }
+    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
+    .sig-toast__icon i{ font-size: 16px; margin-top: 2px; }
+    .sig-toast__title{ font-weight: 900; margin-bottom: 1px; line-height: 1.1; }
+    .sig-toast__text{ margin:0; line-height: 1.25; }
+    @keyframes sigToastIn { to { opacity:1; transform: translateX(0); } }
+    @keyframes sigToastOut{ to { opacity:0; transform: translateX(12px); visibility:hidden; } }
 
-    .sig-toast--success {
-      background: #f1fff6 !important;
-      border-left-color: #22c55e !important;
+    /* Ações simples na linha */
+    .line-actions-simple{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
     }
 
-    .sig-toast--danger {
-      background: #fff1f2 !important;
-      border-left-color: #ef4444 !important;
-    }
-
-    .sig-toast__row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .sig-toast__icon i {
-      font-size: 16px;
-      margin-top: 2px;
-    }
-
-    .sig-toast__title {
-      font-weight: 900;
-      margin-bottom: 1px;
-      line-height: 1.1;
-    }
-
-    .sig-toast__text {
-      margin: 0;
-      line-height: 1.25;
-    }
-
-    @keyframes sigToastIn {
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes sigToastOut {
-      to {
-        opacity: 0;
-        transform: translateX(12px);
-        visibility: hidden;
-      }
-    }
-
-    /* Camera */
-    .cam-box {
-      border: 1px solid rgba(0, 0, 0, .08);
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 10px;
-    }
-
-    #camVideo,
-    #camPreview {
-      width: 100%;
-      border-radius: 10px;
-      background: #111;
-    }
-
-    #camPreview {
-      display: none;
-    }
-
-    @media (max-width: 1200px) {
-      .line-grid {
-        grid-template-columns: 1fr 1fr .6fr .7fr .5fr 1fr auto;
-      }
-    }
-
-    @media (max-width: 992px) {
-      .line-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .line-actions {
-        justify-content: flex-start;
-      }
-    }
-
-    /* === Mobile first: melhorar toque/legibilidade === */
-    @media (max-width: 576px) {
-      .card-header-lite {
-        flex-direction: column;
-        align-items: stretch !important;
-        gap: 10px !important;
-      }
-
-      .totbox {
-        width: 100%;
-      }
-
-      .totvalue {
-        font-size: 22px;
-      }
-
-      .line-card {
-        padding: 14px;
-      }
-
-      .line-card label {
-        font-weight: 700;
-      }
-
-      /* Botões grandes */
-      .btn-mobile {
-        height: 52px !important;
-        font-size: 16px !important;
-        font-weight: 800 !important;
-        border-radius: 12px !important;
-        padding: 10px 14px !important;
-      }
-
-      .btn-mobile i {
-        font-size: 18px;
-        margin-right: 6px;
-      }
-
-      /* Ações viram bloco */
-      .line-actions-mobile {
-        width: 100%;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-
-      /* Foto preview maior no celular */
-      .photo-thumb {
-        width: 100% !important;
-        height: 160px !important;
-        border-radius: 12px !important;
-      }
-
-      .helper {
-        font-size: 13px;
-      }
-
-      /* Sticky actions em coluna */
-      .sticky-actions {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .sticky-actions>div {
-        width: 100%;
-        justify-content: stretch !important;
-      }
-
-      .sticky-actions .btn {
-        width: 100%;
-      }
-    }
-
-    /* Desktop/tablet: botão Foto maior também, mas não gigante */
-    .btn-foto-big {
+    /* Desktop/tablet: botão Foto maior */
+    .btn-foto-big{
       height: 46px;
       font-size: 14px;
       font-weight: 800;
       border-radius: 12px;
       padding: 10px 14px;
+    }
+
+    /* Camera */
+    .cam-box{
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      border-radius:14px;
+      padding:10px;
+    }
+    #camVideo, #camPreview{
+      width:100%;
+      border-radius:12px;
+      background:#111;
+      max-height: 60vh;
+      object-fit: cover;
+    }
+    #camPreview{ display:none; }
+    #camCanvas{ display:none; }
+
+    /* Mobile first */
+    @media (max-width:576px){
+      .card-header-lite{
+        flex-direction:column;
+        align-items:stretch !important;
+        gap:10px !important;
+      }
+      .totbox{ width:100%; }
+      .totvalue{ font-size: 22px; }
+      .line-card{ padding: 14px; }
+      .line-card label{ font-weight: 700; }
+      .photo-thumb{
+        width:100% !important;
+        height: 160px !important;
+        border-radius: 12px !important;
+      }
+      .helper{ font-size: 13px; }
+      .sticky-actions{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .sticky-actions > div{
+        width:100%;
+        justify-content:stretch !important;
+      }
+      .sticky-actions .btn{ width:100%; }
+
+      .line-actions-simple{
+        width:100%;
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap:10px;
+      }
+      .line-actions-simple .btn{
+        height:52px !important;
+        font-size:16px !important;
+        font-weight:800 !important;
+        border-radius:12px !important;
+      }
+      .line-actions-simple .btn i{ font-size:18px; margin-right: 6px; }
     }
   </style>
 </head>
@@ -650,16 +521,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <div class="container-fluid page-body-wrapper">
-      <!-- SIDEBAR (mantive simples aqui; se quiser eu encaixo no seu completo) -->
+      <!-- SIDEBAR -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
-          <li class="nav-item"><a class="nav-link" href="index.php"><i class="icon-grid menu-icon"></i><span class="menu-title">Dashboard</span></a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="index.php">
+              <i class="icon-grid menu-icon"></i><span class="menu-title">Dashboard</span>
+            </a>
+          </li>
           <li class="nav-item active">
             <a class="nav-link" href="./romaneioEntrada.php" style="color:white !important; background: #231475C5 !important;">
               <i class="ti-write menu-icon"></i><span class="menu-title">Romaneio (Entrada)</span>
             </a>
           </li>
-          <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box menu-icon"></i><span class="menu-title">Fechamento</span></a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="./fechamentoDia.php">
+              <i class="ti-check-box menu-icon"></i><span class="menu-title">Fechamento</span>
+            </a>
+          </li>
         </ul>
       </nav>
 
@@ -711,8 +590,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       <!-- LINHA BASE -->
                       <div class="line-card js-line">
                         <div class="row">
-
-                          <!-- linha 1: 3 colunas -->
                           <div class="col-lg-4 col-md-6 mb-3">
                             <label class="mb-1">Produtor</label>
                             <select class="form-control js-produtor" name="produtor_id[]">
@@ -744,7 +621,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" class="form-control js-qtd" name="quantidade_entrada[]" value="1">
                           </div>
 
-                          <!-- linha 2: 3 colunas -->
                           <div class="col-lg-4 col-md-6 mb-3">
                             <label class="mb-1">Preço</label>
                             <input type="text" class="form-control js-preco" name="preco_unitario_dia[]" placeholder="0,00">
@@ -760,59 +636,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" class="form-control js-cat" value="" readonly>
                           </div>
 
-                          <!-- linha 3: ações -->
+                          <!-- ações -->
                           <div class="col-12">
                             <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:10px;">
-                              <div class="d-flex align-items-center" style="gap:10px;">
+                              <div class="d-flex align-items-center" style="gap:10px; min-width: 220px;">
                                 <img class="photo-thumb js-thumb" src="" alt="">
-                                <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
+                                <small class="text-muted helper mb-0">Foto opcional.</small>
                               </div>
 
-                              <!-- linha 3: ações -->
-                              <div class="col-12">
-                                <div class="row">
-                                  <div class="col-12 mb-2">
-                                    <img class="photo-thumb js-thumb" src="" alt="">
-                                  </div>
+                              <div class="line-actions-simple">
+                                <button type="button" class="btn btn-primary btn-foto-big js-foto">
+                                  <i class="ti-camera"></i> Tirar foto
+                                </button>
 
-                                  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:10px;">
-                                    <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
-
-                                    <div class="line-actions-mobile">
-                                      <button type="button" class="btn btn-primary btn-mobile btn-foto-big js-foto">
-                                        <i class="ti-camera"></i> Tirar Foto
-                                      </button>
-
-                                      <button type="button" class="btn btn-light btn-mobile js-remove" disabled>
-                                        <i class="ti-trash"></i> Remover
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
-                                <input type="hidden" name="observacao_item[]" value="">
+                                <button type="button" class="btn btn-light js-remove" disabled>
+                                  <i class="ti-trash"></i> Remover linha
+                                </button>
                               </div>
-
-
                             </div>
+
+                            <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
+                            <input type="hidden" name="observacao_item[]" value="">
                           </div>
-                          <!-- /LINHA BASE -->
-
-
+                          <!-- /ações -->
                         </div>
+                      </div>
+                      <!-- /LINHA BASE -->
 
-                        <div class="sticky-actions">
-                          <div class="d-flex flex-wrap" style="gap:8px;">
-                            <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
-                            <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
-                            <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
-                          </div>
-                          <div class="d-flex flex-wrap" style="gap:8px;">
-                            <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
-                            <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
-                          </div>
-                        </div>
+                    </div><!-- /linesWrap -->
+
+                    <div class="sticky-actions">
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
+                        <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
+                        <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
+                      </div>
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
+                        <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
+                      </div>
+                    </div>
 
                   </form>
 
@@ -840,35 +703,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <!-- MODAL CÂMERA -->
+  <!-- MODAL CÂMERA (abre já com câmera ligada) -->
   <div class="modal fade" id="modalCamera" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content" style="border-radius:14px;">
         <div class="modal-header">
           <h5 class="modal-title">Tirar foto</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+            <span aria-hidden="true">&times;</span>
+          </button>
         </div>
 
         <div class="modal-body">
           <div class="cam-box">
             <video id="camVideo" autoplay playsinline></video>
-            <canvas id="camCanvas" style="display:none;"></canvas>
+            <canvas id="camCanvas"></canvas>
             <img id="camPreview" alt="Prévia">
           </div>
 
           <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btnAbrirCam"><i class="ti-camera mr-1"></i> Abrir</button>
-            <button type="button" class="btn btn-primary btn-sm" id="btnTirarFoto" disabled><i class="ti-image mr-1"></i> Tirar</button>
-            <button type="button" class="btn btn-light btn-sm" id="btnRefazer" disabled><i class="ti-reload mr-1"></i> Refazer</button>
-            <button type="button" class="btn btn-danger btn-sm" id="btnFecharCam" disabled><i class="ti-close mr-1"></i> Fechar</button>
+            <button type="button" class="btn btn-primary" id="btnTirarFoto" disabled>
+              <i class="ti-image mr-1"></i> Tirar
+            </button>
+
+            <button type="button" class="btn btn-light" id="btnRefazer" disabled>
+              <i class="ti-reload mr-1"></i> Refazer
+            </button>
+
+            <button type="button" class="btn btn-success" id="btnUsarFoto" disabled>
+              <i class="ti-check mr-1"></i> Usar foto
+            </button>
           </div>
 
-          <small class="text-muted helper d-block mt-2">Câmera fecha automaticamente depois de tirar (economiza bateria).</small>
+          <small class="text-muted helper d-block mt-2">
+            Ao abrir, a câmera já inicia. Se não pedir permissão, use HTTPS (ou localhost).
+          </small>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="btnUsarFoto" disabled><i class="ti-check mr-1"></i> Usar foto</button>
+          <button type="button" class="btn btn-light" data-dismiss="modal">Fechar</button>
         </div>
       </div>
     </div>
@@ -882,7 +755,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <script src="../../../js/todolist.js"></script>
 
   <script>
-    (function() {
+    (function () {
       const wrap = document.getElementById('linesWrap');
       const btnAdd = document.getElementById('btnAdd');
       const btnRef = document.getElementById('btnRef');
@@ -891,10 +764,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       function brMoney(n) {
         try {
-          return n.toLocaleString('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          });
+          return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         } catch (e) {
           const x = Math.round(n * 100) / 100;
           return String(x).replace('.', ',');
@@ -924,7 +794,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         let tot = 0;
         document.querySelectorAll('.js-line').forEach(line => {
           const produtor = parseInt((line.querySelector('.js-produtor') || {}).value || '0', 10);
-          const produto = parseInt((line.querySelector('.js-produto') || {}).value || '0', 10);
+          const produto  = parseInt((line.querySelector('.js-produto') || {}).value  || '0', 10);
           if (!produtor || !produto) return;
           const qtd = toNum((line.querySelector('.js-qtd') || {}).value || '0');
           const preco = toNum((line.querySelector('.js-preco') || {}).value || '0');
@@ -974,6 +844,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         clone.querySelector('.js-un').value = '';
         clone.querySelector('.js-cat').value = '';
         clone.querySelector('.js-foto-base64').value = '';
+
         const thumb = clone.querySelector('.js-thumb');
         thumb.src = '';
         thumb.style.display = 'none';
@@ -1014,58 +885,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       updateRemoveButtons();
       calcTotal();
 
-      // ===== CAMERA =====
+      // ===== CAMERA (AUTO-OPEN) =====
       let currentLine = null;
       let stream = null;
       let capturedDataUrl = '';
 
-      const camVideo = document.getElementById('camVideo');
-      const camCanvas = document.getElementById('camCanvas');
+      const camVideo   = document.getElementById('camVideo');
+      const camCanvas  = document.getElementById('camCanvas');
       const camPreview = document.getElementById('camPreview');
 
-      const btnAbrirCam = document.getElementById('btnAbrirCam');
       const btnTirarFoto = document.getElementById('btnTirarFoto');
-      const btnRefazer = document.getElementById('btnRefazer');
-      const btnFecharCam = document.getElementById('btnFecharCam');
-      const btnUsarFoto = document.getElementById('btnUsarFoto');
+      const btnRefazer   = document.getElementById('btnRefazer');
+      const btnUsarFoto  = document.getElementById('btnUsarFoto');
 
-      function setCamState({
-        on,
-        has
-      }) {
-        btnAbrirCam.disabled = on;
+      function setCamUI({ on, has }) {
         btnTirarFoto.disabled = !on;
-        btnFecharCam.disabled = !on;
-        btnRefazer.disabled = !has;
-        btnUsarFoto.disabled = !has;
+        btnRefazer.disabled   = !has;
+        btnUsarFoto.disabled  = !has;
         camPreview.style.display = has ? 'block' : 'none';
-      }
-
-      async function openCam() {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: {
-                ideal: 'environment'
-              }
-            },
-            audio: false
-          });
-          camVideo.srcObject = stream;
-          await camVideo.play();
-          capturedDataUrl = '';
-          camPreview.src = '';
-          setCamState({
-            on: true,
-            has: false
-          });
-        } catch (e) {
-          alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS.');
-          setCamState({
-            on: false,
-            has: false
-          });
-        }
       }
 
       function closeCam() {
@@ -1073,70 +910,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           stream.getTracks().forEach(t => t.stop());
           stream = null;
         }
-        camVideo.srcObject = null;
-        setCamState({
-          on: false,
-          has: capturedDataUrl !== ''
-        });
+        if (camVideo) camVideo.srcObject = null;
+      }
+
+      async function openCam() {
+        try {
+          closeCam();
+
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false
+          });
+
+          camVideo.srcObject = stream;
+          await camVideo.play();
+
+          capturedDataUrl = '';
+          camPreview.src = '';
+          setCamUI({ on: true, has: false });
+        } catch (e) {
+          alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS (ou localhost).');
+          setCamUI({ on: false, has: false });
+        }
       }
 
       function snap() {
         if (!camVideo.videoWidth || !camVideo.videoHeight) return;
 
-        const targetW = 720; // leve
+        const targetW = 720;
         const ratio = camVideo.videoHeight / camVideo.videoWidth;
         const targetH = Math.round(targetW * ratio);
 
         camCanvas.width = targetW;
         camCanvas.height = targetH;
-        const ctx = camCanvas.getContext('2d', {
-          alpha: false
-        });
+        const ctx = camCanvas.getContext('2d', { alpha: false });
         ctx.drawImage(camVideo, 0, 0, targetW, targetH);
 
         capturedDataUrl = camCanvas.toDataURL('image/jpeg', 0.65);
         camPreview.src = capturedDataUrl;
 
-        setCamState({
-          on: true,
-          has: true
-        });
-        closeCam(); // economiza
+        closeCam(); // economiza bateria
+        setCamUI({ on: false, has: true });
       }
 
       function redo() {
         capturedDataUrl = '';
         camPreview.src = '';
-        setCamState({
-          on: false,
-          has: false
-        });
+        camPreview.style.display = 'none';
         openCam();
       }
 
-      document.addEventListener('click', function(e) {
+      // clique no botão "Tirar foto" da linha
+      document.addEventListener('click', function (e) {
         const btn = e.target.closest('.js-foto');
         if (!btn) return;
 
         currentLine = btn.closest('.js-line');
         capturedDataUrl = '';
         camPreview.src = '';
-        setCamState({
-          on: false,
-          has: false
-        });
+        setCamUI({ on: false, has: false });
 
         if (window.jQuery && jQuery.fn.modal) {
           jQuery('#modalCamera').modal('show');
+          jQuery('#modalCamera').one('shown.bs.modal', function () {
+            openCam(); // abre câmera automaticamente
+          });
+        } else {
+          openCam();
         }
       });
 
-      btnAbrirCam.addEventListener('click', openCam);
       btnTirarFoto.addEventListener('click', snap);
       btnRefazer.addEventListener('click', redo);
-      btnFecharCam.addEventListener('click', closeCam);
 
-      btnUsarFoto.addEventListener('click', function() {
+      btnUsarFoto.addEventListener('click', function () {
         if (!currentLine || !capturedDataUrl) return;
 
         currentLine.querySelector('.js-foto-base64').value = capturedDataUrl;
@@ -1150,19 +997,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       });
 
+      // quando fechar o modal, garante que a câmera feche
       if (window.jQuery) {
-        jQuery('#modalCamera').on('hidden.bs.modal', function() {
+        jQuery('#modalCamera').on('hidden.bs.modal', function () {
           closeCam();
           capturedDataUrl = '';
           camPreview.src = '';
-          setCamState({
-            on: false,
-            has: false
-          });
+          setCamUI({ on: false, has: false });
         });
       }
     })();
   </script>
 </body>
-
 </html>
