@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -371,123 +372,281 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    .form-control { height: 42px }
-    .btn { height: 42px }
-    .helper { font-size: 12px }
-    .card { border-radius: 14px }
+    .form-control {
+      height: 42px
+    }
+
+    .btn {
+      height: 42px
+    }
+
+    .helper {
+      font-size: 12px
+    }
+
+    .card {
+      border-radius: 14px
+    }
 
     .card-header-lite {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 12px; flex-wrap: wrap;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
       border-bottom: 1px solid rgba(0, 0, 0, .06);
-      padding-bottom: 12px; margin-bottom: 12px
+      padding-bottom: 12px;
+      margin-bottom: 12px
     }
 
     .pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 10px; border-radius: 999px;
-      font-size: 12px; font-weight: 700;
-      background: #eef2ff; color: #1f2a6b
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #eef2ff;
+      color: #1f2a6b
     }
 
     .totbox {
       border: 1px solid rgba(0, 0, 0, .08);
-      background: #fff; border-radius: 12px;
-      padding: 10px 12px; min-width: 170px
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      min-width: 170px
     }
 
-    .totlabel { font-size: 12px; color: #6c757d; margin: 0 }
-    .totvalue { font-size: 20px; font-weight: 900; margin: 0 }
+    .totlabel {
+      font-size: 12px;
+      color: #6c757d;
+      margin: 0
+    }
+
+    .totvalue {
+      font-size: 20px;
+      font-weight: 900;
+      margin: 0
+    }
 
     .line-card {
       border: 1px solid rgba(0, 0, 0, .08);
-      background: #fff; border-radius: 14px;
-      padding: 12px; margin-bottom: 10px
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px
     }
 
-    .mini { height: 38px !important }
-    .muted { color: #6c757d }
+    .mini {
+      height: 38px !important
+    }
+
+    .muted {
+      color: #6c757d
+    }
 
     .photo-thumb {
-      width: 76px; height: 52px; object-fit: cover;
-      border-radius: 10px; border: 1px solid rgba(0, 0, 0, .12);
+      width: 76px;
+      height: 52px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 0, 0, .12);
       display: none
     }
 
     .sticky-actions {
-      position: sticky; bottom: 10px; z-index: 3;
+      position: sticky;
+      bottom: 10px;
+      z-index: 3;
       background: rgba(255, 255, 255, .92);
       border: 1px solid rgba(0, 0, 0, .08);
-      border-radius: 14px; padding: 10px;
+      border-radius: 14px;
+      padding: 10px;
       backdrop-filter: blur(6px);
-      display: flex; flex-wrap: wrap; gap: 10px;
-      justify-content: space-between; align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
       margin-top: 12px
     }
 
     .sig-flash-wrap {
-      position: fixed; top: 78px; right: 18px;
+      position: fixed;
+      top: 78px;
+      right: 18px;
       width: min(420px, calc(100vw - 36px));
-      z-index: 9999; pointer-events: none
+      z-index: 9999;
+      pointer-events: none
     }
 
     .sig-toast.alert {
       pointer-events: auto;
-      border: 0 !important; border-left: 6px solid !important;
+      border: 0 !important;
+      border-left: 6px solid !important;
       border-radius: 14px !important;
       padding: 10px 12px !important;
       box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
-      opacity: 0; transform: translateX(10px);
+      opacity: 0;
+      transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s
     }
 
-    .sig-toast--success { background: #f1fff6 !important; border-left-color: #22c55e !important }
-    .sig-toast--danger { background: #fff1f2 !important; border-left-color: #ef4444 !important }
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important
+    }
 
-    .sig-toast__row { display: flex; align-items: flex-start; gap: 10px }
-    .sig-toast__icon i { font-size: 16px; margin-top: 2px }
-    .sig-toast__title { font-weight: 900; margin-bottom: 1px; line-height: 1.1 }
-    .sig-toast__text { margin: 0; line-height: 1.25 }
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important
+    }
 
-    @keyframes sigToastIn { to { opacity: 1; transform: translateX(0) } }
-    @keyframes sigToastOut { to { opacity: 0; transform: translateX(12px); visibility: hidden } }
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px
+    }
 
-    .line-actions-simple { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end }
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px
+    }
+
+    .sig-toast__title {
+      font-weight: 900;
+      margin-bottom: 1px;
+      line-height: 1.1
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25
+    }
+
+    @keyframes sigToastIn {
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    @keyframes sigToastOut {
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden
+      }
+    }
+
+    .line-actions-simple {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end
+    }
 
     .btn-foto-big {
-      height: 46px; font-size: 14px; font-weight: 800;
-      border-radius: 12px; padding: 10px 14px
+      height: 46px;
+      font-size: 14px;
+      font-weight: 800;
+      border-radius: 12px;
+      padding: 10px 14px
     }
 
     .cam-box {
       border: 1px solid rgba(0, 0, 0, .08);
-      background: #fff; border-radius: 14px; padding: 10px
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px
     }
 
-    #camVideo, #camPreview {
-      width: 100%; border-radius: 12px;
-      background: #111; max-height: 60vh; object-fit: cover
+    #camVideo,
+    #camPreview {
+      width: 100%;
+      border-radius: 12px;
+      background: #111;
+      max-height: 60vh;
+      object-fit: cover
     }
 
-    #camPreview { display: none }
-    #camCanvas { display: none }
+    #camPreview {
+      display: none
+    }
+
+    #camCanvas {
+      display: none
+    }
 
     @media (max-width:576px) {
-      .card-header-lite { flex-direction: column; align-items: stretch !important; gap: 10px !important }
-      .totbox { width: 100% }
-      .totvalue { font-size: 22px }
-      .line-card { padding: 14px }
-      .line-card label { font-weight: 700 }
-      .photo-thumb { width: 100% !important; height: 160px !important; border-radius: 12px !important }
-      .helper { font-size: 13px }
-      .sticky-actions { flex-direction: column; align-items: stretch }
-      .sticky-actions>div { width: 100%; justify-content: stretch !important }
-      .sticky-actions .btn { width: 100% }
-      .line-actions-simple { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
-      .line-actions-simple .btn { height: 52px !important; font-size: 16px !important; font-weight: 800 !important; border-radius: 12px !important }
-      .line-actions-simple .btn i { font-size: 18px; margin-right: 6px }
+      .card-header-lite {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 10px !important
+      }
+
+      .totbox {
+        width: 100%
+      }
+
+      .totvalue {
+        font-size: 22px
+      }
+
+      .line-card {
+        padding: 14px
+      }
+
+      .line-card label {
+        font-weight: 700
+      }
+
+      .photo-thumb {
+        width: 100% !important;
+        height: 160px !important;
+        border-radius: 12px !important
+      }
+
+      .helper {
+        font-size: 13px
+      }
+
+      .sticky-actions {
+        flex-direction: column;
+        align-items: stretch
+      }
+
+      .sticky-actions>div {
+        width: 100%;
+        justify-content: stretch !important
+      }
+
+      .sticky-actions .btn {
+        width: 100%
+      }
+
+      .line-actions-simple {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px
+      }
+
+      .line-actions-simple .btn {
+        height: 52px !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        border-radius: 12px !important
+      }
+
+      .line-actions-simple .btn i {
+        font-size: 18px;
+        margin-right: 6px
+      }
     }
   </style>
 </head>
@@ -776,7 +935,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       function brMoney(n) {
         try {
-          return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          return n.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
         } catch (e) {
           const x = Math.round(n * 100) / 100;
           return String(x).replace('.', ',');
@@ -853,20 +1015,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // reset values
         const sProdutor = clone.querySelector('.js-produtor');
-        const sProduto  = clone.querySelector('.js-produto');
-        const inQtd     = clone.querySelector('.js-qtd');
-        const inPreco   = clone.querySelector('.js-preco');
-        const inUn      = clone.querySelector('.js-un');
-        const inCat     = clone.querySelector('.js-cat');
-        const inFoto    = clone.querySelector('.js-foto-base64');
+        const sProduto = clone.querySelector('.js-produto');
+        const inQtd = clone.querySelector('.js-qtd');
+        const inPreco = clone.querySelector('.js-preco');
+        const inUn = clone.querySelector('.js-un');
+        const inCat = clone.querySelector('.js-cat');
+        const inFoto = clone.querySelector('.js-foto-base64');
 
         if (sProdutor) sProdutor.value = '0';
-        if (sProduto)  sProduto.value = '0';
-        if (inQtd)     inQtd.value = '1';
-        if (inPreco)   inPreco.value = '';
-        if (inUn)      inUn.value = '';
-        if (inCat)     inCat.value = '';
-        if (inFoto)    inFoto.value = '';
+        if (sProduto) sProduto.value = '0';
+        if (inQtd) inQtd.value = '1';
+        if (inPreco) inPreco.value = '';
+        if (inUn) inUn.value = '';
+        if (inCat) inCat.value = '';
+        if (inFoto) inFoto.value = '';
 
         const thumb = clone.querySelector('.js-thumb');
         if (thumb) {
@@ -926,7 +1088,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       const btnRefazer = document.getElementById('btnRefazer');
       const btnUsarFoto = document.getElementById('btnUsarFoto');
 
-      function setCamUI({ on, has }) {
+      function setCamUI({
+        on,
+        has
+      }) {
         if (btnTirarFoto) btnTirarFoto.disabled = !on;
         if (btnRefazer) btnRefazer.disabled = !has;
         if (btnUsarFoto) btnUsarFoto.disabled = !has;
@@ -945,17 +1110,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
           closeCam();
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } },
+            video: {
+              facingMode: {
+                ideal: 'environment'
+              }
+            },
             audio: false
           });
           camVideo.srcObject = stream;
           await camVideo.play();
           capturedDataUrl = '';
           if (camPreview) camPreview.src = '';
-          setCamUI({ on: true, has: false });
+          setCamUI({
+            on: true,
+            has: false
+          });
         } catch (e) {
           alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS (ou localhost).');
-          setCamUI({ on: false, has: false });
+          setCamUI({
+            on: false,
+            has: false
+          });
         }
       }
 
@@ -967,14 +1142,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         camCanvas.width = targetW;
         camCanvas.height = targetH;
-        const ctx = camCanvas.getContext('2d', { alpha: false });
+        const ctx = camCanvas.getContext('2d', {
+          alpha: false
+        });
         ctx.drawImage(camVideo, 0, 0, targetW, targetH);
 
         capturedDataUrl = camCanvas.toDataURL('image/jpeg', 0.65);
         if (camPreview) camPreview.src = capturedDataUrl;
 
         closeCam();
-        setCamUI({ on: false, has: true });
+        setCamUI({
+          on: false,
+          has: true
+        });
       }
 
       function redo() {
@@ -993,7 +1173,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         currentLine = btn.closest('.js-line');
         capturedDataUrl = '';
         if (camPreview) camPreview.src = '';
-        setCamUI({ on: false, has: false });
+        setCamUI({
+          on: false,
+          has: false
+        });
 
         if (window.jQuery && jQuery.fn.modal) {
           jQuery('#modalCamera').modal('show');
@@ -1028,10 +1211,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           closeCam();
           capturedDataUrl = '';
           if (camPreview) camPreview.src = '';
-          setCamUI({ on: false, has: false });
+          setCamUI({
+            on: false,
+            has: false
+          });
         });
       }
     })();
   </script>
 </body>
+
 </html>
