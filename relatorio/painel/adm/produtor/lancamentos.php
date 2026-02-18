@@ -673,7 +673,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
               </style>
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link active" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
+                <li class="nav-item"><a class="nav-link active" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
                 <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
               </ul>
             </div>
