@@ -100,7 +100,7 @@ try {
   }
 } catch (Throwable $e) {
   $_SESSION['flash_err'] = 'Não foi possível abrir o romaneio do dia.';
-  header('Location: ./romaneioEntrada.php');
+  header('Location: ./lancamentos.php');
   exit;
 }
 
@@ -141,13 +141,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $postedCsrf = (string)($_POST['csrf_token'] ?? '');
   if (!hash_equals($csrf, $postedCsrf)) {
     $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+    header('Location: ./lancamentos.php');
     exit;
   }
 
   $acao = (string)($_POST['acao'] ?? '');
   if ($acao !== 'salvar') {
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+    header('Location: ./lancamentos.php');
     exit;
   }
 
@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) $dataRef = $dia;
 
   if ($dataRef !== $dia) {
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dataRef));
+    header('Location: ./lancamentos.php');
     exit;
   }
 
@@ -197,13 +197,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if (empty($itens)) {
     $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+    header('Location: ./lancamentos.php');
     exit;
   }
 
   if (!$UPLOAD_ABS) {
     $_SESSION['flash_err'] = 'Diretório base não encontrado para upload.';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+    header('Location: ./lancamentos.php');
     exit;
   }
 
@@ -270,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
   }
 
-  header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+  header('Location: ./lancamentos.php');
   exit;
 }
 ?>
@@ -783,7 +783,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                   </div>
 
-                  <form method="post" action="./romaneioEntrada.php?dia=<?= h($dia) ?>" autocomplete="off" id="formEntrada">
+                  <form method="post" action="./lancamentos.php?dia=<?= h($dia) ?>" autocomplete="off" id="formEntrada">
                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                     <input type="hidden" name="acao" value="salvar">
                     <input type="hidden" name="data_ref" value="<?= h($dia) ?>">
@@ -876,7 +876,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       </div>
                       <div class="d-flex flex-wrap" style="gap:8px;">
                         <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
-                        <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
+                        <a class="btn btn-light" href="./lancamentos.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
                       </div>
                     </div>
 
