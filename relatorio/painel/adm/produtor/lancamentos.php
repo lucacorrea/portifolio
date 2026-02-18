@@ -287,37 +287,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    .form-control {
-      height: 42px;
-    }
+    .form-control { height: 42px; }
+    .btn { height: 42px; }
+    .helper { font-size: 12px; }
+    .card { border-radius: 14px; }
 
-    .btn {
-      height: 42px;
-    }
-
-    .helper {
-      font-size: 12px;
-    }
-
-    .card {
-      border-radius: 14px;
-    }
-
-    .card-header-lite {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      border-bottom: 1px solid rgba(0, 0, 0, .06);
+    .card-header-lite{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      border-bottom: 1px solid rgba(0,0,0,.06);
       padding-bottom: 12px;
       margin-bottom: 12px;
     }
 
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
       padding: 6px 10px;
       border-radius: 999px;
       font-size: 12px;
@@ -326,92 +315,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       color: #1f2a6b;
     }
 
-    .totbox {
-      border: 1px solid rgba(0, 0, 0, .08);
+    .totbox{
+      border: 1px solid rgba(0,0,0,.08);
       background: #fff;
-      height: 100%;
+      border-radius: 12px;
+      padding: 10px 12px;
+      min-width: 170px;
     }
+    .totlabel{ font-size:12px; color:#6c757d; margin:0; }
+    .totvalue{ font-size:20px; font-weight:900; margin:0; }
 
-    .totlabel {
-      font-size: 12px;
-      color: #6c757d;
-      margin: 0;
-    }
-
-    .totvalue {
-      font-size: 20px;
-      font-weight: 900;
-      margin: 0;
-    }
-
-    .line-card {
-      border: 1px solid rgba(0, 0, 0, .08);
-      background: #fff;
+    .line-card{
+      border: 1px solid rgba(0,0,0,.08);
+      background:#fff;
       border-radius: 14px;
       padding: 12px;
       margin-bottom: 10px;
     }
 
-    .line-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1.4fr .5fr .6fr .5fr 1fr auto;
-      gap: 10px;
-      align-items: end;
-    }
+    .mini{ height: 38px !important; }
+    .muted{ color:#6c757d; }
 
-    .line-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .mini {
-      height: 38px !important;
-    }
-
-    .muted {
-      color: #6c757d;
-    }
-
-    .photo-thumb {
+    .photo-thumb{
       width: 76px;
       height: 52px;
       object-fit: cover;
       border-radius: 10px;
-      border: 1px solid rgba(0, 0, 0, .12);
-      display: none;
+      border: 1px solid rgba(0,0,0,.12);
+      display:none;
     }
 
-    .btn-xs {
-      padding: .25rem .5rem;
-      font-size: .75rem;
-      line-height: 1.2;
-      height: auto;
-    }
-
-    .sticky-actions {
+    .sticky-actions{
       position: sticky;
       bottom: 10px;
       z-index: 3;
-      background: rgba(255, 255, 255, .92);
-      border: 1px solid rgba(0, 0, 0, .08);
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(0,0,0,.08);
       border-radius: 14px;
       padding: 10px;
       backdrop-filter: blur(6px);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: space-between;
-      align-items: center;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:space-between;
+      align-items:center;
       margin-top: 12px;
     }
 
     /* Flash */
-    .sig-flash-wrap {
+    .sig-flash-wrap{
       position: fixed;
       top: 78px;
       right: 18px;
-      left: auto;
       width: min(420px, calc(100vw - 36px));
       z-index: 9999;
       pointer-events: none;
@@ -425,174 +380,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
-
       opacity: 0;
       transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
     }
+    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
+    .sig-toast--danger{ background:#fff1f2 !important; border-left-color:#ef4444 !important; }
+    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
+    .sig-toast__icon i{ font-size: 16px; margin-top: 2px; }
+    .sig-toast__title{ font-weight: 900; margin-bottom: 1px; line-height: 1.1; }
+    .sig-toast__text{ margin:0; line-height: 1.25; }
+    @keyframes sigToastIn { to { opacity:1; transform: translateX(0); } }
+    @keyframes sigToastOut{ to { opacity:0; transform: translateX(12px); visibility:hidden; } }
 
-    .sig-toast--success {
-      background: #f1fff6 !important;
-      border-left-color: #22c55e !important;
+    /* Ações simples na linha */
+    .line-actions-simple{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
     }
 
-    .sig-toast--danger {
-      background: #fff1f2 !important;
-      border-left-color: #ef4444 !important;
-    }
-
-    .sig-toast__row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .sig-toast__icon i {
-      font-size: 16px;
-      margin-top: 2px;
-    }
-
-    .sig-toast__title {
-      font-weight: 900;
-      margin-bottom: 1px;
-      line-height: 1.1;
-    }
-
-    .sig-toast__text {
-      margin: 0;
-      line-height: 1.25;
-    }
-
-    @keyframes sigToastIn {
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes sigToastOut {
-      to {
-        opacity: 0;
-        transform: translateX(12px);
-        visibility: hidden;
-      }
-    }
-
-    /* Camera */
-    .cam-box {
-      border: 1px solid rgba(0, 0, 0, .08);
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 10px;
-    }
-
-    #camVideo,
-    #camPreview {
-      width: 100%;
-      border-radius: 10px;
-      background: #111;
-    }
-
-    #camPreview {
-      display: none;
-    }
-
-    @media (max-width: 1200px) {
-      .line-grid {
-        grid-template-columns: 1fr 1fr .6fr .7fr .5fr 1fr auto;
-      }
-    }
-
-    @media (max-width: 992px) {
-      .line-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .line-actions {
-        justify-content: flex-start;
-      }
-    }
-
-    /* === Mobile first: melhorar toque/legibilidade === */
-    @media (max-width: 576px) {
-      .card-header-lite {
-        flex-direction: column;
-        align-items: stretch !important;
-        gap: 10px !important;
-      }
-
-      .totbox {
-        width: 100%;
-      }
-
-      .totvalue {
-        font-size: 22px;
-      }
-
-      .line-card {
-        padding: 14px;
-      }
-
-      .line-card label {
-        font-weight: 700;
-      }
-
-      /* Botões grandes */
-      .btn-mobile {
-        height: 52px !important;
-        font-size: 16px !important;
-        font-weight: 800 !important;
-        border-radius: 12px !important;
-        padding: 10px 14px !important;
-      }
-
-      .btn-mobile i {
-        font-size: 18px;
-        margin-right: 6px;
-      }
-
-      /* Ações viram bloco */
-      .line-actions-mobile {
-        width: 100%;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-
-      /* Foto preview maior no celular */
-      .photo-thumb {
-        width: 100% !important;
-        height: 160px !important;
-        border-radius: 12px !important;
-      }
-
-      .helper {
-        font-size: 13px;
-      }
-
-      /* Sticky actions em coluna */
-      .sticky-actions {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .sticky-actions>div {
-        width: 100%;
-        justify-content: stretch !important;
-      }
-
-      .sticky-actions .btn {
-        width: 100%;
-      }
-    }
-
-    /* Desktop/tablet: botão Foto maior também, mas não gigante */
-    .btn-foto-big {
+    /* Desktop/tablet: botão Foto maior */
+    .btn-foto-big{
       height: 46px;
       font-size: 14px;
       font-weight: 800;
       border-radius: 12px;
       padding: 10px 14px;
+    }
+
+    /* Camera */
+    .cam-box{
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      border-radius:14px;
+      padding:10px;
+    }
+    #camVideo, #camPreview{
+      width:100%;
+      border-radius:12px;
+      background:#111;
+      max-height: 60vh;
+      object-fit: cover;
+    }
+    #camPreview{ display:none; }
+    #camCanvas{ display:none; }
+
+    /* Mobile first */
+    @media (max-width:576px){
+      .card-header-lite{
+        flex-direction:column;
+        align-items:stretch !important;
+        gap:10px !important;
+      }
+      .totbox{ width:100%; }
+      .totvalue{ font-size: 22px; }
+      .line-card{ padding: 14px; }
+      .line-card label{ font-weight: 700; }
+      .photo-thumb{
+        width:100% !important;
+        height: 160px !important;
+        border-radius: 12px !important;
+      }
+      .helper{ font-size: 13px; }
+      .sticky-actions{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .sticky-actions > div{
+        width:100%;
+        justify-content:stretch !important;
+      }
+      .sticky-actions .btn{ width:100%; }
+
+      .line-actions-simple{
+        width:100%;
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap:10px;
+      }
+      .line-actions-simple .btn{
+        height:52px !important;
+        font-size:16px !important;
+        font-weight:800 !important;
+        border-radius:12px !important;
+      }
+      .line-actions-simple .btn i{ font-size:18px; margin-right: 6px; }
     }
   </style>
 </head>
@@ -613,7 +487,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <ul class="navbar-nav mr-lg-2">
           <li class="nav-item nav-search d-none d-lg-block"></li>
         </ul>
-        <ul class="navbar-nav navbar-nav-right"></ul>
         <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
           <span class="icon-menu"></span>
         </button>
@@ -623,7 +496,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($msg || $err): ?>
       <div class="sig-flash-wrap">
         <?php if ($msg): ?>
-          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+          <div class="alert sig-toast sig-toast--success" role="alert">
             <div class="sig-toast__row">
               <div class="sig-toast__icon"><i class="ti-check"></i></div>
               <div>
@@ -631,14 +504,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="sig-toast__text"><?= h($msg) ?></p>
               </div>
             </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-              <span aria-hidden="true">&times;</span>
-            </button>
           </div>
         <?php endif; ?>
-
         <?php if ($err): ?>
-          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+          <div class="alert sig-toast sig-toast--danger" role="alert">
             <div class="sig-toast__row">
               <div class="sig-toast__icon"><i class="ti-alert"></i></div>
               <div>
@@ -646,25 +515,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="sig-toast__text"><?= h($err) ?></p>
               </div>
             </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-              <span aria-hidden="true">&times;</span>
-            </button>
           </div>
         <?php endif; ?>
       </div>
     <?php endif; ?>
 
     <div class="container-fluid page-body-wrapper">
-      <!-- SIDEBAR (mantive simples aqui; se quiser eu encaixo no seu completo) -->
+      <!-- SIDEBAR -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
-          <li class="nav-item"><a class="nav-link" href="index.php"><i class="icon-grid menu-icon"></i><span class="menu-title">Dashboard</span></a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="index.php">
+              <i class="icon-grid menu-icon"></i><span class="menu-title">Dashboard</span>
+            </a>
+          </li>
           <li class="nav-item active">
             <a class="nav-link" href="./romaneioEntrada.php" style="color:white !important; background: #231475C5 !important;">
               <i class="ti-write menu-icon"></i><span class="menu-title">Romaneio (Entrada)</span>
             </a>
           </li>
-          <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box menu-icon"></i><span class="menu-title">Fechamento</span></a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="./fechamentoDia.php">
+              <i class="ti-check-box menu-icon"></i><span class="menu-title">Fechamento</span>
+            </a>
+          </li>
         </ul>
       </nav>
 
@@ -791,17 +665,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     </div><!-- /linesWrap -->
 
-                        <div class="sticky-actions">
-                          <div class="d-flex flex-wrap" style="gap:8px;">
-                            <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
-                            <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
-                            <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
-                          </div>
-                          <div class="d-flex flex-wrap" style="gap:8px;">
-                            <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
-                            <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
-                          </div>
-                        </div>
+                    <div class="sticky-actions">
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
+                        <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
+                        <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
+                      </div>
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
+                        <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
+                      </div>
+                    </div>
 
                   </form>
 
