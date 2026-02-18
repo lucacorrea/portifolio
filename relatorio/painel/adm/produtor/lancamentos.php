@@ -297,6 +297,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       height: 42px;
     }
 
+    ul .nav-link:hover {
+      color: blue !important;
+    }
+
+    .nav-link {
+      color: black !important;
+    }
+
     .helper {
       font-size: 12px;
     }
@@ -569,7 +577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         font-size: 18px;
         margin-right: 6px;
       }
-}
+    }
   </style>
 </head>
 
