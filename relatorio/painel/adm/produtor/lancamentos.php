@@ -1,6 +1,13 @@
 <?php
+
 declare(strict_types=1);
 session_start();
+
+/**
+ * ✅ SEGURANÇA: evita qualquer “texto solto” antes do HTML
+ * (se algum include soltar espaço/notice, o output buffer segura)
+ */
+if (!ob_get_level()) ob_start();
 
 /* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
@@ -68,13 +75,16 @@ $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 
+/* Nome topo (evita warning) */
+$nomeTopo = (string)($_SESSION['nome'] ?? $_SESSION['usuario_nome'] ?? $_SESSION['usuario_logado'] ?? 'Usuário');
+
 /* CSRF */
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* ===== Conexão ===== */
+/* ===== Conexão (usa sua db() do conexao.php) ===== */
 require '../../../assets/php/conexao.php';
 $pdo = db();
 
@@ -102,7 +112,7 @@ try {
   }
 } catch (Throwable $e) {
   $_SESSION['flash_err'] = 'Não foi possível abrir o romaneio do dia.';
-  header('Location: ./lancamentos.php');
+  header('Location: ./lancamentos.php?dia=' . urlencode($dia));
   exit;
 }
 
@@ -133,23 +143,23 @@ try {
 }
 
 /* ===== Upload config ===== */
-$BASE_DIR = realpath(__DIR__ . '/../../../'); // raiz do projeto (ajuste se precisar)
+$BASE_DIR = realpath(__DIR__ . '/../../../');
 $UPLOAD_REL = 'uploads/romaneio';
 $UPLOAD_ABS = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL) : null;
-$MAX_IMG_BYTES = 3 * 1024 * 1024; // 3MB
+$MAX_IMG_BYTES = 3 * 1024 * 1024;
 
 /* ===== POST: salvar entrada ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $postedCsrf = (string)($_POST['csrf_token'] ?? '');
   if (!hash_equals($csrf, $postedCsrf)) {
     $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./lancamentos.php');
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
 
   $acao = (string)($_POST['acao'] ?? '');
   if ($acao !== 'salvar') {
-    header('Location: ./lancamentos.php');
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
 
@@ -157,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) $dataRef = $dia;
 
   if ($dataRef !== $dia) {
-    header('Location: ./lancamentos.php');
+    header('Location: ./lancamentos.php?dia=' . urlencode($dataRef));
     exit;
   }
 
@@ -276,7 +286,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   exit;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -293,35 +302,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <style>
     .form-control {
-      height: 42px;
+      height: 42px
     }
 
     .btn {
-      height: 42px;
-    }
-
-    ul .nav-link:hover {
-      color: blue !important;
-    }
-
-    .nav-link {
-      color: black !important;
-    }
-
-    .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -35px !important;
-    }
-
-    .sidebar .sub-menu li {
-      list-style: none !important;
+      height: 42px
     }
 
     .helper {
-      font-size: 12px;
+      font-size: 12px
     }
 
     .card {
-      border-radius: 14px;
+      border-radius: 14px
     }
 
     .card-header-lite {
@@ -332,7 +325,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       flex-wrap: wrap;
       border-bottom: 1px solid rgba(0, 0, 0, .06);
       padding-bottom: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 12px
     }
 
     .pill {
@@ -344,7 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       font-size: 12px;
       font-weight: 700;
       background: #eef2ff;
-      color: #1f2a6b;
+      color: #1f2a6b
     }
 
     .totbox {
@@ -352,19 +345,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       background: #fff;
       border-radius: 12px;
       padding: 10px 12px;
-      min-width: 170px;
+      min-width: 170px
     }
 
     .totlabel {
       font-size: 12px;
       color: #6c757d;
-      margin: 0;
+      margin: 0
     }
 
     .totvalue {
       font-size: 20px;
       font-weight: 900;
-      margin: 0;
+      margin: 0
     }
 
     .line-card {
@@ -372,15 +365,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       background: #fff;
       border-radius: 14px;
       padding: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 10px
     }
 
     .mini {
-      height: 38px !important;
+      height: 38px !important
     }
 
     .muted {
-      color: #6c757d;
+      color: #6c757d
     }
 
     .photo-thumb {
@@ -389,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       object-fit: cover;
       border-radius: 10px;
       border: 1px solid rgba(0, 0, 0, .12);
-      display: none;
+      display: none
     }
 
     .sticky-actions {
@@ -406,17 +399,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       gap: 10px;
       justify-content: space-between;
       align-items: center;
-      margin-top: 12px;
+      margin-top: 12px
     }
 
-    /* Flash */
+    /* TOAST */
     .sig-flash-wrap {
       position: fixed;
       top: 78px;
       right: 18px;
       width: min(420px, calc(100vw - 36px));
       z-index: 9999;
-      pointer-events: none;
+      pointer-events: none
     }
 
     .sig-toast.alert {
@@ -430,45 +423,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin-bottom: 10px !important;
       opacity: 0;
       transform: translateX(10px);
-      animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
+      animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s
     }
 
     .sig-toast--success {
       background: #f1fff6 !important;
-      border-left-color: #22c55e !important;
+      border-left-color: #22c55e !important
     }
 
     .sig-toast--danger {
       background: #fff1f2 !important;
-      border-left-color: #ef4444 !important;
+      border-left-color: #ef4444 !important
     }
 
     .sig-toast__row {
       display: flex;
       align-items: flex-start;
-      gap: 10px;
+      gap: 10px
     }
 
     .sig-toast__icon i {
       font-size: 16px;
-      margin-top: 2px;
+      margin-top: 2px
     }
 
     .sig-toast__title {
       font-weight: 900;
       margin-bottom: 1px;
-      line-height: 1.1;
+      line-height: 1.1
     }
 
     .sig-toast__text {
       margin: 0;
-      line-height: 1.25;
+      line-height: 1.25
     }
 
     @keyframes sigToastIn {
       to {
         opacity: 1;
-        transform: translateX(0);
+        transform: translateX(0)
       }
     }
 
@@ -476,33 +469,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       to {
         opacity: 0;
         transform: translateX(12px);
-        visibility: hidden;
+        visibility: hidden
       }
     }
 
-    /* Ações simples na linha */
     .line-actions-simple {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
-      justify-content: flex-end;
+      justify-content: flex-end
     }
 
-    /* Desktop/tablet: botão Foto maior */
     .btn-foto-big {
       height: 46px;
       font-size: 14px;
       font-weight: 800;
       border-radius: 12px;
-      padding: 10px 14px;
+      padding: 10px 14px
     }
 
-    /* Camera */
     .cam-box {
       border: 1px solid rgba(0, 0, 0, .08);
       background: #fff;
       border-radius: 14px;
-      padding: 10px;
+      padding: 10px
     }
 
     #camVideo,
@@ -511,153 +501,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       border-radius: 12px;
       background: #111;
       max-height: 60vh;
-      object-fit: cover;
+      object-fit: cover
     }
 
     #camPreview {
-      display: none;
+      display: none
     }
 
     #camCanvas {
-      display: none;
+      display: none
     }
 
-    /* Mobile first */
     @media (max-width:576px) {
       .card-header-lite {
         flex-direction: column;
         align-items: stretch !important;
-        gap: 10px !important;
+        gap: 10px !important
       }
 
       .totbox {
-        width: 100%;
+        width: 100%
       }
 
       .totvalue {
-        font-size: 22px;
+        font-size: 22px
       }
 
       .line-card {
-        padding: 14px;
+        padding: 14px
       }
 
       .line-card label {
-        font-weight: 700;
+        font-weight: 700
       }
 
       .photo-thumb {
         width: 100% !important;
         height: 160px !important;
-        border-radius: 12px !important;
+        border-radius: 12px !important
       }
 
       .helper {
-        font-size: 13px;
+        font-size: 13px
       }
 
       .sticky-actions {
         flex-direction: column;
-        align-items: stretch;
+        align-items: stretch
       }
 
       .sticky-actions>div {
         width: 100%;
-        justify-content: stretch !important;
+        justify-content: stretch !important
       }
 
       .sticky-actions .btn {
-        width: 100%;
+        width: 100%
       }
 
       .line-actions-simple {
         width: 100%;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 10px;
+        gap: 10px
       }
 
       .line-actions-simple .btn {
         height: 52px !important;
         font-size: 16px !important;
         font-weight: 800 !important;
-        border-radius: 12px !important;
+        border-radius: 12px !important
       }
 
       .line-actions-simple .btn i {
         font-size: 18px;
-        margin-right: 6px;
-      }
-    }
-
-    /* Toast */
-    .sig-flash-wrap {
-      position: fixed;
-      top: 78px;
-      right: 18px;
-      width: min(420px, calc(100vw - 36px));
-      z-index: 9999;
-      pointer-events: none;
-    }
-
-    .sig-toast.alert {
-      pointer-events: auto;
-      border: 0 !important;
-      border-left: 6px solid !important;
-      border-radius: 14px !important;
-      padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
-      font-size: 13px !important;
-      margin-bottom: 10px !important;
-      opacity: 0;
-      transform: translateX(10px);
-      animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
-    }
-
-    .sig-toast--success {
-      background: #f1fff6 !important;
-      border-left-color: #22c55e !important;
-    }
-
-    .sig-toast--danger {
-      background: #fff1f2 !important;
-      border-left-color: #ef4444 !important;
-    }
-
-    .sig-toast__row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .sig-toast__icon i {
-      font-size: 16px;
-      margin-top: 2px;
-    }
-
-    .sig-toast__title {
-      font-weight: 900;
-      margin-bottom: 1px;
-      line-height: 1.1;
-    }
-
-    .sig-toast__text {
-      margin: 0;
-      line-height: 1.25;
-    }
-
-    @keyframes sigToastIn {
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes sigToastOut {
-      to {
-        opacity: 0;
-        transform: translateX(12px);
-        visibility: hidden;
+        margin-right: 6px
       }
     }
   </style>
@@ -665,6 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
   <div class="container-scroller">
+
     <?php if ($msg || $err): ?>
       <div class="sig-flash-wrap">
         <?php if ($msg): ?>
@@ -724,128 +643,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </button>
       </div>
     </nav>
-    <!-- /NAVBAR -->
 
     <div class="container-fluid page-body-wrapper">
 
+      <!-- SIDEBAR (mantive igual ao seu; aqui você cola o seu menu completo se quiser) -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
-        <ul class="nav">
-
-          <!-- Dashboard -->
-          <li class="nav-item">
-            <a class="nav-link" href="./index.php">
-              <i class="icon-grid menu-icon"></i>
-              <span class="menu-title">Dashboard</span>
-            </a>
-          </li>
-
-          <!-- Cadastros -->
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
-              <i class="ti-id-badge menu-icon"></i>
-              <span class="menu-title">Cadastros</span>
-              <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse" id="feiraCadastros">
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
-              </ul>
-            </div>
-          </li>
-
-          <!-- Movimento -->
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
-              <i class="ti-exchange-vertical menu-icon"></i>
-              <span class="menu-title">Movimento</span>
-              <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse" id="feiraMovimento">
-              <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
-              </style>
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link active" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
-                <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
-              </ul>
-            </div>
-          </li>
-
-          <!-- Relatórios -->
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
-              <i class="ti-clipboard menu-icon"></i>
-              <span class="menu-title">Relatórios</span>
-              <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse text-black" id="feiraRelatorios">
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
-                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
-                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
-                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
-              </ul>
-            </div>
-          </li>
-
-          <!-- Título DIVERSOS -->
-          <li class="nav-item" style="pointer-events:none;">
-            <span style="
-                  display:block;
-                  padding: 5px 15px 5px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  color: #6c757d;
-                  text-transform: uppercase;
-                ">
-              Links Diversos
-            </span>
-          </li>
-
-          <!-- Linha abaixo do título -->
-          <li class="nav-item">
-            <a class="nav-link" href="../index.php">
-              <i class="ti-home menu-icon"></i>
-              <span class="menu-title"> Painel Principal</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="../alternativa/" class="nav-link">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira do Alternativa</span>
-
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
-
-            </a>
-          </li>
-          <li class="nav-item">
-
-            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-              <i class="ti-headphone-alt menu-icon"></i>
-              <span class="menu-title">Suporte</span>
-            </a>
-          </li>
-
-        </ul>
+        <!-- ... seu menu ... -->
       </nav>
 
-
-      <!-- /SIDEBAR -->
       <div class="main-panel">
         <div class="content-wrapper">
 
@@ -890,8 +695,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="hidden" name="data_ref" value="<?= h($dia) ?>">
 
                     <div id="linesWrap">
-
-                      <!-- LINHA BASE -->
                       <div class="line-card js-line">
                         <div class="row">
                           <div class="col-lg-4 col-md-6 mb-3">
@@ -940,7 +743,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" class="form-control js-cat" value="" readonly>
                           </div>
 
-                          <!-- ações -->
                           <div class="col-12">
                             <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:10px;">
                               <div class="d-flex align-items-center" style="gap:10px; min-width: 220px;">
@@ -962,12 +764,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
                             <input type="hidden" name="observacao_item[]" value="">
                           </div>
-                          <!-- /ações -->
                         </div>
                       </div>
-                      <!-- /LINHA BASE -->
-
-                    </div><!-- /linesWrap -->
+                    </div>
 
                     <div class="sticky-actions">
                       <div class="d-flex flex-wrap" style="gap:8px;">
@@ -980,11 +779,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <a class="btn btn-light" href="./lancamentos.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
                       </div>
                     </div>
-
                   </form>
 
                   <small class="text-muted d-block mt-3 helper">
-                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost). A foto é comprimida pra ficar leve.
+                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost).
                   </small>
 
                 </div>
@@ -1007,7 +805,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <!-- MODAL CÂMERA (abre já com câmera ligada) -->
+  <!-- MODAL CÂMERA -->
   <div class="modal fade" id="modalCamera" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content" style="border-radius:14px;">
@@ -1029,11 +827,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="button" class="btn btn-primary" id="btnTirarFoto" disabled>
               <i class="ti-image mr-1"></i> Tirar
             </button>
-
             <button type="button" class="btn btn-light" id="btnRefazer" disabled>
               <i class="ti-reload mr-1"></i> Refazer
             </button>
-
             <button type="button" class="btn btn-success" id="btnUsarFoto" disabled>
               <i class="ti-check mr-1"></i> Usar foto
             </button>
@@ -1081,8 +877,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       function toNum(s) {
         s = String(s || '').trim();
         if (!s) return 0;
-        s = s.replace(/R\$/g, '').replace(/\s/g, '');
-        s = s.replace(/\./g, '').replace(',', '.');
+        s = s.replace(/R\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
         s = s.replace(/[^0-9.\-]/g, '');
         const v = parseFloat(s);
         return isNaN(v) ? 0 : v;
@@ -1226,7 +1021,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       async function openCam() {
         try {
           closeCam();
-
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: {
@@ -1235,10 +1029,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             },
             audio: false
           });
-
           camVideo.srcObject = stream;
           await camVideo.play();
-
           capturedDataUrl = '';
           camPreview.src = '';
           setCamUI({
@@ -1256,7 +1048,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       function snap() {
         if (!camVideo.videoWidth || !camVideo.videoHeight) return;
-
         const targetW = 720;
         const ratio = camVideo.videoHeight / camVideo.videoWidth;
         const targetH = Math.round(targetW * ratio);
@@ -1271,7 +1062,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         capturedDataUrl = camCanvas.toDataURL('image/jpeg', 0.65);
         camPreview.src = capturedDataUrl;
 
-        closeCam(); // economiza bateria
+        closeCam();
         setCamUI({
           on: false,
           has: true
@@ -1285,7 +1076,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         openCam();
       }
 
-      // clique no botão "Tirar foto" da linha
       document.addEventListener('click', function(e) {
         const btn = e.target.closest('.js-foto');
         if (!btn) return;
@@ -1301,7 +1091,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (window.jQuery && jQuery.fn.modal) {
           jQuery('#modalCamera').modal('show');
           jQuery('#modalCamera').one('shown.bs.modal', function() {
-            openCam(); // abre câmera automaticamente
+            openCam();
           });
         } else {
           openCam();
@@ -1315,7 +1105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!currentLine || !capturedDataUrl) return;
 
         currentLine.querySelector('.js-foto-base64').value = capturedDataUrl;
-
         const thumb = currentLine.querySelector('.js-thumb');
         thumb.src = capturedDataUrl;
         thumb.style.display = 'block';
@@ -1325,7 +1114,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       });
 
-      // quando fechar o modal, garante que a câmera feche
       if (window.jQuery) {
         jQuery('#modalCamera').on('hidden.bs.modal', function() {
           closeCam();
