@@ -4,7 +4,7 @@ declare(strict_types=1);
 session_start();
 
 /**
- * ✅ SEGURANÇA: evita “texto solto” antes do HTML
+ * ✅ SEGURANÇA: evita qualquer “texto solto” antes do HTML
  * (se algum include soltar espaço/notice, o output buffer segura)
  */
 if (!ob_get_level()) ob_start();
@@ -33,11 +33,8 @@ function to_decimal($v): float
   $s = trim((string)$v);
   if ($s === '') return 0.0;
   $s = str_replace(['R$', ' '], '', $s);
-  // aceita "1.234,56" e "1234.56"
-  if (strpos($s, ',') !== false) {
-    $s = str_replace('.', '', $s);
-    $s = str_replace(',', '.', $s);
-  }
+  $s = str_replace('.', '', $s);
+  $s = str_replace(',', '.', $s);
   $s = preg_replace('/[^0-9\.\-]/', '', $s) ?? '0';
   if ($s === '' || $s === '-' || $s === '.') return 0.0;
   return (float)$s;
@@ -87,7 +84,7 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* ===== Conexão (usa SUA conexão db() do assets/php/conexao.php) ===== */
+/* ===== Conexão (usa sua db() do conexao.php) ===== */
 require '../../../assets/php/conexao.php';
 $pdo = db();
 
@@ -149,7 +146,7 @@ try {
 $BASE_DIR = realpath(__DIR__ . '/../../../');
 $UPLOAD_REL = 'uploads/romaneio';
 $UPLOAD_ABS = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL) : null;
-$MAX_IMG_BYTES = 3 * 1024 * 1024; // 3MB
+$MAX_IMG_BYTES = 3 * 1024 * 1024;
 
 /* ===== POST: salvar entrada ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -168,6 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   $dataRef = trim((string)($_POST['data_ref'] ?? $dia));
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) $dataRef = $dia;
+
   if ($dataRef !== $dia) {
     header('Location: ./lancamentos.php?dia=' . urlencode($dataRef));
     exit;
@@ -180,43 +178,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $obsArr     = $_POST['observacao_item'] ?? [];
   $fotosArr   = $_POST['foto_base64'] ?? [];
 
+  // ✅ Validação por linha (mensagem específica)
   $itens = [];
-  $errosLinha = [];
-
-  $n = max(
-    count((array)$prodIds),
-    count((array)$produtoIds),
-    count((array)$qtds),
-    count((array)$precos)
-  );
+  $n = max(count((array)$prodIds), count((array)$produtoIds), count((array)$qtds), count((array)$precos));
 
   for ($i = 0; $i < $n; $i++) {
+    $linha = $i + 1;
+
     $produtorId = (int)($prodIds[$i] ?? 0);
+    if ($produtorId <= 0) continue; // ignora linha vazia
+
     $produtoId  = (int)($produtoIds[$i] ?? 0);
+    if ($produtoId <= 0) {
+      $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produto.";
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+      exit;
+    }
 
     $q = round(to_decimal($qtds[$i] ?? '0'), 3);
-    $p = round(to_decimal($precos[$i] ?? '0'), 2);
-
-    // Se a linha está toda “zerada”, ignora sem reclamar
-    $linhaVazia = ($produtorId <= 0 && $produtoId <= 0 && $q <= 0 && $p <= 0);
-    if ($linhaVazia) continue;
-
-    // Validação detalhada
-    if ($produtorId <= 0) {
-      $errosLinha[] = "Linha " . ($i + 1) . ": selecione o Produtor.";
-      continue;
-    }
-    if ($produtoId  <= 0) {
-      $errosLinha[] = "Linha " . ($i + 1) . ": selecione o Produto.";
-      continue;
-    }
     if ($q <= 0) {
-      $errosLinha[] = "Linha " . ($i + 1) . ": informe a Quantidade.";
-      continue;
+      $_SESSION['flash_err'] = "Linha {$linha}: informe a Quantidade.";
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+      exit;
     }
+
+    $p = round(to_decimal($precos[$i] ?? '0'), 2);
     if ($p <= 0) {
-      $errosLinha[] = "Linha " . ($i + 1) . ": informe o Preço.";
-      continue;
+      $_SESSION['flash_err'] = "Linha {$linha}: informe o Preço.";
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+      exit;
     }
 
     $obs = trim((string)($obsArr[$i] ?? ''));
@@ -235,10 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   if (empty($itens)) {
-    $_SESSION['flash_err'] =
-      !empty($errosLinha)
-      ? implode(' ', array_slice($errosLinha, 0, 3))
-      : 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
+    $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
     header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
@@ -264,7 +251,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         (:f, :r, :pr, :pd, :q, :p, :obs, NOW())
     ");
 
-    // ✅ BATE COM SEU SCHEMA (somente romaneio_item_id + caminho)
     $insFoto = $pdo->prepare("
       INSERT INTO romaneio_item_fotos
         (romaneio_item_id, caminho, criado_em)
@@ -321,7 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios — Entrada do Dia</title>
+  <title>SIGRelatórios — Romaneio (Entrada)</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -336,22 +322,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     .btn {
       height: 42px
-    }
-
-    ul .nav-link:hover {
-      color: blue !important
-    }
-
-    .nav-link {
-      color: black !important
-    }
-
-    .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -35px !important
-    }
-
-    .sidebar .sub-menu li {
-      list-style: none !important
     }
 
     .helper {
@@ -447,7 +417,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin-top: 12px
     }
 
-    /* Flash */
     .sig-flash-wrap {
       position: fixed;
       top: 78px;
@@ -628,6 +597,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
   <div class="container-scroller">
+
     <?php if ($msg || $err): ?>
       <div class="sig-flash-wrap">
         <?php if ($msg): ?>
@@ -687,39 +657,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </button>
       </div>
     </nav>
-    <!-- /NAVBAR -->
 
     <div class="container-fluid page-body-wrapper">
 
-      <!-- SIDEBAR (cole seu menu aqui se quiser; não interfere no salvamento) -->
+      <!-- SIDEBAR (use seu menu completo aqui) -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
-        <ul class="nav">
-          <li class="nav-item">
-            <a class="nav-link" href="./index.php">
-              <i class="icon-grid menu-icon"></i>
-              <span class="menu-title">Dashboard</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
-              <i class="ti-exchange-vertical menu-icon"></i>
-              <span class="menu-title">Movimento</span>
-              <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse show" id="feiraMovimento">
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item">
-                  <a class="nav-link active" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
-                    <i class="ti-write mr-2"></i> Lançamentos
-                  </a>
-                </li>
-                <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
-              </ul>
-            </div>
-          </li>
-        </ul>
+        <!-- ... seu menu ... -->
       </nav>
-      <!-- /SIDEBAR -->
 
       <div class="main-panel">
         <div class="content-wrapper">
@@ -765,7 +709,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="hidden" name="data_ref" value="<?= h($dia) ?>">
 
                     <div id="linesWrap">
-                      <!-- LINHA BASE -->
                       <div class="line-card js-line">
                         <div class="row">
                           <div class="col-lg-4 col-md-6 mb-3">
@@ -837,7 +780,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           </div>
                         </div>
                       </div>
-                      <!-- /LINHA BASE -->
                     </div>
 
                     <div class="sticky-actions">
@@ -854,7 +796,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   </form>
 
                   <small class="text-muted d-block mt-3 helper">
-                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost). A foto é comprimida pra ficar leve.
+                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost).
                   </small>
 
                 </div>
@@ -877,7 +819,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <!-- MODAL CÂMERA (abre já com câmera ligada) -->
+  <!-- MODAL CÂMERA -->
   <div class="modal fade" id="modalCamera" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content" style="border-radius:14px;">
@@ -899,11 +841,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="button" class="btn btn-primary" id="btnTirarFoto" disabled>
               <i class="ti-image mr-1"></i> Tirar
             </button>
-
             <button type="button" class="btn btn-light" id="btnRefazer" disabled>
               <i class="ti-reload mr-1"></i> Refazer
             </button>
-
             <button type="button" class="btn btn-success" id="btnUsarFoto" disabled>
               <i class="ti-check mr-1"></i> Usar foto
             </button>
@@ -935,6 +875,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       const btnRef = document.getElementById('btnRef');
       const btnLimparFotos = document.getElementById('btnLimparFotos');
       const totalEl = document.getElementById('jsTotal');
+      const form = document.getElementById('formEntrada');
 
       function brMoney(n) {
         try {
@@ -1061,7 +1002,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       updateRemoveButtons();
       calcTotal();
 
-      // ===== CAMERA (AUTO-OPEN) =====
+      // ✅ garante que select não “volta” no submit por plugin
+      form && form.addEventListener('submit', function() {
+        document.querySelectorAll('.js-line').forEach(line => {
+          const s1 = line.querySelector('.js-produtor');
+          const s2 = line.querySelector('.js-produto');
+          if (s1) s1.value = s1.options[s1.selectedIndex].value;
+          if (s2) s2.value = s2.options[s2.selectedIndex].value;
+        });
+      });
+
+      // ===== CAMERA =====
       let currentLine = null;
       let stream = null;
       let capturedDataUrl = '';
@@ -1122,7 +1073,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       function snap() {
         if (!camVideo.videoWidth || !camVideo.videoHeight) return;
-
         const targetW = 720;
         const ratio = camVideo.videoHeight / camVideo.videoWidth;
         const targetH = Math.round(targetW * ratio);
@@ -1180,14 +1130,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!currentLine || !capturedDataUrl) return;
 
         currentLine.querySelector('.js-foto-base64').value = capturedDataUrl;
-
         const thumb = currentLine.querySelector('.js-thumb');
         thumb.src = capturedDataUrl;
         thumb.style.display = 'block';
 
-        if (window.jQuery && jQuery.fn.modal) {
-          jQuery('#modalCamera').modal('hide');
-        }
+        if (window.jQuery && jQuery.fn.modal) jQuery('#modalCamera').modal('hide');
       });
 
       if (window.jQuery) {
