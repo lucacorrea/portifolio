@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -275,6 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -287,26 +289,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    .form-control { height: 42px; }
-    .btn { height: 42px; }
-    .helper { font-size: 12px; }
-    .card { border-radius: 14px; }
+    .form-control {
+      height: 42px;
+    }
 
-    .card-header-lite{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      border-bottom: 1px solid rgba(0,0,0,.06);
+    .btn {
+      height: 42px;
+    }
+
+    .helper {
+      font-size: 12px;
+    }
+
+    .card {
+      border-radius: 14px;
+    }
+
+    .card-header-lite {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(0, 0, 0, .06);
       padding-bottom: 12px;
       margin-bottom: 12px;
     }
 
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 6px 10px;
       border-radius: 999px;
       font-size: 12px;
@@ -315,55 +328,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       color: #1f2a6b;
     }
 
-    .totbox{
-      border: 1px solid rgba(0,0,0,.08);
+    .totbox {
+      border: 1px solid rgba(0, 0, 0, .08);
       background: #fff;
       border-radius: 12px;
       padding: 10px 12px;
       min-width: 170px;
     }
-    .totlabel{ font-size:12px; color:#6c757d; margin:0; }
-    .totvalue{ font-size:20px; font-weight:900; margin:0; }
 
-    .line-card{
-      border: 1px solid rgba(0,0,0,.08);
-      background:#fff;
+    .totlabel {
+      font-size: 12px;
+      color: #6c757d;
+      margin: 0;
+    }
+
+    .totvalue {
+      font-size: 20px;
+      font-weight: 900;
+      margin: 0;
+    }
+
+    .line-card {
+      border: 1px solid rgba(0, 0, 0, .08);
+      background: #fff;
       border-radius: 14px;
       padding: 12px;
       margin-bottom: 10px;
     }
 
-    .mini{ height: 38px !important; }
-    .muted{ color:#6c757d; }
+    .mini {
+      height: 38px !important;
+    }
 
-    .photo-thumb{
+    .muted {
+      color: #6c757d;
+    }
+
+    .photo-thumb {
       width: 76px;
       height: 52px;
       object-fit: cover;
       border-radius: 10px;
-      border: 1px solid rgba(0,0,0,.12);
-      display:none;
+      border: 1px solid rgba(0, 0, 0, .12);
+      display: none;
     }
 
-    .sticky-actions{
+    .sticky-actions {
       position: sticky;
       bottom: 10px;
       z-index: 3;
-      background: rgba(255,255,255,.92);
-      border: 1px solid rgba(0,0,0,.08);
+      background: rgba(255, 255, 255, .92);
+      border: 1px solid rgba(0, 0, 0, .08);
       border-radius: 14px;
       padding: 10px;
       backdrop-filter: blur(6px);
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      justify-content:space-between;
-      align-items:center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
       margin-top: 12px;
     }
 
     /* Flash */
-    .sig-flash-wrap{
+    .sig-flash-wrap {
       position: fixed;
       top: 78px;
       right: 18px;
@@ -371,38 +399,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       z-index: 9999;
       pointer-events: none;
     }
-    .sig-toast.alert{
+
+    .sig-toast.alert {
       pointer-events: auto;
       border: 0 !important;
       border-left: 6px solid !important;
       border-radius: 14px !important;
       padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0,0,0,.10) !important;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
       opacity: 0;
       transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
     }
-    .sig-toast--success{ background:#f1fff6 !important; border-left-color:#22c55e !important; }
-    .sig-toast--danger{ background:#fff1f2 !important; border-left-color:#ef4444 !important; }
-    .sig-toast__row{ display:flex; align-items:flex-start; gap:10px; }
-    .sig-toast__icon i{ font-size: 16px; margin-top: 2px; }
-    .sig-toast__title{ font-weight: 900; margin-bottom: 1px; line-height: 1.1; }
-    .sig-toast__text{ margin:0; line-height: 1.25; }
-    @keyframes sigToastIn { to { opacity:1; transform: translateX(0); } }
-    @keyframes sigToastOut{ to { opacity:0; transform: translateX(12px); visibility:hidden; } }
+
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important;
+    }
+
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important;
+    }
+
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .sig-toast__title {
+      font-weight: 900;
+      margin-bottom: 1px;
+      line-height: 1.1;
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    @keyframes sigToastIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes sigToastOut {
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden;
+      }
+    }
 
     /* Ações simples na linha */
-    .line-actions-simple{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
+    .line-actions-simple {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     /* Desktop/tablet: botão Foto maior */
-    .btn-foto-big{
+    .btn-foto-big {
       height: 46px;
       font-size: 14px;
       font-weight: 800;
@@ -411,62 +479,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     /* Camera */
-    .cam-box{
-      border:1px solid rgba(0,0,0,.08);
-      background:#fff;
-      border-radius:14px;
-      padding:10px;
+    .cam-box {
+      border: 1px solid rgba(0, 0, 0, .08);
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px;
     }
-    #camVideo, #camPreview{
-      width:100%;
-      border-radius:12px;
-      background:#111;
+
+    #camVideo,
+    #camPreview {
+      width: 100%;
+      border-radius: 12px;
+      background: #111;
       max-height: 60vh;
       object-fit: cover;
     }
-    #camPreview{ display:none; }
-    #camCanvas{ display:none; }
+
+    #camPreview {
+      display: none;
+    }
+
+    #camCanvas {
+      display: none;
+    }
 
     /* Mobile first */
-    @media (max-width:576px){
-      .card-header-lite{
-        flex-direction:column;
-        align-items:stretch !important;
-        gap:10px !important;
+    @media (max-width:576px) {
+      .card-header-lite {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 10px !important;
       }
-      .totbox{ width:100%; }
-      .totvalue{ font-size: 22px; }
-      .line-card{ padding: 14px; }
-      .line-card label{ font-weight: 700; }
-      .photo-thumb{
-        width:100% !important;
+
+      .totbox {
+        width: 100%;
+      }
+
+      .totvalue {
+        font-size: 22px;
+      }
+
+      .line-card {
+        padding: 14px;
+      }
+
+      .line-card label {
+        font-weight: 700;
+      }
+
+      .photo-thumb {
+        width: 100% !important;
         height: 160px !important;
         border-radius: 12px !important;
       }
-      .helper{ font-size: 13px; }
-      .sticky-actions{
-        flex-direction:column;
-        align-items:stretch;
-      }
-      .sticky-actions > div{
-        width:100%;
-        justify-content:stretch !important;
-      }
-      .sticky-actions .btn{ width:100%; }
 
-      .line-actions-simple{
-        width:100%;
-        display:grid;
+      .helper {
+        font-size: 13px;
+      }
+
+      .sticky-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .sticky-actions>div {
+        width: 100%;
+        justify-content: stretch !important;
+      }
+
+      .sticky-actions .btn {
+        width: 100%;
+      }
+
+      .line-actions-simple {
+        width: 100%;
+        display: grid;
         grid-template-columns: 1fr 1fr;
-        gap:10px;
+        gap: 10px;
       }
-      .line-actions-simple .btn{
-        height:52px !important;
-        font-size:16px !important;
-        font-weight:800 !important;
-        border-radius:12px !important;
+
+      .line-actions-simple .btn {
+        height: 52px !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        border-radius: 12px !important;
       }
-      .line-actions-simple .btn i{ font-size:18px; margin-right: 6px; }
+
+      .line-actions-simple .btn i {
+        font-size: 18px;
+        margin-right: 6px;
+      }
     }
   </style>
 </head>
@@ -480,68 +582,144 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
         <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
       </div>
+
       <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
         <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
           <span class="icon-menu"></span>
         </button>
-        <ul class="navbar-nav mr-lg-2">
-          <li class="nav-item nav-search d-none d-lg-block"></li>
+
+        <ul class="navbar-nav navbar-nav-right">
+          <li class="nav-item nav-profile dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
+              <i class="ti-user"></i>
+              <span class="ml-1"><?= h($nomeTopo) ?></span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+              <a class="dropdown-item" href="../../../controle/auth/logout.php">
+                <i class="ti-power-off text-primary"></i> Sair
+              </a>
+            </div>
+          </li>
         </ul>
+
         <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
           <span class="icon-menu"></span>
         </button>
       </div>
     </nav>
-
-    <?php if ($msg || $err): ?>
-      <div class="sig-flash-wrap">
-        <?php if ($msg): ?>
-          <div class="alert sig-toast sig-toast--success" role="alert">
-            <div class="sig-toast__row">
-              <div class="sig-toast__icon"><i class="ti-check"></i></div>
-              <div>
-                <div class="sig-toast__title">Tudo certo!</div>
-                <p class="sig-toast__text"><?= h($msg) ?></p>
-              </div>
-            </div>
-          </div>
-        <?php endif; ?>
-        <?php if ($err): ?>
-          <div class="alert sig-toast sig-toast--danger" role="alert">
-            <div class="sig-toast__row">
-              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
-              <div>
-                <div class="sig-toast__title">Atenção!</div>
-                <p class="sig-toast__text"><?= h($err) ?></p>
-              </div>
-            </div>
-          </div>
-        <?php endif; ?>
-      </div>
-    <?php endif; ?>
+    <!-- /NAVBAR -->
 
     <div class="container-fluid page-body-wrapper">
-      <!-- SIDEBAR -->
+
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
-          <li class="nav-item">
-            <a class="nav-link" href="index.php">
-              <i class="icon-grid menu-icon"></i><span class="menu-title">Dashboard</span>
-            </a>
-          </li>
+
+          <!-- Dashboard -->
           <li class="nav-item active">
-            <a class="nav-link" href="./romaneioEntrada.php" style="color:white !important; background: #231475C5 !important;">
-              <i class="ti-write menu-icon"></i><span class="menu-title">Romaneio (Entrada)</span>
+            <a class="nav-link" href="./index.php">
+              <i class="icon-grid menu-icon"></i>
+              <span class="menu-title">Dashboard</span>
+            </a>
+          </li>
+
+          <!-- Cadastros -->
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
+              <i class="ti-id-badge menu-icon"></i>
+              <span class="menu-title">Cadastros</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse" id="feiraCadastros">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- Movimento -->
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
+              <i class="ti-exchange-vertical menu-icon"></i>
+              <span class="menu-title">Movimento</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse" id="feiraMovimento">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
+                <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- Relatórios -->
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
+              <i class="ti-clipboard menu-icon"></i>
+              <span class="menu-title">Relatórios</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse text-black" id="feiraRelatorios">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
+                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- Título DIVERSOS -->
+          <li class="nav-item" style="pointer-events:none;">
+            <span style="
+                  display:block;
+                  padding: 5px 15px 5px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  color: #6c757d;
+                  text-transform: uppercase;
+                ">
+              Links Diversos
+            </span>
+          </li>
+
+          <!-- Linha abaixo do título -->
+          <li class="nav-item">
+            <a class="nav-link" href="../index.php">
+              <i class="ti-home menu-icon"></i>
+              <span class="menu-title"> Painel Principal</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="./fechamentoDia.php">
-              <i class="ti-check-box menu-icon"></i><span class="menu-title">Fechamento</span>
+            <a href="../alternativa/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Feira do Alternativa</span>
+
             </a>
           </li>
+          <li class="nav-item">
+            <a href="../mercado/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Mercado Municipal</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+
+            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+              <i class="ti-headphone-alt menu-icon"></i>
+              <span class="menu-title">Suporte</span>
+            </a>
+          </li>
+
         </ul>
       </nav>
 
+
+      <!-- /SIDEBAR -->
       <div class="main-panel">
         <div class="content-wrapper">
 
@@ -755,7 +933,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <script src="../../../js/todolist.js"></script>
 
   <script>
-    (function () {
+    (function() {
       const wrap = document.getElementById('linesWrap');
       const btnAdd = document.getElementById('btnAdd');
       const btnRef = document.getElementById('btnRef');
@@ -764,7 +942,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       function brMoney(n) {
         try {
-          return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          return n.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
         } catch (e) {
           const x = Math.round(n * 100) / 100;
           return String(x).replace('.', ',');
@@ -794,7 +975,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         let tot = 0;
         document.querySelectorAll('.js-line').forEach(line => {
           const produtor = parseInt((line.querySelector('.js-produtor') || {}).value || '0', 10);
-          const produto  = parseInt((line.querySelector('.js-produto') || {}).value  || '0', 10);
+          const produto = parseInt((line.querySelector('.js-produto') || {}).value || '0', 10);
           if (!produtor || !produto) return;
           const qtd = toNum((line.querySelector('.js-qtd') || {}).value || '0');
           const preco = toNum((line.querySelector('.js-preco') || {}).value || '0');
@@ -890,18 +1071,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       let stream = null;
       let capturedDataUrl = '';
 
-      const camVideo   = document.getElementById('camVideo');
-      const camCanvas  = document.getElementById('camCanvas');
+      const camVideo = document.getElementById('camVideo');
+      const camCanvas = document.getElementById('camCanvas');
       const camPreview = document.getElementById('camPreview');
 
       const btnTirarFoto = document.getElementById('btnTirarFoto');
-      const btnRefazer   = document.getElementById('btnRefazer');
-      const btnUsarFoto  = document.getElementById('btnUsarFoto');
+      const btnRefazer = document.getElementById('btnRefazer');
+      const btnUsarFoto = document.getElementById('btnUsarFoto');
 
-      function setCamUI({ on, has }) {
+      function setCamUI({
+        on,
+        has
+      }) {
         btnTirarFoto.disabled = !on;
-        btnRefazer.disabled   = !has;
-        btnUsarFoto.disabled  = !has;
+        btnRefazer.disabled = !has;
+        btnUsarFoto.disabled = !has;
         camPreview.style.display = has ? 'block' : 'none';
       }
 
@@ -918,7 +1102,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           closeCam();
 
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } },
+            video: {
+              facingMode: {
+                ideal: 'environment'
+              }
+            },
             audio: false
           });
 
@@ -927,10 +1115,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           capturedDataUrl = '';
           camPreview.src = '';
-          setCamUI({ on: true, has: false });
+          setCamUI({
+            on: true,
+            has: false
+          });
         } catch (e) {
           alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS (ou localhost).');
-          setCamUI({ on: false, has: false });
+          setCamUI({
+            on: false,
+            has: false
+          });
         }
       }
 
@@ -943,14 +1137,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         camCanvas.width = targetW;
         camCanvas.height = targetH;
-        const ctx = camCanvas.getContext('2d', { alpha: false });
+        const ctx = camCanvas.getContext('2d', {
+          alpha: false
+        });
         ctx.drawImage(camVideo, 0, 0, targetW, targetH);
 
         capturedDataUrl = camCanvas.toDataURL('image/jpeg', 0.65);
         camPreview.src = capturedDataUrl;
 
         closeCam(); // economiza bateria
-        setCamUI({ on: false, has: true });
+        setCamUI({
+          on: false,
+          has: true
+        });
       }
 
       function redo() {
@@ -961,18 +1160,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
 
       // clique no botão "Tirar foto" da linha
-      document.addEventListener('click', function (e) {
+      document.addEventListener('click', function(e) {
         const btn = e.target.closest('.js-foto');
         if (!btn) return;
 
         currentLine = btn.closest('.js-line');
         capturedDataUrl = '';
         camPreview.src = '';
-        setCamUI({ on: false, has: false });
+        setCamUI({
+          on: false,
+          has: false
+        });
 
         if (window.jQuery && jQuery.fn.modal) {
           jQuery('#modalCamera').modal('show');
-          jQuery('#modalCamera').one('shown.bs.modal', function () {
+          jQuery('#modalCamera').one('shown.bs.modal', function() {
             openCam(); // abre câmera automaticamente
           });
         } else {
@@ -983,7 +1185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       btnTirarFoto.addEventListener('click', snap);
       btnRefazer.addEventListener('click', redo);
 
-      btnUsarFoto.addEventListener('click', function () {
+      btnUsarFoto.addEventListener('click', function() {
         if (!currentLine || !capturedDataUrl) return;
 
         currentLine.querySelector('.js-foto-base64').value = capturedDataUrl;
@@ -999,14 +1201,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       // quando fechar o modal, garante que a câmera feche
       if (window.jQuery) {
-        jQuery('#modalCamera').on('hidden.bs.modal', function () {
+        jQuery('#modalCamera').on('hidden.bs.modal', function() {
           closeCam();
           capturedDataUrl = '';
           camPreview.src = '';
-          setCamUI({ on: false, has: false });
+          setCamUI({
+            on: false,
+            has: false
+          });
         });
       }
     })();
   </script>
 </body>
+
 </html>
