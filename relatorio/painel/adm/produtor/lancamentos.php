@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
@@ -94,7 +93,10 @@ try {
   $romaneioId = (int)($st->fetchColumn() ?: 0);
 
   if ($romaneioId <= 0) {
-    $ins = $pdo->prepare("INSERT INTO romaneio_dia (feira_id, data_ref, status, criado_em) VALUES (:f, :d, 'ABERTO', NOW())");
+    $ins = $pdo->prepare("
+      INSERT INTO romaneio_dia (feira_id, data_ref, status, criado_em)
+      VALUES (:f, :d, 'ABERTO', NOW())
+    ");
     $ins->execute([':f' => $feiraId, ':d' => $dia]);
     $romaneioId = (int)$pdo->lastInsertId();
   }
@@ -197,13 +199,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if (empty($itens)) {
     $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
-    header('Location: ./lancamentos.php');
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
 
   if (!$UPLOAD_ABS) {
     $_SESSION['flash_err'] = 'Diretório base não encontrado para upload.';
-    header('Location: ./lancamentos.php');
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
 
@@ -270,14 +272,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
   }
 
-  header('Location: ./lancamentos.php');
+  header('Location: ./lancamentos.php?dia=' . urlencode($dia));
   exit;
-  /* Flash */
-  $msg = (string)($_SESSION['flash_ok'] ?? '');
-  $err = (string)($_SESSION['flash_err'] ?? '');
-  unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 
