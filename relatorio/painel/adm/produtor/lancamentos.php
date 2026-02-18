@@ -100,7 +100,7 @@ try {
   }
 } catch (Throwable $e) {
   $_SESSION['flash_err'] = 'Não foi possível abrir o romaneio do dia.';
-  header('Location: ./lancamentos.php');
+  header('Location: ./romaneioEntrada.php');
   exit;
 }
 
@@ -141,13 +141,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $postedCsrf = (string)($_POST['csrf_token'] ?? '');
   if (!hash_equals($csrf, $postedCsrf)) {
     $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./lancamentos.php' );
+    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
     exit;
   }
 
   $acao = (string)($_POST['acao'] ?? '');
   if ($acao !== 'salvar') {
-    header('Location: ./lancamentos.php');
+    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
     exit;
   }
 
@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) $dataRef = $dia;
 
   if ($dataRef !== $dia) {
-    header('Location: ./lancamentos.php');
+    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dataRef));
     exit;
   }
 
