@@ -179,56 +179,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $fotosArr   = $_POST['foto_base64'] ?? [];
 
   // ✅ Validação por linha (mensagem específica)
-  $itens = [];
-  $n = max(count((array)$prodIds), count((array)$produtoIds), count((array)$qtds), count((array)$precos));
+$itens = [];
+$n = max(
+  count((array)$prodIds),
+  count((array)$produtoIds),
+  count((array)$qtds),
+  count((array)$precos),
+  count((array)$fotosArr)
+);
 
-  for ($i = 0; $i < $n; $i++) {
-    $linha = $i + 1;
+for ($i = 0; $i < $n; $i++) {
+  $linha = $i + 1;
 
-    $produtorId = (int)($prodIds[$i] ?? 0);
-    if ($produtorId <= 0) continue; // ignora linha vazia
+  $produtorRaw = trim((string)($prodIds[$i] ?? ''));
+  $produtoRaw  = trim((string)($produtoIds[$i] ?? ''));
+  $qtdRaw      = trim((string)($qtds[$i] ?? ''));
+  $precoRaw    = trim((string)($precos[$i] ?? ''));
+  $foto        = trim((string)($fotosArr[$i] ?? ''));
+  $obs         = trim((string)($obsArr[$i] ?? ''));
 
-    $produtoId  = (int)($produtoIds[$i] ?? 0);
-    if ($produtoId <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produto.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
+  $produtorId = (int)$produtorRaw;
+  $produtoId  = (int)$produtoRaw;
+  $q = round(to_decimal($qtdRaw), 3);
+  $p = round(to_decimal($precoRaw), 2);
 
-    $q = round(to_decimal($qtds[$i] ?? '0'), 3);
-    if ($q <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: informe a Quantidade.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
+  // ✅ Só ignora se a linha está REALMENTE vazia
+  $linhaVazia =
+    ($produtorId <= 0) &&
+    ($produtoId  <= 0) &&
+    ($q <= 0) &&
+    ($p <= 0) &&
+    ($foto === '') &&
+    ($obs === '');
 
-    $p = round(to_decimal($precos[$i] ?? '0'), 2);
-    if ($p <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: informe o Preço.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-
-    $obs = trim((string)($obsArr[$i] ?? ''));
-    if ($obs !== '') $obs = mb_substr($obs, 0, 255, 'UTF-8');
-
-    $foto = trim((string)($fotosArr[$i] ?? ''));
-
-    $itens[] = [
-      'produtor_id' => $produtorId,
-      'produto_id'  => $produtoId,
-      'qtd'         => $q,
-      'preco'       => $p,
-      'obs'         => $obs,
-      'foto'        => $foto,
-    ];
+  if ($linhaVazia) {
+    continue;
   }
 
-  if (empty($itens)) {
-    $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
+  // ✅ Agora valida de verdade (se não estiver vazia)
+  if ($produtorId <= 0) {
+    $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produtor.";
     header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
+
+  if ($produtoId <= 0) {
+    $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produto.";
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+    exit;
+  }
+
+  if ($q <= 0) {
+    $_SESSION['flash_err'] = "Linha {$linha}: informe a Quantidade.";
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+    exit;
+  }
+
+  if ($p <= 0) {
+    $_SESSION['flash_err'] = "Linha {$linha}: informe o Preço.";
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+    exit;
+  }
+
+  if ($obs !== '') $obs = mb_substr($obs, 0, 255, 'UTF-8');
+
+  $itens[] = [
+    'produtor_id' => $produtorId,
+    'produto_id'  => $produtoId,
+    'qtd'         => $q,
+    'preco'       => $p,
+    'obs'         => $obs,
+    'foto'        => $foto,
+  ];
+}
+
+if (empty($itens)) {
+  $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
+  header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+  exit;
+}
+
 
   if (!$UPLOAD_ABS) {
     $_SESSION['flash_err'] = 'Diretório base não encontrado para upload.';
