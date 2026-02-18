@@ -11,7 +11,7 @@
 
 <div class="card">
     <div class="card-body">
-        <form method="POST" action="?url=produtos/<?php echo $action; ?><?php echo ($action == 'edit') ? '/' . $product['id'] : ''; ?>">
+        <form method="POST" action="?url=produtos/<?php echo $action; ?><?php echo ($action == 'edit') ? '/' . $product['id'] : ''; ?>" enctype="multipart/form-data">
             
             <div class="row g-3">
                 <!-- Identificação -->
@@ -32,6 +32,16 @@
                 <div class="col-md-7">
                     <label class="form-label">Nome do Produto</label>
                     <input type="text" class="form-control" name="nome" value="<?php echo $product['nome'] ?? ''; ?>" required>
+                </div>
+                
+                 <div class="col-md-12">
+                    <label class="form-label">Imagem do Produto</label>
+                    <input type="file" class="form-control" name="imagem" accept="image/*">
+                    <?php if (isset($product['imagem']) && $product['imagem']): ?>
+                        <div class="mt-2">
+                             <img src="<?php echo '../public/' . $product['imagem']; ?>" alt="Produto" style="max-height: 100px;">
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Classificação -->

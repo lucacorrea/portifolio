@@ -1,15 +1,23 @@
 <?php
-// app/controllers/FiliaisController.php
 
-class FiliaisController extends Controller {
-    
-    public function __construct() {
-        if (!isset($_SESSION['user_id'])) {
-            $this->redirect('login');
-        }
+namespace App\Controllers;
+
+use App\Core\Controller;
+use App\Models\Filial;
+use App\Middleware\AuthMiddleware;
+
+class FiliaisController extends Controller
+{
+    public function __construct()
+    {
+        (new AuthMiddleware())->handle();
     }
-    
-    public function index() {
-        echo "<h1>Gestão de Filiais - Em Construção</h1>";
+
+    public function index()
+    {
+        $filialModel = new Filial();
+        $filiais = $filialModel->getAll();
+        
+        $this->view('filiais/index', ['filiais' => $filiais]);
     }
 }

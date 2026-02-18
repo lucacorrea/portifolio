@@ -1,47 +1,62 @@
 <?php
-// app/controllers/LoginController.php
 
-class LoginController extends Controller {
-    
-    public function index() {
-        // Se já estiver logado, redireciona para dashboard
+namespace App\Controllers;
+
+use App\Core\Controller;
+use App\Models\User;
+
+class LoginController extends Controller
+{
+    public function index()
+    {
+        // If already logged in, redirect to dashboard
         if (isset($_SESSION['user_id'])) {
-            $this->redirect('home/index');
+            $this->redirect('/dashboard');
         }
 
         $data = [
-            'view' => 'login/index',
             'error' => ''
         ];
 
-        // Processar formulário de login via POST
-        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
-            $password = $_POST['password'];
-
-            $userModel = $this->model('User');
-            $user = $userModel->login($email, $password);
-
-            if ($user) {
-                // Configurar Sessão
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_nome'] = $user['nome'];
-                $_SESSION['user_email'] = $user['email'];
-                $_SESSION['user_nivel'] = $user['nivel'];
-                $_SESSION['user_filial_id'] = $user['filial_id'];
-
-                $this->redirect('home/index');
-            } else {
-                $data['error'] = 'Credenciais inválidas ou usuário inativo.';
-            }
-        }
-
-        // Carregar View de Login (sem header/footer padrão, layout limpo)
-        require_once '../app/views/login/index.php';
+        // Process view rendering
+        // We will create a simple login view file compatible with our new Controller::view method
+        $this->view('login/index', $data); 
     }
 
-    public function logout() {
+    public function auth()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('/login');
+        }
+
+        $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
+        $password = $_POST['password'] ?? '';
+
+        $userModel = new User();
+        $user = $userModel->login($email, $password);
+
+        if ($user) {
+            // Configure Session
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_nome'] = $user['nome'];
+            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_nivel'] = $user['nivel'];
+            $_SESSION['user_filial_id'] = $user['filial_id'];
+
+            $this->redirect('/dashboard');
+        } else {
+            // In a real app we'd flash session data, for now passing error via view might be tricky with redirect.
+            // Let's just include the view with error
+             $data = [
+                'error' => 'Credenciais inválidas ou usuário inativo.'
+            ];
+            $this->view('login/index', $data);
+        }
+    }
+
+    public function logout()
+    {
         session_destroy();
-        $this->redirect('login');
+        $this->redirect('/login');
     }
 }

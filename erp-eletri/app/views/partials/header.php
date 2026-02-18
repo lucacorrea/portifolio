@@ -36,10 +36,10 @@
                 <small class="px-3 text-uppercase text-muted" style="font-size: 0.75rem;">Operacional</small>
 
                 <li>
-                    <a href="?url=prevenda/index"><i class="bi bi-cart3 me-2"></i> Pré-Venda / Balcão</a>
+                    <a href="?url=vendas/index"><i class="bi bi-cart3 me-2"></i> Histórico de Vendas</a>
                 </li>
                 <li>
-                    <a href="?url=caixa/index"><i class="bi bi-cash-coin me-2"></i> Caixa / PDV</a>
+                    <a href="?url=vendas/pdv"><i class="bi bi-cash-coin me-2"></i> Caixa / PDV</a>
                 </li>
                 <li>
                     <a href="?url=clientes/index"><i class="bi bi-people me-2"></i> Clientes</a>
