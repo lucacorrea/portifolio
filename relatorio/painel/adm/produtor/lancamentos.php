@@ -615,7 +615,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <ul class="nav">
 
           <!-- Dashboard -->
-          <li class="nav-item active">
+          <li class="nav-item">
             <a class="nav-link" href="./index.php">
               <i class="icon-grid menu-icon"></i>
               <span class="menu-title">Dashboard</span>
@@ -648,7 +648,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </a>
             <div class="collapse" id="feiraMovimento">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
+                <li class="nav-item"><a class="nav-link active" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
                 <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
               </ul>
             </div>
