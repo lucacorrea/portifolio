@@ -272,6 +272,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   header('Location: ./lancamentos.php');
   exit;
+  /* Flash */
+  $msg = (string)($_SESSION['flash_ok'] ?? '');
+  $err = (string)($_SESSION['flash_err'] ?? '');
+  unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 }
 ?>
 <!DOCTYPE html>
@@ -586,11 +590,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         margin-right: 6px;
       }
     }
+
+    /* Toast */
+    .sig-flash-wrap {
+      position: fixed;
+      top: 78px;
+      right: 18px;
+      width: min(420px, calc(100vw - 36px));
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .sig-toast.alert {
+      pointer-events: auto;
+      border: 0 !important;
+      border-left: 6px solid !important;
+      border-radius: 14px !important;
+      padding: 10px 12px !important;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
+      font-size: 13px !important;
+      margin-bottom: 10px !important;
+      opacity: 0;
+      transform: translateX(10px);
+      animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
+    }
+
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important;
+    }
+
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important;
+    }
+
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .sig-toast__title {
+      font-weight: 900;
+      margin-bottom: 1px;
+      line-height: 1.1;
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    @keyframes sigToastIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes sigToastOut {
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden;
+      }
+    }
   </style>
 </head>
 
 <body>
   <div class="container-scroller">
+    <?php if ($msg || $err): ?>
+      <div class="sig-flash-wrap">
+        <?php if ($msg): ?>
+          <div class="alert sig-toast sig-toast--success" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-check"></i></div>
+              <div>
+                <div class="sig-toast__title">Tudo certo!</div>
+                <p class="sig-toast__text"><?= h($msg) ?></p>
+              </div>
+            </div>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($err): ?>
+          <div class="alert sig-toast sig-toast--danger" role="alert">
+            <div class="sig-toast__row">
+              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
+              <div>
+                <div class="sig-toast__title">Atenção!</div>
+                <p class="sig-toast__text"><?= h($err) ?></p>
+              </div>
+            </div>
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
 
     <!-- NAVBAR -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
