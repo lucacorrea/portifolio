@@ -663,6 +663,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <i class="menu-arrow"></i>
             </a>
             <div class="collapse" id="feiraMovimento">
+              <style>
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
+              </style>
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item"><a class="nav-link active" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
                 <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
