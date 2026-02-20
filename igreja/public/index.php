@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/functions.php';
 
 // Obter estatísticas
 $stats = obterEstatisticas();
-$membros = obterMembros(1, 5);
+
 ?>
 
 <!DOCTYPE html>
@@ -267,7 +267,7 @@ $membros = obterMembros(1, 5);
                                     </p>
                                 </div>
                                 <div class="member-date">
-                                    <?php echo formataData($membro['data_cadastro']); ?>
+                    
                                 </div>
                             </div>
                         <?php endforeach; ?>
