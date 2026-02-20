@@ -13,13 +13,13 @@
 define('DB_HOST', 'localhost');
 
 // Nome do banco de dados
-define('DB_NAME', 'igreja_membros');
+define('DB_NAME', 'u784961086_igreja_membros');
 
 // Usuário MySQL
-define('DB_USER', 'root');
+define('DB_USER', 'u784961086_igreja_membros');
 
 // Senha MySQL
-define('DB_PASS', '');
+define('DB_PASS', 'ndYsT0!i');
 
 // Porta MySQL (padrão: 3306)
 define('DB_PORT', 3306);
