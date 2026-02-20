@@ -193,67 +193,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     count((array)$fotosArr)
   );
 
-  $itens = [];
+$itens = [];
+$n = max(
+  count((array)$prodIds),
+  count((array)$produtoIds),
+  count((array)$qtds),
+  count((array)$precos),
+  count((array)$obsArr),
+  count((array)$fotosArr)
+);
 
-  for ($i = 0; $i < $n; $i++) {
-    $linha = $i + 1;
+for ($i = 0; $i < $n; $i++) {
+  $linha = $i + 1;
 
-    $produtorRaw = trim((string)($prodIds[$i] ?? ''));
-    $produtoRaw  = trim((string)($produtoIds[$i] ?? ''));
-    $qtdRaw      = trim((string)($qtds[$i] ?? ''));
-    $precoRaw    = trim((string)($precos[$i] ?? ''));
-    $obs         = trim((string)($obsArr[$i] ?? ''));
-    $foto        = trim((string)($fotosArr[$i] ?? ''));
+  $produtorRaw = trim((string)($prodIds[$i] ?? ''));
+  $produtoRaw  = trim((string)($produtoIds[$i] ?? ''));
+  $qtdRaw      = trim((string)($qtds[$i] ?? ''));
+  $precoRaw    = trim((string)($precos[$i] ?? ''));
+  $obs         = trim((string)($obsArr[$i] ?? ''));
+  $foto        = trim((string)($fotosArr[$i] ?? ''));
 
-    $produtorId = (int)$produtorRaw;
-    $produtoId  = (int)$produtoRaw;
-    $q = round(to_decimal($qtdRaw), 3);
-    $p = round(to_decimal($precoRaw), 2);
+  $produtorId = (int)$produtorRaw;
+  $produtoId  = (int)$produtoRaw;
+  $q = round(to_decimal($qtdRaw), 3);
+  $p = round(to_decimal($precoRaw), 2);
 
-    $temAlgo =
-      ($produtorId > 0) ||
-      ($produtoId > 0) ||
-      ($qtdRaw !== '' && $q > 0) ||
-      ($precoRaw !== '' && $p > 0) ||
-      ($obs !== '') ||
-      ($foto !== '');
-
-    // ✅ ignora linha totalmente vazia
-    if (!$temAlgo) continue;
-
-    // ✅ valida apenas linhas com intenção
-    if ($produtorId <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produtor.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-    if ($produtoId <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produto.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-    if ($q <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: informe a Quantidade.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-    if ($p <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: informe o Preço.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-
-    if ($obs !== '') $obs = mb_substr($obs, 0, 255, 'UTF-8');
-
-    $itens[] = [
-      'produtor_id' => $produtorId,
-      'produto_id'  => $produtoId,
-      'qtd'         => $q,
-      'preco'       => $p,
-      'obs'         => $obs,
-      'foto'        => $foto,
-    ];
+  // ✅ REGRA NOVA: se não tem produtor e não tem produto, ignora SEM validar.
+  // (isso mata "linha fantasma", autofill, qty=1 etc.)
+  if ($produtorId <= 0 && $produtoId <= 0) {
+    continue;
   }
+
+  // ✅ A partir daqui: se tem um dos dois, aí sim valida
+  if ($produtorId <= 0) {
+    $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produtor.";
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+    exit;
+  }
+
+  if ($produtoId <= 0) {
+    $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produto.";
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+    exit;
+  }
+
+  if ($q <= 0) {
+    $_SESSION['flash_err'] = "Linha {$linha}: informe a Quantidade.";
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+    exit;
+  }
+
+  if ($p <= 0) {
+    $_SESSION['flash_err'] = "Linha {$linha}: informe o Preço.";
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+    exit;
+  }
+
+  if ($obs !== '') $obs = mb_substr($obs, 0, 255, 'UTF-8');
+
+  $itens[] = [
+    'produtor_id' => $produtorId,
+    'produto_id'  => $produtoId,
+    'qtd'         => $q,
+    'preco'       => $p,
+    'obs'         => $obs,
+    'foto'        => $foto,
+  ];
+}
+
+if (empty($itens)) {
+  $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido.';
+  header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+  exit;
+}
 
   if (!$itens) {
     $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido.';
