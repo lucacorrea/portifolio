@@ -2,10 +2,6 @@
 declare(strict_types=1);
 session_start();
 
-/**
- * ✅ SEGURANÇA: evita qualquer “texto solto” antes do HTML
- * (se algum include soltar espaço/notice, o output buffer segura)
- */
 if (!ob_get_level()) ob_start();
 
 /* Obrigatório estar logado */
@@ -57,10 +53,7 @@ function ensure_dir(string $dir): bool
 
 /**
  * Salva imagem base64 com validação simples.
- * - Aceita jpeg/jpg/png/webp
- * - Limite de bytes
- * - Salva com extensão coerente ao mime
- * Retorna o nome do arquivo salvo (basename) ou null.
+ * Retorna o nome do arquivo salvo ou null.
  */
 function save_base64_image(?string $dataUrl, string $destDirAbs, string $baseNameNoExt, int $maxBytes): ?string
 {
@@ -92,7 +85,7 @@ $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 
-/* Nome topo (evita warning) */
+/* Nome topo */
 $nomeTopo = (string)($_SESSION['nome'] ?? $_SESSION['usuario_nome'] ?? $_SESSION['usuario_logado'] ?? 'Usuário');
 
 /* CSRF */
@@ -101,7 +94,7 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* ===== Conexão (usa sua db() do conexao.php) ===== */
+/* ===== Conexão ===== */
 require '../../../assets/php/conexao.php';
 $pdo = db();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -137,9 +130,8 @@ try {
 /* ===== Combos ===== */
 $produtoresAtivos = [];
 $produtosAtivos   = [];
-
 try {
-  // ✅ agora traz documento (CPF) também
+  // ✅ traz documento (CPF) também
   $stP = $pdo->prepare("
     SELECT id, nome, COALESCE(documento,'') AS documento
     FROM produtores
@@ -203,12 +195,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $obsArr     = $_POST['observacao_item'] ?? [];
   $fotosArr   = $_POST['foto_base64'] ?? [];
 
-  /**
-   * ✅ Validação por linha (robusta)
-   * Regra:
-   * - A linha só “conta” se houver intenção real.
-   * - Quantidade default (ex: 1) NÃO força validação se usuário não mexeu em mais nada.
-   */
   $itens = [];
   $n = max(
     count((array)$prodIds),
@@ -238,6 +224,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $qtdFoiDigitada   = ($qtdRaw !== '');
     $precoFoiDigitado = ($precoRaw !== '');
 
+    // ✅ proteção extra: se vier SÓ QTD=1 (e mais nada), ignora a linha
+    $soQtdUm =
+      ($produtorId <= 0) &&
+      ($produtoId <= 0) &&
+      (!$precoFoiDigitado || $p <= 0) &&
+      ($foto === '') &&
+      ($obs === '') &&
+      ($qtdFoiDigitada) &&
+      (abs($q - 1.0) < 0.0005);
+
+    if ($soQtdUm) {
+      continue;
+    }
+
+    // ✅ intenção real
     $temIntencao =
       ($produtorId > 0) ||
       ($produtoId > 0) ||
@@ -334,14 +335,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $itemId = (int)$pdo->lastInsertId();
 
       if ($it['foto'] !== '') {
-        $fileBase = 'item_' . $itemId . '_1';
-        $savedFileName = save_base64_image($it['foto'], $dayAbs, $fileBase, $MAX_IMG_BYTES);
-
-        if ($savedFileName) {
-          $relPath = $dayRel . '/' . $savedFileName;
+        $saved = save_base64_image($it['foto'], $dayAbs, 'item_' . $itemId . '_1', $MAX_IMG_BYTES);
+        if ($saved) {
           $insFoto->execute([
             ':i' => $itemId,
-            ':c' => $relPath,
+            ':c' => $dayRel . '/' . $saved,
           ]);
         }
       }
@@ -381,21 +379,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .btn { height: 42px }
     .helper { font-size: 12px }
     .card { border-radius: 14px }
-
     .card-header-lite {
       display:flex; align-items:flex-start; justify-content:space-between;
       gap:12px; flex-wrap:wrap;
       border-bottom:1px solid rgba(0,0,0,.06);
       padding-bottom:12px; margin-bottom:12px
     }
-
     .pill{
       display:inline-flex; align-items:center; gap:6px;
       padding:6px 10px; border-radius:999px;
       font-size:12px; font-weight:700;
       background:#eef2ff; color:#1f2a6b
     }
-
     .totbox{
       border:1px solid rgba(0,0,0,.08);
       background:#fff; border-radius:12px;
@@ -403,22 +398,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     .totlabel{font-size:12px;color:#6c757d;margin:0}
     .totvalue{font-size:20px;font-weight:900;margin:0}
-
     .line-card{
       border:1px solid rgba(0,0,0,.08);
       background:#fff; border-radius:14px;
       padding:12px; margin-bottom:10px
     }
-
     .mini{height:38px!important}
     .muted{color:#6c757d}
-
     .photo-thumb{
       width:76px; height:52px; object-fit:cover;
       border-radius:10px; border:1px solid rgba(0,0,0,.12);
       display:none
     }
-
     .sticky-actions{
       position:sticky; bottom:10px; z-index:3;
       background:rgba(255,255,255,.92);
@@ -429,13 +420,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       justify-content:space-between; align-items:center;
       margin-top:12px
     }
-
     .sig-flash-wrap{
       position:fixed; top:78px; right:18px;
       width:min(420px, calc(100vw - 36px));
       z-index:9999; pointer-events:none
     }
-
     .sig-toast.alert{
       pointer-events:auto;
       border:0!important; border-left:6px solid!important;
@@ -447,26 +436,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       opacity:0; transform:translateX(10px);
       animation:sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s
     }
-
     .sig-toast--success{background:#f1fff6!important;border-left-color:#22c55e!important}
     .sig-toast--danger{background:#fff1f2!important;border-left-color:#ef4444!important}
-
     .sig-toast__row{display:flex;align-items:flex-start;gap:10px}
     .sig-toast__icon i{font-size:16px;margin-top:2px}
     .sig-toast__title{font-weight:900;margin-bottom:1px;line-height:1.1}
     .sig-toast__text{margin:0;line-height:1.25}
-
     @keyframes sigToastIn{to{opacity:1;transform:translateX(0)}}
     @keyframes sigToastOut{to{opacity:0;transform:translateX(12px);visibility:hidden}}
-
     .line-actions-simple{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
     .btn-foto-big{height:46px;font-size:14px;font-weight:800;border-radius:12px;padding:10px 14px}
-
     .cam-box{border:1px solid rgba(0,0,0,.08);background:#fff;border-radius:14px;padding:10px}
     #camVideo,#camPreview{width:100%;border-radius:12px;background:#111;max-height:60vh;object-fit:cover}
     #camPreview{display:none}
     #camCanvas{display:none}
-
     @media (max-width:576px){
       .card-header-lite{flex-direction:column;align-items:stretch!important;gap:10px!important}
       .totbox{width:100%}
@@ -635,7 +618,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                           <div class="col-lg-4 col-md-6 mb-3">
                             <label class="mb-1">Qtd</label>
-                            <input type="text" class="form-control js-qtd" name="quantidade_entrada[]" value="1">
+                            <!-- ✅ NÃO coloca value=1 aqui. Placeholder = 1 -->
+                            <input type="text" class="form-control js-qtd" name="quantidade_entrada[]" value="" placeholder="1">
                           </div>
 
                           <div class="col-lg-4 col-md-6 mb-3">
@@ -771,15 +755,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       const btnRef = document.getElementById('btnRef');
       const btnLimparFotos = document.getElementById('btnLimparFotos');
       const totalEl = document.getElementById('jsTotal');
-      const form = document.getElementById('formEntrada');
 
       function brMoney(n) {
-        try {
-          return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        } catch (e) {
-          const x = Math.round(n * 100) / 100;
-          return String(x).replace('.', ',');
-        }
+        try { return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        catch (e) { return String(Math.round(n * 100) / 100).replace('.', ','); }
       }
 
       function toNum(s) {
@@ -796,19 +775,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
         const un = opt && opt.dataset ? (opt.dataset.un || '') : '';
         const cat = opt && opt.dataset ? (opt.dataset.cat || '') : '';
-        const unEl = line.querySelector('.js-un');
-        const catEl = line.querySelector('.js-cat');
-        if (unEl) unEl.value = un;
-        if (catEl) catEl.value = cat;
+        line.querySelector('.js-un').value = un;
+        line.querySelector('.js-cat').value = cat;
+
+        // ✅ se escolheu produto e qtd está vazia, coloca 1 automaticamente
+        const qtd = line.querySelector('.js-qtd');
+        if (qtd && !String(qtd.value || '').trim() && sel && parseInt(sel.value || '0', 10) > 0) {
+          qtd.value = '1';
+        }
       }
 
       function calcTotal() {
         let tot = 0;
         document.querySelectorAll('.js-line').forEach(line => {
           const produtor = parseInt((line.querySelector('.js-produtor') || {}).value || '0', 10);
-          const produto = parseInt((line.querySelector('.js-produto') || {}).value || '0', 10);
+          const produto  = parseInt((line.querySelector('.js-produto')  || {}).value || '0', 10);
           if (!produtor || !produto) return;
-          const qtd = toNum((line.querySelector('.js-qtd') || {}).value || '0');
+          const qtd   = toNum((line.querySelector('.js-qtd') || {}).value || '0');
           const preco = toNum((line.querySelector('.js-preco') || {}).value || '0');
           if (qtd > 0 && preco > 0) tot += (qtd * preco);
         });
@@ -819,7 +802,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const lines = document.querySelectorAll('.js-line');
         lines.forEach(line => {
           const btn = line.querySelector('.js-remove');
-          if (!btn) return;
           btn.disabled = (lines.length <= 1);
           btn.onclick = () => {
             if (lines.length <= 1) return;
@@ -835,12 +817,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const qtd = line.querySelector('.js-qtd');
         const preco = line.querySelector('.js-preco');
 
-        prod && prod.addEventListener('change', () => {
-          syncInfo(line);
-          calcTotal();
-        });
-        qtd && qtd.addEventListener('input', calcTotal);
-        preco && preco.addEventListener('input', calcTotal);
+        prod.addEventListener('change', () => { syncInfo(line); calcTotal(); });
+        qtd.addEventListener('input', calcTotal);
+        preco.addEventListener('input', calcTotal);
 
         syncInfo(line);
       }
@@ -850,27 +829,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!base) return;
         const clone = base.cloneNode(true);
 
-        const sProdutor = clone.querySelector('.js-produtor');
-        const sProduto  = clone.querySelector('.js-produto');
-        const inQtd     = clone.querySelector('.js-qtd');
-        const inPreco   = clone.querySelector('.js-preco');
-        const inUn      = clone.querySelector('.js-un');
-        const inCat     = clone.querySelector('.js-cat');
-        const inFoto    = clone.querySelector('.js-foto-base64');
-
-        if (sProdutor) sProdutor.value = '0';
-        if (sProduto)  sProduto.value = '0';
-        if (inQtd)     inQtd.value = '1';
-        if (inPreco)   inPreco.value = '';
-        if (inUn)      inUn.value = '';
-        if (inCat)     inCat.value = '';
-        if (inFoto)    inFoto.value = '';
+        clone.querySelector('.js-produtor').value = '0';
+        clone.querySelector('.js-produto').value  = '0';
+        clone.querySelector('.js-qtd').value      = '';   // ✅ não começa com 1
+        clone.querySelector('.js-preco').value    = '';
+        clone.querySelector('.js-un').value       = '';
+        clone.querySelector('.js-cat').value      = '';
+        clone.querySelector('.js-foto-base64').value = '';
 
         const thumb = clone.querySelector('.js-thumb');
-        if (thumb) {
-          thumb.src = '';
-          thumb.style.display = 'none';
-        }
+        thumb.src = '';
+        thumb.style.display = 'none';
 
         wrap.appendChild(clone);
         wire(clone);
@@ -891,19 +860,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const n = toNum(ref);
             if (n > 0) precoIn.value = brMoney(n);
           }
+          syncInfo(line);
         });
         calcTotal();
       });
 
       btnLimparFotos && btnLimparFotos.addEventListener('click', () => {
         document.querySelectorAll('.js-line').forEach(line => {
-          const foto = line.querySelector('.js-foto-base64');
-          if (foto) foto.value = '';
+          line.querySelector('.js-foto-base64').value = '';
           const thumb = line.querySelector('.js-thumb');
-          if (thumb) {
-            thumb.src = '';
-            thumb.style.display = 'none';
-          }
+          thumb.src = '';
+          thumb.style.display = 'none';
         });
       });
 
@@ -911,7 +878,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       updateRemoveButtons();
       calcTotal();
 
-      // ===== CAMERA =====
+      // ===== CAMERA (igual ao seu, mantido) =====
       let currentLine = null;
       let stream = null;
       let capturedDataUrl = '';
@@ -925,10 +892,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       const btnUsarFoto = document.getElementById('btnUsarFoto');
 
       function setCamUI({ on, has }) {
-        if (btnTirarFoto) btnTirarFoto.disabled = !on;
-        if (btnRefazer) btnRefazer.disabled = !has;
-        if (btnUsarFoto) btnUsarFoto.disabled = !has;
-        if (camPreview) camPreview.style.display = has ? 'block' : 'none';
+        btnTirarFoto.disabled = !on;
+        btnRefazer.disabled = !has;
+        btnUsarFoto.disabled = !has;
+        camPreview.style.display = has ? 'block' : 'none';
       }
 
       function closeCam() {
@@ -949,7 +916,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           camVideo.srcObject = stream;
           await camVideo.play();
           capturedDataUrl = '';
-          if (camPreview) camPreview.src = '';
+          camPreview.src = '';
           setCamUI({ on: true, has: false });
         } catch (e) {
           alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS (ou localhost).');
@@ -958,7 +925,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
 
       function snap() {
-        if (!camVideo || !camVideo.videoWidth || !camVideo.videoHeight) return;
+        if (!camVideo.videoWidth || !camVideo.videoHeight) return;
         const targetW = 720;
         const ratio = camVideo.videoHeight / camVideo.videoWidth;
         const targetH = Math.round(targetW * ratio);
@@ -969,7 +936,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ctx.drawImage(camVideo, 0, 0, targetW, targetH);
 
         capturedDataUrl = camCanvas.toDataURL('image/jpeg', 0.65);
-        if (camPreview) camPreview.src = capturedDataUrl;
+        camPreview.src = capturedDataUrl;
 
         closeCam();
         setCamUI({ on: false, has: true });
@@ -977,10 +944,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       function redo() {
         capturedDataUrl = '';
-        if (camPreview) {
-          camPreview.src = '';
-          camPreview.style.display = 'none';
-        }
+        camPreview.src = '';
+        camPreview.style.display = 'none';
         openCam();
       }
 
@@ -990,7 +955,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         currentLine = btn.closest('.js-line');
         capturedDataUrl = '';
-        if (camPreview) camPreview.src = '';
+        camPreview.src = '';
         setCamUI({ on: false, has: false });
 
         if (window.jQuery && jQuery.fn.modal) {
@@ -1003,20 +968,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       });
 
-      btnTirarFoto && btnTirarFoto.addEventListener('click', snap);
-      btnRefazer && btnRefazer.addEventListener('click', redo);
+      btnTirarFoto.addEventListener('click', snap);
+      btnRefazer.addEventListener('click', redo);
 
-      btnUsarFoto && btnUsarFoto.addEventListener('click', function() {
+      btnUsarFoto.addEventListener('click', function() {
         if (!currentLine || !capturedDataUrl) return;
 
-        const hid = currentLine.querySelector('.js-foto-base64');
-        if (hid) hid.value = capturedDataUrl;
-
+        currentLine.querySelector('.js-foto-base64').value = capturedDataUrl;
         const thumb = currentLine.querySelector('.js-thumb');
-        if (thumb) {
-          thumb.src = capturedDataUrl;
-          thumb.style.display = 'block';
-        }
+        thumb.src = capturedDataUrl;
+        thumb.style.display = 'block';
 
         if (window.jQuery && jQuery.fn.modal) jQuery('#modalCamera').modal('hide');
       });
@@ -1025,7 +986,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         jQuery('#modalCamera').on('hidden.bs.modal', function() {
           closeCam();
           capturedDataUrl = '';
-          if (camPreview) camPreview.src = '';
+          camPreview.src = '';
           setCamUI({ on: false, has: false });
         });
       }
