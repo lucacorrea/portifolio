@@ -1,0 +1,272 @@
+================================================================================
+SISTEMA DE GERENCIAMENTO DE MEMBROS
+Igreja de Deus Nascer de Novo
+================================================================================
+
+VERSÃO: 1.0
+DATA: Fevereiro 2026
+TECNOLOGIA: PHP 8.1 + JavaScript + Bootstrap 5 + SQLite3
+
+================================================================================
+FUNCIONALIDADES IMPLEMENTADAS
+================================================================================
+
+✅ DASHBOARD
+   - Estatísticas gerais (total de membros)
+   - Gráficos interativos (Chart.js)
+   - Distribuição por tipo de integração
+   - Distribuição por sexo
+   - Distribuição por estado civil
+   - Faixa etária dos membros
+
+✅ GERENCIAMENTO DE MEMBROS
+   - Cadastro completo com 40+ campos
+   - Listagem paginada (10 membros por página)
+   - Busca avançada (nome, CPF, telefone)
+   - Edição de dados
+   - Exclusão de membros
+   - Upload de foto (3x4, máximo 5MB)
+   - Visualização detalhada com avatar colorido
+
+✅ RELATÓRIOS
+   - PDF individual de membro
+   - PDF com lista de todos os membros
+   - PDF com estatísticas gerais
+
+✅ DESIGN
+   - Interface moderna e profissional
+   - Paleta institucional (Azul-marinho + Dourado)
+   - Responsivo (desktop, tablet, mobile)
+   - Navegação intuitiva com sidebar
+   - Animações e transições suaves
+
+================================================================================
+ESTRUTURA DE ARQUIVOS
+================================================================================
+
+sistema-membros-igreja/
+├── public/
+│   ├── index.php              (Interface principal)
+│   ├── dashboard.php          (Dashboard de estatísticas)
+│   ├── membros.php            (API CRUD)
+│   ├── relatorio.php          (Geração de PDF)
+│   ├── database.php           (Configuração BD)
+│   ├── functions.php          (Funções auxiliares)
+│   ├── css/
+│   │   └── style.css          (Estilos customizados)
+│   ├── js/
+│   │   └── app.js             (Lógica JavaScript)
+│   └── uploads/               (Fotos dos membros)
+├── config/
+│   └── database.php           (Configuração do banco)
+├── api/
+│   ├── membros.php            (API de membros)
+│   └── relatorio.php          (Geração de relatórios)
+├── includes/
+│   └── functions.php          (Funções auxiliares)
+├── data/
+│   └── membros.db             (Banco de dados SQLite)
+├── README.md                  (Documentação)
+├── INSTALACAO.md              (Guia de instalação)
+└── RESUMO.txt                 (Este arquivo)
+
+================================================================================
+CAMPOS DE CADASTRO
+================================================================================
+
+DADOS PESSOAIS:
+- Nome Completo (obrigatório)
+- Data de Nascimento
+- Sexo (M/F)
+- CPF (com validação)
+- RG
+- Tipo Sanguíneo
+- Nacionalidade
+- Naturalidade
+- Estado (UF)
+- Escolaridade
+- Profissão
+
+DOCUMENTOS:
+- Título de Eleitor
+- CTP
+- CDI
+
+FILIAÇÃO:
+- Pai
+- Mãe
+
+ESTADO CIVIL:
+- Estado Civil
+- Cônjuge
+- Filhos
+
+ENDEREÇO RESIDENCIAL:
+- Rua
+- Número
+- Bairro
+- CEP
+- Cidade
+- Estado (UF)
+- Telefone
+
+DADOS ECLESIÁSTICOS:
+- Tipo de Integração (Batismo, Mudança, Aclamação)
+- Data de Integração
+- Batismo em Águas
+- Batismo no Espírito Santo
+- Procedência
+- Congregação
+- Área
+- Núcleo
+
+FOTO:
+- Upload de foto 3x4 (máximo 5MB)
+
+================================================================================
+COMO USAR
+================================================================================
+
+1. ACESSAR O SISTEMA:
+   http://localhost/sistema-membros-igreja/public/
+
+2. CADASTRAR NOVO MEMBRO:
+   - Clique em "Novo Membro" no header
+   - Preencha todos os campos desejados
+   - Faça upload da foto (opcional)
+   - Clique em "Salvar Membro"
+
+3. VISUALIZAR MEMBROS:
+   - Clique em "Membros" no menu lateral
+   - Use a barra de busca para filtrar
+   - Clique no ícone de olho para visualizar detalhes
+   - Clique no ícone de lápis para editar
+   - Clique no ícone de lixo para deletar
+
+4. VER ESTATÍSTICAS:
+   - Clique em "Dashboard" no menu lateral
+   - Ou acesse: dashboard.php
+
+5. GERAR RELATÓRIOS:
+   - Clique em "Relatórios" no menu lateral
+   - Escolha o tipo de relatório desejado
+   - O PDF será baixado automaticamente
+
+================================================================================
+PALETA DE CORES
+================================================================================
+
+Azul-marinho:      #1a2e4a  (Primária, headers, botões)
+Azul-marinho claro: #2d4a6f (Hover, gradientes)
+Dourado:           #c9a84c  (Secundária, destaques, bordas)
+Dourado claro:     #e0c9a0  (Hover, backgrounds)
+Branco:            #ffffff  (Fundo, cards)
+Cinza quente:      #f5f3f0  (Fundo geral)
+Verde-água:        #2d7d6f  (Sucesso)
+Vermelho:          #d32f2f  (Erro)
+Azul:              #1976d2  (Info)
+Laranja:           #f57c00  (Warning)
+
+================================================================================
+TECNOLOGIAS UTILIZADAS
+================================================================================
+
+BACKEND:
+- PHP 8.1
+- SQLite3
+- PDO (PHP Data Objects)
+
+FRONTEND:
+- HTML5
+- CSS3
+- JavaScript (Vanilla)
+- Bootstrap 5.3
+- Chart.js (Gráficos)
+- Font Awesome (Ícones)
+- Google Fonts (Tipografia)
+
+BIBLIOTECAS:
+- FPDF (Geração de PDF)
+
+================================================================================
+SEGURANÇA
+================================================================================
+
+✅ Validação de CPF
+✅ Sanitização de entrada (XSS prevention)
+✅ Prepared statements (SQL injection prevention)
+✅ Validação de tipos de arquivo
+✅ Limite de tamanho de arquivo
+✅ Nomes únicos para uploads
+✅ Permissões de arquivo configuradas
+
+================================================================================
+REQUISITOS DO SERVIDOR
+================================================================================
+
+- PHP 7.4+ (recomendado 8.0+)
+- SQLite3 (geralmente pré-instalado)
+- Apache com mod_rewrite OU Nginx
+- 50MB de espaço em disco (mínimo)
+- Conexão com internet para CDN (Bootstrap, Chart.js, Google Fonts)
+
+================================================================================
+INSTALAÇÃO RÁPIDA
+================================================================================
+
+1. Copiar arquivos para /var/www/html/
+2. Definir permissões:
+   chmod -R 755 sistema-membros-igreja
+   chmod -R 777 sistema-membros-igreja/data
+   chmod -R 777 sistema-membros-igreja/public/uploads
+3. Acessar: http://localhost/sistema-membros-igreja/public/
+4. Começar a usar!
+
+Para instruções detalhadas, veja INSTALACAO.md
+
+================================================================================
+SUPORTE E MANUTENÇÃO
+================================================================================
+
+BACKUP DO BANCO:
+cp data/membros.db data/membros.db.bak
+
+RESTAURAR BACKUP:
+cp data/membros.db.bak data/membros.db
+
+LIMPAR CACHE:
+Ctrl + Shift + Delete no navegador
+
+VERIFICAR LOGS:
+tail -f /var/log/apache2/error.log
+
+================================================================================
+PRÓXIMAS MELHORIAS (Futuro)
+================================================================================
+
+- Autenticação de usuários
+- Diferentes níveis de acesso
+- Integração com Google Maps
+- Envio de SMS/Email
+- Integração com WhatsApp
+- Backup automático
+- API REST completa
+- Aplicativo mobile
+
+================================================================================
+CONTATO E SUPORTE
+================================================================================
+
+Igreja de Deus Nascer de Novo
+Avenida Joanico 195, Urucu
+CEP: 69460-000
+CNPJ: 26.938.216/0001-96
+
+================================================================================
+LICENÇA
+================================================================================
+
+Sistema desenvolvido exclusivamente para Igreja de Deus Nascer de Novo.
+Todos os direitos reservados.
+
+================================================================================
