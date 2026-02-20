@@ -1,7 +1,12 @@
 <?php
-
 declare(strict_types=1);
 session_start();
+
+/**
+ * ✅ SEGURANÇA: evita qualquer “texto solto” antes do HTML
+ * (se algum include soltar espaço/notice, o output buffer segura)
+ */
+if (!ob_get_level()) ob_start();
 
 /* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
@@ -17,6 +22,7 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
+/* Helpers */
 function h($s): string
 {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
@@ -49,19 +55,36 @@ function ensure_dir(string $dir): bool
   return @mkdir($dir, 0755, true);
 }
 
-function save_base64_image(?string $dataUrl, string $destAbsPath, int $maxBytes): bool
+/**
+ * Salva imagem base64 com validação simples.
+ * - Aceita jpeg/jpg/png/webp
+ * - Limite de bytes
+ * - Salva com extensão coerente ao mime
+ * Retorna o nome do arquivo salvo (basename) ou null.
+ */
+function save_base64_image(?string $dataUrl, string $destDirAbs, string $baseNameNoExt, int $maxBytes): ?string
 {
-  if (!$dataUrl) return false;
+  if (!$dataUrl) return null;
   $dataUrl = trim($dataUrl);
-  if ($dataUrl === '') return false;
+  if ($dataUrl === '') return null;
 
-  if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl) !== 1) return false;
+  if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl, $m) !== 1) return null;
+
+  $ext = ($m[1] === 'jpeg') ? 'jpg' : $m[1];
   $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
-  $bin = base64_decode($base64, true);
-  if ($bin === false) return false;
-  if (strlen($bin) > $maxBytes) return false;
 
-  return @file_put_contents($destAbsPath, $bin) !== false;
+  $bin = base64_decode($base64, true);
+  if ($bin === false) return null;
+  if (strlen($bin) > $maxBytes) return null;
+
+  if (!ensure_dir($destDirAbs)) return null;
+
+  $fileName = $baseNameNoExt . '.' . $ext;
+  $absPath = rtrim($destDirAbs, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
+
+  if (@file_put_contents($absPath, $bin) === false) return null;
+
+  return $fileName;
 }
 
 /* Flash */
@@ -69,15 +92,19 @@ $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
 
+/* Nome topo (evita warning) */
+$nomeTopo = (string)($_SESSION['nome'] ?? $_SESSION['usuario_nome'] ?? $_SESSION['usuario_logado'] ?? 'Usuário');
+
 /* CSRF */
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* ===== Conexão ===== */
+/* ===== Conexão (usa sua db() do conexao.php) ===== */
 require '../../../assets/php/conexao.php';
 $pdo = db();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 /* Feira */
 $feiraId = 1;
@@ -94,21 +121,31 @@ try {
   $romaneioId = (int)($st->fetchColumn() ?: 0);
 
   if ($romaneioId <= 0) {
-    $ins = $pdo->prepare("INSERT INTO romaneio_dia (feira_id, data_ref, status, criado_em) VALUES (:f, :d, 'ABERTO', NOW())");
+    $ins = $pdo->prepare("
+      INSERT INTO romaneio_dia (feira_id, data_ref, status, criado_em)
+      VALUES (:f, :d, 'ABERTO', NOW())
+    ");
     $ins->execute([':f' => $feiraId, ':d' => $dia]);
     $romaneioId = (int)$pdo->lastInsertId();
   }
 } catch (Throwable $e) {
   $_SESSION['flash_err'] = 'Não foi possível abrir o romaneio do dia.';
-  header('Location: ./romaneioEntrada.php');
+  header('Location: ./lancamentos.php?dia=' . urlencode($dia));
   exit;
 }
 
 /* ===== Combos ===== */
 $produtoresAtivos = [];
 $produtosAtivos   = [];
+
 try {
-  $stP = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :f AND ativo = 1 ORDER BY nome ASC");
+  // ✅ agora traz documento (CPF) também
+  $stP = $pdo->prepare("
+    SELECT id, nome, COALESCE(documento,'') AS documento
+    FROM produtores
+    WHERE feira_id = :f AND ativo = 1
+    ORDER BY nome ASC
+  ");
   $stP->execute([':f' => $feiraId]);
   $produtoresAtivos = $stP->fetchAll(PDO::FETCH_ASSOC);
 
@@ -131,23 +168,23 @@ try {
 }
 
 /* ===== Upload config ===== */
-$BASE_DIR = realpath(__DIR__ . '/../../../'); // raiz do projeto (ajuste se precisar)
+$BASE_DIR = realpath(__DIR__ . '/../../../');
 $UPLOAD_REL = 'uploads/romaneio';
 $UPLOAD_ABS = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL) : null;
-$MAX_IMG_BYTES = 3 * 1024 * 1024; // 3MB
+$MAX_IMG_BYTES = 3 * 1024 * 1024;
 
 /* ===== POST: salvar entrada ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $postedCsrf = (string)($_POST['csrf_token'] ?? '');
   if (!hash_equals($csrf, $postedCsrf)) {
     $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
 
   $acao = (string)($_POST['acao'] ?? '');
   if ($acao !== 'salvar') {
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
 
@@ -155,35 +192,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) $dataRef = $dia;
 
   if ($dataRef !== $dia) {
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dataRef));
+    header('Location: ./lancamentos.php?dia=' . urlencode($dataRef));
     exit;
   }
 
-  $prodIds   = $_POST['produtor_id'] ?? [];
+  $prodIds    = $_POST['produtor_id'] ?? [];
   $produtoIds = $_POST['produto_id'] ?? [];
-  $qtds      = $_POST['quantidade_entrada'] ?? [];
-  $precos    = $_POST['preco_unitario_dia'] ?? [];
-  $obsArr    = $_POST['observacao_item'] ?? [];
-  $fotosArr  = $_POST['foto_base64'] ?? [];
+  $qtds       = $_POST['quantidade_entrada'] ?? [];
+  $precos     = $_POST['preco_unitario_dia'] ?? [];
+  $obsArr     = $_POST['observacao_item'] ?? [];
+  $fotosArr   = $_POST['foto_base64'] ?? [];
 
+  /**
+   * ✅ Validação por linha (robusta)
+   * Regra:
+   * - A linha só “conta” se houver intenção real.
+   * - Quantidade default (ex: 1) NÃO força validação se usuário não mexeu em mais nada.
+   */
   $itens = [];
-  $n = max(count((array)$prodIds), count((array)$produtoIds), count((array)$qtds), count((array)$precos));
+  $n = max(
+    count((array)$prodIds),
+    count((array)$produtoIds),
+    count((array)$qtds),
+    count((array)$precos),
+    count((array)$obsArr),
+    count((array)$fotosArr)
+  );
 
   for ($i = 0; $i < $n; $i++) {
-    $produtorId = (int)($prodIds[$i] ?? 0);
-    $produtoId  = (int)($produtoIds[$i] ?? 0);
-    if ($produtorId <= 0 || $produtoId <= 0) continue;
+    $linha = $i + 1;
 
-    $q = round(to_decimal($qtds[$i] ?? '0'), 3);
-    if ($q <= 0) continue;
+    $produtorRaw = trim((string)($prodIds[$i] ?? ''));
+    $produtoRaw  = trim((string)($produtoIds[$i] ?? ''));
+    $qtdRaw      = trim((string)($qtds[$i] ?? ''));
+    $precoRaw    = trim((string)($precos[$i] ?? ''));
+    $foto        = trim((string)($fotosArr[$i] ?? ''));
+    $obs         = trim((string)($obsArr[$i] ?? ''));
 
-    $p = round(to_decimal($precos[$i] ?? '0'), 2);
-    if ($p <= 0) continue;
+    $produtorId = (int)$produtorRaw;
+    $produtoId  = (int)$produtoRaw;
 
-    $obs = trim((string)($obsArr[$i] ?? ''));
+    $q = round(to_decimal($qtdRaw), 3);
+    $p = round(to_decimal($precoRaw), 2);
+
+    $qtdFoiDigitada   = ($qtdRaw !== '');
+    $precoFoiDigitado = ($precoRaw !== '');
+
+    $temIntencao =
+      ($produtorId > 0) ||
+      ($produtoId > 0) ||
+      ($precoFoiDigitado && $p > 0) ||
+      ($qtdFoiDigitada && $q > 0) ||
+      ($foto !== '') ||
+      ($obs !== '');
+
+    if (!$temIntencao) {
+      continue;
+    }
+
+    if ($produtorId <= 0) {
+      $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produtor.";
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+      exit;
+    }
+
+    if ($produtoId <= 0) {
+      $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produto.";
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+      exit;
+    }
+
+    if ($q <= 0) {
+      $_SESSION['flash_err'] = "Linha {$linha}: informe a Quantidade.";
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+      exit;
+    }
+
+    if ($p <= 0) {
+      $_SESSION['flash_err'] = "Linha {$linha}: informe o Preço.";
+      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
+      exit;
+    }
+
     if ($obs !== '') $obs = mb_substr($obs, 0, 255, 'UTF-8');
-
-    $foto = trim((string)($fotosArr[$i] ?? ''));
 
     $itens[] = [
       'produtor_id' => $produtorId,
@@ -197,13 +288,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if (empty($itens)) {
     $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
 
   if (!$UPLOAD_ABS) {
     $_SESSION['flash_err'] = 'Diretório base não encontrado para upload.';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
     exit;
   }
 
@@ -224,9 +315,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $insFoto = $pdo->prepare("
       INSERT INTO romaneio_item_fotos
-        (feira_id, romaneio_id, romaneio_item_id, caminho, criado_em)
+        (romaneio_item_id, caminho, criado_em)
       VALUES
-        (:f, :r, :i, :c, NOW())
+        (:i, :c, NOW())
     ");
 
     foreach ($itens as $it) {
@@ -243,14 +334,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $itemId = (int)$pdo->lastInsertId();
 
       if ($it['foto'] !== '') {
-        $fileName = 'item_' . $itemId . '_1.jpg';
-        $absPath = $dayAbs . DIRECTORY_SEPARATOR . $fileName;
-        $relPath = $dayRel . '/' . $fileName;
+        $fileBase = 'item_' . $itemId . '_1';
+        $savedFileName = save_base64_image($it['foto'], $dayAbs, $fileBase, $MAX_IMG_BYTES);
 
-        if (save_base64_image($it['foto'], $absPath, $MAX_IMG_BYTES)) {
+        if ($savedFileName) {
+          $relPath = $dayRel . '/' . $savedFileName;
           $insFoto->execute([
-            ':f' => $feiraId,
-            ':r' => $romaneioId,
             ':i' => $itemId,
             ':c' => $relPath,
           ]);
@@ -270,13 +359,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
   }
 
-  header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
+  header('Location: ./lancamentos.php?dia=' . urlencode($dia));
   exit;
 }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -289,148 +377,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover {
-      color: blue !important;
+    .form-control { height: 42px }
+    .btn { height: 42px }
+    .helper { font-size: 12px }
+    .card { border-radius: 14px }
+
+    .card-header-lite {
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:12px; flex-wrap:wrap;
+      border-bottom:1px solid rgba(0,0,0,.06);
+      padding-bottom:12px; margin-bottom:12px
     }
 
-    .nav-link {
-      color: black !important;
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 10px; border-radius:999px;
+      font-size:12px; font-weight:700;
+      background:#eef2ff; color:#1f2a6b
     }
 
-    .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -35px !important;
+    .totbox{
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff; border-radius:12px;
+      padding:10px 12px; min-width:170px
+    }
+    .totlabel{font-size:12px;color:#6c757d;margin:0}
+    .totvalue{font-size:20px;font-weight:900;margin:0}
+
+    .line-card{
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff; border-radius:14px;
+      padding:12px; margin-bottom:10px
     }
 
-    .sidebar .sub-menu li {
-      list-style: none !important;
+    .mini{height:38px!important}
+    .muted{color:#6c757d}
+
+    .photo-thumb{
+      width:76px; height:52px; object-fit:cover;
+      border-radius:10px; border:1px solid rgba(0,0,0,.12);
+      display:none
     }
 
-    .form-control {
-      height: 42px;
+    .sticky-actions{
+      position:sticky; bottom:10px; z-index:3;
+      background:rgba(255,255,255,.92);
+      border:1px solid rgba(0,0,0,.08);
+      border-radius:14px; padding:10px;
+      backdrop-filter:blur(6px);
+      display:flex; flex-wrap:wrap; gap:10px;
+      justify-content:space-between; align-items:center;
+      margin-top:12px
     }
 
-    .btn {
-      height: 42px;
+    .sig-flash-wrap{
+      position:fixed; top:78px; right:18px;
+      width:min(420px, calc(100vw - 36px));
+      z-index:9999; pointer-events:none
     }
 
-    .kpi-card {
-      border: 1px solid rgba(0, 0, 0, .08);
-      border-radius: 14px;
-      padding: 14px;
-      background: #fff;
-      height: 100%;
+    .sig-toast.alert{
+      pointer-events:auto;
+      border:0!important; border-left:6px solid!important;
+      border-radius:14px!important;
+      padding:10px 12px!important;
+      box-shadow:0 10px 28px rgba(0,0,0,.10)!important;
+      font-size:13px!important;
+      margin-bottom:10px!important;
+      opacity:0; transform:translateX(10px);
+      animation:sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s
     }
 
-    .kpi-label {
-      font-size: 12px;
-      color: #6c757d;
-      margin: 0;
-    }
+    .sig-toast--success{background:#f1fff6!important;border-left-color:#22c55e!important}
+    .sig-toast--danger{background:#fff1f2!important;border-left-color:#ef4444!important}
 
-    .kpi-value {
-      font-size: 22px;
-      font-weight: 800;
-      margin: 0;
-    }
+    .sig-toast__row{display:flex;align-items:flex-start;gap:10px}
+    .sig-toast__icon i{font-size:16px;margin-top:2px}
+    .sig-toast__title{font-weight:900;margin-bottom:1px;line-height:1.1}
+    .sig-toast__text{margin:0;line-height:1.25}
 
-    .kpi-sub {
-      font-size: 12px;
-      color: #6c757d;
-      margin-top: 6px;
-    }
+    @keyframes sigToastIn{to{opacity:1;transform:translateX(0)}}
+    @keyframes sigToastOut{to{opacity:0;transform:translateX(12px);visibility:hidden}}
 
-    .table td,
-    .table th {
-      vertical-align: middle !important;
-    }
+    .line-actions-simple{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .btn-foto-big{height:46px;font-size:14px;font-weight:800;border-radius:12px;padding:10px 14px}
 
-    /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
-    .sig-flash-wrap {
-      position: fixed;
-      top: 78px;
-      right: 18px;
-      left: auto;
-      width: min(420px, calc(100vw - 36px));
-      z-index: 9999;
-      pointer-events: none;
-    }
+    .cam-box{border:1px solid rgba(0,0,0,.08);background:#fff;border-radius:14px;padding:10px}
+    #camVideo,#camPreview{width:100%;border-radius:12px;background:#111;max-height:60vh;object-fit:cover}
+    #camPreview{display:none}
+    #camCanvas{display:none}
 
-    .sig-toast.alert {
-      pointer-events: auto;
-      border: 0 !important;
-      border-left: 6px solid !important;
-      border-radius: 14px !important;
-      padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
-      font-size: 13px !important;
-      margin-bottom: 10px !important;
-
-      opacity: 0;
-      transform: translateX(10px);
-      animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
-    }
-
-    .sig-toast--success {
-      background: #f1fff6 !important;
-      border-left-color: #22c55e !important;
-    }
-
-    .sig-toast--danger {
-      background: #fff1f2 !important;
-      border-left-color: #ef4444 !important;
-    }
-
-    .sig-toast__row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .sig-toast__icon i {
-      font-size: 16px;
-      margin-top: 2px;
-    }
-
-    .sig-toast__title {
-      font-weight: 800;
-      margin-bottom: 1px;
-      line-height: 1.1;
-    }
-
-    .sig-toast__text {
-      margin: 0;
-      line-height: 1.25;
-    }
-
-    .sig-toast .close {
-      opacity: .55;
-      font-size: 18px;
-      line-height: 1;
-      padding: 0 6px;
-    }
-
-    .sig-toast .close:hover {
-      opacity: 1;
-    }
-
-    @keyframes sigToastIn {
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes sigToastOut {
-      to {
-        opacity: 0;
-        transform: translateX(12px);
-        visibility: hidden;
-      }
-    }
-
-    .mini {
-      font-size: 12px;
-      color: #6c757d;
+    @media (max-width:576px){
+      .card-header-lite{flex-direction:column;align-items:stretch!important;gap:10px!important}
+      .totbox{width:100%}
+      .totvalue{font-size:22px}
+      .line-card{padding:14px}
+      .line-card label{font-weight:700}
+      .photo-thumb{width:100%!important;height:160px!important;border-radius:12px!important}
+      .helper{font-size:13px}
+      .sticky-actions{flex-direction:column;align-items:stretch}
+      .sticky-actions>div{width:100%;justify-content:stretch!important}
+      .sticky-actions .btn{width:100%}
+      .line-actions-simple{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      .line-actions-simple .btn{height:52px!important;font-size:16px!important;font-weight:800!important;border-radius:12px!important}
+      .line-actions-simple .btn i{font-size:18px;margin-right:6px}
     }
   </style>
 </head>
@@ -438,30 +488,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR -->
-    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
-      </div>
-      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-          <span class="icon-menu"></span>
-        </button>
-        <ul class="navbar-nav mr-lg-2">
-          <li class="nav-item nav-search d-none d-lg-block"></li>
-        </ul>
-        <ul class="navbar-nav navbar-nav-right"></ul>
-        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-          <span class="icon-menu"></span>
-        </button>
-      </div>
-    </nav>
-
     <?php if ($msg || $err): ?>
       <div class="sig-flash-wrap">
         <?php if ($msg): ?>
-          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
+          <div class="alert sig-toast sig-toast--success" role="alert">
             <div class="sig-toast__row">
               <div class="sig-toast__icon"><i class="ti-check"></i></div>
               <div>
@@ -469,14 +499,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="sig-toast__text"><?= h($msg) ?></p>
               </div>
             </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-              <span aria-hidden="true">&times;</span>
-            </button>
           </div>
         <?php endif; ?>
 
         <?php if ($err): ?>
-          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
+          <div class="alert sig-toast sig-toast--danger" role="alert">
             <div class="sig-toast__row">
               <div class="sig-toast__icon"><i class="ti-alert"></i></div>
               <div>
@@ -484,147 +511,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="sig-toast__text"><?= h($err) ?></p>
               </div>
             </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-              <span aria-hidden="true">&times;</span>
-            </button>
           </div>
         <?php endif; ?>
       </div>
     <?php endif; ?>
 
-    <div class="container-fluid page-body-wrapper">
-
-      <div id="right-sidebar" class="settings-panel">
-        <i class="settings-close ti-close"></i>
-        <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-          <li class="nav-item"><a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab">TO DO LIST</a></li>
-          <li class="nav-item"><a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab">CHATS</a></li>
-        </ul>
+    <!-- NAVBAR -->
+    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
       </div>
 
-      <!-- SIDEBAR (mantida no padrão) -->
-      <nav class="sidebar sidebar-offcanvas" id="sidebar">
-        <ul class="nav">
+      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+          <span class="icon-menu"></span>
+        </button>
 
-          <li class="nav-item">
-            <a class="nav-link" href="index.php">
-              <i class="icon-grid menu-icon"></i>
-              <span class="menu-title">Dashboard</span>
+        <ul class="navbar-nav navbar-nav-right">
+          <li class="nav-item nav-profile dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
+              <i class="ti-user"></i>
+              <span class="ml-1"><?= h($nomeTopo) ?></span>
             </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
-              <i class="ti-id-badge menu-icon"></i>
-              <span class="menu-title">Cadastros</span>
-              <i class="menu-arrow"></i>
-            </a>
-
-            <div class="collapse" id="feiraCadastros">
-              <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
-              </style>
-
-              <ul class="nav flex-column sub-menu" style="background: white !important;">
-                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
-              </ul>
+            <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+              <a class="dropdown-item" href="../../../controle/auth/logout.php">
+                <i class="ti-power-off text-primary"></i> Sair
+              </a>
             </div>
           </li>
-
-          <!-- MOVIMENTO (ATIVO) -->
-          <li class="nav-item active">
-            <a class="nav-link open" data-toggle="collapse" href="#feiraMovimento" aria-expanded="true" aria-controls="feiraMovimento">
-              <i class="ti-exchange-vertical menu-icon"></i>
-              <span class="menu-title">Movimento</span>
-              <i class="menu-arrow"></i>
-            </a>
-
-            <div class="collapse show active" id="feiraMovimento">
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item">
-                  <a class="nav-link" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
-                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="./fechamentoDia.php" >
-                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
-              <i class="ti-clipboard menu-icon"></i>
-              <span class="menu-title">Relatórios</span>
-              <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse text-black" id="feiraRelatorios">
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
-                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
-                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
-                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
-              </ul>
-            </div>
-          </li>
-
-          <!-- Título DIVERSOS -->
-          <li class="nav-item" style="pointer-events:none;">
-            <span style="
-                  display:block;
-                  padding: 5px 15px 5px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  color: #6c757d;
-                  text-transform: uppercase;
-                ">
-              Links Diversos
-            </span>
-          </li>
-
-          <!-- Linha abaixo do título -->
-          <li class="nav-item">
-            <a class="nav-link" href="../index.php">
-              <i class="ti-home menu-icon"></i>
-              <span class="menu-title"> Painel Principal</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="../alternativa/" class="nav-link">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira do Alternativa</span>
-
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
-
-            </a>
-          </li>
-          <li class="nav-item">
-
-            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-              <i class="ti-headphone-alt menu-icon"></i>
-              <span class="menu-title">Suporte</span>
-            </a>
-          </li>
-
         </ul>
+
+        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+          <span class="icon-menu"></span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="container-fluid page-body-wrapper">
+
+      <!-- SIDEBAR -->
+      <nav class="sidebar sidebar-offcanvas" id="sidebar">
+        <!-- ... seu menu ... -->
       </nav>
 
       <div class="main-panel">
@@ -665,24 +593,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                   </div>
 
-                  <form method="post" action="./romaneioEntrada.php?dia=<?= h($dia) ?>" autocomplete="off" id="formEntrada">
+                  <form method="post" action="./lancamentos.php?dia=<?= h($dia) ?>" autocomplete="off" id="formEntrada">
                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                     <input type="hidden" name="acao" value="salvar">
                     <input type="hidden" name="data_ref" value="<?= h($dia) ?>">
 
                     <div id="linesWrap">
-
-                      <!-- LINHA BASE -->
                       <div class="line-card js-line">
                         <div class="row">
-
-                          <!-- linha 1: 3 colunas -->
                           <div class="col-lg-4 col-md-6 mb-3">
                             <label class="mb-1">Produtor</label>
                             <select class="form-control js-produtor" name="produtor_id[]">
                               <option value="0">Selecione</option>
                               <?php foreach ($produtoresAtivos as $p): ?>
-                                <option value="<?= (int)$p['id'] ?>"><?= h($p['nome'] ?? '') ?></option>
+                                <?php
+                                  $doc = preg_replace('/\D+/', '', (string)($p['documento'] ?? ''));
+                                  $docLabel = $doc !== '' ? $doc : '—';
+                                ?>
+                                <option value="<?= (int)$p['id'] ?>">
+                                  <?= h(($p['nome'] ?? '') . ' — CPF: ' . $docLabel) ?>
+                                </option>
                               <?php endforeach; ?>
                             </select>
                           </div>
@@ -708,7 +638,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" class="form-control js-qtd" name="quantidade_entrada[]" value="1">
                           </div>
 
-                          <!-- linha 2: 3 colunas -->
                           <div class="col-lg-4 col-md-6 mb-3">
                             <label class="mb-1">Preço</label>
                             <input type="text" class="form-control js-preco" name="preco_unitario_dia[]" placeholder="0,00">
@@ -724,64 +653,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" class="form-control js-cat" value="" readonly>
                           </div>
 
-                          <!-- linha 3: ações -->
                           <div class="col-12">
                             <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:10px;">
-                              <div class="d-flex align-items-center" style="gap:10px;">
+                              <div class="d-flex align-items-center" style="gap:10px; min-width: 220px;">
                                 <img class="photo-thumb js-thumb" src="" alt="">
-                                <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
+                                <small class="text-muted helper mb-0">Foto opcional.</small>
                               </div>
 
-                              <!-- linha 3: ações -->
-                              <div class="col-12">
-                                <div class="row">
-                                  <div class="col-12 mb-2">
-                                    <img class="photo-thumb js-thumb" src="" alt="">
-                                  </div>
+                              <div class="line-actions-simple">
+                                <button type="button" class="btn btn-primary btn-foto-big js-foto">
+                                  <i class="ti-camera"></i> Tirar foto
+                                </button>
 
-                                  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:10px;">
-                                    <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
-
-                                    <div class="line-actions-mobile">
-                                      <button type="button" class="btn btn-primary btn-mobile btn-foto-big js-foto">
-                                        <i class="ti-camera"></i> Tirar Foto
-                                      </button>
-
-                                      <button type="button" class="btn btn-light btn-mobile js-remove" disabled>
-                                        <i class="ti-trash"></i> Remover
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
-                                <input type="hidden" name="observacao_item[]" value="">
+                                <button type="button" class="btn btn-light js-remove" disabled>
+                                  <i class="ti-trash"></i> Remover linha
+                                </button>
                               </div>
-
-
                             </div>
-                          </div>
-                          <!-- /LINHA BASE -->
 
-
-                        </div>
-
-                        <div class="sticky-actions">
-                          <div class="d-flex flex-wrap" style="gap:8px;">
-                            <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
-                            <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
-                            <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
-                          </div>
-                          <div class="d-flex flex-wrap mt-4" style="gap:8px;">
-                            <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
-                            <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
+                            <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
+                            <input type="hidden" name="observacao_item[]" value="">
                           </div>
                         </div>
+                      </div>
+                    </div>
 
+                    <div class="sticky-actions">
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
+                        <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
+                        <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
+                      </div>
+                      <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
+                        <a class="btn btn-light" href="./lancamentos.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
+                      </div>
+                    </div>
                   </form>
 
                   <small class="text-muted d-block mt-3 helper">
-                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost). A foto é comprimida pra ficar leve.
+                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost).
                   </small>
 
                 </div>
@@ -810,29 +721,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="modal-content" style="border-radius:14px;">
         <div class="modal-header">
           <h5 class="modal-title">Tirar foto</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+            <span aria-hidden="true">&times;</span>
+          </button>
         </div>
 
         <div class="modal-body">
           <div class="cam-box">
             <video id="camVideo" autoplay playsinline></video>
-            <canvas id="camCanvas" style="display:none;"></canvas>
+            <canvas id="camCanvas"></canvas>
             <img id="camPreview" alt="Prévia">
           </div>
 
           <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btnAbrirCam"><i class="ti-camera mr-1"></i> Abrir</button>
-            <button type="button" class="btn btn-primary btn-sm" id="btnTirarFoto" disabled><i class="ti-image mr-1"></i> Tirar</button>
-            <button type="button" class="btn btn-light btn-sm" id="btnRefazer" disabled><i class="ti-reload mr-1"></i> Refazer</button>
-            <button type="button" class="btn btn-danger btn-sm" id="btnFecharCam" disabled><i class="ti-close mr-1"></i> Fechar</button>
+            <button type="button" class="btn btn-primary" id="btnTirarFoto" disabled>
+              <i class="ti-image mr-1"></i> Tirar
+            </button>
+            <button type="button" class="btn btn-light" id="btnRefazer" disabled>
+              <i class="ti-reload mr-1"></i> Refazer
+            </button>
+            <button type="button" class="btn btn-success" id="btnUsarFoto" disabled>
+              <i class="ti-check mr-1"></i> Usar foto
+            </button>
           </div>
 
-          <small class="text-muted helper d-block mt-2">Câmera fecha automaticamente depois de tirar (economiza bateria).</small>
+          <small class="text-muted helper d-block mt-2">
+            Ao abrir, a câmera já inicia. Se não pedir permissão, use HTTPS (ou localhost).
+          </small>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="btnUsarFoto" disabled><i class="ti-check mr-1"></i> Usar foto</button>
+          <button type="button" class="btn btn-light" data-dismiss="modal">Fechar</button>
         </div>
       </div>
     </div>
@@ -852,13 +771,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       const btnRef = document.getElementById('btnRef');
       const btnLimparFotos = document.getElementById('btnLimparFotos');
       const totalEl = document.getElementById('jsTotal');
+      const form = document.getElementById('formEntrada');
 
       function brMoney(n) {
         try {
-          return n.toLocaleString('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          });
+          return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         } catch (e) {
           const x = Math.round(n * 100) / 100;
           return String(x).replace('.', ',');
@@ -868,8 +785,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       function toNum(s) {
         s = String(s || '').trim();
         if (!s) return 0;
-        s = s.replace(/R\$/g, '').replace(/\s/g, '');
-        s = s.replace(/\./g, '').replace(',', '.');
+        s = s.replace(/R\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
         s = s.replace(/[^0-9.\-]/g, '');
         const v = parseFloat(s);
         return isNaN(v) ? 0 : v;
@@ -880,8 +796,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
         const un = opt && opt.dataset ? (opt.dataset.un || '') : '';
         const cat = opt && opt.dataset ? (opt.dataset.cat || '') : '';
-        line.querySelector('.js-un').value = un;
-        line.querySelector('.js-cat').value = cat;
+        const unEl = line.querySelector('.js-un');
+        const catEl = line.querySelector('.js-cat');
+        if (unEl) unEl.value = un;
+        if (catEl) catEl.value = cat;
       }
 
       function calcTotal() {
@@ -901,6 +819,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const lines = document.querySelectorAll('.js-line');
         lines.forEach(line => {
           const btn = line.querySelector('.js-remove');
+          if (!btn) return;
           btn.disabled = (lines.length <= 1);
           btn.onclick = () => {
             if (lines.length <= 1) return;
@@ -916,12 +835,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const qtd = line.querySelector('.js-qtd');
         const preco = line.querySelector('.js-preco');
 
-        prod.addEventListener('change', () => {
+        prod && prod.addEventListener('change', () => {
           syncInfo(line);
           calcTotal();
         });
-        qtd.addEventListener('input', calcTotal);
-        preco.addEventListener('input', calcTotal);
+        qtd && qtd.addEventListener('input', calcTotal);
+        preco && preco.addEventListener('input', calcTotal);
 
         syncInfo(line);
       }
@@ -931,16 +850,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!base) return;
         const clone = base.cloneNode(true);
 
-        clone.querySelector('.js-produtor').value = '0';
-        clone.querySelector('.js-produto').value = '0';
-        clone.querySelector('.js-qtd').value = '1';
-        clone.querySelector('.js-preco').value = '';
-        clone.querySelector('.js-un').value = '';
-        clone.querySelector('.js-cat').value = '';
-        clone.querySelector('.js-foto-base64').value = '';
+        const sProdutor = clone.querySelector('.js-produtor');
+        const sProduto  = clone.querySelector('.js-produto');
+        const inQtd     = clone.querySelector('.js-qtd');
+        const inPreco   = clone.querySelector('.js-preco');
+        const inUn      = clone.querySelector('.js-un');
+        const inCat     = clone.querySelector('.js-cat');
+        const inFoto    = clone.querySelector('.js-foto-base64');
+
+        if (sProdutor) sProdutor.value = '0';
+        if (sProduto)  sProduto.value = '0';
+        if (inQtd)     inQtd.value = '1';
+        if (inPreco)   inPreco.value = '';
+        if (inUn)      inUn.value = '';
+        if (inCat)     inCat.value = '';
+        if (inFoto)    inFoto.value = '';
+
         const thumb = clone.querySelector('.js-thumb');
-        thumb.src = '';
-        thumb.style.display = 'none';
+        if (thumb) {
+          thumb.src = '';
+          thumb.style.display = 'none';
+        }
 
         wrap.appendChild(clone);
         wire(clone);
@@ -967,10 +897,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       btnLimparFotos && btnLimparFotos.addEventListener('click', () => {
         document.querySelectorAll('.js-line').forEach(line => {
-          line.querySelector('.js-foto-base64').value = '';
+          const foto = line.querySelector('.js-foto-base64');
+          if (foto) foto.value = '';
           const thumb = line.querySelector('.js-thumb');
-          thumb.src = '';
-          thumb.style.display = 'none';
+          if (thumb) {
+            thumb.src = '';
+            thumb.style.display = 'none';
+          }
         });
       });
 
@@ -987,49 +920,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       const camCanvas = document.getElementById('camCanvas');
       const camPreview = document.getElementById('camPreview');
 
-      const btnAbrirCam = document.getElementById('btnAbrirCam');
       const btnTirarFoto = document.getElementById('btnTirarFoto');
       const btnRefazer = document.getElementById('btnRefazer');
-      const btnFecharCam = document.getElementById('btnFecharCam');
       const btnUsarFoto = document.getElementById('btnUsarFoto');
 
-      function setCamState({
-        on,
-        has
-      }) {
-        btnAbrirCam.disabled = on;
-        btnTirarFoto.disabled = !on;
-        btnFecharCam.disabled = !on;
-        btnRefazer.disabled = !has;
-        btnUsarFoto.disabled = !has;
-        camPreview.style.display = has ? 'block' : 'none';
-      }
-
-      async function openCam() {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: {
-                ideal: 'environment'
-              }
-            },
-            audio: false
-          });
-          camVideo.srcObject = stream;
-          await camVideo.play();
-          capturedDataUrl = '';
-          camPreview.src = '';
-          setCamState({
-            on: true,
-            has: false
-          });
-        } catch (e) {
-          alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS.');
-          setCamState({
-            on: false,
-            has: false
-          });
-        }
+      function setCamUI({ on, has }) {
+        if (btnTirarFoto) btnTirarFoto.disabled = !on;
+        if (btnRefazer) btnRefazer.disabled = !has;
+        if (btnUsarFoto) btnUsarFoto.disabled = !has;
+        if (camPreview) camPreview.style.display = has ? 'block' : 'none';
       }
 
       function closeCam() {
@@ -1037,44 +936,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           stream.getTracks().forEach(t => t.stop());
           stream = null;
         }
-        camVideo.srcObject = null;
-        setCamState({
-          on: false,
-          has: capturedDataUrl !== ''
-        });
+        if (camVideo) camVideo.srcObject = null;
+      }
+
+      async function openCam() {
+        try {
+          closeCam();
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false
+          });
+          camVideo.srcObject = stream;
+          await camVideo.play();
+          capturedDataUrl = '';
+          if (camPreview) camPreview.src = '';
+          setCamUI({ on: true, has: false });
+        } catch (e) {
+          alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS (ou localhost).');
+          setCamUI({ on: false, has: false });
+        }
       }
 
       function snap() {
-        if (!camVideo.videoWidth || !camVideo.videoHeight) return;
-
-        const targetW = 720; // leve
+        if (!camVideo || !camVideo.videoWidth || !camVideo.videoHeight) return;
+        const targetW = 720;
         const ratio = camVideo.videoHeight / camVideo.videoWidth;
         const targetH = Math.round(targetW * ratio);
 
         camCanvas.width = targetW;
         camCanvas.height = targetH;
-        const ctx = camCanvas.getContext('2d', {
-          alpha: false
-        });
+        const ctx = camCanvas.getContext('2d', { alpha: false });
         ctx.drawImage(camVideo, 0, 0, targetW, targetH);
 
         capturedDataUrl = camCanvas.toDataURL('image/jpeg', 0.65);
-        camPreview.src = capturedDataUrl;
+        if (camPreview) camPreview.src = capturedDataUrl;
 
-        setCamState({
-          on: true,
-          has: true
-        });
-        closeCam(); // economiza
+        closeCam();
+        setCamUI({ on: false, has: true });
       }
 
       function redo() {
         capturedDataUrl = '';
-        camPreview.src = '';
-        setCamState({
-          on: false,
-          has: false
-        });
+        if (camPreview) {
+          camPreview.src = '';
+          camPreview.style.display = 'none';
+        }
         openCam();
       }
 
@@ -1084,49 +990,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         currentLine = btn.closest('.js-line');
         capturedDataUrl = '';
-        camPreview.src = '';
-        setCamState({
-          on: false,
-          has: false
-        });
+        if (camPreview) camPreview.src = '';
+        setCamUI({ on: false, has: false });
 
         if (window.jQuery && jQuery.fn.modal) {
           jQuery('#modalCamera').modal('show');
+          jQuery('#modalCamera').one('shown.bs.modal', function() {
+            openCam();
+          });
+        } else {
+          openCam();
         }
       });
 
-      btnAbrirCam.addEventListener('click', openCam);
-      btnTirarFoto.addEventListener('click', snap);
-      btnRefazer.addEventListener('click', redo);
-      btnFecharCam.addEventListener('click', closeCam);
+      btnTirarFoto && btnTirarFoto.addEventListener('click', snap);
+      btnRefazer && btnRefazer.addEventListener('click', redo);
 
-      btnUsarFoto.addEventListener('click', function() {
+      btnUsarFoto && btnUsarFoto.addEventListener('click', function() {
         if (!currentLine || !capturedDataUrl) return;
 
-        currentLine.querySelector('.js-foto-base64').value = capturedDataUrl;
+        const hid = currentLine.querySelector('.js-foto-base64');
+        if (hid) hid.value = capturedDataUrl;
 
         const thumb = currentLine.querySelector('.js-thumb');
-        thumb.src = capturedDataUrl;
-        thumb.style.display = 'block';
-
-        if (window.jQuery && jQuery.fn.modal) {
-          jQuery('#modalCamera').modal('hide');
+        if (thumb) {
+          thumb.src = capturedDataUrl;
+          thumb.style.display = 'block';
         }
+
+        if (window.jQuery && jQuery.fn.modal) jQuery('#modalCamera').modal('hide');
       });
 
       if (window.jQuery) {
         jQuery('#modalCamera').on('hidden.bs.modal', function() {
           closeCam();
           capturedDataUrl = '';
-          camPreview.src = '';
-          setCamState({
-            on: false,
-            has: false
-          });
+          if (camPreview) camPreview.src = '';
+          setCamUI({ on: false, has: false });
         });
       }
     })();
   </script>
 </body>
-
 </html>

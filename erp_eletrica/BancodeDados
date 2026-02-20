@@ -1,0 +1,117 @@
+-- Banco de Dados para ERP Elétrica
+CREATE DATABASE IF NOT EXISTS erp_eletrica;
+USE erp_eletrica;
+
+-- Tabela de Clientes
+CREATE TABLE IF NOT EXISTS clientes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    cpf_cnpj VARCHAR(20),
+    telefone VARCHAR(20),
+    email VARCHAR(100),
+    endereco TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabela de Produtos
+CREATE TABLE IF NOT EXISTS produtos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo VARCHAR(50) UNIQUE,
+    nome VARCHAR(100) NOT NULL,
+    descricao TEXT,
+    categoria VARCHAR(50),
+    preco_custo DECIMAL(10,2),
+    preco_venda DECIMAL(10,2),
+    quantidade INT DEFAULT 0,
+    estoque_minimo INT DEFAULT 5,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabela de Ordens de Serviço
+CREATE TABLE IF NOT EXISTS os (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    numero_os VARCHAR(20) UNIQUE,
+    cliente_id INT,
+    data_abertura DATE,
+    data_conclusao DATE,
+    status ENUM('aberta', 'em_andamento', 'concluida', 'cancelada') DEFAULT 'aberta',
+    descricao TEXT,
+    valor_total DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+);
+
+-- Tabela de Itens da OS
+CREATE TABLE IF NOT EXISTS itens_os (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    os_id INT,
+    produto_id INT,
+    quantidade INT,
+    valor_unitario DECIMAL(10,2),
+    subtotal DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (os_id) REFERENCES os(id) ON DELETE CASCADE,
+    FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE SET NULL
+);
+
+-- Tabela de Contas a Receber
+CREATE TABLE IF NOT EXISTS contas_receber (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    os_id INT,
+    descricao VARCHAR(255),
+    valor DECIMAL(10,2),
+    data_vencimento DATE,
+    data_pagamento DATE,
+    status ENUM('pendente', 'pago', 'atrasado') DEFAULT 'pendente',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (os_id) REFERENCES os(id) ON DELETE SET NULL
+);
+
+-- Tabela de Usuários
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    senha VARCHAR(255) NOT NULL,
+    nivel ENUM('admin', 'gerente', 'vendedor') DEFAULT 'vendedor',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inserir usuário padrão (senha: 123456)
+INSERT INTO usuarios (nome, email, senha, nivel) VALUES 
+('Administrador', 'admin@erp.com', '$2y$10$YourHashedPasswordHere', 'admin');
+
+-- Inserir alguns dados de exemplo
+INSERT INTO clientes (nome, cpf_cnpj, telefone, email, endereco) VALUES
+('João Silva', '123.456.789-00', '(11) 99999-9999', 'joao@email.com', 'Rua A, 123 - São Paulo/SP'),
+('Maria Oliveira', '987.654.321-00', '(11) 98888-8888', 'maria@email.com', 'Rua B, 456 - São Paulo/SP'),
+('Empresa XYZ Ltda', '12.345.678/0001-90', '(11) 37777-7777', 'contato@empresa.com', 'Av. Paulista, 1000 - São Paulo/SP');
+
+INSERT INTO produtos (codigo, nome, descricao, categoria, preco_custo, preco_venda, quantidade, estoque_minimo) VALUES
+('FIO001', 'Cabo Flexível 2.5mm', 'Cabo flexível 2.5mm 100m', 'Fiação', 85.00, 129.90, 50, 10),
+('DIS001', 'Disjuntor 10A', 'Disjuntor monopolar 10A', 'Disjuntores', 8.50, 15.90, 100, 20),
+('TOM001', 'Tomada 10A', 'Tomada padrão 10A branca', 'Tomadas', 3.20, 8.90, 200, 30),
+('LAM001', 'Lâmpada LED 9W', 'Lâmpada LED 9W branca', 'Lâmpadas', 4.50, 12.90, 150, 25);
+
+-- Inserir algumas OS de exemplo
+INSERT INTO os (numero_os, cliente_id, data_abertura, status, descricao, valor_total) VALUES
+('OS2024001', 1, '2024-01-15', 'concluida', 'Instalação elétrica completa', 1250.00),
+('OS2024002', 2, '2024-01-20', 'em_andamento', 'Troca de disjuntores', 450.00),
+('OS2024003', 3, '2024-01-25', 'aberta', 'Manutenção preventiva', 800.00);
+
+-- Inserir itens das OS
+INSERT INTO itens_os (os_id, produto_id, quantidade, valor_unitario, subtotal) VALUES
+(1, 1, 2, 129.90, 259.80),
+(1, 2, 5, 15.90, 79.50),
+(1, 3, 10, 8.90, 89.00),
+(2, 2, 3, 15.90, 47.70);
+
+-- Inserir contas a receber
+INSERT INTO contas_receber (os_id, descricao, valor, data_vencimento, status) VALUES
+(1, 'OS 2024001 - Instalação elétrica', 1250.00, '2024-02-15', 'pago'),
+(2, 'OS 2024002 - Troca de disjuntores', 450.00, '2024-02-20', 'pendente'),
+(3, 'OS 2024003 - Manutenção preventiva', 800.00, '2024-02-25', 'pendente');
