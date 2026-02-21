@@ -8,9 +8,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Database Credentials
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'erp_eletrica');
+define('DB_USER', 'u784961086_pdv');
+define('DB_PASS', 'Uv$1NhLlkRub');
+define('DB_NAME', 'u784961086_pdv');
 
 // Technical Constants
 define('APP_NAME', 'ERP Elétrica');
