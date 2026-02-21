@@ -1,15 +1,26 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
-/* Obrigatório estar logado */
+/*
+  lancamentos.php (somente CADASTRO, sem lista)
+  - Lança item no romaneio do dia usando CPF do produtor
+  - Se romaneio_dia não existir para a data, cria automaticamente
+  - Faz upload opcional de até 3 fotos (base64) para romaneio_item_fotos
+
+  Requisitos:
+  - produtores deve ter coluna documento (CPF) com apenas dígitos (como você já faz no cadastro)
+  - produtos (id, feira_id, nome, ativo)
+
+  Pasta upload:
+  /uploads/romaneio/<YYYY-MM-DD>/
+*/
+
 if (empty($_SESSION['usuario_logado'])) {
   header('Location: ../../../index.php');
   exit;
 }
 
-/* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
 if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
@@ -17,52 +28,43 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s): string
-{
+require '../../../assets/php/conexao.php';
+
+function h($s): string {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
-function to_decimal($v): float
-{
+function trunc255(string $s): string {
+  $s = trim($s);
+  if ($s === '') return '';
+  if (function_exists('mb_substr')) return mb_substr($s, 0, 255, 'UTF-8');
+  return substr($s, 0, 255);
+}
+
+function only_digits(string $s): string {
+  $out = preg_replace('/\D+/', '', $s);
+  return $out !== null ? $out : '';
+}
+
+function ensure_dir(string $absDir): bool {
+  if (is_dir($absDir)) return true;
+  return @mkdir($absDir, 0755, true);
+}
+
+function to_decimal_str($v, int $scale): string {
   $s = trim((string)$v);
-  if ($s === '') return 0.0;
-  $s = str_replace(['R$', ' '], '', $s);
-  $s = str_replace('.', '', $s);
+  $s = str_replace(' ', '', $s);
   $s = str_replace(',', '.', $s);
-  $s = preg_replace('/[^0-9\.\-]/', '', $s) ?? '0';
-  if ($s === '' || $s === '-' || $s === '.') return 0.0;
-  return (float)$s;
+  if ($s === '' || !preg_match('/^-?\d+(\.\d+)?$/', $s)) return number_format(0, $scale, '.', '');
+  $f = (float)$s;
+  return number_format($f, $scale, '.', '');
 }
 
-function fmt_date(string $s): string
-{
-  try {
-    return (new DateTime($s))->format('d/m/Y');
-  } catch (Throwable $e) {
-    return $s;
-  }
-}
-
-function ensure_dir(string $dir): bool
-{
-  if (is_dir($dir)) return true;
-  return @mkdir($dir, 0755, true);
-}
-
-function save_base64_image(?string $dataUrl, string $destAbsPath, int $maxBytes): bool
-{
-  if (!$dataUrl) return false;
-  $dataUrl = trim($dataUrl);
-  if ($dataUrl === '') return false;
-
-  if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl) !== 1) return false;
-  $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
-  $bin = base64_decode($base64, true);
-  if ($bin === false) return false;
-  if (strlen($bin) > $maxBytes) return false;
-
-  return @file_put_contents($destAbsPath, $bin) !== false;
-}
+/* Feira padrão desta página */
+$FEIRA_ID = 1;
+$dirLower = strtolower((string)__DIR__);
+if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
+if (strpos($dirLower, 'produtor') !== false) $FEIRA_ID = 1;
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
@@ -75,212 +77,225 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* ===== Conexão ===== */
-require '../../../assets/php/conexao.php';
 $pdo = db();
 
-/* Feira */
-$feiraId = 1;
+/* Data do romaneio */
+date_default_timezone_set('America/Manaus'); // ajuste se quiser
+$dataRef = (string)($_GET['data'] ?? date('Y-m-d'));
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) {
+  $dataRef = date('Y-m-d');
+}
 
-/* Dia */
-$dia = trim((string)($_GET['dia'] ?? date('Y-m-d')));
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dia)) $dia = date('Y-m-d');
+/* Upload fotos (base64) */
+$BASE_DIR = realpath(__DIR__ . '/../../../');
+$UPLOAD_REL_DIR = 'uploads/romaneio';
+$UPLOAD_ABS_DIR = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR) : null;
+$MAX_BASE64_BYTES = 3 * 1024 * 1024;
+$MAX_FOTOS = 3;
 
-/* ===== garante romaneio do dia ===== */
-$romaneioId = 0;
+/* Romaneio do dia (cria se não existir) */
+$romaneioId = null;
+$romaneioStatus = 'ABERTO';
+
 try {
-  $st = $pdo->prepare("SELECT id FROM romaneio_dia WHERE feira_id = :f AND data_ref = :d LIMIT 1");
-  $st->execute([':f' => $feiraId, ':d' => $dia]);
-  $romaneioId = (int)($st->fetchColumn() ?: 0);
+  $st = $pdo->prepare("SELECT id, status
+                       FROM romaneio_dia
+                       WHERE feira_id = :feira AND data_ref = :data
+                       LIMIT 1");
+  $st->execute([':feira' => $FEIRA_ID, ':data' => $dataRef]);
+  $row = $st->fetch(PDO::FETCH_ASSOC);
 
-  if ($romaneioId <= 0) {
-    $ins = $pdo->prepare("INSERT INTO romaneio_dia (feira_id, data_ref, status, criado_em) VALUES (:f, :d, 'ABERTO', NOW())");
-    $ins->execute([':f' => $feiraId, ':d' => $dia]);
+  if ($row) {
+    $romaneioId = (int)$row['id'];
+    $romaneioStatus = (string)$row['status'];
+  } else {
+    $ins = $pdo->prepare("INSERT INTO romaneio_dia (feira_id, data_ref, status, observacao)
+                          VALUES (:feira, :data, 'ABERTO', NULL)");
+    $ins->execute([':feira' => $FEIRA_ID, ':data' => $dataRef]);
     $romaneioId = (int)$pdo->lastInsertId();
+    $romaneioStatus = 'ABERTO';
   }
 } catch (Throwable $e) {
-  $_SESSION['flash_err'] = 'Não foi possível abrir o romaneio do dia.';
-  header('Location: ./romaneioEntrada.php');
-  exit;
+  $err = 'Erro ao preparar romaneio do dia: ' . $e->getMessage();
 }
 
-/* ===== Combos ===== */
-$produtoresAtivos = [];
-$produtosAtivos   = [];
-try {
-  $stP = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :f AND ativo = 1 ORDER BY nome ASC");
-  $stP->execute([':f' => $feiraId]);
-  $produtoresAtivos = $stP->fetchAll(PDO::FETCH_ASSOC);
-
-  $stPr = $pdo->prepare("
-    SELECT
-      p.id, p.nome,
-      COALESCE(c.nome,'')  AS categoria_nome,
-      COALESCE(u.sigla,'') AS unidade_sigla,
-      p.preco_referencia
-    FROM produtos p
-    LEFT JOIN categorias c ON c.id = p.categoria_id AND c.feira_id = p.feira_id
-    LEFT JOIN unidades   u ON u.id = p.unidade_id   AND u.feira_id = p.feira_id
-    WHERE p.feira_id = :f AND p.ativo = 1
-    ORDER BY p.nome ASC
-  ");
-  $stPr->execute([':f' => $feiraId]);
-  $produtosAtivos = $stPr->fetchAll(PDO::FETCH_ASSOC);
-} catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar produtores/produtos.';
-}
-
-/* ===== Upload config ===== */
-$BASE_DIR = realpath(__DIR__ . '/../../../'); // raiz do projeto (ajuste se precisar)
-$UPLOAD_REL = 'uploads/romaneio';
-$UPLOAD_ABS = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL) : null;
-$MAX_IMG_BYTES = 3 * 1024 * 1024; // 3MB
-
-/* ===== POST: salvar entrada ===== */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $postedCsrf = (string)($_POST['csrf_token'] ?? '');
-  if (!hash_equals($csrf, $postedCsrf)) {
-    $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
-    exit;
-  }
-
-  $acao = (string)($_POST['acao'] ?? '');
-  if ($acao !== 'salvar') {
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
-    exit;
-  }
-
-  $dataRef = trim((string)($_POST['data_ref'] ?? $dia));
-  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) $dataRef = $dia;
-
-  if ($dataRef !== $dia) {
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dataRef));
-    exit;
-  }
-
-  $prodIds   = $_POST['produtor_id'] ?? [];
-  $produtoIds = $_POST['produto_id'] ?? [];
-  $qtds      = $_POST['quantidade_entrada'] ?? [];
-  $precos    = $_POST['preco_unitario_dia'] ?? [];
-  $obsArr    = $_POST['observacao_item'] ?? [];
-  $fotosArr  = $_POST['foto_base64'] ?? [];
-
-  $itens = [];
-  $n = max(count((array)$prodIds), count((array)$produtoIds), count((array)$qtds), count((array)$precos));
-
-  for ($i = 0; $i < $n; $i++) {
-    $produtorId = (int)($prodIds[$i] ?? 0);
-    $produtoId  = (int)($produtoIds[$i] ?? 0);
-    if ($produtorId <= 0 || $produtoId <= 0) continue;
-
-    $q = round(to_decimal($qtds[$i] ?? '0'), 3);
-    if ($q <= 0) continue;
-
-    $p = round(to_decimal($precos[$i] ?? '0'), 2);
-    if ($p <= 0) continue;
-
-    $obs = trim((string)($obsArr[$i] ?? ''));
-    if ($obs !== '') $obs = mb_substr($obs, 0, 255, 'UTF-8');
-
-    $foto = trim((string)($fotosArr[$i] ?? ''));
-
-    $itens[] = [
-      'produtor_id' => $produtorId,
-      'produto_id'  => $produtoId,
-      'qtd'         => $q,
-      'preco'       => $p,
-      'obs'         => $obs,
-      'foto'        => $foto,
-    ];
-  }
-
-  if (empty($itens)) {
-    $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
-    exit;
-  }
-
-  if (!$UPLOAD_ABS) {
-    $_SESSION['flash_err'] = 'Diretório base não encontrado para upload.';
-    header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
-    exit;
-  }
-
+/* Produtos para select */
+$produtos = [];
+if (!$err) {
   try {
-    $pdo->beginTransaction();
+    $stPr = $pdo->prepare("SELECT id, nome
+                           FROM produtos
+                           WHERE feira_id = :feira AND (ativo = 1 OR ativo IS NULL)
+                           ORDER BY nome ASC");
+    $stPr->execute([':feira' => $FEIRA_ID]);
+    $produtos = $stPr->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    $produtos = [];
+  }
+}
 
-    $dayAbs = $UPLOAD_ABS . DIRECTORY_SEPARATOR . (string)$romaneioId;
-    $dayRel = $UPLOAD_REL . '/' . (string)$romaneioId;
+/* Valores antigos */
+$old = [
+  'cpf' => '',
+  'produtor_nome' => '',
+  'produto_id' => '',
+  'quantidade_entrada' => '',
+  'preco_unitario_dia' => '',
+  'observacao' => '',
+];
 
-    if (!ensure_dir($dayAbs)) throw new RuntimeException('Falha ao criar pasta de upload.');
+/* POST (salvar lançamento) */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
+  $tokenPost = (string)($_POST['csrf_token'] ?? '');
+  if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
+    $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
+    header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
+    exit;
+  }
 
-    $insItem = $pdo->prepare("
-      INSERT INTO romaneio_itens
-        (feira_id, romaneio_id, produtor_id, produto_id, quantidade_entrada, preco_unitario_dia, observacao, criado_em)
-      VALUES
-        (:f, :r, :pr, :pd, :q, :p, :obs, NOW())
-    ");
+  $old['cpf'] = trim((string)($_POST['cpf'] ?? ''));
+  $old['produto_id'] = trim((string)($_POST['produto_id'] ?? ''));
+  $old['quantidade_entrada'] = trim((string)($_POST['quantidade_entrada'] ?? ''));
+  $old['preco_unitario_dia'] = trim((string)($_POST['preco_unitario_dia'] ?? ''));
+  $old['observacao'] = trim((string)($_POST['observacao'] ?? ''));
 
-    $insFoto = $pdo->prepare("
-      INSERT INTO romaneio_item_fotos
-        (feira_id, romaneio_id, romaneio_item_id, caminho, criado_em)
-      VALUES
-        (:f, :r, :i, :c, NOW())
-    ");
+  if ($romaneioStatus !== 'ABERTO') {
+    $err = 'Romaneio do dia está FECHADO. Não é possível lançar itens.';
+  } else {
+    $cpfDigits = only_digits($old['cpf']);
 
-    foreach ($itens as $it) {
-      $insItem->execute([
-        ':f'   => $feiraId,
-        ':r'   => $romaneioId,
-        ':pr'  => $it['produtor_id'],
-        ':pd'  => $it['produto_id'],
-        ':q'   => $it['qtd'],
-        ':p'   => $it['preco'],
-        ':obs' => ($it['obs'] !== '' ? $it['obs'] : null),
-      ]);
+    if ($cpfDigits === '' || strlen($cpfDigits) < 11) {
+      $err = 'Informe um CPF válido (somente números).';
+    } elseif ($old['produto_id'] === '' || !ctype_digit($old['produto_id'])) {
+      $err = 'Selecione o produto.';
+    } else {
+      $produtoId = (int)$old['produto_id'];
+      $qtdEntrada = to_decimal_str($old['quantidade_entrada'], 3);
+      $precoDia   = to_decimal_str($old['preco_unitario_dia'], 2);
+      $obs        = trunc255($old['observacao']);
 
-      $itemId = (int)$pdo->lastInsertId();
+      if ((float)$qtdEntrada <= 0) {
+        $err = 'Informe uma quantidade de entrada maior que 0.';
+      } elseif ((float)$precoDia < 0) {
+        $err = 'Preço unitário inválido.';
+      } else {
+        try {
+          // localiza produtor pelo CPF na feira e ativo
+          $stProd = $pdo->prepare("SELECT id, nome
+                                   FROM produtores
+                                   WHERE feira_id = :feira
+                                     AND ativo = 1
+                                     AND documento = :cpf
+                                   LIMIT 1");
+          $stProd->execute([':feira' => $FEIRA_ID, ':cpf' => $cpfDigits]);
+          $prod = $stProd->fetch(PDO::FETCH_ASSOC);
 
-      if ($it['foto'] !== '') {
-        $fileName = 'item_' . $itemId . '_1.jpg';
-        $absPath = $dayAbs . DIRECTORY_SEPARATOR . $fileName;
-        $relPath = $dayRel . '/' . $fileName;
+          if (!$prod) {
+            $err = 'Produtor não encontrado para este CPF (ou está inativo / fora da feira).';
+          } else {
+            $produtorId = (int)$prod['id'];
+            $old['produtor_nome'] = (string)$prod['nome'];
 
-        if (save_base64_image($it['foto'], $absPath, $MAX_IMG_BYTES)) {
-          $insFoto->execute([
-            ':f' => $feiraId,
-            ':r' => $romaneioId,
-            ':i' => $itemId,
-            ':c' => $relPath,
-          ]);
+            // valida produto
+            $chk2 = $pdo->prepare("SELECT COUNT(*) FROM produtos
+                                   WHERE id = :id AND feira_id = :feira AND (ativo = 1 OR ativo IS NULL)");
+            $chk2->execute([':id' => $produtoId, ':feira' => $FEIRA_ID]);
+            if ((int)$chk2->fetchColumn() <= 0) {
+              $err = 'Produto inválido (não encontrado/fora da feira/inativo).';
+            } else {
+              // fotos base64
+              $fotosBase64 = $_POST['fotos_base64'] ?? [];
+              if (!is_array($fotosBase64)) $fotosBase64 = [];
+
+              $pdo->beginTransaction();
+
+              $ins = $pdo->prepare("INSERT INTO romaneio_itens
+                (feira_id, romaneio_id, produtor_id, produto_id, quantidade_entrada, preco_unitario_dia, observacao)
+                VALUES
+                (:feira, :rom, :produtor, :produto, :qtd, :preco, :obs)");
+              $ins->execute([
+                ':feira'    => $FEIRA_ID,
+                ':rom'      => (int)$romaneioId,
+                ':produtor' => $produtorId,
+                ':produto'  => $produtoId,
+                ':qtd'      => $qtdEntrada,
+                ':preco'    => $precoDia,
+                ':obs'      => ($obs !== '' ? $obs : null),
+              ]);
+
+              $itemIdNew = (int)$pdo->lastInsertId();
+
+              // upload fotos
+              $savedRelPaths = [];
+              if (!empty($fotosBase64)) {
+                if (!$UPLOAD_ABS_DIR || !$BASE_DIR) {
+                  throw new RuntimeException('Diretório base não encontrado para upload.');
+                }
+                if (!ensure_dir($UPLOAD_ABS_DIR)) {
+                  throw new RuntimeException('Não foi possível criar a pasta de upload.');
+                }
+
+                $subRel = $UPLOAD_REL_DIR . '/' . $dataRef;
+                $subAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $dataRef;
+                if (!ensure_dir($subAbs)) {
+                  throw new RuntimeException('Não foi possível criar a pasta de upload do dia.');
+                }
+
+                $count = 0;
+                foreach ($fotosBase64 as $dataUrl) {
+                  if ($count >= $MAX_FOTOS) break;
+                  $dataUrl = (string)$dataUrl;
+                  if ($dataUrl === '') continue;
+
+                  if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl) !== 1) continue;
+
+                  $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
+                  $bin = base64_decode($base64, true);
+                  if ($bin === false) continue;
+                  if (strlen($bin) > $MAX_BASE64_BYTES) continue;
+
+                  $fileName = 'rom_' . $romaneioId . '_item_' . $itemIdNew . '_' . bin2hex(random_bytes(6)) . '.jpg';
+                  $destAbs = $subAbs . DIRECTORY_SEPARATOR . $fileName;
+
+                  if (@file_put_contents($destAbs, $bin) === false) continue;
+
+                  $rel = $subRel . '/' . $fileName;
+                  $savedRelPaths[] = $rel;
+                  $count++;
+                }
+
+                if (!empty($savedRelPaths)) {
+                  $insF = $pdo->prepare("INSERT INTO romaneio_item_fotos (romaneio_item_id, caminho)
+                                         VALUES (:item, :caminho)");
+                  foreach ($savedRelPaths as $rel) {
+                    $insF->execute([':item' => $itemIdNew, ':caminho' => $rel]);
+                  }
+                }
+              }
+
+              $pdo->commit();
+
+              // limpa campos para próximo lançamento
+              $_SESSION['flash_ok'] = 'Lançamento salvo! Produtor: ' . $old['produtor_nome'];
+              header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
+              exit;
+            }
+          }
+        } catch (Throwable $e) {
+          if ($pdo->inTransaction()) $pdo->rollBack();
+          $err = 'Erro ao salvar lançamento: ' . $e->getMessage();
         }
       }
     }
-
-    $pdo->commit();
-    $_SESSION['flash_ok'] = 'Entrada lançada com sucesso.';
-  } catch (PDOException $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
-    $mysqlCode = (int)($e->errorInfo[1] ?? 0);
-    if ($mysqlCode === 1062) $_SESSION['flash_err'] = 'Já existe lançamento para o mesmo produtor + produto neste dia.';
-    else $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
-  } catch (Throwable $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
-    $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
   }
-
-  header('Location: ./romaneioEntrada.php?dia=' . urlencode($dia));
-  exit;
 }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios — Romaneio (Entrada)</title>
+  <title>SIGRelatórios — Lançamentos (Cadastro)</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -289,844 +304,468 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover {
-      color: blue !important;
-    }
-
-    .nav-link {
-      color: black !important;
-    }
-
-    .sidebar .sub-menu .nav-item .nav-link {
-      margin-left: -35px !important;
-    }
-
-    .sidebar .sub-menu li {
-      list-style: none !important;
-    }
-
-    .form-control {
-      height: 42px;
-    }
-
-    .btn {
-      height: 42px;
-    }
-
-    .kpi-card {
-      border: 1px solid rgba(0, 0, 0, .08);
-      border-radius: 14px;
-      padding: 14px;
-      background: #fff;
-      height: 100%;
-    }
-
-    .kpi-label {
-      font-size: 12px;
-      color: #6c757d;
-      margin: 0;
-    }
-
-    .kpi-value {
-      font-size: 22px;
-      font-weight: 800;
-      margin: 0;
-    }
-
-    .kpi-sub {
-      font-size: 12px;
-      color: #6c757d;
-      margin-top: 6px;
-    }
-
-    .table td,
-    .table th {
-      vertical-align: middle !important;
-    }
-
-    /* ===== Flash “Hostinger style” (top-right, menor, ~6s) ===== */
-    .sig-flash-wrap {
-      position: fixed;
-      top: 78px;
-      right: 18px;
-      left: auto;
-      width: min(420px, calc(100vw - 36px));
-      z-index: 9999;
-      pointer-events: none;
-    }
-
-    .sig-toast.alert {
-      pointer-events: auto;
-      border: 0 !important;
-      border-left: 6px solid !important;
-      border-radius: 14px !important;
-      padding: 10px 12px !important;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
-      font-size: 13px !important;
-      margin-bottom: 10px !important;
-
-      opacity: 0;
-      transform: translateX(10px);
-      animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
-    }
-
-    .sig-toast--success {
-      background: #f1fff6 !important;
-      border-left-color: #22c55e !important;
-    }
-
-    .sig-toast--danger {
-      background: #fff1f2 !important;
-      border-left-color: #ef4444 !important;
-    }
-
-    .sig-toast__row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .sig-toast__icon i {
-      font-size: 16px;
-      margin-top: 2px;
-    }
-
-    .sig-toast__title {
-      font-weight: 800;
-      margin-bottom: 1px;
-      line-height: 1.1;
-    }
-
-    .sig-toast__text {
-      margin: 0;
-      line-height: 1.25;
-    }
-
-    .sig-toast .close {
-      opacity: .55;
-      font-size: 18px;
-      line-height: 1;
-      padding: 0 6px;
-    }
-
-    .sig-toast .close:hover {
-      opacity: 1;
-    }
-
-    @keyframes sigToastIn {
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes sigToastOut {
-      to {
-        opacity: 0;
-        transform: translateX(12px);
-        visibility: hidden;
-      }
-    }
-
-    .mini {
-      font-size: 12px;
-      color: #6c757d;
+    ul .nav-link:hover { color: blue !important; }
+    .nav-link { color: black !important; }
+    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
+    .sidebar .sub-menu li { list-style: none !important; }
+    .form-control { min-height: 42px; height: auto; }
+    .btn { min-height: 42px; }
+    .help-hint { font-size: 12px; }
+    .card-title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .req-badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#1f2a6b; font-weight:700; margin-left:6px; vertical-align:middle; }
+    .form-section { background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:12px; padding:14px 14px 6px; margin-bottom:12px; }
+    .form-section .section-title { font-weight:800; font-size:13px; margin-bottom:10px; color:#111827; display:flex; align-items:center; gap:8px; }
+    .form-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-start; }
+    .cam-box { border:1px solid rgba(0,0,0,.08); border-radius:12px; padding:10px; background:#f8f9fa; }
+    #cameraVideo, .fotoPreview { width:100%; border-radius:10px; background:#111; }
+    #cameraVideo { display:none; }
+    .fotoPreview { display:none; margin-top:8px; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#f3f4f6; font-weight:800; font-size:12px; }
+    .status-aberto { background:#ecfdf5; color:#065f46; }
+    .status-fechado { background:#fef2f2; color:#991b1b; }
+    .name-box { border:1px dashed rgba(0,0,0,.15); border-radius:10px; padding:10px; background:#fafafa; }
+    @media (max-width: 576px) {
+      .content-wrapper { padding: 1rem !important; }
+      .form-actions .btn { width: 100%; }
+      .card-title-row a.btn { width: 100%; }
     }
   </style>
 </head>
 
 <body>
-  <div class="container-scroller">
+<div class="container-scroller">
 
-    <!-- NAVBAR -->
-    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
-      </div>
-      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-          <span class="icon-menu"></span>
-        </button>
-        <ul class="navbar-nav mr-lg-2">
-          <li class="nav-item nav-search d-none d-lg-block"></li>
-        </ul>
-        <ul class="navbar-nav navbar-nav-right"></ul>
-        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-          <span class="icon-menu"></span>
-        </button>
-      </div>
+  <!-- NAVBAR -->
+  <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+    <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+      <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+      <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
+    </div>
+    <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+      <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+        <span class="icon-menu"></span>
+      </button>
+      <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+        <span class="icon-menu"></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="container-fluid page-body-wrapper">
+
+    <!-- SIDEBAR (mesmo padrão) -->
+    <nav class="sidebar sidebar-offcanvas" id="sidebar">
+      <ul class="nav">
+        <li class="nav-item">
+          <a class="nav-link" href="index.php">
+            <i class="icon-grid menu-icon"></i>
+            <span class="menu-title">Dashboard</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="true" aria-controls="feiraMovimento">
+            <i class="ti-exchange-vertical menu-icon"></i>
+            <span class="menu-title">Movimento</span>
+            <i class="menu-arrow"></i>
+          </a>
+          <div class="collapse show" id="feiraMovimento">
+            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+              <li class="nav-item active">
+                <a class="nav-link" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
+                  <i class="ti-write mr-2"></i> Lançamentos (Cadastro)
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="./fechamentoDia.php">
+                  <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                </a>
+              </li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="nav-item"><a class="nav-link" href="../index.php"><i class="ti-home menu-icon"></i><span class="menu-title"> Painel Principal</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="https://wa.me/92991515710" target="_blank"><i class="ti-headphone-alt menu-icon"></i><span class="menu-title">Suporte</span></a></li>
+      </ul>
     </nav>
 
-    <?php if ($msg || $err): ?>
-      <div class="sig-flash-wrap">
-        <?php if ($msg): ?>
-          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
-            <div class="sig-toast__row">
-              <div class="sig-toast__icon"><i class="ti-check"></i></div>
-              <div>
-                <div class="sig-toast__title">Tudo certo!</div>
-                <p class="sig-toast__text"><?= h($msg) ?></p>
-              </div>
+    <!-- MAIN -->
+    <div class="main-panel">
+      <div class="content-wrapper">
+
+        <div class="row">
+          <div class="col-12 mb-3">
+            <h3 class="font-weight-bold">Cadastro de Lançamento do Dia</h3>
+            <h6 class="font-weight-normal mb-0">
+              Informe o <b>CPF</b> do produtor e registre o item.
+            </h6>
+
+            <div class="mt-2" style="display:flex; gap:10px; flex-wrap:wrap;">
+              <span class="pill <?= ($romaneioStatus === 'ABERTO' ? 'status-aberto' : 'status-fechado') ?>">
+                <i class="ti-flag"></i> Status: <?= h($romaneioStatus) ?>
+              </span>
+              <span class="pill">
+                <i class="ti-calendar"></i> Data: <?= h($dataRef) ?>
+              </span>
+              <span class="pill">
+                <i class="ti-receipt"></i> Romaneio: <?= (int)$romaneioId ?>
+              </span>
+
+              <form method="get" action="" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <input type="date" class="form-control form-control-sm" name="data" value="<?= h($dataRef) ?>" style="max-width:220px;">
+                <button class="btn btn-light btn-sm" type="submit"><i class="ti-search"></i> Ir</button>
+              </form>
             </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-              <span aria-hidden="true">&times;</span>
-            </button>
           </div>
+        </div>
+
+        <?php if (!empty($msg)): ?>
+          <div class="alert alert-success"><?= h($msg) ?></div>
+        <?php endif; ?>
+        <?php if (!empty($err)): ?>
+          <div class="alert alert-danger"><?= h($err) ?></div>
         <?php endif; ?>
 
-        <?php if ($err): ?>
-          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
-            <div class="sig-toast__row">
-              <div class="sig-toast__icon"><i class="ti-alert"></i></div>
-              <div>
-                <div class="sig-toast__title">Atenção!</div>
-                <p class="sig-toast__text"><?= h($err) ?></p>
-              </div>
-            </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-        <?php endif; ?>
-      </div>
-    <?php endif; ?>
+        <div class="row">
+          <div class="col-lg-12 grid-margin stretch-card">
+            <div class="card">
+              <div class="card-body">
 
-    <div class="container-fluid page-body-wrapper">
+                <div class="card-title-row">
+                  <div>
+                    <h4 class="card-title mb-0">Novo Lançamento</h4>
+                    <p class="card-description mb-0">
+                      CPF do produtor + produto + quantidade + preço.
+                      <span class="req-badge">Obrigatório</span>
+                    </p>
+                  </div>
+                </div>
 
-      <div id="right-sidebar" class="settings-panel">
-        <i class="settings-close ti-close"></i>
-        <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-          <li class="nav-item"><a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab">TO DO LIST</a></li>
-          <li class="nav-item"><a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab">CHATS</a></li>
-        </ul>
-      </div>
+                <?php if (empty($produtos)): ?>
+                  <div class="alert alert-warning mt-3">
+                    Nenhum produto ativo encontrado para esta feira.
+                    <div class="mt-2"><small>Cadastre/ative produtos para poder lançar.</small></div>
+                  </div>
+                <?php endif; ?>
 
-      <!-- SIDEBAR (mantida no padrão) -->
-      <nav class="sidebar sidebar-offcanvas" id="sidebar">
-        <ul class="nav">
+                <form class="pt-4" method="post" action="">
+                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
-          <li class="nav-item">
-            <a class="nav-link" href="index.php">
-              <i class="icon-grid menu-icon"></i>
-              <span class="menu-title">Dashboard</span>
-            </a>
-          </li>
+                  <!-- fotos base64 (até 3) -->
+                  <input type="hidden" name="fotos_base64[]" id="foto_base64_1" value="">
+                  <input type="hidden" name="fotos_base64[]" id="foto_base64_2" value="">
+                  <input type="hidden" name="fotos_base64[]" id="foto_base64_3" value="">
 
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
-              <i class="ti-id-badge menu-icon"></i>
-              <span class="menu-title">Cadastros</span>
-              <i class="menu-arrow"></i>
-            </a>
+                  <div class="form-section">
+                    <div class="section-title"><i class="ti-id-badge"></i> Produtor</div>
 
-            <div class="collapse" id="feiraCadastros">
-              <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
-              </style>
-
-              <ul class="nav flex-column sub-menu" style="background: white !important;">
-                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
-                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
-              </ul>
-            </div>
-          </li>
-
-          <!-- MOVIMENTO (ATIVO) -->
-          <li class="nav-item active">
-            <a class="nav-link open" data-toggle="collapse" href="#feiraMovimento" aria-expanded="true" aria-controls="feiraMovimento">
-              <i class="ti-exchange-vertical menu-icon"></i>
-              <span class="menu-title">Movimento</span>
-              <i class="menu-arrow"></i>
-            </a>
-
-            <div class="collapse show active" id="feiraMovimento">
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item">
-                  <a class="nav-link" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
-                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="./fechamentoDia.php" >
-                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
-              <i class="ti-clipboard menu-icon"></i>
-              <span class="menu-title">Relatórios</span>
-              <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse text-black" id="feiraRelatorios">
-              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
-                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
-                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
-                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
-              </ul>
-            </div>
-          </li>
-
-          <!-- Título DIVERSOS -->
-          <li class="nav-item" style="pointer-events:none;">
-            <span style="
-                  display:block;
-                  padding: 5px 15px 5px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  color: #6c757d;
-                  text-transform: uppercase;
-                ">
-              Links Diversos
-            </span>
-          </li>
-
-          <!-- Linha abaixo do título -->
-          <li class="nav-item">
-            <a class="nav-link" href="../index.php">
-              <i class="ti-home menu-icon"></i>
-              <span class="menu-title"> Painel Principal</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="../alternativa/" class="nav-link">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira do Alternativa</span>
-
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="../mercado/" class="nav-link">
-              <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Mercado Municipal</span>
-
-            </a>
-          </li>
-          <li class="nav-item">
-
-            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-              <i class="ti-headphone-alt menu-icon"></i>
-              <span class="menu-title">Suporte</span>
-            </a>
-          </li>
-
-        </ul>
-      </nav>
-
-      <div class="main-panel">
-        <div class="content-wrapper">
-
-          <div class="row">
-            <div class="col-12 mb-3">
-              <h3 class="font-weight-bold mb-1">Entrada do Dia</h3>
-              <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
-                <span class="pill"><i class="ti-calendar"></i> <?= h(fmt_date($dia)) ?></span>
-                <span class="pill"><i class="ti-agenda"></i> Romaneio #<?= (int)$romaneioId ?></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-lg-12 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-
-                  <div class="card-header-lite">
-                    <div>
-                      <h4 class="card-title mb-0">Lançar Remessas</h4>
-                      <p class="card-description mb-0">Preencha as linhas. Foto é opcional (1 por linha).</p>
-                    </div>
-
-                    <div class="d-flex align-items-center" style="gap:10px;">
-                      <div>
-                        <label class="mb-1 muted" style="font-size:12px;">Data</label>
-                        <input type="date" class="form-control mini" value="<?= h($dia) ?>"
-                          onchange="location.href='?dia='+this.value;">
+                    <div class="row">
+                      <div class="col-12 col-lg-4 mb-3">
+                        <label>CPF do produtor <span class="text-danger">*</span></label>
+                        <input
+                          name="cpf"
+                          id="cpf"
+                          type="text"
+                          class="form-control"
+                          placeholder="Somente números (11 dígitos)"
+                          inputmode="numeric"
+                          autocomplete="off"
+                          required
+                          <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
+                          value="<?= h($old['cpf']) ?>">
+                        <small class="text-muted help-hint">Dica: você pode colar com pontos e traço que a página limpa.</small>
                       </div>
 
-                      <div class="totbox">
-                        <p class="totlabel">Total estimado</p>
-                        <p class="totvalue" id="jsTotal">R$ 0,00</p>
+                      <div class="col-12 col-lg-8 mb-3">
+                        <label>Produtor encontrado</label>
+                        <div class="name-box">
+                          <span id="produtorNome" style="font-weight:800;">—</span>
+                          <div class="text-muted" style="font-size:12px;">A confirmação aparece automaticamente ao digitar o CPF.</div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <form method="post" action="./romaneioEntrada.php?dia=<?= h($dia) ?>" autocomplete="off" id="formEntrada">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                    <input type="hidden" name="acao" value="salvar">
-                    <input type="hidden" name="data_ref" value="<?= h($dia) ?>">
+                  <div class="form-section">
+                    <div class="section-title"><i class="ti-package"></i> Item</div>
 
-                    <div id="linesWrap">
+                    <div class="row">
+                      <div class="col-12 col-lg-6 mb-3">
+                        <label>Produto <span class="text-danger">*</span></label>
+                        <select
+                          name="produto_id"
+                          class="form-control"
+                          required
+                          <?= (empty($produtos) || $romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                          <option value="">Selecione</option>
+                          <?php foreach ($produtos as $pr): ?>
+                            <option value="<?= (int)$pr['id'] ?>" <?= ($old['produto_id'] !== '' && (int)$old['produto_id'] === (int)$pr['id']) ? 'selected' : '' ?>>
+                              <?= h($pr['nome']) ?>
+                            </option>
+                          <?php endforeach; ?>
+                        </select>
+                      </div>
 
-                      <!-- LINHA BASE -->
-                      <div class="line-card js-line">
-                        <div class="row">
+                      <div class="col-12 col-md-6 col-lg-3 mb-3">
+                        <label>Qtd. entrada <span class="text-danger">*</span></label>
+                        <input
+                          name="quantidade_entrada"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: 10,500"
+                          required
+                          <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
+                          value="<?= h($old['quantidade_entrada']) ?>">
+                        <small class="text-muted help-hint">Decimal com 3 casas (aceita vírgula).</small>
+                      </div>
 
-                          <!-- linha 1: 3 colunas -->
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Produtor</label>
-                            <select class="form-control js-produtor" name="produtor_id[]">
-                              <option value="0">Selecione</option>
-                              <?php foreach ($produtoresAtivos as $p): ?>
-                                <option value="<?= (int)$p['id'] ?>"><?= h($p['nome'] ?? '') ?></option>
-                              <?php endforeach; ?>
-                            </select>
-                          </div>
+                      <div class="col-12 col-md-6 col-lg-3 mb-3">
+                        <label>Preço unitário do dia <span class="text-danger">*</span></label>
+                        <input
+                          name="preco_unitario_dia"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: 7,50"
+                          required
+                          <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
+                          value="<?= h($old['preco_unitario_dia']) ?>">
+                        <small class="text-muted help-hint">Decimal com 2 casas (aceita vírgula).</small>
+                      </div>
 
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Produto</label>
-                            <select class="form-control js-produto" name="produto_id[]">
-                              <option value="0">Selecione</option>
-                              <?php foreach ($produtosAtivos as $pr): ?>
-                                <option value="<?= (int)$pr['id'] ?>"
-                                  data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
-                                  data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
-                                  data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>">
-                                  <?= h($pr['nome'] ?? '') ?>
-                                </option>
-                              <?php endforeach; ?>
-                            </select>
-                            <small class="helper text-muted">Unid/Categoria preenche automático.</small>
-                          </div>
+                      <div class="col-12 mb-3">
+                        <label>Observação</label>
+                        <input
+                          name="observacao"
+                          type="text"
+                          class="form-control"
+                          placeholder="Opcional (até 255)"
+                          <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
+                          value="<?= h($old['observacao']) ?>">
+                      </div>
+                    </div>
+                  </div>
 
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Qtd</label>
-                            <input type="text" class="form-control js-qtd" name="quantidade_entrada[]" value="1">
-                          </div>
+                  <div class="form-section">
+                    <div class="section-title"><i class="ti-camera"></i> Fotos (opcional)</div>
 
-                          <!-- linha 2: 3 colunas -->
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Preço</label>
-                            <input type="text" class="form-control js-preco" name="preco_unitario_dia[]" placeholder="0,00">
-                          </div>
+                    <div class="row">
+                      <div class="col-12 col-lg-6 mb-3">
+                        <label>Capturar fotos (até 3)</label>
 
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Unid</label>
-                            <input type="text" class="form-control js-un" value="" readonly>
-                          </div>
+                        <div class="cam-box">
+                          <video id="cameraVideo" autoplay playsinline></video>
+                          <canvas id="cameraCanvas" style="display:none;"></canvas>
 
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Categoria</label>
-                            <input type="text" class="form-control js-cat" value="" readonly>
-                          </div>
-
-                          <!-- linha 3: ações -->
-                          <div class="col-12">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:10px;">
-                              <div class="d-flex align-items-center" style="gap:10px;">
-                                <img class="photo-thumb js-thumb" src="" alt="">
-                                <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
-                              </div>
-
-                              <!-- linha 3: ações -->
-                              <div class="col-12">
-                                <div class="row">
-                                  <div class="col-12 mb-2">
-                                    <img class="photo-thumb js-thumb" src="" alt="">
-                                  </div>
-
-                                  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:10px;">
-                                    <small class="text-muted helper mb-0">Foto opcional (câmera do celular).</small>
-
-                                    <div class="line-actions-mobile">
-                                      <button type="button" class="btn btn-primary btn-mobile btn-foto-big js-foto">
-                                        <i class="ti-camera"></i> Tirar Foto
-                                      </button>
-
-                                      <button type="button" class="btn btn-light btn-mobile js-remove" disabled>
-                                        <i class="ti-trash"></i> Remover
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
-                                <input type="hidden" name="observacao_item[]" value="">
-                              </div>
-
-
-                            </div>
-                          </div>
-                          <!-- /LINHA BASE -->
-
-
+                          <img id="fotoPreview_1" class="fotoPreview" alt="Prévia foto 1">
+                          <img id="fotoPreview_2" class="fotoPreview" alt="Prévia foto 2">
+                          <img id="fotoPreview_3" class="fotoPreview" alt="Prévia foto 3">
                         </div>
 
-                        <div class="sticky-actions">
-                          <div class="d-flex flex-wrap" style="gap:8px;">
-                            <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
-                            <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
-                            <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
-                          </div>
-                          <div class="d-flex flex-wrap mt-4" style="gap:8px;">
-                            <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
-                            <a class="btn btn-light" href="./romaneioEntrada.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
-                          </div>
+                        <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
+                          <button type="button" class="btn btn-secondary btn-sm" id="btnAbrirCam" <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                            <i class="ti-camera mr-1"></i> Abrir Câmera
+                          </button>
+                          <button type="button" class="btn btn-primary btn-sm" id="btnTirarFoto" disabled>
+                            <i class="ti-image mr-1"></i> Tirar Foto
+                          </button>
+                          <button type="button" class="btn btn-light btn-sm" id="btnLimparFotos" <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                            <i class="ti-trash mr-1"></i> Limpar Fotos
+                          </button>
+                          <button type="button" class="btn btn-danger btn-sm" id="btnFecharCam" disabled>
+                            <i class="ti-close mr-1"></i> Fechar
+                          </button>
                         </div>
 
-                  </form>
+                        <small class="text-muted help-hint d-block mt-1">
+                          As fotos são comprimidas em JPEG antes de enviar.
+                        </small>
+                      </div>
+                    </div>
+                  </div>
 
-                  <small class="text-muted d-block mt-3 helper">
-                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost). A foto é comprimida pra ficar leve.
-                  </small>
+                  <hr>
 
-                </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary"
+                      <?= (empty($produtos) || $romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                      <i class="ti-save mr-1"></i> Salvar Lançamento
+                    </button>
+                    <button type="reset" class="btn btn-light" id="btnReset">
+                      <i class="ti-close mr-1"></i> Limpar
+                    </button>
+                  </div>
+
+                  <?php if ($romaneioStatus !== 'ABERTO'): ?>
+                    <div class="alert alert-warning mt-3">
+                      Romaneio está <b>FECHADO</b>. Para lançar novamente, reabra no fechamento.
+                    </div>
+                  <?php endif; ?>
+                </form>
+
               </div>
             </div>
           </div>
-
         </div>
-
-        <footer class="footer">
-          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
-            <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
-              © <?= date('Y') ?> SIGRelatórios —
-              <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
-            </span>
-          </div>
-        </footer>
 
       </div>
+
+      <footer class="footer">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
+          <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
+            © <?= date('Y') ?> SIGRelatórios —
+            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
+            Todos os direitos reservados.
+          </span>
+        </div>
+      </footer>
+
     </div>
   </div>
+</div>
 
-  <!-- MODAL CÂMERA -->
-  <div class="modal fade" id="modalCamera" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-      <div class="modal-content" style="border-radius:14px;">
-        <div class="modal-header">
-          <h5 class="modal-title">Tirar foto</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
-        </div>
+<script src="../../../vendors/js/vendor.bundle.base.js"></script>
+<script src="../../../js/off-canvas.js"></script>
+<script src="../../../js/hoverable-collapse.js"></script>
+<script src="../../../js/template.js"></script>
+<script src="../../../js/settings.js"></script>
+<script src="../../../js/todolist.js"></script>
 
-        <div class="modal-body">
-          <div class="cam-box">
-            <video id="camVideo" autoplay playsinline></video>
-            <canvas id="camCanvas" style="display:none;"></canvas>
-            <img id="camPreview" alt="Prévia">
-          </div>
+<script>
+(function(){
+  // ===== CPF: limpar não-dígitos no input
+  const cpf = document.getElementById('cpf');
+  const produtorNome = document.getElementById('produtorNome');
 
-          <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btnAbrirCam"><i class="ti-camera mr-1"></i> Abrir</button>
-            <button type="button" class="btn btn-primary btn-sm" id="btnTirarFoto" disabled><i class="ti-image mr-1"></i> Tirar</button>
-            <button type="button" class="btn btn-light btn-sm" id="btnRefazer" disabled><i class="ti-reload mr-1"></i> Refazer</button>
-            <button type="button" class="btn btn-danger btn-sm" id="btnFecharCam" disabled><i class="ti-close mr-1"></i> Fechar</button>
-          </div>
-
-          <small class="text-muted helper d-block mt-2">Câmera fecha automaticamente depois de tirar (economiza bateria).</small>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="btnUsarFoto" disabled><i class="ti-check mr-1"></i> Usar foto</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="../../../vendors/js/vendor.bundle.base.js"></script>
-  <script src="../../../js/off-canvas.js"></script>
-  <script src="../../../js/hoverable-collapse.js"></script>
-  <script src="../../../js/template.js"></script>
-  <script src="../../../js/settings.js"></script>
-  <script src="../../../js/todolist.js"></script>
-
-  <script>
-    (function() {
-      const wrap = document.getElementById('linesWrap');
-      const btnAdd = document.getElementById('btnAdd');
-      const btnRef = document.getElementById('btnRef');
-      const btnLimparFotos = document.getElementById('btnLimparFotos');
-      const totalEl = document.getElementById('jsTotal');
-
-      function brMoney(n) {
-        try {
-          return n.toLocaleString('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          });
-        } catch (e) {
-          const x = Math.round(n * 100) / 100;
-          return String(x).replace('.', ',');
-        }
+  if (cpf) {
+    cpf.addEventListener('input', function(){
+      this.value = (this.value || '').replace(/\D+/g, '').slice(0, 11);
+      // Como a página NÃO consulta via AJAX (pra manter simples),
+      // a confirmação do produtor aparece no sucesso do POST.
+      // Ainda assim, deixamos um feedback visual simples:
+      if (this.value.length === 11) {
+        produtorNome.textContent = 'CPF informado (11 dígitos).';
+      } else if (this.value.length > 0) {
+        produtorNome.textContent = 'Digite os 11 dígitos do CPF...';
+      } else {
+        produtorNome.textContent = '—';
       }
+    });
+  }
 
-      function toNum(s) {
-        s = String(s || '').trim();
-        if (!s) return 0;
-        s = s.replace(/R\$/g, '').replace(/\s/g, '');
-        s = s.replace(/\./g, '').replace(',', '.');
-        s = s.replace(/[^0-9.\-]/g, '');
-        const v = parseFloat(s);
-        return isNaN(v) ? 0 : v;
-      }
+  // ===== Câmera (até 3 fotos)
+  let stream = null;
 
-      function syncInfo(line) {
-        const sel = line.querySelector('.js-produto');
-        const opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
-        const un = opt && opt.dataset ? (opt.dataset.un || '') : '';
-        const cat = opt && opt.dataset ? (opt.dataset.cat || '') : '';
-        line.querySelector('.js-un').value = un;
-        line.querySelector('.js-cat').value = cat;
-      }
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
 
-      function calcTotal() {
-        let tot = 0;
-        document.querySelectorAll('.js-line').forEach(line => {
-          const produtor = parseInt((line.querySelector('.js-produtor') || {}).value || '0', 10);
-          const produto = parseInt((line.querySelector('.js-produto') || {}).value || '0', 10);
-          if (!produtor || !produto) return;
-          const qtd = toNum((line.querySelector('.js-qtd') || {}).value || '0');
-          const preco = toNum((line.querySelector('.js-preco') || {}).value || '0');
-          if (qtd > 0 && preco > 0) tot += (qtd * preco);
-        });
-        totalEl.textContent = 'R$ ' + brMoney(tot);
-      }
+  const previews = [
+    document.getElementById('fotoPreview_1'),
+    document.getElementById('fotoPreview_2'),
+    document.getElementById('fotoPreview_3')
+  ];
+  const inputs = [
+    document.getElementById('foto_base64_1'),
+    document.getElementById('foto_base64_2'),
+    document.getElementById('foto_base64_3')
+  ];
 
-      function updateRemoveButtons() {
-        const lines = document.querySelectorAll('.js-line');
-        lines.forEach(line => {
-          const btn = line.querySelector('.js-remove');
-          btn.disabled = (lines.length <= 1);
-          btn.onclick = () => {
-            if (lines.length <= 1) return;
-            line.remove();
-            updateRemoveButtons();
-            calcTotal();
-          };
-        });
-      }
+  const btnAbrir  = document.getElementById('btnAbrirCam');
+  const btnTirar  = document.getElementById('btnTirarFoto');
+  const btnFechar = document.getElementById('btnFecharCam');
+  const btnLimpar = document.getElementById('btnLimparFotos');
+  const btnReset  = document.getElementById('btnReset');
 
-      function wire(line) {
-        const prod = line.querySelector('.js-produto');
-        const qtd = line.querySelector('.js-qtd');
-        const preco = line.querySelector('.js-preco');
+  function countFotos(){
+    let n = 0;
+    for (const i of inputs) if (i && i.value) n++;
+    return n;
+  }
 
-        prod.addEventListener('change', () => {
-          syncInfo(line);
-          calcTotal();
-        });
-        qtd.addEventListener('input', calcTotal);
-        preco.addEventListener('input', calcTotal);
+  function setCamState(camOn){
+    if (!video) return;
+    video.style.display = camOn ? 'block' : 'none';
+    if (btnTirar) btnTirar.disabled = !camOn;
+    if (btnFechar) btnFechar.disabled = !camOn;
+    if (btnAbrir) btnAbrir.disabled = camOn;
+  }
 
-        syncInfo(line);
-      }
-
-      btnAdd && btnAdd.addEventListener('click', () => {
-        const base = document.querySelector('.js-line');
-        if (!base) return;
-        const clone = base.cloneNode(true);
-
-        clone.querySelector('.js-produtor').value = '0';
-        clone.querySelector('.js-produto').value = '0';
-        clone.querySelector('.js-qtd').value = '1';
-        clone.querySelector('.js-preco').value = '';
-        clone.querySelector('.js-un').value = '';
-        clone.querySelector('.js-cat').value = '';
-        clone.querySelector('.js-foto-base64').value = '';
-        const thumb = clone.querySelector('.js-thumb');
-        thumb.src = '';
-        thumb.style.display = 'none';
-
-        wrap.appendChild(clone);
-        wire(clone);
-        updateRemoveButtons();
-        calcTotal();
+  async function abrirCamera(){
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
       });
+      video.srcObject = stream;
+      await video.play();
+      setCamState(true);
+    } catch(e){
+      alert('Não foi possível acessar a câmera. Verifique permissão/HTTPS.');
+      setCamState(false);
+    }
+  }
 
-      btnRef && btnRef.addEventListener('click', () => {
-        document.querySelectorAll('.js-line').forEach(line => {
-          const sel = line.querySelector('.js-produto');
-          const precoIn = line.querySelector('.js-preco');
-          if (!sel || !precoIn) return;
-          const pid = parseInt(sel.value || '0', 10);
-          if (!pid) return;
-          const opt = sel.options[sel.selectedIndex];
-          const ref = opt && opt.dataset ? (opt.dataset.preco || '') : '';
-          if (!precoIn.value && ref) {
-            const n = toNum(ref);
-            if (n > 0) precoIn.value = brMoney(n);
-          }
-        });
-        calcTotal();
-      });
+  function fecharCamera(){
+    if (stream){
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    if (video) video.srcObject = null;
+    setCamState(false);
+  }
 
-      btnLimparFotos && btnLimparFotos.addEventListener('click', () => {
-        document.querySelectorAll('.js-line').forEach(line => {
-          line.querySelector('.js-foto-base64').value = '';
-          const thumb = line.querySelector('.js-thumb');
-          thumb.src = '';
-          thumb.style.display = 'none';
-        });
-      });
+  function tirarFoto(){
+    if (!video.videoWidth || !video.videoHeight) return;
 
-      document.querySelectorAll('.js-line').forEach(wire);
-      updateRemoveButtons();
-      calcTotal();
+    const idx = countFotos();
+    if (idx >= inputs.length){
+      alert('Você já capturou o máximo de fotos.');
+      return;
+    }
 
-      // ===== CAMERA =====
-      let currentLine = null;
-      let stream = null;
-      let capturedDataUrl = '';
+    const targetW = 720;
+    const ratio = video.videoHeight / video.videoWidth;
+    const targetH = Math.round(targetW * ratio);
 
-      const camVideo = document.getElementById('camVideo');
-      const camCanvas = document.getElementById('camCanvas');
-      const camPreview = document.getElementById('camPreview');
+    canvas.width = targetW;
+    canvas.height = targetH;
 
-      const btnAbrirCam = document.getElementById('btnAbrirCam');
-      const btnTirarFoto = document.getElementById('btnTirarFoto');
-      const btnRefazer = document.getElementById('btnRefazer');
-      const btnFecharCam = document.getElementById('btnFecharCam');
-      const btnUsarFoto = document.getElementById('btnUsarFoto');
+    const ctx = canvas.getContext('2d', { alpha:false });
+    ctx.drawImage(video, 0, 0, targetW, targetH);
 
-      function setCamState({
-        on,
-        has
-      }) {
-        btnAbrirCam.disabled = on;
-        btnTirarFoto.disabled = !on;
-        btnFecharCam.disabled = !on;
-        btnRefazer.disabled = !has;
-        btnUsarFoto.disabled = !has;
-        camPreview.style.display = has ? 'block' : 'none';
-      }
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
 
-      async function openCam() {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: {
-                ideal: 'environment'
-              }
-            },
-            audio: false
-          });
-          camVideo.srcObject = stream;
-          await camVideo.play();
-          capturedDataUrl = '';
-          camPreview.src = '';
-          setCamState({
-            on: true,
-            has: false
-          });
-        } catch (e) {
-          alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS.');
-          setCamState({
-            on: false,
-            has: false
-          });
-        }
-      }
+    inputs[idx].value = dataUrl;
+    previews[idx].src = dataUrl;
+    previews[idx].style.display = 'block';
 
-      function closeCam() {
-        if (stream) {
-          stream.getTracks().forEach(t => t.stop());
-          stream = null;
-        }
-        camVideo.srcObject = null;
-        setCamState({
-          on: false,
-          has: capturedDataUrl !== ''
-        });
-      }
+    if (countFotos() >= inputs.length) fecharCamera();
+  }
 
-      function snap() {
-        if (!camVideo.videoWidth || !camVideo.videoHeight) return;
+  function limparFotos(){
+    for (let k=0;k<inputs.length;k++){
+      inputs[k].value = '';
+      previews[k].src = '';
+      previews[k].style.display = 'none';
+    }
+  }
 
-        const targetW = 720; // leve
-        const ratio = camVideo.videoHeight / camVideo.videoWidth;
-        const targetH = Math.round(targetW * ratio);
+  if (btnAbrir) btnAbrir.addEventListener('click', abrirCamera);
+  if (btnFechar) btnFechar.addEventListener('click', fecharCamera);
+  if (btnTirar) btnTirar.addEventListener('click', tirarFoto);
+  if (btnLimpar) btnLimpar.addEventListener('click', limparFotos);
 
-        camCanvas.width = targetW;
-        camCanvas.height = targetH;
-        const ctx = camCanvas.getContext('2d', {
-          alpha: false
-        });
-        ctx.drawImage(camVideo, 0, 0, targetW, targetH);
+  if (btnReset) btnReset.addEventListener('click', function(){
+    setTimeout(function(){
+      limparFotos();
+      if (produtorNome) produtorNome.textContent = '—';
+    }, 0);
+  });
 
-        capturedDataUrl = camCanvas.toDataURL('image/jpeg', 0.65);
-        camPreview.src = capturedDataUrl;
+  setCamState(false);
+  window.addEventListener('beforeunload', fecharCamera);
+})();
+</script>
 
-        setCamState({
-          on: true,
-          has: true
-        });
-        closeCam(); // economiza
-      }
-
-      function redo() {
-        capturedDataUrl = '';
-        camPreview.src = '';
-        setCamState({
-          on: false,
-          has: false
-        });
-        openCam();
-      }
-
-      document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.js-foto');
-        if (!btn) return;
-
-        currentLine = btn.closest('.js-line');
-        capturedDataUrl = '';
-        camPreview.src = '';
-        setCamState({
-          on: false,
-          has: false
-        });
-
-        if (window.jQuery && jQuery.fn.modal) {
-          jQuery('#modalCamera').modal('show');
-        }
-      });
-
-      btnAbrirCam.addEventListener('click', openCam);
-      btnTirarFoto.addEventListener('click', snap);
-      btnRefazer.addEventListener('click', redo);
-      btnFecharCam.addEventListener('click', closeCam);
-
-      btnUsarFoto.addEventListener('click', function() {
-        if (!currentLine || !capturedDataUrl) return;
-
-        currentLine.querySelector('.js-foto-base64').value = capturedDataUrl;
-
-        const thumb = currentLine.querySelector('.js-thumb');
-        thumb.src = capturedDataUrl;
-        thumb.style.display = 'block';
-
-        if (window.jQuery && jQuery.fn.modal) {
-          jQuery('#modalCamera').modal('hide');
-        }
-      });
-
-      if (window.jQuery) {
-        jQuery('#modalCamera').on('hidden.bs.modal', function() {
-          closeCam();
-          capturedDataUrl = '';
-          camPreview.src = '';
-          setCamState({
-            on: false,
-            has: false
-          });
-        });
-      }
-    })();
-  </script>
 </body>
-
 </html>
