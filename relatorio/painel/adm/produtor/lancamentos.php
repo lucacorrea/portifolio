@@ -79,6 +79,29 @@ $csrf = (string)$_SESSION['csrf_token'];
 
 $pdo = db();
 
+/* AJAX: Busca Produtor por CPF */
+if (isset($_GET['ajax_busca_produtor'])) {
+  header('Content-Type: application/json');
+  $cpfVal = only_digits($_GET['cpf'] ?? '');
+  if (strlen($cpfVal) === 11) {
+    try {
+      $st = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :f AND documento = :doc AND ativo = 1 LIMIT 1");
+      $st->execute([':f' => $FEIRA_ID, ':doc' => $cpfVal]);
+      $prod = $st->fetch(PDO::FETCH_ASSOC);
+      if ($prod) {
+        echo json_encode(['sucesso' => true, 'id' => $prod['id'], 'nome' => $prod['nome']]);
+      } else {
+        echo json_encode(['sucesso' => false, 'msg' => 'Produtor não encontrado ou inativo.']);
+      }
+    } catch (Throwable $e) {
+      echo json_encode(['sucesso' => false, 'msg' => 'Erro ao buscar.']);
+    }
+  } else {
+    echo json_encode(['sucesso' => false, 'msg' => 'CPF inválido.']);
+  }
+  exit;
+}
+
 /* Data do romaneio */
 date_default_timezone_set('America/Manaus'); // ajuste se quiser
 $dataRef = (string)($_GET['data'] ?? date('Y-m-d'));
@@ -144,11 +167,41 @@ $old = [
   'observacao' => '',
 ];
 
-/* POST (salvar lançamento) */
+/* POST (salvar lançamento ou excluir) */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
   $tokenPost = (string)($_POST['csrf_token'] ?? '');
   if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
     $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
+    header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
+    exit;
+  }
+
+  $acao = (string)($_POST['acao'] ?? 'salvar');
+
+  if ($acao === 'excluir') {
+    $delId = (int)($_POST['id'] ?? 0);
+    if ($delId > 0 && $romaneioStatus === 'ABERTO') {
+      try {
+        $pdo->beginTransaction();
+        
+        // Remove fotos físicas primeiro
+        $stF = $pdo->prepare("SELECT caminho FROM romaneio_item_fotos WHERE romaneio_item_id = :id");
+        $stF->execute([':id' => $delId]);
+        foreach ($stF->fetchAll() as $rowF) {
+          $absF = $BASE_DIR . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rowF['caminho']);
+          if (file_exists($absF)) @unlink($absF);
+        }
+
+        $pdo->prepare("DELETE FROM romaneio_item_fotos WHERE romaneio_item_id = :id")->execute([':id' => $delId]);
+        $pdo->prepare("DELETE FROM romaneio_itens WHERE id = :id AND feira_id = :feira")->execute([':id' => $delId, ':feira' => $FEIRA_ID]);
+
+        $pdo->commit();
+        $_SESSION['flash_ok'] = 'Lançamento excluído com sucesso.';
+      } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $_SESSION['flash_err'] = 'Erro ao excluir: ' . $e->getMessage();
+      }
+    }
     header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
     exit;
   }
@@ -287,6 +340,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
         }
       }
     }
+  }
+}
+
+/* Lista lançamentos do dia */
+$itensDia = [];
+if ($romaneioId) {
+  try {
+    $stL = $pdo->prepare("
+      SELECT ri.id, p.nome AS produtor_nome, pr.nome AS produto_nome, 
+             ri.quantidade_entrada, ri.preco_unitario_dia, ri.observacao
+      FROM romaneio_itens ri
+      JOIN produtores p ON p.id = ri.produtor_id
+      JOIN produtos pr ON pr.id = ri.produto_id
+      WHERE ri.romaneio_id = :rom
+      ORDER BY ri.id DESC
+    ");
+    $stL->execute([':rom' => $romaneioId]);
+    $itensDia = $stL->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    $itensDia = [];
   }
 }
 ?>
@@ -603,6 +676,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
                   <?php endif; ?>
                 </form>
 
+                <?php if (!empty($itensDia)): ?>
+                  <hr class="my-4">
+                  <div class="card-title-row mb-3">
+                    <h4 class="card-title mb-0">Lançamentos deste dia (<?= h($dataRef) ?>)</h4>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                      <thead>
+                        <tr>
+                          <th>Produtor</th>
+                          <th>Produto</th>
+                          <th>Qtd</th>
+                          <th>Preço</th>
+                          <th>Subtotal</th>
+                          <th style="width:100px;">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php 
+                        $totalGeral = 0;
+                        foreach ($itensDia as $it): 
+                          $sub = (float)$it['quantidade_entrada'] * (float)$it['preco_unitario_dia'];
+                          $totalGeral += $sub;
+                        ?>
+                          <tr>
+                            <td><?= h($it['produtor_nome']) ?></td>
+                            <td><?= h($it['produto_name'] ?? $it['produto_nome']) ?></td>
+                            <td><?= number_format((float)$it['quantidade_entrada'], 3, ',', '.') ?></td>
+                            <td>R$ <?= number_format((float)$it['preco_unitario_dia'], 2, ',', '.') ?></td>
+                            <td><b>R$ <?= number_format($sub, 2, ',', '.') ?></b></td>
+                            <td>
+                              <?php if ($romaneioStatus === 'ABERTO'): ?>
+                                <form method="post" action="" style="display:inline;" onsubmit="return confirm('Excluir este lançamento?');">
+                                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                  <input type="hidden" name="acao" value="excluir">
+                                  <input type="hidden" name="id" value="<?= (int)$it['id'] ?>">
+                                  <button type="submit" class="btn btn-danger btn-sm p-2"><i class="ti-trash"></i></button>
+                                </form>
+                              <?php else: ?>
+                                —
+                              <?php endif; ?>
+                            </td>
+                          </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                      <tfoot>
+                        <tr class="bg-light">
+                          <td colspan="4" class="text-right"><b>TOTAL:</b></td>
+                          <td colspan="2"><b>R$ <?= number_format($totalGeral, 2, ',', '.') ?></b></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                <?php endif; ?>
+
               </div>
             </div>
           </div>
@@ -638,19 +766,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
   const produtorNome = document.getElementById('produtorNome');
 
   if (cpf) {
-    cpf.addEventListener('input', function(){
+    cpf.addEventListener('input', async function(){
       this.value = (this.value || '').replace(/\D+/g, '').slice(0, 11);
-      // Como a página NÃO consulta via AJAX (pra manter simples),
-      // a confirmação do produtor aparece no sucesso do POST.
-      // Ainda assim, deixamos um feedback visual simples:
+      
       if (this.value.length === 11) {
-        produtorNome.textContent = 'CPF informado (11 dígitos).';
+        produtorNome.textContent = 'Buscando produtor...';
+        try {
+          const resp = await fetch(`?ajax_busca_produtor=1&cpf=${this.value}`);
+          const data = await resp.json();
+          if (data.sucesso) {
+            produtorNome.innerHTML = `<span class="text-success"><i class="ti-check"></i> ${data.nome}</span>`;
+          } else {
+            produtorNome.innerHTML = `<span class="text-danger"><i class="ti-alert"></i> ${data.msg}</span>`;
+          }
+        } catch(e) {
+          produtorNome.textContent = 'Erro ao buscar produtor.';
+        }
       } else if (this.value.length > 0) {
         produtorNome.textContent = 'Digite os 11 dígitos do CPF...';
       } else {
         produtorNome.textContent = '—';
       }
     });
+
+    // Auto-busca se já vier preenchido (ex: erro de validação volta com valor)
+    if (cpf.value.length === 11) {
+        cpf.dispatchEvent(new Event('input'));
+    }
   }
 
   // ===== Câmera (até 3 fotos)
