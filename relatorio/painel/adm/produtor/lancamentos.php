@@ -318,8 +318,8 @@ if ($romaneioId) {
       SELECT ri.id, p.nome AS produtor_nome, pr.nome AS produto_nome, 
              ri.quantidade_entrada, ri.preco_unitario_dia, ri.observacao
       FROM romaneio_itens ri
-      JOIN produtores p ON p.id = ri.produtor_id
-      JOIN produtos pr ON pr.id = ri.produto_id
+      JOIN produtores p ON p.id = ri.produtor_id AND p.feira_id = ri.feira_id
+      JOIN produtos pr ON pr.id = ri.produto_id AND pr.feira_id = ri.feira_id
       WHERE ri.romaneio_id = :rom
       ORDER BY ri.id DESC
     ");
