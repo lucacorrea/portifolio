@@ -23,27 +23,37 @@
         
         <div class="main-wrapper">
             <!-- Top Navbar -->
-            <nav class="top-navbar">
+            <nav class="top-navbar px-4 shadow-sm border-0 mb-4 bg-white sticky-top">
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-link link-dark p-0 me-3 d-lg-none" id="sidebarToggle">
-                        <i class="fas fa-bars fs-4"></i>
+                    <button class="btn btn-light me-3 d-lg-none" id="sidebarToggle">
+                        <i class="fas fa-bars"></i>
                     </button>
-                    <h5 class="mb-0 fw-bold text-secondary"><?= $pageTitle ?? 'Início' ?></h5>
+                    <div class="page-title-context">
+                        <h5 class="mb-0 fw-bold text-dark"><?= $pageTitle ?? 'Dashboard' ?></h5>
+                        <small class="text-muted extra-small d-block"><?= $title ?? 'ERP Elétrica SaaS' ?></small>
+                    </div>
                 </div>
                 
-                <div class="d-flex align-items-center">
-                    <div class="text-end me-3 d-none d-md-block">
-                        <div class="fw-bold small"><?= $_SESSION['usuario_nome'] ?></div>
-                        <div class="text-muted" style="font-size: 0.7rem;"><?= date('d/m/Y') ?></div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-end d-none d-md-block border-end pe-3">
+                        <div class="fw-bold small text-dark"><?= $_SESSION['usuario_nome'] ?></div>
+                        <div class="badge bg-primary bg-opacity-10 text-primary extra-small text-uppercase"><?= $_SESSION['usuario_nivel'] ?></div>
                     </div>
                     <div class="dropdown">
-                        <a href="#" class="d-block link-dark text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
-                            <img src="https://github.com/mdo.png" alt="mdo" width="32" height="32" class="rounded-circle">
+                        <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                                <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
+                            </div>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item" href="configuracoes.php"><i class="fas fa-cog me-2"></i>Configurações</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-2">
+                            <li class="px-3 py-2 border-bottom mb-2">
+                                <div class="fw-bold small"><?= $_SESSION['usuario_nome'] ?></div>
+                                <div class="text-muted extra-small"><?= $_SESSION['usuario_email'] ?? 'Acesso Nível ' . $_SESSION['usuario_nivel'] ?></div>
+                            </li>
+                            <li><a class="dropdown-item py-2" href="configuracoes.php"><i class="fas fa-cog me-2 text-muted"></i>Ajustes do Perfil</a></li>
+                            <li><a class="dropdown-item py-2" href="master.php" <?= ($_SESSION['usuario_nivel'] ?? '') !== 'master' ? 'style="display:none"' : '' ?>><i class="fas fa-crown me-2 text-warning"></i>Painel Master</a></li>
+                            <li><hr class="dropdown-divider opacity-50"></li>
+                            <li><a class="dropdown-item py-2 text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i>Sair com Segurança</a></li>
                         </ul>
                     </div>
                 </div>

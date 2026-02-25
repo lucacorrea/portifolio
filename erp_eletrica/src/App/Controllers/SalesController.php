@@ -36,11 +36,22 @@ class SalesController extends BaseController {
             try {
                 $db->beginTransaction();
 
+                // Validation: Discount Limit
+                $stmtUser = $db->prepare("SELECT desconto_maximo FROM usuarios WHERE id = ?");
+                $stmtUser->execute([$_SESSION['usuario_id']]);
+                $maxDiscount = $stmtUser->fetchColumn() ?: 0;
+                
+                $requestedDiscount = $data['discount_percent'] ?? 0;
+                if ($requestedDiscount > $maxDiscount) {
+                    throw new \Exception("Desconto de $requestedDiscount% excede seu limite permitido de $maxDiscount%");
+                }
+
                 $saleData = [
                     'cliente_id' => $data['cliente_id'] ?? null,
                     'usuario_id' => $_SESSION['usuario_id'],
                     'filial_id' => $_SESSION['filial_id'] ?? 1,
                     'valor_total' => $data['total'],
+                    'desconto_total' => $data['subtotal'] * ($requestedDiscount / 100),
                     'forma_pagamento' => $data['pagamento']
                 ];
                 $saleId = $saleModel->create($saleData);

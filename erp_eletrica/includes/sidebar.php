@@ -9,9 +9,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
     
     <nav class="nav flex-column sidebar-menu">
         <?php if (($_SESSION['usuario_nivel'] ?? '') === 'master'): ?>
-        <a href="master.php" class="nav-link <?= $current_page == 'master.php' ? 'active' : '' ?>">
-            <i class="fas fa-crown text-warning"></i> <span>Painel Master Global</span>
+        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#masterSubmenu">
+            <i class="fas fa-crown text-warning"></i>
+            <span>Painel Master Global</span>
+            <i class="fas fa-chevron-down ms-auto small opacity-50"></i>
         </a>
+        <div class="collapse ps-3 <?= strpos($_SERVER['PHP_SELF'], 'master.php') !== false ? 'show' : '' ?>" id="masterSubmenu">
+            <nav class="nav flex-column">
+                <a class="nav-link extra-small py-1" href="master.php">
+                    <i class="fas fa-chart-pie me-1 extra-small"></i> Sumário Global
+                </a>
+                <a class="nav-link extra-small py-1" href="master.php?action=dre">
+                    <i class="fas fa-file-invoice-dollar me-1 extra-small"></i> DRE Consolidado
+                </a>
+                <a class="nav-link extra-small py-1" href="master.php?action=permissions">
+                    <i class="fas fa-user-shield me-1 extra-small"></i> Permissões RBAC
+                </a>
+            </nav>
+        </div>
         <div class="sidebar-divider my-2 opacity-25"></div>
         <?php endif; ?>
 

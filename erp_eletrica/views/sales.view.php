@@ -66,9 +66,9 @@
 
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
-        <div class="card border-0 shadow-sm h-100 d-flex flex-column">
-            <div class="card-header bg-primary text-white py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Finalização</h5>
+        <div class="card border-0 glass-card shadow-lg h-100 d-flex flex-column" style="border: 1px solid rgba(79, 70, 229, 0.2) !important;">
+            <div class="card-header bg-erp-primary text-white py-3 border-0">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Checkout SaaS</h5>
             </div>
             <div class="card-body flex-grow-1">
                 <div class="mb-4">
@@ -114,6 +114,12 @@
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Subtotal</span>
                         <span class="fw-bold" id="totalSub">R$ 0,00</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Desconto (%)</span>
+                        <div style="width: 80px;">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onchange="renderCart()">
+                        </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted text-success">Desconto</span>
@@ -328,8 +334,13 @@ function renderCart() {
         cartTable.appendChild(row);
     });
 
-    finalTotal.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountVal = total * (discountPercent / 100);
+    const finalTotalVal = total - discountVal;
+
     document.getElementById('totalSub').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    document.getElementById('totalDesc').innerText = `- R$ ${discountVal.toFixed(2).replace('.', ',')}`;
+    finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
 }
 
 function updateQty(index, val) {
@@ -448,9 +459,14 @@ async function cancelSaleAction() {
 btnCheckout.onclick = async () => {
     if (cart.length === 0) return;
     
-    const payment = document.querySelector('input[name="payment"]:checked').value;
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    const total = subtotal * (1 - (discountPercent / 100));
+
     const data = {
-        total: cart.reduce((acc, i) => acc + (i.price * i.qty), 0),
+        subtotal: subtotal,
+        discount_percent: discountPercent,
+        total: total,
         items: cart,
         pagamento: payment,
         cliente_id: null,

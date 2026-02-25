@@ -1,22 +1,4 @@
 <div class="row g-4 mb-4">
-    <!-- Stat Cards -->
-    <div class="col-md-3">
-        <div class="card h-100 border-start border-primary border-4 p-2">
-            <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Faturamento / Hoje</div>
-                <h3 class="mb-0 fw-bold"><?= formatarMoeda($stats['vendas_hoje']) ?></h3>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="card h-100 border-start border-success border-4 p-2">
-            <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Faturamento / Mês</div>
-                <h3 class="mb-0 fw-bold"><?= formatarMoeda($stats['vendas_mes']) ?></h3>
-            </div>
-        </div>
-    </div>
 
     <div class="col-md-3">
         <div class="card h-100 border-start border-warning border-4 p-2">

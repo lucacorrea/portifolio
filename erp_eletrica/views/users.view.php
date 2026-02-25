@@ -18,7 +18,7 @@
                         <th class="ps-4">Colaborador</th>
                         <th>E-mail Corporativo</th>
                         <th>Unidade / Filial</th>
-                        <th>Nível de Acesso</th>
+                        <th>Nível / Desc. Máx</th>
                         <th class="text-center">Status</th>
                         <th class="text-end pe-4">Ações</th>
                     </tr>
@@ -48,6 +48,7 @@
                             <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3">
                                 <?= strtoupper($u['nivel']) ?>
                             </span>
+                            <div class="extra-small text-muted mt-1">Limite Desc: <span class="fw-bold"><?= number_format($u['desconto_maximo'], 1) ?>%</span></div>
                         </td>
                         <td class="text-center">
                             <?php if($u['ativo']): ?>
@@ -111,11 +112,16 @@
                             <option value="admin">Administrador</option>
                         </select>
                     </div>
-                    <div class="col-md-6 d-flex align-items-end">
+                    <div class="col-md-6">
                         <div class="form-check form-switch mb-2">
                             <input class="form-check-input" type="checkbox" name="ativo" id="edit-user-ativo" checked>
                             <label class="form-check-label small fw-bold" for="edit-user-ativo">Usuário Ativo</label>
                         </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold text-primary"><i class="fas fa-percentage me-1"></i> Desconto Máximo Permitido (%)</label>
+                        <input type="number" step="0.1" name="desconto_maximo" id="edit-user-desconto" class="form-control shadow-sm" value="0.0">
+                        <div class="extra-small text-muted">Aplica-se apenas ao nível Vendedor no PDV.</div>
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Senha <span id="pwd-label" class="text-muted">(Obrigatória)</span></label>
@@ -142,6 +148,7 @@ function openUserModal() {
     document.getElementById('edit-user-filial').value = '';
     document.getElementById('edit-user-nivel').value = 'vendedor';
     document.getElementById('edit-user-ativo').checked = true;
+    document.getElementById('edit-user-desconto').value = '0.0';
     document.getElementById('edit-user-senha').required = true;
     document.getElementById('pwd-label').innerText = '(Obrigatória)';
     modal.show();
@@ -156,6 +163,7 @@ function editUser(user) {
     document.getElementById('edit-user-filial').value = user.filial_id;
     document.getElementById('edit-user-nivel').value = user.nivel;
     document.getElementById('edit-user-ativo').checked = user.ativo == 1;
+    document.getElementById('edit-user-desconto').value = user.desconto_maximo || '0.0';
     document.getElementById('edit-user-senha').required = false;
     document.getElementById('pwd-label').innerText = '(Opcional)';
     modal.show();

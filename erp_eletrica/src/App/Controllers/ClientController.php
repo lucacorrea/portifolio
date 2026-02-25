@@ -22,10 +22,32 @@ class ClientController extends BaseController {
         ]);
     }
 
+    public function profile() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) $this->redirect('clientes.php');
+
+        $model = new Client();
+        $client = $model->find($id);
+        if (!$client) $this->redirect('clientes.php');
+
+        $stats = $model->getStats($id);
+        $history = $model->getPurchaseHistory($id);
+
+        $this->render('clients/profile', [
+            'client' => $client,
+            'stats' => $stats,
+            'history' => $history,
+            'title' => 'Perfil CRM: ' . $client['nome'],
+            'pageTitle' => 'Inteligência de Cliente'
+        ]);
+    }
+
     public function save() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $model = new Client();
-            $model->create($_POST);
+            $data = $_POST;
+            $data['id'] = $_POST['id'] ?? null;
+            $model->save($data);
             $this->redirect('clientes.php?msg=Cliente salvo com sucesso');
         }
     }

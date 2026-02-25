@@ -4,8 +4,10 @@ checkAuth();
 
 $controller = new \App\Controllers\ClientController();
 
-if (isset($_GET['action']) && $_GET['action'] == 'save') {
-    $controller->save();
+$action = $_GET['action'] ?? 'index';
+
+if (method_exists($controller, $action)) {
+    $controller->$action();
 } else {
     $controller->index();
 }
