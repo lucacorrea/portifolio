@@ -63,6 +63,19 @@ function only_digits(string $s): string {
   return $out !== null ? $out : '';
 }
 
+/* ===== Romaneio do dia (busca se existe) ===== */
+$romaneioId = null;
+$romaneioStatus = 'ABERTO';
+try {
+  $stR = $pdo->prepare("SELECT id, status FROM romaneio_dia WHERE feira_id = :f AND data_ref = :d LIMIT 1");
+  $stR->execute([':f' => $feiraId, ':d' => $dia]);
+  $rowR = $stR->fetch();
+  if ($rowR) {
+    $romaneioId = (int)$rowR['id'];
+    $romaneioStatus = (string)$rowR['status'];
+  }
+} catch (Throwable $e) {}
+
 /* ===== Resumo do dia (KPIs simplificados) ===== */
 $resumo = [
   'entradas_total'  => 0.0,
@@ -147,38 +160,40 @@ try {
 } catch (Throwable $e) {}
 
   /* Top Produtos (por valor) */
-  $st3 = $pdo->prepare("
-    SELECT
-      p.id,
-      p.nome,
-      COALESCE(SUM(vi.quantidade), 0) AS qtd_total,
-      COALESCE(SUM(vi.subtotal), 0) AS valor_total
-    FROM vendas v
-    JOIN venda_itens vi
-      ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
-    JOIN produtos p
-      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
-    WHERE v.feira_id = :f
-      AND DATE(v.data_hora) = :d
-      AND UPPER(v.status) <> 'CANCELADA'
-    GROUP BY p.id, p.nome
-    ORDER BY valor_total DESC, p.nome ASC
-    LIMIT 15
-  ");
-  $st3->bindValue(':f', $feiraId, PDO::PARAM_INT);
-  $st3->bindValue(':d', $dia, PDO::PARAM_STR);
-  $st3->execute();
-  $topProdutos = $st3->fetchAll();
-} catch (PDOException $e) {
-  $mysqlCode = (int)($e->errorInfo[1] ?? 0);
-  if ($mysqlCode === 1146) $err = $err ?: 'As tabelas de lançamentos não existem (vendas / venda_itens). Rode o SQL das tabelas.';
-  else $err = $err ?: 'Não foi possível carregar o fechamento do dia agora.';
-} catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar o fechamento do dia agora.';
-}
+  try {
+    $st3 = $pdo->prepare("
+      SELECT
+        p.id,
+        p.nome,
+        COALESCE(SUM(vi.quantidade), 0) AS qtd_total,
+        COALESCE(SUM(vi.subtotal), 0) AS valor_total
+      FROM vendas v
+      JOIN venda_itens vi
+        ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
+      JOIN produtos p
+        ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
+      WHERE v.feira_id = :f
+        AND DATE(v.data_hora) = :d
+        AND UPPER(v.status) <> 'CANCELADA'
+      GROUP BY p.id, p.nome
+      ORDER BY valor_total DESC, p.nome ASC
+      LIMIT 15
+    ");
+    $st3->bindValue(':f', $feiraId, PDO::PARAM_INT);
+    $st3->bindValue(':d', $dia, PDO::PARAM_STR);
+    $st3->execute();
+    $topProdutos = $st3->fetchAll();
+  } catch (PDOException $e) {
+    $mysqlCode = (int)($e->errorInfo[1] ?? 0);
+    if ($mysqlCode === 1146) $err = $err ?: 'As tabelas de lançamentos não existem (vendas / venda_itens). Rode o SQL das tabelas.';
+    else $err = $err ?: 'Não foi possível carregar o fechamento do dia agora.';
+  } catch (Throwable $e) {
+    $err = $err ?: 'Não foi possível carregar o fechamento do dia agora.';
+  }
 
 /* ===== POST: Registrar/Atualizar fechamento (DB NOVO: fechamento_dia) ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $acao = (string)($_POST['acao'] ?? '');
   $postedCsrf = (string)($_POST['csrf_token'] ?? '');
   if (!hash_equals($csrf, $postedCsrf)) {
     $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
