@@ -23,9 +23,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="estoque.php" class="nav-link <?= $current_page == 'estoque.php' ? 'active' : '' ?>">
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
         </a>
-        <a href="estoque.php" class="nav-link <?= $current_page == 'estoque.php' ? 'active' : '' ?>">
-            <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
-        </a>
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Relacionamento</div>
         
@@ -52,6 +49,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <nav class="nav flex-column">
                 <a class="nav-link extra-small py-1" href="financeiro.php?action=dre">
                     <i class="fas fa-circle-notch me-1 extra-small"></i> DRE Mensal
+                </a>
+                <a class="nav-link extra-small py-1" href="financeiro.php?action=abcCurve">
+                    <i class="fas fa-circle-notch me-1 extra-small"></i> Curva ABC Prod.
                 </a>
                 <a class="nav-link extra-small py-1" href="financeiro.php?action=delinquency">
                     <i class="fas fa-circle-notch me-1 extra-small"></i> Inadimplência

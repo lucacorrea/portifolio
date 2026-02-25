@@ -45,26 +45,18 @@ class FinancialService extends BaseService {
         ];
     }
 
-    public function getOSProfitability($osId) {
-        $os = $this->db->query("SELECT * FROM os WHERE id = $osId")->fetch();
-        $materiaisCusto = $this->db->query("
-            SELECT SUM(p.preco_custo * i.quantidade)
-            FROM itens_os i
-            JOIN produtos p ON i.produto_id = p.id
-            WHERE i.os_id = $osId
-        ")->fetchColumn() ?: 0;
+    public function getProductABCCurve() {
+        // ABC Curve based on revenue
+        return $this->db->query("
+            SELECT p.id, p.nome, SUM(vi.quantidade * vi.preco_unitario) as total_revenue,
+                   (SUM(vi.quantidade * vi.preco_unitario) / (SELECT SUM(valor_total) FROM vendas)) * 100 as percentage
+            FROM vendas_itens vi
+            JOIN produtos p ON vi.produto_id = p.id
+            GROUP BY p.id
+            ORDER BY total_revenue DESC
+        ")->fetchAll();
+    }
 
-        $valorTotal = $os['valor_total'] ?: 0;
-        $lucro = $valorTotal - $materiaisCusto;
-
-        return [
-            'os_id' => $osId,
-            'numero' => $os['numero_os'],
-            'valor_venda' => $valorTotal,
-            'custo_materiais' => $materiaisCusto,
-            'lucro' => $lucro,
-            'margem' => $valorTotal > 0 ? ($lucro / $valorTotal) * 100 : 0
-        ];
     public function getDelinquencyReport() {
         return $this->db->query("
             SELECT v.id, v.data_venda, c.nome as cliente_nome, v.valor_total, 

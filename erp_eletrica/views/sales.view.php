@@ -477,6 +477,36 @@ btnCheckout.onclick = async () => {
 
 // Keyboard Hotkeys
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'F2') btnCheckout.click();
+    if (e.key === 'F2') {
+        e.preventDefault();
+        btnCheckout.click();
+    }
+    if (e.key === 'F4') {
+        e.preventDefault();
+        pdvSearch.focus();
+    }
+    if (e.key === 'F8') {
+        e.preventDefault();
+        loadPendingPreSales();
+    }
+    if (e.key === 'Escape') {
+        searchResults.classList.add('d-none');
+    }
+});
+
+// Barcode optimization: If search returns exactly 1 result and looks like a barcode, add to cart automatically
+async function handleBarcode(val) {
+    if (val.length >= 8 && !isNaN(val)) {
+        const response = await fetch(`vendas.php?action=search&term=${val}`);
+        const products = await response.json();
+        if (products.length === 1) {
+            addToCart(products[0]);
+            pdvSearch.value = '';
+        }
+    }
+}
+
+pdvSearch.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
 </script>

@@ -15,7 +15,6 @@ class DashboardController extends BaseController {
             'vendas_hoje' => $db->query("SELECT SUM(valor_total) FROM vendas WHERE DATE(data_venda) = CURRENT_DATE")->fetchColumn() ?: 0,
             'vendas_mes' => $db->query("SELECT SUM(valor_total) FROM vendas WHERE MONTH(data_venda) = $mes_atual AND YEAR(data_venda) = $ano_atual")->fetchColumn() ?: 0,
             'estoque_critico' => $db->query("SELECT COUNT(*) FROM produtos WHERE quantidade <= estoque_minimo")->fetchColumn(),
-            'pedidos_pendentes' => $db->query("SELECT COUNT(*) FROM os WHERE status NOT IN ('concluido', 'cancelada')")->fetchColumn(),
             'ticket_medio' => $db->query("SELECT AVG(valor_total) FROM vendas WHERE MONTH(data_venda) = $mes_atual")->fetchColumn() ?: 0,
             'margem_lucro' => $db->query("
                 SELECT (SUM(vi.preco_unitario * vi.quantidade) - SUM(p.preco_custo * vi.quantidade)) / SUM(vi.preco_unitario * vi.quantidade) * 100
