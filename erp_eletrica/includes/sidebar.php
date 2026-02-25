@@ -68,6 +68,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="usuarios.php" class="nav-link <?= $current_page == 'usuarios.php' ? 'active' : '' ?>">
             <i class="fas fa-user-shield"></i> <span>Gestão de Equipe</span>
         </a>
+        <a href="fiscal.php?action=settings" class="nav-link <?= ($current_page == 'fiscal.php' && ($_GET['action'] ?? '') == 'settings') ? 'active' : '' ?>">
+            <i class="fas fa-server"></i> <span>Conectividade SEFAZ</span>
+        </a>
         <?php endif; ?>
         
         <a href="configuracoes.php" class="nav-link mt-auto border-top border-secondary border-opacity-10 <?= $current_page == 'configuracoes.php' ? 'active' : '' ?>">
