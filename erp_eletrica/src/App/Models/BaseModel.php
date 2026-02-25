@@ -14,15 +14,20 @@ abstract class BaseModel {
 
     protected function getFilialContext() {
         if (!isset($_SESSION['filial_id'])) return null;
-        if (($_SESSION['usuario_nivel'] ?? '') === 'master') return null; // Master can see everything
-        if (($_SESSION['is_matriz'] ?? false)) return null; // Matriz can see everything by default
+        if (($_SESSION['usuario_nivel'] ?? '') === 'master') return null;
+        if (($_SESSION['is_matriz'] ?? false)) return null;
         return $_SESSION['filial_id'];
+    }
+
+    protected function getTenantColumn() {
+        return ($this->table === 'filiais') ? 'id' : 'filial_id';
     }
 
     public function find($id) {
         $filialId = $this->getFilialContext();
+        $col = $this->getTenantColumn();
         if ($filialId) {
-            $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ? AND filial_id = ?");
+            $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ? AND $col = ?");
             $stmt->execute([$id, $filialId]);
         } else {
             $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ?");
@@ -33,17 +38,19 @@ abstract class BaseModel {
 
     public function all($order = "id DESC") {
         $filialId = $this->getFilialContext();
+        $col = $this->getTenantColumn();
         if ($filialId) {
-            return $this->db->query("SELECT * FROM {$this->table} WHERE filial_id = $filialId ORDER BY {$order}")->fetchAll();
+            return $this->db->query("SELECT * FROM {$this->table} WHERE $col = $filialId ORDER BY {$order}")->fetchAll();
         }
         return $this->db->query("SELECT * FROM {$this->table} ORDER BY {$order}")->fetchAll();
     }
 
     public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC") {
         $filialId = $this->getFilialContext();
+        $col = $this->getTenantColumn();
         $offset = ($currentPage - 1) * $perPage;
         
-        $where = $filialId ? "WHERE filial_id = $filialId" : "";
+        $where = $filialId ? "WHERE $col = $filialId" : "";
         
         $total = $this->db->query("SELECT COUNT(*) FROM {$this->table} $where")->fetchColumn();
         $pages = ceil($total / $perPage);
@@ -62,8 +69,9 @@ abstract class BaseModel {
 
     public function delete($id) {
         $filialId = $this->getFilialContext();
+        $col = $this->getTenantColumn();
         if ($filialId) {
-            $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ? AND filial_id = ?");
+            $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ? AND $col = ?");
             return $stmt->execute([$id, $filialId]);
         }
         $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ?");
@@ -86,6 +94,7 @@ abstract class BaseModel {
 
     public function update($id, $data) {
         $filialId = $this->getFilialContext();
+        $col = $this->getTenantColumn();
         $fields = array_map(fn($field) => "$field = ?", array_keys($data));
         $sql = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = ?";
         
@@ -93,7 +102,7 @@ abstract class BaseModel {
         $params[] = $id;
 
         if ($filialId) {
-            $sql .= " AND filial_id = ?";
+            $sql .= " AND $col = ?";
             $params[] = $filialId;
         }
 

@@ -1,5 +1,6 @@
 <?php
 // ERP Elétrica - Core Configuration
+define('DEBUG', false);
 require_once 'autoloader.php';
 require_once __DIR__ . '/src/App/Config/Helpers.php';
 if (session_status() === PHP_SESSION_NONE) {

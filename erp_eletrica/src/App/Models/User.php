@@ -22,10 +22,13 @@ class User extends BaseModel {
     }
     
     public function all($orderBy = "u.nome") {
+        $filialId = $this->getFilialContext();
+        $where = $filialId ? "WHERE u.filial_id = $filialId" : "";
         return $this->query("
             SELECT u.*, f.nome as filial_nome 
             FROM {$this->table} u
             LEFT JOIN filiais f ON u.filial_id = f.id
+            $where
             ORDER BY $orderBy
         ")->fetchAll();
     }
