@@ -17,6 +17,12 @@ class AuthService extends BaseService {
             $_SESSION['usuario_nivel'] = $user['nivel'];
             $_SESSION['filial_id'] = $user['filial_id'];
             
+            // Check if user is in Matriz
+            $filialModel = new \App\Models\Filial();
+            $stmt = $filialModel->query("SELECT principal FROM filiais WHERE id = ?", [$user['filial_id']]);
+            $filial = $stmt->fetch();
+            $_SESSION['is_matriz'] = ($filial && $filial['principal'] == 1);
+            
             $this->repository->updateLastLogin($user['id']);
             $this->logAction('login', 'usuarios', $user['id']);
             return true;

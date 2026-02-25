@@ -9,7 +9,17 @@ class Filial extends BaseModel {
         return $stmt->fetch();
     }
 
-    public function getAllBranches() {
+    public function isPrincipal($id) {
+        $stmt = $this->query("SELECT principal FROM {$this->table} WHERE id = ?", [$id]);
+        $res = $stmt->fetch();
+        return ($res && $res['principal'] == 1);
+    }
+
+    public function getAllBranches($branchLimitId = null) {
+        if ($branchLimitId) {
+            $stmt = $this->query("SELECT * FROM {$this->table} WHERE id = ?", [$branchLimitId]);
+            return $stmt->fetchAll();
+        }
         return $this->all();
     }
 

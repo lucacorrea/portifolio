@@ -6,7 +6,10 @@ use App\Models\Filial;
 class BranchController extends BaseController {
     public function index() {
         $model = new Filial();
-        $branches = $model->all();
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        
+        // Se não for matriz, só vê a própria
+        $branches = $model->getAllBranches($isMatriz ? null : $_SESSION['filial_id']);
 
         $this->render('branches', [
             'branches' => $branches,
@@ -17,8 +20,15 @@ class BranchController extends BaseController {
 
     public function save() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $model = new \App\Models\Filial();
             $data = $_POST;
+            $id = $data['id'] ?? null;
+
+            // Security check
+            if (!($_SESSION['is_matriz'] ?? false) && $id != $_SESSION['filial_id']) {
+                $this->redirect('filiais.php?msg=Erro: Acesso negado para gerenciar esta unidade');
+            }
+
+            $model = new \App\Models\Filial();
 
             // Handle Certificate Upload
             if (isset($_FILES['certificado']) && $_FILES['certificado']['error'] == 0) {
