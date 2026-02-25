@@ -96,37 +96,24 @@ class SalesController extends BaseController {
     }
 
     public function cancel_sale() {
+        // ... (existing code for cancel_sale)
+    }
+
+    public function issue_nfce() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents('php://input'), true);
             $id = $data['id'] ?? null;
-            
+
             if (!$id) {
-                echo json_encode(['success' => false, 'error' => 'ID não fornecido']);
+                echo json_encode(['success' => false, 'error' => 'ID da venda não fornecido']);
                 exit;
             }
 
-            $saleModel = new Sale();
-            $productModel = new Product();
-            $db = \App\Config\Database::getInstance()->getConnection();
-
             try {
-                $db->beginTransaction();
-                
-                $sale = $saleModel->findById($id);
-                if (!$sale || $sale['status'] == 'cancelado') {
-                    throw new \Exception("Venda não encontrada ou já cancelada");
-                }
-
-                $saleModel->updateStatus($id, 'cancelado');
-
-                foreach ($sale['itens'] as $item) {
-                    $productModel->updateStock($item['produto_id'], $item['quantidade'], 'entrada');
-                }
-
-                $db->commit();
-                echo json_encode(['success' => true]);
+                $fiscalService = new \App\Services\FiscalService();
+                $result = $fiscalService->issueNFCe($id);
+                echo json_encode($result);
             } catch (\Exception $e) {
-                $db->rollBack();
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
             exit;

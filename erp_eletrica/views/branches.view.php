@@ -44,7 +44,7 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-light border" title="Configurar Unidade">
+                                <button class="btn btn-light border" title="Configurar Unidade" onclick="editBranch(<?= htmlspecialchars(json_encode($b)) ?>)">
                                     <i class="fas fa-cog text-primary"></i>
                                 </button>
                                 <button class="btn btn-light border text-danger" title="Suspender Atividades">
@@ -59,3 +59,107 @@
         </div>
     </div>
 </div>
+
+<!-- Fiscal Configuration Modal -->
+<div class="modal fade" id="branchModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" action="filiais.php?action=save" method="POST" enctype="multipart/form-data">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Configuração Fiscal da Unidade</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" name="id" id="branch_id">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Nome da Unidade</label>
+                        <input type="text" name="nome" id="branch_nome" class="form-control shadow-sm" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Ambiente SEFAZ</label>
+                        <select name="ambiente" id="branch_ambiente" class="form-select shadow-sm">
+                            <option value="2">Homologação (Testes)</option>
+                            <option value="1">Produção (Real)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">CNPJ</label>
+                        <input type="text" name="cnpj" id="branch_cnpj" class="form-control shadow-sm" placeholder="00.000.000/0000-00">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Inscrição Estadual</label>
+                        <input type="text" name="inscricao_estadual" id="branch_ie" class="form-control shadow-sm">
+                    </div>
+                    
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Endereço Fiscal</h6></div>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">Logradouro</label>
+                        <input type="text" name="logradouro" id="branch_logradouro" class="form-control shadow-sm" placeholder="Av / Rua / Travessa">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Número</label>
+                        <input type="text" name="numero" id="branch_numero" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold">Bairro</label>
+                        <input type="text" name="bairro" id="branch_bairro" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold">Município</label>
+                        <input type="text" name="municipio" id="branch_municipio" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">UF</label>
+                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2">
+                    </div>
+
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Integração NFC-e (SEFAZ)</h6></div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">CSC ID</label>
+                        <input type="text" name="csc_id" id="branch_csc_id" class="form-control shadow-sm" placeholder="000001">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">CSC Token</label>
+                        <input type="text" name="csc_token" id="branch_csc_token" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Certificado Digital (A1 .pfx)</label>
+                        <input type="file" name="certificado" class="form-control shadow-sm">
+                        <div id="cert_info" class="extra-small text-muted mt-1"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Senha do Certificado</label>
+                        <input type="password" name="certificado_senha" id="branch_cert_senha" class="form-control shadow-sm">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary px-4 fw-bold">Salvar Configuração</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editBranch(branch) {
+    const modal = new bootstrap.Modal(document.getElementById('branchModal'));
+    document.getElementById('branch_id').value = branch.id;
+    document.getElementById('branch_nome').value = branch.nome;
+    document.getElementById('branch_ambiente').value = branch.ambiente || 2;
+    document.getElementById('branch_cnpj').value = branch.cnpj || '';
+    document.getElementById('branch_ie').value = branch.inscricao_estadual || '';
+    document.getElementById('branch_logradouro').value = branch.logradouro || '';
+    document.getElementById('branch_numero').value = branch.numero || '';
+    document.getElementById('branch_bairro').value = branch.bairro || '';
+    document.getElementById('branch_municipio').value = branch.municipio || '';
+    document.getElementById('branch_uf').value = branch.uf || '';
+    document.getElementById('branch_csc_id').value = branch.csc_id || '';
+    document.getElementById('branch_csc_token').value = branch.csc_token || '';
+    document.getElementById('branch_cert_senha').value = branch.certificado_senha || '';
+    
+    document.getElementById('cert_info').innerText = branch.certificado_pfx ? 'Certificado atual: ' + branch.certificado_pfx : 'Nenhum certificado carregado';
+    
+    modal.show();
+}
+</script>
