@@ -44,18 +44,20 @@ $dia = trim((string)($_GET['dia'] ?? date('Y-m-d')));
 if ($dia === '') $dia = date('Y-m-d');
 
 /* ===== Detecta tabela do seu DB: fechamento_dia ===== */
-$hasFechamentoDia = false;
+$hasFechamentoDia = true; // Segundo db.sql ela existe
+
+/* ===== Romaneio do dia (busca se existe) ===== */
+$romaneioId = null;
+$romaneioStatus = 'ABERTO';
 try {
-  $st = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM information_schema.tables
-    WHERE table_schema = DATABASE() AND table_name = 'fechamento_dia'
-  ");
-  $st->execute();
-  $hasFechamentoDia = ((int)$st->fetchColumn() > 0);
-} catch (Throwable $e) {
-  $hasFechamentoDia = false;
-}
+  $stR = $pdo->prepare("SELECT id, status FROM romaneio_dia WHERE feira_id = :f AND data_ref = :d LIMIT 1");
+  $stR->execute([':f' => $feiraId, ':d' => $dia]);
+  $rowR = $stR->fetch();
+  if ($rowR) {
+    $romaneioId = (int)$rowR['id'];
+    $romaneioStatus = (string)$rowR['status'];
+  }
+} catch (Throwable $e) {}
 
 /* ===== Carrega fechamento existente (se houver) ===== */
 $fechamento = null;
@@ -80,7 +82,6 @@ if ($hasFechamentoDia) {
   }
 }
 
-/* ===== Resumo do dia (DB NOVO: vendas.data_hora / venda_itens.quantidade etc.) ===== */
 $resumo = [
   'vendas_qtd'      => 0,
   'total_dia'       => 0.0,
@@ -90,6 +91,9 @@ $resumo = [
   'total_outros'    => 0.0,
   'feirantes_qtd'   => 0,
   'ticket_medio'    => 0.0,
+  // Entradas (Romaneio)
+  'entradas_total'  => 0.0,
+  'entradas_qtd'    => 0,
 ];
 
 $porFeirante = [];
@@ -125,47 +129,53 @@ try {
     $resumo['ticket_medio']   = $resumo['vendas_qtd'] > 0 ? ($resumo['total_dia'] / $resumo['vendas_qtd']) : 0.0;
   }
 
-  /* Quantidade de feirantes (produtores) que tiveram itens no dia */
+  /* Quantidade de feirantes (produtores) que tiveram itens ou vendas no dia */
   $stFq = $pdo->prepare("
-    SELECT COUNT(DISTINCT pr.id) AS feirantes_qtd
-    FROM vendas v
-    JOIN venda_itens vi
-      ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
-    JOIN produtos p
-      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
-    JOIN produtores pr
-      ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
-    WHERE v.feira_id = :f
-      AND DATE(v.data_hora) = :d
-      AND UPPER(v.status) <> 'CANCELADA'
+    SELECT COUNT(DISTINCT p.id) 
+    FROM produtores p
+    LEFT JOIN romaneio_itens ri ON ri.produtor_id = p.id AND ri.romaneio_id = :rom
+    LEFT JOIN venda_itens vi ON vi.produto_id IN (SELECT id FROM produtos WHERE produtor_id = p.id)
+    LEFT JOIN vendas v ON v.id = vi.venda_id AND DATE(v.data_hora) = :d AND v.status <> 'CANCELADA'
+    WHERE p.feira_id = :f AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)
   ");
-  $stFq->bindValue(':f', $feiraId, PDO::PARAM_INT);
-  $stFq->bindValue(':d', $dia, PDO::PARAM_STR);
-  $stFq->execute();
+  $stFq->execute([':f' => $feiraId, ':d' => $dia, ':rom' => $romaneioId]);
   $resumo['feirantes_qtd'] = (int)($stFq->fetchColumn() ?? 0);
 
-  /* Resumo por Feirante (cada feirante = soma dos itens dele no dia) */
+  /* Totais de Entradas (Romaneio) */
+  if ($romaneioId) {
+    $stE = $pdo->prepare("
+      SELECT COUNT(*) as qtd, COALESCE(SUM(quantidade_entrada * preco_unitario_dia), 0) as total
+      FROM romaneio_itens
+      WHERE romaneio_id = :rom
+    ");
+    $stE->execute([':rom' => $romaneioId]);
+    $re = $stE->fetch();
+    $resumo['entradas_qtd'] = (int)$re['qtd'];
+    $resumo['entradas_total'] = (float)$re['total'];
+  }
+
+  /* Resumo por Feirante (Vendas vs Entradas) */
   $st2 = $pdo->prepare("
-    SELECT
-      pr.id,
-      pr.nome,
-      COUNT(DISTINCT v.id) AS vendas_qtd,
-      COALESCE(SUM(vi.subtotal), 0) AS total
-    FROM vendas v
-    JOIN venda_itens vi
-      ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
-    JOIN produtos p
-      ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
-    JOIN produtores pr
-      ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
-    WHERE v.feira_id = :f
-      AND DATE(v.data_hora) = :d
-      AND UPPER(v.status) <> 'CANCELADA'
-    GROUP BY pr.id, pr.nome
-    ORDER BY total DESC, pr.nome ASC
+    SELECT 
+      p.id, p.nome,
+      (SELECT COALESCE(SUM(vi.subtotal),0) 
+       FROM vendas v 
+       JOIN venda_itens vi ON vi.venda_id = v.id 
+       JOIN produtos pr ON pr.id = vi.produto_id
+       WHERE pr.produtor_id = p.id AND DATE(v.data_hora) = :d AND v.status <> 'CANCELADA' AND v.feira_id = :f
+      ) as vendas_total,
+      (SELECT COALESCE(SUM(quantidade_entrada * preco_unitario_dia),0)
+       FROM romaneio_itens ri
+       WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom
+      ) as entradas_total
+    FROM produtores p
+    WHERE p.feira_id = :f AND p.ativo = 1
+    HAVING vendas_total > 0 OR entradas_total > 0
+    ORDER BY p.nome ASC
   ");
   $st2->bindValue(':f', $feiraId, PDO::PARAM_INT);
   $st2->bindValue(':d', $dia, PDO::PARAM_STR);
+  $st2->bindValue(':rom', $romaneioId, PDO::PARAM_INT);
   $st2->execute();
   $porFeirante = $st2->fetchAll();
 
@@ -250,6 +260,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       else $ins->bindValue(':obs', $obs, PDO::PARAM_STR);
 
       $ins->execute();
+
+      // Atualiza status do romaneio_dia para FECHADO
+      if ($romaneioId) {
+        $upR = $pdo->prepare("UPDATE romaneio_dia SET status = 'FECHADO' WHERE id = :id");
+        $upR->execute([':id' => $romaneioId]);
+      }
+
       $pdo->commit();
 
       $_SESSION['flash_ok'] = 'Fechamento do dia registrado/atualizado.';
@@ -677,30 +694,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="row">
             <div class="col-md-3 mb-3">
               <div class="kpi-card">
-                <p class="kpi-label">Total do dia</p>
+                <p class="kpi-label">Total Entradas</p>
+                <p class="kpi-value">R$ <?= number_format($resumo['entradas_total'], 2, ',', '.') ?></p>
+                <div class="kpi-sub">Total lançado no Romaneio</div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="kpi-card" style="border-left: 4px solid #28a745;">
+                <p class="kpi-label">Total Vendas</p>
                 <p class="kpi-value">R$ <?= number_format($resumo['total_dia'], 2, ',', '.') ?></p>
-                <div class="kpi-sub">Somatório das vendas</div>
+                <div class="kpi-sub">Somatório das vendas reais</div>
               </div>
             </div>
             <div class="col-md-3 mb-3">
               <div class="kpi-card">
-                <p class="kpi-label">Vendas</p>
-                <p class="kpi-value"><?= (int)$resumo['vendas_qtd'] ?></p>
-                <div class="kpi-sub">Quantidade de lançamentos</div>
+                <p class="kpi-label">Lançamentos / Vendas</p>
+                <p class="kpi-value"><?= (int)$resumo['entradas_qtd'] ?> / <?= (int)$resumo['vendas_qtd'] ?></p>
+                <div class="kpi-sub">Itens entregues vs Cupons</div>
               </div>
             </div>
             <div class="col-md-3 mb-3">
               <div class="kpi-card">
-                <p class="kpi-label">Feirantes</p>
+                <p class="kpi-label">Feirantes Ativos</p>
                 <p class="kpi-value"><?= (int)$resumo['feirantes_qtd'] ?></p>
-                <div class="kpi-sub">Feirantes com itens no dia</div>
-              </div>
-            </div>
-            <div class="col-md-3 mb-3">
-              <div class="kpi-card">
-                <p class="kpi-label">Ticket médio</p>
-                <p class="kpi-value">R$ <?= number_format($resumo['ticket_medio'], 2, ',', '.') ?></p>
-                <div class="kpi-sub">Total ÷ vendas</div>
+                <div class="kpi-sub">Produtores no pátio hoje</div>
               </div>
             </div>
           </div>
@@ -822,8 +839,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       <thead>
                         <tr>
                           <th>Feirante</th>
-                          <th style="width:120px;">Vendas</th>
-                          <th style="width:170px;">Total</th>
+                          <th style="width:150px;">Entradas (Romaneio)</th>
+                          <th style="width:150px;">Vendas Reais</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -835,8 +852,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <?php foreach ($porFeirante as $p): ?>
                             <tr>
                               <td><?= h($p['nome'] ?? '') ?></td>
-                              <td><?= (int)($p['vendas_qtd'] ?? 0) ?></td>
-                              <td><b>R$ <?= number_format((float)($p['total'] ?? 0), 2, ',', '.') ?></b></td>
+                              <td>R$ <?= number_format((float)($p['entradas_total'] ?? 0), 2, ',', '.') ?></td>
+                              <td><b>R$ <?= number_format((float)($p['vendas_total'] ?? 0), 2, ',', '.') ?></b></td>
                             </tr>
                           <?php endforeach; ?>
                         <?php endif; ?>

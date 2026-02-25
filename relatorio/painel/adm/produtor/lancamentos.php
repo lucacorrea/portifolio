@@ -310,25 +310,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
   }
 }
 
-/* Lista lançamentos do dia */
-$itensDia = [];
-if ($romaneioId) {
-  try {
-    $stL = $pdo->prepare("
-      SELECT ri.id, p.nome AS produtor_nome, pr.nome AS produto_nome, 
-             ri.quantidade_entrada, ri.preco_unitario_dia, ri.observacao
-      FROM romaneio_itens ri
-      JOIN produtores p ON p.id = ri.produtor_id AND p.feira_id = ri.feira_id
-      JOIN produtos pr ON pr.id = ri.produto_id AND pr.feira_id = ri.feira_id
-      WHERE ri.romaneio_id = :rom
-      ORDER BY ri.id DESC
-    ");
-    $stL->execute([':rom' => $romaneioId]);
-    $itensDia = $stL->fetchAll(PDO::FETCH_ASSOC);
-  } catch (Throwable $e) {
-    $itensDia = [];
-  }
-}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -627,60 +608,6 @@ if ($romaneioId) {
                   <?php endif; ?>
                 </form>
 
-                <?php if (!empty($itensDia)): ?>
-                  <hr class="my-4">
-                  <div class="card-title-row mb-3">
-                    <h4 class="card-title mb-0">Lançamentos deste dia (<?= h($dataRef) ?>)</h4>
-                  </div>
-                  <div class="table-responsive">
-                    <table class="table table-striped table-hover">
-                      <thead>
-                        <tr>
-                          <th>Produtor</th>
-                          <th>Produto</th>
-                          <th>Qtd</th>
-                          <th>Preço</th>
-                          <th>Subtotal</th>
-                          <th style="width:100px;">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php 
-                        $totalGeral = 0;
-                        foreach ($itensDia as $it): 
-                          $sub = (float)$it['quantidade_entrada'] * (float)$it['preco_unitario_dia'];
-                          $totalGeral += $sub;
-                        ?>
-                          <tr>
-                            <td><?= h($it['produtor_nome']) ?></td>
-                            <td><?= h($it['produto_name'] ?? $it['produto_nome']) ?></td>
-                            <td><?= number_format((float)$it['quantidade_entrada'], 3, ',', '.') ?></td>
-                            <td>R$ <?= number_format((float)$it['preco_unitario_dia'], 2, ',', '.') ?></td>
-                            <td><b>R$ <?= number_format($sub, 2, ',', '.') ?></b></td>
-                            <td>
-                              <?php if ($romaneioStatus === 'ABERTO'): ?>
-                                <form method="post" action="" style="display:inline;" onsubmit="return confirm('Excluir este lançamento?');">
-                                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                  <input type="hidden" name="acao" value="excluir">
-                                  <input type="hidden" name="id" value="<?= (int)$it['id'] ?>">
-                                  <button type="submit" class="btn btn-danger btn-sm p-2"><i class="ti-trash"></i></button>
-                                </form>
-                              <?php else: ?>
-                                —
-                              <?php endif; ?>
-                            </td>
-                          </tr>
-                        <?php endforeach; ?>
-                      </tbody>
-                      <tfoot>
-                        <tr class="bg-light">
-                          <td colspan="4" class="text-right"><b>TOTAL:</b></td>
-                          <td colspan="2"><b>R$ <?= number_format($totalGeral, 2, ',', '.') ?></b></td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                <?php endif; ?>
 
               </div>
             </div>
