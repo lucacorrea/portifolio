@@ -44,4 +44,29 @@ class FiscalController extends BaseController {
         }
         exit;
     }
+
+    public function settings() {
+        $stmt = $this->db->query("SELECT * FROM filiais ORDER BY principal DESC");
+        $branches = $stmt->fetchAll();
+
+        $this->render('fiscal/settings', [
+            'branches' => $branches,
+            'title' => 'Configurações SEFAZ',
+            'pageTitle' => 'Central de Conectividade Fiscal'
+        ]);
+    }
+
+    public function test_connection() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) exit(json_encode(['success' => false, 'error' => 'ID da filial não fornecido']));
+
+        try {
+            $service = new \App\Services\FiscalService();
+            $result = $service->testConnection($id);
+            echo json_encode($result);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
 }

@@ -3,8 +3,8 @@
     <div class="card-body d-flex justify-content-between align-items-center py-3">
         <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-file-invoice me-2"></i>Histórico de Documentos Fiscais</h6>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary fw-bold shadow-sm" onclick="alert('Funcionalidade de Inutilização em desenvolvimento')">
-                <i class="fas fa-ban me-2"></i>Inutilizar Faixa
+            <button class="btn btn-outline-primary fw-bold shadow-sm" onclick="window.location.href='fiscal.php?action=settings'">
+                <i class="fas fa-cog me-2"></i>Configurações SEFAZ
             </button>
             <button class="btn btn-primary fw-bold shadow-sm" onclick="location.reload()">
                 <i class="fas fa-sync me-2"></i>Atualizar Status

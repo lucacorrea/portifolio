@@ -97,6 +97,44 @@ class FiscalService extends BaseService {
         ];
     }
 
+    /**
+     * Simulates a connectivity test with SEFAZ WebServices
+     */
+    public function testConnection($branchId) {
+        $branch = $this->getBranchData($branchId);
+        
+        if (empty($branch['cnpj'])) {
+            throw new Exception("CNPJ não configurado para esta filial.");
+        }
+        
+        if (empty($branch['certificado_pfx'])) {
+            throw new Exception("Certificado Digital (.pfx) não enviado.");
+        }
+
+        if (empty($branch['certificado_senha'])) {
+            throw new Exception("Senha do certificado não configurada.");
+        }
+
+        // Mocking a SOAP Service Status request
+        // In a real scenario, this would use NFePHP\NFe\Tools::sefazStatus()
+        $delay = usleep(500000); // Simulate network latency
+        
+        $success = (rand(1, 10) > 1); // 90% success rate for mock
+        
+        if ($success) {
+            return [
+                'success' => true,
+                'status' => '107',
+                'motivo' => 'Serviço em Operação',
+                'ambiente' => $branch['ambiente'] == 1 ? 'Produção' : 'Homologação',
+                'verAplic' => 'SP_NFE_PL_009_V4',
+                'timestamp' => date('d/m/Y H:i:s')
+            ];
+        } else {
+            throw new Exception("Erro de Comunicação: O serviço da SEFAZ não respondeu no tempo esperado (Timeout).");
+        }
+    }
+
     private function saveFiscalRecord($vendaId, $type, $response) {
         $stmt = $this->db->prepare("
             INSERT INTO notas_fiscais (venda_id, tipo, chave_acesso, status, protocolo, mensagem_sefaz)
