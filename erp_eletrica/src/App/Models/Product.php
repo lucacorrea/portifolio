@@ -5,6 +5,10 @@ class Product extends BaseModel {
     protected $table = 'produtos';
 
     public function all($order = "nome ASC") {
+        $filialId = $this->getFilialContext();
+        if ($filialId) {
+            return $this->query("SELECT * FROM {$this->table} WHERE filial_id = ? ORDER BY $order", [$filialId])->fetchAll();
+        }
         return $this->query("SELECT * FROM {$this->table} ORDER BY $order")->fetchAll();
     }
 

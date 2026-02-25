@@ -5,22 +5,40 @@ class OS extends BaseModel {
     protected $table = 'os';
 
     public function getActive() {
+        $filialId = $this->getFilialContext();
+        $where = "WHERE os.status NOT IN ('concluido', 'cancelado')";
+        $params = [];
+        
+        if ($filialId) {
+            $where .= " AND os.filial_id = ?";
+            $params[] = $filialId;
+        }
+
         return $this->query("
             SELECT os.*, c.nome as cliente_nome 
             FROM {$this->table} os 
             JOIN clientes c ON os.cliente_id = c.id 
-            WHERE os.status NOT IN ('concluido', 'cancelado')
+            $where
             ORDER BY os.created_at DESC
-        ")->fetchAll();
+        ", $params)->fetchAll();
     }
 
     public function findWithDetails($id) {
-        $os = $this->query("
+        $filialId = $this->getFilialContext();
+        $sql = "
             SELECT os.*, c.nome as cliente_nome, c.telefone as cliente_fone, c.email as cliente_email
             FROM {$this->table} os 
             JOIN clientes c ON os.cliente_id = c.id 
             WHERE os.id = ?
-        ", [$id])->fetch();
+        ";
+        $params = [$id];
+        
+        if ($filialId) {
+            $sql .= " AND os.filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        $os = $this->query($sql, $params)->fetch();
         
         if ($os) {
             $os['itens'] = $this->query("
@@ -35,16 +53,11 @@ class OS extends BaseModel {
     }
 
     public function create($data) {
-        $sql = "INSERT INTO {$this->table} (numero_os, cliente_id, data_abertura, status, descricao, valor_total) 
-                VALUES (?, ?, CURRENT_DATE, ?, ?, ?)";
-        $params = [
-            'OS' . date('Ymd') . rand(100, 999),
-            $data['cliente_id'],
-            'orcamento',
-            $data['descricao'],
-            0
-        ];
-        $this->query($sql, $params);
-        return $this->db->lastInsertId();
+        $data['filial_id'] = $data['filial_id'] ?? ($_SESSION['filial_id'] ?? 1);
+        $data['numero_os'] = $data['numero_os'] ?? ('OS' . date('Ymd') . rand(100, 999));
+        $data['status'] = $data['status'] ?? 'orcamento';
+        $data['data_abertura'] = date('Y-m-d');
+        
+        return parent::create($data);
     }
 }
