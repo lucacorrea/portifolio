@@ -14,6 +14,7 @@ abstract class BaseModel {
 
     protected function getFilialContext() {
         if (!isset($_SESSION['filial_id'])) return null;
+        if (($_SESSION['usuario_nivel'] ?? '') === 'master') return null; // Master can see everything
         if (($_SESSION['is_matriz'] ?? false)) return null; // Matriz can see everything by default
         return $_SESSION['filial_id'];
     }

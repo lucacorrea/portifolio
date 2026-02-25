@@ -43,6 +43,30 @@ class AuthService extends BaseService {
         }
     }
 
+    public static function hasPermission($modulo, $acao) {
+        if (!isset($_SESSION['usuario_id'])) return false;
+        if (($_SESSION['usuario_nivel'] ?? '') === 'master') return true; // Master has all permissions
+
+        $nivel = $_SESSION['usuario_nivel'];
+        $db = \App\Config\Database::getInstance()->getConnection();
+        
+        $stmt = $db->prepare("
+            SELECT COUNT(*) 
+            FROM permissao_nivel pn
+            JOIN permissoes p ON pn.permissao_id = p.id
+            WHERE pn.nivel = ? AND p.modulo = ? AND p.acao = ?
+        ");
+        $stmt->execute([$nivel, $modulo, $acao]);
+        return $stmt->fetchColumn() > 0;
+    }
+
+    public static function checkPermission($modulo, $acao) {
+        if (!self::hasPermission($modulo, $acao)) {
+            header('Location: index.php?error=Acesso negado');
+            exit;
+        }
+    }
+
     public function logout() {
         if (isset($_SESSION['usuario_id'])) {
             $this->logAction('logout', 'usuarios', $_SESSION['usuario_id']);

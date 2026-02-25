@@ -8,6 +8,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </div>
     
     <nav class="nav flex-column sidebar-menu">
+        <?php if (($_SESSION['usuario_nivel'] ?? '') === 'master'): ?>
+        <a href="master.php" class="nav-link <?= $current_page == 'master.php' ? 'active' : '' ?>">
+            <i class="fas fa-crown text-warning"></i> <span>Painel Master Global</span>
+        </a>
+        <div class="sidebar-divider my-2 opacity-25"></div>
+        <?php endif; ?>
+
         <a href="index.php" class="nav-link <?= ($current_page == 'index.php' || $current_page == '') ? 'active' : '' ?>">
             <i class="fas fa-chart-line"></i> <span>Painel Comercial</span>
         </a>
@@ -59,7 +66,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </nav>
         </div>
 
-        <?php if ($_SESSION['usuario_nivel'] == 'admin'): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
         
         <a href="filiais.php" class="nav-link <?= $current_page == 'filiais.php' ? 'active' : '' ?>">
