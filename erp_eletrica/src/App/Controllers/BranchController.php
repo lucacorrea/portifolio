@@ -35,14 +35,16 @@ class BranchController extends BaseController {
                 $dir = dirname(__DIR__, 3) . "/storage/certificados/";
                 if (!is_dir($dir)) mkdir($dir, 0777, true);
                 
-                $filename = "cert_" . $data['id'] . "_" . uniqid() . ".pfx";
+                $refId = $id ?: "new_" . time();
+                $filename = "cert_" . $refId . "_" . uniqid() . ".pfx";
                 if (move_uploaded_file($_FILES['certificado']['tmp_name'], $dir . $filename)) {
                     $data['certificado_pfx'] = $filename;
                 }
             }
 
             $model->save($data);
-            $this->redirect('filiais.php?msg=Filial atualizada com sucesso');
+            $msg = $id ? 'Unidade atualizada com sucesso' : 'Nova unidade registrada com sucesso';
+            $this->redirect('filiais.php?msg=' . $msg);
         }
     }
 }

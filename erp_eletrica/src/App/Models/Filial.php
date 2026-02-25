@@ -47,13 +47,14 @@ class Filial extends BaseModel {
         } else {
             $sql = "INSERT INTO {$this->table} (
                         nome, cnpj, inscricao_estadual, logradouro, numero, bairro, municipio, uf, cep,
-                        csc_id, csc_token, ambiente, certificado_pfx, certificado_senha
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        csc_id, csc_token, ambiente, certificado_pfx, certificado_senha, principal
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             return $this->query($sql, [
                 $data['nome'], $data['cnpj'], $data['inscricao_estadual'],
                 $data['logradouro'], $data['numero'], $data['bairro'], $data['municipio'], $data['uf'], $data['cep'],
                 $data['csc_id'], $data['csc_token'], $data['ambiente'] ?? 2,
-                $data['certificado_pfx'] ?? null, $data['certificado_senha'] ?? null
+                $data['certificado_pfx'] ?? null, $data['certificado_senha'] ?? null,
+                0 // Filiais aren't Matriz by default when created via this form
             ]);
         }
     }

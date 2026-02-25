@@ -2,7 +2,7 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body d-flex justify-content-between align-items-center py-3">
         <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-network-wired me-2"></i>Unidades Operacionais</h6>
-        <button class="btn btn-primary fw-bold" onclick="alert('Funcionalidade de Nova Filial em desenvolvimento')">
+        <button class="btn btn-primary fw-bold" onclick="newBranch()">
             <i class="fas fa-plus-circle me-2"></i>Expandir Operação
         </button>
     </div>
@@ -112,6 +112,10 @@
                         <label class="form-label small fw-bold">UF</label>
                         <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2">
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">CEP</label>
+                        <input type="text" name="cep" id="branch_cep" class="form-control shadow-sm">
+                    </div>
 
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Integração NFC-e (SEFAZ)</h6></div>
                     <div class="col-md-4">
@@ -142,6 +146,26 @@
 </div>
 
 <script>
+function newBranch() {
+    const modal = new bootstrap.Modal(document.getElementById('branchModal'));
+    document.getElementById('branch_id').value = '';
+    document.getElementById('branch_nome').value = '';
+    document.getElementById('branch_ambiente').value = 2;
+    document.getElementById('branch_cnpj').value = '';
+    document.getElementById('branch_ie').value = '';
+    document.getElementById('branch_logradouro').value = '';
+    document.getElementById('branch_numero').value = '';
+    document.getElementById('branch_bairro').value = '';
+    document.getElementById('branch_municipio').value = '';
+    document.getElementById('branch_uf').value = '';
+    document.getElementById('branch_cep').value = '';
+    document.getElementById('branch_csc_id').value = '';
+    document.getElementById('branch_csc_token').value = '';
+    document.getElementById('branch_cert_senha').value = '';
+    document.getElementById('cert_info').innerText = 'Novo certificado (.pfx) será carregado';
+    modal.show();
+}
+
 function editBranch(branch) {
     const modal = new bootstrap.Modal(document.getElementById('branchModal'));
     document.getElementById('branch_id').value = branch.id;
@@ -154,6 +178,7 @@ function editBranch(branch) {
     document.getElementById('branch_bairro').value = branch.bairro || '';
     document.getElementById('branch_municipio').value = branch.municipio || '';
     document.getElementById('branch_uf').value = branch.uf || '';
+    document.getElementById('branch_cep').value = branch.cep || '';
     document.getElementById('branch_csc_id').value = branch.csc_id || '';
     document.getElementById('branch_csc_token').value = branch.csc_token || '';
     document.getElementById('branch_cert_senha').value = branch.certificado_senha || '';
