@@ -139,21 +139,32 @@ try {
     SELECT p.id, p.nome, p.documento,
            (SELECT COALESCE(SUM(quantidade_entrada * preco_unitario_dia), 0) 
             FROM romaneio_itens ri 
-            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom) as total_lancado,
+            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom1) as total_lancado,
            (SELECT COUNT(*) 
             FROM romaneio_itens ri 
-            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom AND ri.quantidade_vendida IS NOT NULL) as itens_fechados,
+            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom2 AND ri.quantidade_vendida IS NOT NULL) as itens_fechados,
            (SELECT COUNT(*) 
             FROM romaneio_itens ri 
-            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom) as total_itens
+            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom3) as total_itens
     FROM produtores p 
     $sqlWhere 
     ORDER BY p.nome ASC 
     LIMIT :lim OFFSET :off
   ");
-  foreach ($params as $k => $v) $stList->bindValue($k, $v);
+  
+  // Bind parameters (Manual binding to handle multiple uses of Romaneio ID)
+  $romIdVal = ($romaneioId ?? -1);
+  $stList->bindValue(':f', $feiraId, PDO::PARAM_INT);
+  $stList->bindValue(':rom', $romIdVal, PDO::PARAM_INT);
+  $stList->bindValue(':rom1', $romIdVal, PDO::PARAM_INT);
+  $stList->bindValue(':rom2', $romIdVal, PDO::PARAM_INT);
+  $stList->bindValue(':rom3', $romIdVal, PDO::PARAM_INT);
+  if ($searchCpf !== '') {
+    $stList->bindValue(':cpf', "%$searchCpf%", PDO::PARAM_STR);
+  }
   $stList->bindValue(':lim', $perPage, PDO::PARAM_INT);
   $stList->bindValue(':off', $offset, PDO::PARAM_INT);
+  
   $stList->execute();
   $porFeirante = $stList->fetchAll();
 
