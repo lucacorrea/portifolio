@@ -6,13 +6,19 @@ $controller = new \App\Controllers\FinancialController();
 
 $action = $_GET['action'] ?? 'index';
 
-if ($action == 'dre') {
-    $controller->dre();
-} elseif ($action == 'abcCurve') {
-    $controller->abcCurve();
-} elseif ($action == 'delinquency') {
-    $controller->delinquency();
-} else {
-    $controller->index();
+switch ($action) {
+    case 'dre':
+        \App\Services\AuthService::checkPermission('financeiro', 'dre');
+        $controller->dre();
+        break;
+    case 'abcCurve':
+    case 'delinquency':
+        \App\Services\AuthService::checkPermission('financeiro', 'visualizar');
+        $controller->$action();
+        break;
+    default:
+        \App\Services\AuthService::checkPermission('financeiro', 'visualizar');
+        $controller->index();
+        break;
 }
 exit;

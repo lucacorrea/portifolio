@@ -5,8 +5,19 @@ checkAuth();
 $controller = new \App\Controllers\FiscalController();
 $action = $_GET['action'] ?? 'index';
 
-if (method_exists($controller, $action)) {
-    $controller->$action();
-} else {
-    $controller->index();
+switch ($action) {
+    case 'emit':
+        \App\Services\AuthService::checkPermission('fiscal', 'emitir_nota');
+        $controller->emit();
+        break;
+    case 'settings':
+    case 'config':
+        \App\Services\AuthService::checkPermission('fiscal', 'configurar');
+        $controller->settings();
+        break;
+    default:
+        \App\Services\AuthService::checkPermission('fiscal', 'emitir_nota');
+        $controller->index();
+        break;
 }
+exit;

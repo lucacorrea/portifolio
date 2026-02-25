@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 checkAuth();
+\App\Services\AuthService::checkPermission('os', 'visualizar');
 
 $id = $_GET['id'] ?? null;
 if (!$id) {
@@ -49,6 +50,7 @@ $historico = $stmt->fetchAll();
 
 // Processar Post (Status, Checklist, etc.)
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
+    \App\Services\AuthService::checkPermission('os', 'editar');
     if ($_POST['action'] == 'update_status') {
         $novo_status = $_POST['status'];
         $obs = $_POST['observacao'] ?? '';

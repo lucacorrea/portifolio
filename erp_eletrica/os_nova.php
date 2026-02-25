@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 checkAuth();
+\App\Services\AuthService::checkPermission('os', 'criar');
 
 // Dados para os selects
 $clientes = $pdo->query("SELECT id, nome FROM clientes ORDER BY nome")->fetchAll();
