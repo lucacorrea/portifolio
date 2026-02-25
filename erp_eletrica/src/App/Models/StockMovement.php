@@ -2,7 +2,7 @@
 namespace App\Models;
 
 class StockMovement extends BaseModel {
-    protected $table = 'movimentacao_estoque';
+    protected $table = 'movimentacoes_estoque';
 
     public function record($productId, $filialId, $qty, $type, $reason, $userId, $refId = null) {
         return $this->query(

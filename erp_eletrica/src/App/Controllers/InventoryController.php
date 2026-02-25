@@ -14,11 +14,14 @@ class InventoryController extends BaseController {
         $productModel = new \App\Models\Product();
         $movementModel = new \App\Models\StockMovement();
 
+        $filialId = $_SESSION['filial_id'] ?? null;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+
         $stats = [
             'total_itens' => $this->sum('produtos', 'quantidade'),
             'valor_custo' => $this->sum('produtos', 'preco_custo * quantidade'),
-            'itens_criticos' => count($productModel->getCriticalStock()),
-            'mov_mes' => $this->count('movimentacao_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)")
+            'itens_criticos' => count($productModel->getCriticalStock(!$isMatriz ? $filialId : null)),
+            'mov_mes' => $this->count('movimentacoes_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)")
         ];
 
         $products = $productModel->all("categoria ASC, nome ASC");
@@ -63,11 +66,17 @@ class InventoryController extends BaseController {
 
     private function sum($table, $expression) {
         $db = \App\Config\Database::getInstance()->getConnection();
-        return $db->query("SELECT SUM($expression) FROM $table")->fetchColumn() ?: 0;
+        $filialId = $_SESSION['filial_id'] ?? null;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        $where = (!$isMatriz && $filialId) ? " WHERE filial_id = $filialId" : "";
+        return $db->query("SELECT SUM($expression) FROM $table $where")->fetchColumn() ?: 0;
     }
 
     private function count($table, $condition = "1=1") {
         $db = \App\Config\Database::getInstance()->getConnection();
-        return $db->query("SELECT COUNT(*) FROM $table WHERE $condition")->fetchColumn() ?: 0;
+        $filialId = $_SESSION['filial_id'] ?? null;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        $whereFilial = (!$isMatriz && $filialId) ? " AND filial_id = $filialId" : "";
+        return $db->query("SELECT COUNT(*) FROM $table WHERE ($condition) $whereFilial")->fetchColumn() ?: 0;
     }
 }

@@ -42,10 +42,14 @@ class InventoryService extends BaseService {
     }
 
     public function getInventorySummary() {
+        $filialId = $_SESSION['filial_id'] ?? null;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        $where = (!$isMatriz && $filialId) ? " WHERE filial_id = $filialId" : "";
+        
         return [
-            'total_valuation' => $this->db->query("SELECT SUM(preco_custo * quantidade) FROM produtos")->fetchColumn(),
-            'critical_items' => $this->productModel->getCriticalStock(),
-            'top_categories' => $this->db->query("SELECT categoria, SUM(quantidade) as total FROM produtos GROUP BY categoria ORDER BY total DESC")->fetchAll()
+            'total_valuation' => $this->db->query("SELECT SUM(preco_custo * quantidade) FROM produtos $where")->fetchColumn(),
+            'critical_items' => $this->productModel->getCriticalStock($isMatriz ? null : $filialId),
+            'top_categories' => $this->db->query("SELECT categoria, SUM(quantidade) as total FROM produtos $where GROUP BY categoria ORDER BY total DESC")->fetchAll()
         ];
     }
 }

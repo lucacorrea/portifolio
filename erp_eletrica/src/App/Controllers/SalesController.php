@@ -20,8 +20,21 @@ class SalesController extends BaseController {
     public function search() {
         $term = $_GET['term'] ?? '';
         $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT id, nome, preco_venda, unidade, imagens FROM produtos WHERE nome LIKE ? OR codigo LIKE ? LIMIT 10");
-        $stmt->execute(["%$term%", "%$term%"]);
+        
+        $filialId = $_SESSION['filial_id'] ?? null;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        
+        $sql = "SELECT id, nome, preco_venda, unidade, imagens FROM produtos WHERE (nome LIKE ? OR codigo LIKE ?)";
+        $params = ["%$term%", "%$term%"];
+        
+        if (!$isMatriz && $filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+        
+        $sql .= " LIMIT 10";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
         echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
         exit;
     }

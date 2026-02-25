@@ -20,7 +20,11 @@ abstract class BaseModel {
     }
 
     protected function getTenantColumn() {
-        return ($this->table === 'filiais') ? 'id' : 'filial_id';
+        if ($this->table === 'filiais') return 'id';
+        
+        // Defensive check: only filter if column exists
+        $stmt = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'filial_id'");
+        return $stmt->fetch() ? 'filial_id' : null;
     }
 
     public function find($id) {
