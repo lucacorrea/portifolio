@@ -39,6 +39,27 @@ abstract class BaseModel {
         return $this->db->query("SELECT * FROM {$this->table} ORDER BY {$order}")->fetchAll();
     }
 
+    public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC") {
+        $filialId = $this->getFilialContext();
+        $offset = ($currentPage - 1) * $perPage;
+        
+        $where = $filialId ? "WHERE filial_id = $filialId" : "";
+        
+        $total = $this->db->query("SELECT COUNT(*) FROM {$this->table} $where")->fetchColumn();
+        $pages = ceil($total / $perPage);
+        
+        $sql = "SELECT * FROM {$this->table} $where ORDER BY {$order} LIMIT $perPage OFFSET $offset";
+        $data = $this->db->query($sql)->fetchAll();
+        
+        return [
+            'data' => $data,
+            'total' => $total,
+            'pages' => $pages,
+            'current' => $currentPage,
+            'per_page' => $perPage
+        ];
+    }
+
     public function delete($id) {
         $filialId = $this->getFilialContext();
         if ($filialId) {

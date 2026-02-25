@@ -18,40 +18,55 @@ class DashboardController extends BaseController {
             $where_filial = " AND filial_id = $filial_id";
         }
 
-        $stats = [
-            'vendas_hoje' => $db->query("SELECT SUM(valor_total) FROM vendas WHERE DATE(data_venda) = CURRENT_DATE $where_filial")->fetchColumn() ?: 0,
-            'vendas_mes' => $db->query("SELECT SUM(valor_total) FROM vendas WHERE MONTH(data_venda) = $mes_atual AND YEAR(data_venda) = $ano_atual $where_filial")->fetchColumn() ?: 0,
-            'estoque_critico' => $db->query("SELECT COUNT(*) FROM produtos WHERE quantidade <= estoque_minimo $where_filial")->fetchColumn(),
-            'ticket_medio' => $db->query("SELECT AVG(valor_total) FROM vendas WHERE MONTH(data_venda) = $mes_atual $where_filial")->fetchColumn() ?: 0,
-            'margem_lucro' => $db->query("
-                SELECT (SUM(vi.preco_unitario * vi.quantidade) - SUM(p.preco_custo * vi.quantidade)) / SUM(vi.preco_unitario * vi.quantidade) * 100
+        $cacheKey = "dash_main_" . ($is_matriz ? "matriz" : "filial_$filial_id");
+        $cached = \App\Services\CacheService::get($cacheKey);
+
+        if ($cached) {
+            $stats = $cached['stats'];
+            $faturamento_historico = $cached['history'];
+            $top_produtos = $cached['top_products'];
+        } else {
+            $stats = [
+                'vendas_hoje' => $db->query("SELECT SUM(valor_total) FROM vendas WHERE DATE(data_venda) = CURRENT_DATE $where_filial")->fetchColumn() ?: 0,
+                'vendas_mes' => $db->query("SELECT SUM(valor_total) FROM vendas WHERE MONTH(data_venda) = $mes_atual AND YEAR(data_venda) = $ano_atual $where_filial")->fetchColumn() ?: 0,
+                'estoque_critico' => $db->query("SELECT COUNT(*) FROM produtos WHERE quantidade <= estoque_minimo $where_filial")->fetchColumn(),
+                'ticket_medio' => $db->query("SELECT AVG(valor_total) FROM vendas WHERE MONTH(data_venda) = $mes_atual $where_filial")->fetchColumn() ?: 0,
+                'margem_lucro' => $db->query("
+                    SELECT (SUM(vi.preco_unitario * vi.quantidade) - SUM(p.preco_custo * vi.quantidade)) / SUM(vi.preco_unitario * vi.quantidade) * 100
+                    FROM vendas_itens vi
+                    JOIN produtos p ON vi.produto_id = p.id
+                    JOIN vendas v ON vi.venda_id = v.id
+                    WHERE MONTH(v.data_venda) = $mes_atual " . ($is_matriz ? "" : "AND v.filial_id = $filial_id") . "
+                ")->fetchColumn() ?: 0
+            ];
+
+            // Billing History (Last 6 months)
+            $faturamento_historico = $db->query("
+                SELECT DATE_FORMAT(data_venda, '%b') as mes, SUM(valor_total) as total
+                FROM vendas
+                WHERE data_venda >= DATE_SUB(NOW(), INTERVAL 6 MONTH) " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
+                GROUP BY DATE_FORMAT(data_venda, '%Y-%m')
+                ORDER BY data_venda ASC
+            ")->fetchAll();
+
+            // Top Vendas
+            $top_produtos = $db->query("
+                SELECT p.nome, SUM(vi.quantidade) as total_vendido, SUM(vi.quantidade * vi.preco_unitario) as receita
                 FROM vendas_itens vi
                 JOIN produtos p ON vi.produto_id = p.id
                 JOIN vendas v ON vi.venda_id = v.id
-                WHERE MONTH(v.data_venda) = $mes_atual " . ($is_matriz ? "" : "AND v.filial_id = $filial_id") . "
-            ")->fetchColumn() ?: 0
-        ];
+                " . ($is_matriz ? "" : "WHERE v.filial_id = $filial_id") . "
+                GROUP BY vi.produto_id
+                ORDER BY total_vendido DESC
+                LIMIT 5
+            ")->fetchAll();
 
-        // Billing History (Last 6 months)
-        $faturamento_historico = $db->query("
-            SELECT DATE_FORMAT(data_venda, '%b') as mes, SUM(valor_total) as total
-            FROM vendas
-            WHERE data_venda >= DATE_SUB(NOW(), INTERVAL 6 MONTH) " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
-            GROUP BY DATE_FORMAT(data_venda, '%Y-%m')
-            ORDER BY data_venda ASC
-        ")->fetchAll();
-
-        // Top Vendas (Materiais mais vendidos)
-        $top_produtos = $db->query("
-            SELECT p.nome, SUM(vi.quantidade) as total_vendido, SUM(vi.quantidade * vi.preco_unitario) as receita
-            FROM vendas_itens vi
-            JOIN produtos p ON vi.produto_id = p.id
-            JOIN vendas v ON vi.venda_id = v.id
-            " . ($is_matriz ? "" : "WHERE v.filial_id = $filial_id") . "
-            GROUP BY vi.produto_id
-            ORDER BY total_vendido DESC
-            LIMIT 5
-        ")->fetchAll();
+            \App\Services\CacheService::set($cacheKey, [
+                'stats' => $stats,
+                'history' => $faturamento_historico,
+                'top_products' => $top_produtos
+            ], 600); // 10 minutes cache
+        }
 
         $recentes_vendas = $db->query("
             SELECT v.*, c.nome as cliente_nome 

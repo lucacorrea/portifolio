@@ -86,6 +86,36 @@
             </table>
         </div>
     </div>
+    <!-- Pagination -->
+    <?php if ($pagination && $pagination['pages'] > 1): ?>
+    <div class="card-footer bg-white border-top py-3">
+        <nav aria-label="Navegação de clientes">
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>" aria-label="Anterior">
+                        <i class="fas fa-chevron-left small"></i>
+                    </a>
+                </li>
+                <?php 
+                $start = max(1, $pagination['current'] - 2);
+                $end = min($pagination['pages'], $start + 4);
+                if ($end - $start < 4) $start = max(1, $end - 4);
+                
+                for($i = $start; $i <= $end; $i++): 
+                ?>
+                <li class="page-item <?= $i == $pagination['current'] ? 'active' : '' ?>">
+                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+                <li class="page-item <?= $pagination['current'] >= $pagination['pages'] ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>" aria-label="Próximo">
+                        <i class="fas fa-chevron-right small"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- Client Modal -->
@@ -98,6 +128,7 @@
             </div>
             <div class="modal-body p-4">
                 <input type="hidden" name="id" id="edit_id">
+                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                 <div class="row g-3">
                     <div class="col-12">
                         <label class="form-label small fw-bold">Nome Completo / Razão Social</label>

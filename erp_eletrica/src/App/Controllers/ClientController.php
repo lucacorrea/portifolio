@@ -8,14 +8,19 @@ class ClientController extends BaseController {
         $model = new Client();
         
         $searchTerm = $_GET['search'] ?? '';
+        $page = (int)($_GET['page'] ?? 1);
+
         if ($searchTerm) {
             $clients = $model->search($searchTerm);
+            $pagination = null;
         } else {
-            $clients = $model->all();
+            $pagination = $model->paginate(15, $page);
+            $clients = $pagination['data'];
         }
 
         $this->render('clients', [
             'clients' => $clients,
+            'pagination' => $pagination,
             'searchTerm' => $searchTerm,
             'title' => 'Gestão de Clientes',
             'pageTitle' => 'Base de Clientes Corporativos'

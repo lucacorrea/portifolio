@@ -10,25 +10,53 @@ class AuthService extends BaseService {
 
     public function login(string $email, string $password) {
         $user = $this->repository->findByEmail($email);
-        
-        if ($user && password_verify($password, $user['senha'])) {
-            $_SESSION['usuario_id'] = $user['id'];
-            $_SESSION['usuario_nome'] = $user['nome'];
-            $_SESSION['usuario_nivel'] = $user['nivel'];
-            $_SESSION['filial_id'] = $user['filial_id'];
-            
-            // Check if user is in Matriz
-            $filialModel = new \App\Models\Filial();
-            $stmt = $filialModel->query("SELECT principal FROM filiais WHERE id = ?", [$user['filial_id']]);
-            $filial = $stmt->fetch();
-            $_SESSION['is_matriz'] = ($filial && $filial['principal'] == 1);
-            
-            $this->repository->updateLastLogin($user['id']);
-            $this->logAction('login', 'usuarios', $user['id']);
-            return true;
+        $success = false;
+        $userId = null;
+        $motivo = '';
+
+        if ($user) {
+            if (password_verify($password, $user['senha'])) {
+                $userId = $user['id'];
+                $_SESSION['usuario_id'] = $user['id'];
+                $_SESSION['usuario_nome'] = $user['nome'];
+                $_SESSION['usuario_nivel'] = $user['nivel'];
+                $_SESSION['filial_id'] = $user['filial_id'];
+                
+                // Check if user is in Matriz
+                $filialModel = new \App\Models\Filial();
+                $stmt = $filialModel->query("SELECT principal FROM filiais WHERE id = ?", [$user['filial_id']]);
+                $filial = $stmt->fetch();
+                $_SESSION['is_matriz'] = ($filial && $filial['principal'] == 1);
+                
+                $this->repository->updateLastLogin($user['id']);
+                $this->logAction('login', 'usuarios', $user['id']);
+                $success = true;
+            } else {
+                $userId = $user['id'];
+                $motivo = 'Senha incorreta';
+            }
+        } else {
+            $motivo = 'Usuário não encontrado';
         }
         
-        return false;
+        $this->recordAccessAttempt($email, $userId, $success, $motivo);
+        return $success;
+    }
+
+    private function recordAccessAttempt($email, $userId, $success, $motivo) {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("
+            INSERT INTO logs_acesso (usuario_id, email_tentativa, ip_address, user_agent, sucesso, motivo) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $userId, 
+            $email, 
+            $_SERVER['REMOTE_ADDR'] ?? 'unknown', 
+            $_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 
+            $success ? 1 : 0, 
+            $motivo
+        ]);
     }
 
     public static function check($niveis_permitidos = []) {
