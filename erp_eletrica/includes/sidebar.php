@@ -42,6 +42,26 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-wallet"></i> <span>Fluxo de Caixa</span>
         </a>
 
+        <!-- Financial Reports Submenu -->
+        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#reportsSubmenu">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Relatórios BI</span>
+            <i class="fas fa-chevron-down ms-auto small opacity-50"></i>
+        </a>
+        <div class="collapse ps-3" id="reportsSubmenu">
+            <nav class="nav flex-column">
+                <a class="nav-link extra-small py-1" href="financeiro.php?action=dre">
+                    <i class="fas fa-circle-notch me-1 extra-small"></i> DRE Mensal
+                </a>
+                <a class="nav-link extra-small py-1" href="financeiro.php?action=osProfitability">
+                    <i class="fas fa-circle-notch me-1 extra-small"></i> Rentabilidade OS
+                </a>
+                <a class="nav-link extra-small py-1" href="financeiro.php?action=delinquency">
+                    <i class="fas fa-circle-notch me-1 extra-small"></i> Inadimplência
+                </a>
+            </nav>
+        </div>
+
         <?php if ($_SESSION['usuario_nivel'] == 'admin'): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
         

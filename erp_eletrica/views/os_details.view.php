@@ -34,27 +34,73 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">Cronograma de Atendimento</label>
-                        <ul class="list-unstyled mb-0 small">
-                            <li class="mb-2 d-flex justify-content-between">
-                                <span class="text-muted">Abertura:</span>
-                                <span class="fw-bold"><?= formatarData($os['data_abertura']) ?></span>
-                            </li>
-                            <li class="mb-2 d-flex justify-content-between">
-                                <span class="text-muted">Previsão:</span>
-                                <span class="fw-bold text-primary"><?= formatarData($os['data_previsao']) ?? 'A definir' ?></span>
-                            </li>
-                            <li class="d-flex justify-content-between">
-                                <span class="text-muted">Conclusão:</span>
-                                <span class="fw-bold"><?= $os['data_conclusao'] ? formatarData($os['data_conclusao']) : 'Pendente' ?></span>
-                            </li>
-                        </ul>
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">SLA & Prazos</label>
+                        <?php 
+                            $vencimento = strtotime($os['data_vencimento_sla']);
+                            $atrasado = $vencimento < time() && $os['status'] != 'concluido';
+                            $slaColor = $atrasado ? 'danger' : 'success';
+                        ?>
+                        <div class="p-3 rounded bg-<?= $slaColor ?> bg-opacity-10 border border-<?= $slaColor ?> border-opacity-25">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="small fw-bold text-<?= $slaColor ?>">Vencimento SLA:</span>
+                                <span class="small fw-bold"><?= date('d/m/Y H:i', $vencimento) ?></span>
+                            </div>
+                            <?php if($atrasado): ?>
+                                <div class="extra-small text-danger fw-bold"><i class="fas fa-clock me-1"></i> ATENÇÃO: Prazo de atendimento expirado!</div>
+                            <?php else: ?>
+                                <div class="extra-small text-success fw-bold"><i class="fas fa-check-circle me-1"></i> Dentro do prazo operacional</div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="bg-light p-3 rounded-3 border-start border-4 border-primary">
+                <div class="bg-light p-3 rounded-3 border-start border-4 border-primary mb-4">
                     <label class="form-label small fw-bold text-muted mb-1 text-uppercase">Descrição do Problema / Serviço</label>
                     <p class="mb-0 text-dark"><?= nl2br(htmlspecialchars($os['descricao'])) ?></p>
+                </div>
+
+                <!-- Photos Gallery -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0 text-secondary"><i class="fas fa-camera me-2"></i>Evidências e Fotos</h6>
+                        <button class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#modalUploadPhotos">
+                            <i class="fas fa-upload me-2"></i>Enviar Fotos
+                        </button>
+                    </div>
+                    <div class="row g-2">
+                        <?php 
+                            $fotos = json_decode($os['fotos'] ?? '[]', true);
+                            foreach($fotos as $foto):
+                        ?>
+                        <div class="col-3 col-md-2">
+                            <a href="public/uploads/os/<?= $foto ?>" target="_blank">
+                                <img src="public/uploads/os/<?= $foto ?>" class="img-fluid rounded border shadow-sm" style="height: 80px; width: 100%; object-fit: cover;">
+                            </a>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php if(empty($fotos)): ?>
+                            <div class="col-12 text-center py-4 bg-light rounded border border-dashed">
+                                <span class="text-muted small italic">Nenhuma foto anexada.</span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Customer Signature -->
+                <div>
+                    <h6 class="fw-bold mb-3 text-secondary"><i class="fas fa-signature me-2"></i>Assinatura do Cliente</h6>
+                    <?php if($os['assinatura_digital']): ?>
+                        <div class="border rounded bg-white p-2 text-center">
+                            <img src="<?= $os['assinatura_digital'] ?>" style="max-height: 100px;">
+                            <div class="extra-small text-muted mt-2 border-top pt-1">Assinado digitalmente em <?= date('d/m/Y H:i', strtotime($os['updated_at'])) ?></div>
+                        </div>
+                    <?php else: ?>
+                        <div class="border rounded bg-white p-4 text-center border-dashed">
+                            <button class="btn btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalSignature">
+                                <i class="fas fa-pen-nib me-2"></i>Coletar Assinatura Digital
+                            </button>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -135,10 +181,10 @@
                 <h6 class="fw-bold mb-3 small text-muted text-uppercase">Documentação</h6>
                 <div class="row g-2">
                     <div class="col-6">
-                        <button class="btn btn-white border w-100 fw-bold small py-3 shadow-sm">
+                        <a href="imprimir_os.php?id=<?= $os['id'] ?>" target="_blank" class="btn btn-white border w-100 fw-bold small py-3 shadow-sm">
                             <i class="fas fa-file-pdf d-block mb-2 fs-4 text-danger"></i>
                             Imprimir OS
-                        </button>
+                        </a>
                     </div>
                     <div class="col-6">
                         <button class="btn btn-white border w-100 fw-bold small py-3 shadow-sm">
@@ -151,3 +197,58 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Signature -->
+<div class="modal fade" id="modalSignature" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Coletar Assinatura Digital</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <canvas id="signature-pad" class="border rounded bg-light w-100" style="height: 200px;"></canvas>
+                <div class="text-center mt-2">
+                    <button type="button" class="btn btn-sm btn-link text-danger" id="clear-signature">Limpar área</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <form action="os.php?action=sign" method="POST" id="form-signature">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <input type="hidden" name="os_id" value="<?= $os['id'] ?>">
+                    <input type="hidden" name="assinatura" id="input-signature">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Salvar Assinatura</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Upload Photos -->
+<div class="modal fade" id="modalUploadPhotos" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Enviar Evidências / Fotos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="os.php?action=upload" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <input type="hidden" name="os_id" value="<?= $os['id'] ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Selecione as fotos (Múltiplas)</label>
+                        <input type="file" name="fotos[]" class="form-control" multiple accept="image/*" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Iniciar Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="public/js/os.js"></script>

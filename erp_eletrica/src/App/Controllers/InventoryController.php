@@ -1,13 +1,18 @@
 <?php
 namespace App\Controllers;
 
-use App\Models\Product;
-use App\Models\StockMovement;
+use App\Services\InventoryService;
 
 class InventoryController extends BaseController {
+    private $service;
+
+    public function __construct() {
+        $this->service = new InventoryService();
+    }
+
     public function index() {
-        $productModel = new Product();
-        $movementModel = new StockMovement();
+        $productModel = new \App\Models\Product();
+        $movementModel = new \App\Models\StockMovement();
 
         $stats = [
             'total_itens' => $this->sum('produtos', 'quantidade'),
@@ -20,37 +25,24 @@ class InventoryController extends BaseController {
         $movements = $movementModel->getHistory(null, 20);
         $categories = $productModel->getCategories();
 
-        ob_start();
-        $data = [
+        $this->render('inventory', [
             'stats' => $stats,
             'products' => $products,
             'movements' => $movements,
             'categories' => $categories
-        ];
-        extract($data);
-        require __DIR__ . "/../../../views/inventory.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
-            'title' => 'Gestão de Materiais e Estoque',
-            'pageTitle' => 'Catálogo de Produtos e Inventário',
-            'content' => $content
         ]);
     }
 
     public function save() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $model = new Product();
+            validateCsrf($_POST['csrf_token'] ?? '');
+            $model = new \App\Models\Product();
             $data = $_POST;
 
-            // Handle Image Upload
             if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
-                $dir = __DIR__ . "/../../../public/uploads/produtos/";
+                $dir = dirname(__DIR__, 3) . "/public/uploads/produtos/";
                 if (!is_dir($dir)) mkdir($dir, 0777, true);
-
-                $ext = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
-                $filename = uniqid() . "." . $ext;
-                
+                $filename = uniqid() . "." . pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
                 if (move_uploaded_file($_FILES['foto']['tmp_name'], $dir . $filename)) {
                     $data['imagens'] = $filename;
                 }
@@ -63,19 +55,9 @@ class InventoryController extends BaseController {
 
     public function move() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $productModel = new Product();
-            $movementModel = new StockMovement();
-
-            $id = $_POST['produto_id'];
-            $qty = $_POST['quantidade'];
-            $type = $_POST['tipo'];
-            $reason = $_POST['motivo'];
-            $filialId = $_POST['deposito_id'] ?? 1;
-
-            $productModel->updateStock($id, $qty, $type);
-            $movementModel->record($id, $filialId, $qty, $type, $reason, $_SESSION['usuario_id']);
-
-            $this->redirect('estoque.php?msg=Movimentação realizada');
+            validateCsrf($_POST['csrf_token'] ?? '');
+            $this->service->recordMovement($_POST);
+            $this->redirect('estoque.php?msg=Movimentação realizada com sucesso');
         }
     }
 

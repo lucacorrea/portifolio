@@ -143,6 +143,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id" id="edit_id">
                 <div class="row g-3">
                     <div class="col-md-4">
@@ -208,13 +209,13 @@
                 <h5 class="modal-title fw-bold">Movimentar Inventário</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
                 <div class="row g-3">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <div class="col-12">
                         <label class="form-label small fw-bold">Produto</label>
                         <select name="produto_id" class="form-select shadow-sm" required>
                             <?php foreach ($products as $p): ?>
-                                <option value="<?= $p['id'] ?>"><?= $p['nome'] ?> (<?= $p['quantidade'] ?>)</option>
+                                <option value="<?= $p['id'] ?>"><?= $p['nome'] ?> (Saldo: <?= $p['quantidade'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -230,12 +231,15 @@
                             <option value="ajuste">Ajuste de Saldo</option>
                         </select>
                     </div>
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold">Lote / Rastreabilidade (Opcional)</label>
+                        <input type="text" name="lote" class="form-control shadow-sm" placeholder="Ex: LOTE-2024-001">
+                    </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Motivo / Observação</label>
-                        <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Ajuste de inventário, Devolução, etc"></textarea>
+                        <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Compra de mercadoria, Baixa para OS, etc"></textarea>
                     </div>
                 </div>
-            </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
                 <button type="submit" class="btn btn-success px-4 fw-bold">Processar Movimento</button>
