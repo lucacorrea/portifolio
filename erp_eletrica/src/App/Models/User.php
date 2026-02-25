@@ -21,14 +21,19 @@ class User extends BaseModel {
         );
     }
     
-    public function all($orderBy = "nome") {
-        return $this->query("SELECT * FROM {$this->table} ORDER BY $orderBy")->fetchAll();
+    public function all($orderBy = "u.nome") {
+        return $this->query("
+            SELECT u.*, f.nome as filial_nome 
+            FROM {$this->table} u
+            LEFT JOIN filiais f ON u.filial_id = f.id
+            ORDER BY $orderBy
+        ")->fetchAll();
     }
-
+    
     public function save($data) {
         if (!empty($data['id'])) {
-            $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ? ";
-            $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo']];
+            $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ?, filial_id = ? ";
+            $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo'], $data['filial_id']];
             if (!empty($data['senha'])) {
                 $sql .= ", senha = ? ";
                 $params[] = password_hash($data['senha'], PASSWORD_DEFAULT);
@@ -39,8 +44,8 @@ class User extends BaseModel {
         } else {
             $senha = password_hash($data['senha'], PASSWORD_DEFAULT);
             return $this->query(
-                "INSERT INTO {$this->table} (nome, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?)",
-                [$data['nome'], $data['email'], $senha, $data['nivel'], $data['ativo']]
+                "INSERT INTO {$this->table} (nome, email, senha, nivel, ativo, filial_id) VALUES (?, ?, ?, ?, ?, ?)",
+                [$data['nome'], $data['email'], $senha, $data['nivel'], $data['ativo'], $data['filial_id']]
             );
         }
     }

@@ -5,25 +5,29 @@ use App\Models\User;
 
 class UserController extends BaseController {
     public function index() {
-        $model = new User();
-        $users = $model->all();
+        $userModel = new \App\Models\User();
+        $filialModel = new \App\Models\Filial();
+        
+        $users = $userModel->all();
+        $branches = $filialModel->all();
 
         $this->render('users', [
             'users' => $users,
-            'title' => 'Gestão de Colaboradores',
-            'pageTitle' => 'Controle de Acesso e Identidade (IAM)'
+            'branches' => $branches,
+            'title' => 'Gestão de Usuários',
+            'pageTitle' => 'Operadores do Sistema'
         ]);
     }
 
     public function save() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $model = new User();
+            $userModel = new \App\Models\User();
             $data = $_POST;
             $data['id'] = $_POST['usuario_id'] ?? null;
             $data['ativo'] = isset($_POST['ativo']) ? 1 : 0;
             
-            $model->save($data);
-            $this->redirect('usuarios.php?msg=Usuário processado com sucesso');
+            $userModel->save($data);
+            $this->redirect('usuarios.php?msg=Usuário salvo com sucesso');
         }
     }
 }

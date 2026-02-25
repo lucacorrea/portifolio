@@ -17,6 +17,7 @@
                     <tr>
                         <th class="ps-4">Colaborador</th>
                         <th>E-mail Corporativo</th>
+                        <th>Unidade / Filial</th>
                         <th>Nível de Acesso</th>
                         <th class="text-center">Status</th>
                         <th class="text-end pe-4">Ações</th>
@@ -37,6 +38,12 @@
                             </div>
                         </td>
                         <td class="small"><?= $u['email'] ?></td>
+                        <td>
+                            <div class="small fw-bold text-primary">
+                                <i class="fas fa-building me-1 opacity-50"></i>
+                                <?= $u['filial_nome'] ?: '<span class="text-danger">SEM FILIAL</span>' ?>
+                            </div>
+                        </td>
                         <td>
                             <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3">
                                 <?= strtoupper($u['nivel']) ?>
@@ -86,6 +93,15 @@
                         <label class="form-label small fw-bold">E-mail Corporativo</label>
                         <input type="email" name="email" id="edit-user-email" class="form-control shadow-sm" required>
                     </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold">Unidade de Lotação</label>
+                        <select name="filial_id" id="edit-user-filial" class="form-select shadow-sm" required>
+                            <option value="" disabled selected>Selecione a empresa...</option>
+                            <?php foreach ($branches as $branch): ?>
+                                <option value="<?= $branch['id'] ?>"><?= $branch['nome'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-bold">Nível de Acesso</label>
                         <select name="nivel" id="edit-user-nivel" class="form-select shadow-sm">
@@ -123,6 +139,7 @@ function openUserModal() {
     document.getElementById('edit-user-id').value = '';
     document.getElementById('edit-user-nome').value = '';
     document.getElementById('edit-user-email').value = '';
+    document.getElementById('edit-user-filial').value = '';
     document.getElementById('edit-user-nivel').value = 'vendedor';
     document.getElementById('edit-user-ativo').checked = true;
     document.getElementById('edit-user-senha').required = true;
@@ -136,6 +153,7 @@ function editUser(user) {
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('edit-user-nome').value = user.nome;
     document.getElementById('edit-user-email').value = user.email;
+    document.getElementById('edit-user-filial').value = user.filial_id;
     document.getElementById('edit-user-nivel').value = user.nivel;
     document.getElementById('edit-user-ativo').checked = user.ativo == 1;
     document.getElementById('edit-user-senha').required = false;
