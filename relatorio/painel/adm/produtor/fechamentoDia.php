@@ -51,114 +51,27 @@ $feiraId = 1;
 $dia = trim((string)($_GET['dia'] ?? date('Y-m-d')));
 if ($dia === '') $dia = date('Y-m-d');
 
-/* ===== Detecta tabela do seu DB: fechamento_dia ===== */
-$hasFechamentoDia = true; // Segundo db.sql ela existe
+/* ===== Filtros e Paginação ===== */
+$searchCpf = only_digits(trim((string)($_GET['cpf'] ?? '')));
+$perPage = 7;
+$page = (int)($_GET['p'] ?? 1);
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $perPage;
 
-/* ===== Romaneio do dia (busca se existe) ===== */
-$romaneioId = null;
-$romaneioStatus = 'ABERTO';
-try {
-  $stR = $pdo->prepare("SELECT id, status FROM romaneio_dia WHERE feira_id = :f AND data_ref = :d LIMIT 1");
-  $stR->execute([':f' => $feiraId, ':d' => $dia]);
-  $rowR = $stR->fetch();
-  if ($rowR) {
-    $romaneioId = (int)$rowR['id'];
-    $romaneioStatus = (string)$rowR['status'];
-  }
-} catch (Throwable $e) {}
-
-/* ===== Carrega fechamento existente (se houver) ===== */
-$fechamento = null;
-if ($hasFechamentoDia) {
-  try {
-    $stF = $pdo->prepare("
-      SELECT
-        id, feira_id, data_ref,
-        qtd_vendas, total_dia,
-        total_dinheiro, total_pix, total_cartao, total_outros,
-        observacao, criado_em, atualizado_em
-      FROM fechamento_dia
-      WHERE feira_id = :f AND data_ref = :d
-      LIMIT 1
-    ");
-    $stF->bindValue(':f', $feiraId, PDO::PARAM_INT);
-    $stF->bindValue(':d', $dia, PDO::PARAM_STR);
-    $stF->execute();
-    $fechamento = $stF->fetch() ?: null;
-  } catch (Throwable $e) {
-    $fechamento = null;
-  }
+function only_digits(string $s): string {
+  $out = preg_replace('/\D+/', '', $s);
+  return $out !== null ? $out : '';
 }
 
+/* ===== Resumo do dia (KPIs simplificados) ===== */
 $resumo = [
-  'vendas_qtd'      => 0,
-  'total_dia'       => 0.0,
-  'total_dinheiro'  => 0.0,
-  'total_pix'       => 0.0,
-  'total_cartao'    => 0.0,
-  'total_outros'    => 0.0,
-  'feirantes_qtd'   => 0,
-  'ticket_medio'    => 0.0,
-  // Entradas (Romaneio)
   'entradas_total'  => 0.0,
   'entradas_qtd'    => 0,
+  'feirantes_patio' => 0,
 ];
 
-$porFeirante = [];
-$topProdutos = [];
-
 try {
-  /* Totais por forma de pagamento (ignora CANCELADA) */
-  $st = $pdo->prepare("
-    SELECT
-      COUNT(*) AS vendas_qtd,
-      COALESCE(SUM(v.total), 0) AS total_dia,
-      COALESCE(SUM(CASE WHEN UPPER(v.forma_pagamento)='DINHEIRO' THEN v.total ELSE 0 END), 0) AS total_dinheiro,
-      COALESCE(SUM(CASE WHEN UPPER(v.forma_pagamento)='PIX'      THEN v.total ELSE 0 END), 0) AS total_pix,
-      COALESCE(SUM(CASE WHEN UPPER(v.forma_pagamento)='CARTAO'   THEN v.total ELSE 0 END), 0) AS total_cartao,
-      COALESCE(SUM(CASE WHEN UPPER(v.forma_pagamento)='OUTROS'   THEN v.total ELSE 0 END), 0) AS total_outros
-    FROM vendas v
-    WHERE v.feira_id = :f
-      AND DATE(v.data_hora) = :d
-      AND UPPER(v.status) <> 'CANCELADA'
-  ");
-  $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
-  $st->bindValue(':d', $dia, PDO::PARAM_STR);
-  $st->execute();
-  $r = $st->fetch() ?: null;
-
-  if ($r) {
-    $resumo['vendas_qtd']     = (int)($r['vendas_qtd'] ?? 0);
-    $resumo['total_dia']      = (float)($r['total_dia'] ?? 0);
-    $resumo['total_dinheiro'] = (float)($r['total_dinheiro'] ?? 0);
-    $resumo['total_pix']      = (float)($r['total_pix'] ?? 0);
-    $resumo['total_cartao']   = (float)($r['total_cartao'] ?? 0);
-    $resumo['total_outros']   = (float)($r['total_outros'] ?? 0);
-    $resumo['ticket_medio']   = $resumo['vendas_qtd'] > 0 ? ($resumo['total_dia'] / $resumo['vendas_qtd']) : 0.0;
-  }
-
-  /* Quantidade de feirantes (produtores) que tiveram itens ou vendas no dia */
-  $stFq = $pdo->prepare("
-    SELECT COUNT(DISTINCT p.id) 
-    FROM produtores p
-    LEFT JOIN romaneio_itens ri ON ri.produtor_id = p.id AND ri.romaneio_id = :rom
-    LEFT JOIN (
-        SELECT pr.produtor_id, v.id as venda_id
-        FROM venda_itens vi
-        JOIN vendas v ON v.id = vi.venda_id
-        JOIN produtos pr ON pr.id = vi.produto_id
-        WHERE v.feira_id = :f AND DATE(v.data_hora) = :d AND v.status <> 'CANCELADA'
-    ) vinfo ON vinfo.produtor_id = p.id
-    WHERE p.feira_id = :f AND (ri.id IS NOT NULL OR vinfo.venda_id IS NOT NULL)
-  ");
-  $stFq->execute([
-    ':f' => $feiraId, 
-    ':d' => $dia, 
-    ':rom' => ($romaneioId ?? -1)
-  ]);
-  $resumo['feirantes_qtd'] = (int)($stFq->fetchColumn() ?? 0);
-
-  /* Totais de Entradas (Romaneio) */
+  // Total Entradas
   if ($romaneioId) {
     $stE = $pdo->prepare("
       SELECT COUNT(*) as qtd, COALESCE(SUM(quantidade_entrada * preco_unitario_dia), 0) as total
@@ -171,30 +84,67 @@ try {
     $resumo['entradas_total'] = (float)$re['total'];
   }
 
-  /* Resumo por Feirante (Vendas vs Entradas) */
-  $st2 = $pdo->prepare("
-    SELECT 
-      p.id, p.nome,
-      (SELECT COALESCE(SUM(vi.subtotal),0) 
-       FROM vendas v 
-       JOIN venda_itens vi ON vi.venda_id = v.id 
-       JOIN produtos pr ON pr.id = vi.produto_id
-       WHERE pr.produtor_id = p.id AND DATE(v.data_hora) = :d AND v.status <> 'CANCELADA' AND v.feira_id = :f
-      ) as vendas_total,
-      (SELECT COALESCE(SUM(quantidade_entrada * preco_unitario_dia),0)
-       FROM romaneio_itens ri
-       WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom
-      ) as entradas_total
-    FROM produtores p
-    WHERE p.feira_id = :f AND p.ativo = 1
-    HAVING vendas_total > 0 OR entradas_total > 0
-    ORDER BY p.nome ASC
+  // Produtores no Pátio (com lançamentos no romaneio)
+  $stP = $pdo->prepare("SELECT COUNT(DISTINCT produtor_id) FROM romaneio_itens WHERE romaneio_id = :rom");
+  $stP->execute([':rom' => ($romaneioId ?? -1)]);
+  $resumo['feirantes_patio'] = (int)$stP->fetchColumn();
+
+} catch (Throwable $e) {}
+
+/* ===== Listagem de Produtores (com paginação e busca) ===== */
+$porFeirante = [];
+$totalProdutores = 0;
+$totalPages = 1;
+
+try {
+  $sqlWhere = " WHERE p.feira_id = :f AND p.ativo = 1 ";
+  $params = [':f' => $feiraId];
+
+  // Se houver busca por CPF
+  if ($searchCpf !== '') {
+    $sqlWhere .= " AND p.documento LIKE :cpf ";
+    $params[':cpf'] = "%$searchCpf%";
+  }
+
+  // Apenas produtores que tiveram lançamentos no dia
+  $sqlWhere .= " AND EXISTS (SELECT 1 FROM romaneio_itens ri WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom) ";
+  $params[':rom'] = ($romaneioId ?? -1);
+
+  // Total para paginação
+  $stCount = $pdo->prepare("SELECT COUNT(*) FROM produtores p $sqlWhere");
+  $stCount->execute($params);
+  $totalProdutores = (int)$stCount->fetchColumn();
+  $totalPages = max(1, (int)ceil($totalProdutores / $perPage));
+
+  if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $perPage;
+  }
+
+  // Lista paginada
+  $stList = $pdo->prepare("
+    SELECT p.id, p.nome, p.documento,
+           (SELECT COALESCE(SUM(quantidade_entrada * preco_unitario_dia), 0) 
+            FROM romaneio_itens ri 
+            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom) as total_lancado,
+           (SELECT COUNT(*) 
+            FROM romaneio_itens ri 
+            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom AND ri.quantidade_vendida IS NOT NULL) as itens_fechados,
+           (SELECT COUNT(*) 
+            FROM romaneio_itens ri 
+            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom) as total_itens
+    FROM produtores p 
+    $sqlWhere 
+    ORDER BY p.nome ASC 
+    LIMIT :lim OFFSET :off
   ");
-  $st2->bindValue(':f', $feiraId, PDO::PARAM_INT);
-  $st2->bindValue(':d', $dia, PDO::PARAM_STR);
-  $st2->bindValue(':rom', ($romaneioId ?? -1), PDO::PARAM_INT);
-  $st2->execute();
-  $porFeirante = $st2->fetchAll();
+  foreach ($params as $k => $v) $stList->bindValue($k, $v);
+  $stList->bindValue(':lim', $perPage, PDO::PARAM_INT);
+  $stList->bindValue(':off', $offset, PDO::PARAM_INT);
+  $stList->execute();
+  $porFeirante = $stList->fetchAll();
+
+} catch (Throwable $e) {}
 
   /* Top Produtos (por valor) */
   $st3 = $pdo->prepare("
@@ -236,68 +186,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  $acao = (string)($_POST['acao'] ?? '');
-  if ($acao === 'fechar') {
-    if (!$hasFechamentoDia) {
-      $_SESSION['flash_err'] = 'A tabela fechamento_dia não existe. Rode o SQL do fechamento.';
-      header('Location: ./fechamentoDia.php?dia=' . urlencode($dia));
-      exit;
-    }
-
-    $obs = trim((string)($_POST['observacao'] ?? ''));
+  /* ===== POST: Registrar fechamento individual (romaneio_itens) ===== */
+  if ($acao === 'fechar_individual') {
+    $produtorId = (int)($_POST['produtor_id'] ?? 0);
+    $vendas = $_POST['venda'] ?? []; // [item_id => qtd_vendida]
 
     try {
       $pdo->beginTransaction();
+      foreach ($vendas as $itemId => $qtd) {
+        $itemId = (int)$itemId;
+        $qtdVendida = (float)str_replace(',', '.', (string)$qtd);
+        
+        // Busca quantidade de entrada para calcular a sobra
+        $stQ = $pdo->prepare("SELECT quantidade_entrada FROM romaneio_itens WHERE id = :id AND produtor_id = :p");
+        $stQ->execute([':id' => $itemId, ':p' => $produtorId]);
+        $qtdEntrada = (float)$stQ->fetchColumn();
+        
+        $sobra = max(0, $qtdEntrada - $qtdVendida);
+        $totalBruto = $qtdVendida * 0; // Se quiser salvar o valor bruto aqui, precisaria do preço. Mas no individual o foco é estoque.
 
-      $ins = $pdo->prepare("
-        INSERT INTO fechamento_dia
-          (feira_id, data_ref, qtd_vendas, total_dia, total_dinheiro, total_pix, total_cartao, total_outros, observacao)
-        VALUES
-          (:f, :d, :q, :tot, :din, :pix, :car, :out, :obs)
-        ON DUPLICATE KEY UPDATE
-          qtd_vendas      = VALUES(qtd_vendas),
-          total_dia       = VALUES(total_dia),
-          total_dinheiro  = VALUES(total_dinheiro),
-          total_pix       = VALUES(total_pix),
-          total_cartao    = VALUES(total_cartao),
-          total_outros    = VALUES(total_outros),
-          observacao      = VALUES(observacao),
-          atualizado_em   = NOW()
-      ");
-      $ins->bindValue(':f', $feiraId, PDO::PARAM_INT);
-      $ins->bindValue(':d', $dia, PDO::PARAM_STR);
-      $ins->bindValue(':q', (int)$resumo['vendas_qtd'], PDO::PARAM_INT);
-      $ins->bindValue(':tot', number_format((float)$resumo['total_dia'], 2, '.', ''), PDO::PARAM_STR);
-      $ins->bindValue(':din', number_format((float)$resumo['total_dinheiro'], 2, '.', ''), PDO::PARAM_STR);
-      $ins->bindValue(':pix', number_format((float)$resumo['total_pix'], 2, '.', ''), PDO::PARAM_STR);
-      $ins->bindValue(':car', number_format((float)$resumo['total_cartao'], 2, '.', ''), PDO::PARAM_STR);
-      $ins->bindValue(':out', number_format((float)$resumo['total_outros'], 2, '.', ''), PDO::PARAM_STR);
-
-      if ($obs === '') $ins->bindValue(':obs', null, PDO::PARAM_NULL);
-      else $ins->bindValue(':obs', $obs, PDO::PARAM_STR);
-
-      $ins->execute();
-
-      // Atualiza status do romaneio_dia para FECHADO
-      if ($romaneioId) {
-        $upR = $pdo->prepare("UPDATE romaneio_dia SET status = 'FECHADO' WHERE id = :id");
-        $upR->execute([':id' => $romaneioId]);
+        $up = $pdo->prepare("
+          UPDATE romaneio_itens 
+          SET quantidade_vendida = :v, quantidade_sobra = :s, atualizado_em = NOW() 
+          WHERE id = :id AND produtor_id = :p
+        ");
+        $up->execute([
+          ':v'  => $qtdVendida,
+          ':s'  => $sobra,
+          ':id' => $itemId,
+          ':p'  => $produtorId
+        ]);
       }
-
       $pdo->commit();
-
-      $_SESSION['flash_ok'] = 'Fechamento do dia registrado/atualizado.';
-    } catch (PDOException $e) {
-      if ($pdo->inTransaction()) $pdo->rollBack();
-      $mysqlCode = (int)($e->errorInfo[1] ?? 0);
-      if ($mysqlCode === 1146) $_SESSION['flash_err'] = 'A tabela fechamento_dia não existe. Rode o SQL do fechamento.';
-      else $_SESSION['flash_err'] = 'Não foi possível registrar o fechamento agora.';
+      $_SESSION['flash_ok'] = 'Fechamento do produtor registrado com sucesso.';
     } catch (Throwable $e) {
       if ($pdo->inTransaction()) $pdo->rollBack();
-      $_SESSION['flash_err'] = 'Não foi possível registrar o fechamento agora.';
+      $_SESSION['flash_err'] = 'Erro ao registrar fechamento: ' . $e->getMessage();
     }
-
-    header('Location: ./fechamentoDia.php?dia=' . urlencode($dia));
+    header('Location: ./fechamentoDia.php?dia=' . urlencode($dia) . '&cpf=' . urlencode($searchCpf) . '&p=' . $page);
     exit;
   }
 }
@@ -678,199 +604,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card-body">
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
-                      <h4 class="card-title mb-0">Selecionar dia</h4>
-                      <p class="card-description mb-0">Escolha a data para calcular o resumo e registrar o fechamento.</p>
+                      <h4 class="card-title mb-0">Selecionar dia e Buscar Produtor</h4>
+                      <p class="card-description mb-0">Filtre por data e CPF para registrar o fechamento individual.</p>
                     </div>
                   </div>
 
-                  <div class="row mt-3">
-                    <div class="col-md-4 mb-2">
+                  <form method="get" action="" class="row mt-3">
+                    <div class="col-md-3 mb-2">
                       <label class="mb-1">Data</label>
-                      <input type="date" class="form-control" value="<?= h($dia) ?>"
-                        onchange="location.href='?dia='+this.value;">
+                      <input type="date" name="dia" class="form-control" value="<?= h($dia) ?>" onchange="this.form.submit();">
                     </div>
-
-                    <div class="col-md-8 mb-2 d-flex align-items-end">
-                      <div class="d-flex flex-wrap" style="gap:8px;">
-                        <a href="./lancamentos.php?dia=<?= h($dia) ?>" class="btn btn-light">
-                          <i class="ti-write mr-1"></i> Ver lançamentos do dia
-                        </a>
-                        <a href="./fechamentoDia.php" class="btn btn-light">
-                          <i class="ti-reload mr-1"></i> Hoje
-                        </a>
-                      </div>
+                    <div class="col-md-4 mb-2">
+                      <label class="mb-1">Buscar por CPF</label>
+                      <input type="text" name="cpf" class="form-control" value="<?= h($searchCpf) ?>" placeholder="Apenas dígitos..." oninput="this.value = this.value.replace(/\D/g,'')">
                     </div>
-                  </div>
+                    <div class="col-md-5 mb-2 d-flex align-items-end" style="gap:8px;">
+                      <button type="submit" class="btn btn-primary"><i class="ti-search mr-1"></i> Filtrar</button>
+                      <a href="./fechamentoDia.php?dia=<?= h($dia) ?>" class="btn btn-light"><i class="ti-reload mr-1"></i> Limpar</a>
+                      <a href="./lancamentos.php?dia=<?= h($dia) ?>" class="btn btn-light"><i class="ti-write mr-1"></i> Lançar Itens</a>
+                    </div>
+                  </form>
 
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- KPIs -->
           <div class="row">
-            <div class="col-md-3 mb-3">
+            <div class="col-md-6 mb-3">
               <div class="kpi-card">
-                <p class="kpi-label">Total Entradas</p>
+                <p class="kpi-label">Total Entradas (Romaneio)</p>
                 <p class="kpi-value">R$ <?= number_format($resumo['entradas_total'], 2, ',', '.') ?></p>
-                <div class="kpi-sub">Total lançado no Romaneio</div>
+                <div class="kpi-sub">Soma de tudo que os produtores trouxeram hoje.</div>
               </div>
             </div>
-            <div class="col-md-3 mb-3">
-              <div class="kpi-card" style="border-left: 4px solid #28a745;">
-                <p class="kpi-label">Total Vendas</p>
-                <p class="kpi-value">R$ <?= number_format($resumo['total_dia'], 2, ',', '.') ?></p>
-                <div class="kpi-sub">Somatório das vendas reais</div>
-              </div>
-            </div>
-            <div class="col-md-3 mb-3">
+            <div class="col-md-6 mb-3">
               <div class="kpi-card">
-                <p class="kpi-label">Lançamentos / Vendas</p>
-                <p class="kpi-value"><?= (int)$resumo['entradas_qtd'] ?> / <?= (int)$resumo['vendas_qtd'] ?></p>
-                <div class="kpi-sub">Itens entregues vs Cupons</div>
-              </div>
-            </div>
-            <div class="col-md-3 mb-3">
-              <div class="kpi-card">
-                <p class="kpi-label">Feirantes Ativos</p>
-                <p class="kpi-value"><?= (int)$resumo['feirantes_qtd'] ?></p>
-                <div class="kpi-sub">Produtores no pátio hoje</div>
+                <p class="kpi-label">Produtores no Pátio</p>
+                <p class="kpi-value"><?= $resumo['feirantes_patio'] ?></p>
+                <div class="kpi-sub"><?= $resumo['entradas_qtd'] ?> itens lançados no dia.</div>
               </div>
             </div>
           </div>
 
-          <!-- QUEBRA POR PAGAMENTO -->
-          <div class="row">
-            <div class="col-md-3 mb-3">
-              <div class="kpi-card">
-                <p class="kpi-label">Dinheiro</p>
-                <p class="kpi-value">R$ <?= number_format($resumo['total_dinheiro'], 2, ',', '.') ?></p>
-              </div>
-            </div>
-            <div class="col-md-3 mb-3">
-              <div class="kpi-card">
-                <p class="kpi-label">Pix</p>
-                <p class="kpi-value">R$ <?= number_format($resumo['total_pix'], 2, ',', '.') ?></p>
-              </div>
-            </div>
-            <div class="col-md-3 mb-3">
-              <div class="kpi-card">
-                <p class="kpi-label">Cartão</p>
-                <p class="kpi-value">R$ <?= number_format($resumo['total_cartao'], 2, ',', '.') ?></p>
-              </div>
-            </div>
-            <div class="col-md-3 mb-3">
-              <div class="kpi-card">
-                <p class="kpi-label">Outros</p>
-                <p class="kpi-value">R$ <?= number_format($resumo['total_outros'], 2, ',', '.') ?></p>
-              </div>
-            </div>
-          </div>
-
-          <!-- REGISTRAR FECHAMENTO -->
+          <!-- LISTAGEM DE PRODUTORES -->
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
                 <div class="card-body">
+                  <h4 class="card-title">Produtores com Lançamentos</h4>
+                  <p class="card-description">Lista de feirantes que entregaram produtos no dia <?= h($dia) ?>.</p>
 
-                  <div class="d-flex align-items-center justify-content-between flex-wrap">
-                    <div>
-                      <h4 class="card-title mb-0">Registrar Fechamento</h4>
-                      <p class="card-description mb-0">Salva em <b>fechamento_dia</b> (por feira + data_ref). Se já existir, atualiza.</p>
-                    </div>
-                  </div>
-
-                  <hr>
-
-                  <?php if (!$hasFechamentoDia): ?>
-                    <div class="alert alert-warning" role="alert" style="border-radius:12px;">
-                      <b>Atenção:</b> a tabela <b>fechamento_dia</b> não foi encontrada neste banco.
-                    </div>
-                  <?php else: ?>
-
-                    <?php if ($fechamento): ?>
-                      <div class="alert alert-success" role="alert" style="border-radius:12px;">
-                        <b>Já existe fechamento registrado</b> para <b><?= h($dia) ?></b>.
-                        <div class="mt-2">
-                          <div><b>Qtd vendas:</b> <?= (int)($fechamento['qtd_vendas'] ?? 0) ?></div>
-                          <div><b>Total:</b> R$ <?= number_format((float)($fechamento['total_dia'] ?? 0), 2, ',', '.') ?></div>
-                          <div class="mini">
-                            Dinheiro: R$ <?= number_format((float)($fechamento['total_dinheiro'] ?? 0), 2, ',', '.') ?> •
-                            Pix: R$ <?= number_format((float)($fechamento['total_pix'] ?? 0), 2, ',', '.') ?> •
-                            Cartão: R$ <?= number_format((float)($fechamento['total_cartao'] ?? 0), 2, ',', '.') ?> •
-                            Outros: R$ <?= number_format((float)($fechamento['total_outros'] ?? 0), 2, ',', '.') ?>
-                          </div>
-                          <?php if (!empty($fechamento['observacao'])): ?>
-                            <div class="mt-1"><b>Obs:</b> <?= h($fechamento['observacao']) ?></div>
-                          <?php endif; ?>
-                        </div>
-                      </div>
-                    <?php endif; ?>
-
-                    <form method="post" action="./fechamentoDia.php?dia=<?= h($dia) ?>">
-                      <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                      <input type="hidden" name="acao" value="fechar">
-
-                      <div class="row">
-                        <div class="col-md-9 mb-2">
-                          <label class="mb-1">Observação (opcional)</label>
-                          <input type="text" class="form-control" name="observacao"
-                            value="<?= h((string)($fechamento['observacao'] ?? '')) ?>"
-                            placeholder="Ex.: conferido / pendência X">
-                        </div>
-                        <div class="col-md-3 mb-2 d-flex align-items-end">
-                          <button type="submit" class="btn btn-primary w-100"
-                            onclick="return confirm('Registrar/atualizar fechamento do dia <?= h($dia) ?>?');">
-                            <i class="ti-check mr-1"></i> Registrar
-                          </button>
-                        </div>
-                      </div>
-
-                      <small class="text-muted d-block mt-2">
-                        O sistema salva: qtd_vendas, total_dia e totais por forma de pagamento (Dinheiro/Pix/Cartão/Outros).
-                      </small>
-                    </form>
-
-                  <?php endif; ?>
-
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- RESUMO POR FEIRANTE -->
-          <div class="row">
-            <div class="col-lg-7 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-
-                  <div class="d-flex align-items-center justify-content-between flex-wrap">
-                    <div>
-                      <h4 class="card-title mb-0">Resumo por Feirante</h4>
-                      <p class="card-description mb-0">Soma dos itens por produtor (no dia).</p>
-                    </div>
-                  </div>
-
-                  <div class="table-responsive pt-3">
+                  <div class="table-responsive pt-2">
                     <table class="table table-striped table-hover">
                       <thead>
                         <tr>
-                          <th>Feirante</th>
-                          <th style="width:150px;">Entradas (Romaneio)</th>
-                          <th style="width:150px;">Vendas Reais</th>
+                          <th>Produtor</th>
+                          <th>CPF</th>
+                          <th>Total Lançado</th>
+                          <th>Status</th>
+                          <th style="width:180px;">Ação</th>
                         </tr>
                       </thead>
                       <tbody>
                         <?php if (empty($porFeirante)): ?>
                           <tr>
-                            <td colspan="3" class="text-center text-muted py-4">Nenhum dado para este dia.</td>
+                            <td colspan="5" class="text-center py-4 text-muted">Nenhum produtor encontrado com lançamentos nesta data.</td>
                           </tr>
                         <?php else: ?>
-                          <?php foreach ($porFeirante as $p): ?>
+                          <?php foreach ($porFeirante as $p): 
+                            $completo = ($p['itens_fechados'] >= $p['total_itens']);
+                          ?>
                             <tr>
-                              <td><?= h($p['nome'] ?? '') ?></td>
-                              <td>R$ <?= number_format((float)($p['entradas_total'] ?? 0), 2, ',', '.') ?></td>
-                              <td><b>R$ <?= number_format((float)($p['vendas_total'] ?? 0), 2, ',', '.') ?></b></td>
+                              <td><b><?= h($p['nome']) ?></b></td>
+                              <td><?= h($p['documento']) ?></td>
+                              <td>R$ <?= number_format((float)$p['total_lancado'], 2, ',', '.') ?></td>
+                              <td>
+                                <?php if ($completo): ?>
+                                  <span class="badge badge-success">Fechado</span>
+                                <?php else: ?>
+                                  <span class="badge badge-warning">Pendente (<?= $p['itens_fechados'] ?>/<?= $p['total_itens'] ?>)</span>
+                                <?php endif; ?>
+                              </td>
+                              <td>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="abrirModalFechamento(<?= $p['id'] ?>, '<?= addslashes(h($p['nome'])) ?>')">
+                                  <i class="ti-check-box mr-1"></i> Fechar Produção
+                                </button>
+                              </td>
                             </tr>
                           <?php endforeach; ?>
                         <?php endif; ?>
@@ -878,48 +698,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </table>
                   </div>
 
-                </div>
-              </div>
-            </div>
-
-            <!-- TOP PRODUTOS -->
-            <div class="col-lg-5 grid-margin stretch-card">
-              <div class="card">
-                <div class="card-body">
-
-                  <div class="d-flex align-items-center justify-content-between flex-wrap">
-                    <div>
-                      <h4 class="card-title mb-0">Top Produtos</h4>
-                      <p class="card-description mb-0">Mais vendidos (por valor) no dia.</p>
-                    </div>
-                  </div>
-
-                  <div class="table-responsive pt-3">
-                    <table class="table table-striped table-hover">
-                      <thead>
-                        <tr>
-                          <th>Produto</th>
-                          <th style="width:90px;">Qtd</th>
-                          <th style="width:150px;">Valor</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php if (empty($topProdutos)): ?>
-                          <tr>
-                            <td colspan="3" class="text-center text-muted py-4">Nenhum dado para este dia.</td>
-                          </tr>
-                        <?php else: ?>
-                          <?php foreach ($topProdutos as $tp): ?>
-                            <tr>
-                              <td><?= h($tp['nome'] ?? '') ?></td>
-                              <td><?= number_format((float)($tp['qtd_total'] ?? 0), 3, ',', '.') ?></td>
-                              <td><b>R$ <?= number_format((float)($tp['valor_total'] ?? 0), 2, ',', '.') ?></b></td>
-                            </tr>
-                          <?php endforeach; ?>
-                        <?php endif; ?>
-                      </tbody>
-                    </table>
-                  </div>
+                  <!-- PAGINAÇÃO -->
+                  <?php if ($totalPages > 1): ?>
+                    <nav class="mt-4">
+                      <ul class="pagination pagination-sm justify-content-center">
+                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                          <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                            <a class="page-link" href="?dia=<?= h($dia) ?>&cpf=<?= h($searchCpf) ?>&p=<?= $i ?>"><?= $i ?></a>
+                          </li>
+                        <?php endfor; ?>
+                      </ul>
+                    </nav>
+                  <?php endif; ?>
 
                 </div>
               </div>
@@ -942,6 +732,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
+  <!-- MODAL FECHAMENTO -->
+  <div class="modal fade" id="modalFechamento" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content" style="border-radius:16px;">
+        <form method="post" action="">
+          <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+          <input type="hidden" name="acao" value="fechar_individual">
+          <input type="hidden" name="produtor_id" id="modal_produtor_id">
+
+          <div class="modal-header">
+            <h5 class="modal-title">Fechar Produção: <span id="modal_produtor_nome" class="text-primary font-weight-bold"></span></h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted small mb-3">Informe a quantidade vendida de cada produto lançado no dia <?= h($dia) ?>.</p>
+            <div id="modal_itens_body">
+               <div class="text-center py-4"><i class="ti-reload spin"></i> Carregando itens...</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary"><i class="ti-check mr-1"></i> Confirmar Fechamento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
@@ -953,6 +773,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
+  <script>
+    function abrirModalFechamento(id, nome) {
+      $('#modal_produtor_id').val(id);
+      $('#modal_produtor_nome').text(nome);
+      $('#modal_itens_body').html('<div class="text-center py-4"><i class="ti-reload spin"></i> Carregando itens...</div>');
+      $('#modal_itens_body').load('ajax_itens_fechamento.php?id=' + id + '&dia=<?= urlencode($dia) ?>');
+      $('#modalFechamento').modal('show');
+    }
+
+    function toggleVendeuTudo(itemId, qtdTotal) {
+      let input = document.getElementById('venda_' + itemId);
+      let btn = event.currentTarget;
+      if (btn.classList.contains('btn-outline-success')) {
+        input.value = qtdTotal;
+        btn.classList.remove('btn-outline-success');
+        btn.classList.add('btn-success');
+        btn.innerHTML = '<i class="ti-check"></i> Vendeu Tudo';
+      } else {
+        input.value = '';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-success');
+        btn.innerHTML = 'Vendeu Tudo?';
+      }
+    }
+  </script>
 </body>
 
 </html>
