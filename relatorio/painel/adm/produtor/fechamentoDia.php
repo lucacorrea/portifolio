@@ -110,8 +110,12 @@ $totalProdutores = 0;
 $totalPages = 1;
 
 try {
-  $sqlWhere = " WHERE p.feira_id = :f AND p.ativo = 1 ";
-  $params = [':f' => $feiraId];
+  // Filtros base
+  $sqlWhere = " WHERE p.feira_id = :f AND p.ativo = 1 AND ri.romaneio_id = :rom ";
+  $params = [
+    ':f' => $feiraId,
+    ':rom' => ($romaneioId ?? -1)
+  ];
 
   // Se houver busca por CPF
   if ($searchCpf !== '') {
@@ -119,12 +123,13 @@ try {
     $params[':cpf'] = "%$searchCpf%";
   }
 
-  // Apenas produtores que tiveram lançamentos no dia
-  $sqlWhere .= " AND EXISTS (SELECT 1 FROM romaneio_itens ri WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom) ";
-  $params[':rom'] = ($romaneioId ?? -1);
-
   // Total para paginação
-  $stCount = $pdo->prepare("SELECT COUNT(*) FROM produtores p $sqlWhere");
+  $stCount = $pdo->prepare("
+    SELECT COUNT(DISTINCT p.id) 
+    FROM produtores p 
+    JOIN romaneio_itens ri ON ri.produtor_id = p.id
+    $sqlWhere
+  ");
   $stCount->execute($params);
   $totalProdutores = (int)$stCount->fetchColumn();
   $totalPages = max(1, (int)ceil($totalProdutores / $perPage));
@@ -134,33 +139,24 @@ try {
     $offset = ($page - 1) * $perPage;
   }
 
-  // Lista paginada
+  // Lista paginada usando JOIN e GROUP BY (mais seguro e performático)
   $stList = $pdo->prepare("
-    SELECT p.id, p.nome, p.documento,
-           (SELECT COALESCE(SUM(quantidade_entrada * preco_unitario_dia), 0) 
-            FROM romaneio_itens ri 
-            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom1) as total_lancado,
-           (SELECT COUNT(*) 
-            FROM romaneio_itens ri 
-            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom2 AND ri.quantidade_vendida IS NOT NULL) as itens_fechados,
-           (SELECT COUNT(*) 
-            FROM romaneio_itens ri 
-            WHERE ri.produtor_id = p.id AND ri.romaneio_id = :rom3) as total_itens
+    SELECT 
+      p.id, p.nome, p.documento,
+      SUM(ri.quantidade_entrada * ri.preco_unitario_dia) as total_lancado,
+      COUNT(ri.quantidade_vendida) as itens_fechados,
+      COUNT(ri.id) as total_itens
     FROM produtores p 
+    JOIN romaneio_itens ri ON ri.produtor_id = p.id
     $sqlWhere 
+    GROUP BY p.id, p.nome, p.documento
     ORDER BY p.nome ASC 
     LIMIT :lim OFFSET :off
   ");
   
-  // Bind parameters (Manual binding to handle multiple uses of Romaneio ID)
-  $romIdVal = ($romaneioId ?? -1);
-  $stList->bindValue(':f', $feiraId, PDO::PARAM_INT);
-  $stList->bindValue(':rom', $romIdVal, PDO::PARAM_INT);
-  $stList->bindValue(':rom1', $romIdVal, PDO::PARAM_INT);
-  $stList->bindValue(':rom2', $romIdVal, PDO::PARAM_INT);
-  $stList->bindValue(':rom3', $romIdVal, PDO::PARAM_INT);
-  if ($searchCpf !== '') {
-    $stList->bindValue(':cpf', "%$searchCpf%", PDO::PARAM_STR);
+  // Bind parameters
+  foreach ($params as $k => $v) {
+    $stList->bindValue($k, $v);
   }
   $stList->bindValue(':lim', $perPage, PDO::PARAM_INT);
   $stList->bindValue(':off', $offset, PDO::PARAM_INT);
