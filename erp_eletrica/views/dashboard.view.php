@@ -64,13 +64,13 @@
                         <div class="text-muted small">Itens em estoque crítico</div>
                     </div>
                 </div>
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center mb-4">
                     <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
-                        <i class="fas fa-screwdriver-wrench text-primary fs-4"></i>
+                        <i class="fas fa-cash-register text-primary fs-4"></i>
                     </div>
                     <div>
-                        <div class="fw-bold fs-4"><?= $stats['pedidos_pendentes'] ?></div>
-                        <div class="text-muted small">O.S. Aguardando execução</div>
+                        <div class="fw-bold fs-4">PDV</div>
+                        <div class="text-muted small">Iniciar nova venda rápida</div>
                     </div>
                 </div>
             </div>
