@@ -3,6 +3,9 @@
 declare(strict_types=1);
 session_start();
 
+/* Timezone (Amazonas) */
+date_default_timezone_set('America/Manaus');
+
 /* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
   header('Location: ../../../index.php');
@@ -35,6 +38,11 @@ $csrf = (string)$_SESSION['csrf_token'];
 /* ===== Conexão ===== */
 require '../../../assets/php/conexao.php';
 $pdo = db();
+
+/* Força timezone do MySQL (Amazonas = -04:00) */
+try {
+    $pdo->exec("SET time_zone = '-04:00'");
+} catch (Throwable $e) {}
 
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
@@ -134,11 +142,20 @@ try {
     SELECT COUNT(DISTINCT p.id) 
     FROM produtores p
     LEFT JOIN romaneio_itens ri ON ri.produtor_id = p.id AND ri.romaneio_id = :rom
-    LEFT JOIN venda_itens vi ON vi.produto_id IN (SELECT id FROM produtos WHERE produtor_id = p.id)
-    LEFT JOIN vendas v ON v.id = vi.venda_id AND DATE(v.data_hora) = :d AND v.status <> 'CANCELADA'
-    WHERE p.feira_id = :f AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)
+    LEFT JOIN (
+        SELECT pr.produtor_id, v.id as venda_id
+        FROM venda_itens vi
+        JOIN vendas v ON v.id = vi.venda_id
+        JOIN produtos pr ON pr.id = vi.produto_id
+        WHERE v.feira_id = :f AND DATE(v.data_hora) = :d AND v.status <> 'CANCELADA'
+    ) vinfo ON vinfo.produtor_id = p.id
+    WHERE p.feira_id = :f AND (ri.id IS NOT NULL OR vinfo.venda_id IS NOT NULL)
   ");
-  $stFq->execute([':f' => $feiraId, ':d' => $dia, ':rom' => $romaneioId]);
+  $stFq->execute([
+    ':f' => $feiraId, 
+    ':d' => $dia, 
+    ':rom' => ($romaneioId ?? -1)
+  ]);
   $resumo['feirantes_qtd'] = (int)($stFq->fetchColumn() ?? 0);
 
   /* Totais de Entradas (Romaneio) */
@@ -175,7 +192,7 @@ try {
   ");
   $st2->bindValue(':f', $feiraId, PDO::PARAM_INT);
   $st2->bindValue(':d', $dia, PDO::PARAM_STR);
-  $st2->bindValue(':rom', $romaneioId, PDO::PARAM_INT);
+  $st2->bindValue(':rom', ($romaneioId ?? -1), PDO::PARAM_INT);
   $st2->execute();
   $porFeirante = $st2->fetchAll();
 

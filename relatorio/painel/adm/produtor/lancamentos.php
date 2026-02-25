@@ -2,6 +2,9 @@
 declare(strict_types=1);
 session_start();
 
+/* Timezone (Amazonas) */
+date_default_timezone_set('America/Manaus');
+
 /*
   lancamentos.php (somente CADASTRO, sem lista)
   - Lança item no romaneio do dia usando CPF do produtor
@@ -29,6 +32,12 @@ if (!in_array('ADMIN', $perfis, true)) {
 }
 
 require '../../../assets/php/conexao.php';
+$pdo = db();
+
+/* Força timezone do MySQL (Amazonas = -04:00) */
+try {
+    $pdo->exec("SET time_zone = '-04:00'");
+} catch (Throwable $e) {}
 
 function h($s): string {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
