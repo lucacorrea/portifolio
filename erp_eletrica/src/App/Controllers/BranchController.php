@@ -8,16 +8,10 @@ class BranchController extends BaseController {
         $model = new Filial();
         $branches = $model->all();
 
-        ob_start();
-        $data = ['branches' => $branches];
-        extract($data);
-        require __DIR__ . "/../../../views/branches.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('branches', [
+            'branches' => $branches,
             'title' => 'Gestão de Filiais & Unidades',
-            'pageTitle' => 'Administração de Unidades de Negócio',
-            'content' => $content
+            'pageTitle' => 'Administração de Unidades de Negócio'
         ]);
     }
 }

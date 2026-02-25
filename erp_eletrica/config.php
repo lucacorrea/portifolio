@@ -74,26 +74,5 @@ $_SESSION['LAST_ACTIVITY'] = time();
 function checkAuth($niveis_permitidos = []) {
     \App\Services\AuthService::check($niveis_permitidos);
 }
-
-function gerarProximoNumeroOS($pdo) {
-    try {
-        $prefix = 'OS-' . date('Y-m');
-        $stmt = $pdo->prepare("SELECT numero_os FROM os WHERE numero_os LIKE ? ORDER BY id DESC LIMIT 1");
-        $stmt->execute([$prefix . '-%']);
-        $last = $stmt->fetch();
-        
-        if ($last) {
-            $parts = explode('-', $last['numero_os']);
-            $lastNum = (int)end($parts);
-            $nextNum = $lastNum + 1;
-        } else {
-            $nextNum = 1;
-        }
-        
-        return $prefix . '-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
-    } catch (PDOException $e) {
-        return 'OS-' . date('YmdHis'); // Fallback
-    }
-}
 ?>
 

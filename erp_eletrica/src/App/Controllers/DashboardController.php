@@ -51,22 +51,13 @@ class DashboardController extends BaseController {
             ORDER BY v.data_venda DESC LIMIT 5
         ")->fetchAll();
 
-        // Capture view content
-        ob_start();
-        $data = [
+        $this->render('dashboard', [
             'stats' => $stats,
             'top_produtos' => $top_produtos,
             'recentes_vendas' => $recentes_vendas,
-            'faturamento_historico' => $faturamento_historico
-        ];
-        extract($data);
-        require __DIR__ . "/../../../views/dashboard.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+            'faturamento_historico' => $faturamento_historico,
             'title' => 'Gestão de Materiais Elétricos',
-            'pageTitle' => 'Painel de Operações Comerciais',
-            'content' => $content
+            'pageTitle' => 'Painel de Operações Comerciais'
         ]);
     }
 }

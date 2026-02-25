@@ -10,16 +10,10 @@ class SalesController extends BaseController {
         $saleModel = new Sale();
         $sales = $saleModel->getRecent();
 
-        ob_start();
-        $data = ['sales' => $sales];
-        extract($data);
-        require __DIR__ . "/../../../views/sales.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('sales', [
+            'sales' => $sales,
             'title' => 'Ponto de Venda & Checkout',
-            'pageTitle' => 'Terminal de Vendas (PDV)',
-            'content' => $content
+            'pageTitle' => 'Terminal de Vendas (PDV)'
         ]);
     }
 

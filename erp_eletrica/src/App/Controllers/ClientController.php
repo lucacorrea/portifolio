@@ -14,16 +14,11 @@ class ClientController extends BaseController {
             $clients = $model->all();
         }
 
-        ob_start();
-        $data = ['clients' => $clients, 'searchTerm' => $searchTerm];
-        extract($data);
-        require __DIR__ . "/../../../views/clients.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('clients', [
+            'clients' => $clients,
+            'searchTerm' => $searchTerm,
             'title' => 'Gestão de Clientes',
-            'pageTitle' => 'Base de Clientes Corporativos',
-            'content' => $content
+            'pageTitle' => 'Base de Clientes Corporativos'
         ]);
     }
 

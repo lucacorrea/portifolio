@@ -13,10 +13,10 @@ class AccountReceivable extends BaseModel {
 
     public function getRecent($limit = 20) {
         return $this->query("
-            SELECT cr.*, os.numero_os, c.nome as cliente_nome 
+            SELECT cr.*, v.id as venda_id, c.nome as cliente_nome 
             FROM {$this->table} cr 
-            LEFT JOIN os ON cr.os_id = os.id 
-            LEFT JOIN clientes c ON os.cliente_id = c.id 
+            LEFT JOIN vendas v ON cr.venda_id = v.id 
+            LEFT JOIN clientes c ON v.cliente_id = c.id 
             ORDER BY cr.data_vencimento ASC LIMIT $limit
         ")->fetchAll();
     }

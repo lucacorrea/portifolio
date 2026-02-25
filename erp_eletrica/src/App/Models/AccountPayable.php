@@ -13,9 +13,8 @@ class AccountPayable extends BaseModel {
 
     public function getRecent($limit = 20) {
         return $this->query("
-            SELECT cp.*, cc.nome as centro_custo 
+            SELECT cp.* 
             FROM {$this->table} cp 
-            LEFT JOIN centros_custo cc ON cp.centro_custo_id = cc.id 
             ORDER BY cp.data_vencimento ASC LIMIT $limit
         ")->fetchAll();
     }
