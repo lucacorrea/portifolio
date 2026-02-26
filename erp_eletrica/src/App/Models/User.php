@@ -109,5 +109,30 @@ class User extends BaseModel {
             $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
             return $this->query($sql, $params);
         }
+    public function paginate($perPage = 15, $currentPage = 1, $order = "u.id DESC") {
+        $filialId = $this->getFilialContext();
+        $offset = ($currentPage - 1) * $perPage;
+        
+        $where = $filialId ? "WHERE u.filial_id = $filialId" : "";
+        
+        $total = $this->query("SELECT COUNT(*) FROM {$this->table} u $where")->fetchColumn();
+        $pages = ceil($total / $perPage);
+        
+        $sql = "SELECT u.*, f.nome as filial_nome 
+                FROM {$this->table} u 
+                LEFT JOIN filiais f ON u.filial_id = f.id 
+                $where 
+                ORDER BY {$order} 
+                LIMIT $perPage OFFSET $offset";
+        
+        $data = $this->query($sql)->fetchAll();
+        
+        return [
+            'data' => $data,
+            'total' => $total,
+            'pages' => $pages,
+            'current' => $currentPage,
+            'per_page' => $perPage
+        ];
     }
 }
