@@ -62,37 +62,33 @@
       color: #111827;
     }
 
-    /* ✅ FIX DROPDOWN PERFIL: evita sobreposição do e-mail */
+    /* ✅ Dropdown do profile: largura acompanha o texto */
+    .profile-box .dropdown-menu {
+      width: max-content;
+      /* adapta ao conteúdo */
+      min-width: 260px;
+      /* mínimo pra ficar bonito */
+      max-width: calc(100vw - 24px);
+      /* não estoura a tela */
+    }
+
+    /* Mantém o bloco do autor acompanhando a largura do dropdown */
     .profile-box .dropdown-menu .author-info {
-      display: flex !important;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-      max-width: 320px;
-      /* ajuste se quiser */
+      width: max-content;
+      max-width: 100%;
     }
 
-    .profile-box .dropdown-menu .author-info .image {
-      flex: 0 0 auto;
-    }
-
+    /* Conteúdo pode crescer */
     .profile-box .dropdown-menu .author-info .content {
-      flex: 1 1 auto;
       min-width: 0;
-      /* essencial para overflow funcionar */
     }
 
+    /* Se você quer o e-mail em 1 linha (sem quebrar) */
     .profile-box .dropdown-menu .author-info .content a {
-        display:block; max-width:100%;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      }
-
-    /* Se você preferir reticências em 1 linha, troque o bloco acima por:
-      .profile-box .dropdown-menu .author-info .content a {
-        display:block; max-width:100%;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      }
-      */
+      display: inline-block;
+      white-space: nowrap;
+      /* não quebra linha */
+    }
   </style>
 </head>
 
