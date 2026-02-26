@@ -35,13 +35,18 @@ class User extends BaseModel {
     
     public function findAdmins() {
         $filialId = $_SESSION['filial_id'] ?? null;
-        $sql = "SELECT id, nome, auth_type FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1";
+        
+        // Try exact match for Branch
+        $sql = "SELECT id, nome, auth_type, auth_pin FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1";
         $params = [];
         if ($filialId) {
-            $sql .= " AND filial_id = ?";
-            $params[] = $filialId;
+            $sqlBranch = $sql . " AND filial_id = ?";
+            $res = $this->query($sqlBranch, [$filialId])->fetchAll();
+            if (!empty($res)) return $res;
         }
-        return $this->query($sql, $params)->fetchAll();
+
+        // Fallback: any active admin (if branch admin not found)
+        return $this->query($sql)->fetchAll();
     }
 
     public function validateAuth($userId, $credential) {
@@ -56,14 +61,13 @@ class User extends BaseModel {
     }
 
     public function save($data) {
-        $hasDiscountCol = $this->columnExists('desconto_maximo');
         $hasAuthCols = $this->columnExists('auth_pin');
         
         if (!empty($data['id'])) {
             $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ?, filial_id = ? ";
             $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo'], $data['filial_id']];
             
-            if ($hasDiscountCol) {
+            if ($this->columnExists('desconto_maximo')) {
                 $sql .= ", desconto_maximo = ? ";
                 $params[] = $data['desconto_maximo'] ?? 0;
             }
@@ -83,24 +87,27 @@ class User extends BaseModel {
             return $this->query($sql, $params);
         } else {
             $senha = password_hash($data['senha'], PASSWORD_DEFAULT);
-            $fields = "nome, email, senha, nivel, ativo, filial_id";
-            $values = "?, ?, ?, ?, ?, ?";
-            $params = [$data['nome'], $data['email'], $senha, $data['nivel'], $data['ativo'], $data['filial_id']];
+            $fields = ["nome", "email", "senha", "nivel", "ativo", "filial_id"];
+            $placeholders = ["?", "?", "?", "?", "?", "?"];
+            $params = [$data['nome'], $data['email'], $senha, $data['nivel'], (int)$data['ativo'], $data['filial_id']];
             
-            if ($hasDiscountCol) {
-                $fields .= ", desconto_maximo";
-                $values .= ", ?";
+            if ($this->columnExists('desconto_maximo')) {
+                $fields[] = "desconto_maximo";
+                $placeholders[] = "?";
                 $params[] = $data['desconto_maximo'] ?? 0;
             }
 
             if ($hasAuthCols) {
-                $fields .= ", auth_pin, auth_type";
-                $values .= ", ?, ?";
+                $fields[] = "auth_pin";
+                $fields[] = "auth_type";
+                $placeholders[] = "?";
+                $placeholders[] = "?";
                 $params[] = !empty($data['auth_pin']) ? $data['auth_pin'] : null;
                 $params[] = $data['auth_type'] ?? 'password';
             }
 
-            return $this->query("INSERT INTO {$this->table} ($fields) VALUES ($values)", $params);
+            $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
+            return $this->query($sql, $params);
         }
     }
 }

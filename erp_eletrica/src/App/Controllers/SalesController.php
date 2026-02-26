@@ -183,7 +183,7 @@ class SalesController extends BaseController {
             $credential = $data['credential'] ?? null;
 
             if (!$userId || !$credential) {
-                echo json_encode(['success' => false, 'error' => 'Dados incompletos']);
+                echo json_encode(['success' => false, 'error' => 'Dados incompletos (ID ou Senha ausentes)']);
                 exit;
             }
 
@@ -191,7 +191,7 @@ class SalesController extends BaseController {
             if ($userModel->validateAuth($userId, $credential)) {
                 echo json_encode(['success' => true]);
             } else {
-                echo json_encode(['success' => false, 'error' => 'Credencial inválida']);
+                echo json_encode(['success' => false, 'error' => 'Credencial inválida para este Administrador. Verifique se digitou a senha ou PIN correto.']);
             }
             exit;
         }
