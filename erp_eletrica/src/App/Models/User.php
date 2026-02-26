@@ -34,9 +34,17 @@ class User extends BaseModel {
     }
     
     public function save($data) {
+        $hasDiscountCol = $this->columnExists('desconto_maximo');
+        
         if (!empty($data['id'])) {
-            $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ?, filial_id = ?, desconto_maximo = ? ";
-            $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo'], $data['filial_id'], $data['desconto_maximo'] ?? 0];
+            $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ?, filial_id = ? ";
+            $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo'], $data['filial_id']];
+            
+            if ($hasDiscountCol) {
+                $sql .= ", desconto_maximo = ? ";
+                $params[] = $data['desconto_maximo'] ?? 0;
+            }
+
             if (!empty($data['senha'])) {
                 $sql .= ", senha = ? ";
                 $params[] = password_hash($data['senha'], PASSWORD_DEFAULT);
@@ -46,10 +54,17 @@ class User extends BaseModel {
             return $this->query($sql, $params);
         } else {
             $senha = password_hash($data['senha'], PASSWORD_DEFAULT);
-            return $this->query(
-                "INSERT INTO {$this->table} (nome, email, senha, nivel, ativo, filial_id, desconto_maximo) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [$data['nome'], $data['email'], $senha, $data['nivel'], $data['ativo'], $data['filial_id'], $data['desconto_maximo'] ?? 0]
-            );
+            $fields = "nome, email, senha, nivel, ativo, filial_id";
+            $values = "?, ?, ?, ?, ?, ?";
+            $params = [$data['nome'], $data['email'], $senha, $data['nivel'], $data['ativo'], $data['filial_id']];
+            
+            if ($hasDiscountCol) {
+                $fields .= ", desconto_maximo";
+                $values .= ", ?";
+                $params[] = $data['desconto_maximo'] ?? 0;
+            }
+
+            return $this->query("INSERT INTO {$this->table} ($fields) VALUES ($values)", $params);
         }
     }
 }

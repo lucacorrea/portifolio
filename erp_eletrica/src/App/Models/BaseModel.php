@@ -20,6 +20,11 @@ abstract class BaseModel {
         return $_SESSION['filial_id'];
     }
 
+    protected function columnExists($column) {
+        $stmt = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE '$column'");
+        return (bool)$stmt->fetch();
+    }
+
     protected function getTenantColumn() {
         if ($this->tenantCol !== 'UNSET') return $this->tenantCol;
 
