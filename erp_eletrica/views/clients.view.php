@@ -26,9 +26,10 @@
                 <thead class="bg-light">
                     <tr>
                         <th class="ps-4">Nome / Razão Social</th>
+                        <th class="ps-4">Cliente / Contato</th>
                         <th>CPF / CNPJ</th>
-                        <th>Contatos</th>
-                        <th>Localização</th>
+                        <th>Cidade / UF</th>
+                        <th class="text-end">LTV (Acumulado)</th>
                         <th class="text-end pe-4">Ações</th>
                     </tr>
                 </thead>
@@ -46,21 +47,28 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="small fw-bold text-muted"><?= $c['cpf_cnpj'] ?: '---' ?></td>
                         <td>
                             <div class="small"><i class="fas fa-phone me-1 text-muted"></i> <?= $c['telefone'] ?: '---' ?></div>
                             <div class="small"><i class="fas fa-envelope me-1 text-muted"></i> <?= $c['email'] ?: '---' ?></div>
                         </td>
+                        <td class="small fw-bold text-muted"><?= $c['cpf_cnpj'] ?: '---' ?></td>
                         <td class="small">
                             <span class="text-muted"><?= $c['endereco'] ?: 'Endereço não informado' ?></span>
                         </td>
+                        <td class="text-end fw-bold text-success">
+                            <?php
+                                $clientModel = new \App\Models\Client();
+                                $ltv = $clientModel->getLTV($c['id']);
+                                echo 'R$ ' . number_format($ltv, 2, ',', '.');
+                            ?>
+                        </td>
                         <td class="text-end pe-4">
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-light border" onclick='editClient(<?= json_encode($c) ?>)' title="Editar">
-                                    <i class="fas fa-edit text-primary"></i>
-                                </button>
-                                <button class="btn btn-light border text-danger" title="Excluir">
-                                    <i class="fas fa-trash"></i>
+                                <a href="clientes.php?action=profile&id=<?= $c['id'] ?>" class="btn btn-light border text-primary" title="Perfil CRM (LTV)">
+                                    <i class="fas fa-chart-line"></i>
+                                </a>
+                                <button class="btn btn-light border" onclick='editClient(<?= json_encode($c) ?>)' title="Ficha Cadastral">
+                                    <i class="fas fa-edit"></i>
                                 </button>
                             </div>
                         </td>
@@ -68,7 +76,7 @@
                     <?php endforeach; ?>
                     <?php if(empty($clients)): ?>
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">
+                        <td colspan="6" class="text-center py-5 text-muted">
                             <i class="fas fa-users-slash fs-1 d-block mb-3 opacity-25"></i>
                             Nenhum cliente encontrado na base.
                         </td>
@@ -78,6 +86,36 @@
             </table>
         </div>
     </div>
+    <!-- Pagination -->
+    <?php if ($pagination && $pagination['pages'] > 1): ?>
+    <div class="card-footer bg-white border-top py-3">
+        <nav aria-label="Navegação de clientes">
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>" aria-label="Anterior">
+                        <i class="fas fa-chevron-left small"></i>
+                    </a>
+                </li>
+                <?php 
+                $start = max(1, $pagination['current'] - 2);
+                $end = min($pagination['pages'], $start + 4);
+                if ($end - $start < 4) $start = max(1, $end - 4);
+                
+                for($i = $start; $i <= $end; $i++): 
+                ?>
+                <li class="page-item <?= $i == $pagination['current'] ? 'active' : '' ?>">
+                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+                <li class="page-item <?= $pagination['current'] >= $pagination['pages'] ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>" aria-label="Próximo">
+                        <i class="fas fa-chevron-right small"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- Client Modal -->
@@ -90,6 +128,7 @@
             </div>
             <div class="modal-body p-4">
                 <input type="hidden" name="id" id="edit_id">
+                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                 <div class="row g-3">
                     <div class="col-12">
                         <label class="form-label small fw-bold">Nome Completo / Razão Social</label>

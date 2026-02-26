@@ -8,16 +8,10 @@ class SettingController extends BaseController {
         $model = new Setting();
         $settings = $model->getAll();
 
-        ob_start();
-        $data = ['settings' => $settings];
-        extract($data);
-        require __DIR__ . "/../../../views/settings.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('settings', [
+            'settings' => $settings,
             'title' => 'Configurações do Sistema',
-            'pageTitle' => 'Parâmetros Técnicos & Identidade',
-            'content' => $content
+            'pageTitle' => 'Parâmetros Técnicos & Identidade'
         ]);
     }
 

@@ -66,9 +66,9 @@
 
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
-        <div class="card border-0 shadow-sm h-100 d-flex flex-column">
-            <div class="card-header bg-primary text-white py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Finalização</h5>
+        <div class="card border-0 glass-card shadow-lg h-100 d-flex flex-column" style="border: 1px solid rgba(79, 70, 229, 0.2) !important;">
+            <div class="card-header bg-erp-primary text-white py-3 border-0">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Checkout SaaS</h5>
             </div>
             <div class="card-body flex-grow-1">
                 <div class="mb-4">
@@ -114,6 +114,12 @@
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Subtotal</span>
                         <span class="fw-bold" id="totalSub">R$ 0,00</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Desconto (%)</span>
+                        <div style="width: 80px;">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onchange="renderCart()">
+                        </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted text-success">Desconto</span>
@@ -328,8 +334,13 @@ function renderCart() {
         cartTable.appendChild(row);
     });
 
-    finalTotal.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountVal = total * (discountPercent / 100);
+    const finalTotalVal = total - discountVal;
+
     document.getElementById('totalSub').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    document.getElementById('totalDesc').innerText = `- R$ ${discountVal.toFixed(2).replace('.', ',')}`;
+    finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
 }
 
 function updateQty(index, val) {
@@ -448,9 +459,14 @@ async function cancelSaleAction() {
 btnCheckout.onclick = async () => {
     if (cart.length === 0) return;
     
-    const payment = document.querySelector('input[name="payment"]:checked').value;
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    const total = subtotal * (1 - (discountPercent / 100));
+
     const data = {
-        total: cart.reduce((acc, i) => acc + (i.price * i.qty), 0),
+        subtotal: subtotal,
+        discount_percent: discountPercent,
+        total: total,
         items: cart,
         pagamento: payment,
         cliente_id: null,
@@ -465,7 +481,7 @@ btnCheckout.onclick = async () => {
 
     const result = await res.json();
     if (result.success) {
-        alert('Venda realizada com sucesso!');
+        showSuccessModal(result.sale_id, data.total);
         cart = [];
         currentPvId = null;
         renderCart();
@@ -475,8 +491,104 @@ btnCheckout.onclick = async () => {
     }
 };
 
+function showSuccessModal(saleId, total) {
+    const modalHtml = `
+        <div class="modal fade" id="modalSuccess" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-body text-center p-5">
+                        <div class="mb-4">
+                            <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-2">Venda Finalizada!</h3>
+                        <p class="text-muted mb-4">A venda <strong>#${saleId}</strong> foi registrada com sucesso no valor de <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong>.</p>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-lg fw-bold py-3" onclick="issueNFCe(${saleId})">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Cupom Fiscal)
+                            </button>
+                            <button class="btn btn-outline-secondary fw-bold py-3" onclick="alert('Impressão térmica em desenvolvimento')">
+                                <i class="fas fa-print me-2"></i>Imprimir Recibo Simples
+                            </button>
+                            <button class="btn btn-link text-muted mt-3" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const existing = document.getElementById('modalSuccess');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('modalSuccess'));
+    modal.show();
+}
+
+async function issueNFCe(saleId) {
+    const btn = event.currentTarget;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Comunicando SEFAZ...';
+
+    try {
+        const res = await fetch('vendas.php?action=issue_nfce', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: saleId })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            btn.className = 'btn btn-success btn-lg fw-bold py-3';
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>NFC-e AUTORIZADA!';
+            alert('NFC-e Autorizada com sucesso! Protocolo: ' + result.protocolo);
+            // In a real scenario, we would trigger PDF download/print here
+        } else {
+            alert('Erro SEFAZ: ' + result.error);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    } catch (e) {
+        alert('Erro de comunicação: ' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
 // Keyboard Hotkeys
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'F2') btnCheckout.click();
+    if (e.key === 'F2') {
+        e.preventDefault();
+        btnCheckout.click();
+    }
+    if (e.key === 'F4') {
+        e.preventDefault();
+        pdvSearch.focus();
+    }
+    if (e.key === 'F8') {
+        e.preventDefault();
+        loadPendingPreSales();
+    }
+    if (e.key === 'Escape') {
+        searchResults.classList.add('d-none');
+    }
+});
+
+// Barcode optimization: If search returns exactly 1 result and looks like a barcode, add to cart automatically
+async function handleBarcode(val) {
+    if (val.length >= 8 && !isNaN(val)) {
+        const response = await fetch(`vendas.php?action=search&term=${val}`);
+        const products = await response.json();
+        if (products.length === 1) {
+            addToCart(products[0]);
+            pdvSearch.value = '';
+        }
+    }
+}
+
+pdvSearch.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
 </script>

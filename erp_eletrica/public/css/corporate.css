@@ -1,20 +1,21 @@
-/* ERP Elétrica - Corporate Branding & Layout Overrides */
 :root {
-    --primary-color: #0056b3;
-    --sidebar-bg: #1a202c;
+    --erp-primary: #4f46e5;
+    --erp-secondary: #64748b;
+    --erp-success: #10b981;
+    --erp-danger: #ef4444;
+    --erp-warning: #f59e0b;
+    --erp-dark: #1e293b;
+    --erp-light: #f8fafc;
+    --erp-glass: rgba(255, 255, 255, 0.7);
+    --erp-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --sidebar-width: 260px;
-    --sidebar-collapsed: 70px;
-    --topbar-height: 60px;
-    --bg-light: #f8fafc;
+    --header-height: 70px;
 }
 
 body {
-    background-color: var(--bg-light);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
 }
 
-/* Layout Structural wrapper */
 .erp-wrapper {
     display: flex;
     min-height: 100vh;
@@ -22,47 +23,39 @@ body {
 
 /* Sidebar Styling */
 .sidebar {
-    width: var(--sidebar-width);
-    background: var(--sidebar-bg);
-    color: #fff;
-    min-height: 100vh;
-    transition: all 0.3s ease;
+    width: 260px;
+    background: var(--erp-sidebar-bg);
+    border-right: 1px solid #e2e8f0;
+    transition: all 0.3s;
     z-index: 1000;
 }
 
-.sidebar.collapsed {
-    width: var(--sidebar-collapsed);
+.sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
 }
 
-.sidebar .nav-link {
-    color: rgba(255, 255, 255, 0.7);
+.nav-link {
     padding: 0.8rem 1.5rem;
+    color: #64748b;
+    font-weight: 500;
     display: flex;
     align-items: center;
-    border-left: 4px solid transparent;
-    font-size: 0.9rem;
+    gap: 0.75rem;
     transition: all 0.2s;
 }
 
-.sidebar .nav-link:hover,
-.sidebar .nav-link.active {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    border-left-color: var(--primary-color);
+.nav-link:hover,
+.nav-link.active {
+    background-color: #f8fafc;
+    color: var(--primary-color);
 }
 
-.sidebar .nav-link i {
-    width: 24px;
-    margin-right: 15px;
-    font-size: 1.1rem;
-    text-align: center;
+.nav-link i {
+    width: 20px;
 }
 
-.sidebar.collapsed .nav-link span {
-    display: none;
-}
-
-/* Main Content Area */
+/* Main Content area */
 .main-wrapper {
     flex: 1;
     display: flex;
@@ -71,16 +64,13 @@ body {
 }
 
 .top-navbar {
-    height: var(--topbar-height);
-    background: #fff;
+    height: 70px;
+    background: #ffffff;
     border-bottom: 1px solid #e2e8f0;
-    padding: 0 1.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 900;
+    padding: 0 2rem;
 }
 
 .content-body {
@@ -88,27 +78,17 @@ body {
     flex: 1;
 }
 
-/* Corporate Components */
+/* Enhanced Cards */
 .card {
+    border-radius: 0.75rem;
     border: none;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    border-radius: 0.5rem;
+    box-shadow: var(--erp-card-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.card-header {
-    background-color: #fff;
-    border-bottom: 1px solid #f1f5f9;
-    padding: 1.25rem;
-    font-weight: 600;
-}
-
-.table thead th {
-    background-color: #f8fafc;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.025em;
-    color: #64748b;
-    border-top: none;
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
 }
 
 /* Animations */
@@ -119,7 +99,7 @@ body {
 @keyframes fadeUp {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(20px);
     }
 
     to {
@@ -128,11 +108,95 @@ body {
     }
 }
 
-/* Utils */
-.text-xs {
+/* Responsive sidebar */
+@media (max-width: 991.98px) {
+    .sidebar {
+        position: fixed;
+        left: -260px;
+        height: 100vh;
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+}
+
+/* Custom UI Components */
+.btn {
+    border-radius: 0.5rem;
+    font-weight: 600;
+    padding: 0.6rem 1.2rem;
+}
+
+.badge {
+    padding: 0.5em 0.8em;
+    font-weight: 600;
+}
+
+.loader-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+/* Glassmorphism PDV */
+.glass-card {
+    background: var(--erp-glass);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.bg-erp-gradient {
+    background: linear-gradient(135deg, var(--erp-primary), #6366f1);
+}
+
+.text-erp-primary {
+    color: var(--erp-primary) !important;
+}
+
+.bg-erp-primary {
+    background-color: var(--erp-primary) !important;
+}
+
+/* Enhanced Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--erp-dark);
+    letter-spacing: -0.025em;
+}
+
+.extra-small {
     font-size: 0.75rem;
 }
 
-.text-sm {
-    font-size: 0.875rem;
+/* Dashboard Widgets */
+.stat-card {
+    overflow: hidden;
+    position: relative;
+}
+
+/* Scrollbar Modernization */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
 }

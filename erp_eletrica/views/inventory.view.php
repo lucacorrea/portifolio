@@ -143,6 +143,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id" id="edit_id">
                 <div class="row g-3">
                     <div class="col-md-4">
@@ -190,6 +191,36 @@
                         <label class="form-label small fw-bold">Foto do Produto</label>
                         <input type="file" name="foto" class="form-control shadow-sm">
                     </div>
+
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Informações Fiscais (SEFAZ)</h6></div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">CEST</label>
+                        <input type="text" name="cest" id="edit_cest" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">Origem da Mercadoria</label>
+                        <select name="origem" id="edit_origem" class="form-select shadow-sm">
+                            <option value="0">0 - Nacional</option>
+                            <option value="1">1 - Estrangeira (Importação Direta)</option>
+                            <option value="2">2 - Estrangeira (Mercado Interno)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">CSOSN</label>
+                        <input type="text" name="csosn" id="edit_csosn" class="form-control shadow-sm" value="102">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">CFOP (Int.)</label>
+                        <input type="text" name="cfop_interno" id="edit_cfop_interno" class="form-control shadow-sm" value="5102">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">CFOP (Ext.)</label>
+                        <input type="text" name="cfop_externo" id="edit_cfop_externo" class="form-control shadow-sm" value="6102">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">ICMS (%)</label>
+                        <input type="number" step="0.01" name="aliquota_icms" id="edit_icms" class="form-control shadow-sm" value="0.00">
+                    </div>
                 </div>
             </div>
             <div class="modal-footer border-0">
@@ -208,13 +239,13 @@
                 <h5 class="modal-title fw-bold">Movimentar Inventário</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
                 <div class="row g-3">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <div class="col-12">
                         <label class="form-label small fw-bold">Produto</label>
                         <select name="produto_id" class="form-select shadow-sm" required>
-                            <?php foreach ($products as $p): ?>
-                                <option value="<?= $p['id'] ?>"><?= $p['nome'] ?> (<?= $p['quantidade'] ?>)</option>
+                            <?php foreach ($allProducts as $p): ?>
+                                <option value="<?= $p['id'] ?>"><?= $p['nome'] ?> (Saldo: <?= $p['quantidade'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -230,12 +261,15 @@
                             <option value="ajuste">Ajuste de Saldo</option>
                         </select>
                     </div>
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold">Lote / Rastreabilidade (Opcional)</label>
+                        <input type="text" name="lote" class="form-control shadow-sm" placeholder="Ex: LOTE-2024-001">
+                    </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Motivo / Observação</label>
-                        <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Ajuste de inventário, Devolução, etc"></textarea>
+                        <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Compra de mercadoria, Baixa para OS, etc"></textarea>
                     </div>
                 </div>
-            </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
                 <button type="submit" class="btn btn-success px-4 fw-bold">Processar Movimento</button>
@@ -245,18 +279,17 @@
 </div>
 
 <script>
-function editProduct(product) {
-    const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
-    document.getElementById('edit_id').value = product.id;
-    document.getElementById('edit_codigo').value = product.codigo;
-    document.getElementById('edit_ncm').value = product.ncm;
-    document.getElementById('edit_nome').value = product.nome;
-    document.getElementById('edit_unidade').value = product.unidade;
-    document.getElementById('edit_categoria').value = product.categoria;
-    document.getElementById('edit_preco_custo').value = product.preco_custo;
     document.getElementById('edit_preco_venda').value = product.preco_venda;
     document.getElementById('edit_estoque_minimo').value = product.estoque_minimo;
     
+    // Fiscal Fields
+    document.getElementById('edit_cest').value = product.cest || '';
+    document.getElementById('edit_origem').value = product.origem || 0;
+    document.getElementById('edit_csosn').value = product.csosn || '102';
+    document.getElementById('edit_cfop_interno').value = product.cfop_interno || '5102';
+    document.getElementById('edit_cfop_externo').value = product.cfop_externo || '6102';
+    document.getElementById('edit_icms').value = product.aliquota_icms || 0;
+
     document.querySelector('#newProductModal .modal-title').innerText = 'Editar Material';
     modal.show();
 }

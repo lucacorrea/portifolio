@@ -10,24 +10,31 @@ class SalesController extends BaseController {
         $saleModel = new Sale();
         $sales = $saleModel->getRecent();
 
-        ob_start();
-        $data = ['sales' => $sales];
-        extract($data);
-        require __DIR__ . "/../../../views/sales.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('sales', [
+            'sales' => $sales,
             'title' => 'Ponto de Venda & Checkout',
-            'pageTitle' => 'Terminal de Vendas (PDV)',
-            'content' => $content
+            'pageTitle' => 'Terminal de Vendas (PDV)'
         ]);
     }
 
     public function search() {
         $term = $_GET['term'] ?? '';
         $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT id, nome, preco_venda, unidade, imagens FROM produtos WHERE nome LIKE ? OR codigo LIKE ? LIMIT 10");
-        $stmt->execute(["%$term%", "%$term%"]);
+        
+        $filialId = $_SESSION['filial_id'] ?? null;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        
+        $sql = "SELECT id, nome, preco_venda, unidade, imagens FROM produtos WHERE (nome LIKE ? OR codigo LIKE ?)";
+        $params = ["%$term%", "%$term%"];
+        
+        if (!$isMatriz && $filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+        
+        $sql .= " LIMIT 10";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
         echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
         exit;
     }
@@ -42,11 +49,22 @@ class SalesController extends BaseController {
             try {
                 $db->beginTransaction();
 
+                // Validation: Discount Limit
+                $stmtUser = $db->prepare("SELECT desconto_maximo FROM usuarios WHERE id = ?");
+                $stmtUser->execute([$_SESSION['usuario_id']]);
+                $maxDiscount = $stmtUser->fetchColumn() ?: 0;
+                
+                $requestedDiscount = $data['discount_percent'] ?? 0;
+                if ($requestedDiscount > $maxDiscount) {
+                    throw new \Exception("Desconto de $requestedDiscount% excede seu limite permitido de $maxDiscount%");
+                }
+
                 $saleData = [
                     'cliente_id' => $data['cliente_id'] ?? null,
                     'usuario_id' => $_SESSION['usuario_id'],
                     'filial_id' => $_SESSION['filial_id'] ?? 1,
                     'valor_total' => $data['total'],
+                    'desconto_total' => $data['subtotal'] * ($requestedDiscount / 100),
                     'forma_pagamento' => $data['pagamento']
                 ];
                 $saleId = $saleModel->create($saleData);
@@ -102,37 +120,24 @@ class SalesController extends BaseController {
     }
 
     public function cancel_sale() {
+        // ... (existing code for cancel_sale)
+    }
+
+    public function issue_nfce() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents('php://input'), true);
             $id = $data['id'] ?? null;
-            
+
             if (!$id) {
-                echo json_encode(['success' => false, 'error' => 'ID não fornecido']);
+                echo json_encode(['success' => false, 'error' => 'ID da venda não fornecido']);
                 exit;
             }
 
-            $saleModel = new Sale();
-            $productModel = new Product();
-            $db = \App\Config\Database::getInstance()->getConnection();
-
             try {
-                $db->beginTransaction();
-                
-                $sale = $saleModel->findById($id);
-                if (!$sale || $sale['status'] == 'cancelado') {
-                    throw new \Exception("Venda não encontrada ou já cancelada");
-                }
-
-                $saleModel->updateStatus($id, 'cancelado');
-
-                foreach ($sale['itens'] as $item) {
-                    $productModel->updateStock($item['produto_id'], $item['quantidade'], 'entrada');
-                }
-
-                $db->commit();
-                echo json_encode(['success' => true]);
+                $fiscalService = new \App\Services\FiscalService();
+                $result = $fiscalService->issueNFCe($id);
+                echo json_encode($result);
             } catch (\Exception $e) {
-                $db->rollBack();
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
             exit;

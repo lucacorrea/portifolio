@@ -9,13 +9,17 @@ if (isset($_SESSION['usuario_id'])) {
 
 $error = '';
 
+// Fetch active branches for the selection
+$branches = $pdo->query("SELECT id, nome FROM filiais ORDER BY principal DESC, nome ASC")->fetchAll();
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'] ?? '';
     $senha = $_POST['senha'] ?? '';
+    $selected_filial = $_POST['filial_id'] ?? '';
 
-    if ($email && $senha) {
-        $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ? AND ativo = 1");
-        $stmt->execute([$email]);
+    if ($email && $senha && $selected_filial) {
+        $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ? AND filial_id = ? AND ativo = 1");
+        $stmt->execute([$email, $selected_filial]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($senha, $user['senha'])) {
@@ -25,6 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['usuario_avatar'] = $user['avatar'];
             $_SESSION['filial_id'] = $user['filial_id'];
             
+            // Check Matriz
+            $stmt = $pdo->prepare("SELECT principal FROM filiais WHERE id = ?");
+            $stmt->execute([$user['filial_id']]);
+            $filial = $stmt->fetch();
+            $_SESSION['is_matriz'] = ($filial && $filial['principal'] == 1);
+
             // Update last login
             $stmt = $pdo->prepare("UPDATE usuarios SET last_login = NOW() WHERE id = ?");
             $stmt->execute([$user['id']]);
@@ -32,26 +42,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header('Location: index.php');
             exit;
         } else {
-            // Check for initial default user if table is empty or specific case
+            // Initial/Global Admin bypass or specific error
             if ($email === 'admin@erp.com' && $senha === 'admin123') {
-                $count = $pdo->query("SELECT COUNT(*) FROM usuarios")->fetchColumn();
-                if ($count == 0 || ($email === 'admin@erp.com' && !$user)) {
-                    $hash = password_hash('admin123', PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha, nivel) VALUES (?, ?, ?, ?)");
-                    $stmt->execute(['Administrador', 'admin@erp.com', $hash, 'admin']);
-                    
-                    // Try login again
-                    $_SESSION['usuario_id'] = $pdo->lastInsertId();
-                    $_SESSION['usuario_nome'] = 'Administrador';
-                    $_SESSION['usuario_nivel'] = 'admin';
-                    header('Location: index.php');
-                    exit;
-                }
+                 // Check if it's the Matriz selected
+                 $matriz = $pdo->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1")->fetch();
+                 if ($matriz && $selected_filial == $matriz['id']) {
+                    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ?");
+                    $stmt->execute([$email]);
+                    $admin = $stmt->fetch();
+                    if ($admin && password_verify($senha, $admin['senha'])) {
+                        // Correct credentials, proceed
+                        $_SESSION['usuario_id'] = $admin['id'];
+                        $_SESSION['usuario_nome'] = $admin['nome'];
+                        $_SESSION['usuario_nivel'] = $admin['nivel'];
+                        $_SESSION['filial_id'] = $admin['filial_id'];
+                        $_SESSION['is_matriz'] = true;
+                        header('Location: index.php');
+                        exit;
+                    }
+                 }
             }
-            $error = 'E-mail ou senha incorretos.';
+            $error = 'Credenciais inválidas para esta unidade.';
         }
     } else {
-        $error = 'Por favor, preencha todos os campos.';
+        $error = 'Por favor, selecione a unidade e informe suas credenciais.';
     }
 }
 ?>
@@ -61,9 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - ERP Elétrica</title>
-    <link rel="stylesheet" href="style.css">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <!-- Custom Corporate UI -->
+    <link rel="stylesheet" href="public/css/corporate.css">
     <style>
         body {
             background-color: #f4f7f6;
@@ -202,8 +219,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         <form method="POST">
             <div class="form-group">
+                <label class="form-label">UNIDADE DE ACESSO</label>
+                <select name="filial_id" class="form-control" required>
+                    <option value="" disabled selected>Selecione a Empresa...</option>
+                    <?php foreach ($branches as $branch): ?>
+                        <option value="<?= $branch['id'] ?>"><?= $branch['nome'] ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
                 <label class="form-label">E-MAIL CORPORATIVO</label>
-                <input type="email" name="email" class="form-control" placeholder="usuario@empresa.com" required autofocus>
+                <input type="email" name="email" class="form-control" placeholder="usuario@empresa.com" required>
             </div>
             <div class="form-group">
                 <label class="form-label">SENHA TÉCNICA</label>

@@ -10,16 +10,10 @@ class PreSaleController extends BaseController {
         $model = new PreSale();
         $recent = $model->getRecent();
 
-        ob_start();
-        $data = ['recent' => $recent];
-        extract($data);
-        require __DIR__ . "/../../../views/pre_sales.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('pre_sales', [
+            'recent' => $recent,
             'title' => 'Terminal de Pré-Venda',
-            'pageTitle' => 'Geração de Orçamentos e Fichas',
-            'content' => $content
+            'pageTitle' => 'Geração de Orçamentos e Fichas'
         ]);
     }
 

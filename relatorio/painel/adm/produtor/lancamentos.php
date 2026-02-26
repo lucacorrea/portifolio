@@ -2,6 +2,9 @@
 declare(strict_types=1);
 session_start();
 
+/* Timezone (Amazonas) */
+date_default_timezone_set('America/Manaus');
+
 /*
   lancamentos.php (somente CADASTRO, sem lista)
   - Lança item no romaneio do dia usando CPF do produtor
@@ -29,6 +32,12 @@ if (!in_array('ADMIN', $perfis, true)) {
 }
 
 require '../../../assets/php/conexao.php';
+$pdo = db();
+
+/* Força timezone do MySQL (Amazonas = -04:00) */
+try {
+    $pdo->exec("SET time_zone = '-04:00'");
+} catch (Throwable $e) {}
 
 function h($s): string {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
@@ -78,6 +87,29 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf = (string)$_SESSION['csrf_token'];
 
 $pdo = db();
+
+/* AJAX: Busca Produtor por CPF */
+if (isset($_GET['ajax_busca_produtor'])) {
+  header('Content-Type: application/json');
+  $cpfVal = only_digits($_GET['cpf'] ?? '');
+  if (strlen($cpfVal) === 11) {
+    try {
+      $st = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :f AND documento = :doc AND ativo = 1 LIMIT 1");
+      $st->execute([':f' => $FEIRA_ID, ':doc' => $cpfVal]);
+      $prod = $st->fetch(PDO::FETCH_ASSOC);
+      if ($prod) {
+        echo json_encode(['sucesso' => true, 'id' => $prod['id'], 'nome' => $prod['nome']]);
+      } else {
+        echo json_encode(['sucesso' => false, 'msg' => 'Produtor não encontrado ou inativo.']);
+      }
+    } catch (Throwable $e) {
+      echo json_encode(['sucesso' => false, 'msg' => 'Erro ao buscar.']);
+    }
+  } else {
+    echo json_encode(['sucesso' => false, 'msg' => 'CPF inválido.']);
+  }
+  exit;
+}
 
 /* Data do romaneio */
 date_default_timezone_set('America/Manaus'); // ajuste se quiser
@@ -144,11 +176,41 @@ $old = [
   'observacao' => '',
 ];
 
-/* POST (salvar lançamento) */
+/* POST (salvar lançamento ou excluir) */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
   $tokenPost = (string)($_POST['csrf_token'] ?? '');
   if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
     $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
+    header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
+    exit;
+  }
+
+  $acao = (string)($_POST['acao'] ?? 'salvar');
+
+  if ($acao === 'excluir') {
+    $delId = (int)($_POST['id'] ?? 0);
+    if ($delId > 0 && $romaneioStatus === 'ABERTO') {
+      try {
+        $pdo->beginTransaction();
+        
+        // Remove fotos físicas primeiro
+        $stF = $pdo->prepare("SELECT caminho FROM romaneio_item_fotos WHERE romaneio_item_id = :id");
+        $stF->execute([':id' => $delId]);
+        foreach ($stF->fetchAll() as $rowF) {
+          $absF = $BASE_DIR . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rowF['caminho']);
+          if (file_exists($absF)) @unlink($absF);
+        }
+
+        $pdo->prepare("DELETE FROM romaneio_item_fotos WHERE romaneio_item_id = :id")->execute([':id' => $delId]);
+        $pdo->prepare("DELETE FROM romaneio_itens WHERE id = :id AND feira_id = :feira")->execute([':id' => $delId, ':feira' => $FEIRA_ID]);
+
+        $pdo->commit();
+        $_SESSION['flash_ok'] = 'Lançamento excluído com sucesso.';
+      } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $_SESSION['flash_err'] = 'Erro ao excluir: ' . $e->getMessage();
+      }
+    }
     header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
     exit;
   }
@@ -162,31 +224,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
   if ($romaneioStatus !== 'ABERTO') {
     $err = 'Romaneio do dia está FECHADO. Não é possível lançar itens.';
   } else {
-    $cpfDigits = only_digits($old['cpf']);
+      $cpfDigits = only_digits($old['cpf']);
 
-    if ($cpfDigits === '' || strlen($cpfDigits) < 11) {
-      $err = 'Informe um CPF válido (somente números).';
-    } elseif ($old['produto_id'] === '' || !ctype_digit($old['produto_id'])) {
-      $err = 'Selecione o produto.';
-    } else {
-      $produtoId = (int)$old['produto_id'];
-      $qtdEntrada = to_decimal_str($old['quantidade_entrada'], 3);
-      $precoDia   = to_decimal_str($old['preco_unitario_dia'], 2);
-      $obs        = trunc255($old['observacao']);
-
-      if ((float)$qtdEntrada <= 0) {
-        $err = 'Informe uma quantidade de entrada maior que 0.';
-      } elseif ((float)$precoDia < 0) {
-        $err = 'Preço unitário inválido.';
+      if ($cpfDigits === '' || strlen($cpfDigits) < 11) {
+        $err = 'Informe um CPF válido (somente números).';
       } else {
         try {
           // localiza produtor pelo CPF na feira e ativo
-          $stProd = $pdo->prepare("SELECT id, nome
-                                   FROM produtores
-                                   WHERE feira_id = :feira
-                                     AND ativo = 1
-                                     AND documento = :cpf
-                                   LIMIT 1");
+          $stProd = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :feira AND ativo = 1 AND documento = :cpf LIMIT 1");
           $stProd->execute([':feira' => $FEIRA_ID, ':cpf' => $cpfDigits]);
           $prod = $stProd->fetch(PDO::FETCH_ASSOC);
 
@@ -196,99 +241,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
             $produtorId = (int)$prod['id'];
             $old['produtor_nome'] = (string)$prod['nome'];
 
-            // valida produto
-            $chk2 = $pdo->prepare("SELECT COUNT(*) FROM produtos
-                                   WHERE id = :id AND feira_id = :feira AND (ativo = 1 OR ativo IS NULL)");
-            $chk2->execute([':id' => $produtoId, ':feira' => $FEIRA_ID]);
-            if ((int)$chk2->fetchColumn() <= 0) {
-              $err = 'Produto inválido (não encontrado/fora da feira/inativo).';
+            $items = $_POST['items'] ?? [];
+            if (empty($items)) {
+              $err = 'Adicione pelo menos um produto.';
             } else {
-              // fotos base64
-              $fotosBase64 = $_POST['fotos_base64'] ?? [];
-              if (!is_array($fotosBase64)) $fotosBase64 = [];
-
               $pdo->beginTransaction();
 
-              $ins = $pdo->prepare("INSERT INTO romaneio_itens
-                (feira_id, romaneio_id, produtor_id, produto_id, quantidade_entrada, preco_unitario_dia, observacao)
-                VALUES
-                (:feira, :rom, :produtor, :produto, :qtd, :preco, :obs)");
-              $ins->execute([
-                ':feira'    => $FEIRA_ID,
-                ':rom'      => (int)$romaneioId,
-                ':produtor' => $produtorId,
-                ':produto'  => $produtoId,
-                ':qtd'      => $qtdEntrada,
-                ':preco'    => $precoDia,
-                ':obs'      => ($obs !== '' ? $obs : null),
-              ]);
+              foreach ($items as $idx => $itemData) {
+                $produtoId = (int)($itemData['produto_id'] ?? 0);
+                $qtdEntrada = to_decimal_str($itemData['quantidade_entrada'] ?? 0, 3);
+                $precoDia   = to_decimal_str($itemData['preco_unitario_dia'] ?? 0, 2);
+                $obs        = trunc255($itemData['observacao'] ?? '');
+                $fotos      = $itemData['fotos_base64'] ?? [];
 
-              $itemIdNew = (int)$pdo->lastInsertId();
+                // Validações básicas por item
+                if ($produtoId <= 0) throw new Exception("Selecione o produto no item #" . ($idx + 1));
+                if ((float)$qtdEntrada <= 0) throw new Exception("Quantidade inválida no item #" . ($idx + 1));
+                if ((float)$precoDia < 0) throw new Exception("Preço inválido no item #" . ($idx + 1));
 
-              // upload fotos
-              $savedRelPaths = [];
-              if (!empty($fotosBase64)) {
-                if (!$UPLOAD_ABS_DIR || !$BASE_DIR) {
-                  throw new RuntimeException('Diretório base não encontrado para upload.');
-                }
-                if (!ensure_dir($UPLOAD_ABS_DIR)) {
-                  throw new RuntimeException('Não foi possível criar a pasta de upload.');
-                }
+                // Valida produto no DB
+                $chkPr = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE id = :id AND feira_id = :feira AND (ativo = 1 OR ativo IS NULL)");
+                $chkPr->execute([':id' => $produtoId, ':feira' => $FEIRA_ID]);
+                if ((int)$chkPr->fetchColumn() <= 0) throw new Exception("Produto inválido no item #" . ($idx + 1));
 
-                $subRel = $UPLOAD_REL_DIR . '/' . $dataRef;
-                $subAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $dataRef;
-                if (!ensure_dir($subAbs)) {
-                  throw new RuntimeException('Não foi possível criar a pasta de upload do dia.');
-                }
+                // Insere item
+                $ins = $pdo->prepare("INSERT INTO romaneio_itens (feira_id, romaneio_id, produtor_id, produto_id, quantidade_entrada, preco_unitario_dia, observacao) VALUES (:feira, :rom, :produtor, :produto, :qtd, :preco, :obs)");
+                $ins->execute([
+                  ':feira'    => $FEIRA_ID,
+                  ':rom'      => (int)$romaneioId,
+                  ':produtor' => $produtorId,
+                  ':produto'  => $produtoId,
+                  ':qtd'      => $qtdEntrada,
+                  ':preco'    => $precoDia,
+                  ':obs'      => ($obs !== '' ? $obs : null),
+                ]);
 
-                $count = 0;
-                foreach ($fotosBase64 as $dataUrl) {
-                  if ($count >= $MAX_FOTOS) break;
-                  $dataUrl = (string)$dataUrl;
-                  if ($dataUrl === '') continue;
+                $itemIdNew = (int)$pdo->lastInsertId();
 
-                  if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl) !== 1) continue;
+                // Processa fotos do item
+                if (!empty($fotos)) {
+                  if (!$UPLOAD_ABS_DIR || !$BASE_DIR) throw new RuntimeException('Diretório base não encontrado para upload.');
+                  $subAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $dataRef;
+                  ensure_dir($subAbs);
 
-                  $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
-                  $bin = base64_decode($base64, true);
-                  if ($bin === false) continue;
-                  if (strlen($bin) > $MAX_BASE64_BYTES) continue;
+                  $countF = 0;
+                  foreach ($fotos as $dataUrl) {
+                    if ($countF >= $MAX_FOTOS) break;
+                    $dataUrl = (string)$dataUrl;
+                    if ($dataUrl === '' || preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl) !== 1) continue;
 
-                  $fileName = 'rom_' . $romaneioId . '_item_' . $itemIdNew . '_' . bin2hex(random_bytes(6)) . '.jpg';
-                  $destAbs = $subAbs . DIRECTORY_SEPARATOR . $fileName;
+                    $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
+                    $bin = base64_decode($base64, true);
+                    if ($bin === false || strlen($bin) > $MAX_BASE64_BYTES) continue;
 
-                  if (@file_put_contents($destAbs, $bin) === false) continue;
-
-                  $rel = $subRel . '/' . $fileName;
-                  $savedRelPaths[] = $rel;
-                  $count++;
-                }
-
-                if (!empty($savedRelPaths)) {
-                  $insF = $pdo->prepare("INSERT INTO romaneio_item_fotos (romaneio_item_id, caminho)
-                                         VALUES (:item, :caminho)");
-                  foreach ($savedRelPaths as $rel) {
-                    $insF->execute([':item' => $itemIdNew, ':caminho' => $rel]);
+                    $fileName = 'rom_' . $romaneioId . '_item_' . $itemIdNew . '_' . bin2hex(random_bytes(4)) . '.jpg';
+                    if (@file_put_contents($subAbs . DIRECTORY_SEPARATOR . $fileName, $bin) !== false) {
+                      $rel = $UPLOAD_REL_DIR . '/' . $dataRef . '/' . $fileName;
+                      $pdo->prepare("INSERT INTO romaneio_item_fotos (romaneio_item_id, caminho) VALUES (:item, :caminho)")
+                          ->execute([':item' => $itemIdNew, ':caminho' => $rel]);
+                      $countF++;
+                    }
                   }
                 }
               }
 
               $pdo->commit();
-
-              // limpa campos para próximo lançamento
-              $_SESSION['flash_ok'] = 'Lançamento salvo! Produtor: ' . $old['produtor_nome'];
+              $_SESSION['flash_ok'] = 'Lançamento(s) salvo(s)! Produtor: ' . $old['produtor_nome'];
               header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
               exit;
             }
           }
         } catch (Throwable $e) {
           if ($pdo->inTransaction()) $pdo->rollBack();
-          $err = 'Erro ao salvar lançamento: ' . $e->getMessage();
+          $err = 'Erro ao salvar: ' . $e->getMessage();
         }
       }
-    }
   }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -324,6 +354,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
     .status-aberto { background:#ecfdf5; color:#065f46; }
     .status-fechado { background:#fef2f2; color:#991b1b; }
     .name-box { border:1px dashed rgba(0,0,0,.15); border-radius:10px; padding:10px; background:#fafafa; }
+    .item-block { position: relative; border-left: 4px solid #231475; }
+    .btn-remove-item { position: absolute; top: 10px; right: 10px; }
+    .photo-previews img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+    .cam-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .cam-modal-content { background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; position: relative; }
+    #cameraVideo { width: 100%; border-radius: 8px; transform: scaleX(-1); }
     @media (max-width: 576px) {
       .content-wrapper { padding: 1rem !important; }
       .form-actions .btn { width: 100%; }
@@ -449,140 +485,118 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
                   </div>
                 <?php endif; ?>
 
-                <form class="pt-4" method="post" action="">
-                  <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                  <form class="pt-4" method="post" action="" id="formLancamento">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
-                  <!-- fotos base64 (até 3) -->
-                  <input type="hidden" name="fotos_base64[]" id="foto_base64_1" value="">
-                  <input type="hidden" name="fotos_base64[]" id="foto_base64_2" value="">
-                  <input type="hidden" name="fotos_base64[]" id="foto_base64_3" value="">
-
-                  <div class="form-section">
-                    <div class="section-title"><i class="ti-id-badge"></i> Produtor</div>
-
-                    <div class="row">
-                      <div class="col-12 col-lg-4 mb-3">
-                        <label>CPF do produtor <span class="text-danger">*</span></label>
-                        <input
-                          name="cpf"
-                          id="cpf"
-                          type="text"
-                          class="form-control"
-                          placeholder="Somente números (11 dígitos)"
-                          inputmode="numeric"
-                          autocomplete="off"
-                          required
-                          <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
-                          value="<?= h($old['cpf']) ?>">
-                        <small class="text-muted help-hint">Dica: você pode colar com pontos e traço que a página limpa.</small>
-                      </div>
-
-                      <div class="col-12 col-lg-8 mb-3">
-                        <label>Produtor encontrado</label>
-                        <div class="name-box">
-                          <span id="produtorNome" style="font-weight:800;">—</span>
-                          <div class="text-muted" style="font-size:12px;">A confirmação aparece automaticamente ao digitar o CPF.</div>
+                    <div class="form-section">
+                      <div class="section-title"><i class="ti-id-badge"></i> Produtor</div>
+                      <div class="row">
+                        <div class="col-12 col-lg-4 mb-3">
+                          <label>CPF do produtor <span class="text-danger">*</span></label>
+                          <input
+                            name="cpf"
+                            id="cpf"
+                            type="text"
+                            class="form-control"
+                            placeholder="Somente números (11 dígitos)"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            required
+                            <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
+                            value="<?= h($old['cpf']) ?>">
+                        </div>
+                        <div class="col-12 col-lg-8 mb-3">
+                          <label>Produtor encontrado</label>
+                          <div class="name-box">
+                            <span id="produtorNome" style="font-weight:800;">—</span>
+                            <div class="text-muted" style="font-size:12px;">A confirmação aparece automaticamente ao digitar o CPF.</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div class="form-section">
-                    <div class="section-title"><i class="ti-package"></i> Item</div>
-
-                    <div class="row">
-                      <div class="col-12 col-lg-6 mb-3">
-                        <label>Produto <span class="text-danger">*</span></label>
-                        <select
-                          name="produto_id"
-                          class="form-control"
-                          required
-                          <?= (empty($produtos) || $romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
-                          <option value="">Selecione</option>
-                          <?php foreach ($produtos as $pr): ?>
-                            <option value="<?= (int)$pr['id'] ?>" <?= ($old['produto_id'] !== '' && (int)$old['produto_id'] === (int)$pr['id']) ? 'selected' : '' ?>>
-                              <?= h($pr['nome']) ?>
-                            </option>
-                          <?php endforeach; ?>
-                        </select>
-                      </div>
-
-                      <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Qtd. entrada <span class="text-danger">*</span></label>
-                        <input
-                          name="quantidade_entrada"
-                          type="text"
-                          class="form-control"
-                          placeholder="Ex.: 10,500"
-                          required
-                          <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
-                          value="<?= h($old['quantidade_entrada']) ?>">
-                        <small class="text-muted help-hint">Decimal com 3 casas (aceita vírgula).</small>
-                      </div>
-
-                      <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Preço unitário do dia <span class="text-danger">*</span></label>
-                        <input
-                          name="preco_unitario_dia"
-                          type="text"
-                          class="form-control"
-                          placeholder="Ex.: 7,50"
-                          required
-                          <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
-                          value="<?= h($old['preco_unitario_dia']) ?>">
-                        <small class="text-muted help-hint">Decimal com 2 casas (aceita vírgula).</small>
-                      </div>
-
-                      <div class="col-12 mb-3">
-                        <label>Observação</label>
-                        <input
-                          name="observacao"
-                          type="text"
-                          class="form-control"
-                          placeholder="Opcional (até 255)"
-                          <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
-                          value="<?= h($old['observacao']) ?>">
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="form-section">
-                    <div class="section-title"><i class="ti-camera"></i> Fotos (opcional)</div>
-
-                    <div class="row">
-                      <div class="col-12 col-lg-6 mb-3">
-                        <label>Capturar fotos (até 3)</label>
-
-                        <div class="cam-box">
-                          <video id="cameraVideo" autoplay playsinline></video>
-                          <canvas id="cameraCanvas" style="display:none;"></canvas>
-
-                          <img id="fotoPreview_1" class="fotoPreview" alt="Prévia foto 1">
-                          <img id="fotoPreview_2" class="fotoPreview" alt="Prévia foto 2">
-                          <img id="fotoPreview_3" class="fotoPreview" alt="Prévia foto 3">
+                    <div id="itemsContainer">
+                      <!-- Renderiza o primeiro item por padrão -->
+                      <div class="form-section item-block" data-index="0">
+                        <div class="section-title d-flex justify-content-between align-items-center">
+                          <span><i class="ti-package"></i> Item #1</span>
                         </div>
 
-                        <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
-                          <button type="button" class="btn btn-secondary btn-sm" id="btnAbrirCam" <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
-                            <i class="ti-camera mr-1"></i> Abrir Câmera
-                          </button>
-                          <button type="button" class="btn btn-primary btn-sm" id="btnTirarFoto" disabled>
-                            <i class="ti-image mr-1"></i> Tirar Foto
-                          </button>
-                          <button type="button" class="btn btn-light btn-sm" id="btnLimparFotos" <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
-                            <i class="ti-trash mr-1"></i> Limpar Fotos
-                          </button>
-                          <button type="button" class="btn btn-danger btn-sm" id="btnFecharCam" disabled>
-                            <i class="ti-close mr-1"></i> Fechar
-                          </button>
-                        </div>
+                        <div class="row">
+                          <div class="col-12 col-lg-6 mb-3">
+                            <label>Produto <span class="text-danger">*</span></label>
+                            <select
+                              name="items[0][produto_id]"
+                              class="form-control"
+                              required
+                              <?= (empty($produtos) || $romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                              <option value="">Selecione</option>
+                              <?php foreach ($produtos as $pr): ?>
+                                <option value="<?= (int)$pr['id'] ?>">
+                                  <?= h($pr['nome']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
 
-                        <small class="text-muted help-hint d-block mt-1">
-                          As fotos são comprimidas em JPEG antes de enviar.
-                        </small>
+                          <div class="col-12 col-md-6 col-lg-3 mb-3">
+                            <label>Qtd. entrada <span class="text-danger">*</span></label>
+                            <input
+                              name="items[0][quantidade_entrada]"
+                              type="text"
+                              class="form-control"
+                              placeholder="Ex.: 10,500"
+                              required
+                              <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                          </div>
+
+                          <div class="col-12 col-md-6 col-lg-3 mb-3">
+                            <label>Preço unitário <span class="text-danger">*</span></label>
+                            <input
+                              name="items[0][preco_unitario_dia]"
+                              type="text"
+                              class="form-control"
+                              placeholder="Ex.: 7,50"
+                              required
+                              <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                          </div>
+
+                          <div class="col-12 mb-3">
+                            <label>Observação</label>
+                            <input
+                              name="items[0][observacao]"
+                              type="text"
+                              class="form-control"
+                              placeholder="Opcional"
+                              <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                          </div>
+
+                          <div class="col-12">
+                            <label>Fotos do produto (máx 3)</label>
+                            <div class="d-flex flex-wrap gap-2 mb-2 photo-previews">
+                               <!-- Previews das fotos aqui -->
+                            </div>
+                            <div class="fotos-inputs">
+                              <input type="hidden" name="items[0][fotos_base64][]" value="">
+                              <input type="hidden" name="items[0][fotos_base64][]" value="">
+                              <input type="hidden" name="items[0][fotos_base64][]" value="">
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm btn-action-cam" onclick="openCamForItem(0)">
+                              <i class="ti-camera mb-1"></i> Capturar Foto
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearPhotosForItem(0)">
+                              <i class="ti-trash mb-1"></i> Limpar Fotos
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+
+                    <div class="mb-4">
+                      <button type="button" class="btn btn-outline-info w-100" id="btnAddItem" <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                        <i class="ti-plus mr-1"></i> Adicionar outro produto para este produtor
+                      </button>
+                    </div>
 
                   <hr>
 
@@ -602,6 +616,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
                     </div>
                   <?php endif; ?>
                 </form>
+
 
               </div>
             </div>
@@ -624,6 +639,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
   </div>
 </div>
 
+<!-- Modal de Câmera Genérico -->
+<div id="camModal" class="cam-modal">
+  <div class="cam-modal-content">
+    <h5 class="mb-3">Capturar Foto</h5>
+    <video id="cameraVideo" autoplay playsinline></video>
+    <canvas id="cameraCanvas" style="display:none;"></canvas>
+    
+    <div class="mt-3 d-flex justify-content-between">
+      <button type="button" class="btn btn-secondary" onclick="closeCam()">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btnTirarFoto">Tirar Foto</button>
+    </div>
+  </div>
+</div>
+
 <script src="../../../vendors/js/vendor.bundle.base.js"></script>
 <script src="../../../js/off-canvas.js"></script>
 <script src="../../../js/hoverable-collapse.js"></script>
@@ -633,137 +662,153 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
 
 <script>
 (function(){
-  // ===== CPF: limpar não-dígitos no input
   const cpf = document.getElementById('cpf');
   const produtorNome = document.getElementById('produtorNome');
+  const itemsContainer = document.getElementById('itemsContainer');
+  const btnAddItem = document.getElementById('btnAddItem');
+  
+  let itemCount = 1;
+  let currentTargetIndex = null;
+  let stream = null;
 
+  // ===== CPF AJAX =====
   if (cpf) {
-    cpf.addEventListener('input', function(){
+    cpf.addEventListener('input', async function(){
       this.value = (this.value || '').replace(/\D+/g, '').slice(0, 11);
-      // Como a página NÃO consulta via AJAX (pra manter simples),
-      // a confirmação do produtor aparece no sucesso do POST.
-      // Ainda assim, deixamos um feedback visual simples:
       if (this.value.length === 11) {
-        produtorNome.textContent = 'CPF informado (11 dígitos).';
-      } else if (this.value.length > 0) {
-        produtorNome.textContent = 'Digite os 11 dígitos do CPF...';
+        produtorNome.textContent = 'Buscando...';
+        try {
+          const resp = await fetch(`?ajax_busca_produtor=1&cpf=${this.value}`);
+          const data = await resp.json();
+          if (data.sucesso) {
+            produtorNome.innerHTML = `<span class="text-success"><i class="ti-check"></i> ${data.nome}</span>`;
+          } else {
+            produtorNome.innerHTML = `<span class="text-danger"><i class="ti-alert"></i> ${data.msg}</span>`;
+          }
+        } catch(e) { produtorNome.textContent = 'Erro ao buscar.'; }
       } else {
-        produtorNome.textContent = '—';
+        produtorNome.textContent = this.value.length > 0 ? 'Digite 11 dígitos...' : '—';
       }
     });
   }
 
-  // ===== Câmera (até 3 fotos)
-  let stream = null;
+  // ===== Dynamic Items =====
+  const productsOptions = `<?php foreach($produtos as $p): ?><option value="<?= $p['id'] ?>"><?= addslashes(h($p['nome'])) ?></option><?php endforeach; ?>`;
 
+  if (btnAddItem) {
+    btnAddItem.addEventListener('click', () => {
+      const idx = itemCount++;
+      const html = `
+        <div class="form-section item-block" data-index="${idx}">
+          <div class="section-title d-flex justify-content-between align-items-center">
+            <span><i class="ti-package"></i> Item #${idx + 1}</span>
+            <button type="button" class="btn btn-danger btn-xs btn-remove-item" onclick="removeItem(${idx})"><i class="ti-close"></i></button>
+          </div>
+          <div class="row">
+            <div class="col-12 col-lg-6 mb-3">
+              <label>Produto <span class="text-danger">*</span></label>
+              <select name="items[${idx}][produto_id]" class="form-control" required>
+                <option value="">Selecione</option>
+                ${productsOptions}
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 mb-3">
+              <label>Qtd. entrada <span class="text-danger">*</span></label>
+              <input name="items[${idx}][quantidade_entrada]" type="text" class="form-control" required placeholder="Ex.: 5,000">
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 mb-3">
+              <label>Preço unitário <span class="text-danger">*</span></label>
+              <input name="items[${idx}][preco_unitario_dia]" type="text" class="form-control" required placeholder="Ex.: 8,00">
+            </div>
+            <div class="col-12 mb-3">
+              <label>Observação</label>
+              <input name="items[${idx}][observacao]" type="text" class="form-control" placeholder="Opcional">
+            </div>
+            <div class="col-12">
+              <label>Fotos (máx 3)</label>
+              <div class="d-flex flex-wrap gap-2 mb-2 photo-previews"></div>
+              <div class="fotos-inputs">
+                <input type="hidden" name="items[${idx}][fotos_base64][]" value="">
+                <input type="hidden" name="items[${idx}][fotos_base64][]" value="">
+                <input type="hidden" name="items[${idx}][fotos_base64][]" value="">
+              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="openCamForItem(${idx})"><i class="ti-camera mb-1"></i> Capturar Foto</button>
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearPhotosForItem(${idx})"><i class="ti-trash mb-1"></i> Limpar Fotos</button>
+            </div>
+          </div>
+        </div>`;
+      itemsContainer.insertAdjacentHTML('beforeend', html);
+    });
+  }
+
+  window.removeItem = (idx) => {
+    const block = document.querySelector(`.item-block[data-index="${idx}"]`);
+    if (block) block.remove();
+  };
+
+  // ===== Camera Management =====
+  const modal = document.getElementById('camModal');
   const video = document.getElementById('cameraVideo');
   const canvas = document.getElementById('cameraCanvas');
+  const btnTirar = document.getElementById('btnTirarFoto');
 
-  const previews = [
-    document.getElementById('fotoPreview_1'),
-    document.getElementById('fotoPreview_2'),
-    document.getElementById('fotoPreview_3')
-  ];
-  const inputs = [
-    document.getElementById('foto_base64_1'),
-    document.getElementById('foto_base64_2'),
-    document.getElementById('foto_base64_3')
-  ];
-
-  const btnAbrir  = document.getElementById('btnAbrirCam');
-  const btnTirar  = document.getElementById('btnTirarFoto');
-  const btnFechar = document.getElementById('btnFecharCam');
-  const btnLimpar = document.getElementById('btnLimparFotos');
-  const btnReset  = document.getElementById('btnReset');
-
-  function countFotos(){
-    let n = 0;
-    for (const i of inputs) if (i && i.value) n++;
-    return n;
-  }
-
-  function setCamState(camOn){
-    if (!video) return;
-    video.style.display = camOn ? 'block' : 'none';
-    if (btnTirar) btnTirar.disabled = !camOn;
-    if (btnFechar) btnFechar.disabled = !camOn;
-    if (btnAbrir) btnAbrir.disabled = camOn;
-  }
-
-  async function abrirCamera(){
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      });
-      video.srcObject = stream;
-      await video.play();
-      setCamState(true);
-    } catch(e){
-      alert('Não foi possível acessar a câmera. Verifique permissão/HTTPS.');
-      setCamState(false);
-    }
-  }
-
-  function fecharCamera(){
-    if (stream){
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
-    }
-    if (video) video.srcObject = null;
-    setCamState(false);
-  }
-
-  function tirarFoto(){
-    if (!video.videoWidth || !video.videoHeight) return;
-
-    const idx = countFotos();
-    if (idx >= inputs.length){
-      alert('Você já capturou o máximo de fotos.');
+  window.openCamForItem = async (idx) => {
+    currentTargetIndex = idx;
+    const block = document.querySelector(`.item-block[data-index="${idx}"]`);
+    const inputs = block.querySelectorAll('.fotos-inputs input');
+    
+    let filled = 0;
+    inputs.forEach(i => { if(i.value) filled++; });
+    if (filled >= 3) {
+      alert('Máximo de 3 fotos atingido para este item.');
       return;
     }
 
-    const targetW = 720;
-    const ratio = video.videoHeight / video.videoWidth;
-    const targetH = Math.round(targetW * ratio);
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = stream;
+      modal.style.display = 'flex';
+    } catch(e) { alert('Erro ao acessar câmera.'); }
+  };
 
-    canvas.width = targetW;
-    canvas.height = targetH;
+  window.closeCam = () => {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    modal.style.display = 'none';
+  };
 
-    const ctx = canvas.getContext('2d', { alpha:false });
-    ctx.drawImage(video, 0, 0, targetW, targetH);
+  if (btnTirar) {
+    btnTirar.addEventListener('click', () => {
+      const block = document.querySelector(`.item-block[data-index="${currentTargetIndex}"]`);
+      const inputs = block.querySelectorAll('.fotos-inputs input');
+      const previews = block.querySelector('.photo-previews');
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+      let targetInput = null;
+      for (let i of inputs) { if (!i.value) { targetInput = i; break; } }
 
-    inputs[idx].value = dataUrl;
-    previews[idx].src = dataUrl;
-    previews[idx].style.display = 'block';
-
-    if (countFotos() >= inputs.length) fecharCamera();
+      if (targetInput) {
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, -640, 0, 640, 480);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        targetInput.value = dataUrl;
+        
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        previews.appendChild(img);
+      }
+      closeCam();
+    });
   }
 
-  function limparFotos(){
-    for (let k=0;k<inputs.length;k++){
-      inputs[k].value = '';
-      previews[k].src = '';
-      previews[k].style.display = 'none';
-    }
-  }
+  window.clearPhotosForItem = (idx) => {
+    const block = document.querySelector(`.item-block[data-index="${idx}"]`);
+    block.querySelectorAll('.fotos-inputs input').forEach(i => i.value = '');
+    block.querySelector('.photo-previews').innerHTML = '';
+  };
 
-  if (btnAbrir) btnAbrir.addEventListener('click', abrirCamera);
-  if (btnFechar) btnFechar.addEventListener('click', fecharCamera);
-  if (btnTirar) btnTirar.addEventListener('click', tirarFoto);
-  if (btnLimpar) btnLimpar.addEventListener('click', limparFotos);
-
-  if (btnReset) btnReset.addEventListener('click', function(){
-    setTimeout(function(){
-      limparFotos();
-      if (produtorNome) produtorNome.textContent = '—';
-    }, 0);
-  });
-
-  setCamState(false);
-  window.addEventListener('beforeunload', fecharCamera);
 })();
 </script>
 

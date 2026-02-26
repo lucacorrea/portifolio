@@ -20,27 +20,41 @@ class Sale extends BaseModel {
     }
 
     public function getRecent($limit = 10) {
+        $filialId = $this->getFilialContext();
+        $where = $filialId ? "WHERE v.filial_id = ?" : "";
+        $params = $filialId ? [$filialId] : [];
+
         return $this->query("
             SELECT v.*, c.nome as cliente_nome, u.nome as vendedor_nome 
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
             LEFT JOIN usuarios u ON v.usuario_id = u.id 
+            $where
             ORDER BY v.data_venda DESC LIMIT $limit
-        ")->fetchAll();
+        ", $params)->fetchAll();
     }
 
     public function getRecentPaginated($page = 1, $perPage = 4) {
         $offset = ($page - 1) * $perPage;
+        $filialId = $this->getFilialContext();
+        $where = $filialId ? "WHERE v.filial_id = ?" : "";
+        $params = $filialId ? [$filialId] : [];
+
         return $this->query("
             SELECT v.*, c.nome as cliente_nome, u.nome as vendedor_nome 
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
             LEFT JOIN usuarios u ON v.usuario_id = u.id 
+            $where
             ORDER BY v.data_venda DESC LIMIT $perPage OFFSET $offset
-        ")->fetchAll();
+        ", $params)->fetchAll();
     }
 
     public function getTotalCount() {
+        $filialId = $this->getFilialContext();
+        if ($filialId) {
+            return $this->query("SELECT COUNT(*) FROM {$this->table} WHERE filial_id = ?", [$filialId])->fetchColumn();
+        }
         return $this->query("SELECT COUNT(*) FROM {$this->table}")->fetchColumn();
     }
 

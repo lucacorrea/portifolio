@@ -5,7 +5,7 @@ class Setting extends BaseModel {
     protected $table = 'configuracoes';
 
     public function getAll() {
-        $data = $this->all();
+        $data = $this->all('chave ASC');
         $settings = [];
         foreach ($data as $row) {
             $settings[$row['chave']] = $row['valor'];
