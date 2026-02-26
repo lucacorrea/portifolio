@@ -359,9 +359,7 @@
                                             <div class="content">
                                                 <h4 class="text-sm">Administrador</h4>
                                                 <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
-                                                    href="#">
-                                                    Admin
-                                                </a>
+                                                    href="#">Admin</a>
                                             </div>
                                         </div>
                                     </li>
@@ -475,6 +473,7 @@
                                             title="Excluir"><i class="lni lni-trash-can"></i></button>
                                     </td>
                                 </tr>
+
                                 <tr data-categoria="Alimentos" data-status="ATIVO" data-baixo="1">
                                     <td><img class="prod-img" alt="Açúcar" /></td>
                                     <td>P0002</td>
@@ -492,6 +491,7 @@
                                             title="Excluir"><i class="lni lni-trash-can"></i></button>
                                     </td>
                                 </tr>
+
                                 <tr data-categoria="Limpeza" data-status="ATIVO" data-baixo="1">
                                     <td><img class="prod-img" alt="Detergente" /></td>
                                     <td>P0003</td>
@@ -509,6 +509,7 @@
                                             title="Excluir"><i class="lni lni-trash-can"></i></button>
                                     </td>
                                 </tr>
+
                                 <tr data-categoria="Bebidas" data-status="INATIVO" data-baixo="0">
                                     <td><img class="prod-img" alt="Refrigerante" /></td>
                                     <td>P0004</td>
@@ -864,7 +865,7 @@
             aplicarFiltros();
         });
 
-        // ✅ Exportar Excel (.xls) estilizado + TÍTULO CENTRALIZADO + colunas Preço/Estoque/Mínimo centralizadas
+        // ✅ Excel (mantido do seu)
         function exportExcel() {
             const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
 
@@ -889,7 +890,6 @@
                 ];
             });
 
-            // colunas a centralizar (0-based): Preço=4, Estoque=5, Mínimo=6, Status=7
             const isCenterCol = (idx) => (idx === 4 || idx === 5 || idx === 6 || idx === 7);
 
             let html = `
@@ -903,7 +903,6 @@
               .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
               .muted { color: #555; font-weight: 700; }
               .center { text-align: center; }
-              .right { text-align: right; }
               .spacer td { border: none; padding: 4px; }
             </style>
           </head>
@@ -911,42 +910,22 @@
             <table>
       `;
 
-            // Título centralizado
-            html += `<tr><td class="title" colspan="8" style="text-align: center;">PAINEL DA DISTRIBUIDORA - PRODUTOS</td></tr>`;
+            html += `<tr><td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - PRODUTOS</td></tr>`;
+            html += `<tr><td class="muted">Gerado em:</td><td colspan="7">${dt}</td></tr>`;
+            html += `<tr><td class="muted">Categoria:</td><td>${cat}</td><td class="muted">Status:</td><td>${st}</td><td colspan="4"></td></tr>`;
+            html += `<tr class="spacer"><td colspan="8">&nbsp;</td></tr>`;
 
-            // linhas do topo
-            html += `<tr>
-                <td class="muted">Gerado em:</td>
-                <td colspan="7" style="text-align: left;">${dt}</td>
-              </tr>`;
-
-            html += `<tr>
-                <td class="muted">Filtro Categoria:</td>
-                <td>${cat}</td>
-                <td class="muted">Filtro Status:</td>
-                <td>${st}</td>
-                <td colspan="4"></td>
-              </tr>`;
-
-            html += ``;
-
-            // Cabeçalho da tabela (centraliza Preço/Estoque/Mínimo/Status)
-            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')
-                }</tr>`;
-
-            // Linhas (centraliza Preço/Estoque/Mínimo/Status)
+            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
             body.forEach(r => {
                 html += `<tr>${r.map((c, idx) => {
                     const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
                     const cls = isCenterCol(idx) ? 'center' : '';
                     return `<td class="${cls}">${safe}</td>`;
-                }).join('')
-                    }</tr>`;
+                }).join('')}</tr>`;
             });
 
             html += `</table></body></html>`;
 
-            // BOM para Excel respeitar acentos
             const blob = new Blob(["\ufeff" + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
 
@@ -956,36 +935,44 @@
             document.body.appendChild(a);
             a.click();
             a.remove();
-
             URL.revokeObjectURL(url);
         }
         document.getElementById('btnExcel').addEventListener('click', exportExcel);
 
-        // PDF (mantido)
+        // ✅✅ PDF (AGORA IGUAL AO PRINT)
         function exportPDF() {
             if (!window.jspdf || !window.jspdf.jsPDF) {
                 alert('Biblioteca do PDF não carregou.');
                 return;
             }
+
             const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
             const now = new Date();
             const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+
             const cat = fCategoria.value || 'Todas';
             const st = (fStatus.value || 'Todos');
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
+            // margens iguais ao print
+            const M = 70;
+
+            // Título
+            doc.setTextColor(0, 0, 0);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(14);
-            doc.text('PAINEL DA DISTRIBUIDORA - PRODUTOS', 40, 40);
+            doc.text('PAINEL DA DISTRIBUIDORA - PRODUTOS', M, 55);
 
+            // Infos
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
-            doc.text(`Gerado em: ${dt}`, 40, 60);
-            doc.text(`Categoria: ${cat} | Status: ${st}`, 40, 75);
+            doc.text(`Gerado em:  ${dt}`, M, 75);
+            doc.text(`Categoria:  ${cat} | Status:  ${st}`, M, 92);
 
             const head = [['Código', 'Produto', 'Categoria', 'Unidade', 'Preço', 'Estoque', 'Mínimo', 'Status']];
+
             const body = rows.map(tr => ([
                 tr.children[1].innerText.trim(),
                 tr.children[2].innerText.trim(),
@@ -998,11 +985,43 @@
             ]));
 
             doc.autoTable({
-                head, body, startY: 95,
-                styles: { font: 'helvetica', fontSize: 9, cellPadding: 6 },
-                headStyles: { fillColor: [241, 245, 249], textColor: [17, 24, 39] },
-                alternateRowStyles: { fillColor: [250, 250, 251] },
-                margin: { left: 40, right: 40 }
+                head,
+                body,
+                startY: 115,
+                margin: { left: M, right: M },
+
+                // visual limpo igual ao print
+                theme: 'plain',
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 9,
+                    textColor: [17, 24, 39],
+                    cellPadding: { top: 6, right: 6, bottom: 6, left: 6 },
+                    lineWidth: 0
+                },
+                headStyles: {
+                    fillColor: [241, 245, 249],
+                    textColor: [17, 24, 39],
+                    fontStyle: 'bold',
+                    lineWidth: 0
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252]
+                },
+
+                // centralizar colunas numéricas e status
+                columnStyles: {
+                    4: { halign: 'center' }, // Preço
+                    5: { halign: 'center' }, // Estoque
+                    6: { halign: 'center' }, // Mínimo
+                    7: { halign: 'center' }  // Status
+                },
+
+                // Ajuste de largura parecido com o print
+                didParseCell: function (data) {
+                    // remove qualquer borda
+                    data.cell.styles.lineWidth = 0;
+                }
             });
 
             doc.save('produtos.pdf');
