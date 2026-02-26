@@ -38,9 +38,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
         </a>
+        <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
         <a href="pre_vendas.php" class="nav-link <?= $current_page == 'pre_vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-file-invoice-dollar"></i> <span>Pré-Venda / Orç.</span>
         </a>
+        <?php endif; ?>
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão de Materiais</div>
         

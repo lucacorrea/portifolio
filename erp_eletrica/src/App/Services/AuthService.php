@@ -79,18 +79,12 @@ class AuthService extends BaseService {
         
         // Hardcoded restrictions for 'vendedor' level
         if ($nivel === 'vendedor') {
-            // Vendedor can visualize but not modify Sales and Inventory
+            // Vendedor can ONLY visualize Sales and Inventory
             if (in_array($modulo, ['vendas', 'estoque'])) {
-                if ($acao !== 'visualizar') return false;
+                return $acao === 'visualizar';
             }
-            // Vendedor cannot access administrative/financial modules at all
-            if (in_array($modulo, ['financeiro', 'usuarios', 'filiais', 'clientes', 'fornecedores', 'configuracoes'])) {
-                return false;
-            }
-            // Vendedor can create and view pre-sales
-            if ($modulo === 'pre_vendas') {
-                return in_array($acao, ['visualizar', 'criar']);
-            }
+            // Everything else is blocked (including pre_vendas as requested)
+            return false;
         }
 
         $db = \App\Config\Database::getInstance()->getConnection();
