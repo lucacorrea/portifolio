@@ -52,7 +52,7 @@
             </select>
         </div>
         <div class="d-flex gap-2">
-            <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
+            <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
             <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#newProductModal">
                 <i class="fas fa-plus me-2"></i>Novo Material
             </button>
@@ -119,7 +119,7 @@
                             <div class="fw-bold text-success">V: <?= formatarMoeda($p['preco_venda']) ?></div>
                         </td>
                         <td class="text-end pe-4">
-                            <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
+                            <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-light border" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)" title="Editar">
                                     <i class="fas fa-edit text-primary"></i>
