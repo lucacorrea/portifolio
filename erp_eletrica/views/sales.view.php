@@ -132,9 +132,15 @@
                     </div>
                 </div>
 
+                <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
                 <button class="btn btn-primary btn-lg w-100 py-3 fw-bold shadow-sm" id="btnCheckout" disabled>
                     <i class="fas fa-check-circle me-2"></i>CONFIRMAR VENDA (F2)
                 </button>
+                <?php else: ?>
+                <div class="alert alert-info small mb-0">
+                    <i class="fas fa-info-circle me-1"></i> Usuários nível vendedor não podem finalizar vendas.
+                </div>
+                <?php endif; ?>
             </div>
             
             <!-- Quick Sales History (Últimos Cupons) -->

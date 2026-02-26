@@ -30,9 +30,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <div class="sidebar-divider my-2 opacity-25"></div>
         <?php endif; ?>
 
+        <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
         <a href="index.php" class="nav-link <?= ($current_page == 'index.php' || $current_page == '') ? 'active' : '' ?>">
             <i class="fas fa-chart-line"></i> <span>Painel Comercial</span>
         </a>
+        <?php endif; ?>
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
         </a>
@@ -46,6 +48,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
         </a>
         
+        <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Relacionamento</div>
         
         <a href="clientes.php" class="nav-link <?= $current_page == 'clientes.php' ? 'active' : '' ?>">
@@ -80,6 +83,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 </a>
             </nav>
         </div>
+        <?php endif; ?>
 
         <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
@@ -95,9 +99,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
         
+        <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
         <a href="configuracoes.php" class="nav-link mt-auto border-top border-secondary border-opacity-10 <?= $current_page == 'configuracoes.php' ? 'active' : '' ?>">
             <i class="fas fa-sliders-h"></i> <span>Ajustes Gerais</span>
         </a>
+        <?php endif; ?>
         <a href="logout.php" class="nav-link text-danger">
             <i class="fas fa-power-off"></i> <span>Sair do Sistema</span>
         </a>

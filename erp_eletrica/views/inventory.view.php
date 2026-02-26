@@ -52,12 +52,14 @@
             </select>
         </div>
         <div class="d-flex gap-2">
+            <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
             <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#newProductModal">
                 <i class="fas fa-plus me-2"></i>Novo Material
             </button>
             <button class="btn btn-outline-secondary fw-bold" data-bs-toggle="modal" data-bs-target="#movementModal">
                 <i class="fas fa-right-left me-2"></i>Movimentar
             </button>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -117,6 +119,7 @@
                             <div class="fw-bold text-success">V: <?= formatarMoeda($p['preco_venda']) ?></div>
                         </td>
                         <td class="text-end pe-4">
+                            <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-light border" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)" title="Editar">
                                     <i class="fas fa-edit text-primary"></i>
@@ -125,6 +128,9 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
+                            <?php else: ?>
+                                <span class="text-muted small italic">Somente Leitura</span>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>
