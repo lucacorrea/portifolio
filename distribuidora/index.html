@@ -61,6 +61,34 @@
       font-size: 12px;
       color: #111827;
     }
+
+    /* ✅ Dropdown do profile: largura acompanha o texto */
+    .profile-box .dropdown-menu {
+      width: max-content;
+      /* adapta ao conteúdo */
+      min-width: 280px;
+      /* mínimo pra ficar bonito */
+      max-width: calc(100vw - 24px);
+      /* não estoura a tela */
+    }
+
+    /* Mantém o bloco do autor acompanhando a largura do dropdown */
+    .profile-box .dropdown-menu .author-info {
+      width: max-content;
+      max-width: 100%;
+    }
+
+    /* Conteúdo pode crescer */
+    .profile-box .dropdown-menu .author-info .content {
+      min-width: 0;
+    }
+
+    /* Se você quer o e-mail em 1 linha (sem quebrar) */
+    .profile-box .dropdown-menu .author-info .content a {
+      display: inline-block;
+      white-space: nowrap;
+      /* não quebra linha */
+    }
   </style>
 </head>
 
