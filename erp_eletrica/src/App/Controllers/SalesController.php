@@ -66,8 +66,28 @@ class SalesController extends BaseController {
                 }
                 
                 $requestedDiscount = $data['discount_percent'] ?? 0;
-                if ($requestedDiscount > $maxDiscount) {
-                    throw new \Exception("Desconto de $requestedDiscount% excede seu limite permitido de $maxDiscount%");
+                $supervisorId = null;
+
+                // Re-validation for Non-Admins with Discount
+                if ($requestedDiscount > 0 && $_SESSION['usuario_nivel'] !== 'admin') {
+                    $supervisorId = $data['supervisor_id'] ?? null;
+                    $supervisorCredential = $data['supervisor_credential'] ?? null;
+
+                    if (!$supervisorId || !$supervisorCredential) {
+                        throw new \Exception("Esta venda com desconto requer autorização de um administrador.");
+                    }
+
+                    $userModel = new \App\Models\User();
+                    // Re-verify credentials
+                    if (!$userModel->validateAuth($supervisorId, $supervisorCredential)) {
+                        throw new \Exception("Credenciais de autorização inválidas.");
+                    }
+
+                    // Ensure the supervisor is actually an admin
+                    $supervisor = $db->query("SELECT nivel FROM usuarios WHERE id = " . (int)$supervisorId)->fetch();
+                    if (!$supervisor || $supervisor['nivel'] !== 'admin') {
+                        throw new \Exception("Apenas administradores podem autorizar descontos.");
+                    }
                 }
 
                 $saleData = [
@@ -76,6 +96,7 @@ class SalesController extends BaseController {
                     'filial_id' => $_SESSION['filial_id'] ?? 1,
                     'valor_total' => $data['total'],
                     'desconto_total' => $data['subtotal'] * ($requestedDiscount / 100),
+                    'autorizado_por' => $supervisorId,
                     'forma_pagamento' => $data['pagamento']
                 ];
                 $saleId = $saleModel->create($saleData);
