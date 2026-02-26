@@ -34,7 +34,14 @@ class User extends BaseModel {
     }
     
     public function findAdmins() {
-        return $this->query("SELECT id, nome, auth_type FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1")->fetchAll();
+        $filialId = $this->getFilialContext();
+        $sql = "SELECT id, nome, auth_type FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1";
+        $params = [];
+        if ($filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+        return $this->query($sql, $params)->fetchAll();
     }
 
     public function validateAuth($userId, $credential) {
