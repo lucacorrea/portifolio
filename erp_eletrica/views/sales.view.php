@@ -503,10 +503,12 @@ async function interceptDiscount(e) {
     
     e.preventDefault();
     e.stopPropagation();
-    document.getElementById('pdvSearch').focus(); // Blur current field
+    if (e.target) e.target.blur();
+    
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDiscountAuth'));
+    modal.show();
     
     await loadAdmins();
-    new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
 }
 
 let isAuthorized = false;
