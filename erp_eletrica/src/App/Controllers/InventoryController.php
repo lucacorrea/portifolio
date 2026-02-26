@@ -27,12 +27,14 @@ class InventoryController extends BaseController {
         $page = (int)($_GET['page'] ?? 1);
         $pagination = $productModel->paginate(6, $page, "categoria ASC, nome ASC");
         $products = $pagination['data'];
+        $allProducts = $productModel->all("nome ASC");
         $movements = $movementModel->getHistory(null, 20);
         $categories = $productModel->getCategories();
 
         $this->render('inventory', [
             'stats' => $stats,
             'products' => $products,
+            'allProducts' => $allProducts,
             'pagination' => $pagination,
             'movements' => $movements,
             'categories' => $categories
@@ -64,6 +66,15 @@ class InventoryController extends BaseController {
             validateCsrf($_POST['csrf_token'] ?? '');
             $this->service->recordMovement($_POST);
             $this->redirect('estoque.php?msg=Movimentação realizada com sucesso');
+        }
+    }
+
+    public function delete() {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id > 0) {
+            $model = new \App\Models\Product();
+            $model->delete($id);
+            $this->redirect('estoque.php?msg=Material excluído com sucesso');
         }
     }
 

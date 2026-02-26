@@ -16,6 +16,10 @@ switch ($action) {
         \App\Services\AuthService::checkPermission('estoque', 'editar');
         $controller->move();
         break;
+    case 'delete':
+        \App\Services\AuthService::checkPermission('estoque', 'excluir');
+        $controller->delete();
+        break;
     default:
         \App\Services\AuthService::checkPermission('estoque', 'visualizar');
         $controller->index();

@@ -121,7 +121,7 @@
                                 <button class="btn btn-light border" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)" title="Editar">
                                     <i class="fas fa-edit text-primary"></i>
                                 </button>
-                                <button class="btn btn-light border text-danger" title="Excluir">
+                                <button class="btn btn-light border text-danger" onclick="deleteProduct(<?= $p['id'] ?>)" title="Excluir">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -132,6 +132,35 @@
             </table>
         </div>
     </div>
+    <!-- Pagination -->
+    <?php if (isset($pagination) && $pagination['pages'] > 1): ?>
+    <div class="card-footer bg-white border-top py-3">
+        <nav aria-label="Navegação de estoque">
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>" aria-label="Anterior">
+                        <i class="fas fa-chevron-left small"></i>
+                    </a>
+                </li>
+                <?php 
+                $start = max(1, $pagination['current'] - 2);
+                $end = min($pagination['pages'], $start + 4);
+                if ($end - $start < 4) $start = max(1, $end - 4);
+                for($i = $start; $i <= $end; $i++): 
+                ?>
+                <li class="page-item <?= $i == $pagination['current'] ? 'active' : '' ?>">
+                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+                <li class="page-item <?= $pagination['current'] >= $pagination['pages'] ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>" aria-label="Próximo">
+                        <i class="fas fa-chevron-right small"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- Modals -->
@@ -279,6 +308,15 @@
 </div>
 
 <script>
+function editProduct(product) {
+    const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
+    document.getElementById('edit_id').value = product.id;
+    document.getElementById('edit_codigo').value = product.codigo;
+    document.getElementById('edit_ncm').value = product.ncm || '';
+    document.getElementById('edit_nome').value = product.nome;
+    document.getElementById('edit_unidade').value = product.unidade;
+    document.getElementById('edit_categoria').value = product.categoria;
+    document.getElementById('edit_preco_custo').value = product.preco_custo;
     document.getElementById('edit_preco_venda').value = product.preco_venda;
     document.getElementById('edit_estoque_minimo').value = product.estoque_minimo;
     
@@ -292,6 +330,12 @@
 
     document.querySelector('#newProductModal .modal-title').innerText = 'Editar Material';
     modal.show();
+}
+
+function deleteProduct(id) {
+    if (confirm('Deseja realmente excluir este material do estoque?')) {
+        window.location.href = 'estoque.php?action=delete&id=' + id;
+    }
 }
 
 // Client-side search logic
