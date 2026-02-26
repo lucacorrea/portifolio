@@ -27,12 +27,14 @@ class InventoryController extends BaseController {
         $page = (int)($_GET['page'] ?? 1);
         $pagination = $productModel->paginate(6, $page, "categoria ASC, nome ASC");
         $products = $pagination['data'];
+        $allProducts = $productModel->all("nome ASC");
         $movements = $movementModel->getHistory(null, 20);
         $categories = $productModel->getCategories();
 
         $this->render('inventory', [
             'stats' => $stats,
             'products' => $products,
+            'allProducts' => $allProducts,
             'pagination' => $pagination,
             'movements' => $movements,
             'categories' => $categories
