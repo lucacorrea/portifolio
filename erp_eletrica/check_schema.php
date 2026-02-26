@@ -2,7 +2,7 @@
 require_once 'config.php';
 $db = \App\Config\Database::getInstance()->getConnection();
 
-$tables = ['vendas', 'produtos', 'clientes', 'fornecedores', 'ordens_servico', 'contas_pagar', 'contas_receber', 'movimentacoes_estoque', 'compras', 'vendas_itens', 'orcamentos', 'pre_vendas'];
+$tables = ['vendas', 'produtos', 'clientes', 'fornecedores', 'os', 'contas_pagar', 'contas_receber', 'movimentacao_estoque', 'compras', 'vendas_itens', 'orcamentos', 'pre_vendas'];
 
 foreach ($tables as $table) {
     echo "Checking $table: ";

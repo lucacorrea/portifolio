@@ -21,7 +21,7 @@ class InventoryController extends BaseController {
             'total_itens' => $this->sum('produtos', 'quantidade'),
             'valor_custo' => $this->sum('produtos', 'preco_custo * quantidade'),
             'itens_criticos' => count($productModel->getCriticalStock(!$isMatriz ? $filialId : null)),
-            'mov_mes' => $this->count('movimentacoes_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)")
+            'mov_mes' => $this->count('movimentacao_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)")
         ];
 
         $products = $productModel->all("categoria ASC, nome ASC");
