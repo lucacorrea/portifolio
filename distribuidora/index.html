@@ -83,16 +83,9 @@
     }
 
     .profile-box .dropdown-menu .author-info .content a {
-      display: block;
-      max-width: 100%;
-      white-space: normal;
-      /* permite quebrar linha */
-      overflow-wrap: anywhere;
-      /* quebra em qualquer ponto se precisar */
-      word-break: break-word;
-      /* fallback */
-      line-height: 1.2;
-    }
+        display:block; max-width:100%;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      }
 
     /* Se você preferir reticências em 1 linha, troque o bloco acima por:
       .profile-box .dropdown-menu .author-info .content a {
