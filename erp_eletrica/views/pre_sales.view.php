@@ -11,7 +11,7 @@
                             </span>
                             <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquise por material ou código para o orçamento..." autocomplete="off">
                         </div>
-                        <div id="pv_search_results" class="list-group mt-3 shadow-sm d-none" style="position: absolute; z-index: 1050; width: calc(100% - 3rem);">
+                        <div id="pv_search_results" class="list-group mt-1 shadow-lg d-none" style="position: absolute; z-index: 2000; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd;">
                             <!-- Results will be injected here -->
                         </div>
                     </div>

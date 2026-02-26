@@ -11,7 +11,7 @@
                             </span>
                             <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off">
                         </div>
-                        <div id="searchResults" class="list-group mt-3 shadow-sm d-none" style="position: absolute; z-index: 1050; width: calc(100% - 3rem);">
+                        <div id="searchResults" class="list-group mt-1 shadow-lg d-none" style="position: absolute; z-index: 2000; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd;">
                             <!-- Results will be injected here -->
                         </div>
                         <div class="mt-3 d-flex gap-2">
