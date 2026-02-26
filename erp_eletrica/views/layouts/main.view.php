@@ -71,6 +71,8 @@
                 <?= $content ?>
             </main>
         </div>
+        <!-- Sidebar Mobile Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
     </div>
 
     <!-- Loader -->

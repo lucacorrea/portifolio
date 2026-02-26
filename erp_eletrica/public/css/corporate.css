@@ -49,10 +49,12 @@ body {
 /* Sidebar Styling */
 .sidebar {
     width: 260px;
-    background: var(--erp-sidebar-bg);
+    background: #ffffff;
+    /* Default, will be overridden by --erp-sidebar-bg if defined */
     border-right: 1px solid #e2e8f0;
     transition: all 0.3s;
-    z-index: 1000;
+    z-index: 1040;
+    /* Above Bootstrap sticky-top (1020) and fixed-top (1030) */
 }
 
 .sidebar-header {
@@ -182,6 +184,34 @@ body {
 
     .sidebar.active {
         left: 0;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* Sidebar Mobile Overlay */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 1035;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Content Body Mobile Optimization */
+@media (max-width: 768px) {
+    .content-body {
+        padding: 1rem;
     }
 }
 

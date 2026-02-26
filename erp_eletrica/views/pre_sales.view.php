@@ -2,7 +2,7 @@
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-8 d-flex flex-column">
         <div class="row g-4 mb-4">
-            <div class="col-md-9" style="z-index: 2000;">
+            <div class="col-md-9" style="z-index: 10;">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body" style="overflow: visible !important;">
                         <div class="position-relative">

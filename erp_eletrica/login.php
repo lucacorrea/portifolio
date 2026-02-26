@@ -196,6 +196,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             color: #991b1b;
             border: 1px solid #fee2e2;
         }
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 30px 20px;
+                border-radius: 0;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            body {
+                background: white;
+            }
+        }
     </style>
 </head>
 <body>
