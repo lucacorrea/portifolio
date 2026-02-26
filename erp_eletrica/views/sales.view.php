@@ -68,7 +68,7 @@
 
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
-        <div class="card border-0 glass-card shadow-lg h-100 d-flex flex-column" style="border: 1px solid rgba(79, 70, 229, 0.2) !important;">
+        <div class="card border-0 glass-card shadow-lg h-100 d-flex flex-column" style="border: 1px solid rgba(0, 86, 179, 0.2) !important;">
             <div class="card-header bg-erp-primary text-white py-3 border-0">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Checkout SaaS</h5>
             </div>
