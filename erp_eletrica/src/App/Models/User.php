@@ -109,6 +109,8 @@ class User extends BaseModel {
             $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
             return $this->query($sql, $params);
         }
+    }
+
     public function paginate($perPage = 15, $currentPage = 1, $order = "u.id DESC") {
         $filialId = $this->getFilialContext();
         $offset = ($currentPage - 1) * $perPage;
