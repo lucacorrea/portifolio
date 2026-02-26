@@ -69,6 +69,15 @@ class InventoryController extends BaseController {
         }
     }
 
+    public function delete() {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id > 0) {
+            $model = new \App\Models\Product();
+            $model->delete($id);
+            $this->redirect('estoque.php?msg=Material excluído com sucesso');
+        }
+    }
+
     private function sum($table, $expression) {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? null;

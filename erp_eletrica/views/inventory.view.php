@@ -121,7 +121,7 @@
                                 <button class="btn btn-light border" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)" title="Editar">
                                     <i class="fas fa-edit text-primary"></i>
                                 </button>
-                                <button class="btn btn-light border text-danger" title="Excluir">
+                                <button class="btn btn-light border text-danger" onclick="deleteProduct(<?= $p['id'] ?>)" title="Excluir">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -308,6 +308,15 @@
 </div>
 
 <script>
+function editProduct(product) {
+    const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
+    document.getElementById('edit_id').value = product.id;
+    document.getElementById('edit_codigo').value = product.codigo;
+    document.getElementById('edit_ncm').value = product.ncm || '';
+    document.getElementById('edit_nome').value = product.nome;
+    document.getElementById('edit_unidade').value = product.unidade;
+    document.getElementById('edit_categoria').value = product.categoria;
+    document.getElementById('edit_preco_custo').value = product.preco_custo;
     document.getElementById('edit_preco_venda').value = product.preco_venda;
     document.getElementById('edit_estoque_minimo').value = product.estoque_minimo;
     
@@ -321,6 +330,12 @@
 
     document.querySelector('#newProductModal .modal-title').innerText = 'Editar Material';
     modal.show();
+}
+
+function deleteProduct(id) {
+    if (confirm('Deseja realmente excluir este material do estoque?')) {
+        window.location.href = 'estoque.php?action=delete&id=' + id;
+    }
 }
 
 // Client-side search logic
