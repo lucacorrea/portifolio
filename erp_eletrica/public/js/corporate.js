@@ -2,10 +2,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Sidebar toggle for mobile
     const toggle = document.getElementById('sidebarToggle');
     const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
     
     if (toggle && sidebar) {
         toggle.addEventListener('click', () => {
             sidebar.classList.toggle('active');
+            if (overlay) overlay.classList.toggle('active');
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
         });
     }
 

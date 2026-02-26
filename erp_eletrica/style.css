@@ -64,7 +64,7 @@ body {
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 1000;
+    z-index: 1040;
     transition: width var(--transition), transform var(--transition);
     display: flex;
     flex-direction: column;
@@ -185,7 +185,7 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     position: sticky;
     top: 0;
-    z-index: 900;
+    z-index: 1030;
 }
 
 .toggle-sidebar {
@@ -321,6 +321,8 @@ body {
 .industrial-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 600px;
+    /* Preserve table structure on mobile scroll */
 }
 
 .industrial-table th {
