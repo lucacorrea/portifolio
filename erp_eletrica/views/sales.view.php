@@ -118,11 +118,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted">Desconto (%)</span>
                         <div style="width: 80px;">
-                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" 
-                                   onfocus="interceptDiscount(event)"
-                                   onmousedown="interceptDiscount(event)" 
-                                   onkeydown="interceptDiscount(event)"
-                                   onchange="renderCart()">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onfocus="interceptDiscount(event)" onmousedown="interceptDiscount(event)" onkeydown="interceptDiscount(event)" onchange="renderCart()">
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
