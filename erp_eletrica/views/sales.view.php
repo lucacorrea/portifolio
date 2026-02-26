@@ -642,6 +642,7 @@ btnCheckout.onclick = async () => {
         isAuthorized = false;
         authSupervisorId = null;
         authSupervisorCredential = null;
+        document.getElementById('discountPercent').value = 0;
         renderCart();
         loadRecentSales();
     } else {
