@@ -9,14 +9,14 @@
                             <span class="input-group-text bg-white border-end-0 text-muted">
                                 <i class="fas fa-search"></i>
                             </span>
-                            <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Digite o nome ou código..." autocomplete="off">
+                            <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off">
                         </div>
                         <div id="searchResults" class="list-group mt-3 shadow-sm d-none" style="position: absolute; z-index: 1050; width: calc(100% - 3rem);">
                             <!-- Results will be injected here -->
                         </div>
                         <div class="mt-3 d-flex gap-2">
                              <button class="btn btn-outline-primary fw-bold" onclick="loadPendingPreSales()">
-                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda
+                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda (F8)
                             </button>
                         </div>
                     </div>
