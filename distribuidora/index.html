@@ -14,27 +14,20 @@
     <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="assets/css/main.css" />
 
-    <!-- Ajustes: cards mesma altura + cards flex -->
+    <!-- Ajustes: tudo mesma altura -->
     <style>
-      /* Faz colunas esticarem igualmente */
       .equal-row {
         align-items: stretch;
       }
-
-      /* Colunas viram flex pra card ocupar 100% */
       .equal-row > [class^="col-"],
       .equal-row > [class*=" col-"] {
         display: flex;
       }
-
-      /* Cards ocupam 100% da altura do row */
       .icon-card,
       .card-style {
         height: 100%;
         width: 100%;
       }
-
-      /* Estrutura interna flex para “empurrar” chart/tabela */
       .card-style {
         display: flex;
         flex-direction: column;
@@ -44,15 +37,21 @@
       .card-style .card-body-flex {
         flex: 1 1 auto;
       }
-
-      /* Evita canvas “colapsar” */
       .chart canvas {
         min-height: 320px;
       }
-
-      /* Tabelas mais estáveis na altura */
       .table-responsive {
         padding-bottom: 6px;
+      }
+      .mini-metrics span {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(143, 146, 161, .08);
+        font-size: 12px;
+        color: #111827;
       }
     </style>
   </head>
@@ -97,8 +96,8 @@
             </a>
             <ul id="ddmenu_dashboard" class="collapse show dropdown-nav">
               <li><a href="index.html" class="active"> Visão Geral </a></li>
-              <li><a href="dashboard-operacional.html"> Operacional </a></li>
-              <li><a href="dashboard-financeiro.html"> Financeiro </a></li>
+              <li><a href="dashboard-vendas.html"> Vendas </a></li>
+              <li><a href="dashboard-estoque.html"> Estoque </a></li>
             </ul>
           </li>
 
@@ -124,7 +123,6 @@
             <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
               <li><a href="pedidos.html"> Pedidos </a></li>
               <li><a href="vendas.html"> Vendas </a></li>
-              <li><a href="entregas.html"> Entregas / Romaneios </a></li>
               <li><a href="devolucoes.html"> Devoluções </a></li>
             </ul>
           </li>
@@ -153,8 +151,8 @@
             <ul id="ddmenu_estoque" class="collapse dropdown-nav">
               <li><a href="produtos.html"> Produtos </a></li>
               <li><a href="inventario.html"> Inventário </a></li>
-              <li><a href="entradas.html"> Entradas (Compras) </a></li>
-              <li><a href="saidas.html"> Saídas (Baixas) </a></li>
+              <li><a href="entradas.html"> Entradas </a></li>
+              <li><a href="saidas.html"> Saídas </a></li>
               <li><a href="estoque-minimo.html"> Estoque Mínimo </a></li>
             </ul>
           </li>
@@ -184,33 +182,6 @@
               <li><a href="clientes.html"> Clientes </a></li>
               <li><a href="fornecedores.html"> Fornecedores </a></li>
               <li><a href="categorias.html"> Categorias </a></li>
-              <li><a href="rotas.html"> Rotas / Regiões </a></li>
-            </ul>
-          </li>
-
-          <!-- FINANCEIRO -->
-          <li class="nav-item nav-item-has-children">
-            <a
-              href="#0"
-              class="collapsed"
-              data-bs-toggle="collapse"
-              data-bs-target="#ddmenu_financeiro"
-              aria-controls="ddmenu_financeiro"
-              aria-expanded="false"
-              aria-label="Toggle navigation"
-            >
-              <span class="icon">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
-                </svg>
-              </span>
-              <span class="text">Financeiro</span>
-            </a>
-            <ul id="ddmenu_financeiro" class="collapse dropdown-nav">
-              <li><a href="contas-receber.html"> Contas a Receber </a></li>
-              <li><a href="contas-pagar.html"> Contas a Pagar </a></li>
-              <li><a href="caixa.html"> Caixa / Fluxo </a></li>
             </ul>
           </li>
 
@@ -249,7 +220,6 @@
             <ul id="ddmenu_config" class="collapse dropdown-nav">
               <li><a href="usuarios.html"> Usuários e Permissões </a></li>
               <li><a href="parametros.html"> Parâmetros do Sistema </a></li>
-              <li><a href="integracoes.html"> Integrações </a></li>
             </ul>
           </li>
 
@@ -316,8 +286,8 @@
                     <li>
                       <a href="#0">
                         <div class="content">
-                          <h6>Estoque Mínimo <span class="text-regular">atingido em 3 itens.</span></h6>
-                          <p>Verifique “Estoque Mínimo” para reposição.</p>
+                          <h6>Estoque mínimo <span class="text-regular">em 3 itens.</span></h6>
+                          <p>Confira “Estoque Mínimo”.</p>
                           <span>Agora</span>
                         </div>
                       </a>
@@ -325,8 +295,8 @@
                     <li>
                       <a href="#0">
                         <div class="content">
-                          <h6>Pedidos Pendentes <span class="text-regular">para separação.</span></h6>
-                          <p>2 pedidos aguardando conferência.</p>
+                          <h6>Pedidos pendentes <span class="text-regular">para conferência.</span></h6>
+                          <p>2 pedidos aguardando separação.</p>
                           <span>10 min atrás</span>
                         </div>
                       </a>
@@ -363,7 +333,7 @@
                     </li>
                     <li class="divider"></li>
                     <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários e Permissões</a></li>
+                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
                     <li class="divider"></li>
                     <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
                   </ul>
@@ -383,7 +353,7 @@
             <div class="row align-items-center">
               <div class="col-md-6">
                 <div class="title">
-                  <h2>Dashboard da Distribuidora</h2>
+                  <h2>Dashboard (Vendas e Estoque)</h2>
                 </div>
               </div>
               <div class="col-md-6">
@@ -405,7 +375,7 @@
               <div class="icon-card">
                 <div class="icon purple"><i class="lni lni-cart-full"></i></div>
                 <div class="content">
-                  <h6 class="mb-10">Pedidos Hoje</h6>
+                  <h6 class="mb-10">Vendas Hoje</h6>
                   <h3 class="text-bold mb-10">128</h3>
                   <p class="text-sm text-success">
                     <i class="lni lni-arrow-up"></i> +8.3% <span class="text-gray">(vs. ontem)</span>
@@ -442,19 +412,19 @@
 
             <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
               <div class="icon-card">
-                <div class="icon orange"><i class="lni lni-delivery"></i></div>
+                <div class="icon orange"><i class="lni lni-calculator"></i></div>
                 <div class="content">
-                  <h6 class="mb-10">Entregas Pendentes</h6>
-                  <h3 class="text-bold mb-10">23</h3>
+                  <h6 class="mb-10">Ticket Médio (Hoje)</h6>
+                  <h3 class="text-bold mb-10">R$ 86,40</h3>
                   <p class="text-sm text-success">
-                    <i class="lni lni-arrow-up"></i> +2 <span class="text-gray">hoje</span>
+                    <i class="lni lni-arrow-up"></i> +2.1% <span class="text-gray">média</span>
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Gráficos 1 e 2 (mesma altura) -->
+          <!-- Gráficos 1 e 2 -->
           <div class="row equal-row">
             <div class="col-lg-7 mb-30">
               <div class="card-style">
@@ -485,7 +455,7 @@
               <div class="card-style">
                 <div class="title d-flex flex-wrap align-items-center justify-content-between">
                   <div class="left">
-                    <h6 class="text-medium mb-30">Pedidos por Mês</h6>
+                    <h6 class="text-medium mb-30">Vendas por Mês</h6>
                   </div>
                   <div class="right">
                     <div class="select-style-1">
@@ -506,14 +476,14 @@
             </div>
           </div>
 
-          <!-- AQUI: MAPA REMOVIDO -> substituído por 2 cards úteis -->
+          <!-- Forma de entrega + Vendas recentes -->
           <div class="row equal-row">
             <div class="col-lg-5 mb-30">
               <div class="card-style">
                 <div class="title d-flex flex-wrap justify-content-between align-items-center">
                   <div class="left">
-                    <h6 class="text-medium mb-10">Pedidos por Status</h6>
-                    <p class="text-sm text-gray mb-0">Distribuição de status do dia</p>
+                    <h6 class="text-medium mb-10">Forma de Entrega</h6>
+                    <p class="text-sm text-gray mb-0">Delivery x Presencial</p>
                   </div>
                   <div class="right">
                     <div class="select-style-1">
@@ -532,14 +502,9 @@
                   <canvas id="Chart5" style="width: 100%; height: 380px;"></canvas>
                 </div>
 
-                <div class="card-body-flex">
-                  <div class="d-flex flex-wrap gap-3 mt-10">
-                    <span class="text-sm"><b>Pendente</b>: 18</span>
-                    <span class="text-sm"><b>Separação</b>: 23</span>
-                    <span class="text-sm"><b>Faturado</b>: 12</span>
-                    <span class="text-sm"><b>Entregue</b>: 40</span>
-                    <span class="text-sm"><b>Cancelado</b>: 7</span>
-                  </div>
+                <div class="mini-metrics d-flex flex-wrap gap-2 mt-10">
+                  <span><b>Delivery</b> 74</span>
+                  <span><b>Presencial</b> 54</span>
                 </div>
               </div>
             </div>
@@ -548,7 +513,7 @@
               <div class="card-style">
                 <div class="title d-flex flex-wrap justify-content-between align-items-center">
                   <div class="left">
-                    <h6 class="text-medium mb-30">Pedidos Recentes</h6>
+                    <h6 class="text-medium mb-30">Vendas Recentes</h6>
                   </div>
                   <div class="right">
                     <div class="select-style-1">
@@ -567,10 +532,11 @@
                   <table class="table top-selling-table">
                     <thead>
                       <tr>
-                        <th><h6 class="text-sm text-medium">Pedido</h6></th>
+                        <th><h6 class="text-sm text-medium">Venda</h6></th>
                         <th class="min-width"><h6 class="text-sm text-medium">Cliente</h6></th>
+                        <th class="min-width"><h6 class="text-sm text-medium">Entrega</h6></th>
+                        <th class="min-width"><h6 class="text-sm text-medium">Pagamento</h6></th>
                         <th class="min-width"><h6 class="text-sm text-medium">Valor</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Status</h6></th>
                         <th class="min-width"><h6 class="text-sm text-medium">Data</h6></th>
                         <th></th>
                       </tr>
@@ -578,85 +544,48 @@
 
                     <tbody>
                       <tr>
-                        <td><p class="text-sm">#10293</p></td>
+                        <td><p class="text-sm">#V-10293</p></td>
                         <td><p class="text-sm">Mercadinho São José</p></td>
+                        <td><span class="status-btn warning-btn">Delivery</span></td>
+                        <td><p class="text-sm">Pix</p></td>
                         <td><p class="text-sm">R$ 1.248,90</p></td>
-                        <td><span class="status-btn warning-btn">Separação</span></td>
                         <td><p class="text-sm">26/02</p></td>
                         <td>
                           <div class="action justify-content-end">
                             <button class="edit" title="Ver"><i class="lni lni-eye"></i></button>
-                            <button class="more-btn ml-10 dropdown-toggle" id="moreActionA" data-bs-toggle="dropdown" aria-expanded="false">
-                              <i class="lni lni-more-alt"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="moreActionA">
-                              <li class="dropdown-item"><a href="#0" class="text-gray">Imprimir</a></li>
-                              <li class="dropdown-item"><a href="#0" class="text-gray">Editar</a></li>
-                            </ul>
                           </div>
                         </td>
                       </tr>
 
                       <tr>
-                        <td><p class="text-sm">#10292</p></td>
-                        <td><p class="text-sm">Distribuidora Norte</p></td>
-                        <td><p class="text-sm">R$ 8.560,00</p></td>
-                        <td><span class="status-btn success-btn">Faturado</span></td>
-                        <td><p class="text-sm">26/02</p></td>
-                        <td>
-                          <div class="action justify-content-end">
-                            <button class="edit" title="Ver"><i class="lni lni-eye"></i></button>
-                            <button class="more-btn ml-10 dropdown-toggle" id="moreActionB" data-bs-toggle="dropdown" aria-expanded="false">
-                              <i class="lni lni-more-alt"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="moreActionB">
-                              <li class="dropdown-item"><a href="#0" class="text-gray">Imprimir</a></li>
-                              <li class="dropdown-item"><a href="#0" class="text-gray">Cancelar</a></li>
-                            </ul>
-                          </div>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td><p class="text-sm">#10291</p></td>
-                        <td><p class="text-sm">Restaurante Central</p></td>
-                        <td><p class="text-sm">R$ 2.140,70</p></td>
-                        <td><span class="status-btn close-btn">Pendente</span></td>
-                        <td><p class="text-sm">25/02</p></td>
-                        <td>
-                          <div class="action justify-content-end">
-                            <button class="edit" title="Ver"><i class="lni lni-eye"></i></button>
-                            <button class="more-btn ml-10 dropdown-toggle" id="moreActionC" data-bs-toggle="dropdown" aria-expanded="false">
-                              <i class="lni lni-more-alt"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="moreActionC">
-                              <li class="dropdown-item"><a href="#0" class="text-gray">Aprovar</a></li>
-                              <li class="dropdown-item"><a href="#0" class="text-gray">Editar</a></li>
-                            </ul>
-                          </div>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td><p class="text-sm">#10290</p></td>
+                        <td><p class="text-sm">#V-10292</p></td>
                         <td><p class="text-sm">Supermercado Bom Preço</p></td>
+                        <td><span class="status-btn success-btn">Presencial</span></td>
+                        <td><p class="text-sm">Dinheiro</p></td>
                         <td><p class="text-sm">R$ 4.980,10</p></td>
-                        <td><span class="status-btn success-btn">Entregue</span></td>
-                        <td><p class="text-sm">25/02</p></td>
-                        <td>
-                          <div class="action justify-content-end">
-                            <button class="edit" title="Ver"><i class="lni lni-eye"></i></button>
-                            <button class="more-btn ml-10 dropdown-toggle" id="moreActionD" data-bs-toggle="dropdown" aria-expanded="false">
-                              <i class="lni lni-more-alt"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="moreActionD">
-                              <li class="dropdown-item"><a href="#0" class="text-gray">Comprovante</a></li>
-                              <li class="dropdown-item"><a href="#0" class="text-gray">Repetir Pedido</a></li>
-                            </ul>
-                          </div>
-                        </td>
+                        <td><p class="text-sm">26/02</p></td>
+                        <td><div class="action justify-content-end"><button class="edit" title="Ver"><i class="lni lni-eye"></i></button></div></td>
                       </tr>
 
+                      <tr>
+                        <td><p class="text-sm">#V-10291</p></td>
+                        <td><p class="text-sm">Restaurante Central</p></td>
+                        <td><span class="status-btn warning-btn">Delivery</span></td>
+                        <td><p class="text-sm">Cartão Débito</p></td>
+                        <td><p class="text-sm">R$ 2.140,70</p></td>
+                        <td><p class="text-sm">25/02</p></td>
+                        <td><div class="action justify-content-end"><button class="edit" title="Ver"><i class="lni lni-eye"></i></button></div></td>
+                      </tr>
+
+                      <tr>
+                        <td><p class="text-sm">#V-10290</p></td>
+                        <td><p class="text-sm">Atacado Amazonas</p></td>
+                        <td><span class="status-btn success-btn">Presencial</span></td>
+                        <td><p class="text-sm">Cartão Crédito</p></td>
+                        <td><p class="text-sm">R$ 3.210,00</p></td>
+                        <td><p class="text-sm">25/02</p></td>
+                        <td><div class="action justify-content-end"><button class="edit" title="Ver"><i class="lni lni-eye"></i></button></div></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -664,7 +593,7 @@
             </div>
           </div>
 
-          <!-- Mix e Entradas/Saídas (mesma altura) -->
+          <!-- Mix + Entradas/Saídas -->
           <div class="row equal-row">
             <div class="col-lg-7 mb-30">
               <div class="card-style">
@@ -694,7 +623,7 @@
               <div class="card-style">
                 <div class="title d-flex flex-wrap align-items-center justify-content-between">
                   <div class="left">
-                    <h6 class="text-medium mb-2">Entradas x Saídas</h6>
+                    <h6 class="text-medium mb-2">Entradas x Saídas (Estoque)</h6>
                   </div>
                   <div class="right">
                     <div class="select-style-1 mb-2">
@@ -715,65 +644,30 @@
             </div>
           </div>
 
-          <!-- AQUI: CALENDÁRIO REMOVIDO -> substituído por "Contas a Receber" + "Entregas por Rota" -->
+          <!-- Formas de Pagamento + Top Produtos Vendidos -->
           <div class="row equal-row">
             <div class="col-lg-5 mb-30">
               <div class="card-style">
                 <div class="title d-flex flex-wrap align-items-center justify-content-between">
                   <div class="left">
-                    <h6 class="text-medium mb-10">Contas a Receber</h6>
-                    <p class="text-sm text-gray mb-0">Próximos 7 dias</p>
+                    <h6 class="text-medium mb-10">Formas de Pagamento</h6>
+                    <p class="text-sm text-gray mb-0">Mais utilizadas</p>
                   </div>
                   <div class="right">
-                    <a href="contas-receber.html" class="main-btn primary-btn btn-hover btn-sm">Abrir</a>
+                    <div class="select-style-1">
+                      <div class="select-position select-sm">
+                        <select class="light-bg">
+                          <option value="">Hoje</option>
+                          <option value="">7 dias</option>
+                          <option value="">30 dias</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div class="table-responsive">
-                  <table class="table top-selling-table">
-                    <thead>
-                      <tr>
-                        <th><h6 class="text-sm text-medium">Cliente</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Venc.</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Valor</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Situação</h6></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td><p class="text-sm">Mercadinho São José</p></td>
-                        <td><p class="text-sm">27/02</p></td>
-                        <td><p class="text-sm">R$ 1.248,90</p></td>
-                        <td><span class="status-btn close-btn">Pendente</span></td>
-                      </tr>
-                      <tr>
-                        <td><p class="text-sm">Supermercado Bom Preço</p></td>
-                        <td><p class="text-sm">28/02</p></td>
-                        <td><p class="text-sm">R$ 4.980,10</p></td>
-                        <td><span class="status-btn warning-btn">A Vencer</span></td>
-                      </tr>
-                      <tr>
-                        <td><p class="text-sm">Restaurante Central</p></td>
-                        <td><p class="text-sm">01/03</p></td>
-                        <td><p class="text-sm">R$ 2.140,70</p></td>
-                        <td><span class="status-btn warning-btn">A Vencer</span></td>
-                      </tr>
-                      <tr>
-                        <td><p class="text-sm">Distribuidora Norte</p></td>
-                        <td><p class="text-sm">02/03</p></td>
-                        <td><p class="text-sm">R$ 8.560,00</p></td>
-                        <td><span class="status-btn success-btn">Confirmado</span></td>
-                      </tr>
-                      <tr>
-                        <td><p class="text-sm">Atacado Amazonas</p></td>
-                        <td><p class="text-sm">04/03</p></td>
-                        <td><p class="text-sm">R$ 3.210,00</p></td>
-                        <td><span class="status-btn close-btn">Pendente</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div class="chart">
+                  <canvas id="Chart6" style="width: 100%; height: 420px;"></canvas>
                 </div>
-
               </div>
             </div>
 
@@ -781,22 +675,21 @@
               <div class="card-style">
                 <div class="title d-flex flex-wrap align-items-center justify-content-between">
                   <div class="left">
-                    <h6 class="text-medium mb-10">Entregas por Rota</h6>
-                    <p class="text-sm text-gray mb-0">Semana atual</p>
+                    <h6 class="text-medium mb-10">Top Produtos Vendidos</h6>
+                    <p class="text-sm text-gray mb-0">Quantidade (semana)</p>
                   </div>
                   <div class="right">
-                    <a href="entregas.html" class="main-btn primary-btn btn-hover btn-sm">Ver rotas</a>
+                    <a href="relatorios.html" class="main-btn primary-btn btn-hover btn-sm">Ver relatório</a>
                   </div>
                 </div>
-
                 <div class="chart">
-                  <canvas id="Chart6" style="width: 100%; height: 420px;"></canvas>
+                  <canvas id="Chart7" style="width: 100%; height: 420px;"></canvas>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Produtos com Estoque Baixo (mantém) -->
+          <!-- Estoque baixo -->
           <div class="row equal-row">
             <div class="col-lg-12 mb-30">
               <div class="card-style">
@@ -826,28 +719,28 @@
                         <td><p class="text-sm">Alimentos</p></td>
                         <td><p class="text-sm">12</p></td>
                         <td><p class="text-sm">30</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Gerar compra"><i class="lni lni-cart"></i></button></div></td>
+                        <td><div class="action justify-content-end"><button class="edit" title="Repor"><i class="lni lni-plus"></i></button></div></td>
                       </tr>
                       <tr>
                         <td><p class="text-sm">Açúcar 1kg</p></td>
                         <td><p class="text-sm">Alimentos</p></td>
                         <td><p class="text-sm">18</p></td>
                         <td><p class="text-sm">40</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Gerar compra"><i class="lni lni-cart"></i></button></div></td>
+                        <td><div class="action justify-content-end"><button class="edit" title="Repor"><i class="lni lni-plus"></i></button></div></td>
                       </tr>
                       <tr>
                         <td><p class="text-sm">Detergente 500ml</p></td>
                         <td><p class="text-sm">Limpeza</p></td>
                         <td><p class="text-sm">9</p></td>
                         <td><p class="text-sm">25</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Gerar compra"><i class="lni lni-cart"></i></button></div></td>
+                        <td><div class="action justify-content-end"><button class="edit" title="Repor"><i class="lni lni-plus"></i></button></div></td>
                       </tr>
                       <tr>
                         <td><p class="text-sm">Óleo 900ml</p></td>
                         <td><p class="text-sm">Alimentos</p></td>
                         <td><p class="text-sm">6</p></td>
                         <td><p class="text-sm">20</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Gerar compra"><i class="lni lni-cart"></i></button></div></td>
+                        <td><div class="action justify-content-end"><button class="edit" title="Repor"><i class="lni lni-plus"></i></button></div></td>
                       </tr>
                     </tbody>
                   </table>
@@ -859,16 +752,13 @@
 
         </div>
       </section>
-      <!-- ========== section end ========== -->
 
       <footer class="footer">
         <div class="container-fluid">
           <div class="row">
             <div class="col-md-6 order-last order-md-first">
               <div class="copyright text-center text-md-start">
-                <p class="text-sm">
-                  Painel da Distribuidora • <span class="text-gray">v1.0</span>
-                </p>
+                <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
               </div>
             </div>
             <div class="col-md-6">
@@ -897,9 +787,7 @@
         }
       };
 
-      // =============================
       // Chart 1 (Faturamento)
-      // =============================
       const ctx1 = document.getElementById("Chart1")?.getContext("2d");
       if (ctx1) {
         new Chart(ctx1, {
@@ -932,31 +820,18 @@
                 backgroundColor: "#f9f9f9",
                 displayColors: false,
                 padding: { x: 18, y: 10 },
-                callbacks: {
-                  label: (ctx) => fmtBRL(ctx.parsed.y),
-                }
+                callbacks: { label: (ctx) => fmtBRL(ctx.parsed.y) }
               }
             },
             scales: {
-              y: {
-                grid: { display: false, drawBorder: false },
-                ticks: {
-                  padding: 25,
-                  callback: (val) => (Number(val) / 1000).toFixed(0) + "k"
-                }
-              },
-              x: {
-                grid: { drawBorder: false, color: "rgba(143, 146, 161, .12)" },
-                ticks: { padding: 14 }
-              }
+              y: { grid: { display: false, drawBorder: false }, ticks: { padding: 25, callback: (val) => (Number(val) / 1000).toFixed(0) + "k" } },
+              x: { grid: { drawBorder: false, color: "rgba(143, 146, 161, .12)" }, ticks: { padding: 14 } }
             }
           }
         });
       }
 
-      // =============================
-      // Chart 2 (Pedidos)
-      // =============================
+      // Chart 2 (Vendas por mês)
       const ctx2 = document.getElementById("Chart2")?.getContext("2d");
       if (ctx2) {
         new Chart(ctx2, {
@@ -964,12 +839,12 @@
           data: {
             labels: ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"],
             datasets: [{
-              label: "Pedidos",
+              label: "Vendas",
               backgroundColor: "#365CF5",
               borderRadius: 18,
               barThickness: 8,
               maxBarThickness: 10,
-              data: [410, 460, 520, 480, 530, 610, 590, 640, 710, 760, 820, 880],
+              data: [410, 460, 520, 480, 530, 610, 590, 640, 710, 760, 820, 880]
             }],
           },
           options: {
@@ -981,9 +856,7 @@
                 backgroundColor: "#F3F6F8",
                 displayColors: false,
                 padding: { x: 18, y: 10 },
-                callbacks: {
-                  label: (ctx) => `${ctx.parsed.y} pedidos`,
-                }
+                callbacks: { label: (ctx) => `${ctx.parsed.y} vendas` }
               }
             },
             scales: {
@@ -994,9 +867,7 @@
         });
       }
 
-      // =============================
-      // Chart 3 (Mix de Vendas)
-      // =============================
+      // Chart 3 (Mix de vendas)
       const ctx3 = document.getElementById("Chart3")?.getContext("2d");
       if (ctx3) {
         new Chart(ctx3, {
@@ -1005,7 +876,7 @@
             labels: ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"],
             datasets: [
               { label: "Atacado", backgroundColor: "transparent", borderColor: "#365CF5", data: [92,110,105,98,120,135,128,140,155,162,175,190], pointRadius: 4, pointHoverRadius: 6, tension: 0.35 },
-              { label: "Varejo",  backgroundColor: "transparent", borderColor: "#9b51e0", data: [45,52,56,48,60,68,63,70,82,90,96,105], pointRadius: 4, pointHoverRadius: 6, tension: 0.35 },
+              { label: "Varejo", backgroundColor: "transparent", borderColor: "#9b51e0", data: [45,52,56,48,60,68,63,70,82,90,96,105], pointRadius: 4, pointHoverRadius: 6, tension: 0.35 },
               { label: "Devoluções", backgroundColor: "transparent", borderColor: "#f2994a", data: [6,7,8,6,9,10,8,9,11,10,12,13], pointRadius: 4, pointHoverRadius: 6, tension: 0.35 }
             ],
           },
@@ -1019,9 +890,7 @@
                 backgroundColor: "#fbfbfb",
                 displayColors: false,
                 padding: { x: 18, y: 10 },
-                callbacks: {
-                  label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}`,
-                }
+                callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}` }
               }
             },
             scales: {
@@ -1032,9 +901,7 @@
         });
       }
 
-      // =============================
       // Chart 4 (Entradas x Saídas)
-      // =============================
       const ctx4 = document.getElementById("Chart4")?.getContext("2d");
       if (ctx4) {
         new Chart(ctx4, {
@@ -1042,8 +909,8 @@
           data: {
             labels: ["Set", "Out", "Nov", "Dez", "Jan", "Fev"],
             datasets: [
-              { label: "Entradas", backgroundColor: "#365CF5", borderColor: "transparent", borderRadius: 16, borderWidth: 0, barThickness: 18, maxBarThickness: 18, data: [820, 740, 910, 860, 790, 880] },
-              { label: "Saídas",   backgroundColor: "#d50100", borderColor: "transparent", borderRadius: 16, borderWidth: 0, barThickness: 18, maxBarThickness: 18, data: [780, 710, 870, 920, 840, 930] }
+              { label: "Entradas", backgroundColor: "#365CF5", borderColor: "transparent", borderRadius: 16, barThickness: 18, maxBarThickness: 18, data: [820, 740, 910, 860, 790, 880] },
+              { label: "Saídas", backgroundColor: "#d50100", borderColor: "transparent", borderRadius: 16, barThickness: 18, maxBarThickness: 18, data: [780, 710, 870, 920, 840, 930] }
             ],
           },
           options: {
@@ -1055,9 +922,7 @@
                 backgroundColor: "#F3F6F8",
                 displayColors: false,
                 padding: { x: 18, y: 10 },
-                callbacks: {
-                  label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}`,
-                }
+                callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}` }
               }
             },
             scales: {
@@ -1068,18 +933,16 @@
         });
       }
 
-      // =============================
-      // Chart 5 (Pedidos por Status) - substitui o MAPA
-      // =============================
+      // Chart 5 (Forma de entrega)
       const ctx5 = document.getElementById("Chart5")?.getContext("2d");
       if (ctx5) {
         new Chart(ctx5, {
           type: "doughnut",
           data: {
-            labels: ["Pendente", "Separação", "Faturado", "Entregue", "Cancelado"],
+            labels: ["Delivery", "Presencial"],
             datasets: [{
-              data: [18, 23, 12, 40, 7],
-              backgroundColor: ["#FF4D4F", "#FAAD14", "#1677FF", "#52C41A", "#8F92A1"],
+              data: [74, 54],
+              backgroundColor: ["#365CF5", "#52C41A"],
               borderWidth: 0
             }]
           },
@@ -1091,9 +954,7 @@
               tooltip: {
                 backgroundColor: "#F3F6F8",
                 displayColors: false,
-                callbacks: {
-                  label: (ctx) => `${ctx.label}: ${ctx.parsed}`
-                }
+                callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed}` }
               }
             },
             cutout: "65%"
@@ -1101,18 +962,51 @@
         });
       }
 
-      // =============================
-      // Chart 6 (Entregas por Rota) - substitui o CALENDÁRIO
-      // =============================
+      // Chart 6 (Formas de pagamento mais usadas)
       const ctx6 = document.getElementById("Chart6")?.getContext("2d");
       if (ctx6) {
         new Chart(ctx6, {
           type: "bar",
           data: {
-            labels: ["Rota 01", "Rota 02", "Rota 03", "Rota 04", "Rota 05", "Rota 06"],
+            labels: ["Pix", "Dinheiro", "Débito", "Crédito", "Transferência"],
             datasets: [{
-              label: "Entregas",
-              data: [28, 22, 17, 31, 14, 26],
+              label: "Quantidade",
+              data: [58, 34, 22, 17, 9],
+              backgroundColor: "#365CF5",
+              borderRadius: 10,
+              barThickness: 18,
+              maxBarThickness: 18
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "#F3F6F8",
+                displayColors: false,
+                callbacks: { label: (ctx) => `Qtd: ${ctx.parsed.y}` }
+              }
+            },
+            scales: {
+              y: { grid: { display: false, drawBorder: false }, ticks: { padding: 16 } },
+              x: { grid: { display: false, drawBorder: false }, ticks: { padding: 12 } }
+            }
+          }
+        });
+      }
+
+      // Chart 7 (Top produtos vendidos)
+      const ctx7 = document.getElementById("Chart7")?.getContext("2d");
+      if (ctx7) {
+        new Chart(ctx7, {
+          type: "bar",
+          data: {
+            labels: ["Arroz 5kg", "Açúcar 1kg", "Óleo 900ml", "Detergente 500ml", "Café 250g", "Leite 1L"],
+            datasets: [{
+              label: "Qtd",
+              data: [120, 98, 86, 74, 62, 55],
               backgroundColor: "#365CF5",
               borderRadius: 10
             }]
@@ -1126,9 +1020,7 @@
               tooltip: {
                 backgroundColor: "#F3F6F8",
                 displayColors: false,
-                callbacks: {
-                  label: (ctx) => `Entregas: ${ctx.parsed.x}`
-                }
+                callbacks: { label: (ctx) => `Qtd: ${ctx.parsed.x}` }
               }
             },
             scales: {
