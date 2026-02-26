@@ -5,14 +5,16 @@
             <div class="col-md-9">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
-                        <div class="input-group input-group-lg shadow-sm rounded">
-                            <span class="input-group-text bg-white border-end-0 text-muted">
-                                <i class="fas fa-barcode"></i>
-                            </span>
-                            <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquise por material ou código para o orçamento..." autocomplete="off">
-                        </div>
-                        <div id="pv_search_results" class="list-group mt-1 shadow-lg d-none" style="position: absolute; z-index: 2000; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd;">
-                            <!-- Results will be injected here -->
+                        <div class="position-relative">
+                            <div class="input-group input-group-lg shadow-sm rounded">
+                                <span class="input-group-text bg-white border-end-0 text-muted">
+                                    <i class="fas fa-barcode"></i>
+                                </span>
+                                <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquise por material ou código para o orçamento..." autocomplete="off">
+                            </div>
+                            <div id="pv_search_results" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 3000; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd;">
+                                <!-- Results will be injected here -->
+                            </div>
                         </div>
                     </div>
                 </div>
