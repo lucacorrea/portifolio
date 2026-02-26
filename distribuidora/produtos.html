@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    /* dropdown do profile: largura acompanha conteúdo sem quebrar layout */
+    /* dropdown do profile: largura acompanha conteúdo */
     .profile-box .dropdown-menu{
       width: max-content;
       min-width: 260px;
@@ -34,33 +34,91 @@
     }
     .profile-box .dropdown-menu .author-info .content a{
       display: inline-block;
-      white-space: nowrap; /* não quebra e não sobrepõe */
+      white-space: nowrap;
       max-width: 100%;
     }
 
-    /* pequenos ajustes de tabela */
+    /* ===== Botões menores ===== */
+    .main-btn.btn-compact{
+      height: 38px !important;
+      padding: 8px 14px !important;
+      font-size: 13px !important;
+      line-height: 1 !important;
+    }
+    .main-btn.btn-compact i{
+      font-size: 14px;
+      vertical-align: -1px;
+    }
+    .icon-btn{
+      height: 34px !important;
+      width: 42px !important;
+      padding: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    /* tabela */
     .table td, .table th { vertical-align: middle; }
+    .minw-120{ min-width: 120px; }
+    .minw-140{ min-width: 140px; }
+    .minw-160{ min-width: 160px; }
+
+    /* Texto do produto: não corta, quebra linha */
+    #tbProdutos th:nth-child(3),
+    #tbProdutos td:nth-child(3){
+      white-space: normal !important;
+      word-break: break-word !important;
+      overflow-wrap: anywhere !important;
+      max-width: 420px;
+    }
+    /* demais colunas: não quebrar */
+    #tbProdutos th:not(:nth-child(3)),
+    #tbProdutos td:not(:nth-child(3)){
+      white-space: nowrap;
+    }
+
+    /* badge */
     .badge-soft{
       padding: .35rem .6rem;
       border-radius: 999px;
-      font-weight: 600;
-      font-size: .75rem;
+      font-weight: 700;
+      font-size: .72rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 70px;
     }
     .badge-soft-success{ background: rgba(34,197,94,.12); color: #16a34a; }
     .badge-soft-danger{ background: rgba(239,68,68,.12); color: #dc2626; }
     .badge-soft-warning{ background: rgba(245,158,11,.12); color: #b45309; }
     .badge-soft-gray{ background: rgba(148,163,184,.18); color: #475569; }
 
+    /* imagem produto */
+    .prod-img{
+      width: 42px;
+      height: 42px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid rgba(148,163,184,.35);
+      background: #fff;
+    }
+    .img-preview{
+      width: 92px;
+      height: 92px;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 1px dashed rgba(148,163,184,.6);
+      background: #fff;
+    }
+
     .toolbar-gap{ gap: 10px; }
-    .minw-140{ min-width: 140px; }
   </style>
 </head>
 
 <body>
   <!-- ======== Preloader =========== -->
-  <div id="preloader">
-    <div class="spinner"></div>
-  </div>
+  <div id="preloader"><div class="spinner"></div></div>
 
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
@@ -199,7 +257,6 @@
   </aside>
 
   <div class="overlay"></div>
-  <!-- ======== sidebar-nav end =========== -->
 
   <main class="main-wrapper">
     <!-- Header -->
@@ -209,7 +266,7 @@
           <div class="col-lg-5 col-md-5 col-6">
             <div class="header-left d-flex align-items-center">
               <div class="menu-toggle-btn mr-15">
-                <button id="menu-toggle" class="main-btn primary-btn btn-hover">
+                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact">
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
               </div>
@@ -225,7 +282,6 @@
 
           <div class="col-lg-7 col-md-7 col-6">
             <div class="header-right">
-              <!-- Profile -->
               <div class="profile-box ml-15">
                 <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile"
                   data-bs-toggle="dropdown" aria-expanded="false">
@@ -263,7 +319,6 @@
                   <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
                 </ul>
               </div>
-              <!-- /Profile -->
             </div>
           </div>
         </div>
@@ -324,21 +379,21 @@
             </div>
 
             <div class="col-lg-2 d-flex justify-content-lg-end">
-              <div class="d-flex toolbar-gap">
-                <button class="main-btn primary-btn btn-hover" data-bs-toggle="modal" data-bs-target="#modalProduto">
+              <div class="d-flex toolbar-gap flex-wrap justify-content-end">
+                <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal" data-bs-target="#modalProduto" id="btnNovo">
                   <i class="lni lni-plus me-1"></i> Novo
                 </button>
-                <button class="main-btn light-btn btn-hover" id="btnExport">
-                  <i class="lni lni-download me-1"></i> CSV
+                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel">
+                  <i class="lni lni-download me-1"></i> Excel
                 </button>
+                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF">
+                  <i class="lni lni-printer me-1"></i> PDF
+                </button>
+                <button class="main-btn light-btn btn-hover btn-compact" id="btnImport">
+                  <i class="lni lni-upload me-1"></i> Importar
+                </button>
+                <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" hidden />
               </div>
-            </div>
-
-            <div class="col-12 d-flex justify-content-end">
-              <button class="main-btn light-btn btn-hover" id="btnImport">
-                <i class="lni lni-upload me-1"></i> Importar
-              </button>
-              <input type="file" id="fileImport" accept=".csv" hidden />
             </div>
           </div>
         </div>
@@ -349,21 +404,23 @@
             <table class="table" id="tbProdutos">
               <thead>
                 <tr>
+                  <th class="minw-120">Imagem</th>
                   <th class="minw-140">Código</th>
                   <th>Produto</th>
                   <th class="minw-140">Categoria</th>
                   <th class="minw-140">Unidade</th>
                   <th class="minw-140">Preço</th>
-                  <th class="minw-140">Estoque</th>
-                  <th class="minw-140">Mínimo</th>
+                  <th class="minw-120">Estoque</th>
+                  <th class="minw-120">Mínimo</th>
                   <th class="minw-140">Status</th>
                   <th class="minw-140 text-end">Ações</th>
                 </tr>
               </thead>
 
               <tbody>
-                <!-- exemplos -->
+                <!-- exemplos (imagem padrão via data-uri) -->
                 <tr data-categoria="Alimentos" data-status="ATIVO" data-baixo="0">
+                  <td><img class="prod-img" alt="Arroz" /></td>
                   <td>P0001</td>
                   <td>Arroz 5kg (Tipo 1)</td>
                   <td>Alimentos</td>
@@ -373,12 +430,13 @@
                   <td>30</td>
                   <td><span class="badge-soft badge-soft-success">ATIVO</span></td>
                   <td class="text-end">
-                    <button class="main-btn light-btn btn-hover btn-sm btnEdit"><i class="lni lni-pencil"></i></button>
-                    <button class="main-btn danger-btn-outline btn-hover btn-sm btnDel"><i class="lni lni-trash-can"></i></button>
+                    <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i class="lni lni-pencil"></i></button>
+                    <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Excluir"><i class="lni lni-trash-can"></i></button>
                   </td>
                 </tr>
 
                 <tr data-categoria="Alimentos" data-status="ATIVO" data-baixo="1">
+                  <td><img class="prod-img" alt="Açúcar" /></td>
                   <td>P0002</td>
                   <td>Açúcar 1kg</td>
                   <td>Alimentos</td>
@@ -388,12 +446,13 @@
                   <td>40</td>
                   <td><span class="badge-soft badge-soft-warning">BAIXO</span></td>
                   <td class="text-end">
-                    <button class="main-btn light-btn btn-hover btn-sm btnEdit"><i class="lni lni-pencil"></i></button>
-                    <button class="main-btn danger-btn-outline btn-hover btn-sm btnDel"><i class="lni lni-trash-can"></i></button>
+                    <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i class="lni lni-pencil"></i></button>
+                    <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Excluir"><i class="lni lni-trash-can"></i></button>
                   </td>
                 </tr>
 
                 <tr data-categoria="Limpeza" data-status="ATIVO" data-baixo="1">
+                  <td><img class="prod-img" alt="Detergente" /></td>
                   <td>P0003</td>
                   <td>Detergente 500ml</td>
                   <td>Limpeza</td>
@@ -403,12 +462,13 @@
                   <td>25</td>
                   <td><span class="badge-soft badge-soft-warning">BAIXO</span></td>
                   <td class="text-end">
-                    <button class="main-btn light-btn btn-hover btn-sm btnEdit"><i class="lni lni-pencil"></i></button>
-                    <button class="main-btn danger-btn-outline btn-hover btn-sm btnDel"><i class="lni lni-trash-can"></i></button>
+                    <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i class="lni lni-pencil"></i></button>
+                    <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Excluir"><i class="lni lni-trash-can"></i></button>
                   </td>
                 </tr>
 
                 <tr data-categoria="Bebidas" data-status="INATIVO" data-baixo="0">
+                  <td><img class="prod-img" alt="Refrigerante" /></td>
                   <td>P0004</td>
                   <td>Refrigerante 2L</td>
                   <td>Bebidas</td>
@@ -418,8 +478,8 @@
                   <td>12</td>
                   <td><span class="badge-soft badge-soft-gray">INATIVO</span></td>
                   <td class="text-end">
-                    <button class="main-btn light-btn btn-hover btn-sm btnEdit"><i class="lni lni-pencil"></i></button>
-                    <button class="main-btn danger-btn-outline btn-hover btn-sm btnDel"><i class="lni lni-trash-can"></i></button>
+                    <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i class="lni lni-pencil"></i></button>
+                    <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Excluir"><i class="lni lni-trash-can"></i></button>
                   </td>
                 </tr>
               </tbody>
@@ -461,67 +521,84 @@
         <div class="modal-body">
           <form id="formProduto">
             <input type="hidden" id="editIndex" value="" />
+            <input type="hidden" id="imgData" value="" />
 
             <div class="row g-3">
+              <!-- Imagem -->
               <div class="col-md-3">
-                <label class="form-label">Código</label>
-                <input type="text" class="form-control" id="pCodigo" placeholder="Ex: P0005" required />
+                <label class="form-label">Imagem</label>
+                <div class="d-flex flex-column gap-2">
+                  <img id="previewImg" class="img-preview" alt="Prévia" />
+                  <input type="file" class="form-control" id="pImagem" accept="image/*" />
+                  <button type="button" class="main-btn light-btn btn-hover btn-compact" id="btnRemoverImagem">
+                    Remover
+                  </button>
+                </div>
               </div>
 
-              <div class="col-md-6">
-                <label class="form-label">Produto</label>
-                <input type="text" class="form-control" id="pNome" placeholder="Nome do produto" required />
-              </div>
+              <div class="col-md-9">
+                <div class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label">Código</label>
+                    <input type="text" class="form-control" id="pCodigo" placeholder="Ex: P0005" required />
+                  </div>
 
-              <div class="col-md-3">
-                <label class="form-label">Status</label>
-                <select class="form-select" id="pStatus" required>
-                  <option value="ATIVO">Ativo</option>
-                  <option value="INATIVO">Inativo</option>
-                </select>
-              </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Produto</label>
+                    <input type="text" class="form-control" id="pNome" placeholder="Nome do produto" required />
+                  </div>
 
-              <div class="col-md-4">
-                <label class="form-label">Categoria</label>
-                <select class="form-select" id="pCategoria" required>
-                  <option value="">Selecione…</option>
-                  <option>Alimentos</option>
-                  <option>Bebidas</option>
-                  <option>Limpeza</option>
-                  <option>Higiene</option>
-                </select>
-              </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="pStatus" required>
+                      <option value="ATIVO">Ativo</option>
+                      <option value="INATIVO">Inativo</option>
+                    </select>
+                  </div>
 
-              <div class="col-md-4">
-                <label class="form-label">Unidade</label>
-                <select class="form-select" id="pUnidade" required>
-                  <option value="">Selecione…</option>
-                  <option>Unidade</option>
-                  <option>Pacote</option>
-                  <option>Caixa</option>
-                  <option>Kg</option>
-                  <option>Litro</option>
-                </select>
-              </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Categoria</label>
+                    <select class="form-select" id="pCategoria" required>
+                      <option value="">Selecione…</option>
+                      <option>Alimentos</option>
+                      <option>Bebidas</option>
+                      <option>Limpeza</option>
+                      <option>Higiene</option>
+                    </select>
+                  </div>
 
-              <div class="col-md-4">
-                <label class="form-label">Preço</label>
-                <input type="text" class="form-control" id="pPreco" placeholder="0,00" required />
-              </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Unidade</label>
+                    <select class="form-select" id="pUnidade" required>
+                      <option value="">Selecione…</option>
+                      <option>Unidade</option>
+                      <option>Pacote</option>
+                      <option>Caixa</option>
+                      <option>Kg</option>
+                      <option>Litro</option>
+                    </select>
+                  </div>
 
-              <div class="col-md-4">
-                <label class="form-label">Estoque</label>
-                <input type="number" class="form-control" id="pEstoque" min="0" value="0" required />
-              </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Preço</label>
+                    <input type="text" class="form-control" id="pPreco" placeholder="0,00" required />
+                  </div>
 
-              <div class="col-md-4">
-                <label class="form-label">Estoque mínimo</label>
-                <input type="number" class="form-control" id="pMinimo" min="0" value="0" required />
-              </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Estoque</label>
+                    <input type="number" class="form-control" id="pEstoque" min="0" value="0" required />
+                  </div>
 
-              <div class="col-md-4">
-                <label class="form-label">Observação</label>
-                <input type="text" class="form-control" id="pObs" placeholder="Opcional" />
+                  <div class="col-md-4">
+                    <label class="form-label">Estoque mínimo</label>
+                    <input type="number" class="form-control" id="pMinimo" min="0" value="0" required />
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Observação</label>
+                    <input type="text" class="form-control" id="pObs" placeholder="Opcional" />
+                  </div>
+                </div>
               </div>
             </div>
           </form>
@@ -532,8 +609,8 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="main-btn light-btn btn-hover" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="main-btn primary-btn btn-hover" id="btnSalvarProduto">
+          <button type="button" class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="main-btn primary-btn btn-hover btn-compact" id="btnSalvarProduto">
             <i class="lni lni-save me-1"></i> Salvar
           </button>
         </div>
@@ -545,7 +622,26 @@
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
 
+  <!-- jsPDF + AutoTable (PDF) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
   <script>
+    // ===== Imagem padrão (data-uri SVG) =====
+    const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
+        <rect width="100%" height="100%" fill="#f1f5f9"/>
+        <path d="M18 68l18-18 12 12 10-10 20 20" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="34" cy="34" r="7" fill="#94a3b8"/>
+        <text x="50%" y="86%" text-anchor="middle" font-family="Arial" font-size="10" fill="#64748b">Sem imagem</text>
+      </svg>
+    `);
+
+    // aplica default nas imagens da tabela (as 4 linhas exemplo)
+    document.querySelectorAll("img.prod-img").forEach(img => {
+      img.src = DEFAULT_IMG;
+    });
+
     const tb = document.getElementById('tbProdutos');
     const qProdutos = document.getElementById('qProdutos');
     const qGlobal = document.getElementById('qGlobal');
@@ -598,6 +694,10 @@
     const modalTitle = document.getElementById('modalProdutoTitle');
 
     const editIndex = document.getElementById('editIndex');
+    const imgData = document.getElementById('imgData');
+    const previewImg = document.getElementById('previewImg');
+    const pImagem = document.getElementById('pImagem');
+
     const pCodigo = document.getElementById('pCodigo');
     const pNome = document.getElementById('pNome');
     const pStatus = document.getElementById('pStatus');
@@ -610,6 +710,10 @@
 
     function limparForm(){
       editIndex.value = '';
+      imgData.value = DEFAULT_IMG;
+      previewImg.src = DEFAULT_IMG;
+      pImagem.value = '';
+
       pCodigo.value = '';
       pNome.value = '';
       pStatus.value = 'ATIVO';
@@ -621,7 +725,32 @@
       pObs.value = '';
     }
 
-    // Editar
+    // upload preview
+    pImagem.addEventListener('change', () => {
+      const file = pImagem.files && pImagem.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        alert('Selecione uma imagem válida.');
+        pImagem.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        imgData.value = String(reader.result || DEFAULT_IMG);
+        previewImg.src = imgData.value;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('btnRemoverImagem').addEventListener('click', () => {
+      imgData.value = DEFAULT_IMG;
+      previewImg.src = DEFAULT_IMG;
+      pImagem.value = '';
+    });
+
+    // Editar/Excluir
     tb.addEventListener('click', (e) => {
       const btnEdit = e.target.closest('.btnEdit');
       const btnDel = e.target.closest('.btnDel');
@@ -629,7 +758,7 @@
       if (!tr) return;
 
       if (btnDel){
-        const nome = tr.children[1].innerText;
+        const nome = tr.children[2].innerText;
         if (confirm(`Deseja remover o produto: "${nome}"?`)){
           tr.remove();
           aplicarFiltros();
@@ -643,13 +772,19 @@
 
         modalTitle.textContent = 'Editar Produto';
 
-        pCodigo.value = tr.children[0].innerText.trim();
-        pNome.value = tr.children[1].innerText.trim();
-        pCategoria.value = tr.children[2].innerText.trim();
-        pUnidade.value = tr.children[3].innerText.trim();
-        pPreco.value = tr.children[4].innerText.replace('R$', '').trim();
-        pEstoque.value = parseInt(tr.children[5].innerText.trim() || '0', 10);
-        pMinimo.value = parseInt(tr.children[6].innerText.trim() || '0', 10);
+        // imagem
+        const img = tr.querySelector('img.prod-img');
+        imgData.value = img?.src || DEFAULT_IMG;
+        previewImg.src = imgData.value;
+        pImagem.value = '';
+
+        pCodigo.value = tr.children[1].innerText.trim();
+        pNome.value = tr.children[2].innerText.trim();
+        pCategoria.value = tr.children[3].innerText.trim();
+        pUnidade.value = tr.children[4].innerText.trim();
+        pPreco.value = tr.children[5].innerText.replace('R$', '').trim();
+        pEstoque.value = parseInt(tr.children[6].innerText.trim() || '0', 10);
+        pMinimo.value = parseInt(tr.children[7].innerText.trim() || '0', 10);
 
         const stText = tr.getAttribute('data-status') || 'ATIVO';
         pStatus.value = stText;
@@ -661,16 +796,13 @@
     });
 
     // Abrir "Novo"
-    modalEl.addEventListener('show.bs.modal', () => {
-      if (!editIndex.value){
-        modalTitle.textContent = 'Novo Produto';
-        limparForm();
-      }
+    document.getElementById('btnNovo').addEventListener('click', () => {
+      modalTitle.textContent = 'Novo Produto';
+      limparForm();
     });
 
     // Salvar
     document.getElementById('btnSalvarProduto').addEventListener('click', () => {
-      // valida simples
       if (!pCodigo.value.trim() || !pNome.value.trim() || !pCategoria.value || !pUnidade.value || !pPreco.value.trim()){
         alert('Preencha os campos obrigatórios.');
         return;
@@ -679,7 +811,7 @@
       const estoque = Number(pEstoque.value || 0);
       const minimo = Number(pMinimo.value || 0);
       const status = pStatus.value;
-      const baixo = estoque < minimo;
+      const baixo = (status !== 'INATIVO') && (estoque < minimo);
 
       const badge = (status === 'INATIVO')
         ? `<span class="badge-soft badge-soft-gray">INATIVO</span>`
@@ -688,15 +820,17 @@
           : `<span class="badge-soft badge-soft-success">ATIVO</span>`);
 
       const precoFmt = (() => {
-        // mantém formato simples
-        let s = pPreco.value.replace('.', '').replace(',', '.');
+        let s = pPreco.value.replace(/\./g,'').replace(',', '.');
         const n = Number(s);
         if (isNaN(n)) return `R$ ${pPreco.value}`;
         return 'R$ ' + n.toFixed(2).replace('.', ',');
       })();
 
+      const imgSrc = imgData.value || DEFAULT_IMG;
+
       const htmlRow = `
         <tr data-categoria="${pCategoria.value}" data-status="${status}" data-baixo="${baixo ? 1 : 0}">
+          <td><img class="prod-img" src="${imgSrc}" alt="${pNome.value.trim().replaceAll('"','')}" /></td>
           <td>${pCodigo.value.trim()}</td>
           <td>${pNome.value.trim()}</td>
           <td>${pCategoria.value}</td>
@@ -706,8 +840,8 @@
           <td>${minimo}</td>
           <td>${badge}</td>
           <td class="text-end">
-            <button class="main-btn light-btn btn-hover btn-sm btnEdit"><i class="lni lni-pencil"></i></button>
-            <button class="main-btn danger-btn-outline btn-hover btn-sm btnDel"><i class="lni lni-trash-can"></i></button>
+            <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i class="lni lni-pencil"></i></button>
+            <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Excluir"><i class="lni lni-trash-can"></i></button>
           </td>
         </tr>
       `;
@@ -726,37 +860,142 @@
       aplicarFiltros();
     });
 
-    // ===== Export CSV =====
-    document.getElementById('btnExport').addEventListener('click', () => {
+    // ===== Exportar Excel (não CSV) com cabeçalho =====
+    function exportExcel(){
       const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
-      const header = ['Codigo','Produto','Categoria','Unidade','Preco','Estoque','Minimo','Status'];
-      const lines = [header.join(';')];
 
-      rows.forEach(tr => {
-        const cols = Array.from(tr.children).slice(0, 8).map(td => td.innerText.replace(/\s+/g,' ').trim());
-        lines.push(cols.join(';'));
+      const now = new Date();
+      const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+
+      const cab = [
+        ['PAINEL DA DISTRIBUIDORA - PRODUTOS'],
+        ['Gerado em:', dt],
+        ['Filtro Categoria:', fCategoria.value || 'Todas', 'Filtro Status:', (fStatus.value || 'Todos')],
+        ['']
+      ];
+
+      const header = ['Código','Produto','Categoria','Unidade','Preço','Estoque','Mínimo','Status'];
+      const body = rows.map(tr => {
+        const codigo = tr.children[1].innerText.trim();
+        const produto = tr.children[2].innerText.trim();
+        const categoria = tr.children[3].innerText.trim();
+        const unidade = tr.children[4].innerText.trim();
+        const preco = tr.children[5].innerText.trim();
+        const estoque = tr.children[6].innerText.trim();
+        const minimo = tr.children[7].innerText.trim();
+        const statusTxt = tr.children[8].innerText.trim(); // ATIVO/BAIXO/INATIVO
+        return [codigo, produto, categoria, unidade, preco, estoque, minimo, statusTxt];
       });
 
-      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      // monta HTML para Excel (abre perfeito e sem texto quebrado/acentos)
+      let html = `
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              table { border-collapse: collapse; font-family: Arial; font-size: 12px; }
+              td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: top; }
+              .title { font-size: 16px; font-weight: 700; background: #eef2ff; }
+              .muted { color: #555; }
+              th { background: #f1f5f9; }
+            </style>
+          </head>
+          <body>
+            <table>
+      `;
+
+      // cabeçalho
+      html += `<tr><td class="title" colspan="8">${cab[0][0]}</td></tr>`;
+      html += `<tr><td class="muted"><b>${cab[1][0]}</b></td><td colspan="7">${cab[1][1]}</td></tr>`;
+      html += `<tr>
+                <td class="muted"><b>${cab[2][0]}</b></td><td>${cab[2][1]}</td>
+                <td class="muted"><b>${cab[2][2]}</b></td><td>${cab[2][3]}</td>
+                <td colspan="4"></td>
+              </tr>`;
+      html += `<tr><td colspan="8">&nbsp;</td></tr>`;
+
+      // tabela
+      html += `<tr>${header.map(h => `<th>${h}</th>`).join('')}</tr>`;
+      body.forEach(r => {
+        html += `<tr>${r.map(c => `<td>${String(c).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</td>`).join('')}</tr>`;
+      });
+
+      html += `</table></body></html>`;
+
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'produtos.csv';
+      a.download = 'produtos.xls';
       document.body.appendChild(a);
       a.click();
       a.remove();
 
       URL.revokeObjectURL(url);
-    });
+    }
 
-    // ===== Import (placeholder) =====
+    document.getElementById('btnExcel').addEventListener('click', exportExcel);
+
+    // ===== Exportar PDF com cabeçalho =====
+    function exportPDF(){
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('Biblioteca do PDF não carregou. Verifique sua internet ou baixe os arquivos jsPDF localmente.');
+        return;
+      }
+
+      const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
+
+      const now = new Date();
+      const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('PAINEL DA DISTRIBUIDORA - PRODUTOS', 40, 40);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Gerado em: ${dt}`, 40, 60);
+      doc.text(`Categoria: ${fCategoria.value || 'Todas'} | Status: ${(fStatus.value || 'Todos')}`, 40, 75);
+
+      const head = [[ 'Código','Produto','Categoria','Unidade','Preço','Estoque','Mínimo','Status' ]];
+      const body = rows.map(tr => {
+        return [
+          tr.children[1].innerText.trim(),
+          tr.children[2].innerText.trim(),
+          tr.children[3].innerText.trim(),
+          tr.children[4].innerText.trim(),
+          tr.children[5].innerText.trim(),
+          tr.children[6].innerText.trim(),
+          tr.children[7].innerText.trim(),
+          tr.children[8].innerText.trim()
+        ];
+      });
+
+      doc.autoTable({
+        head,
+        body,
+        startY: 95,
+        styles: { font: 'helvetica', fontSize: 9, cellPadding: 6 },
+        headStyles: { fillColor: [241,245,249], textColor: [17,24,39] },
+        alternateRowStyles: { fillColor: [250,250,251] },
+        margin: { left: 40, right: 40 }
+      });
+
+      doc.save('produtos.pdf');
+    }
+
+    document.getElementById('btnPDF').addEventListener('click', exportPDF);
+
+    // ===== Import =====
     const fileImport = document.getElementById('fileImport');
     document.getElementById('btnImport').addEventListener('click', () => fileImport.click());
-
     fileImport.addEventListener('change', () => {
       if (!fileImport.files?.length) return;
-      alert('Importação CSV: conecte aqui sua leitura do arquivo (placeholder).');
+      alert('Importação: pronto para conectar (xlsx/csv). Se quiser, eu implemento a leitura também.');
       fileImport.value = '';
     });
   </script>
