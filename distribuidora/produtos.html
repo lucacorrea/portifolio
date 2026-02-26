@@ -419,12 +419,17 @@
                             </select>
                         </div>
 
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal"
+                                data-bs-target="#modalProduto" id="btnNovo">
+                                <i class="lni lni-plus me-1"></i> Novo
+                            </button>
+                        </div>
+
+
                         <div class="col-12 col-md-6 col-lg-2">
                             <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
-                                <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal"
-                                    data-bs-target="#modalProduto" id="btnNovo">
-                                    <i class="lni lni-plus me-1"></i> Novo
-                                </button>
+
                                 <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel">
                                     <i class="lni lni-download me-1"></i> Excel
                                 </button>
@@ -835,22 +840,22 @@
             const imgSrc = imgData.value || DEFAULT_IMG;
 
             const htmlRow = `
-        <tr data-categoria="${pCategoria.value}" data-status="${status}" data-baixo="${baixo ? 1 : 0}">
-          <td><img class="prod-img" src="${imgSrc}" alt="${pNome.value.trim().replaceAll('"', '')}" /></td>
-          <td>${pCodigo.value.trim()}</td>
-          <td>${pNome.value.trim()}</td>
-          <td>${pCategoria.value}</td>
-          <td>${pUnidade.value}</td>
-          <td>${precoFmt}</td>
-          <td>${estoque}</td>
-          <td>${minimo}</td>
-          <td>${badge}</td>
-          <td class="text-end">
-            <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i class="lni lni-pencil"></i></button>
-            <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Excluir"><i class="lni lni-trash-can"></i></button>
-          </td>
-        </tr>
-      `;
+                <tr data-categoria="${pCategoria.value}" data-status="${status}" data-baixo="${baixo ? 1 : 0}">
+                <td><img class="prod-img" src="${imgSrc}" alt="${pNome.value.trim().replaceAll('"', '')}" /></td>
+                <td>${pCodigo.value.trim()}</td>
+                <td>${pNome.value.trim()}</td>
+                <td>${pCategoria.value}</td>
+                <td>${pUnidade.value}</td>
+                <td>${precoFmt}</td>
+                <td>${estoque}</td>
+                <td>${minimo}</td>
+                <td>${badge}</td>
+                <td class="text-end">
+                    <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i class="lni lni-pencil"></i></button>
+                    <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Excluir"><i class="lni lni-trash-can"></i></button>
+                </td>
+                </tr>
+            `;
 
             const tbody = tb.querySelector('tbody');
             if (editIndex.value !== '') {
