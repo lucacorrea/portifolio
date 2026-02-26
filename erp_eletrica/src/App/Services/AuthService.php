@@ -73,19 +73,27 @@ class AuthService extends BaseService {
 
     public static function hasPermission($modulo, $acao) {
         if (!isset($_SESSION['usuario_id'])) return false;
-        if (($_SESSION['usuario_nivel'] ?? '') === 'master') return true; // Master has all permissions
+        if (($_SESSION['usuario_nivel'] ?? '') === 'master' || ($_SESSION['usuario_nivel'] ?? '') === 'admin') return true;
 
         $nivel = $_SESSION['usuario_nivel'];
         $db = \App\Config\Database::getInstance()->getConnection();
         
-        $stmt = $db->prepare("
-            SELECT COUNT(*) 
-            FROM permissao_nivel pn
-            JOIN permissoes p ON pn.permissao_id = p.id
-            WHERE pn.nivel = ? AND p.modulo = ? AND p.acao = ?
-        ");
-        $stmt->execute([$nivel, $modulo, $acao]);
-        return $stmt->fetchColumn() > 0;
+        try {
+            $stmt = $db->prepare("
+                SELECT COUNT(*) 
+                FROM permissao_nivel pn
+                JOIN permissoes p ON pn.permissao_id = p.id
+                WHERE pn.nivel = ? AND p.modulo = ? AND p.acao = ?
+            ");
+            $stmt->execute([$nivel, $modulo, $acao]);
+            return $stmt->fetchColumn() > 0;
+        } catch (\PDOException $e) {
+            // Fallback if table doesn't exist (migrations didn't run)
+            if ($e->getCode() == '42S02') {
+                return in_array($nivel, ['admin', 'master', 'gerente']);
+            }
+            throw $e;
+        }
     }
 
     public static function checkPermission($modulo, $acao) {
