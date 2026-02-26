@@ -5,13 +5,15 @@ class Sale extends BaseModel {
     protected $table = 'vendas';
 
     public function create($data) {
-        $sql = "INSERT INTO {$this->table} (cliente_id, usuario_id, filial_id, valor_total, forma_pagamento, status) 
-                VALUES (?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO {$this->table} (cliente_id, usuario_id, filial_id, valor_total, desconto_total, autorizado_por, forma_pagamento, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $params = [
             $data['cliente_id'],
             $data['usuario_id'],
             $data['filial_id'],
             $data['valor_total'],
+            $data['desconto_total'] ?? 0,
+            $data['autorizado_por'] ?? null,
             $data['forma_pagamento'],
             'concluido'
         ];

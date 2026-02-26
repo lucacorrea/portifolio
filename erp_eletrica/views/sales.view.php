@@ -513,6 +513,8 @@ async function interceptDiscount(e) {
 }
 
 let isAuthorized = false;
+let authSupervisorId = null;
+let authSupervisorCredential = null;
 let authAdmins = [];
 
 async function checkDiscountAuth() {
@@ -581,6 +583,8 @@ async function validateAuthorization() {
     const result = await res.json();
     if (result.success) {
         isAuthorized = true;
+        authSupervisorId = adminId;
+        authSupervisorCredential = credential;
         bootstrap.Modal.getInstance(document.getElementById('modalDiscountAuth')).hide();
         renderCart();
         
@@ -629,7 +633,9 @@ btnCheckout.onclick = async () => {
         items: cart,
         pagamento: payment,
         cliente_id: null,
-        pv_id: currentPvId
+        pv_id: currentPvId,
+        supervisor_id: authSupervisorId,
+        supervisor_credential: authSupervisorCredential
     };
 
     const res = await fetch('vendas.php?action=checkout', {
@@ -643,6 +649,9 @@ btnCheckout.onclick = async () => {
         showSuccessModal(result.sale_id, data.total);
         cart = [];
         currentPvId = null;
+        isAuthorized = false;
+        authSupervisorId = null;
+        authSupervisorCredential = null;
         renderCart();
         loadRecentSales();
     } else {
