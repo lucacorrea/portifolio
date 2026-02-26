@@ -2,9 +2,9 @@
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-8 d-flex flex-column">
         <div class="row g-4 mb-4">
-            <div class="col-md-9">
+            <div class="col-md-9" style="z-index: 1001;">
                 <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
+                    <div class="card-body" style="overflow: visible !important;">
                         <div class="position-relative">
                             <div class="input-group input-group-lg shadow-sm rounded">
                                 <span class="input-group-text bg-white border-end-0 text-muted">
@@ -12,7 +12,7 @@
                                 </span>
                                 <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquise por material ou código para o orçamento..." autocomplete="off">
                             </div>
-                            <div id="pv_search_results" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 3000; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd;">
+                            <div id="pv_search_results" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 9999; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd; margin-top: 5px;">
                                 <!-- Results will be injected here -->
                             </div>
                         </div>
