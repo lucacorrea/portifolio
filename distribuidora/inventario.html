@@ -15,7 +15,120 @@
     <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="assets/css/main.css" />
 
+    <style>
+        /* dropdown do profile: largura acompanha conteúdo */
+        .profile-box .dropdown-menu {
+            width: max-content;
+            min-width: 260px;
+            max-width: calc(100vw - 24px);
+        }
 
+        .profile-box .dropdown-menu .author-info {
+            width: max-content;
+            max-width: 100%;
+            display: flex !important;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .profile-box .dropdown-menu .author-info .content {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .profile-box .dropdown-menu .author-info .content a {
+            display: inline-block;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+        /* ===== Botões menores (padrão igual Produtos) ===== */
+        .main-btn.btn-compact {
+            height: 38px !important;
+            padding: 8px 14px !important;
+            font-size: 13px !important;
+            line-height: 1 !important;
+        }
+
+        .main-btn.btn-compact i {
+            font-size: 14px;
+            vertical-align: -1px;
+        }
+
+        .icon-btn {
+            height: 34px !important;
+            width: 42px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* ===== tabela (scroll horizontal no mobile) ===== */
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #tbInventario {
+            width: 100%;
+            min-width: 1300px;
+        }
+
+        #tbInventario th,
+        #tbInventario td {
+            white-space: nowrap !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
+            vertical-align: middle;
+        }
+
+        /* imagem produto */
+        .prod-img {
+            width: 42px;
+            height: 42px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, .35);
+            background: #fff;
+        }
+
+        /* badges */
+        .badge-soft {
+            padding: .35rem .6rem;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: .72rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 76px;
+        }
+
+        .badge-soft-success {
+            background: rgba(34, 197, 94, .12);
+            color: #16a34a;
+        }
+
+        .badge-soft-warning {
+            background: rgba(245, 158, 11, .12);
+            color: #b45309;
+        }
+
+        .badge-soft-gray {
+            background: rgba(148, 163, 184, .18);
+            color: #475569;
+        }
+
+        /* Inputs quantidade (compacto) */
+        .qty-input {
+            width: 110px;
+        }
+
+        /* Cards KPI com mesma altura */
+        .kpi-card {
+            height: 100%;
+        }
+    </style>
 </head>
 
 <body>
@@ -85,7 +198,7 @@
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse show dropdown-nav">
-                        <li><a href="produtos.html" class="">Produtos</a></li>
+                        <li><a href="produtos.html">Produtos</a></li>
                         <li><a href="inventario.html" class="active">Inventário</a></li>
                         <li><a href="entradas.html">Entradas</a></li>
                         <li><a href="saidas.html">Saídas</a></li>
@@ -131,9 +244,7 @@
                     </a>
                 </li>
 
-                <span class="divider">
-                    <hr />
-                </span>
+                <span class="divider"><hr /></span>
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config"
@@ -174,6 +285,7 @@
     <div class="overlay"></div>
 
     <main class="main-wrapper">
+        <!-- Header -->
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -187,8 +299,7 @@
                             <div class="header-search d-none d-md-flex">
                                 <form action="#">
                                     <input type="text" placeholder="Buscar produto..." id="qGlobal" />
-                                    <button type="submit" onclick="return false"><i
-                                            class="lni lni-search-alt"></i></button>
+                                    <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                                 </form>
                             </div>
                         </div>
@@ -239,9 +350,234 @@
             </div>
         </header>
 
+        <!-- Conteúdo -->
         <section class="section">
             <div class="container-fluid">
+                <div class="title-wrapper pt-30">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="title">
+                                <h2>Inventário</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
+                                        <li class="breadcrumb-item"><a href="#0">Estoque</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Inventário</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- KPIs -->
+                <div class="row g-3 mb-30">
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="icon-card kpi-card">
+                            <div class="icon primary">
+                                <i class="lni lni-clipboard"></i>
+                            </div>
+                            <div class="content">
+                                <h6 class="mb-10">Itens Contados</h6>
+                                <h3 class="text-bold mb-10" id="kpiContados">0</h3>
+                                <p class="text-sm text-gray">Total no inventário</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="icon-card kpi-card">
+                            <div class="icon success">
+                                <i class="lni lni-checkmark-circle"></i>
+                            </div>
+                            <div class="content">
+                                <h6 class="mb-10">Conferidos</h6>
+                                <h3 class="text-bold mb-10" id="kpiConferidos">0</h3>
+                                <p class="text-sm text-success"><i class="lni lni-arrow-up"></i> Atualizado agora</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="icon-card kpi-card">
+                            <div class="icon purple">
+                                <i class="lni lni-warning"></i>
+                            </div>
+                            <div class="content">
+                                <h6 class="mb-10">Divergências</h6>
+                                <h3 class="text-bold mb-10" id="kpiDiverg">0</h3>
+                                <p class="text-sm text-danger"><i class="lni lni-arrow-down"></i> Ajustar antes de fechar</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="icon-card kpi-card">
+                            <div class="icon orange">
+                                <i class="lni lni-calendar"></i>
+                            </div>
+                            <div class="content">
+                                <h6 class="mb-10">Data do Inventário</h6>
+                                <h3 class="text-bold mb-10" id="kpiData">--/--/----</h3>
+                                <p class="text-sm text-gray">Selecione e gere relatórios</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros / Ações -->
+                <div class="card-style mb-30">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label">Pesquisar</label>
+                            <input type="text" class="form-control" id="qInv" placeholder="Código, produto, categoria..." />
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label">Categoria</label>
+                            <select class="form-select" id="fCategoria">
+                                <option value="">Todas</option>
+                                <option>Alimentos</option>
+                                <option>Bebidas</option>
+                                <option>Limpeza</option>
+                                <option>Higiene</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <label class="form-label">Situação</label>
+                            <select class="form-select" id="fSituacao">
+                                <option value="">Todas</option>
+                                <option value="OK">OK</option>
+                                <option value="DIVERGENTE">Divergente</option>
+                                <option value="NAO_CONFERIDO">Não conferido</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <label class="form-label">Data</label>
+                            <input type="date" class="form-control" id="dtInventario" />
+                        </div>
+
+                        <div class="col-12 col-lg-2">
+                            <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
+                                <button class="main-btn primary-btn btn-hover btn-compact" id="btnNovo">
+                                    <i class="lni lni-plus me-1"></i> Lançar
+                                </button>
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel">
+                                    <i class="lni lni-download me-1"></i> Excel
+                                </button>
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF">
+                                    <i class="lni lni-printer me-1"></i> PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray mt-2 mb-0" id="infoCount"></p>
+                </div>
+
+                <!-- Tabela -->
+                <div class="card-style mb-30">
+                    <div class="table-responsive">
+                        <table class="table text-nowrap" id="tbInventario">
+                            <thead>
+                                <tr>
+                                    <th style="min-width:120px;">Imagem</th>
+                                    <th style="min-width:120px;">Código</th>
+                                    <th style="min-width:260px;">Produto</th>
+                                    <th style="min-width:140px;">Categoria</th>
+                                    <th style="min-width:110px;">Unidade</th>
+                                    <th style="min-width:120px;" class="text-center">Estoque (Sistema)</th>
+                                    <th style="min-width:130px;" class="text-center">Contagem (Inventário)</th>
+                                    <th style="min-width:120px;" class="text-center">Diferença</th>
+                                    <th style="min-width:140px;" class="text-center">Situação</th>
+                                    <th style="min-width:140px;" class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <!-- Exemplo 1 (OK) -->
+                                <tr data-categoria="Alimentos" data-situacao="OK">
+                                    <td><img class="prod-img" alt="Arroz" /></td>
+                                    <td>P0001</td>
+                                    <td>Arroz 5kg (Tipo 1)</td>
+                                    <td>Alimentos</td>
+                                    <td>Pacote</td>
+                                    <td class="text-center sys">120</td>
+                                    <td class="text-center">
+                                        <input type="number" class="form-control form-control-sm qty-input count" min="0" value="120" />
+                                    </td>
+                                    <td class="text-center diff">0</td>
+                                    <td class="text-center">
+                                        <span class="badge-soft badge-soft-success st">OK</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="main-btn light-btn btn-hover icon-btn btnSave" title="Salvar">
+                                            <i class="lni lni-save"></i>
+                                        </button>
+                                        <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Remover">
+                                            <i class="lni lni-trash-can"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Exemplo 2 (Divergente) -->
+                                <tr data-categoria="Alimentos" data-situacao="DIVERGENTE">
+                                    <td><img class="prod-img" alt="Açúcar" /></td>
+                                    <td>P0002</td>
+                                    <td>Açúcar 1kg</td>
+                                    <td>Alimentos</td>
+                                    <td>Pacote</td>
+                                    <td class="text-center sys">18</td>
+                                    <td class="text-center">
+                                        <input type="number" class="form-control form-control-sm qty-input count" min="0" value="16" />
+                                    </td>
+                                    <td class="text-center diff">-2</td>
+                                    <td class="text-center">
+                                        <span class="badge-soft badge-soft-warning st">DIVERGENTE</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="main-btn light-btn btn-hover icon-btn btnSave" title="Salvar">
+                                            <i class="lni lni-save"></i>
+                                        </button>
+                                        <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Remover">
+                                            <i class="lni lni-trash-can"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Exemplo 3 (Não Conferido) -->
+                                <tr data-categoria="Bebidas" data-situacao="NAO_CONFERIDO">
+                                    <td><img class="prod-img" alt="Refrigerante" /></td>
+                                    <td>P0004</td>
+                                    <td>Refrigerante 2L</td>
+                                    <td>Bebidas</td>
+                                    <td>Unidade</td>
+                                    <td class="text-center sys">0</td>
+                                    <td class="text-center">
+                                        <input type="number" class="form-control form-control-sm qty-input count" min="0" value="" placeholder="—" />
+                                    </td>
+                                    <td class="text-center diff">—</td>
+                                    <td class="text-center">
+                                        <span class="badge-soft badge-soft-gray st">NÃO CONFERIDO</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="main-btn light-btn btn-hover icon-btn btnSave" title="Salvar">
+                                            <i class="lni lni-save"></i>
+                                        </button>
+                                        <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Remover">
+                                            <i class="lni lni-trash-can"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
             </div>
         </section>
@@ -259,6 +595,79 @@
         </footer>
     </main>
 
+    <!-- Modal Lançar Inventário -->
+    <div class="modal fade" id="modalLancamento" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Lançar contagem</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formLancamento">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Código</label>
+                                <input type="text" class="form-control" id="mCodigo" placeholder="Ex: P0007" required />
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Produto</label>
+                                <input type="text" class="form-control" id="mProduto" placeholder="Nome do produto" required />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Categoria</label>
+                                <select class="form-select" id="mCategoria" required>
+                                    <option value="">Selecione…</option>
+                                    <option>Alimentos</option>
+                                    <option>Bebidas</option>
+                                    <option>Limpeza</option>
+                                    <option>Higiene</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Unidade</label>
+                                <select class="form-select" id="mUnidade" required>
+                                    <option value="">Selecione…</option>
+                                    <option>Unidade</option>
+                                    <option>Pacote</option>
+                                    <option>Caixa</option>
+                                    <option>Kg</option>
+                                    <option>Litro</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Estoque (Sistema)</label>
+                                <input type="number" class="form-control" id="mSys" min="0" value="0" required />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Contagem (Inventário)</label>
+                                <input type="number" class="form-control" id="mCount" min="0" value="0" required />
+                            </div>
+
+                            <div class="col-md-8">
+                                <label class="form-label">Observação</label>
+                                <input type="text" class="form-control" id="mObs" placeholder="Opcional" />
+                            </div>
+                        </div>
+                    </form>
+                    <p class="text-sm text-gray mt-3 mb-0">
+                        Dica: a diferença é calculada automaticamente (Contagem - Sistema).
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="main-btn primary-btn btn-hover btn-compact" id="btnSalvarLanc">
+                        <i class="lni lni-save me-1"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ========= JS ========= -->
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
@@ -267,6 +676,382 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
+    <script>
+        // ===== Imagem default =====
+        const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
+          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
+            <rect width="100%" height="100%" fill="#f1f5f9"/>
+            <path d="M18 68l18-18 12 12 10-10 20 20" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="34" cy="34" r="7" fill="#94a3b8"/>
+            <text x="50%" y="86%" text-anchor="middle" font-family="Arial" font-size="10" fill="#64748b">Sem imagem</text>
+          </svg>
+        `);
+        document.querySelectorAll("img.prod-img").forEach(img => img.src = DEFAULT_IMG);
+
+        const tb = document.getElementById('tbInventario');
+        const qInv = document.getElementById('qInv');
+        const qGlobal = document.getElementById('qGlobal');
+        const fCategoria = document.getElementById('fCategoria');
+        const fSituacao = document.getElementById('fSituacao');
+        const infoCount = document.getElementById('infoCount');
+
+        const dtInventario = document.getElementById('dtInventario');
+        const kpiContados = document.getElementById('kpiContados');
+        const kpiConferidos = document.getElementById('kpiConferidos');
+        const kpiDiverg = document.getElementById('kpiDiverg');
+        const kpiData = document.getElementById('kpiData');
+
+        function norm(s) { return String(s ?? '').toLowerCase().trim(); }
+
+        function atualizarKPIs() {
+            const rows = Array.from(tb.querySelectorAll('tbody tr'));
+            let contados = 0;
+            let conferidos = 0;
+            let diverg = 0;
+
+            rows.forEach(tr => {
+                contados++;
+                const situ = tr.getAttribute('data-situacao') || '';
+                if (situ !== 'NAO_CONFERIDO') conferidos++;
+                if (situ === 'DIVERGENTE') diverg++;
+            });
+
+            kpiContados.textContent = String(contados);
+            kpiConferidos.textContent = String(conferidos);
+            kpiDiverg.textContent = String(diverg);
+
+            const d = dtInventario.value;
+            kpiData.textContent = d ? new Date(d + "T00:00:00").toLocaleDateString('pt-BR') : '--/--/----';
+        }
+
+        function aplicarFiltros() {
+            const q = norm(qInv.value || qGlobal.value);
+            const cat = norm(fCategoria.value);
+            const sit = fSituacao.value;
+
+            const rows = Array.from(tb.querySelectorAll('tbody tr'));
+            let shown = 0;
+
+            rows.forEach(tr => {
+                const text = norm(tr.innerText);
+                const rCat = norm(tr.getAttribute('data-categoria'));
+                const rSit = tr.getAttribute('data-situacao') || '';
+
+                let ok = true;
+                if (q && !text.includes(q)) ok = false;
+                if (cat && rCat !== cat) ok = false;
+                if (sit && rSit !== sit) ok = false;
+
+                tr.style.display = ok ? '' : 'none';
+                if (ok) shown++;
+            });
+
+            infoCount.textContent = `Mostrando ${shown} item(ns) no inventário.`;
+        }
+
+        qInv.addEventListener('input', aplicarFiltros);
+        qGlobal.addEventListener('input', aplicarFiltros);
+        fCategoria.addEventListener('change', aplicarFiltros);
+        fSituacao.addEventListener('change', aplicarFiltros);
+        dtInventario.addEventListener('change', () => { atualizarKPIs(); });
+
+        // Atualiza diferença e situação baseado na contagem
+        function recalcularLinha(tr) {
+            const sys = Number(tr.querySelector('.sys')?.innerText || 0);
+            const input = tr.querySelector('input.count');
+            const diffEl = tr.querySelector('.diff');
+            const badge = tr.querySelector('.st');
+
+            const raw = (input && input.value !== '') ? Number(input.value) : null;
+
+            if (raw === null || Number.isNaN(raw)) {
+                diffEl.innerText = '—';
+                badge.className = 'badge-soft badge-soft-gray st';
+                badge.innerText = 'NÃO CONFERIDO';
+                tr.setAttribute('data-situacao', 'NAO_CONFERIDO');
+                return;
+            }
+
+            const diff = raw - sys;
+            diffEl.innerText = String(diff);
+
+            if (diff === 0) {
+                badge.className = 'badge-soft badge-soft-success st';
+                badge.innerText = 'OK';
+                tr.setAttribute('data-situacao', 'OK');
+            } else {
+                badge.className = 'badge-soft badge-soft-warning st';
+                badge.innerText = 'DIVERGENTE';
+                tr.setAttribute('data-situacao', 'DIVERGENTE');
+            }
+        }
+
+        // eventos tabela
+        tb.addEventListener('input', (e) => {
+            const inp = e.target.closest('input.count');
+            if (!inp) return;
+            const tr = inp.closest('tr');
+            if (!tr) return;
+            recalcularLinha(tr);
+            atualizarKPIs();
+            aplicarFiltros();
+        });
+
+        tb.addEventListener('click', (e) => {
+            const tr = e.target.closest('tr');
+            if (!tr) return;
+
+            const btnDel = e.target.closest('.btnDel');
+            if (btnDel) {
+                const nome = tr.children[2].innerText;
+                if (confirm(`Remover do inventário: "${nome}"?`)) {
+                    tr.remove();
+                    atualizarKPIs();
+                    aplicarFiltros();
+                }
+                return;
+            }
+
+            const btnSave = e.target.closest('.btnSave');
+            if (btnSave) {
+                recalcularLinha(tr);
+                atualizarKPIs();
+                aplicarFiltros();
+                alert('Lançamento salvo (modo demonstração).');
+                return;
+            }
+        });
+
+        // Modal lançamento
+        const modalLancEl = document.getElementById('modalLancamento');
+        const modalLanc = new bootstrap.Modal(modalLancEl);
+
+        document.getElementById('btnNovo').addEventListener('click', () => {
+            document.getElementById('formLancamento').reset();
+            document.getElementById('mSys').value = 0;
+            document.getElementById('mCount').value = 0;
+            modalLanc.show();
+        });
+
+        document.getElementById('btnSalvarLanc').addEventListener('click', () => {
+            const mCodigo = document.getElementById('mCodigo');
+            const mProduto = document.getElementById('mProduto');
+            const mCategoria = document.getElementById('mCategoria');
+            const mUnidade = document.getElementById('mUnidade');
+            const mSys = document.getElementById('mSys');
+            const mCount = document.getElementById('mCount');
+
+            if (!mCodigo.value.trim() || !mProduto.value.trim() || !mCategoria.value || !mUnidade.value) {
+                alert('Preencha os campos obrigatórios.');
+                return;
+            }
+
+            const sys = Number(mSys.value || 0);
+            const count = Number(mCount.value || 0);
+            const diff = count - sys;
+
+            let situ = 'OK';
+            let badgeClass = 'badge-soft badge-soft-success';
+            let badgeText = 'OK';
+            if (diff !== 0) {
+                situ = 'DIVERGENTE';
+                badgeClass = 'badge-soft badge-soft-warning';
+                badgeText = 'DIVERGENTE';
+            }
+
+            const htmlRow = `
+              <tr data-categoria="${mCategoria.value}" data-situacao="${situ}">
+                <td><img class="prod-img" src="${DEFAULT_IMG}" alt="${mProduto.value.trim().replaceAll('"','')}" /></td>
+                <td>${mCodigo.value.trim()}</td>
+                <td>${mProduto.value.trim()}</td>
+                <td>${mCategoria.value}</td>
+                <td>${mUnidade.value}</td>
+                <td class="text-center sys">${sys}</td>
+                <td class="text-center">
+                  <input type="number" class="form-control form-control-sm qty-input count" min="0" value="${count}" />
+                </td>
+                <td class="text-center diff">${diff}</td>
+                <td class="text-center"><span class="${badgeClass} st">${badgeText}</span></td>
+                <td class="text-end">
+                  <button class="main-btn light-btn btn-hover icon-btn btnSave" title="Salvar"><i class="lni lni-save"></i></button>
+                  <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Remover"><i class="lni lni-trash-can"></i></button>
+                </td>
+              </tr>
+            `;
+
+            tb.querySelector('tbody').insertAdjacentHTML('afterbegin', htmlRow);
+            modalLanc.hide();
+
+            atualizarKPIs();
+            aplicarFiltros();
+        });
+
+        // Excel (inventário)
+        function exportExcel() {
+            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
+
+            const now = new Date();
+            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+            const dataInv = dtInventario.value ? new Date(dtInventario.value + "T00:00:00").toLocaleDateString('pt-BR') : '--/--/----';
+
+            const cat = fCategoria.value || 'Todas';
+            const sit = (fSituacao.value || 'Todas');
+
+            const header = ['Código', 'Produto', 'Categoria', 'Unidade', 'Sistema', 'Contagem', 'Diferença', 'Situação'];
+
+            const body = rows.map(tr => {
+                const sys = tr.querySelector('.sys')?.innerText?.trim() || '';
+                const count = tr.querySelector('input.count')?.value ?? '';
+                const diff = tr.querySelector('.diff')?.innerText?.trim() || '';
+                const st = tr.querySelector('.st')?.innerText?.trim() || '';
+                return [
+                    tr.children[1].innerText.trim(),
+                    tr.children[2].innerText.trim(),
+                    tr.children[3].innerText.trim(),
+                    tr.children[4].innerText.trim(),
+                    sys,
+                    String(count),
+                    diff,
+                    st
+                ];
+            });
+
+            const centerCols = (idx) => (idx >= 4); // Sistema..Situação
+
+            let html = `
+              <html><head><meta charset="utf-8">
+              <style>
+                table{border:0.6px solid #999;font-family:Arial;font-size:12px}
+                td,th{border:1px solid #999;padding:6px 8px;vertical-align:middle}
+                th{background:#f1f5f9;font-weight:700}
+                .title{font-size:16px;font-weight:700;background:#eef2ff;text-align:center}
+                .muted{color:#555;font-weight:700}
+                .center{text-align:center}
+                .spacer td{border:none;padding:4px}
+              </style></head><body><table>
+            `;
+
+            html += `<tr><td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - INVENTÁRIO</td></tr>`;
+            html += `<tr><td class="muted">Gerado em:</td><td colspan="7">${dt}</td></tr>`;
+            html += `<tr><td class="muted">Data Inventário:</td><td>${dataInv}</td><td class="muted">Categoria:</td><td>${cat}</td><td class="muted">Situação:</td><td>${sit}</td><td colspan="2"></td></tr>`;
+            html += `<tr class="spacer"><td colspan="8">&nbsp;</td></tr>`;
+
+            html += `<tr>${header.map((h, idx) => `<th class="${centerCols(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
+
+            body.forEach(r => {
+                html += `<tr>${r.map((c, idx) => {
+                    const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+                    const cls = centerCols(idx) ? 'center' : '';
+                    return `<td class="${cls}">${safe}</td>`;
+                }).join('')}</tr>`;
+            });
+
+            html += `</table></body></html>`;
+
+            const blob = new Blob(["\ufeff" + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'inventario.xls';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+        document.getElementById('btnExcel').addEventListener('click', exportExcel);
+
+        // PDF (igual padrão do Produtos)
+        function exportPDF() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('Biblioteca do PDF não carregou.');
+                return;
+            }
+
+            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
+            const now = new Date();
+            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+            const dataInv = dtInventario.value ? new Date(dtInventario.value + "T00:00:00").toLocaleDateString('pt-BR') : '--/--/----';
+
+            const cat = fCategoria.value || 'Todas';
+            const sit = (fSituacao.value || 'Todas');
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+            const M = 70;
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text('PAINEL DA DISTRIBUIDORA - INVENTÁRIO', M, 55);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.text(`Gerado em:  ${dt}`, M, 75);
+            doc.text(`Data Inventário:  ${dataInv} | Categoria:  ${cat} | Situação:  ${sit}`, M, 92);
+
+            const head = [['Código', 'Produto', 'Categoria', 'Unidade', 'Sistema', 'Contagem', 'Diferença', 'Situação']];
+
+            const body = rows.map(tr => {
+                const sys = tr.querySelector('.sys')?.innerText?.trim() || '';
+                const count = tr.querySelector('input.count')?.value ?? '';
+                const diff = tr.querySelector('.diff')?.innerText?.trim() || '';
+                const st = tr.querySelector('.st')?.innerText?.trim() || '';
+                return [
+                    tr.children[1].innerText.trim(),
+                    tr.children[2].innerText.trim(),
+                    tr.children[3].innerText.trim(),
+                    tr.children[4].innerText.trim(),
+                    sys,
+                    String(count),
+                    diff,
+                    st
+                ];
+            });
+
+            doc.autoTable({
+                head,
+                body,
+                startY: 115,
+                margin: { left: M, right: M },
+                theme: 'plain',
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 9,
+                    textColor: [17, 24, 39],
+                    cellPadding: { top: 6, right: 6, bottom: 6, left: 6 },
+                    lineWidth: 0
+                },
+                headStyles: {
+                    fillColor: [241, 245, 249],
+                    textColor: [17, 24, 39],
+                    fontStyle: 'bold',
+                    lineWidth: 0
+                },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                    4: { halign: 'center' },
+                    5: { halign: 'center' },
+                    6: { halign: 'center' },
+                    7: { halign: 'center' }
+                },
+                didParseCell: function (data) {
+                    data.cell.styles.lineWidth = 0;
+                }
+            });
+
+            doc.save('inventario.pdf');
+        }
+        document.getElementById('btnPDF').addEventListener('click', exportPDF);
+
+        // init
+        atualizarKPIs();
+        aplicarFiltros();
+        // recalcular todas as linhas com base nos valores atuais
+        Array.from(tb.querySelectorAll('tbody tr')).forEach(tr => recalcularLinha(tr));
+        atualizarKPIs();
+        aplicarFiltros();
+    </script>
 
 </body>
 
