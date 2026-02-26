@@ -28,6 +28,8 @@ class UserController extends BaseController {
             $data = $_POST;
             $data['id'] = $_POST['usuario_id'] ?? null;
             $data['ativo'] = isset($_POST['ativo']) ? 1 : 0;
+            $data['auth_pin'] = $_POST['auth_pin'] ?? null;
+            $data['auth_type'] = $_POST['auth_type'] ?? 'password';
             
             $userModel->save($data);
             $this->redirect('usuarios.php?msg=Usuário salvo com sucesso');

@@ -33,8 +33,24 @@ class User extends BaseModel {
         ")->fetchAll();
     }
     
+    public function findAdmins() {
+        return $this->query("SELECT id, nome, auth_type FROM {$this->table} WHERE nivel IN ('admin', 'gerente') AND ativo = 1")->fetchAll();
+    }
+
+    public function validateAuth($userId, $credential) {
+        $user = $this->query("SELECT senha, auth_pin, auth_type FROM {$this->table} WHERE id = ?", [$userId])->fetch();
+        if (!$user) return false;
+
+        if ($user['auth_type'] === 'pin') {
+            return $credential === $user['auth_pin'];
+        } else {
+            return password_verify($credential, $user['senha']);
+        }
+    }
+
     public function save($data) {
         $hasDiscountCol = $this->columnExists('desconto_maximo');
+        $hasAuthCols = $this->columnExists('auth_pin');
         
         if (!empty($data['id'])) {
             $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ?, filial_id = ? ";
@@ -43,6 +59,12 @@ class User extends BaseModel {
             if ($hasDiscountCol) {
                 $sql .= ", desconto_maximo = ? ";
                 $params[] = $data['desconto_maximo'] ?? 0;
+            }
+
+            if ($hasAuthCols) {
+                $sql .= ", auth_pin = ?, auth_type = ? ";
+                $params[] = !empty($data['auth_pin']) ? $data['auth_pin'] : null;
+                $params[] = $data['auth_type'] ?? 'password';
             }
 
             if (!empty($data['senha'])) {
@@ -62,6 +84,13 @@ class User extends BaseModel {
                 $fields .= ", desconto_maximo";
                 $values .= ", ?";
                 $params[] = $data['desconto_maximo'] ?? 0;
+            }
+
+            if ($hasAuthCols) {
+                $fields .= ", auth_pin, auth_type";
+                $values .= ", ?, ?";
+                $params[] = !empty($data['auth_pin']) ? $data['auth_pin'] : null;
+                $params[] = $data['auth_type'] ?? 'password';
             }
 
             return $this->query("INSERT INTO {$this->table} ($fields) VALUES ($values)", $params);
