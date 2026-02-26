@@ -121,7 +121,7 @@
                             <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" 
                                    onmousedown="interceptDiscount(event)" 
                                    onkeydown="interceptDiscount(event)"
-                                   onchange="isAuthorized = false; renderCart()">
+                                   onchange="renderCart()">
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
@@ -583,6 +583,14 @@ async function validateAuthorization() {
         isAuthorized = true;
         bootstrap.Modal.getInstance(document.getElementById('modalDiscountAuth')).hide();
         renderCart();
+        
+        // Focus and select the discount field so the user can type immediately
+        const discountInput = document.getElementById('discountPercent');
+        setTimeout(() => {
+            discountInput.focus();
+            discountInput.select();
+        }, 500);
+        
         alert('Desconto autorizado com sucesso!');
     } else {
         alert('Erro: ' + result.error);
