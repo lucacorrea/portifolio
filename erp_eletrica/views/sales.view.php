@@ -463,6 +463,7 @@ btnCheckout.onclick = async () => {
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const total = subtotal * (1 - (discountPercent / 100));
 
+    const payment = document.querySelector('input[name="payment"]:checked').value;
     const data = {
         subtotal: subtotal,
         discount_percent: discountPercent,
