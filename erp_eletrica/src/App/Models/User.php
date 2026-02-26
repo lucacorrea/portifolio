@@ -34,7 +34,7 @@ class User extends BaseModel {
     }
     
     public function findAdmins() {
-        $filialId = $this->getFilialContext();
+        $filialId = $_SESSION['filial_id'] ?? null;
         $sql = "SELECT id, nome, auth_type FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1";
         $params = [];
         if ($filialId) {
