@@ -85,7 +85,6 @@
         /* ✅ Responsivo real: no celular NÃO “esmaga”/não deixa letras em pé (vira scroll horizontal) */
         #tbProdutos {
             min-width: 1180px;
-            /* força scroll no mobile */
         }
 
         /* Coluna Produto: pode quebrar linha (para não cortar texto) */
@@ -208,7 +207,7 @@
                     </ul>
                 </li>
 
-                <!-- Estoque (ABERTO + Produtos ativo) -->
+                <!-- Estoque -->
                 <li class="nav-item nav-item-has-children active">
                     <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
                         aria-controls="ddmenu_estoque" aria-expanded="true">
@@ -232,7 +231,6 @@
                     </ul>
                 </li>
 
-                <!-- Cadastros -->
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros"
                         aria-controls="ddmenu_cadastros" aria-expanded="false">
@@ -314,7 +312,6 @@
     <div class="overlay"></div>
 
     <main class="main-wrapper">
-        <!-- Header -->
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -325,7 +322,6 @@
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
-
                             <div class="header-search d-none d-md-flex">
                                 <form action="#">
                                     <input type="text" placeholder="Buscar produto..." id="qGlobal" />
@@ -378,11 +374,11 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </header>
 
-        <!-- Conteúdo -->
         <section class="section">
             <div class="container-fluid">
                 <div class="title-wrapper pt-30">
@@ -392,21 +388,10 @@
                                 <h2>Produtos</h2>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="breadcrumb-wrapper">
-                                <nav aria-label="breadcrumb">
-                                    <ol class="breadcrumb">
-                                        <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
-                                        <li class="breadcrumb-item"><a href="#0">Estoque</a></li>
-                                        <li class="breadcrumb-item active" aria-current="page">Produtos</li>
-                                    </ol>
-                                </nav>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
-                <!-- Toolbar (responsiva + botões organizados) -->
+                <!-- Toolbar -->
                 <div class="card-style mb-30">
                     <div class="row g-3 align-items-end">
                         <div class="col-12 col-md-6 col-lg-4">
@@ -437,7 +422,6 @@
                         </div>
 
                         <div class="col-12 col-md-6 col-lg-2">
-                            <!-- No mobile vira grid, no desktop vira flex à direita -->
                             <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
                                 <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal"
                                     data-bs-target="#modalProduto" id="btnNovo">
@@ -449,10 +433,6 @@
                                 <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF">
                                     <i class="lni lni-printer me-1"></i> PDF
                                 </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnImport">
-                                    <i class="lni lni-upload me-1"></i> Importar
-                                </button>
-                                <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" hidden />
                             </div>
                         </div>
                     </div>
@@ -495,7 +475,6 @@
                                             title="Excluir"><i class="lni lni-trash-can"></i></button>
                                     </td>
                                 </tr>
-
                                 <tr data-categoria="Alimentos" data-status="ATIVO" data-baixo="1">
                                     <td><img class="prod-img" alt="Açúcar" /></td>
                                     <td>P0002</td>
@@ -513,7 +492,6 @@
                                             title="Excluir"><i class="lni lni-trash-can"></i></button>
                                     </td>
                                 </tr>
-
                                 <tr data-categoria="Limpeza" data-status="ATIVO" data-baixo="1">
                                     <td><img class="prod-img" alt="Detergente" /></td>
                                     <td>P0003</td>
@@ -531,7 +509,6 @@
                                             title="Excluir"><i class="lni lni-trash-can"></i></button>
                                     </td>
                                 </tr>
-
                                 <tr data-categoria="Bebidas" data-status="INATIVO" data-baixo="0">
                                     <td><img class="prod-img" alt="Refrigerante" /></td>
                                     <td>P0004</td>
@@ -565,12 +542,6 @@
                             <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="terms d-flex justify-content-center justify-content-md-end">
-                            <a href="#0" class="text-sm">Termos</a>
-                            <a href="#0" class="text-sm ml-15">Privacidade</a>
-                        </div>
-                    </div>
                 </div>
             </div>
         </footer>
@@ -591,8 +562,7 @@
                         <input type="hidden" id="imgData" value="" />
 
                         <div class="row g-3">
-
-                            <!-- ✅ IMAGEM NO TOPO CENTRALIZADO -->
+                            <!-- IMAGEM CENTRAL -->
                             <div class="col-12">
                                 <div class="d-flex justify-content-center">
                                     <div class="img-block text-center">
@@ -601,9 +571,7 @@
                                             <img id="previewImg" class="img-preview" alt="Prévia" />
                                             <input type="file" class="form-control" id="pImagem" accept="image/*" />
                                             <button type="button" class="main-btn light-btn btn-hover btn-compact w-100"
-                                                id="btnRemoverImagem">
-                                                Remover
-                                            </button>
+                                                id="btnRemoverImagem">Remover</button>
                                         </div>
                                     </div>
                                 </div>
@@ -613,7 +581,6 @@
                                 <hr class="my-2">
                             </div>
 
-                            <!-- CAMPOS ABAIXO -->
                             <div class="col-md-3">
                                 <label class="form-label">Código</label>
                                 <input type="text" class="form-control" id="pCodigo" placeholder="Ex: P0005" required />
@@ -677,10 +644,6 @@
                             </div>
                         </div>
                     </form>
-
-                    <div class="mt-3 text-sm text-gray">
-                        Dica: se <b>Estoque</b> for menor que <b>Mínimo</b>, o produto aparece como <b>BAIXO</b>.
-                    </div>
                 </div>
 
                 <div class="modal-footer">
@@ -703,7 +666,6 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
     <script>
-        // ===== Imagem padrão (data-uri SVG) =====
         const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
         <rect width="100%" height="100%" fill="#f1f5f9"/>
@@ -739,10 +701,8 @@
                 const rBaixo = tr.getAttribute('data-baixo') === "1";
 
                 let ok = true;
-
                 if (q && !text.includes(q)) ok = false;
                 if (cat && rCat !== cat) ok = false;
-
                 if (st === "ATIVO" && rStatus !== "ATIVO") ok = false;
                 if (st === "INATIVO" && rStatus !== "INATIVO") ok = false;
                 if (st === "BAIXO" && !rBaixo) ok = false;
@@ -785,7 +745,6 @@
             imgData.value = DEFAULT_IMG;
             previewImg.src = DEFAULT_IMG;
             pImagem.value = '';
-
             pCodigo.value = '';
             pNome.value = '';
             pStatus.value = 'ATIVO';
@@ -805,28 +764,16 @@
         pImagem.addEventListener('change', () => {
             const file = pImagem.files && pImagem.files[0];
             if (!file) return;
-
-            if (!file.type.startsWith('image/')) {
-                alert('Selecione uma imagem válida.');
-                pImagem.value = '';
-                return;
-            }
-
+            if (!file.type.startsWith('image/')) { alert('Selecione uma imagem válida.'); pImagem.value = ''; return; }
             const reader = new FileReader();
-            reader.onload = () => {
-                imgData.value = String(reader.result || DEFAULT_IMG);
-                previewImg.src = imgData.value;
-            };
+            reader.onload = () => { imgData.value = String(reader.result || DEFAULT_IMG); previewImg.src = imgData.value; };
             reader.readAsDataURL(file);
         });
 
         document.getElementById('btnRemoverImagem').addEventListener('click', () => {
-            imgData.value = DEFAULT_IMG;
-            previewImg.src = DEFAULT_IMG;
-            pImagem.value = '';
+            imgData.value = DEFAULT_IMG; previewImg.src = DEFAULT_IMG; pImagem.value = '';
         });
 
-        // Editar/Excluir
         tb.addEventListener('click', (e) => {
             const btnEdit = e.target.closest('.btnEdit');
             const btnDel = e.target.closest('.btnDel');
@@ -835,17 +782,13 @@
 
             if (btnDel) {
                 const nome = tr.children[2].innerText;
-                if (confirm(`Deseja remover o produto: "${nome}"?`)) {
-                    tr.remove();
-                    aplicarFiltros();
-                }
+                if (confirm(`Deseja remover o produto: "${nome}"?`)) { tr.remove(); aplicarFiltros(); }
                 return;
             }
 
             if (btnEdit) {
                 const rows = Array.from(tb.querySelectorAll('tbody tr'));
                 editIndex.value = rows.indexOf(tr);
-
                 modalTitle.textContent = 'Editar Produto';
 
                 const img = tr.querySelector('img.prod-img');
@@ -860,12 +803,8 @@
                 pPreco.value = tr.children[5].innerText.replace('R$', '').trim();
                 pEstoque.value = parseInt(tr.children[6].innerText.trim() || '0', 10);
                 pMinimo.value = parseInt(tr.children[7].innerText.trim() || '0', 10);
-
-                const stText = tr.getAttribute('data-status') || 'ATIVO';
-                pStatus.value = stText;
-
+                pStatus.value = tr.getAttribute('data-status') || 'ATIVO';
                 pObs.value = '';
-
                 modal.show();
             }
         });
@@ -883,9 +822,7 @@
 
             const badge = (status === 'INATIVO')
                 ? `<span class="badge-soft badge-soft-gray">INATIVO</span>`
-                : (baixo
-                    ? `<span class="badge-soft badge-soft-warning">BAIXO</span>`
-                    : `<span class="badge-soft badge-soft-success">ATIVO</span>`);
+                : (baixo ? `<span class="badge-soft badge-soft-warning">BAIXO</span>` : `<span class="badge-soft badge-soft-success">ATIVO</span>`);
 
             const precoFmt = (() => {
                 let s = pPreco.value.replace(/\./g, '').replace(',', '.');
@@ -915,7 +852,6 @@
       `;
 
             const tbody = tb.querySelector('tbody');
-
             if (editIndex.value !== '') {
                 const idx = Number(editIndex.value);
                 const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -928,7 +864,7 @@
             aplicarFiltros();
         });
 
-        // ===== Exportar Excel (.xls) com cabeçalho (Gerado em do lado certo) =====
+        // ✅ Exportar Excel (.xls) estilizado + TÍTULO CENTRALIZADO + colunas Preço/Estoque/Mínimo centralizadas
         function exportExcel() {
             const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
 
@@ -939,17 +875,22 @@
             const st = (fStatus.value || 'Todos');
 
             const header = ['Código', 'Produto', 'Categoria', 'Unidade', 'Preço', 'Estoque', 'Mínimo', 'Status'];
+
             const body = rows.map(tr => {
-                const codigo = tr.children[1].innerText.trim();
-                const produto = tr.children[2].innerText.trim();
-                const categoria = tr.children[3].innerText.trim();
-                const unidade = tr.children[4].innerText.trim();
-                const preco = tr.children[5].innerText.trim();
-                const estoque = tr.children[6].innerText.trim();
-                const minimo = tr.children[7].innerText.trim();
-                const statusTxt = tr.children[8].innerText.trim();
-                return [codigo, produto, categoria, unidade, preco, estoque, minimo, statusTxt];
+                return [
+                    tr.children[1].innerText.trim(),
+                    tr.children[2].innerText.trim(),
+                    tr.children[3].innerText.trim(),
+                    tr.children[4].innerText.trim(),
+                    tr.children[5].innerText.trim(),
+                    tr.children[6].innerText.trim(),
+                    tr.children[7].innerText.trim(),
+                    tr.children[8].innerText.trim()
+                ];
             });
+
+            // colunas a centralizar (0-based): Preço=4, Estoque=5, Mínimo=6, Status=7
+            const isCenterCol = (idx) => (idx === 4 || idx === 5 || idx === 6 || idx === 7);
 
             let html = `
         <html>
@@ -957,38 +898,50 @@
             <meta charset="utf-8">
             <style>
               table { border-collapse: collapse; font-family: Arial; font-size: 12px; }
-              td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: top; }
-              .title { font-size: 16px; font-weight: 700; background: #eef2ff; }
-              .muted { color: #555; }
-              th { background: #f1f5f9; }
+              td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
+              th { background: #f1f5f9; font-weight: 700; }
+              .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
+              .muted { color: #555; font-weight: 700; }
+              .center { text-align: center; }
+              .right { text-align: right; }
+              .spacer td { border: none; padding: 4px; }
             </style>
           </head>
           <body>
             <table>
       `;
 
+            // Título centralizado
             html += `<tr><td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - PRODUTOS</td></tr>`;
 
-            /* ✅ agora “Gerado em” fica do lado certo (sem colspan empurrando pro final) */
+            // linhas do topo
             html += `<tr>
-                <td class="muted"><b>Gerado em:</b></td>
+                <td class="muted">Gerado em:</td>
                 <td>${dt}</td>
                 <td colspan="6"></td>
               </tr>`;
 
             html += `<tr>
-                <td class="muted"><b>Filtro Categoria:</b></td>
+                <td class="muted">Filtro Categoria:</td>
                 <td>${cat}</td>
-                <td class="muted"><b>Filtro Status:</b></td>
+                <td class="muted">Filtro Status:</td>
                 <td>${st}</td>
                 <td colspan="4"></td>
               </tr>`;
 
-            html += `<tr><td colspan="8">&nbsp;</td></tr>`;
+            html += `<tr class="spacer"><td colspan="8">&nbsp;</td></tr>`;
 
-            html += `<tr>${header.map(h => `<th>${h}</th>`).join('')}</tr>`;
+            // Cabeçalho da tabela (centraliza Preço/Estoque/Mínimo/Status)
+            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')
+                }</tr>`;
+
+            // Linhas (centraliza Preço/Estoque/Mínimo/Status)
             body.forEach(r => {
-                html += `<tr>${r.map(c => `<td>${String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</td>`).join('')
+                html += `<tr>${r.map((c, idx) => {
+                    const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+                    const cls = isCenterCol(idx) ? 'center' : '';
+                    return `<td class="${cls}">${safe}</td>`;
+                }).join('')
                     }</tr>`;
             });
 
@@ -1009,17 +962,15 @@
         }
         document.getElementById('btnExcel').addEventListener('click', exportExcel);
 
-        // ===== Exportar PDF com cabeçalho =====
+        // PDF (mantido)
         function exportPDF() {
             if (!window.jspdf || !window.jspdf.jsPDF) {
-                alert('Biblioteca do PDF não carregou. Verifique sua internet ou baixe os arquivos jsPDF localmente.');
+                alert('Biblioteca do PDF não carregou.');
                 return;
             }
-
             const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
             const now = new Date();
             const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
-
             const cat = fCategoria.value || 'Todas';
             const st = (fStatus.value || 'Todos');
 
@@ -1048,9 +999,7 @@
             ]));
 
             doc.autoTable({
-                head,
-                body,
-                startY: 95,
+                head, body, startY: 95,
                 styles: { font: 'helvetica', fontSize: 9, cellPadding: 6 },
                 headStyles: { fillColor: [241, 245, 249], textColor: [17, 24, 39] },
                 alternateRowStyles: { fillColor: [250, 250, 251] },
@@ -1060,15 +1009,6 @@
             doc.save('produtos.pdf');
         }
         document.getElementById('btnPDF').addEventListener('click', exportPDF);
-
-        // ===== Import =====
-        const fileImport = document.getElementById('fileImport');
-        document.getElementById('btnImport').addEventListener('click', () => fileImport.click());
-        fileImport.addEventListener('change', () => {
-            if (!fileImport.files?.length) return;
-            alert('Importação: pronto para conectar (xlsx/csv). Se quiser, eu implemento a leitura também.');
-            fileImport.value = '';
-        });
     </script>
 </body>
 
