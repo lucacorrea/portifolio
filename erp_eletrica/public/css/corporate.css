@@ -1,6 +1,8 @@
 :root {
-    --erp-primary: #4f46e5;
-    --erp-secondary: #64748b;
+    /* Primary Color Standardization (Blue Theme) */
+    --erp-primary: #0056b3;
+    --erp-primary-hover: #004494;
+    --erp-secondary: #1a202c;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
     --erp-warning: #f59e0b;
@@ -8,6 +10,23 @@
     --erp-light: #f8fafc;
     --erp-glass: rgba(255, 255, 255, 0.7);
     --erp-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+    /* Technical Tokens (Sync with style.css) */
+    --primary-color: var(--erp-primary);
+    --primary-hover: var(--erp-primary-hover);
+    --secondary-color: var(--erp-secondary);
+    --border: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
     --sidebar-width: 260px;
     --header-height: 70px;
 }
@@ -91,6 +110,45 @@ body {
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
 }
 
+/* Bootstrap 5 Overrides to match theme */
+.btn-primary {
+    background-color: var(--erp-primary) !important;
+    border-color: var(--erp-primary) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: var(--erp-primary-hover) !important;
+    border-color: var(--erp-primary-hover) !important;
+}
+
+.btn-outline-primary {
+    color: var(--erp-primary) !important;
+    border-color: var(--erp-primary) !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--erp-primary) !important;
+    color: white !important;
+}
+
+.text-primary {
+    color: var(--erp-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--erp-primary) !important;
+}
+
+.bg-erp-primary {
+    background-color: var(--erp-primary) !important;
+}
+
+.text-erp-primary {
+    color: var(--erp-primary) !important;
+}
+
 /* Animations */
 .fade-up {
     animation: fadeUp 0.4s ease-out;
@@ -158,15 +216,7 @@ body {
     background: linear-gradient(135deg, var(--erp-primary), #6366f1);
 }
 
-.text-erp-primary {
-    color: var(--erp-primary) !important;
-}
-
-.bg-erp-primary {
-    background-color: var(--erp-primary) !important;
-}
-
-/* Enhanced Typography */
+/* Glassmorphism PDV */
 h1,
 h2,
 h3,
