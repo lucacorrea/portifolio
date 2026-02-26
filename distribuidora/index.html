@@ -61,6 +61,45 @@
       font-size: 12px;
       color: #111827;
     }
+
+    /* ✅ FIX DROPDOWN PERFIL: evita sobreposição do e-mail */
+    .profile-box .dropdown-menu .author-info {
+      display: flex !important;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+      /* ajuste se quiser */
+    }
+
+    .profile-box .dropdown-menu .author-info .image {
+      flex: 0 0 auto;
+    }
+
+    .profile-box .dropdown-menu .author-info .content {
+      flex: 1 1 auto;
+      min-width: 0;
+      /* essencial para overflow funcionar */
+    }
+
+    .profile-box .dropdown-menu .author-info .content a {
+      display: block;
+      max-width: 100%;
+      white-space: normal;
+      /* permite quebrar linha */
+      overflow-wrap: anywhere;
+      /* quebra em qualquer ponto se precisar */
+      word-break: break-word;
+      /* fallback */
+      line-height: 1.2;
+    }
+
+    /* Se você preferir reticências em 1 linha, troque o bloco acima por:
+      .profile-box .dropdown-menu .author-info .content a {
+        display:block; max-width:100%;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      }
+      */
   </style>
 </head>
 
