@@ -149,6 +149,8 @@ class SalesController extends BaseController {
             }
             exit;
         }
+    }
+
     public function authorize_discount() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents('php://input'), true);
