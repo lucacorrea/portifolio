@@ -1,1020 +1,1194 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
-    <title>Painel da Distribuidora | Dashboard</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- ========== CSS ========= -->
-    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="assets/css/main.css" />
+  <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
+  <title>Painel da Distribuidora | Dashboard</title>
 
-    <!-- Ajustes: tudo mesma altura + estabilidade de canvas -->
-    <style>
-      .equal-row { align-items: stretch; }
-      .equal-row > [class^="col-"],
-      .equal-row > [class*=" col-"] { display: flex; }
+  <!-- ========== CSS ========= -->
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="assets/css/main.css" />
 
-      .icon-card,
-      .card-style { height: 100%; width: 100%; }
+  <!-- Ajustes: tudo mesma altura + estabilidade de canvas -->
+  <style>
+    .equal-row {
+      align-items: stretch;
+    }
 
-      .card-style { display: flex; flex-direction: column; }
-      .card-style .chart,
-      .card-style .table-responsive,
-      .card-style .card-body-flex { flex: 1 1 auto; }
+    .equal-row>[class^="col-"],
+    .equal-row>[class*=" col-"] {
+      display: flex;
+    }
 
-      .chart canvas { min-height: 320px; }
-      .table-responsive { padding-bottom: 6px; }
+    .icon-card,
+    .card-style {
+      height: 100%;
+      width: 100%;
+    }
 
-      .mini-metrics span{
-        display:inline-flex; gap:6px; align-items:center;
-        padding:4px 10px; border-radius:999px;
-        background:rgba(143,146,161,.08);
-        font-size:12px; color:#111827;
-      }
-    </style>
-  </head>
+    .card-style {
+      display: flex;
+      flex-direction: column;
+    }
 
-  <body>
-    <!-- ======== Preloader =========== -->
-    <div id="preloader">
-      <div class="spinner"></div>
+    .card-style .chart,
+    .card-style .table-responsive,
+    .card-style .card-body-flex {
+      flex: 1 1 auto;
+    }
+
+    .chart canvas {
+      min-height: 320px;
+    }
+
+    .table-responsive {
+      padding-bottom: 6px;
+    }
+
+    .mini-metrics span {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(143, 146, 161, .08);
+      font-size: 12px;
+      color: #111827;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ======== Preloader =========== -->
+  <div id="preloader">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- ======== sidebar-nav start =========== -->
+  <aside class="sidebar-nav-wrapper">
+    <div class="navbar-logo">
+      <a href="index.html" class="d-flex align-items-center gap-2">
+        <img src="assets/images/logo/logo.svg" alt="logo" />
+      </a>
     </div>
 
-    <!-- ======== sidebar-nav start =========== -->
-    <aside class="sidebar-nav-wrapper">
-      <div class="navbar-logo">
-        <a href="index.html" class="d-flex align-items-center gap-2">
-          <img src="assets/images/logo/logo.svg" alt="logo" />
-        </a>
+    <nav class="sidebar-nav">
+      <ul>
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_dashboard" aria-controls="ddmenu_dashboard"
+            aria-expanded="true">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
+                <path
+                  d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
+              </svg>
+            </span>
+            <span class="text">Dashboard</span>
+          </a>
+          <ul id="ddmenu_dashboard" class="collapse show dropdown-nav">
+            <li><a href="index.html" class="active"> Visão Geral </a></li>
+            <li><a href="dashboard-vendas.html"> Vendas </a></li>
+            <li><a href="dashboard-estoque.html"> Estoque </a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
+            aria-controls="ddmenu_operacoes" aria-expanded="false">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
+              </svg>
+            </span>
+            <span class="text">Operações</span>
+          </a>
+          <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
+            <li><a href="pedidos.html"> Pedidos </a></li>
+            <li><a href="vendas.html"> Vendas </a></li>
+            <li><a href="devolucoes.html"> Devoluções </a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
+            aria-controls="ddmenu_estoque" aria-expanded="false">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
+                <path
+                  d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
+              </svg>
+            </span>
+            <span class="text">Estoque</span>
+          </a>
+          <ul id="ddmenu_estoque" class="collapse dropdown-nav">
+            <li><a href="produtos.html"> Produtos </a></li>
+            <li><a href="inventario.html"> Inventário </a></li>
+            <li><a href="entradas.html"> Entradas </a></li>
+            <li><a href="saidas.html"> Saídas </a></li>
+            <li><a href="estoque-minimo.html"> Estoque Mínimo </a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros"
+            aria-controls="ddmenu_cadastros" aria-expanded="false">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
+                <path
+                  d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
+                <path
+                  d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
+                <path
+                  d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
+              </svg>
+            </span>
+            <span class="text">Cadastros</span>
+          </a>
+          <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
+            <li><a href="clientes.html"> Clientes </a></li>
+            <li><a href="fornecedores.html"> Fornecedores </a></li>
+            <li><a href="categorias.html"> Categorias </a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item">
+          <a href="relatorios.html">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
+              </svg>
+            </span>
+            <span class="text">Relatórios</span>
+          </a>
+        </li>
+
+        <span class="divider">
+          <hr />
+        </span>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config"
+            aria-controls="ddmenu_config" aria-expanded="false">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
+              </svg>
+            </span>
+            <span class="text">Configurações</span>
+          </a>
+          <ul id="ddmenu_config" class="collapse dropdown-nav">
+            <li><a href="usuarios.html"> Usuários e Permissões </a></li>
+            <li><a href="parametros.html"> Parâmetros do Sistema </a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item">
+          <a href="suporte.html">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
+                <path
+                  d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
+              </svg>
+            </span>
+            <span class="text">Suporte</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <div class="overlay"></div>
+  <!-- ======== sidebar-nav end =========== -->
+
+  <main class="main-wrapper">
+    <!-- Header -->
+    <header class="header">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-lg-5 col-md-5 col-6">
+            <div class="header-left d-flex align-items-center">
+              <div class="menu-toggle-btn mr-15">
+                <button id="menu-toggle" class="main-btn primary-btn btn-hover">
+                  <i class="lni lni-chevron-left me-2"></i> Menu
+                </button>
+              </div>
+              <div class="header-search d-none d-md-flex">
+                <form action="#">
+                  <input type="text" placeholder="Buscar cliente, pedido, produto..." />
+                  <button type="submit"><i class="lni lni-search-alt"></i></button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-7 col-md-7 col-6">
+            <div class="header-right">
+              <div class="notification-box ml-15 d-none d-md-flex">
+                <button class="dropdown-toggle" type="button" id="notification" data-bs-toggle="dropdown"
+                  aria-expanded="false">
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M11 20.1667C9.88317 20.1667 8.88718 19.63 8.23901 18.7917H13.761C13.113 19.63 12.1169 20.1667 11 20.1667Z"
+                      fill="" />
+                    <path
+                      d="M10.1157 2.74999C10.1157 2.24374 10.5117 1.83333 11 1.83333C11.4883 1.83333 11.8842 2.24374 11.8842 2.74999V2.82604C14.3932 3.26245 16.3051 5.52474 16.3051 8.24999V14.287C16.3051 14.5301 16.3982 14.7633 16.564 14.9352L18.2029 16.6342C18.4814 16.9229 18.2842 17.4167 17.8903 17.4167H4.10961C3.71574 17.4167 3.5185 16.9229 3.797 16.6342L5.43589 14.9352C5.6017 14.7633 5.69485 14.5301 5.69485 14.287V8.24999C5.69485 5.52474 7.60672 3.26245 10.1157 2.82604V2.74999Z"
+                      fill="" />
+                  </svg>
+                  <span></span>
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notification">
+                  <li>
+                    <a href="#0">
+                      <div class="content">
+                        <h6>Estoque mínimo <span class="text-regular">em 3 itens.</span></h6>
+                        <p>Confira “Estoque Mínimo”.</p>
+                        <span>Agora</span>
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#0">
+                      <div class="content">
+                        <h6>Pedidos pendentes <span class="text-regular">para conferência.</span></h6>
+                        <p>2 pedidos aguardando separação.</p>
+                        <span>10 min atrás</span>
+                      </div>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="profile-box ml-15">
+                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile"
+                  data-bs-toggle="dropdown" aria-expanded="false">
+                  <div class="profile-info">
+                    <div class="info">
+                      <div class="image">
+                        <img src="assets/images/profile/profile-image.png" alt="perfil" />
+                      </div>
+                      <div>
+                        <h6 class="fw-500">Administrador</h6>
+                        <p>Distribuidora</p>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
+                  <li>
+                    <div class="author-info flex items-center !p-1">
+                      <div class="image">
+                        <img src="assets/images/profile/profile-image.png" alt="image" />
+                      </div>
+                      <div class="content">
+                        <h4 class="text-sm">Administrador</h4>
+                        <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
+                          href="#">admin@distribuidora.com</a>
+                      </div>
+                    </div>
+                  </li>
+                  <li class="divider"></li>
+                  <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                  <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
+                  <li class="divider"></li>
+                  <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
       </div>
+    </header>
 
-      <nav class="sidebar-nav">
-        <ul>
-          <li class="nav-item nav-item-has-children">
-            <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_dashboard" aria-controls="ddmenu_dashboard" aria-expanded="true">
-              <span class="icon">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z"/>
-                  <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z"/>
-                </svg>
-              </span>
-              <span class="text">Dashboard</span>
-            </a>
-            <ul id="ddmenu_dashboard" class="collapse show dropdown-nav">
-              <li><a href="index.html" class="active"> Visão Geral </a></li>
-              <li><a href="dashboard-vendas.html"> Vendas </a></li>
-              <li><a href="dashboard-estoque.html"> Estoque </a></li>
-            </ul>
-          </li>
-
-          <li class="nav-item nav-item-has-children">
-            <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-              <span class="icon">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z"/>
-                </svg>
-              </span>
-              <span class="text">Operações</span>
-            </a>
-            <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-              <li><a href="pedidos.html"> Pedidos </a></li>
-              <li><a href="vendas.html"> Vendas </a></li>
-              <li><a href="devolucoes.html"> Devoluções </a></li>
-            </ul>
-          </li>
-
-          <li class="nav-item nav-item-has-children">
-            <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-              <span class="icon">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z"/>
-                  <path d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z"/>
-                </svg>
-              </span>
-              <span class="text">Estoque</span>
-            </a>
-            <ul id="ddmenu_estoque" class="collapse dropdown-nav">
-              <li><a href="produtos.html"> Produtos </a></li>
-              <li><a href="inventario.html"> Inventário </a></li>
-              <li><a href="entradas.html"> Entradas </a></li>
-              <li><a href="saidas.html"> Saídas </a></li>
-              <li><a href="estoque-minimo.html"> Estoque Mínimo </a></li>
-            </ul>
-          </li>
-
-          <li class="nav-item nav-item-has-children">
-            <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-              <span class="icon">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z"/>
-                  <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z"/>
-                  <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z"/>
-                  <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z"/>
-                </svg>
-              </span>
-              <span class="text">Cadastros</span>
-            </a>
-            <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-              <li><a href="clientes.html"> Clientes </a></li>
-              <li><a href="fornecedores.html"> Fornecedores </a></li>
-              <li><a href="categorias.html"> Categorias </a></li>
-            </ul>
-          </li>
-
-          <li class="nav-item">
-            <a href="relatorios.html">
-              <span class="icon">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z"/>
-                </svg>
-              </span>
-              <span class="text">Relatórios</span>
-            </a>
-          </li>
-
-          <span class="divider"><hr/></span>
-
-          <li class="nav-item nav-item-has-children">
-            <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-              <span class="icon">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z"/>
-                </svg>
-              </span>
-              <span class="text">Configurações</span>
-            </a>
-            <ul id="ddmenu_config" class="collapse dropdown-nav">
-              <li><a href="usuarios.html"> Usuários e Permissões </a></li>
-              <li><a href="parametros.html"> Parâmetros do Sistema </a></li>
-            </ul>
-          </li>
-
-          <li class="nav-item">
-            <a href="suporte.html">
-              <span class="icon">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z"/>
-                  <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z"/>
-                </svg>
-              </span>
-              <span class="text">Suporte</span>
-            </a>
-          </li>
-        </ul>
-      </nav>
-    </aside>
-
-    <div class="overlay"></div>
-    <!-- ======== sidebar-nav end =========== -->
-
-    <main class="main-wrapper">
-      <!-- Header -->
-      <header class="header">
-        <div class="container-fluid">
-          <div class="row">
-            <div class="col-lg-5 col-md-5 col-6">
-              <div class="header-left d-flex align-items-center">
-                <div class="menu-toggle-btn mr-15">
-                  <button id="menu-toggle" class="main-btn primary-btn btn-hover">
-                    <i class="lni lni-chevron-left me-2"></i> Menu
-                  </button>
-                </div>
-                <div class="header-search d-none d-md-flex">
-                  <form action="#">
-                    <input type="text" placeholder="Buscar cliente, pedido, produto..." />
-                    <button type="submit"><i class="lni lni-search-alt"></i></button>
-                  </form>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-7 col-md-7 col-6">
-              <div class="header-right">
-                <div class="notification-box ml-15 d-none d-md-flex">
-                  <button class="dropdown-toggle" type="button" id="notification" data-bs-toggle="dropdown" aria-expanded="false">
-                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M11 20.1667C9.88317 20.1667 8.88718 19.63 8.23901 18.7917H13.761C13.113 19.63 12.1169 20.1667 11 20.1667Z" fill=""/>
-                      <path d="M10.1157 2.74999C10.1157 2.24374 10.5117 1.83333 11 1.83333C11.4883 1.83333 11.8842 2.24374 11.8842 2.74999V2.82604C14.3932 3.26245 16.3051 5.52474 16.3051 8.24999V14.287C16.3051 14.5301 16.3982 14.7633 16.564 14.9352L18.2029 16.6342C18.4814 16.9229 18.2842 17.4167 17.8903 17.4167H4.10961C3.71574 17.4167 3.5185 16.9229 3.797 16.6342L5.43589 14.9352C5.6017 14.7633 5.69485 14.5301 5.69485 14.287V8.24999C5.69485 5.52474 7.60672 3.26245 10.1157 2.82604V2.74999Z" fill=""/>
-                    </svg>
-                    <span></span>
-                  </button>
-
-                  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notification">
-                    <li>
-                      <a href="#0">
-                        <div class="content">
-                          <h6>Estoque mínimo <span class="text-regular">em 3 itens.</span></h6>
-                          <p>Confira “Estoque Mínimo”.</p>
-                          <span>Agora</span>
-                        </div>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#0">
-                        <div class="content">
-                          <h6>Pedidos pendentes <span class="text-regular">para conferência.</span></h6>
-                          <p>2 pedidos aguardando separação.</p>
-                          <span>10 min atrás</span>
-                        </div>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-
-                <div class="profile-box ml-15">
-                  <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                    <div class="profile-info">
-                      <div class="info">
-                        <div class="image">
-                          <img src="assets/images/profile/profile-image.png" alt="perfil" />
-                        </div>
-                        <div>
-                          <h6 class="fw-500">Administrador</h6>
-                          <p>Distribuidora</p>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-
-                  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                    <li>
-                      <div class="author-info flex items-center !p-1">
-                        <div class="image">
-                          <img src="assets/images/profile/profile-image.png" alt="image" />
-                        </div>
-                        <div class="content">
-                          <h4 class="text-sm">Administrador</h4>
-                          <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs" href="#">admin@distribuidora.com</a>
-                        </div>
-                      </div>
-                    </li>
-                    <li class="divider"></li>
-                    <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
-                    <li class="divider"></li>
-                    <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
-                  </ul>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </header>
-
-      <!-- Conteúdo -->
-      <section class="section">
-        <div class="container-fluid">
-          <div class="title-wrapper pt-30">
-            <div class="row align-items-center">
-              <div class="col-md-6">
-                <div class="title">
-                  <h2>Dashboard (Vendas e Estoque)</h2>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="breadcrumb-wrapper">
-                  <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                      <li class="breadcrumb-item"><a href="#0">Dashboard</a></li>
-                      <li class="breadcrumb-item active" aria-current="page">Visão Geral</li>
-                    </ol>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- KPIs -->
-          <div class="row equal-row">
-            <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
-              <div class="icon-card">
-                <div class="icon purple"><i class="lni lni-cart-full"></i></div>
-                <div class="content">
-                  <h6 class="mb-10">Vendas Hoje</h6>
-                  <h3 class="text-bold mb-10">128</h3>
-                  <p class="text-sm text-success"><i class="lni lni-arrow-up"></i> +8.3% <span class="text-gray">(vs. ontem)</span></p>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
-              <div class="icon-card">
-                <div class="icon success"><i class="lni lni-dollar"></i></div>
-                <div class="content">
-                  <h6 class="mb-10">Faturamento (Mês)</h6>
-                  <h3 class="text-bold mb-10">R$ 274.890</h3>
-                  <p class="text-sm text-success"><i class="lni lni-arrow-up"></i> +5.4% <span class="text-gray">Crescimento</span></p>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
-              <div class="icon-card">
-                <div class="icon primary"><i class="lni lni-package"></i></div>
-                <div class="content">
-                  <h6 class="mb-10">Itens em Estoque</h6>
-                  <h3 class="text-bold mb-10">9.842</h3>
-                  <p class="text-sm text-danger"><i class="lni lni-arrow-down"></i> -1.9% <span class="text-gray">Saídas</span></p>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
-              <div class="icon-card">
-                <div class="icon orange"><i class="lni lni-calculator"></i></div>
-                <div class="content">
-                  <h6 class="mb-10">Ticket Médio (Hoje)</h6>
-                  <h3 class="text-bold mb-10">R$ 86,40</h3>
-                  <p class="text-sm text-success"><i class="lni lni-arrow-up"></i> +2.1% <span class="text-gray">média</span></p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Charts 1 e 2 -->
-          <div class="row equal-row">
-            <div class="col-lg-7 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap justify-content-between">
-                  <div class="left">
-                    <h6 class="text-medium mb-10">Faturamento (12 meses)</h6>
-                    <h3 class="text-bold">R$ 2.345.790</h3>
-                  </div>
-                  <div class="right">
-                    <div class="select-style-1">
-                      <div class="select-position select-sm">
-                        <select class="light-bg">
-                          <option value="">Anual</option>
-                          <option value="">Mensal</option>
-                          <option value="">Semanal</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="chart">
-                  <canvas id="Chart1" style="width: 100%; height: 400px; margin-left: -35px;"></canvas>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-5 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                  <div class="left">
-                    <h6 class="text-medium mb-30">Vendas por Mês</h6>
-                  </div>
-                  <div class="right">
-                    <div class="select-style-1">
-                      <div class="select-position select-sm">
-                        <select class="light-bg">
-                          <option value="">Últimos 12 meses</option>
-                          <option value="">Últimos 6 meses</option>
-                          <option value="">Últimos 3 meses</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="chart">
-                  <canvas id="Chart2" style="width: 100%; height: 400px; margin-left: -45px;"></canvas>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Entrega x Presencial + Vendas Recentes -->
-          <div class="row equal-row">
-            <div class="col-lg-5 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap justify-content-between align-items-center">
-                  <div class="left">
-                    <h6 class="text-medium mb-10">Forma de Entrega</h6>
-                    <p class="text-sm text-gray mb-0">Delivery x Presencial</p>
-                  </div>
-                  <div class="right">
-                    <div class="select-style-1">
-                      <div class="select-position select-sm">
-                        <select class="light-bg">
-                          <option value="">Hoje</option>
-                          <option value="">7 dias</option>
-                          <option value="">30 dias</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="chart">
-                  <canvas id="Chart5" style="width: 100%; height: 380px;"></canvas>
-                </div>
-
-                <div class="mini-metrics d-flex flex-wrap gap-2 mt-10">
-                  <span><b>Delivery</b> 74</span>
-                  <span><b>Presencial</b> 54</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-7 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap justify-content-between align-items-center">
-                  <div class="left">
-                    <h6 class="text-medium mb-30">Vendas Recentes</h6>
-                  </div>
-                  <div class="right">
-                    <div class="select-style-1">
-                      <div class="select-position select-sm">
-                        <select class="light-bg">
-                          <option value="">Hoje</option>
-                          <option value="">Últimos 7 dias</option>
-                          <option value="">Últimos 30 dias</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="table-responsive">
-                  <table class="table top-selling-table">
-                    <thead>
-                      <tr>
-                        <th><h6 class="text-sm text-medium">Venda</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Cliente</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Entrega</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Pagamento</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Valor</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Data</h6></th>
-                        <th></th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      <tr>
-                        <td><p class="text-sm">#V-10293</p></td>
-                        <td><p class="text-sm">Mercadinho São José</p></td>
-                        <td><span class="status-btn warning-btn">Delivery</span></td>
-                        <td><p class="text-sm">Pix</p></td>
-                        <td><p class="text-sm">R$ 1.248,90</p></td>
-                        <td><p class="text-sm">26/02</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Ver"><i class="lni lni-eye"></i></button></div></td>
-                      </tr>
-
-                      <tr>
-                        <td><p class="text-sm">#V-10292</p></td>
-                        <td><p class="text-sm">Supermercado Bom Preço</p></td>
-                        <td><span class="status-btn success-btn">Presencial</span></td>
-                        <td><p class="text-sm">Dinheiro</p></td>
-                        <td><p class="text-sm">R$ 4.980,10</p></td>
-                        <td><p class="text-sm">26/02</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Ver"><i class="lni lni-eye"></i></button></div></td>
-                      </tr>
-
-                      <tr>
-                        <td><p class="text-sm">#V-10291</p></td>
-                        <td><p class="text-sm">Restaurante Central</p></td>
-                        <td><span class="status-btn warning-btn">Delivery</span></td>
-                        <td><p class="text-sm">Cartão Débito</p></td>
-                        <td><p class="text-sm">R$ 2.140,70</p></td>
-                        <td><p class="text-sm">25/02</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Ver"><i class="lni lni-eye"></i></button></div></td>
-                      </tr>
-
-                      <tr>
-                        <td><p class="text-sm">#V-10290</p></td>
-                        <td><p class="text-sm">Atacado Amazonas</p></td>
-                        <td><span class="status-btn success-btn">Presencial</span></td>
-                        <td><p class="text-sm">Cartão Crédito</p></td>
-                        <td><p class="text-sm">R$ 3.210,00</p></td>
-                        <td><p class="text-sm">25/02</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Ver"><i class="lni lni-eye"></i></button></div></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-          <!-- Mix + Entradas/Saídas -->
-          <div class="row equal-row">
-            <div class="col-lg-7 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                  <div class="left">
-                    <h6 class="text-medium mb-2">Mix de Vendas</h6>
-                  </div>
-                  <div class="right">
-                    <div class="select-style-1 mb-2">
-                      <div class="select-position select-sm">
-                        <select class="light-bg">
-                          <option value="">Últimos 12 meses</option>
-                          <option value="">Últimos 6 meses</option>
-                          <option value="">Últimos 3 meses</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="chart">
-                  <canvas id="Chart3" style="width: 100%; height: 450px; margin-left: -35px;"></canvas>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-5 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                  <div class="left">
-                    <h6 class="text-medium mb-2">Entradas x Saídas (Estoque)</h6>
-                  </div>
-                  <div class="right">
-                    <div class="select-style-1 mb-2">
-                      <div class="select-position select-sm">
-                        <select class="light-bg">
-                          <option value="">Últimos 6 meses</option>
-                          <option value="">Últimos 3 meses</option>
-                          <option value="">Último mês</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="chart">
-                  <canvas id="Chart4" style="width: 100%; height: 420px; margin-left: -35px;"></canvas>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Pagamentos + Top produtos -->
-          <div class="row equal-row">
-            <div class="col-lg-5 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                  <div class="left">
-                    <h6 class="text-medium mb-10">Formas de Pagamento</h6>
-                    <p class="text-sm text-gray mb-0">Mais utilizadas</p>
-                  </div>
-                  <div class="right">
-                    <div class="select-style-1">
-                      <div class="select-position select-sm">
-                        <select class="light-bg">
-                          <option value="">Hoje</option>
-                          <option value="">7 dias</option>
-                          <option value="">30 dias</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="chart">
-                  <canvas id="Chart6" style="width: 100%; height: 420px;"></canvas>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-7 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                  <div class="left">
-                    <h6 class="text-medium mb-10">Top Produtos Vendidos</h6>
-                    <p class="text-sm text-gray mb-0">Quantidade (semana)</p>
-                  </div>
-                  <div class="right">
-                    <a href="relatorios.html" class="main-btn primary-btn btn-hover btn-sm">Ver relatório</a>
-                  </div>
-                </div>
-
-                <div class="chart">
-                  <canvas id="Chart7" style="width: 100%; height: 420px;"></canvas>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Estoque baixo -->
-          <div class="row equal-row">
-            <div class="col-lg-12 mb-30">
-              <div class="card-style">
-                <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                  <div class="left">
-                    <h6 class="text-medium mb-30">Produtos com Estoque Baixo</h6>
-                  </div>
-                  <div class="right">
-                    <a href="estoque-minimo.html" class="main-btn primary-btn btn-hover btn-sm">Ver detalhes</a>
-                  </div>
-                </div>
-
-                <div class="table-responsive">
-                  <table class="table top-selling-table">
-                    <thead>
-                      <tr>
-                        <th><h6 class="text-sm text-medium">Produto</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Categoria</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Saldo</h6></th>
-                        <th class="min-width"><h6 class="text-sm text-medium">Mínimo</h6></th>
-                        <th><h6 class="text-sm text-medium text-end">Ação</h6></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td><p class="text-sm">Arroz 5kg (Tipo 1)</p></td>
-                        <td><p class="text-sm">Alimentos</p></td>
-                        <td><p class="text-sm">12</p></td>
-                        <td><p class="text-sm">30</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Repor"><i class="lni lni-plus"></i></button></div></td>
-                      </tr>
-                      <tr>
-                        <td><p class="text-sm">Açúcar 1kg</p></td>
-                        <td><p class="text-sm">Alimentos</p></td>
-                        <td><p class="text-sm">18</p></td>
-                        <td><p class="text-sm">40</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Repor"><i class="lni lni-plus"></i></button></div></td>
-                      </tr>
-                      <tr>
-                        <td><p class="text-sm">Detergente 500ml</p></td>
-                        <td><p class="text-sm">Limpeza</p></td>
-                        <td><p class="text-sm">9</p></td>
-                        <td><p class="text-sm">25</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Repor"><i class="lni lni-plus"></i></button></div></td>
-                      </tr>
-                      <tr>
-                        <td><p class="text-sm">Óleo 900ml</p></td>
-                        <td><p class="text-sm">Alimentos</p></td>
-                        <td><p class="text-sm">6</p></td>
-                        <td><p class="text-sm">20</p></td>
-                        <td><div class="action justify-content-end"><button class="edit" title="Repor"><i class="lni lni-plus"></i></button></div></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <footer class="footer">
-        <div class="container-fluid">
-          <div class="row">
-            <div class="col-md-6 order-last order-md-first">
-              <div class="copyright text-center text-md-start">
-                <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
+    <!-- Conteúdo -->
+    <section class="section">
+      <div class="container-fluid">
+        <div class="title-wrapper pt-30">
+          <div class="row align-items-center">
+            <div class="col-md-6">
+              <div class="title">
+                <h2>Dashboard (Vendas e Estoque)</h2>
               </div>
             </div>
             <div class="col-md-6">
-              <div class="terms d-flex justify-content-center justify-content-md-end">
-                <a href="#0" class="text-sm">Termos</a>
-                <a href="#0" class="text-sm ml-15">Privacidade</a>
+              <div class="breadcrumb-wrapper">
+                <nav aria-label="breadcrumb">
+                  <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#0">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Visão Geral</li>
+                  </ol>
+                </nav>
               </div>
             </div>
           </div>
         </div>
-      </footer>
-    </main>
 
-    <!-- ========= JS ========= -->
-    <script src="assets/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/Chart.min.js"></script>
-    <script src="assets/js/polyfill.js"></script>
-    <script src="assets/js/main.js"></script>
+        <!-- KPIs -->
+        <div class="row equal-row">
+          <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
+            <div class="icon-card">
+              <div class="icon purple"><i class="lni lni-cart-full"></i></div>
+              <div class="content">
+                <h6 class="mb-10">Vendas Hoje</h6>
+                <h3 class="text-bold mb-10">128</h3>
+                <p class="text-sm text-success"><i class="lni lni-arrow-up"></i> +8.3% <span class="text-gray">(vs.
+                    ontem)</span></p>
+              </div>
+            </div>
+          </div>
 
-    <!-- ✅ FIX: força cores do Chart.js (evita texto branco) -->
-    <script>
-      (function () {
-        const TEXT = "#111827";
-        const GRID = "rgba(17,24,39,.10)";
+          <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
+            <div class="icon-card">
+              <div class="icon success"><i class="lni lni-dollar"></i></div>
+              <div class="content">
+                <h6 class="mb-10">Faturamento (Mês)</h6>
+                <h3 class="text-bold mb-10">R$ 274.890</h3>
+                <p class="text-sm text-success"><i class="lni lni-arrow-up"></i> +5.4% <span
+                    class="text-gray">Crescimento</span></p>
+              </div>
+            </div>
+          </div>
 
-        if (!window.Chart) return;
+          <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
+            <div class="icon-card">
+              <div class="icon primary"><i class="lni lni-package"></i></div>
+              <div class="content">
+                <h6 class="mb-10">Itens em Estoque</h6>
+                <h3 class="text-bold mb-10">9.842</h3>
+                <p class="text-sm text-danger"><i class="lni lni-arrow-down"></i> -1.9% <span
+                    class="text-gray">Saídas</span></p>
+              </div>
+            </div>
+          </div>
 
-        // Chart.js v3+
-        if (Chart.defaults) {
-          if ("color" in Chart.defaults) Chart.defaults.color = TEXT;
-          if ("borderColor" in Chart.defaults) Chart.defaults.borderColor = GRID;
+          <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
+            <div class="icon-card">
+              <div class="icon orange"><i class="lni lni-calculator"></i></div>
+              <div class="content">
+                <h6 class="mb-10">Ticket Médio (Hoje)</h6>
+                <h3 class="text-bold mb-10">R$ 86,40</h3>
+                <p class="text-sm text-success"><i class="lni lni-arrow-up"></i> +2.1% <span
+                    class="text-gray">média</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-          if (Chart.defaults.scale) {
-            Chart.defaults.scale.ticks.color = TEXT;
-            Chart.defaults.scale.grid.color = GRID;
-          }
+        <!-- Charts 1 e 2 -->
+        <div class="row equal-row">
+          <div class="col-lg-7 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap justify-content-between">
+                <div class="left">
+                  <h6 class="text-medium mb-10">Faturamento (12 meses)</h6>
+                  <h3 class="text-bold">R$ 2.345.790</h3>
+                </div>
+                <div class="right">
+                  <div class="select-style-1">
+                    <div class="select-position select-sm">
+                      <select class="light-bg">
+                        <option value="">Anual</option>
+                        <option value="">Mensal</option>
+                        <option value="">Semanal</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="chart">
+                <canvas id="Chart1" style="width: 100%; height: 400px; margin-left: -35px;"></canvas>
+              </div>
+            </div>
+          </div>
 
-          if (Chart.defaults.plugins?.legend?.labels) {
-            Chart.defaults.plugins.legend.labels.color = TEXT;
-          }
+          <div class="col-lg-5 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap align-items-center justify-content-between">
+                <div class="left">
+                  <h6 class="text-medium mb-30">Vendas por Mês</h6>
+                </div>
+                <div class="right">
+                  <div class="select-style-1">
+                    <div class="select-position select-sm">
+                      <select class="light-bg">
+                        <option value="">Últimos 12 meses</option>
+                        <option value="">Últimos 6 meses</option>
+                        <option value="">Últimos 3 meses</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-          if (Chart.defaults.plugins?.tooltip) {
-            Chart.defaults.plugins.tooltip.titleColor = TEXT;
-            Chart.defaults.plugins.tooltip.bodyColor = TEXT;
-          }
+              <div class="chart">
+                <canvas id="Chart2" style="width: 100%; height: 400px; margin-left: -45px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Entrega x Presencial + Vendas Recentes -->
+        <div class="row equal-row">
+          <div class="col-lg-5 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap justify-content-between align-items-center">
+                <div class="left">
+                  <h6 class="text-medium mb-10">Forma de Entrega</h6>
+                  <p class="text-sm text-gray mb-0">Delivery x Presencial</p>
+                </div>
+                <div class="right">
+                  <div class="select-style-1">
+                    <div class="select-position select-sm">
+                      <select class="light-bg">
+                        <option value="">Hoje</option>
+                        <option value="">7 dias</option>
+                        <option value="">30 dias</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chart">
+                <canvas id="Chart5" style="width: 100%; height: 380px;"></canvas>
+              </div>
+
+              <div class="mini-metrics d-flex flex-wrap gap-2 mt-10">
+                <span><b>Delivery</b> 74</span>
+                <span><b>Presencial</b> 54</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-7 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap justify-content-between align-items-center">
+                <div class="left">
+                  <h6 class="text-medium mb-30">Vendas Recentes</h6>
+                </div>
+                <div class="right">
+                  <div class="select-style-1">
+                    <div class="select-position select-sm">
+                      <select class="light-bg">
+                        <option value="">Hoje</option>
+                        <option value="">Últimos 7 dias</option>
+                        <option value="">Últimos 30 dias</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table top-selling-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <h6 class="text-sm text-medium">Venda</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Cliente</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Entrega</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Pagamento</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Valor</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Data</h6>
+                      </th>
+                      <th></th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    <tr>
+                      <td>
+                        <p class="text-sm">#V-10293</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">Mercadinho São José</p>
+                      </td>
+                      <td><span class="status-btn warning-btn">Delivery</span></td>
+                      <td>
+                        <p class="text-sm">Pix</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">R$ 1.248,90</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">26/02</p>
+                      </td>
+                      <td>
+                        <div class="action justify-content-end"><button class="edit" title="Ver"><i
+                              class="lni lni-eye"></i></button></div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td>
+                        <p class="text-sm">#V-10292</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">Supermercado Bom Preço</p>
+                      </td>
+                      <td><span class="status-btn success-btn">Presencial</span></td>
+                      <td>
+                        <p class="text-sm">Dinheiro</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">R$ 4.980,10</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">26/02</p>
+                      </td>
+                      <td>
+                        <div class="action justify-content-end"><button class="edit" title="Ver"><i
+                              class="lni lni-eye"></i></button></div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td>
+                        <p class="text-sm">#V-10291</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">Restaurante Central</p>
+                      </td>
+                      <td><span class="status-btn warning-btn">Delivery</span></td>
+                      <td>
+                        <p class="text-sm">Cartão Débito</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">R$ 2.140,70</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">25/02</p>
+                      </td>
+                      <td>
+                        <div class="action justify-content-end"><button class="edit" title="Ver"><i
+                              class="lni lni-eye"></i></button></div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td>
+                        <p class="text-sm">#V-10290</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">Atacado Amazonas</p>
+                      </td>
+                      <td><span class="status-btn success-btn">Presencial</span></td>
+                      <td>
+                        <p class="text-sm">Cartão Crédito</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">R$ 3.210,00</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">25/02</p>
+                      </td>
+                      <td>
+                        <div class="action justify-content-end"><button class="edit" title="Ver"><i
+                              class="lni lni-eye"></i></button></div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Mix + Entradas/Saídas -->
+        <div class="row equal-row">
+          <div class="col-lg-7 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap align-items-center justify-content-between">
+                <div class="left">
+                  <h6 class="text-medium mb-2">Mix de Vendas</h6>
+                </div>
+                <div class="right">
+                  <div class="select-style-1 mb-2">
+                    <div class="select-position select-sm">
+                      <select class="light-bg">
+                        <option value="">Últimos 12 meses</option>
+                        <option value="">Últimos 6 meses</option>
+                        <option value="">Últimos 3 meses</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chart">
+                <canvas id="Chart3" style="width: 100%; height: 450px; margin-left: -35px;"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-5 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap align-items-center justify-content-between">
+                <div class="left">
+                  <h6 class="text-medium mb-2">Entradas x Saídas (Estoque)</h6>
+                </div>
+                <div class="right">
+                  <div class="select-style-1 mb-2">
+                    <div class="select-position select-sm">
+                      <select class="light-bg">
+                        <option value="">Últimos 6 meses</option>
+                        <option value="">Últimos 3 meses</option>
+                        <option value="">Último mês</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chart">
+                <canvas id="Chart4" style="width: 100%; height: 420px; margin-left: -35px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagamentos + Top produtos -->
+        <div class="row equal-row">
+          <div class="col-lg-5 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap align-items-center justify-content-between">
+                <div class="left">
+                  <h6 class="text-medium mb-10">Formas de Pagamento</h6>
+                  <p class="text-sm text-gray mb-0">Mais utilizadas</p>
+                </div>
+                <div class="right">
+                  <div class="select-style-1">
+                    <div class="select-position select-sm">
+                      <select class="light-bg">
+                        <option value="">Hoje</option>
+                        <option value="">7 dias</option>
+                        <option value="">30 dias</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chart">
+                <canvas id="Chart6" style="width: 100%; height: 420px;"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-7 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap align-items-center justify-content-between">
+                <div class="left">
+                  <h6 class="text-medium mb-10">Top Produtos Vendidos</h6>
+                  <p class="text-sm text-gray mb-0">Quantidade (semana)</p>
+                </div>
+                <div class="right">
+                  <a href="relatorios.html" class="main-btn primary-btn btn-hover btn-sm">Ver relatório</a>
+                </div>
+              </div>
+
+              <div class="chart">
+                <canvas id="Chart7" style="width: 100%; height: 420px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estoque baixo -->
+        <div class="row equal-row">
+          <div class="col-lg-12 mb-30">
+            <div class="card-style">
+              <div class="title d-flex flex-wrap align-items-center justify-content-between">
+                <div class="left">
+                  <h6 class="text-medium mb-30">Produtos com Estoque Baixo</h6>
+                </div>
+                <div class="right">
+                  <a href="estoque-minimo.html" class="main-btn primary-btn btn-hover btn-sm">Ver detalhes</a>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table top-selling-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <h6 class="text-sm text-medium">Produto</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Categoria</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Saldo</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Mínimo</h6>
+                      </th>
+                      <th>
+                        <h6 class="text-sm text-medium text-end">Ação</h6>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <p class="text-sm">Arroz 5kg (Tipo 1)</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">Alimentos</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">12</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">30</p>
+                      </td>
+                      <td>
+                        <div class="action justify-content-end"><button class="edit" title="Repor"><i
+                              class="lni lni-plus"></i></button></div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <p class="text-sm">Açúcar 1kg</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">Alimentos</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">18</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">40</p>
+                      </td>
+                      <td>
+                        <div class="action justify-content-end"><button class="edit" title="Repor"><i
+                              class="lni lni-plus"></i></button></div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <p class="text-sm">Detergente 500ml</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">Limpeza</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">9</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">25</p>
+                      </td>
+                      <td>
+                        <div class="action justify-content-end"><button class="edit" title="Repor"><i
+                              class="lni lni-plus"></i></button></div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <p class="text-sm">Óleo 900ml</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">Alimentos</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">6</p>
+                      </td>
+                      <td>
+                        <p class="text-sm">20</p>
+                      </td>
+                      <td>
+                        <div class="action justify-content-end"><button class="edit" title="Repor"><i
+                              class="lni lni-plus"></i></button></div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-md-6 order-last order-md-first">
+            <div class="copyright text-center text-md-start">
+              <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="terms d-flex justify-content-center justify-content-md-end">
+              <a href="#0" class="text-sm">Termos</a>
+              <a href="#0" class="text-sm ml-15">Privacidade</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ========= JS ========= -->
+  <script src="assets/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/Chart.min.js"></script>
+  <script src="assets/js/polyfill.js"></script>
+  <script src="assets/js/main.js"></script>
+
+  <!-- ✅ FIX: força cores do Chart.js (evita texto branco) -->
+  <script>
+    (function () {
+      const TEXT = "#111827";
+      const GRID = "rgba(17,24,39,.10)";
+
+      if (!window.Chart) return;
+
+      // Chart.js v3+
+      if (Chart.defaults) {
+        if ("color" in Chart.defaults) Chart.defaults.color = TEXT;
+        if ("borderColor" in Chart.defaults) Chart.defaults.borderColor = GRID;
+
+        if (Chart.defaults.scale) {
+          Chart.defaults.scale.ticks.color = TEXT;
+          Chart.defaults.scale.grid.color = GRID;
         }
 
-        // Chart.js v2 fallback
-        if (Chart.defaults?.global) {
-          Chart.defaults.global.defaultFontColor = TEXT;
+        if (Chart.defaults.plugins?.legend?.labels) {
+          Chart.defaults.plugins.legend.labels.color = TEXT;
         }
 
-        window.__CHART_THEME__ = { TEXT, GRID };
-      })();
-    </script>
-
-    <script>
-      const THEME = window.__CHART_THEME__ || { TEXT: "#111827", GRID: "rgba(17,24,39,.10)" };
-
-      const fmtBRL = (v) => {
-        try {
-          return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
-        } catch (e) {
-          return "R$ " + String(v);
+        if (Chart.defaults.plugins?.tooltip) {
+          Chart.defaults.plugins.tooltip.titleColor = TEXT;
+          Chart.defaults.plugins.tooltip.bodyColor = TEXT;
         }
-      };
+      }
 
-      // =============================
-      // Chart 1 (Faturamento)
-      // =============================
-      const ctx1 = document.getElementById("Chart1")?.getContext("2d");
-      if (ctx1) {
-        new Chart(ctx1, {
-          type: "line",
-          data: {
-            labels: ["Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez","Jan","Fev"],
-            datasets: [{
-              label: "Faturamento",
-              backgroundColor: "transparent",
-              borderColor: "#365CF5",
-              data: [142000,158000,151000,176000,189000,181000,193000,172000,204000,198000,216000,232000],
-              pointBackgroundColor: "transparent",
-              pointHoverBackgroundColor: "#365CF5",
-              pointBorderColor: "transparent",
-              pointHoverBorderColor: "#fff",
-              pointHoverBorderWidth: 4,
-              borderWidth: 4,
-              pointRadius: 5,
-              pointHoverRadius: 7,
-              tension: 0.35
-            }]
+      // Chart.js v2 fallback
+      if (Chart.defaults?.global) {
+        Chart.defaults.global.defaultFontColor = TEXT;
+      }
+
+      window.__CHART_THEME__ = { TEXT, GRID };
+    })();
+  </script>
+
+  <script>
+    const THEME = window.__CHART_THEME__ || { TEXT: "#111827", GRID: "rgba(17,24,39,.10)" };
+
+    const fmtBRL = (v) => {
+      try {
+        return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+      } catch (e) {
+        return "R$ " + String(v);
+      }
+    };
+
+    // =============================
+    // Chart 1 (Faturamento)
+    // =============================
+    const ctx1 = document.getElementById("Chart1")?.getContext("2d");
+    if (ctx1) {
+      new Chart(ctx1, {
+        type: "line",
+        data: {
+          labels: ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"],
+          datasets: [{
+            label: "Faturamento",
+            backgroundColor: "transparent",
+            borderColor: "#365CF5",
+            data: [142000, 158000, 151000, 176000, 189000, 181000, 193000, 172000, 204000, 198000, 216000, 232000],
+            pointBackgroundColor: "transparent",
+            pointHoverBackgroundColor: "#365CF5",
+            pointBorderColor: "transparent",
+            pointHoverBorderColor: "#fff",
+            pointHoverBorderWidth: 4,
+            borderWidth: 4,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            tension: 0.35
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false, labels: { color: THEME.TEXT } },
+            tooltip: {
+              intersect: false,
+              backgroundColor: "#f9f9f9",
+              displayColors: false,
+              titleColor: THEME.TEXT,
+              bodyColor: THEME.TEXT,
+              padding: { x: 18, y: 10 },
+              callbacks: { label: (c) => fmtBRL(c.parsed.y) }
+            }
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false, labels: { color: THEME.TEXT } },
-              tooltip: {
-                intersect: false,
-                backgroundColor: "#f9f9f9",
-                displayColors: false,
-                titleColor: THEME.TEXT,
-                bodyColor: THEME.TEXT,
-                padding: { x: 18, y: 10 },
-                callbacks: { label: (c) => fmtBRL(c.parsed.y) }
+          scales: {
+            y: {
+              grid: { color: THEME.GRID, drawBorder: false },
+              ticks: {
+                color: THEME.TEXT,
+                padding: 25,
+                callback: (val) => (Number(val) / 1000).toFixed(0) + "k"
               }
             },
-            scales: {
-              y: {
-                grid: { color: THEME.GRID, drawBorder: false },
-                ticks: {
-                  color: THEME.TEXT,
-                  padding: 25,
-                  callback: (val) => (Number(val) / 1000).toFixed(0) + "k"
-                }
-              },
-              x: {
-                grid: { color: THEME.GRID, drawBorder: false },
-                ticks: { color: THEME.TEXT, padding: 14 }
-              }
+            x: {
+              grid: { color: THEME.GRID, drawBorder: false },
+              ticks: { color: THEME.TEXT, padding: 14 }
             }
           }
-        });
-      }
+        }
+      });
+    }
 
-      // =============================
-      // Chart 2 (Vendas por Mês)
-      // =============================
-      const ctx2 = document.getElementById("Chart2")?.getContext("2d");
-      if (ctx2) {
-        new Chart(ctx2, {
-          type: "bar",
-          data: {
-            labels: ["Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez","Jan","Fev"],
-            datasets: [{
-              label: "Vendas",
-              backgroundColor: "#365CF5",
-              borderRadius: 18,
-              barThickness: 8,
-              maxBarThickness: 10,
-              data: [410,460,520,480,530,610,590,640,710,760,820,880]
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false, labels: { color: THEME.TEXT } },
-              tooltip: {
-                backgroundColor: "#F3F6F8",
-                displayColors: false,
-                titleColor: THEME.TEXT,
-                bodyColor: THEME.TEXT,
-                padding: { x: 18, y: 10 },
-                callbacks: { label: (c) => `${c.parsed.y} vendas` }
-              }
-            },
-            scales: {
-              y: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 22 } },
-              x: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 14 } }
+    // =============================
+    // Chart 2 (Vendas por Mês)
+    // =============================
+    const ctx2 = document.getElementById("Chart2")?.getContext("2d");
+    if (ctx2) {
+      new Chart(ctx2, {
+        type: "bar",
+        data: {
+          labels: ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"],
+          datasets: [{
+            label: "Vendas",
+            backgroundColor: "#365CF5",
+            borderRadius: 18,
+            barThickness: 8,
+            maxBarThickness: 10,
+            data: [410, 460, 520, 480, 530, 610, 590, 640, 710, 760, 820, 880]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false, labels: { color: THEME.TEXT } },
+            tooltip: {
+              backgroundColor: "#F3F6F8",
+              displayColors: false,
+              titleColor: THEME.TEXT,
+              bodyColor: THEME.TEXT,
+              padding: { x: 18, y: 10 },
+              callbacks: { label: (c) => `${c.parsed.y} vendas` }
             }
-          }
-        });
-      }
-
-      // =============================
-      // Chart 3 (Mix de Vendas)
-      // =============================
-      const ctx3 = document.getElementById("Chart3")?.getContext("2d");
-      if (ctx3) {
-        new Chart(ctx3, {
-          type: "line",
-          data: {
-            labels: ["Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez","Jan","Fev"],
-            datasets: [
-              { label: "Atacado", backgroundColor:"transparent", borderColor:"#365CF5", data:[92,110,105,98,120,135,128,140,155,162,175,190], pointRadius:4, pointHoverRadius:6, tension:0.35 },
-              { label: "Varejo", backgroundColor:"transparent", borderColor:"#9b51e0", data:[45,52,56,48,60,68,63,70,82,90,96,105], pointRadius:4, pointHoverRadius:6, tension:0.35 },
-              { label: "Devoluções", backgroundColor:"transparent", borderColor:"#f2994a", data:[6,7,8,6,9,10,8,9,11,10,12,13], pointRadius:4, pointHoverRadius:6, tension:0.35 }
-            ]
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false, labels: { color: THEME.TEXT } },
-              tooltip: {
-                intersect: false,
-                backgroundColor: "#fbfbfb",
-                displayColors: false,
-                titleColor: THEME.TEXT,
-                bodyColor: THEME.TEXT,
-                padding: { x: 18, y: 10 },
-                callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y}` }
-              }
-            },
-            scales: {
-              y: { grid: { display:false, drawBorder:false }, ticks: { color: THEME.TEXT, padding: 22 } },
-              x: { grid: { color: THEME.GRID, drawBorder:false }, ticks: { color: THEME.TEXT, padding: 14 } }
+          scales: {
+            y: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 22 } },
+            x: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 14 } }
+          }
+        }
+      });
+    }
+
+    // =============================
+    // Chart 3 (Mix de Vendas)
+    // =============================
+    const ctx3 = document.getElementById("Chart3")?.getContext("2d");
+    if (ctx3) {
+      new Chart(ctx3, {
+        type: "line",
+        data: {
+          labels: ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"],
+          datasets: [
+            { label: "Atacado", backgroundColor: "transparent", borderColor: "#365CF5", data: [92, 110, 105, 98, 120, 135, 128, 140, 155, 162, 175, 190], pointRadius: 4, pointHoverRadius: 6, tension: 0.35 },
+            { label: "Varejo", backgroundColor: "transparent", borderColor: "#9b51e0", data: [45, 52, 56, 48, 60, 68, 63, 70, 82, 90, 96, 105], pointRadius: 4, pointHoverRadius: 6, tension: 0.35 },
+            { label: "Devoluções", backgroundColor: "transparent", borderColor: "#f2994a", data: [6, 7, 8, 6, 9, 10, 8, 9, 11, 10, 12, 13], pointRadius: 4, pointHoverRadius: 6, tension: 0.35 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false, labels: { color: THEME.TEXT } },
+            tooltip: {
+              intersect: false,
+              backgroundColor: "#fbfbfb",
+              displayColors: false,
+              titleColor: THEME.TEXT,
+              bodyColor: THEME.TEXT,
+              padding: { x: 18, y: 10 },
+              callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y}` }
             }
-          }
-        });
-      }
-
-      // =============================
-      // Chart 4 (Entradas x Saídas)
-      // =============================
-      const ctx4 = document.getElementById("Chart4")?.getContext("2d");
-      if (ctx4) {
-        new Chart(ctx4, {
-          type: "bar",
-          data: {
-            labels: ["Set","Out","Nov","Dez","Jan","Fev"],
-            datasets: [
-              { label:"Entradas", backgroundColor:"#365CF5", borderColor:"transparent", borderRadius:16, barThickness:18, maxBarThickness:18, data:[820,740,910,860,790,880] },
-              { label:"Saídas", backgroundColor:"#d50100", borderColor:"transparent", borderRadius:16, barThickness:18, maxBarThickness:18, data:[780,710,870,920,840,930] }
-            ]
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false, labels: { color: THEME.TEXT } },
-              tooltip: {
-                backgroundColor:"#F3F6F8",
-                displayColors:false,
-                titleColor: THEME.TEXT,
-                bodyColor: THEME.TEXT,
-                padding:{x:18,y:10},
-                callbacks:{ label:(c)=>`${c.dataset.label}: ${c.parsed.y}` }
-              }
-            },
-            scales: {
-              y: { grid:{ display:false, drawBorder:false }, ticks:{ color: THEME.TEXT, padding: 22 } },
-              x: { grid:{ display:false, drawBorder:false }, ticks:{ color: THEME.TEXT, padding: 14 } }
+          scales: {
+            y: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 22 } },
+            x: { grid: { color: THEME.GRID, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 14 } }
+          }
+        }
+      });
+    }
+
+    // =============================
+    // Chart 4 (Entradas x Saídas)
+    // =============================
+    const ctx4 = document.getElementById("Chart4")?.getContext("2d");
+    if (ctx4) {
+      new Chart(ctx4, {
+        type: "bar",
+        data: {
+          labels: ["Set", "Out", "Nov", "Dez", "Jan", "Fev"],
+          datasets: [
+            { label: "Entradas", backgroundColor: "#365CF5", borderColor: "transparent", borderRadius: 16, barThickness: 18, maxBarThickness: 18, data: [820, 740, 910, 860, 790, 880] },
+            { label: "Saídas", backgroundColor: "#d50100", borderColor: "transparent", borderRadius: 16, barThickness: 18, maxBarThickness: 18, data: [780, 710, 870, 920, 840, 930] }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false, labels: { color: THEME.TEXT } },
+            tooltip: {
+              backgroundColor: "#F3F6F8",
+              displayColors: false,
+              titleColor: THEME.TEXT,
+              bodyColor: THEME.TEXT,
+              padding: { x: 18, y: 10 },
+              callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y}` }
             }
-          }
-        });
-      }
-
-      // =============================
-      // Chart 5 (Delivery x Presencial)
-      // =============================
-      const ctx5 = document.getElementById("Chart5")?.getContext("2d");
-      if (ctx5) {
-        new Chart(ctx5, {
-          type: "doughnut",
-          data: {
-            labels: ["Delivery","Presencial"],
-            datasets: [{ data:[74,54], backgroundColor:["#365CF5","#52C41A"], borderWidth:0 }]
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false, labels: { color: THEME.TEXT } },
-              tooltip: {
-                backgroundColor:"#F3F6F8",
-                displayColors:false,
-                titleColor: THEME.TEXT,
-                bodyColor: THEME.TEXT,
-                callbacks:{ label:(c)=>`${c.label}: ${c.parsed}` }
-              }
-            },
-            cutout: "65%"
+          scales: {
+            y: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 22 } },
+            x: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 14 } }
           }
-        });
-      }
+        }
+      });
+    }
 
-      // =============================
-      // Chart 6 (Pagamentos mais usados)
-      // =============================
-      const ctx6 = document.getElementById("Chart6")?.getContext("2d");
-      if (ctx6) {
-        new Chart(ctx6, {
-          type: "bar",
-          data: {
-            labels: ["Pix","Dinheiro","Débito","Crédito","Transferência"],
-            datasets: [{
-              label: "Quantidade",
-              data: [58,34,22,17,9],
-              backgroundColor: "#365CF5",
-              borderRadius: 10,
-              barThickness: 18,
-              maxBarThickness: 18
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false, labels: { color: THEME.TEXT } },
-              tooltip: {
-                backgroundColor:"#F3F6F8",
-                displayColors:false,
-                titleColor: THEME.TEXT,
-                bodyColor: THEME.TEXT,
-                callbacks:{ label:(c)=>`Qtd: ${c.parsed.y}` }
-              }
-            },
-            scales: {
-              y: { grid:{ display:false, drawBorder:false }, ticks:{ color: THEME.TEXT, padding: 16 } },
-              x: { grid:{ display:false, drawBorder:false }, ticks:{ color: THEME.TEXT, padding: 12 } }
+    // =============================
+    // Chart 5 (Delivery x Presencial)
+    // =============================
+    const ctx5 = document.getElementById("Chart5")?.getContext("2d");
+    if (ctx5) {
+      new Chart(ctx5, {
+        type: "doughnut",
+        data: {
+          labels: ["Delivery", "Presencial"],
+          datasets: [{ data: [74, 54], backgroundColor: ["#365CF5", "#52C41A"], borderWidth: 0 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false, labels: { color: THEME.TEXT } },
+            tooltip: {
+              backgroundColor: "#F3F6F8",
+              displayColors: false,
+              titleColor: THEME.TEXT,
+              bodyColor: THEME.TEXT,
+              callbacks: { label: (c) => `${c.label}: ${c.parsed}` }
             }
-          }
-        });
-      }
-
-      // =============================
-      // Chart 7 (Top produtos vendidos)
-      // =============================
-      const ctx7 = document.getElementById("Chart7")?.getContext("2d");
-      if (ctx7) {
-        new Chart(ctx7, {
-          type: "bar",
-          data: {
-            labels: ["Arroz 5kg","Açúcar 1kg","Óleo 900ml","Detergente 500ml","Café 250g","Leite 1L"],
-            datasets: [{ label:"Qtd", data:[120,98,86,74,62,55], backgroundColor:"#365CF5", borderRadius:10 }]
           },
-          options: {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false, labels: { color: THEME.TEXT } },
-              tooltip: {
-                backgroundColor:"#F3F6F8",
-                displayColors:false,
-                titleColor: THEME.TEXT,
-                bodyColor: THEME.TEXT,
-                callbacks:{ label:(c)=>`Qtd: ${c.parsed.x}` }
-              }
-            },
-            scales: {
-              x: { grid:{ color: THEME.GRID, drawBorder:false }, ticks:{ color: THEME.TEXT, padding: 10 } },
-              y: { grid:{ display:false, drawBorder:false }, ticks:{ color: THEME.TEXT, padding: 10 } }
+          cutout: "65%"
+        }
+      });
+    }
+
+    // =============================
+    // Chart 6 (Pagamentos mais usados)
+    // =============================
+    const ctx6 = document.getElementById("Chart6")?.getContext("2d");
+    if (ctx6) {
+      new Chart(ctx6, {
+        type: "bar",
+        data: {
+          labels: ["Pix", "Dinheiro", "Débito", "Crédito", "Transferência"],
+          datasets: [{
+            label: "Quantidade",
+            data: [58, 34, 22, 17, 9],
+            backgroundColor: "#365CF5",
+            borderRadius: 10,
+            barThickness: 18,
+            maxBarThickness: 18
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false, labels: { color: THEME.TEXT } },
+            tooltip: {
+              backgroundColor: "#F3F6F8",
+              displayColors: false,
+              titleColor: THEME.TEXT,
+              bodyColor: THEME.TEXT,
+              callbacks: { label: (c) => `Qtd: ${c.parsed.y}` }
             }
+          },
+          scales: {
+            y: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 16 } },
+            x: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 12 } }
           }
-        });
-      }
-    </script>
-  </body>
+        }
+      });
+    }
+
+    // =============================
+    // Chart 7 (Top produtos vendidos)
+    // =============================
+    const ctx7 = document.getElementById("Chart7")?.getContext("2d");
+    if (ctx7) {
+      new Chart(ctx7, {
+        type: "bar",
+        data: {
+          labels: ["Arroz 5kg", "Açúcar 1kg", "Óleo 900ml", "Detergente 500ml", "Café 250g", "Leite 1L"],
+          datasets: [{ label: "Qtd", data: [120, 98, 86, 74, 62, 55], backgroundColor: "#365CF5", borderRadius: 10 }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false, labels: { color: THEME.TEXT } },
+            tooltip: {
+              backgroundColor: "#F3F6F8",
+              displayColors: false,
+              titleColor: THEME.TEXT,
+              bodyColor: THEME.TEXT,
+              callbacks: { label: (c) => `Qtd: ${c.parsed.x}` }
+            }
+          },
+          scales: {
+            x: { grid: { color: THEME.GRID, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 10 } },
+            y: { grid: { display: false, drawBorder: false }, ticks: { color: THEME.TEXT, padding: 10 } }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+
 </html>
