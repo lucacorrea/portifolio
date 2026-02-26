@@ -61,34 +61,6 @@
       font-size: 12px;
       color: #111827;
     }
-
-    /* ✅ Dropdown do profile: largura acompanha o texto */
-    .profile-box .dropdown-menu {
-      width: max-content;
-      /* adapta ao conteúdo */
-      min-width: 380px;
-      /* mínimo pra ficar bonito */
-      max-width: calc(130vw - 24px);
-      /* não estoura a tela */
-    }
-
-    /* Mantém o bloco do autor acompanhando a largura do dropdown */
-    .profile-box .dropdown-menu .author-info {
-      width: max-content;
-      max-width: 100%;
-    }
-
-    /* Conteúdo pode crescer */
-    .profile-box .dropdown-menu .author-info .content {
-      min-width: 0;
-    }
-
-    /* Se você quer o e-mail em 1 linha (sem quebrar) */
-    .profile-box .dropdown-menu .author-info .content a {
-      display: inline-block;
-      white-space: nowrap;
-      /* não quebra linha */
-    }
   </style>
 </head>
 
@@ -329,7 +301,7 @@
                       <div class="content">
                         <h4 class="text-sm">Administrador</h4>
                         <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
-                          href="#">admin@distribuidora.com</a>
+                          href="#">Admin</a>
                       </div>
                     </div>
                   </li>
