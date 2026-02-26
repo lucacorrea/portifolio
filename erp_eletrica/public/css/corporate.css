@@ -29,6 +29,12 @@
 
     --sidebar-width: 260px;
     --header-height: 70px;
+
+    /* Bootstrap 5 Official Variables Overrides */
+    --bs-primary: #0056b3;
+    --bs-primary-rgb: 0, 86, 179;
+    --bs-link-color: #0056b3;
+    --bs-link-hover-color: #004494;
 }
 
 body {
@@ -110,43 +116,43 @@ body {
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
 }
 
-/* Bootstrap 5 Overrides to match theme */
+/* Bootstrap 5 Theme Overrides */
 .btn-primary {
-    background-color: var(--erp-primary) !important;
-    border-color: var(--erp-primary) !important;
+    background-color: var(--erp-primary);
+    border-color: var(--erp-primary);
 }
 
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active {
-    background-color: var(--erp-primary-hover) !important;
-    border-color: var(--erp-primary-hover) !important;
+    background-color: var(--erp-primary-hover);
+    border-color: var(--erp-primary-hover);
 }
 
 .btn-outline-primary {
-    color: var(--erp-primary) !important;
-    border-color: var(--erp-primary) !important;
+    color: var(--erp-primary);
+    border-color: var(--erp-primary);
 }
 
 .btn-outline-primary:hover {
-    background-color: var(--erp-primary) !important;
-    color: white !important;
+    background-color: var(--erp-primary);
+    color: white;
 }
 
-.text-primary {
-    color: var(--erp-primary) !important;
-}
-
-.bg-primary {
-    background-color: var(--erp-primary) !important;
-}
-
-.bg-erp-primary {
-    background-color: var(--erp-primary) !important;
-}
-
+/* Utility Class Mapping (without !important to allow bg-opacity) */
+.text-primary,
 .text-erp-primary {
     color: var(--erp-primary) !important;
+}
+
+.bg-primary,
+.bg-erp-primary {
+    background-color: var(--erp-primary);
+}
+
+/* Gradient Fix */
+.bg-erp-gradient {
+    background: linear-gradient(135deg, var(--erp-primary), #4da3ff);
 }
 
 /* Animations */
