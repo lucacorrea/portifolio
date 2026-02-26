@@ -2,17 +2,19 @@
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-7 d-flex flex-column">
         <div class="row g-4 mb-4">
-            <div class="col-md-8">
+            <div class="col-md-8" style="z-index: 1001;">
                 <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="input-group input-group-lg shadow-sm rounded">
-                            <span class="input-group-text bg-white border-end-0 text-muted">
-                                <i class="fas fa-search"></i>
-                            </span>
-                            <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off">
-                        </div>
-                        <div id="searchResults" class="list-group mt-3 shadow-sm d-none" style="position: absolute; z-index: 1050; width: calc(100% - 3rem);">
-                            <!-- Results will be injected here -->
+                    <div class="card-body" style="overflow: visible !important;">
+                        <div class="position-relative">
+                            <div class="input-group input-group-lg shadow-sm rounded">
+                                <span class="input-group-text bg-white border-end-0 text-muted">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off">
+                            </div>
+                            <div id="searchResults" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 9999; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd; margin-top: 5px;">
+                                <!-- Results will be injected here -->
+                            </div>
                         </div>
                         <div class="mt-3 d-flex gap-2">
                              <button class="btn btn-outline-primary fw-bold" onclick="loadPendingPreSales()">
@@ -642,6 +644,7 @@ btnCheckout.onclick = async () => {
         isAuthorized = false;
         authSupervisorId = null;
         authSupervisorCredential = null;
+        document.getElementById('discountPercent').value = 0;
         renderCart();
         loadRecentSales();
     } else {

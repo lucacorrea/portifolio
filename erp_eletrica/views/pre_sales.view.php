@@ -2,17 +2,19 @@
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-8 d-flex flex-column">
         <div class="row g-4 mb-4">
-            <div class="col-md-9">
+            <div class="col-md-9" style="z-index: 1001;">
                 <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="input-group input-group-lg shadow-sm rounded">
-                            <span class="input-group-text bg-white border-end-0 text-muted">
-                                <i class="fas fa-barcode"></i>
-                            </span>
-                            <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquise por material ou código para o orçamento..." autocomplete="off">
-                        </div>
-                        <div id="pv_search_results" class="list-group mt-3 shadow-sm d-none" style="position: absolute; z-index: 1050; width: calc(100% - 3rem);">
-                            <!-- Results will be injected here -->
+                    <div class="card-body" style="overflow: visible !important;">
+                        <div class="position-relative">
+                            <div class="input-group input-group-lg shadow-sm rounded">
+                                <span class="input-group-text bg-white border-end-0 text-muted">
+                                    <i class="fas fa-barcode"></i>
+                                </span>
+                                <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquise por material ou código para o orçamento..." autocomplete="off">
+                            </div>
+                            <div id="pv_search_results" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 9999; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd; margin-top: 5px;">
+                                <!-- Results will be injected here -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -94,8 +96,8 @@
                     A pré-venda reserva o estoque temporariamente e gera um código para o caixa.
                 </div>
 
-                <button class="btn btn-primary btn-lg w-100 py-3 fw-bold shadow-sm" style="background-color: var(--secondary-color); border: none;" onclick="generatePreSale()">
-                    <i class="fas fa-save me-2"></i>GERAR ORÇAMENTO (F9)
+                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-white" style="background-color: #4f46e5 !important;" onclick="generatePreSale()">
+                    <i class="fas fa-check-circle me-2"></i>CONFIRMAR PRÉ-VENDA (F9)
                 </button>
             </div>
         </div>
