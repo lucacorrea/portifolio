@@ -94,7 +94,7 @@
                     A pré-venda reserva o estoque temporariamente e gera um código para o caixa.
                 </div>
 
-                <button class="btn btn-primary btn-lg w-100 py-3 fw-bold shadow-sm" style="background-color: var(--erp-primary); border: none;" onclick="generatePreSale()">
+                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-white" style="background-color: #4f46e5 !important;" onclick="generatePreSale()">
                     <i class="fas fa-check-circle me-2"></i>CONFIRMAR PRÉ-VENDA (F9)
                 </button>
             </div>
