@@ -911,7 +911,6 @@
             html += `<tr><td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - PRODUTOS</td></tr>`;
             html += `<tr><td class="muted">Gerado em:</td><td colspan="7">${dt}</td></tr>`;
             html += `<tr><td class="muted">Categoria:</td><td>${cat}</td><td class="muted">Status:</td><td>${st}</td><td colspan="4"></td></tr>`;
-            html += `<tr class="spacer"><td colspan="8">&nbsp;</td></tr>`;
 
             html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
             body.forEach(r => {
