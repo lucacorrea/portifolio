@@ -34,7 +34,7 @@ class User extends BaseModel {
     }
     
     public function findAdmins() {
-        return $this->query("SELECT id, nome, auth_type FROM {$this->table} WHERE nivel IN ('admin', 'gerente') AND ativo = 1")->fetchAll();
+        return $this->query("SELECT id, nome, auth_type FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1")->fetchAll();
     }
 
     public function validateAuth($userId, $credential) {

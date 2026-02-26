@@ -258,6 +258,7 @@
 let cart = [];
 let currentPvId = null;
 let activeManageId = null;
+const currentUserLevel = '<?= $_SESSION['usuario_nivel'] ?? 'vendedor' ?>';
 
 const pdvSearch = document.getElementById('pdvSearch');
 const searchResults = document.getElementById('searchResults');
@@ -502,6 +503,14 @@ let authAdmins = [];
 
 async function checkDiscountAuth() {
     const discount = parseFloat(document.getElementById('discountPercent').value) || 0;
+    
+    // Admins don't need authorization modal for themselves
+    if (currentUserLevel === 'admin') {
+        isAuthorized = true;
+        btnCheckout.disabled = cart.length === 0;
+        return;
+    }
+
     if (discount > 0 && !isAuthorized) {
         await loadAdmins();
         new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
