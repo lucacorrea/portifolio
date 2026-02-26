@@ -134,7 +134,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-bold">Nível de Acesso</label>
-                        <select name="nivel" id="edit-user-nivel" class="form-select shadow-sm">
+                        <select name="nivel" id="edit-user-nivel" class="form-select shadow-sm" onchange="toggleAuthFields()">
                             <option value="vendedor">Vendedor</option>
                             <option value="tecnico">Técnico</option>
                             <option value="gerente">Gerente</option>
@@ -152,16 +152,18 @@
                         <input type="number" step="0.1" name="desconto_maximo" id="edit-user-desconto" class="form-control shadow-sm" value="0.0">
                         <div class="extra-small text-muted">Aplica-se apenas ao nível Vendedor no PDV.</div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Tipo de Autorização (Supervisor)</label>
-                        <select name="auth_type" id="edit-user-auth-type" class="form-select shadow-sm" onchange="togglePinField()">
-                            <option value="password">Senha de Login</option>
-                            <option value="pin">PIN Numérico</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6" id="pin-field-container" style="display: none;">
-                        <label class="form-label small fw-bold">PIN de Autorização</label>
-                        <input type="text" name="auth_pin" id="edit-user-auth-pin" class="form-control shadow-sm" placeholder="Ex: 1234">
+                    <div id="auth-fields-section" style="display: none;" class="row g-3 px-0 mx-0">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-primary"><i class="fas fa-shield-alt me-1"></i> Tipo de Autorização</label>
+                            <select name="auth_type" id="edit-user-auth-type" class="form-select shadow-sm" onchange="togglePinField()">
+                                <option value="password">Senha de Login</option>
+                                <option value="pin">PIN Numérico</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="pin-field-container" style="display: none;">
+                            <label class="form-label small fw-bold text-primary">PIN de Autorização</label>
+                            <input type="text" name="auth_pin" id="edit-user-auth-pin" class="form-control shadow-sm" placeholder="Ex: 1234">
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Senha <span id="pwd-label" class="text-muted">(Obrigatória)</span></label>
@@ -179,6 +181,11 @@
 </div>
 
 <script>
+function toggleAuthFields() {
+    const nivel = document.getElementById('edit-user-nivel').value;
+    document.getElementById('auth-fields-section').style.display = (nivel === 'admin') ? 'flex' : 'none';
+}
+
 function togglePinField() {
     const type = document.getElementById('edit-user-auth-type').value;
     document.getElementById('pin-field-container').style.display = (type === 'pin') ? 'block' : 'none';
@@ -198,6 +205,7 @@ function openUserModal() {
     document.getElementById('edit-user-auth-pin').value = '';
     document.getElementById('edit-user-senha').required = true;
     document.getElementById('pwd-label').innerText = '(Obrigatória)';
+    toggleAuthFields();
     togglePinField();
     modal.show();
 }
@@ -216,6 +224,7 @@ function editUser(user) {
     document.getElementById('edit-user-auth-pin').value = user.auth_pin || '';
     document.getElementById('edit-user-senha').required = false;
     document.getElementById('pwd-label').innerText = '(Opcional)';
+    toggleAuthFields();
     togglePinField();
     modal.show();
 }

@@ -118,10 +118,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted">Desconto (%)</span>
                         <div style="width: 80px;">
-                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" 
-                                   onmousedown="interceptDiscount(event)" 
-                                   onkeydown="interceptDiscount(event)"
-                                   onchange="renderCart()">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onfocus="interceptDiscount(event)" onmousedown="interceptDiscount(event)" onkeydown="interceptDiscount(event)" onchange="renderCart()">
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
@@ -194,28 +191,27 @@
 <div class="modal fade" id="modalDiscountAuth" data-bs-backdrop="static" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-warning text-dark border-0">
-                <h5 class="modal-title fw-bold"><i class="fas fa-lock me-2"></i>Autorização de Supervisor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="resetDiscount()"></button>
+            <div class="modal-header bg-dark text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-shield-halved me-2 text-primary"></i>Autorização de Administrador</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="resetDiscount()"></button>
             </div>
             <div class="modal-body p-4 text-center">
-                <p class="text-muted small mb-4">Um desconto foi aplicado. Um supervisor deve autorizar esta ação.</p>
-                
-                <div class="mb-3 text-start">
-                    <label class="form-label small fw-bold">Supervisor</label>
-                    <select id="authAdminList" class="form-select shadow-sm" onchange="updateAuthPlaceholder()">
-                        <option value="" disabled selected>Selecione o supervisor...</option>
-                    </select>
+                <div class="mb-4">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <i class="fas fa-key fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">Acesso Restrito</h6>
+                    <p class="text-muted small">Esta operação requer a presença e senha de um Administrador.</p>
                 </div>
-
-                <div class="mb-4 text-start" id="authInputContainer">
-                    <label class="form-label small fw-bold" id="authLabel">Senha de Autorização</label>
-                    <input type="password" id="authCredential" class="form-control form-control-lg text-center shadow-sm" placeholder="Digite a senha...">
+                
+                <div class="mb-4 text-start">
+                    <label class="form-label small fw-bold text-uppercase opacity-75" id="authLabel">Senha de Autorização</label>
+                    <input type="password" id="authCredential" class="form-control form-control-lg text-center shadow-sm border-2" placeholder="Digite a senha..." autofocus>
                 </div>
 
                 <div class="d-grid">
-                    <button class="btn btn-warning fw-bold py-3" onclick="validateAuthorization()">
-                        <i class="fas fa-unlock me-2"></i>LIBERAR DESCONTO
+                    <button class="btn btn-dark fw-bold py-3 shadow-sm" onclick="validateAuthorization()">
+                        <i class="fas fa-check-circle me-2 text-primary"></i>CONFIRMAR IDENTIDADE
                     </button>
                 </div>
             </div>
@@ -506,10 +502,12 @@ async function interceptDiscount(e) {
     
     e.preventDefault();
     e.stopPropagation();
-    document.getElementById('pdvSearch').focus(); // Blur current field
+    if (e.target) e.target.blur();
+    
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDiscountAuth'));
+    modal.show();
     
     await loadAdmins();
-    new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
 }
 
 let isAuthorized = false;
@@ -539,51 +537,43 @@ async function checkDiscountAuth() {
 async function loadAdmins() {
     const res = await fetch('vendas.php?action=list_admins');
     authAdmins = await res.json();
-    const select = document.getElementById('authAdminList');
-    select.innerHTML = '<option value="" disabled selected>Selecione o supervisor...</option>';
-    authAdmins.forEach(adm => {
-        select.innerHTML += `<option value="${adm.id}">${adm.nome}</option>`;
-    });
-}
-
-function updateAuthPlaceholder() {
-    const adminId = document.getElementById('authAdminList').value;
-    const admin = authAdmins.find(a => a.id == adminId);
-    const input = document.getElementById('authCredential');
-    const label = document.getElementById('authLabel');
     
-    if (admin.auth_type === 'pin') {
-        input.type = 'number';
-        input.placeholder = 'Digite o PIN...';
-        label.innerText = 'PIN de Autorização';
-    } else {
-        input.type = 'password';
-        input.placeholder = 'Digite a senha...';
-        label.innerText = 'Senha de Autorização';
+    if (authAdmins.length > 0) {
+        const admin = authAdmins[0]; // Auto-select the first admin
+        authSupervisorId = admin.id;
+        
+        const input = document.getElementById('authCredential');
+        const label = document.getElementById('authLabel');
+        
+        if (admin.auth_type === 'pin') {
+            input.type = 'number';
+            input.placeholder = 'Digite o PIN...';
+            label.innerText = 'PIN DE AUTORIZAÇÃO';
+        } else {
+            input.type = 'password';
+            input.placeholder = 'Digite a senha...';
+            label.innerText = 'SENHA DE AUTORIZAÇÃO';
+        }
     }
-    input.value = '';
-    input.focus();
 }
 
 async function validateAuthorization() {
-    const adminId = document.getElementById('authAdminList').value;
     const credential = document.getElementById('authCredential').value;
 
-    if (!adminId || !credential) {
-        alert('Selecione um supervisor e digite a credencial.');
+    if (!authSupervisorId || !credential) {
+        alert('Credenciais incompletas ou nenhum administrador encontrado.');
         return;
     }
 
     const res = await fetch('vendas.php?action=authorize_discount', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: adminId, credential: credential })
+        body: JSON.stringify({ user_id: authSupervisorId, credential: credential })
     });
 
     const result = await res.json();
     if (result.success) {
         isAuthorized = true;
-        authSupervisorId = adminId;
         authSupervisorCredential = credential;
         bootstrap.Modal.getInstance(document.getElementById('modalDiscountAuth')).hide();
         renderCart();
