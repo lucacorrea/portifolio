@@ -118,7 +118,10 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted">Desconto (%)</span>
                         <div style="width: 80px;">
-                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onchange="isAuthorized = false; renderCart()">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" 
+                                   onmousedown="interceptDiscount(event)" 
+                                   onkeydown="interceptDiscount(event)"
+                                   onchange="isAuthorized = false; renderCart()">
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
@@ -498,6 +501,17 @@ async function cancelSaleAction() {
     }
 }
 
+async function interceptDiscount(e) {
+    if (currentUserLevel === 'admin' || isAuthorized) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('pdvSearch').focus(); // Blur current field
+    
+    await loadAdmins();
+    new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
+}
+
 let isAuthorized = false;
 let authAdmins = [];
 
@@ -587,6 +601,15 @@ btnCheckout.onclick = async () => {
     if (cart.length === 0) return;
     
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    
+    // Safety check: blockage if discount exists but not authorized
+    if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
+        alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
+        await loadAdmins();
+        new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
+        return;
+    }
+
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const total = subtotal * (1 - (discountPercent / 100));
 
