@@ -59,7 +59,7 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-light border" onclick='editUser(<?= json_encode($u) ?>)' title="Editar Credenciais">
+                                <button class="btn btn-light border" onclick="editUser(<?= htmlspecialchars(json_encode($u), ENT_QUOTES, 'UTF-8') ?>)" title="Editar Credenciais">
                                     <i class="fas fa-user-edit text-primary"></i>
                                 </button>
                                 <button class="btn btn-light border text-danger" title="Bloquear Acesso">

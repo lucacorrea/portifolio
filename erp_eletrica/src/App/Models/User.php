@@ -36,16 +36,21 @@ class User extends BaseModel {
     public function findAdmins() {
         $filialId = $_SESSION['filial_id'] ?? null;
         
-        // Try exact match for Branch
         $sql = "SELECT id, nome, auth_type, auth_pin FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1";
-        $params = [];
+        
+        // 1. Try exact branch match
         if ($filialId) {
             $sqlBranch = $sql . " AND filial_id = ?";
             $res = $this->query($sqlBranch, [$filialId])->fetchAll();
             if (!empty($res)) return $res;
         }
 
-        // Fallback: any active admin (if branch admin not found)
+        // 2. Try global admins (filial_id is NULL or 0)
+        $sqlGlobal = $sql . " AND (filial_id IS NULL OR filial_id = 0)";
+        $res = $this->query($sqlGlobal)->fetchAll();
+        if (!empty($res)) return $res;
+
+        // 3. Absolute fallback: any active admin
         return $this->query($sql)->fetchAll();
     }
 
@@ -54,7 +59,8 @@ class User extends BaseModel {
         if (!$user) return false;
 
         if ($user['auth_type'] === 'pin') {
-            return $credential === $user['auth_pin'];
+            // Using string cast to be safe with numeric PINs from different sources
+            return (string)$credential === (string)$user['auth_pin'];
         } else {
             return password_verify($credential, $user['senha']);
         }
@@ -62,10 +68,11 @@ class User extends BaseModel {
 
     public function save($data) {
         $hasAuthCols = $this->columnExists('auth_pin');
+        $filialId = !empty($data['filial_id']) ? $data['filial_id'] : null;
         
         if (!empty($data['id'])) {
             $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ?, filial_id = ? ";
-            $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo'], $data['filial_id']];
+            $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo'], $filialId];
             
             if ($this->columnExists('desconto_maximo')) {
                 $sql .= ", desconto_maximo = ? ";
@@ -89,7 +96,7 @@ class User extends BaseModel {
             $senha = password_hash($data['senha'], PASSWORD_DEFAULT);
             $fields = ["nome", "email", "senha", "nivel", "ativo", "filial_id"];
             $placeholders = ["?", "?", "?", "?", "?", "?"];
-            $params = [$data['nome'], $data['email'], $senha, $data['nivel'], (int)$data['ativo'], $data['filial_id']];
+            $params = [$data['nome'], $data['email'], $senha, $data['nivel'], (int)$data['ativo'], $filialId];
             
             if ($this->columnExists('desconto_maximo')) {
                 $fields[] = "desconto_maximo";
@@ -109,5 +116,32 @@ class User extends BaseModel {
             $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
             return $this->query($sql, $params);
         }
+    }
+
+    public function paginate($perPage = 15, $currentPage = 1, $order = "u.id DESC") {
+        $filialId = $this->getFilialContext();
+        $offset = ($currentPage - 1) * $perPage;
+        
+        $where = $filialId ? "WHERE u.filial_id = $filialId" : "";
+        
+        $total = $this->query("SELECT COUNT(*) FROM {$this->table} u $where")->fetchColumn();
+        $pages = ceil($total / $perPage);
+        
+        $sql = "SELECT u.*, f.nome as filial_nome 
+                FROM {$this->table} u 
+                LEFT JOIN filiais f ON u.filial_id = f.id 
+                $where 
+                ORDER BY {$order} 
+                LIMIT $perPage OFFSET $offset";
+        
+        $data = $this->query($sql)->fetchAll();
+        
+        return [
+            'data' => $data,
+            'total' => $total,
+            'pages' => $pages,
+            'current' => $currentPage,
+            'per_page' => $perPage
+        ];
     }
 }
