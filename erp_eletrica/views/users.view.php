@@ -73,6 +73,35 @@
             </table>
         </div>
     </div>
+    <!-- Pagination -->
+    <?php if ($pagination && $pagination['pages'] > 1): ?>
+    <div class="card-footer bg-white border-top py-3">
+        <nav aria-label="Navegação de usuários">
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>" aria-label="Anterior">
+                        <i class="fas fa-chevron-left small"></i>
+                    </a>
+                </li>
+                <?php 
+                $start = max(1, $pagination['current'] - 2);
+                $end = min($pagination['pages'], $start + 4);
+                if ($end - $start < 4) $start = max(1, $end - 4);
+                for($i = $start; $i <= $end; $i++): 
+                ?>
+                <li class="page-item <?= $i == $pagination['current'] ? 'active' : '' ?>">
+                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+                <li class="page-item <?= $pagination['current'] >= $pagination['pages'] ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>" aria-label="Próximo">
+                        <i class="fas fa-chevron-right small"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- User Modal -->

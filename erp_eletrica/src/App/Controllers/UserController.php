@@ -8,11 +8,14 @@ class UserController extends BaseController {
         $userModel = new \App\Models\User();
         $filialModel = new \App\Models\Filial();
         
-        $users = $userModel->all();
+        $page = (int)($_GET['page'] ?? 1);
+        $pagination = $userModel->paginate(6, $page);
+        $users = $pagination['data'];
         $branches = $filialModel->all();
 
         $this->render('users', [
             'users' => $users,
+            'pagination' => $pagination,
             'branches' => $branches,
             'title' => 'Gestão de Usuários',
             'pageTitle' => 'Operadores do Sistema'

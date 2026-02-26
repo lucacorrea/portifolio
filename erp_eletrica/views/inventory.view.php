@@ -244,7 +244,7 @@
                     <div class="col-12">
                         <label class="form-label small fw-bold">Produto</label>
                         <select name="produto_id" class="form-select shadow-sm" required>
-                            <?php foreach ($products as $p): ?>
+                            <?php foreach ($allProducts as $p): ?>
                                 <option value="<?= $p['id'] ?>"><?= $p['nome'] ?> (Saldo: <?= $p['quantidade'] ?>)</option>
                             <?php endforeach; ?>
                         </select>

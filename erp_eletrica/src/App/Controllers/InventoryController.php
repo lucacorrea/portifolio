@@ -24,13 +24,16 @@ class InventoryController extends BaseController {
             'mov_mes' => $this->count('movimentacao_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)")
         ];
 
-        $products = $productModel->all("categoria ASC, nome ASC");
+        $page = (int)($_GET['page'] ?? 1);
+        $pagination = $productModel->paginate(6, $page, "categoria ASC, nome ASC");
+        $products = $pagination['data'];
         $movements = $movementModel->getHistory(null, 20);
         $categories = $productModel->getCategories();
 
         $this->render('inventory', [
             'stats' => $stats,
             'products' => $products,
+            'pagination' => $pagination,
             'movements' => $movements,
             'categories' => $categories
         ]);

@@ -6,10 +6,13 @@ use App\Models\Supplier;
 class SupplierController extends BaseController {
     public function index() {
         $model = new Supplier();
-        $suppliers = $model->all();
+        $page = (int)($_GET['page'] ?? 1);
+        $pagination = $model->paginate(6, $page);
+        $suppliers = $pagination['data'];
 
         $this->render('suppliers', [
             'suppliers' => $suppliers,
+            'pagination' => $pagination,
             'title' => 'Gestão de Fornecedores',
             'pageTitle' => 'Parceiros e Cadeia de Suprimentos'
         ]);

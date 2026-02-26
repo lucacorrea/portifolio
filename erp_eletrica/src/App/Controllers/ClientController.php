@@ -14,7 +14,7 @@ class ClientController extends BaseController {
             $clients = $model->search($searchTerm);
             $pagination = null;
         } else {
-            $pagination = $model->paginate(15, $page);
+            $pagination = $model->paginate(6, $page);
             $clients = $pagination['data'];
         }
 
