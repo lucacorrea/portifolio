@@ -149,5 +149,30 @@ class SalesController extends BaseController {
             }
             exit;
         }
+    public function authorize_discount() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $userId = $data['user_id'] ?? null;
+            $credential = $data['credential'] ?? null;
+
+            if (!$userId || !$credential) {
+                echo json_encode(['success' => false, 'error' => 'Dados incompletos']);
+                exit;
+            }
+
+            $userModel = new \App\Models\User();
+            if ($userModel->validateAuth($userId, $credential)) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Credencial inválida']);
+            }
+            exit;
+        }
+    }
+
+    public function list_admins() {
+        $userModel = new \App\Models\User();
+        echo json_encode($userModel->findAdmins());
+        exit;
     }
 }

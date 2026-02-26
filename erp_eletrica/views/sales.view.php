@@ -118,7 +118,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted">Desconto (%)</span>
                         <div style="width: 80px;">
-                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onchange="renderCart()">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onchange="isAuthorized = false; renderCart()">
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
@@ -175,6 +175,39 @@
                             <!-- Injected via JS -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Discount Authorization -->
+<div class="modal fade" id="modalDiscountAuth" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-lock me-2"></i>Autorização de Supervisor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="resetDiscount()"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-muted small mb-4">Um desconto foi aplicado. Um supervisor deve autorizar esta ação.</p>
+                
+                <div class="mb-3 text-start">
+                    <label class="form-label small fw-bold">Supervisor</label>
+                    <select id="authAdminList" class="form-select shadow-sm" onchange="updateAuthPlaceholder()">
+                        <option value="" disabled selected>Selecione o supervisor...</option>
+                    </select>
+                </div>
+
+                <div class="mb-4 text-start" id="authInputContainer">
+                    <label class="form-label small fw-bold" id="authLabel">Senha de Autorização</label>
+                    <input type="password" id="authCredential" class="form-control form-control-lg text-center shadow-sm" placeholder="Digite a senha...">
+                </div>
+
+                <div class="d-grid">
+                    <button class="btn btn-warning fw-bold py-3" onclick="validateAuthorization()">
+                        <i class="fas fa-unlock me-2"></i>LIBERAR DESCONTO
+                    </button>
                 </div>
             </div>
         </div>
@@ -298,6 +331,7 @@ function addToCart(product) {
     
     pdvSearch.value = '';
     searchResults.classList.add('d-none');
+    isAuthorized = false; // Reset auth on new items
     renderCart();
 }
 
@@ -341,6 +375,8 @@ function renderCart() {
     document.getElementById('totalSub').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
     document.getElementById('totalDesc').innerText = `- R$ ${discountVal.toFixed(2).replace('.', ',')}`;
     finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
+
+    checkDiscountAuth();
 }
 
 function updateQty(index, val) {
@@ -452,6 +488,82 @@ async function cancelSaleAction() {
         bootstrap.Modal.getInstance(document.getElementById('modalSaleManager')).hide();
     } else {
         alert('Erro: ' + result.error);
+    }
+}
+
+let isAuthorized = false;
+let authAdmins = [];
+
+async function checkDiscountAuth() {
+    const discount = parseFloat(document.getElementById('discountPercent').value) || 0;
+    if (discount > 0 && !isAuthorized) {
+        await loadAdmins();
+        new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
+        btnCheckout.disabled = true;
+    } else {
+        btnCheckout.disabled = cart.length === 0;
+    }
+}
+
+async function loadAdmins() {
+    const res = await fetch('vendas.php?action=list_admins');
+    authAdmins = await res.json();
+    const select = document.getElementById('authAdminList');
+    select.innerHTML = '<option value="" disabled selected>Selecione o supervisor...</option>';
+    authAdmins.forEach(adm => {
+        select.innerHTML += `<option value="${adm.id}">${adm.nome}</option>`;
+    });
+}
+
+function updateAuthPlaceholder() {
+    const adminId = document.getElementById('authAdminList').value;
+    const admin = authAdmins.find(a => a.id == adminId);
+    const input = document.getElementById('authCredential');
+    const label = document.getElementById('authLabel');
+    
+    if (admin.auth_type === 'pin') {
+        input.type = 'number';
+        input.placeholder = 'Digite o PIN...';
+        label.innerText = 'PIN de Autorização';
+    } else {
+        input.type = 'password';
+        input.placeholder = 'Digite a senha...';
+        label.innerText = 'Senha de Autorização';
+    }
+    input.value = '';
+    input.focus();
+}
+
+async function validateAuthorization() {
+    const adminId = document.getElementById('authAdminList').value;
+    const credential = document.getElementById('authCredential').value;
+
+    if (!adminId || !credential) {
+        alert('Selecione um supervisor e digite a credencial.');
+        return;
+    }
+
+    const res = await fetch('vendas.php?action=authorize_discount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: adminId, credential: credential })
+    });
+
+    const result = await res.json();
+    if (result.success) {
+        isAuthorized = true;
+        bootstrap.Modal.getInstance(document.getElementById('modalDiscountAuth')).hide();
+        renderCart();
+        alert('Desconto autorizado com sucesso!');
+    } else {
+        alert('Erro: ' + result.error);
+    }
+}
+
+function resetDiscount() {
+    if (!isAuthorized) {
+        document.getElementById('discountPercent').value = 0;
+        renderCart();
     }
 }
 
