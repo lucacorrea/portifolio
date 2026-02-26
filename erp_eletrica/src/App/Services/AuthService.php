@@ -79,9 +79,10 @@ class AuthService extends BaseService {
         
         // Hardcoded restrictions for 'vendedor' level
         if ($nivel === 'vendedor') {
-            // Vendedor: ONLY Pre-Sales (full) and Inventory (read-only)
+            // Vendedor: ONLY Pre-Sales (full), Inventory (read-only) and Sales search (visualizar)
             if ($modulo === 'pre_vendas') return true;
             if ($modulo === 'estoque' && $acao === 'visualizar') return true;
+            if ($modulo === 'vendas' && $acao === 'visualizar') return true;
             return false;
         }
 

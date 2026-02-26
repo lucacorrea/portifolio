@@ -24,15 +24,19 @@ class SalesController extends BaseController {
         $filialId = $_SESSION['filial_id'] ?? null;
         $isMatriz = $_SESSION['is_matriz'] ?? false;
         
-        $sql = "SELECT id, nome, preco_venda, unidade, imagens FROM produtos WHERE (nome LIKE ? OR codigo LIKE ?)";
-        $params = ["%$term%", "%$term%"];
+        $sql = "SELECT id, nome, preco_venda, unidade, imagens, codigo 
+                FROM produtos 
+                WHERE (nome LIKE ? OR codigo LIKE ? OR codigo = ?) ";
+        $params = ["%$term%", "%$term%", $term];
         
         if (!$isMatriz && $filialId) {
             $sql .= " AND filial_id = ?";
             $params[] = $filialId;
         }
         
-        $sql .= " LIMIT 10";
+        $sql .= " ORDER BY (CASE WHEN codigo = ? THEN 1 WHEN codigo LIKE ? THEN 2 ELSE 3 END), nome ASC LIMIT 15";
+        $params[] = $term;
+        $params[] = "$term%";
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
