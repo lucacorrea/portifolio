@@ -46,15 +46,15 @@ $produtos = $pdo->query("
  *   então montamos a URL assim:
  *     assets/dados/produtos/../../../images/arquivo.jpg  (equivale a ./images/arquivo.jpg)
  */
-const IMG_BASE = 'assets/dados/produtos/../../../';
+const IMG_BASE = 'assets/dados/produtos/';
 
 function normalize_img_path(string $dbValue): string
 {
     $v = trim($dbValue);
     if ($v === '') return '';
     // se já veio "images/xxx.jpg", mantém. Se veio "xxx.jpg", vira "images/xxx.jpg"
-    if (str_starts_with($v, 'images/')) return $v;
-    return 'images/' . ltrim($v, '/');
+    if (str_starts_with($v, 'assets/dados/produtos/')) return $v;
+    return './assets/dados/produtos/' . ltrim($v, '/');
 }
 
 function img_url_for_browser(string $dbValue): string
