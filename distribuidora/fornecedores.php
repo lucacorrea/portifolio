@@ -295,7 +295,7 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
                         <td class="text-center"><?= $badge ?></td>
                         <td class="text-center">
                           <a class="main-btn light-btn btn-hover btn-compact"
-                            href="assets/dados/fornecedores/editar.php?id=<?= $id ?>">
+                            href="assets/dados/fornecedores/editarFornecedores.php?id=<?= $id ?>">
                             <i class="lni lni-pencil me-1"></i> Editar
                           </a>
                         </td>
@@ -331,7 +331,7 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
-        <form action="assets/dados/fornecedores/salvar.php" method="post">
+        <form action="assets/dados/fornecedores/adicionarFornecedores.php" method="post">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="redirect_to" value="../../../fornecedores.php">
 
