@@ -760,15 +760,11 @@
                         <th style="min-width:120px;" class="text-center">Ações</th>
                       </tr>
                     </thead>
-                    <tbody id="tbodyItens">
-                      <!-- render -->
-                    </tbody>
+                    <tbody id="tbodyItens"></tbody>
                   </table>
                 </div>
 
-                <div class="muted" id="hintEmpty" style="display:none;">
-                  Aguardando inclusão de produtos...
-                </div>
+                <div class="muted" id="hintEmpty" style="display:none;">Aguardando inclusão de produtos...</div>
               </div>
             </div>
           </div>
@@ -861,7 +857,7 @@
                   <div id="wrapPagMulti" style="display:none;">
                     <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
                       <div class="muted">Some os pagamentos para fechar o total. Se passar do total, precisa ter Dinheiro (troco).</div>
-                      <button class="main-btn light-btn btn-hover btn-compact" id="btnAddPay">
+                      <button class="main-btn light-btn btn-hover btn-compact" id="btnAddPay" type="button">
                         <i class="lni lni-plus me-1"></i> Adicionar
                       </button>
                     </div>
@@ -890,11 +886,11 @@
                 </div>
 
                 <div class="d-grid gap-2">
-                  <button class="main-btn primary-btn btn-hover btn-compact" id="btnConfirmar">
+                  <button class="main-btn primary-btn btn-hover btn-compact" id="btnConfirmar" type="button">
                     <i class="lni lni-checkmark-circle me-1"></i> CONFIRMAR VENDA (F2)
                   </button>
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="" id="chkPrint" checked />
+                    <input class="form-check-input" type="checkbox" id="chkPrint" checked />
                     <label class="form-check-label" for="chkPrint">Imprimir cupom após confirmar</label>
                   </div>
                 </div>
@@ -903,7 +899,8 @@
                 <div class="last-box">
                   <div class="head">
                     <div class="t">Últimos cupons</div>
-                    <button class="main-btn light-btn btn-hover btn-compact" id="btnRefreshLast" style="height:32px!important;padding:6px 10px!important;">
+                    <button class="main-btn light-btn btn-hover btn-compact" id="btnRefreshLast" type="button"
+                      style="height:32px!important;padding:6px 10px!important;">
                       <i class="lni lni-reload"></i>
                     </button>
                   </div>
@@ -1008,7 +1005,6 @@
     function getProducts() {
       seedProductsIfEmpty();
       const arr = loadJson(LS_PRODUCTS, []);
-      // Normaliza
       return (arr || []).map(x => ({
         code: String(x.code || x.codigo || "").trim(),
         name: String(x.name || x.produto || "").trim(),
@@ -1024,14 +1020,12 @@
     function addSale(sale) {
       const all = getSales();
       all.unshift(sale);
-      saveJson(LS_SALES, all.slice(0, 100)); // guarda 100 últimas
+      saveJson(LS_SALES, all.slice(0, 100));
     }
 
     function nextSaleNo() {
       const all = getSales();
-      const nums = all
-        .map(x => Number(x.no || 0))
-        .filter(n => n > 0);
+      const nums = all.map(x => Number(x.no || 0)).filter(n => n > 0);
       return (nums.length ? Math.max(...nums) : 0) + 1;
     }
 
@@ -1139,11 +1133,9 @@
     function addToCart(prod) {
       if (!prod) return;
       const idx = CART.findIndex(x => x.code === prod.code);
-      if (idx >= 0) {
-        CART[idx].qty += 1;
-      } else {
-        CART.push({ code: prod.code, name: prod.name, price: prod.price, img: prod.img || DEFAULT_IMG, qty: 1 });
-      }
+      if (idx >= 0) CART[idx].qty += 1;
+      else CART.push({ code: prod.code, name: prod.name, price: prod.price, img: prod.img || DEFAULT_IMG, qty: 1 });
+
       setPreview(prod);
       renderCart();
       recalcAll();
@@ -1166,8 +1158,7 @@
     function setQty(code, qty) {
       const it = CART.find(x => x.code === code);
       if (!it) return;
-      const q = Math.max(1, Number(qty || 1));
-      it.qty = q;
+      it.qty = Math.max(1, Number(qty || 1));
       renderCart();
       recalcAll();
     }
@@ -1177,16 +1168,14 @@
     }
 
     function calcDiscount(sub) {
-      const tipo = dTipo.value; // PERC | VALOR
-      const vRaw = String(dValor.value ?? "").trim();
-      const v = moneyToNumber(vRaw); // funciona também com "10" ou "10,5"
+      const tipo = dTipo.value;
+      const v = moneyToNumber(String(dValor.value ?? "").trim());
       if (!v || v <= 0) return 0;
 
       if (tipo === "PERC") {
         const perc = Math.min(100, v);
         return (sub * perc) / 100;
       }
-      // VALOR
       return Math.min(sub, v);
     }
 
@@ -1280,7 +1269,6 @@
         hintTroco.style.display = "block";
       } else {
         hintTroco.style.display = "none";
-        // Pix/Cartão/Boleto: tem que fechar certinho
         ok = (Math.abs(paid - total) < 0.009) && total > 0;
         troco = 0;
       }
@@ -1295,11 +1283,7 @@
     function renderCart() {
       tbodyItens.innerHTML = "";
 
-      if (!CART.length) {
-        hintEmpty.style.display = "block";
-      } else {
-        hintEmpty.style.display = "none";
-      }
+      hintEmpty.style.display = CART.length ? "none" : "block";
 
       CART.forEach((it, i) => {
         const sub = Number(it.qty || 0) * Number(it.price || 0);
@@ -1383,8 +1367,7 @@
     }
 
     function refreshSuggest() {
-      const q = qProd.value;
-      const list = queryProducts(q);
+      const list = queryProducts(qProd.value);
       showSuggest(list);
     }
 
@@ -1465,7 +1448,6 @@
     chipPagUnico.addEventListener("click", () => setPayMode("UNICO"));
     chipPagMulti.addEventListener("click", () => setPayMode("MULTI"));
 
-    // Single: escolher forma
     payBtns.addEventListener("click", (e) => {
       const btn = e.target.closest(".pay-btn");
       if (!btn) return;
@@ -1477,7 +1459,6 @@
 
     pValor.addEventListener("input", recalcAll);
 
-    // Multi: add/remove rows
     btnAddPay.addEventListener("click", () => {
       paysWrap.insertAdjacentHTML("beforeend", payRowTpl("PIX", "0,00"));
       recalcAll();
@@ -1495,6 +1476,7 @@
     paysWrap.addEventListener("input", (e) => {
       if (e.target.closest(".pay-split-row")) recalcAll();
     });
+
     paysWrap.addEventListener("change", (e) => {
       if (e.target.closest(".pay-split-row")) recalcAll();
     });
@@ -1508,18 +1490,9 @@
       const code = tr.getAttribute("data-code");
       if (!code) return;
 
-      if (e.target.closest(".btnRemove")) {
-        removeFromCart(code);
-        return;
-      }
-      if (e.target.closest(".btnMinus")) {
-        changeQty(code, -1);
-        return;
-      }
-      if (e.target.closest(".btnPlus")) {
-        changeQty(code, +1);
-        return;
-      }
+      if (e.target.closest(".btnRemove")) return removeFromCart(code);
+      if (e.target.closest(".btnMinus")) return changeQty(code, -1);
+      if (e.target.closest(".btnPlus")) return changeQty(code, +1);
     });
 
     tbodyItens.addEventListener("input", (e) => {
@@ -1528,9 +1501,7 @@
       const code = tr.getAttribute("data-code");
       if (!code) return;
 
-      if (e.target.classList.contains("iQty")) {
-        setQty(code, e.target.value);
-      }
+      if (e.target.classList.contains("iQty")) setQty(code, e.target.value);
     });
 
     btnLimpar.addEventListener("click", () => {
@@ -1671,7 +1642,6 @@
       addSale(sale);
       renderLastSales();
 
-      // imprimir
       if (chkPrint.checked) {
         const html = buildReceiptHtml(sale);
         const w = window.open("", "_blank");
@@ -1718,19 +1688,16 @@
     // Atalhos teclado
     // ==============================
     document.addEventListener("keydown", (e) => {
-      // F4: foco na pesquisa
       if (e.key === "F4") {
         e.preventDefault();
         qProd.focus();
         return;
       }
-      // F2: confirmar
       if (e.key === "F2") {
         e.preventDefault();
         confirmSale();
         return;
       }
-      // ESC: fecha sugestão
       if (e.key === "Escape") hideSuggest();
     });
 
@@ -1740,14 +1707,9 @@
     function init() {
       PRODUCTS = getProducts();
 
-      // preview default
-      previewImg.src = DEFAULT_IMG;
-      previewName.textContent = "AGUARDANDO...";
-
-      // numero venda
+      setPreview(null);
       saleNo.textContent = `Venda #${nextSaleNo()}`;
 
-      // defaults
       setDeliveryMode("PRESENCIAL");
       setPayMode("UNICO");
       ensureOnePayRow();
@@ -1756,7 +1718,6 @@
       recalcAll();
       renderLastSales();
 
-      // campo global da header busca espelha no campo do PDV
       qGlobal.addEventListener("input", () => {
         qProd.value = qGlobal.value;
         refreshSuggest();
@@ -1764,6 +1725,7 @@
 
       btnRefreshLast.addEventListener("click", renderLastSales);
     }
+
     init();
   </script>
 </body>
