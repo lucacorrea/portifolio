@@ -32,3 +32,26 @@ CREATE TABLE IF NOT EXISTS categorias (
 
 CREATE INDEX idx_categorias_nome ON categorias (nome);
 CREATE INDEX idx_categorias_status ON categorias (status);
+
+
+CREATE TABLE IF NOT EXISTS produtos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  codigo VARCHAR(50) NOT NULL,
+  nome VARCHAR(255) NOT NULL,
+  categoria_id INT,
+  fornecedor_id INT,
+  unidade VARCHAR(50),
+  preco DECIMAL(10,2) DEFAULT 0,
+  estoque INT DEFAULT 0,
+  minimo INT DEFAULT 0,
+  status VARCHAR(10) DEFAULT 'ATIVO',
+  obs VARCHAR(255),
+  imagem VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX ux_produtos_codigo ON produtos (codigo);
+CREATE INDEX idx_produtos_categoria ON produtos (categoria_id);
+CREATE INDEX idx_produtos_fornecedor ON produtos (fornecedor_id);
+CREATE INDEX idx_produtos_status ON produtos (status);
