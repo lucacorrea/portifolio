@@ -88,7 +88,7 @@ $csrf = (string)$_SESSION['csrf_token'];
 
 $pdo = db();
 
-/* AJAX: Busca Produtor por CPF */
+/* AJAX: Busca Produtor por CPF (Mantido para compatibilidade, se necessário) */
 if (isset($_GET['ajax_busca_produtor'])) {
   header('Content-Type: application/json');
   $cpfVal = only_digits($_GET['cpf'] ?? '');
@@ -107,6 +107,25 @@ if (isset($_GET['ajax_busca_produtor'])) {
     }
   } else {
     echo json_encode(['sucesso' => false, 'msg' => 'CPF inválido.']);
+  }
+  exit;
+}
+
+/* AJAX: Busca Produtor por NOME (Novo) */
+if (isset($_GET['ajax_busca_produtor_nome'])) {
+  header('Content-Type: application/json');
+  $nome = trim((string)($_GET['nome'] ?? ''));
+  if (strlen($nome) >= 2) {
+    try {
+      $st = $pdo->prepare("SELECT id, nome, documento FROM produtores WHERE feira_id = :f AND nome LIKE :nome AND ativo = 1 ORDER BY nome ASC LIMIT 10");
+      $st->execute([':f' => $FEIRA_ID, ':nome' => '%' . $nome . '%']);
+      $prods = $st->fetchAll(PDO::FETCH_ASSOC);
+      echo json_encode(['sucesso' => true, 'resultados' => $prods]);
+    } catch (Throwable $e) {
+      echo json_encode(['sucesso' => false, 'msg' => 'Erro ao buscar.']);
+    }
+  } else {
+    echo json_encode(['sucesso' => true, 'resultados' => []]);
   }
   exit;
 }
@@ -360,6 +379,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
     .cam-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
     .cam-modal-content { background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; position: relative; }
     #cameraVideo { width: 100%; border-radius: 8px; transform: scaleX(-1); }
+
+    /* Autocomplete styles */
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 0 0 8px 8px;
+      z-index: 1000;
+      max-height: 200px;
+      overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: none;
+    }
+    .autocomplete-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f1f1;
+    }
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover { background: #f8f9fa; color: #231475; }
+    .autocomplete-item .cpf-hint { font-size: 11px; color: #888; display: block; }
     @media (max-width: 576px) {
       .content-wrapper { padding: 1rem !important; }
       .form-actions .btn { width: 100%; }
@@ -489,27 +533,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
                     <div class="form-section">
-                      <div class="section-title"><i class="ti-id-badge"></i> Produtor</div>
+                      <div class="section-title"><i class="ti-user"></i> Produtor</div>
                       <div class="row">
-                        <div class="col-12 col-lg-4 mb-3">
-                          <label>CPF do produtor <span class="text-danger">*</span></label>
-                          <input
-                            name="cpf"
-                            id="cpf"
-                            type="text"
-                            class="form-control"
-                            placeholder="Somente números (11 dígitos)"
-                            inputmode="numeric"
-                            autocomplete="off"
-                            required
-                            <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
-                            value="<?= h($old['cpf']) ?>">
+                        <div class="col-12 col-lg-6 mb-3">
+                          <label>Nome do produtor <span class="text-danger">*</span></label>
+                          <div class="autocomplete-wrap">
+                            <input
+                              id="produtor_busca"
+                              type="text"
+                              class="form-control"
+                              placeholder="Digite o nome para buscar..."
+                              required
+                              <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
+                              value="<?= h($old['produtor_nome']) ?>">
+                            <div id="autocomplete_resultados" class="autocomplete-list"></div>
+                          </div>
+                          <!-- Campo oculto para enviar o CPF original -->
+                          <input type="hidden" name="cpf" id="cpf" value="<?= h($old['cpf']) ?>">
                         </div>
-                        <div class="col-12 col-lg-8 mb-3">
-                          <label>Produtor encontrado</label>
+                        <div class="col-12 col-lg-6 mb-3">
+                          <label>CPF do permissionário</label>
                           <div class="name-box">
-                            <span id="produtorNome" style="font-weight:800;">—</span>
-                            <div class="text-muted" style="font-size:12px;">A confirmação aparece automaticamente ao digitar o CPF.</div>
+                            <span id="produtorDocumento" style="font-weight:800; color: #22c55e;">—</span>
+                            <div class="text-muted" style="font-size:12px;">O CPF aparecerá aqui ao selecionar o nome.</div>
                           </div>
                         </div>
                       </div>
@@ -671,23 +717,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
   let currentTargetIndex = null;
   let stream = null;
 
-  // ===== CPF AJAX =====
-  if (cpf) {
-    cpf.addEventListener('input', async function(){
-      this.value = (this.value || '').replace(/\D+/g, '').slice(0, 11);
-      if (this.value.length === 11) {
-        produtorNome.textContent = 'Buscando...';
-        try {
-          const resp = await fetch(`?ajax_busca_produtor=1&cpf=${this.value}`);
-          const data = await resp.json();
-          if (data.sucesso) {
-            produtorNome.innerHTML = `<span class="text-success"><i class="ti-check"></i> ${data.nome}</span>`;
-          } else {
-            produtorNome.innerHTML = `<span class="text-danger"><i class="ti-alert"></i> ${data.msg}</span>`;
-          }
-        } catch(e) { produtorNome.textContent = 'Erro ao buscar.'; }
-      } else {
-        produtorNome.textContent = this.value.length > 0 ? 'Digite 11 dígitos...' : '—';
+  // ===== PRODUTOR AUTOCOMPLETE =====
+  const buscaIn = document.getElementById('produtor_busca');
+  const resultadosDiv = document.getElementById('autocomplete_resultados');
+  const cpfHidden = document.getElementById('cpf');
+  const docDisplay = document.getElementById('produtorDocumento');
+
+  function fomatCPF(v) {
+    v = v.replace(/\D/g, "");
+    if (v.length !== 11) return v;
+    return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+
+  if (buscaIn) {
+    buscaIn.addEventListener('input', async function() {
+      const val = this.value;
+      if (val.length < 2) {
+        resultadosDiv.style.display = 'none';
+        return;
+      }
+
+      try {
+        const resp = await fetch(`?ajax_busca_produtor_nome=1&nome=${encodeURIComponent(val)}`);
+        const data = await resp.json();
+        
+        if (data.sucesso && data.resultados.length > 0) {
+          resultadosDiv.innerHTML = '';
+          data.resultados.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.innerHTML = `<strong>${p.nome}</strong><span class="cpf-hint">CPF: ${fomatCPF(p.documento)}</span>`;
+            item.onclick = function() {
+              buscaIn.value = p.nome;
+              cpfHidden.value = p.documento;
+              docDisplay.textContent = fomatCPF(p.documento);
+              resultadosDiv.style.display = 'none';
+            };
+            resultadosDiv.appendChild(item);
+          });
+          resultadosDiv.style.display = 'block';
+        } else {
+          resultadosDiv.style.display = 'none';
+        }
+      } catch (e) { console.error('Erro na busca:', e); }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!buscaIn.contains(e.target) && !resultadosDiv.contains(e.target)) {
+        resultadosDiv.style.display = 'none';
       }
     });
   }
