@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/assets/conexao.php';
-require_once __DIR__ . '/assets/dados/_helpers.php';
+require_once __DIR__ . '/assets/dados/inventario/_helpers.php';
 
 $csrf  = csrf_token();
 $flash = flash_pop();
