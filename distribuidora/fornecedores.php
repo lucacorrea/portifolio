@@ -10,20 +10,22 @@ function e(string $s): string
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+// CSRF
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = $_SESSION['csrf_token'];
 
+// Flash
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 
-// Busca no banco (sem filtros server-side obrigatórios)
+// Lista
 $pdo = db();
 $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade, uf, contato, obs
                      FROM fornecedores
                      ORDER BY id DESC
-                     LIMIT 2000")->fetchAll();
+                     LIMIT 2000")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -141,6 +143,7 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
       border-top: 1px solid rgba(148, 163, 184, .22);
     }
 
+    /* flash 1.5s */
     .flash-auto-hide {
       transition: opacity .35s ease, transform .35s ease;
     }
@@ -164,7 +167,7 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
     <div class="spinner"></div>
   </div>
 
-  <!-- sidebar (você pode manter o seu completo; deixei simples) -->
+  <!-- sidebar (mantenha seu sidebar completo aqui se quiser) -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="index.html" class="d-flex align-items-center gap-2">
@@ -212,7 +215,7 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
       <div class="container-fluid">
         <div class="title-wrapper pt-30">
           <h2>Fornecedores</h2>
-          <div class="muted">Editar em página separada.</div>
+          <div class="muted">Editar no modal • Processos externos em <b>assets/dados/fornecedores</b></div>
         </div>
 
         <?php if ($flash): ?>
@@ -277,12 +280,23 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
                       $badge = $st === 'ATIVO'
                         ? '<span class="badge-soft badge-ok">ATIVO</span>'
                         : '<span class="badge-soft badge-off">INATIVO</span>';
-
                       $loc = trim((string)$r['cidade']);
                       $ufv = trim((string)$r['uf']);
                       $locTxt = ($loc || $ufv) ? ($loc . ($ufv ? " / " . $ufv : "")) : "—";
                       ?>
-                      <tr data-statusrow="<?= e($st) ?>">
+                      <tr
+                        data-id="<?= $id ?>"
+                        data-statusrow="<?= e($st) ?>"
+                        data-nome="<?= e((string)$r['nome']) ?>"
+                        data-status="<?= e($st) ?>"
+                        data-doc="<?= e((string)($r['doc'] ?? '')) ?>"
+                        data-tel="<?= e((string)($r['tel'] ?? '')) ?>"
+                        data-email="<?= e((string)($r['email'] ?? '')) ?>"
+                        data-endereco="<?= e((string)($r['endereco'] ?? '')) ?>"
+                        data-cidade="<?= e((string)($r['cidade'] ?? '')) ?>"
+                        data-uf="<?= e((string)($r['uf'] ?? '')) ?>"
+                        data-contato="<?= e((string)($r['contato'] ?? '')) ?>"
+                        data-obs="<?= e((string)($r['obs'] ?? '')) ?>">
                         <td style="font-weight:1000;color:#0f172a;"><?= $id ?></td>
                         <td>
                           <div style="font-weight:1000;color:#0f172a;line-height:1.1;"><?= e((string)$r['nome']) ?></div>
@@ -294,10 +308,9 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
                         <td><?= e($locTxt) ?></td>
                         <td class="text-center"><?= $badge ?></td>
                         <td class="text-center">
-                          <a class="main-btn light-btn btn-hover btn-compact"
-                            href="assets/dados/fornecedores/editarFornecedores.php?id=<?= $id ?>">
+                          <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdFornecedor">
                             <i class="lni lni-pencil me-1"></i> Editar
-                          </a>
+                          </button>
                         </td>
                       </tr>
                   <?php endforeach;
@@ -319,82 +332,94 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
     </footer>
   </main>
 
-  <!-- MODAL: somente ADICIONAR -->
+  <!-- MODAL: ADICIONAR + EDITAR -->
   <div class="modal fade" id="mdFornecedor" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <div>
-            <h5 class="modal-title" style="font-weight:1000;">Novo fornecedor</h5>
-            <div class="muted">Preencha os dados abaixo.</div>
+            <h5 class="modal-title" id="mdTitle" style="font-weight:1000;">Novo fornecedor</h5>
+            <div class="muted" id="mdSub">Preencha os dados abaixo.</div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
-        <form action="assets/dados/fornecedores/adicionarFornecedores.php" method="post">
+        <!-- SAVE (add/edit) -->
+        <form id="frmSave" action="assets/dados/fornecedores/salvar.php" method="post">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-          <input type="hidden" name="redirect_to" value="../../../fornecedores.php">
+          <input type="hidden" name="id" id="fId" value="">
 
           <div class="modal-body">
             <div class="row g-2">
               <div class="col-12 col-lg-8">
                 <label class="form-label">Nome / Razão Social *</label>
-                <input class="form-control compact" name="nome" placeholder="Ex: Distribuidora X LTDA" />
+                <input class="form-control compact" id="fNome" name="nome" required />
               </div>
               <div class="col-12 col-lg-4">
                 <label class="form-label">Status</label>
-                <select class="form-select compact" name="status">
-                  <option value="ATIVO" selected>Ativo</option>
+                <select class="form-select compact" id="fStatusEdit" name="status">
+                  <option value="ATIVO">Ativo</option>
                   <option value="INATIVO">Inativo</option>
                 </select>
               </div>
 
               <div class="col-12 col-lg-4">
                 <label class="form-label">CNPJ/CPF</label>
-                <input class="form-control compact" name="doc" />
+                <input class="form-control compact" id="fDoc" name="doc" />
               </div>
               <div class="col-12 col-lg-4">
                 <label class="form-label">Telefone</label>
-                <input class="form-control compact" name="tel" />
+                <input class="form-control compact" id="fTel" name="tel" />
               </div>
               <div class="col-12 col-lg-4">
                 <label class="form-label">E-mail</label>
-                <input class="form-control compact" name="email" />
+                <input class="form-control compact" id="fEmail" name="email" />
               </div>
 
               <div class="col-12">
                 <label class="form-label">Endereço</label>
-                <input class="form-control compact" name="endereco" />
+                <input class="form-control compact" id="fEnd" name="endereco" />
               </div>
 
               <div class="col-12 col-lg-6">
                 <label class="form-label">Cidade</label>
-                <input class="form-control compact" name="cidade" />
+                <input class="form-control compact" id="fCidade" name="cidade" />
               </div>
               <div class="col-12 col-lg-2">
                 <label class="form-label">UF</label>
-                <input class="form-control compact" name="uf" maxlength="2" />
+                <input class="form-control compact" id="fUF" name="uf" maxlength="2" />
               </div>
               <div class="col-12 col-lg-4">
                 <label class="form-label">Contato (Pessoa)</label>
-                <input class="form-control compact" name="contato" />
+                <input class="form-control compact" id="fContato" name="contato" />
               </div>
 
               <div class="col-12">
                 <label class="form-label">Observação</label>
-                <textarea class="form-control" name="obs" rows="3" style="border-radius:12px;"></textarea>
+                <textarea class="form-control" id="fObs" name="obs" rows="3" style="border-radius:12px;"></textarea>
               </div>
             </div>
           </div>
 
-          <div class="modal-footer d-flex justify-content-end gap-2">
-            <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">Cancelar</button>
-            <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
-              <i class="lni lni-save me-1"></i> Salvar
+          <div class="modal-footer d-flex justify-content-between">
+            <button class="main-btn danger-btn-outline btn-hover btn-compact" id="btnExcluir" type="submit" form="frmDelete" style="display:none;">
+              <i class="lni lni-trash-can me-1"></i> Excluir
             </button>
+
+            <div class="d-flex gap-2">
+              <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">Cancelar</button>
+              <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
+                <i class="lni lni-save me-1"></i> Salvar
+              </button>
+            </div>
           </div>
         </form>
 
+        <!-- DELETE (fora do form save) -->
+        <form id="frmDelete" action="assets/dados/fornecedores/excluir.php" method="post" onsubmit="return confirm('Excluir este fornecedor?');" style="display:none;">
+          <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+          <input type="hidden" name="id" id="delId" value="">
+        </form>
       </div>
     </div>
   </div>
@@ -403,7 +428,7 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
   <script src="assets/js/main.js"></script>
 
   <script>
-    // flash some em 1.5s
+    // Flash: some em 1.5s
     (function() {
       const box = document.getElementById('flashBox');
       if (!box) return;
@@ -413,7 +438,7 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
       }, 1500);
     })();
 
-    // filtro local
+    // Filtro local
     const qFor = document.getElementById("qFor");
     const fStatus = document.getElementById("fStatus");
     const btnLimpar = document.getElementById("btnLimpar");
@@ -460,6 +485,81 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
       filterRows();
     });
 
+    // Modal: novo/editar
+    const mdTitle = document.getElementById("mdTitle");
+    const mdSub = document.getElementById("mdSub");
+
+    const fId = document.getElementById("fId");
+    const fNome = document.getElementById("fNome");
+    const fStatusEdit = document.getElementById("fStatusEdit");
+    const fDoc = document.getElementById("fDoc");
+    const fTel = document.getElementById("fTel");
+    const fEmail = document.getElementById("fEmail");
+    const fEnd = document.getElementById("fEnd");
+    const fCidade = document.getElementById("fCidade");
+    const fUF = document.getElementById("fUF");
+    const fContato = document.getElementById("fContato");
+    const fObs = document.getElementById("fObs");
+
+    const btnExcluir = document.getElementById("btnExcluir");
+    const frmDelete = document.getElementById("frmDelete");
+    const delId = document.getElementById("delId");
+
+    function openNew() {
+      mdTitle.textContent = "Novo fornecedor";
+      mdSub.textContent = "Preencha os dados abaixo.";
+
+      fId.value = "";
+      fNome.value = "";
+      fStatusEdit.value = "ATIVO";
+      fDoc.value = "";
+      fTel.value = "";
+      fEmail.value = "";
+      fEnd.value = "";
+      fCidade.value = "";
+      fUF.value = "";
+      fContato.value = "";
+      fObs.value = "";
+
+      btnExcluir.style.display = "none";
+      frmDelete.style.display = "none";
+      delId.value = "";
+      setTimeout(() => fNome.focus(), 150);
+    }
+
+    function openEditFromTr(tr) {
+      mdTitle.textContent = "Editar fornecedor";
+      mdSub.textContent = "Altere e salve.";
+
+      fId.value = tr.getAttribute("data-id") || "";
+      fNome.value = tr.getAttribute("data-nome") || "";
+      fStatusEdit.value = tr.getAttribute("data-status") || "ATIVO";
+      fDoc.value = tr.getAttribute("data-doc") || "";
+      fTel.value = tr.getAttribute("data-tel") || "";
+      fEmail.value = tr.getAttribute("data-email") || "";
+      fEnd.value = tr.getAttribute("data-endereco") || "";
+      fCidade.value = tr.getAttribute("data-cidade") || "";
+      fUF.value = tr.getAttribute("data-uf") || "";
+      fContato.value = tr.getAttribute("data-contato") || "";
+      fObs.value = tr.getAttribute("data-obs") || "";
+
+      delId.value = fId.value;
+      btnExcluir.style.display = "inline-flex";
+      frmDelete.style.display = "block";
+      setTimeout(() => fNome.focus(), 150);
+    }
+
+    document.getElementById("btnNovo").addEventListener("click", openNew);
+
+    tbodyFor.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-act='edit']");
+      if (!btn) return;
+      const tr = e.target.closest("tr");
+      if (!tr) return;
+      openEditFromTr(tr);
+    });
+
+    // init
     filterRows();
   </script>
 </body>

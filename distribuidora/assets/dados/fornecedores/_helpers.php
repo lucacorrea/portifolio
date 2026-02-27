@@ -33,7 +33,7 @@ function csrf_token(): string {
 function csrf_check(?string $t): void {
   if (!is_string($t) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $t)) {
     flash_set('danger', 'Falha de segurança (CSRF). Recarregue a página e tente novamente.');
-    redirect_to('../../../fornecedores.php');
+    redirect_fornecedores();
   }
 }
 
@@ -42,24 +42,8 @@ function flash_set(string $type, string $msg): void {
   $_SESSION['flash'] = ['type' => $type, 'msg' => $msg];
 }
 
-function flash_get(): ?array {
-  if (empty($_SESSION['flash'])) return null;
-  $f = $_SESSION['flash'];
-  unset($_SESSION['flash']);
-  return $f;
-}
-
-// Redirect seguro (apenas interno)
-function redirect_to(string $url): void {
-  $url = trim($url);
-  if ($url === '') $url = '../../../fornecedores.php';
-
-  // bloqueia redirect externo
-  if (preg_match('~^\w+://~', $url) || str_starts_with($url, '//')) {
-    $url = '../../../fornecedores.php';
-  }
-
-  header("Location: {$url}");
+function redirect_fornecedores(): void {
+  header("Location: ../../../fornecedores.php");
   exit;
 }
 
@@ -75,6 +59,7 @@ function fail_page(string $msg): void {
     <link rel="stylesheet" href="../../../assets/css/bootstrap.min.css">
     <style>
       .flash-auto-hide { transition: opacity .35s ease, transform .35s ease; }
+      .flash-auto-hide.hide { opacity: 0; transform: translateY(-6px); pointer-events: none; }
     </style>
   </head>
   <body class="bg-light">
@@ -88,7 +73,7 @@ function fail_page(string $msg): void {
       (function(){
         const box = document.getElementById('flashBox');
         if(!box) return;
-        setTimeout(()=>{ box.style.opacity='0'; box.style.transform='translateY(-6px)'; }, 1500);
+        setTimeout(()=>{ box.classList.add('hide'); }, 1500);
       })();
     </script>
   </body>
@@ -96,3 +81,5 @@ function fail_page(string $msg): void {
   <?php
   exit;
 }
+
+?>
