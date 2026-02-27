@@ -55,3 +55,17 @@ CREATE UNIQUE INDEX ux_produtos_codigo ON produtos (codigo);
 CREATE INDEX idx_produtos_categoria ON produtos (categoria_id);
 CREATE INDEX idx_produtos_fornecedor ON produtos (fornecedor_id);
 CREATE INDEX idx_produtos_status ON produtos (status);
+
+
+CREATE TABLE IF NOT EXISTS inventario_itens (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  produto_id INT NOT NULL,
+  contagem INT NULL,
+  diferenca INT NULL,
+  situacao VARCHAR(20) NOT NULL DEFAULT 'NAO_CONFERIDO',
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_inventario_produto (produto_id),
+  INDEX idx_situacao (situacao),
+  INDEX idx_produto (produto_id)
+);
