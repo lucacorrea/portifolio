@@ -492,7 +492,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <!-- FORM SAVE -->
-        <form id="frmSave" action="assets/dados/fornecedores/salvar.php" method="post">
+        <form id="frmSave" action="assets/dados/fornecedores/adicionarFornecedores.php" method="post">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="fId" value="">
 
