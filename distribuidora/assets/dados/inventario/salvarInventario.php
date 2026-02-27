@@ -1,29 +1,19 @@
 <?php
 declare(strict_types=1);
-session_start();
-require_once __DIR__ . '/../../conexao.php';
 
-function back(): void {
-  header('Location: ../../../inventario.php');
-  exit;
-}
+require_once __DIR__ . '/../../conexao.php';
+require_once __DIR__ . '/../_helpers.php';
+
+function backInv(): void { redirect_to('../../../inventario.php'); }
 
 try {
-  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    $_SESSION['flash'] = ['type' => 'danger', 'msg' => 'Requisição inválida.'];
-    back();
-  }
-
-  $csrf = $_POST['csrf_token'] ?? '';
-  if (!$csrf || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string)$csrf)) {
-    $_SESSION['flash'] = ['type' => 'danger', 'msg' => 'CSRF inválido. Recarregue a página.'];
-    back();
-  }
+  require_post_or_redirect('../../../inventario.php');
+  csrf_validate_or_redirect('../../../inventario.php');
 
   $produtoId = (int)($_POST['produto_id'] ?? 0);
   if ($produtoId <= 0) {
-    $_SESSION['flash'] = ['type' => 'danger', 'msg' => 'Produto inválido.'];
-    back();
+    flash_set('danger', 'Produto inválido.');
+    backInv();
   }
 
   $raw = $_POST['contagem'] ?? '';
@@ -32,8 +22,8 @@ try {
   $contagem = null;
   if ($raw !== '') {
     if (!ctype_digit($raw)) {
-      $_SESSION['flash'] = ['type' => 'danger', 'msg' => 'Contagem inválida.'];
-      back();
+      flash_set('danger', 'Contagem inválida.');
+      backInv();
     }
     $contagem = (int)$raw;
     if ($contagem < 0) $contagem = 0;
@@ -46,8 +36,8 @@ try {
   $p = $st->fetch(PDO::FETCH_ASSOC);
 
   if (!$p) {
-    $_SESSION['flash'] = ['type' => 'danger', 'msg' => 'Produto não encontrado.'];
-    back();
+    flash_set('danger', 'Produto não encontrado.');
+    backInv();
   }
 
   $sistema = (int)($p['estoque'] ?? 0);
@@ -70,7 +60,6 @@ try {
       updated_at = NOW()
   ";
   $q = $pdo->prepare($sql);
-
   $q->bindValue(':produto_id', $produtoId, PDO::PARAM_INT);
 
   if ($contagem === null) $q->bindValue(':contagem', null, PDO::PARAM_NULL);
@@ -80,15 +69,13 @@ try {
   else $q->bindValue(':diferenca', (int)$diferenca, PDO::PARAM_INT);
 
   $q->bindValue(':situacao', $situacao, PDO::PARAM_STR);
-
   $q->execute();
 
-  $nome = (string)($p['nome'] ?? '');
-  $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Inventário salvo: ' . $nome];
-  back();
+  flash_set('success', 'Inventário salvo: ' . (string)$p['nome']);
+  backInv();
 } catch (Throwable $e) {
-  $_SESSION['flash'] = ['type' => 'danger', 'msg' => 'Erro ao salvar inventário.'];
-  back();
+  flash_set('danger', 'Erro ao salvar inventário.');
+  backInv();
 }
 
 ?>

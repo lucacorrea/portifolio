@@ -1,19 +1,12 @@
 <?php
 
 declare(strict_types=1);
-session_start();
+
 require_once __DIR__ . '/assets/conexao.php';
+require_once __DIR__ . '/assets/dados/_helpers.php';
 
-function e(string $s): string
-{
-    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-}
-
-if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-$csrf = $_SESSION['csrf_token'];
-
-$flash = $_SESSION['flash'] ?? null;
-unset($_SESSION['flash']);
+$csrf  = csrf_token();
+$flash = flash_pop();
 
 $pdo = db();
 
@@ -25,25 +18,29 @@ function img_url_from_db(string $dbValue): string
 {
     $v = trim($dbValue);
     if ($v === '') return '';
+
+    // Se já vier absoluto/URL, mantém
+    if (preg_match('~^(https?://|/|assets/)~i', $v)) return $v;
+
     $v = ltrim($v, '/');
-    return 'assets/dados/produtos/' . $v;
+    return 'assets/dados/produtos/' . $v; // assets/dados/produtos/images/xxx.png
 }
 
 // Categorias (filtro)
-$categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
+$categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome ASC")
+    ->fetchAll(PDO::FETCH_ASSOC);
 
 // Produtos (para modal “Lançar”)
 $prodList = $pdo->query("
   SELECT p.id, p.codigo, p.nome, p.unidade, p.estoque, p.categoria_id,
-         c.nome AS categoria_nome,
-         p.imagem
+         c.nome AS categoria_nome
   FROM produtos p
   LEFT JOIN categorias c ON c.id = p.categoria_id
   ORDER BY p.nome ASC
   LIMIT 5000
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Itens do inventário (mostra todos os produtos, com contagem se existir)
+// Itens do inventário (lista todos os produtos, com inventário se existir)
 $rows = $pdo->query("
   SELECT p.id AS produto_id, p.codigo, p.nome, p.unidade, p.estoque, p.categoria_id,
          c.nome AS categoria_nome,
@@ -222,12 +219,14 @@ $rows = $pdo->query("
         <div class="spinner"></div>
     </div>
 
+    <!-- Sidebar (mantive simples aqui, você pode colar seu SVG completo se quiser) -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="index.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
             </a>
         </div>
+
         <nav class="sidebar-nav">
             <ul>
                 <li class="nav-item"><a href="index.php"><span class="text">Dashboard</span></a></li>
@@ -253,17 +252,6 @@ $rows = $pdo->query("
                         <li><a href="entradas.php">Entradas</a></li>
                         <li><a href="saidas.php">Saídas</a></li>
                         <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
-                    </ul>
-                </li>
-
-                <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-expanded="false">
-                        <span class="text">Cadastros</span>
-                    </a>
-                    <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-                        <li><a href="clientes.php">Clientes</a></li>
-                        <li><a href="fornecedores.php">Fornecedores</a></li>
-                        <li><a href="categorias.php">Categorias</a></li>
                     </ul>
                 </li>
 
@@ -441,13 +429,10 @@ $rows = $pdo->query("
                                         }
                                     }
 
-                                    $imgDb = trim((string)($r['imagem'] ?? ''));
+                                    $imgDb  = trim((string)($r['imagem'] ?? ''));
                                     $imgUrl = img_url_from_db($imgDb);
                                     ?>
-                                    <tr
-                                        data-produto-id="<?= $produtoId ?>"
-                                        data-categoria="<?= $catId ?>"
-                                        data-situacao="<?= e($sit) ?>">
+                                    <tr data-produto-id="<?= $produtoId ?>" data-categoria="<?= $catId ?>" data-situacao="<?= e($sit) ?>">
                                         <td><img class="prod-img" alt="<?= e((string)$r['nome']) ?>" src="<?= e($imgUrl) ?>" /></td>
                                         <td><?= e((string)$r['codigo']) ?></td>
                                         <td><?= e((string)$r['nome']) ?></td>
@@ -489,14 +474,14 @@ $rows = $pdo->query("
         </footer>
     </main>
 
-    <!-- FORM SAVE (linha) -->
+    <!-- SAVE FORM -->
     <form id="frmSave" action="assets/dados/inventario/salvarInventario.php" method="post" style="display:none;">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <input type="hidden" name="produto_id" id="svProdutoId" value="">
         <input type="hidden" name="contagem" id="svContagem" value="">
     </form>
 
-    <!-- FORM DELETE (linha) -->
+    <!-- DELETE FORM -->
     <form id="frmDelete" action="assets/dados/inventario/excluirInventario.php" method="post" style="display:none;">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <input type="hidden" name="produto_id" id="dlProdutoId" value="">
@@ -607,7 +592,7 @@ $rows = $pdo->query("
       </svg>
     `);
 
-        // fallback imagem (não sobrescreve as válidas)
+        // fallback imagem
         document.querySelectorAll("img.prod-img").forEach(img => {
             const src = img.getAttribute('src') || '';
             if (!src) img.src = DEFAULT_IMG;
@@ -684,13 +669,11 @@ $rows = $pdo->query("
             infoCount.textContent = `Mostrando ${shown} item(ns) no inventário.`;
         }
 
-        // filtros
         qInv.addEventListener('input', aplicarFiltros);
         qGlobal.addEventListener('input', aplicarFiltros);
         fCategoria.addEventListener('change', aplicarFiltros);
         fSituacao.addEventListener('change', aplicarFiltros);
 
-        // recalcula ao digitar contagem
         tb.addEventListener('input', (e) => {
             const inp = e.target.closest('input.count');
             if (!inp) return;
@@ -700,7 +683,7 @@ $rows = $pdo->query("
             aplicarFiltros();
         });
 
-        // ações tabela: salvar/excluir (POST externo)
+        // salvar/excluir (POST externo)
         tb.addEventListener('click', (e) => {
             const tr = e.target.closest('tr');
             if (!tr) return;
@@ -727,7 +710,7 @@ $rows = $pdo->query("
             }
         });
 
-        // modal: preencher infos do produto
+        // modal: preencher infos
         const mProdutoId = document.getElementById('mProdutoId');
         const mCodigo = document.getElementById('mCodigo');
         const mNome = document.getElementById('mNome');
@@ -759,7 +742,7 @@ $rows = $pdo->query("
         Array.from(tb.querySelectorAll('tbody tr')).forEach(calcularLinha);
         aplicarFiltros();
 
-        // ✅ Excel igual ao seu
+        // ✅ Excel (igual ao seu modelo)
         function exportExcel() {
             const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
 
@@ -838,7 +821,7 @@ $rows = $pdo->query("
         }
         document.getElementById('btnExcel').addEventListener('click', exportExcel);
 
-        // ✅ PDF igual ao seu
+        // ✅ PDF (igual ao seu modelo)
         function exportPDF() {
             if (!window.jspdf || !window.jspdf.jsPDF) {
                 alert('Biblioteca do PDF não carregou.');
