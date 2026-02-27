@@ -1,3 +1,36 @@
+<?php
+
+declare(strict_types=1);
+session_start();
+
+require_once __DIR__ . '/assets/conexao.php';
+
+function e(string $s): string
+{
+  return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION['csrf_token'];
+
+$flash = $_SESSION['flash'] ?? null;
+unset($_SESSION['flash']);
+
+$pdo = db();
+$rows = $pdo->query("SELECT id, nome, descricao, cor, obs, status
+                     FROM categorias
+                     ORDER BY id DESC
+                     LIMIT 2000")->fetchAll(PDO::FETCH_ASSOC);
+
+function badgeStatus(string $st): string
+{
+  $s = strtoupper(trim($st));
+  if ($s === 'INATIVO') return '<span class="badge-soft badge-off">INATIVO</span>';
+  return '<span class="badge-soft badge-ok">ATIVO</span>';
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -163,6 +196,17 @@
       flex: 0 0 auto;
     }
 
+    /* Flash 1.5s */
+    .flash-auto-hide {
+      transition: opacity .35s ease, transform .35s ease;
+    }
+
+    .flash-auto-hide.hide {
+      opacity: 0;
+      transform: translateY(-6px);
+      pointer-events: none;
+    }
+
     @media (max-width: 991.98px) {
       #tbCat {
         min-width: 820px;
@@ -179,7 +223,7 @@
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
-      <a href="index.html" class="d-flex align-items-center gap-2">
+      <a href="index.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
       </a>
     </div>
@@ -188,7 +232,7 @@
       <ul>
         <!-- Dashboard -->
         <li class="nav-item">
-          <a href="index.html">
+          <a href="index.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -214,9 +258,9 @@
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-            <li><a href="pedidos.html">Pedidos</a></li>
-            <li><a href="vendas.html">Vendas</a></li>
-            <li><a href="devolucoes.html">Devoluções</a></li>
+            <li><a href="pedidos.php">Pedidos</a></li>
+            <li><a href="vendas.php">Vendas</a></li>
+            <li><a href="devolucoes.php">Devoluções</a></li>
           </ul>
         </li>
 
@@ -235,11 +279,11 @@
             <span class="text">Estoque</span>
           </a>
           <ul id="ddmenu_estoque" class="collapse dropdown-nav">
-            <li><a href="produtos.html">Produtos</a></li>
-            <li><a href="inventario.html">Inventário</a></li>
-            <li><a href="entradas.html">Entradas</a></li>
-            <li><a href="saidas.html">Saídas</a></li>
-            <li><a href="estoque-minimo.html">Estoque Mínimo</a></li>
+            <li><a href="produtos.php">Produtos</a></li>
+            <li><a href="inventario.php">Inventário</a></li>
+            <li><a href="entradas.php">Entradas</a></li>
+            <li><a href="saidas.php">Saídas</a></li>
+            <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
           </ul>
         </li>
 
@@ -262,14 +306,14 @@
             <span class="text">Cadastros</span>
           </a>
           <ul id="ddmenu_cadastros" class="collapse show dropdown-nav">
-            <li><a href="clientes.html">Clientes</a></li>
-            <li><a href="fornecedores.html">Fornecedores</a></li>
-            <li><a href="categorias.html" class="active">Categorias</a></li>
+            <li><a href="clientes.php">Clientes</a></li>
+            <li><a href="fornecedores.php">Fornecedores</a></li>
+            <li><a href="categorias.php" class="active">Categorias</a></li>
           </ul>
         </li>
 
         <li class="nav-item">
-          <a href="relatorios.html">
+          <a href="relatorios.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -280,7 +324,9 @@
           </a>
         </li>
 
-        <span class="divider"><hr /></span>
+        <span class="divider">
+          <hr />
+        </span>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config"
@@ -294,13 +340,13 @@
             <span class="text">Configurações</span>
           </a>
           <ul id="ddmenu_config" class="collapse dropdown-nav">
-            <li><a href="usuarios.html">Usuários e Permissões</a></li>
-            <li><a href="parametros.html">Parâmetros do Sistema</a></li>
+            <li><a href="usuarios.php">Usuários e Permissões</a></li>
+            <li><a href="parametros.php">Parâmetros do Sistema</a></li>
           </ul>
         </li>
 
         <li class="nav-item">
-          <a href="suporte.html">
+          <a href="suporte.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -330,9 +376,9 @@
                 </button>
               </div>
               <div class="header-search d-none d-md-flex">
-                <form action="#">
+                <form action="#" onsubmit="return false;">
                   <input type="text" placeholder="Buscar categoria..." id="qGlobal" />
-                  <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
+                  <button type="submit"><i class="lni lni-search-alt"></i></button>
                 </form>
               </div>
             </div>
@@ -345,9 +391,7 @@
                   data-bs-toggle="dropdown" aria-expanded="false">
                   <div class="profile-info">
                     <div class="info">
-                      <div class="image">
-                        <img src="assets/images/profile/profile-image.png" alt="perfil" />
-                      </div>
+                      <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
                       <div>
                         <h6 class="fw-500">Administrador</h6>
                         <p>Distribuidora</p>
@@ -357,23 +401,10 @@
                 </button>
 
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                  <li>
-                    <div class="author-info flex items-center !p-1">
-                      <div class="image">
-                        <img src="assets/images/profile/profile-image.png" alt="image" />
-                      </div>
-                      <div class="content">
-                        <h4 class="text-sm">Administrador</h4>
-                        <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
-                          href="#">Admin</a>
-                      </div>
-                    </div>
-                  </li>
+                  <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                  <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
                   <li class="divider"></li>
-                  <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                  <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
-                  <li class="divider"></li>
-                  <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
+                  <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
                 </ul>
               </div>
             </div>
@@ -390,7 +421,7 @@
             <div class="col-md-8">
               <div class="title">
                 <h2>Categorias</h2>
-                <div class="muted">Cadastro em LocalStorage (pode integrar com Produtos depois).</div>
+                <div class="muted">Cadastro no banco (processos em <b>assets/dados/categorias</b>).</div>
               </div>
             </div>
             <div class="col-md-4 text-md-end">
@@ -402,11 +433,19 @@
           </div>
         </div>
 
-        <div class="cardx mb-30">
+        <?php if ($flash): ?>
+          <div id="flashBox" class="alert alert-<?= e((string)$flash['type']) ?> flash-auto-hide mt-3">
+            <?= e((string)$flash['msg']) ?>
+          </div>
+        <?php endif; ?>
+
+        <div class="cardx mb-30 mt-3">
           <div class="head">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-tag me-1"></i> Lista</div>
-              <span class="badge-soft" id="countBadge">0 categorias</span>
+              <span class="badge-soft" id="countBadge">
+                <?= count($rows) ?> categorias
+              </span>
             </div>
 
             <div class="d-flex gap-2 flex-wrap align-items-center">
@@ -416,14 +455,19 @@
                 <option value="INATIVO">Inativo</option>
               </select>
 
-              <button class="main-btn light-btn btn-hover btn-compact" id="btnExport" type="button">
+              <a class="main-btn light-btn btn-hover btn-compact" href="assets/dados/categorias/exportar.php">
                 <i class="lni lni-download me-1"></i> Exportar (JSON)
-              </button>
+              </a>
 
-              <label class="main-btn light-btn btn-hover btn-compact" style="margin:0; cursor:pointer;">
-                <i class="lni lni-upload me-1"></i> Importar
-                <input type="file" id="fileImport" accept="application/json" hidden />
-              </label>
+              <form action="assets/dados/categorias/importar.php" method="post" enctype="multipart/form-data"
+                style="margin:0;">
+                <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+                <label class="main-btn light-btn btn-hover btn-compact" style="margin:0; cursor:pointer;">
+                  <i class="lni lni-upload me-1"></i> Importar
+                  <input type="file" name="arquivo" id="fileImport" accept="application/json" hidden
+                    onchange="this.form.submit();" />
+                </label>
+              </form>
 
               <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
                 <i class="lni lni-eraser me-1"></i> Limpar
@@ -434,8 +478,7 @@
           <div class="body">
             <div class="row g-2 mb-2">
               <div class="col-12 col-lg-6">
-                <input class="form-control compact" id="qCat"
-                  placeholder="Buscar por nome, descrição ou status..." />
+                <input class="form-control compact" id="qCat" placeholder="Buscar por nome, descrição ou status..." />
               </div>
               <div class="col-12 col-lg-6 text-lg-end">
                 <div class="muted">Dica: use cor para identificar a categoria no sistema.</div>
@@ -454,7 +497,63 @@
                     <th style="min-width:160px;" class="text-center">Ações</th>
                   </tr>
                 </thead>
-                <tbody id="tbodyCat"></tbody>
+                <tbody id="tbodyCat">
+                  <?php if (!$rows): ?>
+                    <tr>
+                      <td colspan="6" class="text-center muted py-4">Nenhuma categoria encontrada.</td>
+                    </tr>
+                    <?php else: foreach ($rows as $r): ?>
+                      <?php
+                      $id = (int)$r['id'];
+                      $st = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+                      $cor = trim((string)($r['cor'] ?? '#60a5fa')) ?: '#60a5fa';
+                      $nome = (string)$r['nome'];
+                      $desc = (string)($r['descricao'] ?? '');
+                      $obs  = (string)($r['obs'] ?? '');
+                      ?>
+                      <tr data-id="<?= $id ?>" data-statusrow="<?= e($st) ?>" data-nome="<?= e($nome) ?>"
+                        data-desc="<?= e($desc) ?>" data-obs="<?= e($obs) ?>" data-cor="<?= e($cor) ?>"
+                        data-status="<?= e($st) ?>">
+                        <td style="font-weight:1000;color:#0f172a;">
+                          <?= $id ?>
+                        </td>
+                        <td>
+                          <div class="d-flex align-items-center gap-2">
+                            <span class="swatch" style="background:<?= e($cor) ?>;"></span>
+                            <div style="min-width:0;">
+                              <div style="font-weight:1000;color:#0f172a;line-height:1.1;">
+                                <?= e($nome) ?>
+                              </div>
+                              <div class="muted">
+                                <?= e($obs !== '' ? $obs : '—') ?>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <?= e($desc !== '' ? $desc : '—') ?>
+                        </td>
+                        <td>
+                          <div class="d-flex align-items-center gap-2">
+                            <span class="swatch" style="background:<?= e($cor) ?>;"></span>
+                            <span style="font-weight:900;color:#0f172a;">
+                              <?= e($cor) ?>
+                            </span>
+                          </div>
+                        </td>
+                        <td class="text-center">
+                          <?= badgeStatus($st) ?>
+                        </td>
+                        <td class="text-center">
+                          <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit"
+                            data-bs-toggle="modal" data-bs-target="#mdCategoria">
+                            <i class="lni lni-pencil me-1"></i> Editar
+                          </button>
+                        </td>
+                      </tr>
+                  <?php endforeach;
+                  endif; ?>
+                </tbody>
               </table>
             </div>
 
@@ -489,58 +588,69 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
-        <div class="modal-body">
-          <input type="hidden" id="cId" />
+        <!-- SAVE (add/edit) -->
+        <form id="frmSave" action="assets/dados/categorias/adicionarCategorias.php" method="post">
+          <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+          <input type="hidden" name="id" id="cId" value="">
 
-          <div class="row g-2">
-            <div class="col-12 col-lg-8">
-              <label class="form-label">Nome *</label>
-              <input class="form-control compact" id="cNome" placeholder="Ex: Alimentos" />
-            </div>
-            <div class="col-12 col-lg-4">
-              <label class="form-label">Status</label>
-              <select class="form-select compact" id="cStatus">
-                <option value="ATIVO" selected>Ativo</option>
-                <option value="INATIVO">Inativo</option>
-              </select>
-            </div>
-
-            <div class="col-12 col-lg-8">
-              <label class="form-label">Descrição</label>
-              <input class="form-control compact" id="cDesc" placeholder="Opcional..." />
-            </div>
-            <div class="col-12 col-lg-4">
-              <label class="form-label">Cor</label>
-              <div class="d-flex align-items-center gap-2">
-                <input class="form-control compact" id="cCor" type="color" value="#60a5fa"
-                  style="width: 70px; padding: 4px 8px;" />
-                <input class="form-control compact" id="cCorTxt" value="#60a5fa" placeholder="#RRGGBB" />
+          <div class="modal-body">
+            <div class="row g-2">
+              <div class="col-12 col-lg-8">
+                <label class="form-label">Nome *</label>
+                <input class="form-control compact" id="cNome" name="nome" placeholder="Ex: Alimentos" required />
               </div>
-              <div class="muted mt-1">Usada para etiqueta/badge.</div>
-            </div>
+              <div class="col-12 col-lg-4">
+                <label class="form-label">Status</label>
+                <select class="form-select compact" id="cStatus" name="status">
+                  <option value="ATIVO" selected>Ativo</option>
+                  <option value="INATIVO">Inativo</option>
+                </select>
+              </div>
 
-            <div class="col-12">
-              <label class="form-label">Observação</label>
-              <textarea class="form-control" id="cObs" rows="3" placeholder="Opcional..."
-                style="border-radius:12px;"></textarea>
+              <div class="col-12 col-lg-8">
+                <label class="form-label">Descrição</label>
+                <input class="form-control compact" id="cDesc" name="descricao" placeholder="Opcional..." />
+              </div>
+
+              <div class="col-12 col-lg-4">
+                <label class="form-label">Cor</label>
+                <div class="d-flex align-items-center gap-2">
+                  <input class="form-control compact" id="cCor" type="color" value="#60a5fa"
+                    style="width: 70px; padding: 4px 8px;" />
+                  <input class="form-control compact" id="cCorTxt" name="cor" value="#60a5fa" placeholder="#RRGGBB" />
+                </div>
+                <div class="muted mt-1">Usada para etiqueta/badge.</div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Observação</label>
+                <textarea class="form-control" id="cObs" name="obs" rows="3" placeholder="Opcional..."
+                  style="border-radius:12px;"></textarea>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="modal-footer d-flex justify-content-between">
-          <button class="main-btn danger-btn-outline btn-hover btn-compact" id="btnExcluir" type="button"
-            style="display:none;">
-            <i class="lni lni-trash-can me-1"></i> Excluir
-          </button>
-          <div class="d-flex gap-2">
-            <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">
-              Cancelar
+          <div class="modal-footer d-flex justify-content-between">
+            <button class="main-btn danger-btn-outline btn-hover btn-compact" id="btnExcluir" type="submit"
+              form="frmDelete" style="display:none;">
+              <i class="lni lni-trash-can me-1"></i> Excluir
             </button>
-            <button class="main-btn primary-btn btn-hover btn-compact" id="btnSalvar" type="button">
-              <i class="lni lni-save me-1"></i> Salvar
-            </button>
+            <div class="d-flex gap-2">
+              <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal"
+                type="button">Cancelar</button>
+              <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
+                <i class="lni lni-save me-1"></i> Salvar
+              </button>
+            </div>
           </div>
-        </div>
+        </form>
+
+        <!-- DELETE (fora do form save) -->
+        <form id="frmDelete" action="assets/dados/categorias/excluirCategorias.php" method="post"
+          onsubmit="return confirm('Excluir esta categoria?');" style="display:none;">
+          <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+          <input type="hidden" name="id" id="delId" value="">
+        </form>
 
       </div>
     </div>
@@ -551,181 +661,96 @@
   <script src="assets/js/main.js"></script>
 
   <script>
-    // ==============================
-    // Storage
-    // ==============================
-    const LS_CATEGORIAS = "dist_categorias_v1";
+    // Flash some em 1.5s
+    (function() {
+      const box = document.getElementById('flashBox');
+      if (!box) return;
+      setTimeout(() => {
+        box.classList.add('hide');
+        setTimeout(() => box.remove(), 400);
+      }, 1500);
+    })();
 
-    function loadJson(key, fallback) {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : fallback;
-      } catch {
-        return fallback;
-      }
-    }
-
-    function saveJson(key, val) {
-      localStorage.setItem(key, JSON.stringify(val));
-    }
-
-    function safeText(s) {
-      return String(s ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function uid() {
-      return "C" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
-    }
-
-    function normHex(hex) {
-      let h = String(hex || "").trim();
-      if (!h) return "#60a5fa";
-      if (!h.startsWith("#")) h = "#" + h;
-      if (h.length === 4) { // #abc -> #aabbcc
-        h = "#" + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
-      }
-      return /^#[0-9A-Fa-f]{6}$/.test(h) ? h : "#60a5fa";
-    }
-
-    function seedIfEmpty() {
-      const arr = loadJson(LS_CATEGORIAS, []);
-      if (Array.isArray(arr) && arr.length) return;
-
-      const seed = [
-        { id: uid(), nome: "Alimentos", desc: "Produtos alimentícios", cor: "#22c55e", obs: "", status: "ATIVO", createdAt: new Date().toISOString() },
-        { id: uid(), nome: "Bebidas", desc: "Bebidas e refrigerantes", cor: "#60a5fa", obs: "", status: "ATIVO", createdAt: new Date().toISOString() },
-        { id: uid(), nome: "Limpeza", desc: "Itens de limpeza", cor: "#f59e0b", obs: "", status: "ATIVO", createdAt: new Date().toISOString() },
-        { id: uid(), nome: "Higiene", desc: "Cuidados pessoais", cor: "#a78bfa", obs: "", status: "ATIVO", createdAt: new Date().toISOString() },
-      ];
-      saveJson(LS_CATEGORIAS, seed);
-    }
-
-    function getAll() {
-      seedIfEmpty();
-      const arr = loadJson(LS_CATEGORIAS, []);
-      return (arr || []).map(x => ({
-        id: String(x.id || "").trim() || uid(),
-        nome: String(x.nome || x.name || "").trim(),
-        desc: String(x.desc || x.descricao || "").trim(),
-        cor: normHex(x.cor || x.color || "#60a5fa"),
-        obs: String(x.obs || "").trim(),
-        status: String(x.status || "ATIVO").trim().toUpperCase() === "INATIVO" ? "INATIVO" : "ATIVO",
-        createdAt: x.createdAt || new Date().toISOString()
-      })).filter(x => x.nome);
-    }
-
-    function setAll(list) {
-      saveJson(LS_CATEGORIAS, list);
-    }
-
-    function matches(row, q) {
-      const s = String(q || "").toLowerCase().trim();
-      if (!s) return true;
-      const blob = `${row.id} ${row.nome} ${row.desc} ${row.obs} ${row.status} ${row.cor}`.toLowerCase();
-      return blob.includes(s);
-    }
-
-    // ==============================
-    // DOM
-    // ==============================
+    // DOM filtros
     const qGlobal = document.getElementById("qGlobal");
     const qCat = document.getElementById("qCat");
     const fStatus = document.getElementById("fStatus");
-
-    const tbodyCat = document.getElementById("tbodyCat");
+    const tbody = document.getElementById("tbodyCat");
     const hintEmpty = document.getElementById("hintEmpty");
     const countBadge = document.getElementById("countBadge");
-
-    const btnNovo = document.getElementById("btnNovo");
-    const btnExport = document.getElementById("btnExport");
     const btnLimpar = document.getElementById("btnLimpar");
-    const fileImport = document.getElementById("fileImport");
 
-    // modal
-    const mdEl = document.getElementById("mdCategoria");
-    const md = new bootstrap.Modal(mdEl);
+    function onlyStatus(s) {
+      const v = String(s || "").trim().toUpperCase();
+      return (v === "ATIVO" || v === "INATIVO") ? v : "";
+    }
 
+    function filterRows() {
+      const q = (qCat.value || qGlobal.value || "").toLowerCase().trim();
+      const st = onlyStatus(fStatus.value);
+
+      let visible = 0;
+      tbody.querySelectorAll("tr").forEach(tr => {
+        // ignora linha vazia
+        if (!tr.hasAttribute("data-id")) return;
+
+        const statusRow = (tr.getAttribute("data-statusrow") || "").toUpperCase();
+        const text = tr.innerText.toLowerCase();
+
+        const okQ = !q || text.includes(q);
+        const okS = !st || statusRow === st;
+
+        const show = okQ && okS;
+        tr.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+
+      countBadge.textContent = `${visible} categoria(s)`;
+      hintEmpty.style.display = (visible === 0) ? "block" : "none";
+    }
+
+    qCat.addEventListener("input", filterRows);
+    qGlobal.addEventListener("input", () => {
+      qCat.value = qGlobal.value;
+      filterRows();
+    });
+    fStatus.addEventListener("change", filterRows);
+
+    btnLimpar.addEventListener("click", () => {
+      qCat.value = "";
+      qGlobal.value = "";
+      fStatus.value = "";
+      filterRows();
+    });
+
+    // Modal (novo/editar)
     const mdTitle = document.getElementById("mdTitle");
     const mdSub = document.getElementById("mdSub");
+    const btnNovo = document.getElementById("btnNovo");
 
     const cId = document.getElementById("cId");
     const cNome = document.getElementById("cNome");
     const cStatus = document.getElementById("cStatus");
     const cDesc = document.getElementById("cDesc");
+    const cObs = document.getElementById("cObs");
     const cCor = document.getElementById("cCor");
     const cCorTxt = document.getElementById("cCorTxt");
-    const cObs = document.getElementById("cObs");
 
-    const btnSalvar = document.getElementById("btnSalvar");
     const btnExcluir = document.getElementById("btnExcluir");
+    const frmDelete = document.getElementById("frmDelete");
+    const delId = document.getElementById("delId");
 
-    // ==============================
-    // Estado
-    // ==============================
-    let ALL = [];
-    let VIEW = [];
-
-    function render() {
-      const q = (qCat.value || qGlobal.value || "").trim();
-      const st = (fStatus.value || "").trim().toUpperCase();
-
-      VIEW = ALL
-        .filter(r => matches(r, q))
-        .filter(r => st ? r.status === st : true);
-
-      countBadge.textContent = `${VIEW.length} categoria(s)`;
-      tbodyCat.innerHTML = "";
-
-      if (!VIEW.length) {
-        hintEmpty.style.display = "block";
-        return;
-      }
-      hintEmpty.style.display = "none";
-
-      VIEW.forEach((r) => {
-        const statusBadge = r.status === "ATIVO"
-          ? `<span class="badge-soft badge-ok">ATIVO</span>`
-          : `<span class="badge-soft badge-off">INATIVO</span>`;
-
-        tbodyCat.insertAdjacentHTML("beforeend", `
-          <tr data-id="${safeText(r.id)}">
-            <td style="font-weight:1000;color:#0f172a;">${safeText(r.id)}</td>
-            <td>
-              <div class="d-flex align-items-center gap-2">
-                <span class="swatch" style="background:${safeText(r.cor)};"></span>
-                <div style="min-width:0;">
-                  <div style="font-weight:1000;color:#0f172a;line-height:1.1;">${safeText(r.nome)}</div>
-                  <div class="muted">${safeText(r.obs || "—")}</div>
-                </div>
-              </div>
-            </td>
-            <td>${safeText(r.desc || "—")}</td>
-            <td>
-              <div class="d-flex align-items-center gap-2">
-                <span class="swatch" style="background:${safeText(r.cor)};"></span>
-                <span style="font-weight:900;color:#0f172a;">${safeText(r.cor)}</span>
-              </div>
-            </td>
-            <td class="text-center">${statusBadge}</td>
-            <td class="text-center">
-              <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit">
-                <i class="lni lni-pencil me-1"></i> Editar
-              </button>
-            </td>
-          </tr>
-        `);
-      });
+    function normHex(hex) {
+      let h = String(hex || "").trim();
+      if (!h) return "#60a5fa";
+      if (!h.startsWith("#")) h = "#" + h;
+      if (h.length === 4) h = "#" + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+      return /^#[0-9A-Fa-f]{6}$/.test(h) ? h.toLowerCase() : "#60a5fa";
     }
 
     function openNew() {
       mdTitle.textContent = "Nova categoria";
       mdSub.textContent = "Preencha os dados abaixo.";
-      btnExcluir.style.display = "none";
 
       cId.value = "";
       cNome.value = "";
@@ -735,173 +760,53 @@
       cCor.value = "#60a5fa";
       cCorTxt.value = "#60a5fa";
 
-      md.show();
+      btnExcluir.style.display = "none";
+      frmDelete.style.display = "none";
+      delId.value = "";
+
       setTimeout(() => cNome.focus(), 150);
     }
 
-    function openEdit(id) {
-      const r = ALL.find(x => x.id === id);
-      if (!r) return;
-
+    function openEditFromTr(tr) {
       mdTitle.textContent = "Editar categoria";
       mdSub.textContent = "Altere e salve.";
+
+      cId.value = tr.getAttribute("data-id") || "";
+      cNome.value = tr.getAttribute("data-nome") || "";
+      cStatus.value = tr.getAttribute("data-status") || "ATIVO";
+      cDesc.value = tr.getAttribute("data-desc") || "";
+      cObs.value = tr.getAttribute("data-obs") || "";
+      const cor = normHex(tr.getAttribute("data-cor") || "#60a5fa");
+      cCor.value = cor;
+      cCorTxt.value = cor;
+
+      delId.value = cId.value;
       btnExcluir.style.display = "inline-flex";
+      frmDelete.style.display = "block";
 
-      cId.value = r.id;
-      cNome.value = r.nome;
-      cStatus.value = r.status;
-      cDesc.value = r.desc || "";
-      cObs.value = r.obs || "";
-      cCor.value = normHex(r.cor);
-      cCorTxt.value = normHex(r.cor);
-
-      md.show();
       setTimeout(() => cNome.focus(), 150);
     }
 
-    function saveForm() {
-      const nome = String(cNome.value || "").trim();
-      if (!nome) { alert("Informe o nome da categoria."); cNome.focus(); return; }
-
-      const cor = normHex(cCorTxt.value || cCor.value);
-
-      const data = {
-        id: cId.value ? String(cId.value) : uid(),
-        nome,
-        desc: String(cDesc.value || "").trim(),
-        cor,
-        obs: String(cObs.value || "").trim(),
-        status: String(cStatus.value || "ATIVO").toUpperCase() === "INATIVO" ? "INATIVO" : "ATIVO",
-        createdAt: new Date().toISOString()
-      };
-
-      const idx = ALL.findIndex(x => x.id === data.id);
-      if (idx >= 0) {
-        data.createdAt = ALL[idx].createdAt || data.createdAt;
-        ALL[idx] = data;
-      } else {
-        ALL.unshift(data);
-      }
-
-      setAll(ALL);
-      render();
-      md.hide();
-      alert("Categoria salva!");
-    }
-
-    function removeCurrent() {
-      const id = String(cId.value || "");
-      if (!id) return;
-      const r = ALL.find(x => x.id === id);
-      if (!r) return;
-
-      if (!confirm(`Excluir a categoria "${r.nome}"?`)) return;
-
-      ALL = ALL.filter(x => x.id !== id);
-      setAll(ALL);
-      render();
-      md.hide();
-      alert("Categoria excluída.");
-    }
-
-    function exportJson() {
-      const blob = new Blob([JSON.stringify(ALL, null, 2)], { type: "application/json;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "categorias.json";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    function importJson(file) {
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = JSON.parse(String(reader.result || "[]"));
-          if (!Array.isArray(data)) throw new Error("Arquivo inválido: esperado um array.");
-
-          const incoming = data.map(x => ({
-            id: String(x.id || "").trim() || uid(),
-            nome: String(x.nome || x.name || "").trim(),
-            desc: String(x.desc || x.descricao || "").trim(),
-            cor: normHex(x.cor || x.color || "#60a5fa"),
-            obs: String(x.obs || "").trim(),
-            status: String(x.status || "ATIVO").trim().toUpperCase() === "INATIVO" ? "INATIVO" : "ATIVO",
-            createdAt: x.createdAt || new Date().toISOString()
-          })).filter(x => x.nome);
-
-          const map = new Map(ALL.map(x => [x.id, x]));
-          incoming.forEach(x => map.set(x.id, x));
-          ALL = Array.from(map.values());
-          setAll(ALL);
-          render();
-          alert(`Importado com sucesso: ${incoming.length} registro(s).`);
-        } catch (e) {
-          alert("Falha ao importar: " + (e && e.message ? e.message : e));
-        } finally {
-          fileImport.value = "";
-        }
-      };
-      reader.readAsText(file, "utf-8");
-    }
-
-    function clearFilters() {
-      qCat.value = "";
-      qGlobal.value = "";
-      fStatus.value = "";
-      render();
-    }
-
-    // ==============================
-    // Eventos
-    // ==============================
     btnNovo.addEventListener("click", openNew);
-    btnSalvar.addEventListener("click", saveForm);
-    btnExcluir.addEventListener("click", removeCurrent);
 
-    btnExport.addEventListener("click", exportJson);
-    fileImport.addEventListener("change", (e) => importJson(e.target.files && e.target.files[0]));
-    btnLimpar.addEventListener("click", clearFilters);
-
-    qCat.addEventListener("input", render);
-    qCat.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); render(); } });
-
-    qGlobal.addEventListener("input", () => {
-      qCat.value = qGlobal.value;
-      render();
-    });
-
-    fStatus.addEventListener("change", render);
-
-    tbodyCat.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-act]");
+    tbody.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-act='edit']");
       if (!btn) return;
       const tr = e.target.closest("tr");
       if (!tr) return;
-      const id = tr.getAttribute("data-id");
-      if (!id) return;
-      if (btn.getAttribute("data-act") === "edit") openEdit(id);
+      openEditFromTr(tr);
     });
 
     // Cor sync
-    cCor.addEventListener("input", () => { cCorTxt.value = cCor.value; });
+    cCor.addEventListener("input", () => {
+      cCorTxt.value = cCor.value;
+    });
     cCorTxt.addEventListener("input", () => {
-      const v = normHex(cCorTxt.value);
-      cCor.value = v;
+      cCor.value = normHex(cCorTxt.value);
     });
 
-    // ==============================
-    // Init
-    // ==============================
-    function init() {
-      ALL = getAll();
-      render();
-    }
-    init();
+    // init
+    filterRows();
   </script>
 </body>
 
