@@ -2,1391 +2,1330 @@
 <html lang="pt-BR">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
-  <title>Painel da Distribuidora | Relatórios</title>
+    <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
+    <title>Painel da Distribuidora | Relatórios</title>
 
-  <!-- ========== CSS ========= -->
-  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
-  <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
-  <link rel="stylesheet" href="assets/css/main.css" />
+    <!-- ========== CSS ========= -->
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="assets/css/main.css" />
 
-  <style>
-    /* dropdown do profile: largura acompanha conteúdo */
-    .profile-box .dropdown-menu {
-      width: max-content;
-      min-width: 260px;
-      max-width: calc(100vw - 24px);
-    }
+    <style>
+        /* dropdown do profile: largura acompanha conteúdo */
+        .profile-box .dropdown-menu {
+            width: max-content;
+            min-width: 260px;
+            max-width: calc(100vw - 24px);
+        }
 
-    .profile-box .dropdown-menu .author-info {
-      width: max-content;
-      max-width: 100%;
-      display: flex !important;
-      align-items: center;
-      gap: 10px;
-    }
+        .profile-box .dropdown-menu .author-info {
+            width: max-content;
+            max-width: 100%;
+            display: flex !important;
+            align-items: center;
+            gap: 10px;
+        }
 
-    .profile-box .dropdown-menu .author-info .content {
-      min-width: 0;
-      max-width: 100%;
-    }
+        .profile-box .dropdown-menu .author-info .content {
+            min-width: 0;
+            max-width: 100%;
+        }
 
-    .profile-box .dropdown-menu .author-info .content a {
-      display: inline-block;
-      white-space: nowrap;
-      max-width: 100%;
-    }
+        .profile-box .dropdown-menu .author-info .content a {
+            display: inline-block;
+            white-space: nowrap;
+            max-width: 100%;
+        }
 
-    /* Botões compactos */
-    .main-btn.btn-compact {
-      height: 38px !important;
-      padding: 8px 14px !important;
-      font-size: 13px !important;
-      line-height: 1 !important;
-    }
+        /* Botões compactos */
+        .main-btn.btn-compact {
+            height: 38px !important;
+            padding: 8px 14px !important;
+            font-size: 13px !important;
+            line-height: 1 !important;
+        }
 
-    .main-btn.btn-compact i {
-      font-size: 14px;
-      vertical-align: -1px;
-    }
+        .main-btn.btn-compact i {
+            font-size: 14px;
+            vertical-align: -1px;
+        }
 
-    .icon-btn {
-      height: 34px !important;
-      width: 42px !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-    }
+        .icon-btn {
+            height: 34px !important;
+            width: 42px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
 
-    .form-control.compact,
-    .form-select.compact {
-      height: 38px;
-      padding: 8px 12px;
-      font-size: 13px;
-    }
+        .form-control.compact,
+        .form-select.compact {
+            height: 38px;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
 
-    .cardx {
-      border: 1px solid rgba(148, 163, 184, .28);
-      border-radius: 16px;
-      background: #fff;
-      overflow: hidden;
-    }
+        .muted {
+            font-size: 12px;
+            color: #64748b;
+        }
 
-    .cardx .head {
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(148, 163, 184, .22);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
+        /* Cards */
+        .cardx {
+            border: 1px solid rgba(148, 163, 184, .28);
+            border-radius: 16px;
+            background: #fff;
+            overflow: hidden;
+        }
 
-    .cardx .body {
-      padding: 14px;
-    }
+        .cardx .head {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(148, 163, 184, .22);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
 
-    .muted {
-      font-size: 12px;
-      color: #64748b;
-    }
+        .cardx .body {
+            padding: 14px;
+        }
 
-    .mini {
-      font-size: 12px;
-      color: #475569;
-      font-weight: 800;
-    }
+        /* Pills */
+        .pill {
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, .25);
+            font-weight: 900;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(248, 250, 252, .7);
+            white-space: nowrap;
+        }
 
-    .pill {
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, .25);
-      font-weight: 900;
-      font-size: 12px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(248, 250, 252, .7);
-      white-space: nowrap;
-    }
+        .pill.primary {
+            border-color: rgba(37, 99, 235, .28);
+            background: rgba(239, 246, 255, .75);
+            color: #0b5ed7;
+        }
 
-    .pill.primary {
-      border-color: rgba(37, 99, 235, .28);
-      background: rgba(239, 246, 255, .75);
-      color: #0b5ed7;
-    }
+        .pill.ok {
+            border-color: rgba(34, 197, 94, .25);
+            background: rgba(240, 253, 244, .9);
+            color: #166534;
+        }
 
-    .pill.ok {
-      border-color: rgba(34, 197, 94, .25);
-      background: rgba(240, 253, 244, .9);
-      color: #166534;
-    }
+        .pill.warn {
+            border-color: rgba(245, 158, 11, .28);
+            background: rgba(255, 251, 235, .9);
+            color: #92400e;
+        }
 
-    .pill.warn {
-      border-color: rgba(245, 158, 11, .28);
-      background: rgba(255, 251, 235, .9);
-      color: #92400e;
-    }
+        .pill.bad {
+            border-color: rgba(239, 68, 68, .25);
+            background: rgba(254, 242, 242, .9);
+            color: #991b1b;
+        }
 
-    .pill.bad {
-      border-color: rgba(239, 68, 68, .25);
-      background: rgba(254, 242, 242, .9);
-      color: #991b1b;
-    }
+        /* Layout novo:
+       - Filtros isolado em cima (full width)
+       - Linha de baixo: Atalhos (esquerda) + Prévia (direita)
+    */
+        .filters-grid {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+        }
 
-    .table td,
-    .table th {
-      vertical-align: middle;
-    }
+        .filters-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
 
-    .table-responsive {
-      -webkit-overflow-scrolling: touch;
-    }
+        .filters-actions .main-btn {
+            flex: 0 0 auto;
+        }
 
-    #tbRel {
-      width: 100%;
-      min-width: 980px;
-    }
+        /* Tabela */
+        .table td,
+        .table th {
+            vertical-align: middle;
+        }
 
-    #tbRel th,
-    #tbRel td {
-      white-space: nowrap !important;
-    }
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
 
-    .money {
-      font-weight: 1000;
-      color: #0b5ed7;
-    }
+        #tbRel {
+            width: 100%;
+            min-width: 980px;
+        }
 
-    .box-tot {
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 14px;
-      background: #fff;
-      padding: 12px;
-    }
+        #tbRel th,
+        #tbRel td {
+            white-space: nowrap !important;
+        }
 
-    .tot-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: #334155;
-      margin-bottom: 8px;
-      font-weight: 900;
-    }
+        /* Totais */
+        .box-tot {
+            border: 1px solid rgba(148, 163, 184, .25);
+            border-radius: 14px;
+            background: #fff;
+            padding: 12px;
+        }
 
-    .tot-row:last-child {
-      margin-bottom: 0;
-    }
+        .tot-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #334155;
+            margin-bottom: 8px;
+            font-weight: 900;
+        }
 
-    .tot-hr {
-      height: 1px;
-      background: rgba(148, 163, 184, .22);
-      margin: 10px 0;
-    }
+        .tot-row:last-child {
+            margin-bottom: 0;
+        }
 
-    .grand {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 10px;
-      margin-top: 4px;
-    }
+        .tot-hr {
+            height: 1px;
+            background: rgba(148, 163, 184, .22);
+            margin: 10px 0;
+        }
 
-    .grand .lbl {
-      font-weight: 1000;
-      color: #0f172a;
-      font-size: 16px;
-    }
+        .grand {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin-top: 4px;
+        }
 
-    .grand .val {
-      font-weight: 1000;
-      color: #0b5ed7;
-      font-size: 26px;
-      letter-spacing: .2px;
-    }
+        .grand .lbl {
+            font-weight: 1000;
+            color: #0f172a;
+            font-size: 16px;
+        }
 
-    .quick-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
+        .grand .val {
+            font-weight: 1000;
+            color: #0b5ed7;
+            font-size: 26px;
+            letter-spacing: .2px;
+        }
 
-    .quick {
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 14px;
-      padding: 12px;
-      background: rgba(248, 250, 252, .6);
-      cursor: pointer;
-      transition: .12s ease;
-    }
+        /* Atalhos */
+        .quick-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
 
-    .quick:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 10px 22px rgba(15, 23, 42, .08);
-      background: rgba(239, 246, 255, .65);
-      border-color: rgba(37, 99, 235, .30);
-    }
+        .quick {
+            border: 1px solid rgba(148, 163, 184, .25);
+            border-radius: 14px;
+            padding: 12px;
+            background: rgba(248, 250, 252, .6);
+            cursor: pointer;
+            transition: .12s ease;
+        }
 
-    .quick .t {
-      font-weight: 1000;
-      color: #0f172a;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
+        .quick:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 22px rgba(15, 23, 42, .08);
+            background: rgba(239, 246, 255, .65);
+            border-color: rgba(37, 99, 235, .30);
+        }
 
-    .quick .d {
-      font-size: 12px;
-      color: #64748b;
-      margin-bottom: 8px;
-    }
+        .quick .t {
+            font-weight: 1000;
+            color: #0f172a;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
 
-    .quick .tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 900;
-      color: #0b5ed7;
-      background: rgba(239, 246, 255, .9);
-      border: 1px solid rgba(37, 99, 235, .22);
-      padding: 5px 10px;
-      border-radius: 999px;
-    }
+        .quick .d {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
 
-    @media (max-width: 991.98px) {
-      #tbRel { min-width: 900px; }
-      .grand .val { font-size: 22px; }
-    }
-  </style>
+        .quick .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 900;
+            color: #0b5ed7;
+            background: rgba(239, 246, 255, .9);
+            border: 1px solid rgba(37, 99, 235, .22);
+            padding: 5px 10px;
+            border-radius: 999px;
+        }
+
+        @media (max-width: 991.98px) {
+            .filters-grid {
+                grid-template-columns: 1fr;
+                align-items: stretch;
+            }
+
+            .filters-actions {
+                justify-content: flex-start;
+            }
+
+            #tbRel {
+                min-width: 900px;
+            }
+
+            .grand .val {
+                font-size: 22px;
+            }
+        }
+    </style>
 </head>
 
 <body>
-  <div id="preloader">
-    <div class="spinner"></div>
-  </div>
-
-  <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
-    <div class="navbar-logo">
-      <a href="index.html" class="d-flex align-items-center gap-2">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
-      </a>
+    <div id="preloader">
+        <div class="spinner"></div>
     </div>
 
-    <nav class="sidebar-nav">
-      <ul>
-        <!-- Dashboard -->
-        <li class="nav-item">
-          <a href="index.html">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
-                <path
-                  d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
-              </svg>
-            </span>
-            <span class="text">Dashboard</span>
-          </a>
-        </li>
+    <!-- ======== sidebar-nav start =========== -->
+    <aside class="sidebar-nav-wrapper">
+        <div class="navbar-logo">
+            <a href="index.html" class="d-flex align-items-center gap-2">
+                <img src="assets/images/logo/logo.svg" alt="logo" />
+            </a>
+        </div>
 
-        <!-- Operações -->
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
-            aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
-              </svg>
-            </span>
-            <span class="text">Operações</span>
-          </a>
-          <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-            <li><a href="pedidos.html">Pedidos</a></li>
-            <li><a href="vendas.html">Vendas</a></li>
-            <li><a href="devolucoes.html">Devoluções</a></li>
-          </ul>
-        </li>
+        <nav class="sidebar-nav">
+            <ul>
+                <!-- Dashboard -->
+                <li class="nav-item">
+                    <a href="index.html">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
+                                <path
+                                    d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Dashboard</span>
+                    </a>
+                </li>
 
-        <!-- Estoque -->
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
-            aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
-                <path
-                  d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
-              </svg>
-            </span>
-            <span class="text">Estoque</span>
-          </a>
-          <ul id="ddmenu_estoque" class="collapse dropdown-nav">
-            <li><a href="produtos.html">Produtos</a></li>
-            <li><a href="inventario.html">Inventário</a></li>
-            <li><a href="entradas.html">Entradas</a></li>
-            <li><a href="saidas.html">Saídas</a></li>
-            <li><a href="estoque-minimo.html">Estoque Mínimo</a></li>
-          </ul>
-        </li>
+                <!-- Operações -->
+                <li class="nav-item nav-item-has-children">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
+                        aria-controls="ddmenu_operacoes" aria-expanded="false">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Operações</span>
+                    </a>
+                    <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
+                        <li><a href="pedidos.html">Pedidos</a></li>
+                        <li><a href="vendas.html">Vendas</a></li>
+                        <li><a href="devolucoes.html">Devoluções</a></li>
+                    </ul>
+                </li>
 
-        <!-- Cadastros -->
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros"
-            aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                <path
-                  d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                <path
-                  d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                <path
-                  d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
-              </svg>
-            </span>
-            <span class="text">Cadastros</span>
-          </a>
-          <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-            <li><a href="clientes.html">Clientes</a></li>
-            <li><a href="fornecedores.html">Fornecedores</a></li>
-            <li><a href="categorias.html">Categorias</a></li>
-          </ul>
-        </li>
+                <!-- Estoque -->
+                <li class="nav-item nav-item-has-children">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
+                        aria-controls="ddmenu_estoque" aria-expanded="false">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
+                                <path
+                                    d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Estoque</span>
+                    </a>
+                    <ul id="ddmenu_estoque" class="collapse dropdown-nav">
+                        <li><a href="produtos.html">Produtos</a></li>
+                        <li><a href="inventario.html">Inventário</a></li>
+                        <li><a href="entradas.html">Entradas</a></li>
+                        <li><a href="saidas.html">Saídas</a></li>
+                        <li><a href="estoque-minimo.html">Estoque Mínimo</a></li>
+                    </ul>
+                </li>
 
-        <!-- Relatórios (ativo) -->
-        <li class="nav-item active">
-          <a href="relatorios.html">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
-              </svg>
-            </span>
-            <span class="text">Relatórios</span>
-          </a>
-        </li>
+                <!-- Cadastros -->
+                <li class="nav-item nav-item-has-children">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros"
+                        aria-controls="ddmenu_cadastros" aria-expanded="false">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
+                                <path
+                                    d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
+                                <path
+                                    d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
+                                <path
+                                    d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Cadastros</span>
+                    </a>
+                    <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
+                        <li><a href="clientes.html">Clientes</a></li>
+                        <li><a href="fornecedores.html">Fornecedores</a></li>
+                        <li><a href="categorias.html">Categorias</a></li>
+                    </ul>
+                </li>
 
-        <span class="divider"><hr /></span>
+                <!-- Relatórios ativo -->
+                <li class="nav-item active">
+                    <a href="relatorios.html">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Relatórios</span>
+                    </a>
+                </li>
 
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config"
-            aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
-              </svg>
-            </span>
-            <span class="text">Configurações</span>
-          </a>
-          <ul id="ddmenu_config" class="collapse dropdown-nav">
-            <li><a href="usuarios.html">Usuários e Permissões</a></li>
-            <li><a href="parametros.html">Parâmetros do Sistema</a></li>
-          </ul>
-        </li>
+                <span class="divider">
+                    <hr />
+                </span>
 
-        <li class="nav-item">
-          <a href="suporte.html">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                <path
-                  d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
-              </svg>
-            </span>
-            <span class="text">Suporte</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
-  </aside>
+                <li class="nav-item nav-item-has-children">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config"
+                        aria-controls="ddmenu_config" aria-expanded="false">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Configurações</span>
+                    </a>
+                    <ul id="ddmenu_config" class="collapse dropdown-nav">
+                        <li><a href="usuarios.html">Usuários e Permissões</a></li>
+                        <li><a href="parametros.html">Parâmetros do Sistema</a></li>
+                    </ul>
+                </li>
 
-  <div class="overlay"></div>
+                <li class="nav-item">
+                    <a href="suporte.html">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
+                                <path
+                                    d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Suporte</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
 
-  <main class="main-wrapper">
-    <header class="header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-lg-5 col-md-5 col-6">
-            <div class="header-left d-flex align-items-center">
-              <div class="menu-toggle-btn mr-15">
-                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
-                  <i class="lni lni-chevron-left me-2"></i> Menu
-                </button>
-              </div>
-              <div class="header-search d-none d-md-flex">
-                <form action="#">
-                  <input type="text" placeholder="Buscar no relatório..." id="qGlobal" />
-                  <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
-                </form>
-              </div>
-            </div>
-          </div>
+    <div class="overlay"></div>
 
-          <div class="col-lg-7 col-md-7 col-6">
-            <div class="header-right">
-              <div class="profile-box ml-15">
-                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile"
-                  data-bs-toggle="dropdown" aria-expanded="false">
-                  <div class="profile-info">
-                    <div class="info">
-                      <div class="image">
-                        <img src="assets/images/profile/profile-image.png" alt="perfil" />
-                      </div>
-                      <div>
-                        <h6 class="fw-500">Administrador</h6>
-                        <p>Distribuidora</p>
-                      </div>
+    <main class="main-wrapper">
+        <header class="header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-5 col-md-5 col-6">
+                        <div class="header-left d-flex align-items-center">
+                            <div class="menu-toggle-btn mr-15">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact"
+                                    type="button">
+                                    <i class="lni lni-chevron-left me-2"></i> Menu
+                                </button>
+                            </div>
+                            <div class="header-search d-none d-md-flex">
+                                <form action="#">
+                                    <input type="text" placeholder="Buscar no relatório..." id="qGlobal" />
+                                    <button type="submit" onclick="return false"><i
+                                            class="lni lni-search-alt"></i></button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-                </button>
 
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                  <li>
-                    <div class="author-info flex items-center !p-1">
-                      <div class="image">
-                        <img src="assets/images/profile/profile-image.png" alt="image" />
-                      </div>
-                      <div class="content">
-                        <h4 class="text-sm">Administrador</h4>
-                        <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
-                          href="#">Admin</a>
-                      </div>
+                    <div class="col-lg-7 col-md-7 col-6">
+                        <div class="header-right">
+                            <div class="profile-box ml-15">
+                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="profile-info">
+                                        <div class="info">
+                                            <div class="image">
+                                                <img src="assets/images/profile/profile-image.png" alt="perfil" />
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-500">Administrador</h6>
+                                                <p>Distribuidora</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
+                                    <li>
+                                        <div class="author-info flex items-center !p-1">
+                                            <div class="image">
+                                                <img src="assets/images/profile/profile-image.png" alt="image" />
+                                            </div>
+                                            <div class="content">
+                                                <h4 class="text-sm">Administrador</h4>
+                                                <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
+                                                    href="#">Admin</a>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="divider"></li>
+                                    <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
+                                    <li class="divider"></li>
+                                    <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
-                  </li>
-                  <li class="divider"></li>
-                  <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                  <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
-                  <li class="divider"></li>
-                  <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
-                </ul>
-              </div>
+
+                </div>
             </div>
-          </div>
+        </header>
 
-        </div>
-      </div>
-    </header>
+        <section class="section">
+            <div class="container-fluid">
+                <div class="title-wrapper pt-30">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="title">
+                                <h2>Relatórios</h2>
+                                <div class="muted">Filtros em cima • Atalhos + Prévia abaixo (organizado).</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <section class="section">
-      <div class="container-fluid">
-        <div class="title-wrapper pt-30">
-          <div class="row align-items-center">
-            <div class="col-md-8">
-              <div class="title">
-                <h2>Relatórios</h2>
-                <div class="muted">Gere relatórios com filtros e exporte em PDF/Excel.</div>
-              </div>
+                <!-- ✅ FILTROS ISOLADO EM CIMA -->
+                <div class="cardx mb-3">
+                    <div class="head">
+                        <div style="font-weight:1000;color:#0f172a;">
+                            <i class="lni lni-funnel me-1"></i> Filtros
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="pill ok" id="pillCount"><i class="lni lni-checkmark-circle"></i> 0
+                                linhas</span>
+                            <span class="pill warn" id="pillPeriod"><i class="lni lni-calendar"></i> Período: —</span>
+                            <span class="pill primary" id="pillInfo"><i class="lni lni-bolt"></i> PRONTO</span>
+                        </div>
+                    </div>
+
+                    <div class="body">
+                        <div class="filters-grid">
+                            <div>
+                                <label class="form-label">Tipo de relatório</label>
+                                <select class="form-select compact" id="rTipo">
+                                    <option value="VENDAS_RESUMO" selected>Vendas (Resumo)</option>
+                                    <option value="VENDAS_ITENS">Vendas (Itens)</option>
+                                    <option value="PRODUTOS">Produtos (Cadastro)</option>
+                                    <option value="ESTOQUE_MINIMO">Estoque Mínimo</option>
+                                    <option value="DEVOLUCOES">Devoluções</option>
+                                    <option value="ENTRADAS">Entradas (se existir)</option>
+                                    <option value="SAIDAS">Saídas (se existir)</option>
+                                </select>
+                                <div class="muted mt-1">* Alguns relatórios dependem de dados no LocalStorage.</div>
+                            </div>
+
+                            <div>
+                                <label class="form-label">Data inicial</label>
+                                <input class="form-control compact" id="dtIni" type="date" />
+                            </div>
+
+                            <div>
+                                <label class="form-label">Data final</label>
+                                <input class="form-control compact" id="dtFim" type="date" />
+                            </div>
+
+                            <div class="filters-actions">
+                                <button class="main-btn primary-btn btn-hover btn-compact" id="btnGerar" type="button">
+                                    <i class="lni lni-play me-1"></i> Gerar
+                                </button>
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
+                                    <i class="lni lni-printer me-1"></i> PDF
+                                </button>
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
+                                    <i class="lni lni-download me-1"></i> Excel
+                                </button>
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
+                                    <i class="lni lni-eraser me-1"></i> Limpar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="form-label">Busca (filtro extra)</label>
+                            <input class="form-control compact" id="qRel" placeholder="Cliente, código, produto..." />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ✅ LINHA DE BAIXO: ATALHOS + PRÉVIA -->
+                <div class="row g-3 mb-30">
+                    <!-- Atalhos -->
+                    <div class="col-12 col-lg-4">
+                        <div class="cardx">
+                            <div class="head">
+                                <div style="font-weight:1000;color:#0f172a;">
+                                    <i class="lni lni-grid-alt me-1"></i> Atalhos
+                                </div>
+                            </div>
+                            <div class="body">
+                                <div class="quick-grid">
+                                    <div class="quick" data-quick="VENDAS_RESUMO">
+                                        <div class="t">Vendas (Resumo)</div>
+                                        <div class="d">Lista de vendas com total, cliente, pagamento e entrega.</div>
+                                        <div class="tag"><i class="lni lni-cart"></i> Operações</div>
+                                    </div>
+                                    <div class="quick" data-quick="VENDAS_ITENS">
+                                        <div class="t">Vendas (Itens)</div>
+                                        <div class="d">Itens por venda (produto, qtd, preço, subtotal).</div>
+                                        <div class="tag"><i class="lni lni-list"></i> Detalhado</div>
+                                    </div>
+                                    <div class="quick" data-quick="ESTOQUE_MINIMO">
+                                        <div class="t">Estoque Mínimo</div>
+                                        <div class="d">Itens abaixo do mínimo (se tiver estoque/mínimo).</div>
+                                        <div class="tag"><i class="lni lni-warning"></i> Estoque</div>
+                                    </div>
+                                    <div class="quick" data-quick="DEVOLUCOES">
+                                        <div class="t">Devoluções</div>
+                                        <div class="d">Lista devoluções com status e valores.</div>
+                                        <div class="tag"><i class="lni lni-package"></i> Pós-venda</div>
+                                    </div>
+                                </div>
+
+                                <div class="muted mt-3">
+                                    Dica: use <b>datas</b> para reduzir o relatório e facilitar exportação.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prévia -->
+                    <div class="col-12 col-lg-8">
+                        <div class="cardx">
+                            <div class="head">
+                                <div style="font-weight:1000;color:#0f172a;">
+                                    <i class="lni lni-bar-chart me-1"></i> Prévia do relatório
+                                </div>
+                            </div>
+
+                            <div class="body">
+                                <div class="table-responsive">
+                                    <table class="table text-nowrap" id="tbRel">
+                                        <thead id="theadRel"></thead>
+                                        <tbody id="tbodyRel"></tbody>
+                                    </table>
+                                </div>
+
+                                <div class="muted mt-2" id="hintNone" style="display:none;">Nenhum dado para o filtro
+                                    selecionado.</div>
+
+                                <div class="box-tot mt-3">
+                                    <div class="tot-row"><span>Linhas</span><span id="tRows">0</span></div>
+                                    <div class="tot-row"><span>Somatório (coluna total)</span><span id="tSum"
+                                            style="font-weight:1000;color:#0b5ed7;">R$ 0,00</span></div>
+                                    <div class="tot-hr"></div>
+                                    <div class="grand">
+                                        <span class="lbl">TOTAL</span>
+                                        <span class="val" id="tGrand">R$ 0,00</span>
+                                    </div>
+                                    <div class="muted mt-2" id="tNote">* O somatório depende do tipo de relatório.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-          </div>
-        </div>
+        </section>
 
-        <div class="row g-3 mb-30">
-          <!-- Painel esquerdo -->
-          <div class="col-12 col-lg-4">
-            <div class="cardx mb-3">
-              <div class="head">
-                <div style="font-weight:1000;color:#0f172a;">
-                  <i class="lni lni-funnel me-1"></i> Filtros
+        <footer class="footer">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-6 order-last order-md-first">
+                        <div class="copyright text-center text-md-start">
+                            <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
+                        </div>
+                    </div>
                 </div>
-                <span class="pill primary" id="pillInfo"><i class="lni lni-bolt"></i> PRONTO</span>
-              </div>
-
-              <div class="body">
-                <div class="mb-3">
-                  <label class="form-label">Tipo de relatório</label>
-                  <select class="form-select compact" id="rTipo">
-                    <option value="VENDAS_RESUMO" selected>Vendas (Resumo)</option>
-                    <option value="VENDAS_ITENS">Vendas (Itens)</option>
-                    <option value="PRODUTOS">Produtos (Cadastro)</option>
-                    <option value="ESTOQUE_MINIMO">Estoque Mínimo</option>
-                    <option value="DEVOLUCOES">Devoluções</option>
-                    <option value="ENTRADAS">Entradas (se existir)</option>
-                    <option value="SAIDAS">Saídas (se existir)</option>
-                  </select>
-                  <div class="muted mt-1">* Alguns relatórios dependem de dados salvos no LocalStorage.</div>
-                </div>
-
-                <div class="row g-2">
-                  <div class="col-6 mb-3">
-                    <label class="form-label">Data inicial</label>
-                    <input class="form-control compact" id="dtIni" type="date" />
-                  </div>
-                  <div class="col-6 mb-3">
-                    <label class="form-label">Data final</label>
-                    <input class="form-control compact" id="dtFim" type="date" />
-                  </div>
-                </div>
-
-                <div class="mb-3">
-                  <label class="form-label">Busca (filtro extra)</label>
-                  <input class="form-control compact" id="qRel" placeholder="Cliente, código, produto..." />
-                </div>
-
-                <div class="d-grid gap-2">
-                  <button class="main-btn primary-btn btn-hover btn-compact" id="btnGerar" type="button">
-                    <i class="lni lni-play me-1"></i> Gerar relatório
-                  </button>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
-                      <i class="lni lni-printer me-1"></i> PDF
-                    </button>
-                    <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
-                      <i class="lni lni-download me-1"></i> Excel
-                    </button>
-                    <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
-                      <i class="lni lni-eraser me-1"></i> Limpar filtros
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
+        </footer>
+    </main>
 
-            <div class="cardx">
-              <div class="head">
-                <div style="font-weight:1000;color:#0f172a;">
-                  <i class="lni lni-grid-alt me-1"></i> Atalhos
-                </div>
-              </div>
-              <div class="body">
-                <div class="quick-grid">
-                  <div class="quick" data-quick="VENDAS_RESUMO">
-                    <div class="t">Vendas (Resumo)</div>
-                    <div class="d">Lista de vendas com total, cliente, pagamento e entrega.</div>
-                    <div class="tag"><i class="lni lni-cart"></i> Operações</div>
-                  </div>
-                  <div class="quick" data-quick="VENDAS_ITENS">
-                    <div class="t">Vendas (Itens)</div>
-                    <div class="d">Itens por venda (produto, qtd, preço, subtotal).</div>
-                    <div class="tag"><i class="lni lni-list"></i> Detalhado</div>
-                  </div>
-                  <div class="quick" data-quick="ESTOQUE_MINIMO">
-                    <div class="t">Estoque Mínimo</div>
-                    <div class="d">Mostra itens abaixo do mínimo (se tiver estoque/minimo cadastrado).</div>
-                    <div class="tag"><i class="lni lni-warning"></i> Estoque</div>
-                  </div>
-                  <div class="quick" data-quick="DEVOLUCOES">
-                    <div class="t">Devoluções</div>
-                    <div class="d">Lista devoluções com status e valores.</div>
-                    <div class="tag"><i class="lni lni-package"></i> Pós-venda</div>
-                  </div>
-                </div>
+    <!-- ========= JS ========= -->
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/main.js"></script>
 
-                <div class="muted mt-3">
-                  Dica: use datas para reduzir o tamanho do relatório.
-                </div>
-              </div>
-            </div>
-          </div>
+    <!-- jsPDF + AutoTable -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
-          <!-- Painel direito -->
-          <div class="col-12 col-lg-8">
-            <div class="cardx">
-              <div class="head">
-                <div style="font-weight:1000;color:#0f172a;">
-                  <i class="lni lni-bar-chart me-1"></i> Prévia do relatório
-                </div>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <span class="pill ok" id="pillCount"><i class="lni lni-checkmark-circle"></i> 0 linhas</span>
-                  <span class="pill warn" id="pillPeriod"><i class="lni lni-calendar"></i> Período: —</span>
-                </div>
-              </div>
+    <script>
+        // ==============================
+        // LocalStorage keys
+        // ==============================
+        const LS_PRODUCTS = "dist_products_v1";
+        const LS_SALES = "dist_sales_pdv_v1";
+        const LS_DEV = "dist_devolucoes_v1";
+        const LS_ENTRADAS = "dist_entradas_v1";
+        const LS_SAIDAS = "dist_saidas_v1";
 
-              <div class="body">
-                <div class="table-responsive">
-                  <table class="table text-nowrap" id="tbRel">
-                    <thead id="theadRel"></thead>
-                    <tbody id="tbodyRel"></tbody>
-                  </table>
-                </div>
-
-                <div class="muted mt-2" id="hintNone" style="display:none;">Nenhum dado para o filtro selecionado.</div>
-
-                <div class="box-tot mt-3">
-                  <div class="tot-row"><span>Linhas</span><span id="tRows" class="mini">0</span></div>
-                  <div class="tot-row"><span>Somatório (coluna total)</span><span id="tSum" class="money">R$ 0,00</span></div>
-                  <div class="tot-hr"></div>
-                  <div class="grand">
-                    <span class="lbl">TOTAL</span>
-                    <span class="val" id="tGrand">R$ 0,00</span>
-                  </div>
-                  <div class="muted mt-2" id="tNote">* O somatório depende do tipo de relatório.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-    <footer class="footer">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-md-6 order-last order-md-first">
-            <div class="copyright text-center text-md-start">
-              <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
-  </main>
-
-  <!-- ========= JS ========= -->
-  <script src="assets/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/js/main.js"></script>
-
-  <!-- jsPDF + AutoTable -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-
-  <script>
-    // ==============================
-    // LocalStorage keys (compatíveis com suas páginas)
-    // ==============================
-    const LS_PRODUCTS = "dist_products_v1";
-    const LS_SALES = "dist_sales_pdv_v1";
-    const LS_DEV = "dist_devolucoes_v1";
-    const LS_ENTRADAS = "dist_entradas_v1"; // se você criar depois
-    const LS_SAIDAS = "dist_saidas_v1";     // se você criar depois
-
-    // ==============================
-    // Helpers
-    // ==============================
-    function safeText(s) {
-      return String(s ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function moneyToNumber(txt) {
-      let s = String(txt ?? "").trim();
-      if (!s) return 0;
-      s = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
-      const n = Number(s);
-      return isNaN(n) ? 0 : n;
-    }
-
-    function numberToMoney(n) {
-      const v = Number(n || 0);
-      return "R$ " + v.toFixed(2).replace(".", ",");
-    }
-
-    function loadJson(key, fallback) {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : fallback;
-      } catch {
-        return fallback;
-      }
-    }
-
-    function pad2(n) { return String(n).padStart(2, "0"); }
-
-    function todayISO() {
-      const d = new Date();
-      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-    }
-
-    // dd/mm/yyyy hh:mm
-    function parseBRDateTime(str) {
-      const s = String(str || "").trim();
-      const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-      if (!m) return null;
-      const dd = Number(m[1]), mm = Number(m[2]) - 1, yy = Number(m[3]);
-      const hh = Number(m[4]), mi = Number(m[5]);
-      const d = new Date(yy, mm, dd, hh, mi, 0, 0);
-      return isNaN(d.getTime()) ? null : d;
-    }
-
-    // ISO date + time
-    function parseISODateTime(dateISO, timeISO) {
-      const d = String(dateISO || "").trim();
-      if (!d) return null;
-      const t = String(timeISO || "00:00").trim();
-      const dt = new Date(`${d}T${t}:00`);
-      return isNaN(dt.getTime()) ? null : dt;
-    }
-
-    function fmtBR(d) {
-      if (!(d instanceof Date) || isNaN(d.getTime())) return "";
-      return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-    }
-
-    function inRange(dateObj, fromISO, toISO) {
-      if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return true;
-      if (fromISO) {
-        const a = new Date(fromISO + "T00:00:00");
-        if (dateObj < a) return false;
-      }
-      if (toISO) {
-        const b = new Date(toISO + "T23:59:59");
-        if (dateObj > b) return false;
-      }
-      return true;
-    }
-
-    function pick(obj, keys, fallback = "") {
-      for (const k of keys) {
-        if (obj && obj[k] != null && String(obj[k]).trim() !== "") return obj[k];
-      }
-      return fallback;
-    }
-
-    function payLabel(pay) {
-      if (!pay) return "—";
-      if (pay.mode === "UNICO") return String(pay.method || "—");
-      if (pay.mode === "MULTI") return "Múltiplos";
-      return "—";
-    }
-
-    function entregaLabel(delivery) {
-      if (!delivery) return "—";
-      return (delivery.mode === "DELIVERY") ? "Delivery" : "Presencial";
-    }
-
-    // ==============================
-    // DOM
-    // ==============================
-    const qGlobal = document.getElementById("qGlobal");
-
-    const rTipo = document.getElementById("rTipo");
-    const dtIni = document.getElementById("dtIni");
-    const dtFim = document.getElementById("dtFim");
-    const qRel = document.getElementById("qRel");
-
-    const btnGerar = document.getElementById("btnGerar");
-    const btnPDF = document.getElementById("btnPDF");
-    const btnExcel = document.getElementById("btnExcel");
-    const btnLimpar = document.getElementById("btnLimpar");
-
-    const theadRel = document.getElementById("theadRel");
-    const tbodyRel = document.getElementById("tbodyRel");
-    const hintNone = document.getElementById("hintNone");
-
-    const pillCount = document.getElementById("pillCount");
-    const pillPeriod = document.getElementById("pillPeriod");
-    const pillInfo = document.getElementById("pillInfo");
-
-    const tRows = document.getElementById("tRows");
-    const tSum = document.getElementById("tSum");
-    const tGrand = document.getElementById("tGrand");
-    const tNote = document.getElementById("tNote");
-
-    // quicks
-    document.querySelectorAll(".quick").forEach(el => {
-      el.addEventListener("click", () => {
-        const t = el.getAttribute("data-quick");
-        if (t) {
-          rTipo.value = t;
-          gerar();
+        // ==============================
+        // Helpers
+        // ==============================
+        function safeText(s) {
+            return String(s ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
         }
-      });
-    });
 
-    // ==============================
-    // Estado do relatório
-    // ==============================
-    let CURRENT = {
-      title: "Relatório",
-      head: [],
-      body: [],
-      sum: 0,
-      sumLabel: "Somatório",
-      rightCols: new Set(),
-      centerCols: new Set()
-    };
+        function moneyToNumber(txt) {
+            let s = String(txt ?? "").trim();
+            if (!s) return 0;
+            s = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+            const n = Number(s);
+            return isNaN(n) ? 0 : n;
+        }
 
-    function setInfo(type, ok = true) {
-      pillInfo.className = ok ? "pill ok" : "pill bad";
-      pillInfo.innerHTML = ok
-        ? `<i class="lni lni-checkmark-circle"></i> ${safeText(type)}`
-        : `<i class="lni lni-warning"></i> ${safeText(type)}`;
-    }
+        function numberToMoney(n) {
+            const v = Number(n || 0);
+            return "R$ " + v.toFixed(2).replace(".", ",");
+        }
 
-    // ==============================
-    // Geradores de relatório
-    // ==============================
-    function getProducts() {
-      const arr = loadJson(LS_PRODUCTS, []);
-      return (arr || []).map(x => ({
-        code: String(pick(x, ["code", "codigo"], "")).trim(),
-        name: String(pick(x, ["name", "produto", "nome"], "")).trim(),
-        price: Number(pick(x, ["price", "preco"], 0)) || 0,
-        category: String(pick(x, ["category", "categoria"], "")),
-        unit: String(pick(x, ["unit", "unidade"], "")),
-        stock: (x.stock != null ? Number(x.stock) : (x.estoque != null ? Number(x.estoque) : null)),
-        min: (x.min != null ? Number(x.min) : (x.minimo != null ? Number(x.minimo) : null)),
-        status: String(pick(x, ["status"], "")),
-      })).filter(p => p.code && p.name);
-    }
+        function loadJson(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch {
+                return fallback;
+            }
+        }
 
-    function getSales() {
-      return loadJson(LS_SALES, []);
-    }
+        function pad2(n) { return String(n).padStart(2, "0"); }
 
-    function getDevs() {
-      return loadJson(LS_DEV, []);
-    }
+        function parseBRDateTime(str) {
+            const s = String(str || "").trim();
+            const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+            if (!m) return null;
+            const dd = Number(m[1]), mm = Number(m[2]) - 1, yy = Number(m[3]);
+            const hh = Number(m[4]), mi = Number(m[5]);
+            const d = new Date(yy, mm, dd, hh, mi, 0, 0);
+            return isNaN(d.getTime()) ? null : d;
+        }
 
-    function getEntradas() {
-      return loadJson(LS_ENTRADAS, []);
-    }
+        function parseISODateTime(dateISO, timeISO) {
+            const d = String(dateISO || "").trim();
+            if (!d) return null;
+            const t = String(timeISO || "00:00").trim();
+            const dt = new Date(`${d}T${t}:00`);
+            return isNaN(dt.getTime()) ? null : dt;
+        }
 
-    function getSaidas() {
-      return loadJson(LS_SAIDAS, []);
-    }
+        function inRange(dateObj, fromISO, toISO) {
+            if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return true;
+            if (fromISO) {
+                const a = new Date(fromISO + "T00:00:00");
+                if (dateObj < a) return false;
+            }
+            if (toISO) {
+                const b = new Date(toISO + "T23:59:59");
+                if (dateObj > b) return false;
+            }
+            return true;
+        }
 
-    function applyTextFilter(rows, q, rowJoinFn) {
-      const s = String(q || "").toLowerCase().trim();
-      if (!s) return rows;
-      return rows.filter(r => String(rowJoinFn(r) || "").toLowerCase().includes(s));
-    }
+        function pick(obj, keys, fallback = "") {
+            for (const k of keys) {
+                if (obj && obj[k] != null && String(obj[k]).trim() !== "") return obj[k];
+            }
+            return fallback;
+        }
 
-    function buildVendasResumo(fromISO, toISO, q) {
-      const sales = getSales();
-      let rows = (sales || []).map(s => {
-        const d = parseBRDateTime(s.date || "");
-        const total = Number(s.total || 0);
-        const cust = s.customer ? String(s.customer) : "Consumidor Final";
-        return {
-          no: Number(s.no || 0),
-          date: s.date || (d ? fmtBR(d) : ""),
-          _dateObj: d,
-          customer: cust,
-          entrega: entregaLabel(s.delivery),
-          pagamento: payLabel(s.pay),
-          total: total
+        function payLabel(pay) {
+            if (!pay) return "—";
+            if (pay.mode === "UNICO") return String(pay.method || "—");
+            if (pay.mode === "MULTI") return "Múltiplos";
+            return "—";
+        }
+
+        function entregaLabel(delivery) {
+            if (!delivery) return "—";
+            return (delivery.mode === "DELIVERY") ? "Delivery" : "Presencial";
+        }
+
+        function applyTextFilter(rows, q, rowJoinFn) {
+            const s = String(q || "").toLowerCase().trim();
+            if (!s) return rows;
+            return rows.filter(r => String(rowJoinFn(r) || "").toLowerCase().includes(s));
+        }
+
+        // ==============================
+        // DOM
+        // ==============================
+        const qGlobal = document.getElementById("qGlobal");
+
+        const rTipo = document.getElementById("rTipo");
+        const dtIni = document.getElementById("dtIni");
+        const dtFim = document.getElementById("dtFim");
+        const qRel = document.getElementById("qRel");
+
+        const btnGerar = document.getElementById("btnGerar");
+        const btnPDF = document.getElementById("btnPDF");
+        const btnExcel = document.getElementById("btnExcel");
+        const btnLimpar = document.getElementById("btnLimpar");
+
+        const theadRel = document.getElementById("theadRel");
+        const tbodyRel = document.getElementById("tbodyRel");
+        const hintNone = document.getElementById("hintNone");
+
+        const pillCount = document.getElementById("pillCount");
+        const pillPeriod = document.getElementById("pillPeriod");
+        const pillInfo = document.getElementById("pillInfo");
+
+        const tRows = document.getElementById("tRows");
+        const tSum = document.getElementById("tSum");
+        const tGrand = document.getElementById("tGrand");
+        const tNote = document.getElementById("tNote");
+
+        // ==============================
+        // Estado
+        // ==============================
+        let CURRENT = {
+            title: "Relatório",
+            head: [],
+            body: [],
+            sum: 0,
+            sumLabel: "Somatório",
+            rightCols: new Set(),
+            centerCols: new Set()
         };
-      });
 
-      rows = rows.filter(r => inRange(r._dateObj, fromISO, toISO));
-      rows = applyTextFilter(rows, q, r => `${r.no} ${r.date} ${r.customer} ${r.entrega} ${r.pagamento}`);
+        function setInfo(type, ok = true) {
+            pillInfo.className = ok ? "pill primary" : "pill bad";
+            pillInfo.innerHTML = ok
+                ? `<i class="lni lni-bolt"></i> ${safeText(type)}`
+                : `<i class="lni lni-warning"></i> ${safeText(type)}`;
+        }
 
-      const head = ["Nº Venda", "Data/Hora", "Cliente", "Entrega", "Pagamento", "Total"];
-      const body = rows.map(r => [
-        `#${r.no || "—"}`,
-        r.date || "—",
-        r.customer || "—",
-        r.entrega || "—",
-        r.pagamento || "—",
-        numberToMoney(r.total || 0)
-      ]);
+        // ==============================
+        // Data sources
+        // ==============================
+        function getProducts() {
+            const arr = loadJson(LS_PRODUCTS, []);
+            return (arr || []).map(x => ({
+                code: String(pick(x, ["code", "codigo"], "")).trim(),
+                name: String(pick(x, ["name", "produto", "nome"], "")).trim(),
+                price: Number(pick(x, ["price", "preco"], 0)) || 0,
+                category: String(pick(x, ["category", "categoria"], "")),
+                unit: String(pick(x, ["unit", "unidade"], "")),
+                stock: (x.stock != null ? Number(x.stock) : (x.estoque != null ? Number(x.estoque) : null)),
+                min: (x.min != null ? Number(x.min) : (x.minimo != null ? Number(x.minimo) : null)),
+                status: String(pick(x, ["status"], "")),
+            })).filter(p => p.code && p.name);
+        }
 
-      const sum = rows.reduce((a, r) => a + (Number(r.total || 0)), 0);
+        function getSales() { return loadJson(LS_SALES, []); }
+        function getDevs() { return loadJson(LS_DEV, []); }
+        function getEntradas() { return loadJson(LS_ENTRADAS, []); }
+        function getSaidas() { return loadJson(LS_SAIDAS, []); }
 
-      return {
-        title: "Vendas (Resumo)",
-        head,
-        body,
-        sum,
-        sumLabel: "Total vendido",
-        rightCols: new Set([5]),
-        centerCols: new Set([0, 3, 4])
-      };
-    }
+        // ==============================
+        // Builders
+        // ==============================
+        function buildVendasResumo(fromISO, toISO, q) {
+            const sales = getSales();
+            let rows = (sales || []).map(s => {
+                const d = parseBRDateTime(s.date || "");
+                const total = Number(s.total || 0);
+                const cust = s.customer ? String(s.customer) : "Consumidor Final";
+                return {
+                    no: Number(s.no || 0),
+                    date: s.date || "",
+                    _dateObj: d,
+                    customer: cust,
+                    entrega: entregaLabel(s.delivery),
+                    pagamento: payLabel(s.pay),
+                    total: total
+                };
+            });
 
-    function buildVendasItens(fromISO, toISO, q) {
-      const sales = getSales();
-      let flat = [];
-      (sales || []).forEach(s => {
-        const d = parseBRDateTime(s.date || "");
-        if (!inRange(d, fromISO, toISO)) return;
+            rows = rows.filter(r => inRange(r._dateObj, fromISO, toISO));
+            rows = applyTextFilter(rows, q, r => `${r.no} ${r.date} ${r.customer} ${r.entrega} ${r.pagamento}`);
 
-        const no = Number(s.no || 0);
-        const cust = s.customer ? String(s.customer) : "Consumidor Final";
-        const entrega = entregaLabel(s.delivery);
-        const itens = Array.isArray(s.items) ? s.items : [];
+            const head = ["Nº Venda", "Data/Hora", "Cliente", "Entrega", "Pagamento", "Total"];
+            const body = rows.map(r => [
+                `#${r.no || "—"}`,
+                r.date || "—",
+                r.customer || "—",
+                r.entrega || "—",
+                r.pagamento || "—",
+                numberToMoney(r.total || 0)
+            ]);
 
-        itens.forEach(it => {
-          const qty = Number(it.qty || 0);
-          const price = Number(it.price || 0);
-          const sub = qty * price;
-          flat.push({
-            no, date: s.date || (d ? fmtBR(d) : ""),
-            _dateObj: d,
-            customer: cust,
-            entrega,
-            code: String(it.code || ""),
-            product: String(it.name || ""),
-            qty, price, sub
-          });
-        });
-      });
+            const sum = rows.reduce((a, r) => a + (Number(r.total || 0)), 0);
 
-      flat = applyTextFilter(flat, q, r => `${r.no} ${r.date} ${r.customer} ${r.entrega} ${r.code} ${r.product}`);
+            return {
+                title: "Vendas (Resumo)",
+                head,
+                body,
+                sum,
+                sumLabel: "Total vendido",
+                rightCols: new Set([5]),
+                centerCols: new Set([0, 3, 4])
+            };
+        }
 
-      const head = ["Venda", "Data/Hora", "Cliente", "Entrega", "Código", "Produto", "Qtd", "Unitário", "Subtotal"];
-      const body = flat.map(r => [
-        `#${r.no || "—"}`,
-        r.date || "—",
-        r.customer || "—",
-        r.entrega || "—",
-        r.code || "—",
-        r.product || "—",
-        String(r.qty || 0),
-        numberToMoney(r.price || 0),
-        numberToMoney(r.sub || 0),
-      ]);
+        function buildVendasItens(fromISO, toISO, q) {
+            const sales = getSales();
+            let flat = [];
+            (sales || []).forEach(s => {
+                const d = parseBRDateTime(s.date || "");
+                if (!inRange(d, fromISO, toISO)) return;
 
-      const sum = flat.reduce((a, r) => a + (Number(r.sub || 0)), 0);
+                const no = Number(s.no || 0);
+                const cust = s.customer ? String(s.customer) : "Consumidor Final";
+                const entrega = entregaLabel(s.delivery);
+                const itens = Array.isArray(s.items) ? s.items : [];
 
-      return {
-        title: "Vendas (Itens)",
-        head,
-        body,
-        sum,
-        sumLabel: "Soma dos subtotais",
-        rightCols: new Set([7, 8]),
-        centerCols: new Set([0, 3, 6])
-      };
-    }
+                itens.forEach(it => {
+                    const qty = Number(it.qty || 0);
+                    const price = Number(it.price || 0);
+                    const sub = qty * price;
+                    flat.push({
+                        no, date: s.date || "",
+                        _dateObj: d,
+                        customer: cust,
+                        entrega,
+                        code: String(it.code || ""),
+                        product: String(it.name || ""),
+                        qty, price, sub
+                    });
+                });
+            });
 
-    function buildProdutos(q) {
-      const prods = getProducts();
-      let rows = prods;
+            flat = applyTextFilter(flat, q, r => `${r.no} ${r.date} ${r.customer} ${r.entrega} ${r.code} ${r.product}`);
 
-      rows = applyTextFilter(rows, q, r => `${r.code} ${r.name} ${r.category} ${r.unit} ${r.status}`);
+            const head = ["Venda", "Data/Hora", "Cliente", "Entrega", "Código", "Produto", "Qtd", "Unitário", "Subtotal"];
+            const body = flat.map(r => [
+                `#${r.no || "—"}`,
+                r.date || "—",
+                r.customer || "—",
+                r.entrega || "—",
+                r.code || "—",
+                r.product || "—",
+                String(r.qty || 0),
+                numberToMoney(r.price || 0),
+                numberToMoney(r.sub || 0),
+            ]);
 
-      // colunas dinâmicas
-      const hasCat = rows.some(r => r.category);
-      const hasUnit = rows.some(r => r.unit);
-      const hasStock = rows.some(r => r.stock != null && !isNaN(r.stock));
-      const hasMin = rows.some(r => r.min != null && !isNaN(r.min));
-      const hasStatus = rows.some(r => r.status);
+            const sum = flat.reduce((a, r) => a + (Number(r.sub || 0)), 0);
 
-      const head = ["Código", "Produto"];
-      if (hasCat) head.push("Categoria");
-      if (hasUnit) head.push("Unidade");
-      head.push("Preço");
-      if (hasStock) head.push("Estoque");
-      if (hasMin) head.push("Mínimo");
-      if (hasStatus) head.push("Status");
+            return {
+                title: "Vendas (Itens)",
+                head,
+                body,
+                sum,
+                sumLabel: "Soma dos subtotais",
+                rightCols: new Set([7, 8]),
+                centerCols: new Set([0, 3, 6])
+            };
+        }
 
-      const body = rows.map(r => {
-        const arr = [r.code, r.name];
-        if (hasCat) arr.push(r.category || "—");
-        if (hasUnit) arr.push(r.unit || "—");
-        arr.push(numberToMoney(r.price || 0));
-        if (hasStock) arr.push((r.stock != null && !isNaN(r.stock)) ? String(r.stock) : "—");
-        if (hasMin) arr.push((r.min != null && !isNaN(r.min)) ? String(r.min) : "—");
-        if (hasStatus) arr.push(r.status || "—");
-        return arr;
-      });
+        function buildProdutos(q) {
+            const prods = getProducts();
+            let rows = applyTextFilter(prods, q, r => `${r.code} ${r.name} ${r.category} ${r.unit} ${r.status}`);
 
-      // soma de preços (não é total de venda, mas ajuda)
-      const sum = rows.reduce((a, r) => a + (Number(r.price || 0)), 0);
+            const hasCat = rows.some(r => r.category);
+            const hasUnit = rows.some(r => r.unit);
+            const hasStock = rows.some(r => r.stock != null && !isNaN(r.stock));
+            const hasMin = rows.some(r => r.min != null && !isNaN(r.min));
+            const hasStatus = rows.some(r => r.status);
 
-      // alinha colunas numéricas
-      const rightCols = new Set([head.indexOf("Preço")].filter(i => i >= 0));
-      const centerCols = new Set();
-      if (head.includes("Estoque")) centerCols.add(head.indexOf("Estoque"));
-      if (head.includes("Mínimo")) centerCols.add(head.indexOf("Mínimo"));
+            const head = ["Código", "Produto"];
+            if (hasCat) head.push("Categoria");
+            if (hasUnit) head.push("Unidade");
+            head.push("Preço");
+            if (hasStock) head.push("Estoque");
+            if (hasMin) head.push("Mínimo");
+            if (hasStatus) head.push("Status");
 
-      return {
-        title: "Produtos (Cadastro)",
-        head,
-        body,
-        sum,
-        sumLabel: "Soma dos preços",
-        rightCols,
-        centerCols
-      };
-    }
+            const body = rows.map(r => {
+                const arr = [r.code, r.name];
+                if (hasCat) arr.push(r.category || "—");
+                if (hasUnit) arr.push(r.unit || "—");
+                arr.push(numberToMoney(r.price || 0));
+                if (hasStock) arr.push((r.stock != null && !isNaN(r.stock)) ? String(r.stock) : "—");
+                if (hasMin) arr.push((r.min != null && !isNaN(r.min)) ? String(r.min) : "—");
+                if (hasStatus) arr.push(r.status || "—");
+                return arr;
+            });
 
-    function buildEstoqueMinimo(q) {
-      const prods = getProducts();
-      let rows = prods
-        .filter(p => p.stock != null && p.min != null && !isNaN(p.stock) && !isNaN(p.min))
-        .map(p => ({ ...p, diff: (Number(p.stock) - Number(p.min)) }))
-        .filter(p => p.stock < p.min);
+            const sum = rows.reduce((a, r) => a + (Number(r.price || 0)), 0);
+            const rightCols = new Set([head.indexOf("Preço")].filter(i => i >= 0));
+            const centerCols = new Set();
+            if (head.includes("Estoque")) centerCols.add(head.indexOf("Estoque"));
+            if (head.includes("Mínimo")) centerCols.add(head.indexOf("Mínimo"));
 
-      rows = applyTextFilter(rows, q, r => `${r.code} ${r.name} ${r.category} ${r.unit}`);
+            return { title: "Produtos (Cadastro)", head, body, sum, sumLabel: "Soma dos preços", rightCols, centerCols };
+        }
 
-      const head = ["Código", "Produto", "Estoque", "Mínimo", "Diferença"];
-      const body = rows.map(r => [
-        r.code,
-        r.name,
-        String(r.stock),
-        String(r.min),
-        String(r.diff)
-      ]);
+        function buildEstoqueMinimo(q) {
+            const prods = getProducts();
+            let rows = prods
+                .filter(p => p.stock != null && p.min != null && !isNaN(p.stock) && !isNaN(p.min))
+                .map(p => ({ ...p, diff: (Number(p.stock) - Number(p.min)) }))
+                .filter(p => p.stock < p.min);
 
-      const sum = rows.reduce((a, r) => a + Math.abs(Number(r.diff || 0)), 0);
+            rows = applyTextFilter(rows, q, r => `${r.code} ${r.name} ${r.category} ${r.unit}`);
 
-      return {
-        title: "Estoque Mínimo",
-        head,
-        body,
-        sum,
-        sumLabel: "Soma déficit (abs)",
-        rightCols: new Set([]),
-        centerCols: new Set([2, 3, 4])
-      };
-    }
+            const head = ["Código", "Produto", "Estoque", "Mínimo", "Diferença"];
+            const body = rows.map(r => [r.code, r.name, String(r.stock), String(r.min), String(r.diff)]);
+            const sum = rows.reduce((a, r) => a + Math.abs(Number(r.diff || 0)), 0);
 
-    function buildDevolucoes(fromISO, toISO, q) {
-      const devs = getDevs();
-      let rows = (devs || []).map(d => {
-        const dt = parseISODateTime(d.date, d.time);
-        return {
-          id: d.id || "—",
-          dtText: (d.date ? `${String(d.date).split("-").reverse().join("/")}` : "—") + " " + (d.time || "—"),
-          _dateObj: dt,
-          saleNo: d.saleNo ? `#${d.saleNo}` : "—",
-          customer: d.customer ? d.customer : "Consumidor Final",
-          type: d.type || "TOTAL",
-          product: d.type === "PARCIAL" ? (d.product || "—") : "—",
-          qty: d.type === "PARCIAL" ? (d.qty || 1) : "—",
-          reason: d.reason || "—",
-          status: d.status || "ABERTO",
-          amount: Number(d.amount || 0)
-        };
-      });
+            return {
+                title: "Estoque Mínimo",
+                head,
+                body,
+                sum,
+                sumLabel: "Soma déficit (abs)",
+                rightCols: new Set([]),
+                centerCols: new Set([2, 3, 4])
+            };
+        }
 
-      rows = rows.filter(r => inRange(r._dateObj, fromISO, toISO));
-      rows = applyTextFilter(rows, q, r => `${r.id} ${r.dtText} ${r.saleNo} ${r.customer} ${r.type} ${r.product} ${r.reason} ${r.status}`);
+        function buildDevolucoes(fromISO, toISO, q) {
+            const devs = getDevs();
+            let rows = (devs || []).map(d => {
+                const dt = parseISODateTime(d.date, d.time);
+                const dtText = (d.date ? `${String(d.date).split("-").reverse().join("/")}` : "—") + " " + (d.time || "—");
+                return {
+                    id: d.id || "—",
+                    dtText,
+                    _dateObj: dt,
+                    saleNo: d.saleNo ? `#${d.saleNo}` : "—",
+                    customer: d.customer ? d.customer : "Consumidor Final",
+                    type: d.type || "TOTAL",
+                    product: d.type === "PARCIAL" ? (d.product || "—") : "—",
+                    qty: d.type === "PARCIAL" ? (d.qty || 1) : "—",
+                    reason: d.reason || "—",
+                    status: d.status || "ABERTO",
+                    amount: Number(d.amount || 0)
+                };
+            });
 
-      const head = ["ID", "Data/Hora", "Venda", "Cliente", "Tipo", "Produto", "Qtd", "Motivo", "Status", "Valor"];
-      const body = rows.map(r => [
-        r.id,
-        r.dtText,
-        r.saleNo,
-        r.customer,
-        r.type,
-        r.product,
-        String(r.qty),
-        r.reason,
-        r.status,
-        numberToMoney(r.amount || 0)
-      ]);
+            rows = rows.filter(r => inRange(r._dateObj, fromISO, toISO));
+            rows = applyTextFilter(rows, q, r => `${r.id} ${r.dtText} ${r.saleNo} ${r.customer} ${r.type} ${r.product} ${r.reason} ${r.status}`);
 
-      const sum = rows.reduce((a, r) => a + (Number(r.amount || 0)), 0);
+            const head = ["ID", "Data/Hora", "Venda", "Cliente", "Tipo", "Produto", "Qtd", "Motivo", "Status", "Valor"];
+            const body = rows.map(r => [
+                r.id, r.dtText, r.saleNo, r.customer, r.type, r.product, String(r.qty), r.reason, r.status, numberToMoney(r.amount || 0)
+            ]);
 
-      return {
-        title: "Devoluções",
-        head,
-        body,
-        sum,
-        sumLabel: "Total devolvido",
-        rightCols: new Set([9]),
-        centerCols: new Set([0, 2, 4, 6, 8])
-      };
-    }
+            const sum = rows.reduce((a, r) => a + (Number(r.amount || 0)), 0);
 
-    function buildMovimentoGeneric(list, title, fromISO, toISO, q) {
-      // tenta normalizar entradas/saídas (se existir)
-      // campos esperados: date/time, product/code, qty, unit, note, user
-      let rows = (list || []).map(x => {
-        const dateISO = pick(x, ["date", "data"], "");
-        const timeISO = pick(x, ["time", "hora"], "");
-        const dt = parseISODateTime(dateISO, timeISO);
-        const code = String(pick(x, ["code", "codigo"], "") || "");
-        const prod = String(pick(x, ["product", "produto", "name", "nome"], "") || "");
-        const qty = Number(pick(x, ["qty", "quantidade"], 0)) || 0;
-        const unit = String(pick(x, ["unit", "unidade"], "") || "");
-        const obs = String(pick(x, ["obs", "note", "observacao"], "") || "");
-        const user = String(pick(x, ["user", "usuario"], "") || "");
-        return { dt, dtText: dt ? fmtBR(dt) : (dateISO ? `${dateISO.split("-").reverse().join("/")}${timeISO ? (" " + timeISO) : ""}` : "—"), code, prod, qty, unit, obs, user };
-      });
+            return {
+                title: "Devoluções",
+                head,
+                body,
+                sum,
+                sumLabel: "Total devolvido",
+                rightCols: new Set([9]),
+                centerCols: new Set([0, 2, 4, 6, 8])
+            };
+        }
 
-      rows = rows.filter(r => inRange(r.dt, fromISO, toISO));
-      rows = applyTextFilter(rows, q, r => `${r.dtText} ${r.code} ${r.prod} ${r.unit} ${r.obs} ${r.user}`);
+        function buildMovimentoGeneric(list, title, fromISO, toISO, q) {
+            let rows = (list || []).map(x => {
+                const dateISO = pick(x, ["date", "data"], "");
+                const timeISO = pick(x, ["time", "hora"], "");
+                const dt = parseISODateTime(dateISO, timeISO);
+                const dtText = dt ? dt.toLocaleString("pt-BR") : (dateISO ? `${dateISO.split("-").reverse().join("/")}${timeISO ? (" " + timeISO) : ""}` : "—");
+                const code = String(pick(x, ["code", "codigo"], "") || "");
+                const prod = String(pick(x, ["product", "produto", "name", "nome"], "") || "");
+                const qty = Number(pick(x, ["qty", "quantidade"], 0)) || 0;
+                const unit = String(pick(x, ["unit", "unidade"], "") || "");
+                const obs = String(pick(x, ["obs", "note", "observacao"], "") || "");
+                const user = String(pick(x, ["user", "usuario"], "") || "");
+                return { dt, dtText, code, prod, qty, unit, obs, user };
+            });
 
-      const head = ["Data/Hora", "Código", "Produto", "Qtd", "Unidade", "Obs", "Usuário"];
-      const body = rows.map(r => [
-        r.dtText,
-        r.code || "—",
-        r.prod || "—",
-        String(r.qty || 0),
-        r.unit || "—",
-        r.obs || "—",
-        r.user || "—"
-      ]);
+            rows = rows.filter(r => inRange(r.dt, fromISO, toISO));
+            rows = applyTextFilter(rows, q, r => `${r.dtText} ${r.code} ${r.prod} ${r.unit} ${r.obs} ${r.user}`);
 
-      const sum = rows.reduce((a, r) => a + (Number(r.qty || 0)), 0);
+            const head = ["Data/Hora", "Código", "Produto", "Qtd", "Unidade", "Obs", "Usuário"];
+            const body = rows.map(r => [r.dtText, r.code || "—", r.prod || "—", String(r.qty || 0), r.unit || "—", r.obs || "—", r.user || "—"]);
+            const sum = rows.reduce((a, r) => a + (Number(r.qty || 0)), 0);
 
-      return {
-        title,
-        head,
-        body,
-        sum,
-        sumLabel: "Soma quantidades",
-        rightCols: new Set([]),
-        centerCols: new Set([3])
-      };
-    }
+            return { title, head, body, sum, sumLabel: "Soma quantidades", rightCols: new Set([]), centerCols: new Set([3]) };
+        }
 
-    function buildReport() {
-      const tipo = rTipo.value;
-      const fromISO = dtIni.value || "";
-      const toISO = dtFim.value || "";
-      const q = qRel.value || "";
+        function buildReport() {
+            const tipo = rTipo.value;
+            const fromISO = dtIni.value || "";
+            const toISO = dtFim.value || "";
+            const q = qRel.value || "";
 
-      if (fromISO || toISO) {
-        pillPeriod.innerHTML = `<i class="lni lni-calendar"></i> Período: ${fromISO ? fromISO.split("-").reverse().join("/") : "—"} a ${toISO ? toISO.split("-").reverse().join("/") : "—"}`;
-      } else {
-        pillPeriod.innerHTML = `<i class="lni lni-calendar"></i> Período: —`;
-      }
+            if (fromISO || toISO) {
+                pillPeriod.innerHTML = `<i class="lni lni-calendar"></i> Período: ${fromISO ? fromISO.split("-").reverse().join("/") : "—"} a ${toISO ? toISO.split("-").reverse().join("/") : "—"}`;
+            } else {
+                pillPeriod.innerHTML = `<i class="lni lni-calendar"></i> Período: —`;
+            }
 
-      try {
-        if (tipo === "VENDAS_RESUMO") return buildVendasResumo(fromISO, toISO, q);
-        if (tipo === "VENDAS_ITENS") return buildVendasItens(fromISO, toISO, q);
-        if (tipo === "PRODUTOS") return buildProdutos(q);
-        if (tipo === "ESTOQUE_MINIMO") return buildEstoqueMinimo(q);
-        if (tipo === "DEVOLUCOES") return buildDevolucoes(fromISO, toISO, q);
-        if (tipo === "ENTRADAS") return buildMovimentoGeneric(getEntradas(), "Entradas", fromISO, toISO, q);
-        if (tipo === "SAIDAS") return buildMovimentoGeneric(getSaidas(), "Saídas", fromISO, toISO, q);
+            try {
+                if (tipo === "VENDAS_RESUMO") return buildVendasResumo(fromISO, toISO, q);
+                if (tipo === "VENDAS_ITENS") return buildVendasItens(fromISO, toISO, q);
+                if (tipo === "PRODUTOS") return buildProdutos(q);
+                if (tipo === "ESTOQUE_MINIMO") return buildEstoqueMinimo(q);
+                if (tipo === "DEVOLUCOES") return buildDevolucoes(fromISO, toISO, q);
+                if (tipo === "ENTRADAS") return buildMovimentoGeneric(getEntradas(), "Entradas", fromISO, toISO, q);
+                if (tipo === "SAIDAS") return buildMovimentoGeneric(getSaidas(), "Saídas", fromISO, toISO, q);
+                return buildVendasResumo(fromISO, toISO, q);
+            } catch (e) {
+                setInfo("ERRO AO GERAR", false);
+                return { title: "Erro", head: ["Mensagem"], body: [[String(e && e.message ? e.message : e)]], sum: 0, sumLabel: "Somatório", rightCols: new Set(), centerCols: new Set() };
+            }
+        }
 
-        return buildVendasResumo(fromISO, toISO, q);
-      } catch (e) {
-        setInfo("ERRO AO GERAR", false);
-        return {
-          title: "Erro",
-          head: ["Mensagem"],
-          body: [[String(e && e.message ? e.message : e)]],
-          sum: 0,
-          sumLabel: "Somatório",
-          rightCols: new Set(),
-          centerCols: new Set()
-        };
-      }
-    }
+        // ==============================
+        // Render
+        // ==============================
+        function renderTable(rep) {
+            CURRENT = rep;
 
-    // ==============================
-    // Render tabela
-    // ==============================
-    function renderTable(rep) {
-      CURRENT = rep;
+            theadRel.innerHTML = `<tr>${rep.head.map((h, idx) => {
+                const cls = rep.rightCols.has(idx) ? "text-end" : (rep.centerCols.has(idx) ? "text-center" : "");
+                return `<th class="${cls}">${safeText(h)}</th>`;
+            }).join("")}</tr>`;
 
-      // head
-      theadRel.innerHTML = `<tr>${rep.head.map((h, idx) => {
-        const cls = rep.rightCols.has(idx) ? "text-end" : (rep.centerCols.has(idx) ? "text-center" : "");
-        return `<th class="${cls}">${safeText(h)}</th>`;
-      }).join("")}</tr>`;
-
-      // body
-      tbodyRel.innerHTML = rep.body.map(row => `
+            tbodyRel.innerHTML = rep.body.map(row => `
         <tr>
           ${row.map((c, idx) => {
-            const cls = rep.rightCols.has(idx) ? "text-end" : (rep.centerCols.has(idx) ? "text-center" : "");
-            return `<td class="${cls}">${safeText(c)}</td>`;
-          }).join("")}
+                const cls = rep.rightCols.has(idx) ? "text-end" : (rep.centerCols.has(idx) ? "text-center" : "");
+                return `<td class="${cls}">${safeText(c)}</td>`;
+            }).join("")}
         </tr>
       `).join("");
 
-      const count = rep.body.length;
-      hintNone.style.display = count ? "none" : "block";
+            const count = rep.body.length;
+            hintNone.style.display = count ? "none" : "block";
 
-      pillCount.innerHTML = `<i class="lni lni-checkmark-circle"></i> ${count} linhas`;
-      tRows.textContent = String(count);
-      tSum.textContent = numberToMoney(rep.sum || 0);
-      tGrand.textContent = numberToMoney(rep.sum || 0);
-      tNote.textContent = `* ${rep.sumLabel || "Somatório"}.`;
+            pillCount.innerHTML = `<i class="lni lni-checkmark-circle"></i> ${count} linhas`;
+            tRows.textContent = String(count);
+            tSum.textContent = numberToMoney(rep.sum || 0);
+            tGrand.textContent = numberToMoney(rep.sum || 0);
+            tNote.textContent = `* ${rep.sumLabel || "Somatório"}.`;
 
-      // info pill
-      setInfo(rep.title, true);
-    }
-
-    // ==============================
-    // Export Excel / PDF
-    // ==============================
-    function exportExcel() {
-      const rep = CURRENT;
-      if (!rep || !rep.head || !rep.body) { alert("Gere um relatório primeiro."); return; }
-
-      const now = new Date();
-      const dt = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR");
-
-      const periodo = pillPeriod.textContent.replace("Período:", "").trim() || "—";
-
-      // estilos simples
-      const isRight = (idx) => rep.rightCols && rep.rightCols.has(idx);
-      const isCenter = (idx) => rep.centerCols && rep.centerCols.has(idx);
-
-      let html = `
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              table { border: 0.6px solid #999; font-family: Arial; font-size: 12px; }
-              td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
-              th { background: #f1f5f9; font-weight: 700; }
-              .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
-              .muted { color: #555; font-weight: 700; }
-              .right { text-align: right; }
-              .center { text-align: center; }
-              .spacer td { border: none; padding: 4px; }
-            </style>
-          </head>
-          <body>
-            <table>
-      `;
-
-      const colN = rep.head.length;
-
-      html += `<tr><td class="title" colspan="${colN}">PAINEL DA DISTRIBUIDORA - ${safeText(rep.title).toUpperCase()}</td></tr>`;
-      html += `<tr><td class="muted">Gerado em:</td><td colspan="${colN - 1}">${safeText(dt)}</td></tr>`;
-      html += `<tr><td class="muted">Período:</td><td colspan="${colN - 1}">${safeText(periodo)}</td></tr>`;
-      html += `<tr><td class="muted">Somatório:</td><td colspan="${colN - 1}">${safeText(numberToMoney(rep.sum || 0))} (${safeText(rep.sumLabel || "")})</td></tr>`;
-      html += `<tr class="spacer"><td colspan="${colN}"></td></tr>`;
-
-      html += `<tr>${rep.head.map((h, idx) => {
-        const cls = isRight(idx) ? "right" : (isCenter(idx) ? "center" : "");
-        return `<th class="${cls}">${safeText(h)}</th>`;
-      }).join("")}</tr>`;
-
-      rep.body.forEach(row => {
-        html += `<tr>${row.map((c, idx) => {
-          const cls = isRight(idx) ? "right" : (isCenter(idx) ? "center" : "");
-          return `<td class="${cls}">${safeText(c)}</td>`;
-        }).join("")}</tr>`;
-      });
-
-      html += `
-            </table>
-          </body>
-        </html>
-      `;
-
-      const blob = new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `relatorio_${rep.title.toLowerCase().replace(/\s+/g, "_")}.xls`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    function exportPDF() {
-      const rep = CURRENT;
-      if (!rep || !rep.head || !rep.body) { alert("Gere um relatório primeiro."); return; }
-
-      if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert("Biblioteca do PDF não carregou.");
-        return;
-      }
-
-      const now = new Date();
-      const dt = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR");
-      const periodo = pillPeriod.textContent.replace("Período:", "").trim() || "—";
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-
-      const M = 70;
-
-      doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text(`PAINEL DA DISTRIBUIDORA - ${String(rep.title).toUpperCase()}`, M, 55);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`Gerado em: ${dt}`, M, 75);
-      doc.text(`Período: ${periodo}`, M, 92);
-      doc.text(`Somatório: ${numberToMoney(rep.sum || 0)} (${rep.sumLabel || ""})`, M, 108);
-
-      doc.autoTable({
-        head: [rep.head],
-        body: rep.body,
-        startY: 130,
-        margin: { left: M, right: M },
-        theme: "plain",
-        styles: {
-          font: "helvetica",
-          fontSize: 9,
-          textColor: [17, 24, 39],
-          cellPadding: { top: 6, right: 6, bottom: 6, left: 6 },
-          lineWidth: 0
-        },
-        headStyles: {
-          fillColor: [241, 245, 249],
-          textColor: [17, 24, 39],
-          fontStyle: "bold",
-          lineWidth: 0
-        },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        didParseCell: function (data) {
-          const col = data.column.index;
-          if (rep.rightCols && rep.rightCols.has(col)) data.cell.styles.halign = "right";
-          if (rep.centerCols && rep.centerCols.has(col)) data.cell.styles.halign = "center";
-          data.cell.styles.lineWidth = 0;
+            setInfo(rep.title, true);
         }
-      });
 
-      doc.save(`relatorio_${rep.title.toLowerCase().replace(/\s+/g, "_")}.pdf`);
-    }
+        // ==============================
+        // Export
+        // ==============================
+        function exportExcel() {
+            const rep = CURRENT;
+            if (!rep || !rep.head || !rep.body) { alert("Gere um relatório primeiro."); return; }
 
-    // ==============================
-    // Gerar
-    // ==============================
-    function gerar() {
-      const rep = buildReport();
-      renderTable(rep);
-    }
+            const now = new Date();
+            const dt = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR");
+            const periodo = pillPeriod.textContent.replace("Período:", "").trim() || "—";
 
-    // ==============================
-    // Eventos
-    // ==============================
-    btnGerar.addEventListener("click", gerar);
-    btnExcel.addEventListener("click", exportExcel);
-    btnPDF.addEventListener("click", exportPDF);
+            const isRight = (idx) => rep.rightCols && rep.rightCols.has(idx);
+            const isCenter = (idx) => rep.centerCols && rep.centerCols.has(idx);
 
-    btnLimpar.addEventListener("click", () => {
-      rTipo.value = "VENDAS_RESUMO";
-      dtIni.value = "";
-      dtFim.value = "";
-      qRel.value = "";
-      qGlobal.value = "";
-      gerar();
-    });
+            let html = `
+        <html><head><meta charset="utf-8">
+        <style>
+          table { border: 0.6px solid #999; font-family: Arial; font-size: 12px; }
+          td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
+          th { background: #f1f5f9; font-weight: 700; }
+          .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
+          .muted { color: #555; font-weight: 700; }
+          .right { text-align: right; }
+          .center { text-align: center; }
+          .spacer td { border: none; padding: 4px; }
+        </style></head><body><table>
+      `;
 
-    qGlobal.addEventListener("input", () => {
-      qRel.value = qGlobal.value;
-      gerar();
-    });
+            const colN = rep.head.length;
 
-    // Atalho: Enter no campo busca
-    qRel.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        gerar();
-      }
-    });
+            html += `<tr><td class="title" colspan="${colN}">PAINEL DA DISTRIBUIDORA - ${safeText(rep.title).toUpperCase()}</td></tr>`;
+            html += `<tr><td class="muted">Gerado em:</td><td colspan="${colN - 1}">${safeText(dt)}</td></tr>`;
+            html += `<tr><td class="muted">Período:</td><td colspan="${colN - 1}">${safeText(periodo)}</td></tr>`;
+            html += `<tr><td class="muted">Somatório:</td><td colspan="${colN - 1}">${safeText(numberToMoney(rep.sum || 0))} (${safeText(rep.sumLabel || "")})</td></tr>`;
+            html += `<tr class="spacer"><td colspan="${colN}"></td></tr>`;
 
-    // ==============================
-    // Init
-    // ==============================
-    function init() {
-      // default: hoje nos filtros? (deixa vazio por padrão)
-      // dtIni.value = todayISO();
-      // dtFim.value = todayISO();
+            html += `<tr>${rep.head.map((h, idx) => {
+                const cls = isRight(idx) ? "right" : (isCenter(idx) ? "center" : "");
+                return `<th class="${cls}">${safeText(h)}</th>`;
+            }).join("")}</tr>`;
 
-      gerar();
-    }
+            rep.body.forEach(row => {
+                html += `<tr>${row.map((c, idx) => {
+                    const cls = isRight(idx) ? "right" : (isCenter(idx) ? "center" : "");
+                    return `<td class="${cls}">${safeText(c)}</td>`;
+                }).join("")}</tr>`;
+            });
 
-    init();
-  </script>
+            html += `</table></body></html>`;
+
+            const blob = new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `relatorio_${rep.title.toLowerCase().replace(/\s+/g, "_")}.xls`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportPDF() {
+            const rep = CURRENT;
+            if (!rep || !rep.head || !rep.body) { alert("Gere um relatório primeiro."); return; }
+
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert("Biblioteca do PDF não carregou.");
+                return;
+            }
+
+            const now = new Date();
+            const dt = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR");
+            const periodo = pillPeriod.textContent.replace("Período:", "").trim() || "—";
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+
+            const M = 70;
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text(`PAINEL DA DISTRIBUIDORA - ${String(rep.title).toUpperCase()}`, M, 55);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${dt}`, M, 75);
+            doc.text(`Período: ${periodo}`, M, 92);
+            doc.text(`Somatório: ${numberToMoney(rep.sum || 0)} (${rep.sumLabel || ""})`, M, 108);
+
+            doc.autoTable({
+                head: [rep.head],
+                body: rep.body,
+                startY: 130,
+                margin: { left: M, right: M },
+                theme: "plain",
+                styles: {
+                    font: "helvetica",
+                    fontSize: 9,
+                    textColor: [17, 24, 39],
+                    cellPadding: { top: 6, right: 6, bottom: 6, left: 6 },
+                    lineWidth: 0
+                },
+                headStyles: {
+                    fillColor: [241, 245, 249],
+                    textColor: [17, 24, 39],
+                    fontStyle: "bold",
+                    lineWidth: 0
+                },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                didParseCell: function (data) {
+                    const col = data.column.index;
+                    if (rep.rightCols && rep.rightCols.has(col)) data.cell.styles.halign = "right";
+                    if (rep.centerCols && rep.centerCols.has(col)) data.cell.styles.halign = "center";
+                    data.cell.styles.lineWidth = 0;
+                }
+            });
+
+            doc.save(`relatorio_${rep.title.toLowerCase().replace(/\s+/g, "_")}.pdf`);
+        }
+
+        // ==============================
+        // Gerar
+        // ==============================
+        function gerar() {
+            const rep = buildReport();
+            renderTable(rep);
+        }
+
+        // ==============================
+        // Eventos
+        // ==============================
+        btnGerar.addEventListener("click", gerar);
+        btnExcel.addEventListener("click", exportExcel);
+        btnPDF.addEventListener("click", exportPDF);
+
+        btnLimpar.addEventListener("click", () => {
+            rTipo.value = "VENDAS_RESUMO";
+            dtIni.value = "";
+            dtFim.value = "";
+            qRel.value = "";
+            qGlobal.value = "";
+            gerar();
+        });
+
+        qGlobal.addEventListener("input", () => {
+            qRel.value = qGlobal.value;
+            gerar();
+        });
+
+        qRel.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") { e.preventDefault(); gerar(); }
+        });
+
+        document.querySelectorAll(".quick").forEach(el => {
+            el.addEventListener("click", () => {
+                const t = el.getAttribute("data-quick");
+                if (t) { rTipo.value = t; gerar(); }
+            });
+        });
+
+        // ==============================
+        // Init
+        // ==============================
+        function init() { gerar(); }
+        init();
+    </script>
 </body>
 
 </html>
