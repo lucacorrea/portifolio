@@ -1,57 +1,63 @@
 <?php
 namespace App\Controllers;
 
+use App\Services\FinancialService;
+use App\Models\AccountPayable;
+use App\Models\AccountReceivable;
+
 class FinancialController extends BaseController {
+    private $service;
+
+    public function __construct() {
+        $this->service = new FinancialService();
+    }
+
     public function index() {
-        $db = \App\Config\Database::getInstance()->getConnection();
-        
+        $receivableModel = new AccountReceivable();
+        $payableModel = new AccountPayable();
+
         $stats = [
-            'receber_total' => $db->query("SELECT SUM(valor) FROM contas_receber WHERE status = 'pendente'")->fetchColumn() ?: 0,
-            'pagar_total' => $db->query("SELECT SUM(valor) FROM contas_pagar WHERE status = 'pendente'")->fetchColumn() ?: 0,
-            'recebido_hoje' => $db->query("SELECT SUM(valor) FROM contas_receber WHERE status = 'pago' AND data_pagamento = CURRENT_DATE")->fetchColumn() ?: 0,
-            'pago_hoje' => $db->query("SELECT SUM(valor) FROM contas_pagar WHERE status = 'pago' AND data_pagamento = CURRENT_DATE")->fetchColumn() ?: 0
+            'areceber' => $receivableModel->getSummary()['total_pendente'],
+            'apagar' => $payableModel->getSummary()['total_pendente']
         ];
 
-        $receber = $db->query("
-            SELECT cr.*, c.nome as cliente_nome 
-            FROM contas_receber cr 
-            LEFT JOIN clientes c ON cr.cliente_id = c.id 
-            ORDER BY cr.data_vencimento ASC LIMIT 20
-        ")->fetchAll();
-
-        $pagar = $db->query("
-            SELECT cp.* FROM contas_pagar cp 
-            ORDER BY cp.data_vencimento ASC LIMIT 20
-        ")->fetchAll();
-
-        ob_start();
-        $data = [
-            'stats' => $stats, 
-            'contas_receber' => $receber, 
-            'contas_pagar' => $pagar
-        ];
-        extract($data);
-        require __DIR__ . "/../../../views/financial.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
-            'title' => 'Centro Financeiro Technical',
-            'pageTitle' => 'Gestão de Liquidez e Tesouraria',
-            'content' => $content
+        $this->render('financial/index', [
+            'contas_receber' => $receivableModel->getRecent(),
+            'contas_pagar' => $payableModel->getRecent(),
+            'stats' => $stats,
+            'pageTitle' => 'Painel Financeiro & Fluxo de Caixa'
         ]);
     }
 
-    public function pay() {
-        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $db = \App\Config\Database::getInstance()->getConnection();
-            $id = $_POST['id'];
-            $type = $_POST['origem']; // 'receber' ou 'pagar'
-            $table = ($type == 'receber') ? 'contas_receber' : 'contas_pagar';
+    public function dre() {
+        $month = $_GET['month'] ?? date('m');
+        $year = $_GET['year'] ?? date('Y');
+        
+        $dre = $this->service->getDRE($month, $year);
+        
+        $this->render('financial/dre', [
+            'dre' => $dre,
+            'month' => $month,
+            'year' => $year,
+            'pageTitle' => "DRE - " . date('M/Y', strtotime("$year-$month-01"))
+        ]);
+    }
 
-            $stmt = $db->prepare("UPDATE $table SET status = 'pago', data_pagamento = CURRENT_DATE WHERE id = ?");
-            $stmt->execute([$id]);
-
-            $this->redirect('financeiro.php?msg=Transação processada');
+    public function abcCurve() {
+        $results = $this->service->getProductABCCurve();
+        $cumulative = 0;
+        foreach ($results as &$res) {
+            $cumulative += $res['percentage'];
+            $res['cumulative'] = $cumulative;
+            if ($cumulative <= 80) $res['class'] = 'A';
+            elseif ($cumulative <= 95) $res['class'] = 'B';
+            else $res['class'] = 'C';
         }
+        $this->render('financial/abc_curve', ['results' => $results, 'pageTitle' => 'Curva ABC de Vendas']);
+    }
+
+    public function delinquency() {
+        $report = $this->service->getDelinquencyReport();
+        $this->render('financial/delinquency', ['report' => $report, 'pageTitle' => 'Relatório de Inadimplência']);
     }
 }

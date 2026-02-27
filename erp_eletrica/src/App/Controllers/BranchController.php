@@ -6,18 +6,45 @@ use App\Models\Filial;
 class BranchController extends BaseController {
     public function index() {
         $model = new Filial();
-        $branches = $model->all();
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        
+        // Se não for matriz, só vê a própria
+        $branches = $model->getAllBranches($isMatriz ? null : $_SESSION['filial_id']);
 
-        ob_start();
-        $data = ['branches' => $branches];
-        extract($data);
-        require __DIR__ . "/../../../views/branches.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('branches', [
+            'branches' => $branches,
             'title' => 'Gestão de Filiais & Unidades',
-            'pageTitle' => 'Administração de Unidades de Negócio',
-            'content' => $content
+            'pageTitle' => 'Administração de Unidades de Negócio'
         ]);
+    }
+
+    public function save() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $data = $_POST;
+            $id = $data['id'] ?? null;
+
+            // Security check
+            if (!($_SESSION['is_matriz'] ?? false) && $id != $_SESSION['filial_id']) {
+                $this->redirect('filiais.php?msg=Erro: Acesso negado para gerenciar esta unidade');
+            }
+
+            $model = new \App\Models\Filial();
+
+            // Handle Certificate Upload
+            if (isset($_FILES['certificado']) && $_FILES['certificado']['error'] == 0) {
+                $dir = dirname(__DIR__, 3) . "/storage/certificados/";
+                if (!is_dir($dir)) mkdir($dir, 0777, true);
+                
+                $refId = $id ?: "new_" . time();
+                $filename = "cert_" . $refId . "_" . uniqid() . ".pfx";
+                if (move_uploaded_file($_FILES['certificado']['tmp_name'], $dir . $filename)) {
+                    $data['certificado_pfx'] = $filename;
+                }
+            }
+
+            $model->save($data);
+            $msg = $id ? 'Unidade atualizada com sucesso' : 'Nova unidade registrada com sucesso';
+            $this->redirect('filiais.php?msg=' . $msg);
+        }
     }
 }

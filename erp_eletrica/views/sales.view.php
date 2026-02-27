@@ -2,21 +2,23 @@
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-7 d-flex flex-column">
         <div class="row g-4 mb-4">
-            <div class="col-md-8">
+            <div class="col-md-8" style="z-index: 1025;">
                 <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="input-group input-group-lg shadow-sm rounded">
-                            <span class="input-group-text bg-white border-end-0 text-muted">
-                                <i class="fas fa-search"></i>
-                            </span>
-                            <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Digite o nome ou código..." autocomplete="off">
-                        </div>
-                        <div id="searchResults" class="list-group mt-3 shadow-sm d-none" style="position: absolute; z-index: 1050; width: calc(100% - 3rem);">
-                            <!-- Results will be injected here -->
+                    <div class="card-body" style="overflow: visible !important;">
+                        <div class="position-relative">
+                            <div class="input-group input-group-lg shadow-sm rounded">
+                                <span class="input-group-text bg-white border-end-0 text-muted">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off">
+                            </div>
+                            <div id="searchResults" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 9999; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd; margin-top: 5px;">
+                                <!-- Results will be injected here -->
+                            </div>
                         </div>
                         <div class="mt-3 d-flex gap-2">
                              <button class="btn btn-outline-primary fw-bold" onclick="loadPendingPreSales()">
-                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda
+                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda (F8)
                             </button>
                         </div>
                     </div>
@@ -66,9 +68,9 @@
 
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
-        <div class="card border-0 shadow-sm h-100 d-flex flex-column">
-            <div class="card-header bg-primary text-white py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Finalização</h5>
+        <div class="card border-0 glass-card shadow-lg h-100 d-flex flex-column" style="border: 1px solid rgba(0, 86, 179, 0.2) !important;">
+            <div class="card-header bg-erp-primary text-white py-3 border-0">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Checkout SaaS</h5>
             </div>
             <div class="card-body flex-grow-1">
                 <div class="mb-4">
@@ -115,6 +117,12 @@
                         <span class="text-muted">Subtotal</span>
                         <span class="fw-bold" id="totalSub">R$ 0,00</span>
                     </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Desconto (%)</span>
+                        <div style="width: 80px;">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onfocus="interceptDiscount(event)" onmousedown="interceptDiscount(event)" onkeydown="interceptDiscount(event)" onchange="renderCart()">
+                        </div>
+                    </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted text-success">Desconto</span>
                         <span class="fw-bold text-success" id="totalDesc">- R$ 0,00</span>
@@ -126,9 +134,15 @@
                     </div>
                 </div>
 
+                <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
                 <button class="btn btn-primary btn-lg w-100 py-3 fw-bold shadow-sm" id="btnCheckout" disabled>
                     <i class="fas fa-check-circle me-2"></i>CONFIRMAR VENDA (F2)
                 </button>
+                <?php else: ?>
+                <div class="alert alert-info small mb-0">
+                    <i class="fas fa-info-circle me-1"></i> Usuários nível vendedor não podem finalizar vendas.
+                </div>
+                <?php endif; ?>
             </div>
             
             <!-- Quick Sales History (Últimos Cupons) -->
@@ -175,6 +189,38 @@
     </div>
 </div>
 
+<!-- Modal: Discount Authorization -->
+<div class="modal fade" id="modalDiscountAuth" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-shield-halved me-2 text-primary"></i>Autorização de Administrador</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="resetDiscount()"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-4">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <i class="fas fa-key fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">Acesso Restrito</h6>
+                    <p class="text-muted small">Esta operação requer a presença e senha de um Administrador.</p>
+                </div>
+                
+                <div class="mb-4 text-start">
+                    <label class="form-label small fw-bold text-uppercase opacity-75" id="authLabel">Senha de Autorização</label>
+                    <input type="password" id="authCredential" class="form-control form-control-lg text-center shadow-sm border-2" placeholder="Digite a senha..." autofocus>
+                </div>
+
+                <div class="d-grid">
+                    <button class="btn btn-dark fw-bold py-3 shadow-sm" onclick="validateAuthorization()">
+                        <i class="fas fa-check-circle me-2 text-primary"></i>CONFIRMAR IDENTIDADE
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Sale Management -->
 <div class="modal fade" id="modalSaleManager" tabindex="-1">
     <div class="modal-dialog">
@@ -213,6 +259,7 @@
 let cart = [];
 let currentPvId = null;
 let activeManageId = null;
+const currentUserLevel = '<?= $_SESSION['usuario_nivel'] ?? 'vendedor' ?>';
 
 const pdvSearch = document.getElementById('pdvSearch');
 const searchResults = document.getElementById('searchResults');
@@ -292,6 +339,7 @@ function addToCart(product) {
     
     pdvSearch.value = '';
     searchResults.classList.add('d-none');
+    isAuthorized = false; // Reset auth on new items
     renderCart();
 }
 
@@ -328,8 +376,15 @@ function renderCart() {
         cartTable.appendChild(row);
     });
 
-    finalTotal.innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountVal = total * (discountPercent / 100);
+    const finalTotalVal = total - discountVal;
+
     document.getElementById('totalSub').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    document.getElementById('totalDesc').innerText = `- R$ ${discountVal.toFixed(2).replace('.', ',')}`;
+    finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
+
+    checkDiscountAuth();
 }
 
 function updateQty(index, val) {
@@ -444,17 +499,135 @@ async function cancelSaleAction() {
     }
 }
 
+async function interceptDiscount(e) {
+    if (currentUserLevel === 'admin' || isAuthorized) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.target) e.target.blur();
+    
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDiscountAuth'));
+    modal.show();
+    
+    await loadAdmins();
+}
+
+let isAuthorized = false;
+let authSupervisorId = null;
+let authSupervisorCredential = null;
+let authAdmins = [];
+
+async function checkDiscountAuth() {
+    const discount = parseFloat(document.getElementById('discountPercent').value) || 0;
+    
+    // Admins don't need authorization modal for themselves
+    if (currentUserLevel === 'admin') {
+        isAuthorized = true;
+        btnCheckout.disabled = cart.length === 0;
+        return;
+    }
+
+    if (discount > 0 && !isAuthorized) {
+        await loadAdmins();
+        new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
+        btnCheckout.disabled = true;
+    } else {
+        btnCheckout.disabled = cart.length === 0;
+    }
+}
+
+async function loadAdmins() {
+    const res = await fetch('vendas.php?action=list_admins');
+    authAdmins = await res.json();
+    
+    if (authAdmins.length > 0) {
+        const admin = authAdmins[0]; // Auto-select the first admin
+        authSupervisorId = admin.id;
+        
+        const input = document.getElementById('authCredential');
+        const label = document.getElementById('authLabel');
+        
+        if (admin.auth_type === 'pin') {
+            input.type = 'number';
+            input.placeholder = 'Digite o PIN...';
+            label.innerText = 'PIN DE AUTORIZAÇÃO';
+        } else {
+            input.type = 'password';
+            input.placeholder = 'Digite a senha...';
+            label.innerText = 'SENHA DE AUTORIZAÇÃO';
+        }
+    }
+}
+
+async function validateAuthorization() {
+    const credential = document.getElementById('authCredential').value;
+
+    if (!authSupervisorId || !credential) {
+        alert('Credenciais incompletas ou nenhum administrador encontrado.');
+        return;
+    }
+
+    const res = await fetch('vendas.php?action=authorize_discount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: authSupervisorId, credential: credential })
+    });
+
+    const result = await res.json();
+    if (result.success) {
+        isAuthorized = true;
+        authSupervisorCredential = credential;
+        bootstrap.Modal.getInstance(document.getElementById('modalDiscountAuth')).hide();
+        renderCart();
+        
+        // Focus and select the discount field so the user can type immediately
+        const discountInput = document.getElementById('discountPercent');
+        setTimeout(() => {
+            discountInput.focus();
+            discountInput.select();
+        }, 500);
+        
+        alert('Desconto autorizado com sucesso!');
+    } else {
+        alert('Erro: ' + result.error);
+    }
+}
+
+function resetDiscount() {
+    if (!isAuthorized) {
+        document.getElementById('discountPercent').value = 0;
+        renderCart();
+    }
+}
+
 // Checkout
 btnCheckout.onclick = async () => {
     if (cart.length === 0) return;
     
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    
+    // Safety check: blockage if discount exists but not authorized
+    if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
+        alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
+        await loadAdmins();
+        new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
+        return;
+    }
+
+    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    const total = subtotal * (1 - (discountPercent / 100));
+
     const payment = document.querySelector('input[name="payment"]:checked').value;
     const data = {
-        total: cart.reduce((acc, i) => acc + (i.price * i.qty), 0),
+        subtotal: subtotal,
+        discount_percent: discountPercent,
+        total: total,
         items: cart,
         pagamento: payment,
         cliente_id: null,
-        pv_id: currentPvId
+        pv_id: currentPvId,
+        supervisor_id: authSupervisorId,
+        supervisor_credential: authSupervisorCredential
     };
 
     const res = await fetch('vendas.php?action=checkout', {
@@ -465,9 +638,13 @@ btnCheckout.onclick = async () => {
 
     const result = await res.json();
     if (result.success) {
-        alert('Venda realizada com sucesso!');
+        showSuccessModal(result.sale_id, data.total);
         cart = [];
         currentPvId = null;
+        isAuthorized = false;
+        authSupervisorId = null;
+        authSupervisorCredential = null;
+        document.getElementById('discountPercent').value = 0;
         renderCart();
         loadRecentSales();
     } else {
@@ -475,8 +652,104 @@ btnCheckout.onclick = async () => {
     }
 };
 
+function showSuccessModal(saleId, total) {
+    const modalHtml = `
+        <div class="modal fade" id="modalSuccess" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-body text-center p-5">
+                        <div class="mb-4">
+                            <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-2">Venda Finalizada!</h3>
+                        <p class="text-muted mb-4">A venda <strong>#${saleId}</strong> foi registrada com sucesso no valor de <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong>.</p>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-lg fw-bold py-3" onclick="issueNFCe(${saleId})">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Cupom Fiscal)
+                            </button>
+                            <button class="btn btn-outline-secondary fw-bold py-3" onclick="alert('Impressão térmica em desenvolvimento')">
+                                <i class="fas fa-print me-2"></i>Imprimir Recibo Simples
+                            </button>
+                            <button class="btn btn-link text-muted mt-3" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const existing = document.getElementById('modalSuccess');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('modalSuccess'));
+    modal.show();
+}
+
+async function issueNFCe(saleId) {
+    const btn = event.currentTarget;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Comunicando SEFAZ...';
+
+    try {
+        const res = await fetch('vendas.php?action=issue_nfce', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: saleId })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            btn.className = 'btn btn-success btn-lg fw-bold py-3';
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>NFC-e AUTORIZADA!';
+            alert('NFC-e Autorizada com sucesso! Protocolo: ' + result.protocolo);
+            // In a real scenario, we would trigger PDF download/print here
+        } else {
+            alert('Erro SEFAZ: ' + result.error);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    } catch (e) {
+        alert('Erro de comunicação: ' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
 // Keyboard Hotkeys
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'F2') btnCheckout.click();
+    if (e.key === 'F2') {
+        e.preventDefault();
+        btnCheckout.click();
+    }
+    if (e.key === 'F4') {
+        e.preventDefault();
+        pdvSearch.focus();
+    }
+    if (e.key === 'F8') {
+        e.preventDefault();
+        loadPendingPreSales();
+    }
+    if (e.key === 'Escape') {
+        searchResults.classList.add('d-none');
+    }
+});
+
+// Barcode optimization: If search returns exactly 1 result and looks like a barcode, add to cart automatically
+async function handleBarcode(val) {
+    if (val.length >= 8 && !isNaN(val)) {
+        const response = await fetch(`vendas.php?action=search&term=${val}`);
+        const products = await response.json();
+        if (products.length === 1) {
+            addToCart(products[0]);
+            pdvSearch.value = '';
+        }
+    }
+}
+
+pdvSearch.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
 </script>

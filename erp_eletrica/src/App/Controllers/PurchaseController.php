@@ -16,16 +16,12 @@ class PurchaseController extends BaseController {
         $suppliers = $supplierModel->all();
         $products = $productModel->all();
 
-        ob_start();
-        $data = ['purchases' => $purchases, 'suppliers' => $suppliers, 'products' => $products];
-        extract($data);
-        require __DIR__ . "/../../../views/purchases.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('purchases', [
+            'purchases' => $purchases,
+            'suppliers' => $suppliers,
+            'products' => $products,
             'title' => 'Entrada de Mercadorias',
-            'pageTitle' => 'Gestão de Compras e Reposição',
-            'content' => $content
+            'pageTitle' => 'Gestão de Compras e Reposição'
         ]);
     }
 

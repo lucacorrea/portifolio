@@ -21,14 +21,70 @@ class User extends BaseModel {
         );
     }
     
-    public function all($orderBy = "nome") {
-        return $this->query("SELECT * FROM {$this->table} ORDER BY $orderBy")->fetchAll();
+    public function all($orderBy = "u.nome") {
+        $filialId = $this->getFilialContext();
+        $where = $filialId ? "WHERE u.filial_id = $filialId" : "";
+        return $this->query("
+            SELECT u.*, f.nome as filial_nome 
+            FROM {$this->table} u
+            LEFT JOIN filiais f ON u.filial_id = f.id
+            $where
+            ORDER BY $orderBy
+        ")->fetchAll();
+    }
+    
+    public function findAdmins() {
+        $filialId = $_SESSION['filial_id'] ?? null;
+        
+        $sql = "SELECT id, nome, auth_type, auth_pin FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1";
+        
+        // 1. Try exact branch match
+        if ($filialId) {
+            $sqlBranch = $sql . " AND filial_id = ?";
+            $res = $this->query($sqlBranch, [$filialId])->fetchAll();
+            if (!empty($res)) return $res;
+        }
+
+        // 2. Try global admins (filial_id is NULL or 0)
+        $sqlGlobal = $sql . " AND (filial_id IS NULL OR filial_id = 0)";
+        $res = $this->query($sqlGlobal)->fetchAll();
+        if (!empty($res)) return $res;
+
+        // 3. Absolute fallback: any active admin
+        return $this->query($sql)->fetchAll();
+    }
+
+    public function validateAuth($userId, $credential) {
+        $user = $this->query("SELECT senha, auth_pin, auth_type FROM {$this->table} WHERE id = ?", [$userId])->fetch();
+        if (!$user) return false;
+
+        if ($user['auth_type'] === 'pin') {
+            // Using string cast to be safe with numeric PINs from different sources
+            return (string)$credential === (string)$user['auth_pin'];
+        } else {
+            return password_verify($credential, $user['senha']);
+        }
     }
 
     public function save($data) {
+        $hasAuthCols = $this->columnExists('auth_pin');
+        $filialId = !empty($data['filial_id']) ? $data['filial_id'] : null;
+        
         if (!empty($data['id'])) {
-            $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ? ";
-            $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo']];
+            $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ?, filial_id = ? ";
+            $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo'], $filialId];
+            
+            if ($this->columnExists('desconto_maximo')) {
+                $sql .= ", desconto_maximo = ? ";
+                $params[] = $data['desconto_maximo'] ?? 0;
+            }
+
+            if ($hasAuthCols) {
+                $sql .= ", auth_pin = ?, auth_type = ? ";
+                $params[] = !empty($data['auth_pin']) ? $data['auth_pin'] : null;
+                $params[] = $data['auth_type'] ?? 'password';
+            }
+
             if (!empty($data['senha'])) {
                 $sql .= ", senha = ? ";
                 $params[] = password_hash($data['senha'], PASSWORD_DEFAULT);
@@ -38,10 +94,54 @@ class User extends BaseModel {
             return $this->query($sql, $params);
         } else {
             $senha = password_hash($data['senha'], PASSWORD_DEFAULT);
-            return $this->query(
-                "INSERT INTO {$this->table} (nome, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?)",
-                [$data['nome'], $data['email'], $senha, $data['nivel'], $data['ativo']]
-            );
+            $fields = ["nome", "email", "senha", "nivel", "ativo", "filial_id"];
+            $placeholders = ["?", "?", "?", "?", "?", "?"];
+            $params = [$data['nome'], $data['email'], $senha, $data['nivel'], (int)$data['ativo'], $filialId];
+            
+            if ($this->columnExists('desconto_maximo')) {
+                $fields[] = "desconto_maximo";
+                $placeholders[] = "?";
+                $params[] = $data['desconto_maximo'] ?? 0;
+            }
+
+            if ($hasAuthCols) {
+                $fields[] = "auth_pin";
+                $fields[] = "auth_type";
+                $placeholders[] = "?";
+                $placeholders[] = "?";
+                $params[] = !empty($data['auth_pin']) ? $data['auth_pin'] : null;
+                $params[] = $data['auth_type'] ?? 'password';
+            }
+
+            $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
+            return $this->query($sql, $params);
         }
+    }
+
+    public function paginate($perPage = 15, $currentPage = 1, $order = "u.id DESC") {
+        $filialId = $this->getFilialContext();
+        $offset = ($currentPage - 1) * $perPage;
+        
+        $where = $filialId ? "WHERE u.filial_id = $filialId" : "";
+        
+        $total = $this->query("SELECT COUNT(*) FROM {$this->table} u $where")->fetchColumn();
+        $pages = ceil($total / $perPage);
+        
+        $sql = "SELECT u.*, f.nome as filial_nome 
+                FROM {$this->table} u 
+                LEFT JOIN filiais f ON u.filial_id = f.id 
+                $where 
+                ORDER BY {$order} 
+                LIMIT $perPage OFFSET $offset";
+        
+        $data = $this->query($sql)->fetchAll();
+        
+        return [
+            'data' => $data,
+            'total' => $total,
+            'pages' => $pages,
+            'current' => $currentPage,
+            'per_page' => $perPage
+        ];
     }
 }

@@ -5,31 +5,34 @@ use App\Models\User;
 
 class UserController extends BaseController {
     public function index() {
-        $model = new User();
-        $users = $model->all();
+        $userModel = new \App\Models\User();
+        $filialModel = new \App\Models\Filial();
+        
+        $page = (int)($_GET['page'] ?? 1);
+        $pagination = $userModel->paginate(6, $page);
+        $users = $pagination['data'];
+        $branches = $filialModel->all();
 
-        ob_start();
-        $data = ['users' => $users];
-        extract($data);
-        require __DIR__ . "/../../../views/users.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
-            'title' => 'Gestão de Colaboradores',
-            'pageTitle' => 'Controle de Acesso e Identidade (IAM)',
-            'content' => $content
+        $this->render('users', [
+            'users' => $users,
+            'pagination' => $pagination,
+            'branches' => $branches,
+            'title' => 'Gestão de Usuários',
+            'pageTitle' => 'Operadores do Sistema'
         ]);
     }
 
     public function save() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $model = new User();
+            $userModel = new \App\Models\User();
             $data = $_POST;
             $data['id'] = $_POST['usuario_id'] ?? null;
             $data['ativo'] = isset($_POST['ativo']) ? 1 : 0;
+            $data['auth_pin'] = $_POST['auth_pin'] ?? null;
+            $data['auth_type'] = $_POST['auth_type'] ?? 'password';
             
-            $model->save($data);
-            $this->redirect('usuarios.php?msg=Usuário processado com sucesso');
+            $userModel->save($data);
+            $this->redirect('usuarios.php?msg=Usuário salvo com sucesso');
         }
     }
 }

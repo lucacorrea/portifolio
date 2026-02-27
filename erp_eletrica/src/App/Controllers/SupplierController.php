@@ -6,18 +6,15 @@ use App\Models\Supplier;
 class SupplierController extends BaseController {
     public function index() {
         $model = new Supplier();
-        $suppliers = $model->all();
+        $page = (int)($_GET['page'] ?? 1);
+        $pagination = $model->paginate(6, $page);
+        $suppliers = $pagination['data'];
 
-        ob_start();
-        $data = ['suppliers' => $suppliers];
-        extract($data);
-        require __DIR__ . "/../../../views/suppliers.view.php";
-        $content = ob_get_clean();
-
-        $this->render('layouts/main', [
+        $this->render('suppliers', [
+            'suppliers' => $suppliers,
+            'pagination' => $pagination,
             'title' => 'Gestão de Fornecedores',
-            'pageTitle' => 'Parceiros e Cadeia de Suprimentos',
-            'content' => $content
+            'pageTitle' => 'Parceiros e Cadeia de Suprimentos'
         ]);
     }
 
