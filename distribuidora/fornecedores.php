@@ -20,7 +20,7 @@ $csrf = $_SESSION['csrf_token'];
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 
-// Filtros (server-side opcional)
+// Filtros server-side (opcional)
 $q = trim((string)($_GET['q'] ?? ''));
 $status = strtoupper(trim((string)($_GET['status'] ?? '')));
 $status = ($status === 'ATIVO' || $status === 'INATIVO') ? $status : '';
@@ -212,6 +212,21 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       border-top: 1px solid rgba(148, 163, 184, .22);
     }
 
+    /* Flash auto-hide */
+    .flash-wrap {
+      margin-top: 16px;
+    }
+
+    .flash-auto-hide {
+      transition: opacity .35s ease, transform .35s ease;
+    }
+
+    .flash-auto-hide.hide {
+      opacity: 0;
+      transform: translateY(-6px);
+      pointer-events: none;
+    }
+
     @media (max-width: 991.98px) {
       #tbFor {
         min-width: 900px;
@@ -225,7 +240,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     <div class="spinner"></div>
   </div>
 
-  <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="index.html" class="d-flex align-items-center gap-2">
@@ -235,11 +249,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
     <nav class="sidebar-nav">
       <ul>
-        <li class="nav-item">
-          <a href="index.html">
-            <span class="text">Dashboard</span>
-          </a>
-        </li>
+        <li class="nav-item"><a href="index.html"><span class="text">Dashboard</span></a></li>
 
         <li class="nav-item nav-item-has-children active">
           <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="true">
@@ -252,17 +262,11 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
           </ul>
         </li>
 
-        <li class="nav-item">
-          <a href="relatorios.html"><span class="text">Relatórios</span></a>
-        </li>
-
+        <li class="nav-item"><a href="relatorios.html"><span class="text">Relatórios</span></a></li>
         <span class="divider">
           <hr />
         </span>
-
-        <li class="nav-item">
-          <a href="suporte.html"><span class="text">Suporte</span></a>
-        </li>
+        <li class="nav-item"><a href="suporte.html"><span class="text">Suporte</span></a></li>
       </ul>
     </nav>
   </aside>
@@ -297,9 +301,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                 <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
                   <div class="profile-info">
                     <div class="info">
-                      <div class="image">
-                        <img src="assets/images/profile/profile-image.png" alt="perfil" />
-                      </div>
+                      <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
                       <div>
                         <h6 class="fw-500">Administrador</h6>
                         <p>Distribuidora</p>
@@ -307,7 +309,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                   </div>
                 </button>
-
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
                   <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
                   <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
@@ -329,7 +330,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             <div class="col-md-8">
               <div class="title">
                 <h2>Fornecedores</h2>
-                <div class="muted">CRUD em PHP (processos em <b>assets/dados/fornecedores</b>).</div>
+                <div class="muted">CRUD em PHP (salvar/excluir externos em <b>assets/dados/fornecedores</b>).</div>
               </div>
             </div>
             <div class="col-md-4 text-md-end">
@@ -341,12 +342,13 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <?php if ($flash): ?>
-          <div class="alert alert-<?= e((string)$flash['type']) ?> mt-3">
-            <?= e((string)$flash['msg']) ?>
+          <div class="flash-wrap">
+            <div id="flashBox" class="alert alert-<?= e((string)$flash['type']) ?> flash-auto-hide">
+              <?= e((string)$flash['msg']) ?>
+            </div>
           </div>
         <?php endif; ?>
 
-        <!-- LISTA -->
         <div class="cardx mb-30 mt-3">
           <div class="head">
             <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -411,8 +413,8 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                     <?php else: foreach ($rows as $r): ?>
                       <?php
                       $id = (int)$r['id'];
-                      $st = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
-                      $badge = $st === 'ATIVO'
+                      $stx = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+                      $badge = $stx === 'ATIVO'
                         ? '<span class="badge-soft badge-ok">ATIVO</span>'
                         : '<span class="badge-soft badge-off">INATIVO</span>';
 
@@ -423,7 +425,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                       <tr
                         data-id="<?= $id ?>"
                         data-nome="<?= e((string)$r['nome']) ?>"
-                        data-status="<?= e($st) ?>"
+                        data-status="<?= e($stx) ?>"
                         data-doc="<?= e((string)($r['doc'] ?? '')) ?>"
                         data-tel="<?= e((string)($r['tel'] ?? '')) ?>"
                         data-email="<?= e((string)($r['email'] ?? '')) ?>"
@@ -432,7 +434,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                         data-uf="<?= e((string)($r['uf'] ?? '')) ?>"
                         data-contato="<?= e((string)($r['contato'] ?? '')) ?>"
                         data-obs="<?= e((string)($r['obs'] ?? '')) ?>"
-                        data-statusrow="<?= e($st) ?>">
+                        data-statusrow="<?= e($stx) ?>">
                         <td style="font-weight:1000;color:#0f172a;"><?= $id ?></td>
                         <td>
                           <div style="font-weight:1000;color:#0f172a;line-height:1.1;"><?= e((string)$r['nome']) ?></div>
@@ -479,7 +481,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     </footer>
   </main>
 
-  <!-- MODAL: Fornecedor -->
+  <!-- MODAL -->
   <div class="modal fade" id="mdFornecedor" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
@@ -491,7 +493,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
-        <!-- FORM SAVE -->
         <form id="frmSave" action="assets/dados/fornecedores/adicionarFornecedores.php" method="post">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="fId" value="">
@@ -554,17 +555,14 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             </button>
 
             <div class="d-flex gap-2">
-              <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">
-                Cancelar
-              </button>
-              <button class="main-btn primary-btn btn-hover btn-compact" id="btnSalvar" type="submit">
+              <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">Cancelar</button>
+              <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
                 <i class="lni lni-save me-1"></i> Salvar
               </button>
             </div>
           </div>
         </form>
 
-        <!-- FORM DELETE (fora do form save, sem nesting) -->
         <form id="frmDelete" action="assets/dados/fornecedores/excluir.php" method="post" onsubmit="return confirm('Excluir este fornecedor?');" style="display:none;">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="delId" value="">
@@ -574,12 +572,22 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     </div>
   </div>
 
-  <!-- ========= JS ========= -->
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
 
   <script>
-    // filtro local (sem JSON/fetch)
+    // auto-hide do alerta flash
+    (function() {
+      const box = document.getElementById("flashBox");
+      if (!box) return;
+      // tempo em ms
+      const TIME = 4500;
+      setTimeout(() => {
+        box.classList.add("hide");
+        setTimeout(() => box.remove(), 450);
+      }, TIME);
+    })();
+
     const qGlobal = document.getElementById("qGlobal");
     const qFor = document.getElementById("qFor");
     const fStatus = document.getElementById("fStatus");
@@ -588,7 +596,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     const countBadge = document.getElementById("countBadge");
     const tbodyFor = document.getElementById("tbodyFor");
 
-    // modal fields
     const mdTitle = document.getElementById("mdTitle");
     const mdSub = document.getElementById("mdSub");
 
@@ -621,7 +628,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       const trs = tbodyFor.querySelectorAll("tr");
 
       trs.forEach(tr => {
-        // ignora linha de "nenhum"
         if (!tr.hasAttribute("data-id")) return;
 
         const statusRow = (tr.getAttribute("data-statusrow") || "").toUpperCase();

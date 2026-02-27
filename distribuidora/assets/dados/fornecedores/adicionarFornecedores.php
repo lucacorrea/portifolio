@@ -5,6 +5,8 @@ require_once __DIR__ . '/_helpers.php';
 try {
   csrf_check($_POST['csrf_token'] ?? null);
 
+  $redirect = (string)($_POST['redirect_to'] ?? '../../../fornecedores.php');
+
   $id       = (int)($_POST['id'] ?? 0);
   $nome     = trim((string)($_POST['nome'] ?? ''));
   $status   = only_status((string)($_POST['status'] ?? 'ATIVO'));
@@ -19,7 +21,7 @@ try {
 
   if ($nome === '') {
     flash_set('danger', 'Informe o nome / razão social.');
-    redirect_fornecedores();
+    redirect_to($redirect);
   }
 
   $pdo = pdo();
@@ -29,18 +31,20 @@ try {
                          SET nome=?, status=?, doc=?, tel=?, email=?, endereco=?, cidade=?, uf=?, contato=?, obs=?
                          WHERE id=?");
     $st->execute([$nome,$status,$doc,$tel,$email,$endereco,$cidade,$uf,$contato,$obs,$id]);
+
     flash_set('success', 'Fornecedor atualizado com sucesso!');
-  } else {
-    $st = $pdo->prepare("INSERT INTO fornecedores (nome,status,doc,tel,email,endereco,cidade,uf,contato,obs)
-                         VALUES (?,?,?,?,?,?,?,?,?,?)");
-    $st->execute([$nome,$status,$doc,$tel,$email,$endereco,$cidade,$uf,$contato,$obs]);
-    flash_set('success', 'Fornecedor cadastrado com sucesso!');
+    redirect_to($redirect);
   }
 
-  redirect_fornecedores();
+  $st = $pdo->prepare("INSERT INTO fornecedores (nome,status,doc,tel,email,endereco,cidade,uf,contato,obs)
+                       VALUES (?,?,?,?,?,?,?,?,?,?)");
+  $st->execute([$nome,$status,$doc,$tel,$email,$endereco,$cidade,$uf,$contato,$obs]);
+
+  flash_set('success', 'Fornecedor cadastrado com sucesso!');
+  redirect_to($redirect);
 
 } catch (Throwable $e) {
-  fail($e->getMessage());
+  fail_page($e->getMessage());
 }
 
 ?>

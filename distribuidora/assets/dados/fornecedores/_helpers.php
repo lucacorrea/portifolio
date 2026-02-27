@@ -32,21 +32,38 @@ function csrf_token(): string {
 
 function csrf_check(?string $t): void {
   if (!is_string($t) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $t)) {
-    fail("Falha de segurança (CSRF). Recarregue a página e tente novamente.");
+    flash_set('danger', 'Falha de segurança (CSRF). Recarregue a página e tente novamente.');
+    redirect_to('../../../fornecedores.php');
   }
 }
 
-// Flash messages
+// Flash
 function flash_set(string $type, string $msg): void {
   $_SESSION['flash'] = ['type' => $type, 'msg' => $msg];
 }
 
-function redirect_fornecedores(): void {
-  header("Location: ../../../fornecedores.php");
+function flash_get(): ?array {
+  if (empty($_SESSION['flash'])) return null;
+  $f = $_SESSION['flash'];
+  unset($_SESSION['flash']);
+  return $f;
+}
+
+// Redirect seguro (apenas interno)
+function redirect_to(string $url): void {
+  $url = trim($url);
+  if ($url === '') $url = '../../../fornecedores.php';
+
+  // bloqueia redirect externo
+  if (preg_match('~^\w+://~', $url) || str_starts_with($url, '//')) {
+    $url = '../../../fornecedores.php';
+  }
+
+  header("Location: {$url}");
   exit;
 }
 
-function fail(string $msg): void {
+function fail_page(string $msg): void {
   http_response_code(500);
   ?>
   <!doctype html>
@@ -56,14 +73,24 @@ function fail(string $msg): void {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Erro</title>
     <link rel="stylesheet" href="../../../assets/css/bootstrap.min.css">
+    <style>
+      .flash-auto-hide { transition: opacity .35s ease, transform .35s ease; }
+    </style>
   </head>
   <body class="bg-light">
     <div class="container py-5">
-      <div class="alert alert-danger">
+      <div class="alert alert-danger flash-auto-hide" id="flashBox">
         <strong>Erro:</strong> <?= e($msg) ?>
       </div>
       <a class="btn btn-primary" href="../../../fornecedores.php">Voltar</a>
     </div>
+    <script>
+      (function(){
+        const box = document.getElementById('flashBox');
+        if(!box) return;
+        setTimeout(()=>{ box.style.opacity='0'; box.style.transform='translateY(-6px)'; }, 1500);
+      })();
+    </script>
   </body>
   </html>
   <?php
