@@ -54,7 +54,7 @@ function normalize_img_path(string $dbValue): string
     if ($v === '') return '';
     // se já veio "images/xxx.jpg", mantém. Se veio "xxx.jpg", vira "images/xxx.jpg"
     if (str_starts_with($v, 'assets/dados/produtos/')) return $v;
-    return './assets/dados/produtos/' . ltrim($v, '/');
+    return 'assets/dados/produtos/' . ltrim($v, '/');
 }
 
 function img_url_for_browser(string $dbValue): string
