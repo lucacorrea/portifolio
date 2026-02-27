@@ -10,7 +10,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
  * Aqui eu deixo só a referência.
  * Esperado: assets/php/conexao.php com função db(): PDO
  */
-require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../../conexao.php';
 
 function pdo(): PDO {
   $pdo = db(); // <- você coloca a conexão depois nesse arquivo externo
