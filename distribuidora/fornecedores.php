@@ -330,7 +330,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             <div class="col-md-8">
               <div class="title">
                 <h2>Fornecedores</h2>
-                <div class="muted">CRUD em PHP (salvar/excluir externos em <b>assets/dados/fornecedores</b>).</div>
               </div>
             </div>
             <div class="col-md-4 text-md-end">
