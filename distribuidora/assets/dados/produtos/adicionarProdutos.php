@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 function images_dir_abs(): string {
-  $dir = __DIR__ . '/../../../images';
+  $dir = __DIR__ . '/./images';
   if (!is_dir($dir)) {
     @mkdir($dir, 0755, true);
   }
@@ -17,7 +17,7 @@ function delete_image_if_any(?string $path): void {
   // só apaga se for dentro de images/
   if (!str_starts_with($path, 'images/')) return;
 
-  $abs = __DIR__ . '/../../../' . $path;
+  $abs = __DIR__ . '/./' . $path;
   if (is_file($abs)) {
     @unlink($abs);
   }
@@ -28,7 +28,7 @@ function save_uploaded_image(string $fieldName = 'imagem'): ?string {
 
   $f = $_FILES[$fieldName];
 
-  if (($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
+if (($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
   if (($f['error'] ?? 0) !== UPLOAD_ERR_OK) {
     throw new RuntimeException("Falha no upload da imagem (código: " . ($f['error'] ?? -1) . ").");
   }
