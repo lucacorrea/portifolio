@@ -3,19 +3,23 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 try {
-  $body = read_json_body();
-  if (!csrf_ok($body['csrf'] ?? null)) json_out(['ok'=>false,'msg'=>'CSRF inválido. Recarregue a página.'], 403);
+  csrf_check($_POST['csrf_token'] ?? null);
 
-  $id = (int)($body['id'] ?? 0);
-  if ($id <= 0) json_out(['ok'=>false,'msg'=>'ID inválido.'], 400);
+  $id = (int)($_POST['id'] ?? 0);
+  if ($id <= 0) {
+    flash_set('danger', 'ID inválido para excluir.');
+    redirect_fornecedores();
+  }
 
   $pdo = pdo();
   $st = $pdo->prepare("DELETE FROM fornecedores WHERE id=?");
   $st->execute([$id]);
 
-  json_out(['ok' => true]);
+  flash_set('success', 'Fornecedor excluído com sucesso!');
+  redirect_fornecedores();
+
 } catch (Throwable $e) {
-  json_out(['ok' => false, 'msg' => 'Erro: ' . $e->getMessage()], 500);
+  fail($e->getMessage());
 }
 
 ?>

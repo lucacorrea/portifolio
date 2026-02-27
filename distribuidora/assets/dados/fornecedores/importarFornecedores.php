@@ -3,24 +3,32 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 try {
-  $csrf = (string)($_POST['csrf'] ?? '');
-  if (!csrf_ok($csrf)) json_out(['ok'=>false,'msg'=>'CSRF inválido. Recarregue a página.'], 403);
+  csrf_check($_POST['csrf_token'] ?? null);
 
-  if (empty($_FILES['arquivo']['tmp_name'])) json_out(['ok'=>false,'msg'=>'Nenhum arquivo enviado.'], 400);
+  if (empty($_FILES['arquivo']['tmp_name'])) {
+    flash_set('danger', 'Nenhum arquivo enviado.');
+    redirect_fornecedores();
+  }
 
   $raw = file_get_contents($_FILES['arquivo']['tmp_name']);
   $arr = json_decode($raw ?: '[]', true);
-  if (!is_array($arr)) json_out(['ok'=>false,'msg'=>'JSON inválido (esperado um array).'], 400);
+
+  if (!is_array($arr)) {
+    flash_set('danger', 'JSON inválido (esperado um array).');
+    redirect_fornecedores();
+  }
 
   $pdo = pdo();
   $pdo->beginTransaction();
 
+  $chk = $pdo->prepare("SELECT id FROM fornecedores WHERE id=?");
+
   $ins = $pdo->prepare("INSERT INTO fornecedores (nome,status,doc,tel,email,endereco,cidade,uf,contato,obs)
                         VALUES (?,?,?,?,?,?,?,?,?,?)");
+
   $upd = $pdo->prepare("UPDATE fornecedores
                         SET nome=?, status=?, doc=?, tel=?, email=?, endereco=?, cidade=?, uf=?, contato=?, obs=?
                         WHERE id=?");
-  $chk = $pdo->prepare("SELECT id FROM fornecedores WHERE id=?");
 
   $ok = 0;
 
@@ -28,29 +36,40 @@ try {
     if (!is_array($x)) continue;
 
     $id = (int)($x['id'] ?? 0);
-    $r = norm_row($x);
+    $nome = trim((string)($x['nome'] ?? ''));
+    if ($nome === '') continue;
 
-    if ($r['nome'] === '') continue;
+    $status   = only_status((string)($x['status'] ?? 'ATIVO'));
+    $doc      = trim((string)($x['doc'] ?? ''));
+    $tel      = trim((string)($x['tel'] ?? ''));
+    $email    = trim((string)($x['email'] ?? ''));
+    $endereco = trim((string)($x['endereco'] ?? ''));
+    $cidade   = trim((string)($x['cidade'] ?? ''));
+    $uf       = strtoupper(substr(trim((string)($x['uf'] ?? '')), 0, 2));
+    $contato  = trim((string)($x['contato'] ?? ''));
+    $obs      = trim((string)($x['obs'] ?? ''));
 
     if ($id > 0) {
       $chk->execute([$id]);
       $exists = (bool)$chk->fetchColumn();
       if ($exists) {
-        $upd->execute([$r['nome'],$r['status'],$r['doc'],$r['tel'],$r['email'],$r['endereco'],$r['cidade'],$r['uf'],$r['contato'],$r['obs'],$id]);
+        $upd->execute([$nome,$status,$doc,$tel,$email,$endereco,$cidade,$uf,$contato,$obs,$id]);
         $ok++;
         continue;
       }
     }
 
-    $ins->execute([$r['nome'],$r['status'],$r['doc'],$r['tel'],$r['email'],$r['endereco'],$r['cidade'],$r['uf'],$r['contato'],$r['obs']]);
+    $ins->execute([$nome,$status,$doc,$tel,$email,$endereco,$cidade,$uf,$contato,$obs]);
     $ok++;
   }
 
   $pdo->commit();
-  json_out(['ok'=>true,'msg'=>"Importado: {$ok} registro(s)."]);
+  flash_set('success', "Importação concluída: {$ok} registro(s) processado(s).");
+  redirect_fornecedores();
+
 } catch (Throwable $e) {
   try { if (isset($pdo) && $pdo instanceof PDO) $pdo->rollBack(); } catch (Throwable $e2) {}
-  json_out(['ok' => false, 'msg' => 'Erro: ' . $e->getMessage()], 500);
+  fail($e->getMessage());
 }
 
 ?>

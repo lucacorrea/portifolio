@@ -13,8 +13,9 @@ try {
   header('Content-Disposition: attachment; filename="fornecedores.json"');
   echo json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
   exit;
+
 } catch (Throwable $e) {
-  json_out(['ok' => false, 'msg' => 'Erro: ' . $e->getMessage()], 500);
+  fail($e->getMessage());
 }
 
 ?>

@@ -3,20 +3,44 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 try {
-  $body = read_json_body();
-  if (!csrf_ok($body['csrf'] ?? null)) json_out(['ok'=>false,'msg'=>'CSRF inválido. Recarregue a página.'], 403);
+  csrf_check($_POST['csrf_token'] ?? null);
 
-  $r = norm_row($body);
-  if ($r['nome'] === '') json_out(['ok'=>false,'msg'=>'Informe o nome / razão social.'], 400);
+  $id       = (int)($_POST['id'] ?? 0);
+  $nome     = trim((string)($_POST['nome'] ?? ''));
+  $status   = only_status((string)($_POST['status'] ?? 'ATIVO'));
+  $doc      = trim((string)($_POST['doc'] ?? ''));
+  $tel      = trim((string)($_POST['tel'] ?? ''));
+  $email    = trim((string)($_POST['email'] ?? ''));
+  $endereco = trim((string)($_POST['endereco'] ?? ''));
+  $cidade   = trim((string)($_POST['cidade'] ?? ''));
+  $uf       = strtoupper(substr(trim((string)($_POST['uf'] ?? '')), 0, 2));
+  $contato  = trim((string)($_POST['contato'] ?? ''));
+  $obs      = trim((string)($_POST['obs'] ?? ''));
+
+  if ($nome === '') {
+    flash_set('danger', 'Informe o nome / razão social.');
+    redirect_fornecedores();
+  }
 
   $pdo = pdo();
-  $st = $pdo->prepare("INSERT INTO fornecedores (nome,status,doc,tel,email,endereco,cidade,uf,contato,obs)
-                       VALUES (?,?,?,?,?,?,?,?,?,?)");
-  $st->execute([$r['nome'],$r['status'],$r['doc'],$r['tel'],$r['email'],$r['endereco'],$r['cidade'],$r['uf'],$r['contato'],$r['obs']]);
 
-  json_out(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
+  if ($id > 0) {
+    $st = $pdo->prepare("UPDATE fornecedores
+                         SET nome=?, status=?, doc=?, tel=?, email=?, endereco=?, cidade=?, uf=?, contato=?, obs=?
+                         WHERE id=?");
+    $st->execute([$nome,$status,$doc,$tel,$email,$endereco,$cidade,$uf,$contato,$obs,$id]);
+    flash_set('success', 'Fornecedor atualizado com sucesso!');
+  } else {
+    $st = $pdo->prepare("INSERT INTO fornecedores (nome,status,doc,tel,email,endereco,cidade,uf,contato,obs)
+                         VALUES (?,?,?,?,?,?,?,?,?,?)");
+    $st->execute([$nome,$status,$doc,$tel,$email,$endereco,$cidade,$uf,$contato,$obs]);
+    flash_set('success', 'Fornecedor cadastrado com sucesso!');
+  }
+
+  redirect_fornecedores();
+
 } catch (Throwable $e) {
-  json_out(['ok' => false, 'msg' => 'Erro: ' . $e->getMessage()], 500);
+  fail($e->getMessage());
 }
 
 ?>
