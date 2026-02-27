@@ -73,7 +73,7 @@ function fail_page(string $msg): void {
       (function(){
         const box = document.getElementById('flashBox');
         if(!box) return;
-        setTimeout(()=>{ box.classList.add('hide'); }, 1500);
+        setTimeout(()=>{ box.classList.add('hide'); }, 1000);
       })();
     </script>
   </body>
