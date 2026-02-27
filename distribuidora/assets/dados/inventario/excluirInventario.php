@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../conexao.php';
-require_once __DIR__ . '/../_helpers.php';
+require_once __DIR__ . '/./_helpers.php';
 
 function backInv(): void { redirect_to('../../../inventario.php'); }
 
