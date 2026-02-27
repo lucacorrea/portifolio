@@ -17,3 +17,18 @@ CREATE TABLE IF NOT EXISTS fornecedores (
 CREATE INDEX idx_fornecedores_nome ON fornecedores (nome);
 CREATE INDEX idx_fornecedores_status ON fornecedores (status);
 CREATE INDEX idx_fornecedores_doc ON fornecedores (doc);
+
+
+CREATE TABLE IF NOT EXISTS categorias (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(200) NOT NULL,
+  descricao VARCHAR(320),
+  cor VARCHAR(7) DEFAULT '#60a5fa',
+  obs TEXT,
+  status VARCHAR(10) DEFAULT 'ATIVO',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_categorias_nome ON categorias (nome);
+CREATE INDEX idx_categorias_status ON categorias (status);
