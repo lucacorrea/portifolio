@@ -69,3 +69,22 @@ CREATE TABLE IF NOT EXISTS inventario_itens (
   INDEX idx_situacao (situacao),
   INDEX idx_produto (produto_id)
 );
+
+
+CREATE TABLE IF NOT EXISTS entradas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  data DATE NOT NULL,
+  nf VARCHAR(60) NOT NULL,
+  fornecedor_id INT NOT NULL,
+  produto_id INT NOT NULL,
+  unidade VARCHAR(40) NOT NULL,
+  qtd INT NOT NULL DEFAULT 0,
+  custo DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_data (data),
+  INDEX idx_nf (nf),
+  INDEX idx_fornecedor (fornecedor_id),
+  INDEX idx_produto (produto_id)
+);
