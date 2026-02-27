@@ -5,36 +5,16 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
   session_start();
 }
 
-/**
- * A CONEXÃO você disse que quer depois.
- * Aqui eu deixo só a referência.
- * Esperado: assets/php/conexao.php com função db(): PDO
- */
 require_once __DIR__ . '/../../conexao.php';
 
 function pdo(): PDO {
-  $pdo = db(); // <- você coloca a conexão depois nesse arquivo externo
-  if (!$pdo instanceof PDO) {
-    throw new RuntimeException("db() não retornou PDO.");
-  }
+  $pdo = db();
+  if (!$pdo instanceof PDO) throw new RuntimeException("db() não retornou PDO.");
   return $pdo;
 }
 
-function json_out(array $data, int $code = 200): void {
-  http_response_code($code);
-  header('Content-Type: application/json; charset=utf-8');
-  echo json_encode($data, JSON_UNESCAPED_UNICODE);
-  exit;
-}
-
-function read_json_body(): array {
-  $raw = file_get_contents('php://input');
-  $j = json_decode($raw ?: '[]', true);
-  return is_array($j) ? $j : [];
-}
-
-function csrf_ok(?string $t): bool {
-  return is_string($t) && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $t);
+function e(string $s): string {
+  return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 function only_status(string $s): string {
@@ -42,19 +22,50 @@ function only_status(string $s): string {
   return ($v === 'ATIVO' || $v === 'INATIVO') ? $v : 'ATIVO';
 }
 
-function norm_row(array $x): array {
-  return [
-    'nome'     => trim((string)($x['nome'] ?? '')),
-    'status'   => only_status((string)($x['status'] ?? 'ATIVO')),
-    'doc'      => trim((string)($x['doc'] ?? '')),
-    'tel'      => trim((string)($x['tel'] ?? '')),
-    'email'    => trim((string)($x['email'] ?? '')),
-    'endereco' => trim((string)($x['endereco'] ?? '')),
-    'cidade'   => trim((string)($x['cidade'] ?? '')),
-    'uf'       => strtoupper(substr(trim((string)($x['uf'] ?? '')), 0, 2)),
-    'contato'  => trim((string)($x['contato'] ?? '')),
-    'obs'      => trim((string)($x['obs'] ?? '')),
-  ];
+// CSRF
+function csrf_token(): string {
+  if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  }
+  return $_SESSION['csrf_token'];
 }
 
-?>
+function csrf_check(?string $t): void {
+  if (!is_string($t) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $t)) {
+    fail("Falha de segurança (CSRF). Recarregue a página e tente novamente.");
+  }
+}
+
+// Flash messages
+function flash_set(string $type, string $msg): void {
+  $_SESSION['flash'] = ['type' => $type, 'msg' => $msg];
+}
+
+function redirect_fornecedores(): void {
+  header("Location: ../../../fornecedores.php");
+  exit;
+}
+
+function fail(string $msg): void {
+  http_response_code(500);
+  ?>
+  <!doctype html>
+  <html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Erro</title>
+    <link rel="stylesheet" href="../../../assets/css/bootstrap.min.css">
+  </head>
+  <body class="bg-light">
+    <div class="container py-5">
+      <div class="alert alert-danger">
+        <strong>Erro:</strong> <?= e($msg) ?>
+      </div>
+      <a class="btn btn-primary" href="../../../fornecedores.php">Voltar</a>
+    </div>
+  </body>
+  </html>
+  <?php
+  exit;
+}
