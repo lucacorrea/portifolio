@@ -673,7 +673,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
           </div>
         </form>
 
-        <form id="frmDelete" action="assets/dados/fornecedores/excluirForncedores.php" method="post" onsubmit="return confirm('Excluir este fornecedor?');" style="display:none;">
+        <form id="frmDelete" action="assets/dados/fornecedores/excluirFornecedores.php" method="post" onsubmit="return confirm('Excluir este fornecedor?');" style="display:none;">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="delId" value="">
         </form>
