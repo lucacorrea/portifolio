@@ -264,7 +264,7 @@
           </a>
           <ul id="ddmenu_cadastros" class="collapse show dropdown-nav">
             <li><a href="clientes.html">Clientes</a></li>
-            <li><a href="fornecedores.html" class="active">Fornecedores</a></li>
+            <li><a href="fornecedores.php" class="active">Fornecedores</a></li>
             <li><a href="categorias.html">Categorias</a></li>
           </ul>
         </li>
