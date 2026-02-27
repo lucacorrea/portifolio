@@ -345,7 +345,7 @@ $rows = $pdo->query("SELECT id, nome, status, doc, tel, email, endereco, cidade,
         </div>
 
         <!-- SAVE (add/edit) -->
-        <form id="frmSave" action="assets/dados/fornecedores/salvar.php" method="post">
+        <form id="frmSave" action="assets/dados/fornecedores/adicionarFornecedores.php" method="post">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="fId" value="">
 
