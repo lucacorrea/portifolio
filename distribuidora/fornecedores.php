@@ -590,12 +590,12 @@ $csrf = $_SESSION['csrf_token'];
     // API endpoints externos
     // ==============================
     const API = {
-      list: "assets/dados/listarFornecedores.php",
-      add: "assets/dados/adicionarFornecedores.php",
-      edit: "assets/dados/editarFornecedores.php",
-      del: "assets/dados/excluirFornecedores.php",
-      exp: "assets/dados/exportarFornecedores.php",
-      imp: "assets/dados/importarFornecedores.php"
+      list: "assets/dados/fornecedores/listarFornecedores.php",
+      add: "assets/dados/fornecedores/adicionarFornecedores.php",
+      edit: "assets/dados/fornecedores/editarFornecedores.php",
+      del: "assets/dados/fornecedores/excluirFornecedores.php",
+      exp: "assets/dados/fornecedores/exportarFornecedores.php",
+      imp: "assets/dados/fornecedores/importarFornecedores.php"
     };
 
     const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
