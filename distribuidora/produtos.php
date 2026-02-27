@@ -558,7 +558,7 @@ $produtos = $pdo->query("
     </main>
 
     <!-- DELETE FORM -->
-    <form id="frmDelete" action="assets/dados/produtos/excluir.php" method="post" style="display:none;">
+    <form id="frmDelete" action="assets/dados/produtos/excluirProdutos.php" method="post" style="display:none;">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <input type="hidden" name="id" id="delId" value="">
     </form>
@@ -573,7 +573,7 @@ $produtos = $pdo->query("
                 </div>
 
                 <div class="modal-body">
-                    <form id="formProduto" action="assets/dados/produtos/salvar.php" method="post" enctype="multipart/form-data">
+                    <form id="formProduto" action="assets/dados/produtos/adicionarProdutos.php" method="post" enctype="multipart/form-data">
                         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
                         <input type="hidden" name="id" id="pId" value="">
                         <input type="hidden" name="img_remove" id="imgRemove" value="0">
