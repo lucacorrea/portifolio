@@ -1,3 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+session_start();
+require_once __DIR__ . '/assets/conexao.php';
+require_once __DIR__ . '/assets/dados/_helpers.php';
+
+$pdo = db();
+
+$flash = flash_pop();
+$csrf  = csrf_token();
+
+/**
+ * IMAGENS:
+ * No banco está assim: "images/arquivo.png"
+ * Como o arquivo está em /assets/dados/produtos/, então para exibir do estoque-minimo.php:
+ *   ./assets/dados/produtos/ + images/arquivo.png
+ */
+function produto_img_url(string $img): string
+{
+    $img = trim($img);
+    if ($img === '') return '';
+    if (preg_match('~^(https?://|/|\.{1,2}/)~', $img)) return $img; // já é caminho absoluto/relativo pronto
+    return './assets/dados/produtos/' . ltrim($img, '/');
+}
+
+/** categorias (para filtro) */
+$categorias = [];
+try {
+    $categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    // se não existir tabela ainda, só não quebra a página
+    $categorias = [];
+}
+
+/** produtos */
+$produtos = [];
+try {
+    $produtos = $pdo->query("
+    SELECT
+      p.id, p.codigo, p.nome, p.unidade, p.estoque, p.minimo, p.imagem,
+      c.nome AS categoria_nome
+    FROM produtos p
+    LEFT JOIN categorias c ON c.id = p.categoria_id
+    ORDER BY p.id DESC
+    LIMIT 3000
+  ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $produtos = [];
+    flash_set('danger', 'Falha ao carregar produtos (verifique tabela produtos).');
+    $flash = flash_pop();
+}
+
+/** KPIs (server) */
+$kCrit = 0;
+$kBaixo = 0;
+$kOk = 0;
+foreach ($produtos as $p) {
+    $estoque = (int)($p['estoque'] ?? 0);
+    $minimo  = (int)($p['minimo'] ?? 0);
+
+    if ($estoque <= 0 && $minimo > 0) $kCrit++;
+    elseif ($estoque < $minimo) $kBaixo++;
+    else $kOk++;
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -16,7 +83,6 @@
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
-        /* dropdown do profile: largura acompanha conteúdo */
         .profile-box .dropdown-menu {
             width: max-content;
             min-width: 260px;
@@ -42,7 +108,6 @@
             max-width: 100%;
         }
 
-        /* ===== Botões menores ===== */
         .main-btn.btn-compact {
             height: 38px !important;
             padding: 8px 14px !important;
@@ -71,7 +136,6 @@
             font-size: 13px;
         }
 
-        /* tabela */
         .table td,
         .table th {
             vertical-align: middle;
@@ -93,7 +157,6 @@
             min-width: 200px;
         }
 
-        /* ✅ Responsivo com scroll horizontal (SEM texto em pé) */
         .table-responsive {
             -webkit-overflow-scrolling: touch;
         }
@@ -103,7 +166,6 @@
             min-width: 1180px;
         }
 
-        /* ✅ FORÇAR NOWRAP EM TUDO */
         #tbMinimo th,
         #tbMinimo td {
             white-space: nowrap !important;
@@ -111,7 +173,6 @@
             overflow-wrap: normal !important;
         }
 
-        /* badge */
         .badge-soft {
             padding: .35rem .6rem;
             border-radius: 999px;
@@ -143,7 +204,6 @@
             color: #475569;
         }
 
-        /* imagem produto */
         .prod-img {
             width: 42px;
             height: 42px;
@@ -153,7 +213,6 @@
             background: #fff;
         }
 
-        /* cards resumo */
         .kpi-card {
             display: flex;
             gap: 12px;
@@ -203,7 +262,17 @@
             text-align: right;
         }
 
-        /* impressão */
+        /* flash auto hide */
+        .flash-auto-hide {
+            transition: opacity .35s ease, transform .35s ease;
+        }
+
+        .flash-auto-hide.hide {
+            opacity: 0;
+            transform: translateY(-6px);
+            pointer-events: none;
+        }
+
         @media print {
 
             .sidebar-nav-wrapper,
@@ -236,19 +305,17 @@
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="index.html" class="d-flex align-items-center gap-2">
+            <a href="index.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
             </a>
         </div>
 
         <nav class="sidebar-nav">
             <ul>
-                <!-- Dashboard (sem dropdown) -->
                 <li class="nav-item">
-                    <a href="index.html">
+                    <a href="index.php">
                         <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
                                 <path
@@ -259,13 +326,11 @@
                     </a>
                 </li>
 
-                <!-- Operações -->
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
                         aria-controls="ddmenu_operacoes" aria-expanded="false">
                         <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
                             </svg>
@@ -273,19 +338,17 @@
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-                        <li><a href="pedidos.html">Pedidos</a></li>
-                        <li><a href="vendas.html">Vendas</a></li>
-                        <li><a href="devolucoes.html">Devoluções</a></li>
+                        <li><a href="pedidos.php">Pedidos</a></li>
+                        <li><a href="vendas.php">Vendas</a></li>
+                        <li><a href="devolucoes.php">Devoluções</a></li>
                     </ul>
                 </li>
 
-                <!-- Estoque -->
                 <li class="nav-item nav-item-has-children active">
-                    <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
-                        aria-controls="ddmenu_estoque" aria-expanded="true">
+                    <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque"
+                        aria-expanded="true">
                         <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
                                 <path
@@ -295,11 +358,11 @@
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse show dropdown-nav">
-                        <li><a href="produtos.html">Produtos</a></li>
-                        <li><a href="inventario.html">Inventário</a></li>
-                        <li><a href="entradas.html">Entradas</a></li>
-                        <li><a href="saidas.html">Saídas</a></li>
-                        <li><a href="estoque-minimo.html" class="active">Estoque Mínimo</a></li>
+                        <li><a href="produtos.php">Produtos</a></li>
+                        <li><a href="inventario.php">Inventário</a></li>
+                        <li><a href="entradas.php">Entradas</a></li>
+                        <li><a href="saidas.php">Saídas</a></li>
+                        <li><a href="estoque-minimo.php" class="active">Estoque Mínimo</a></li>
                     </ul>
                 </li>
 
@@ -307,8 +370,7 @@
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros"
                         aria-controls="ddmenu_cadastros" aria-expanded="false">
                         <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
                                 <path
@@ -322,17 +384,16 @@
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-                        <li><a href="clientes.html">Clientes</a></li>
-                        <li><a href="fornecedores.html">Fornecedores</a></li>
-                        <li><a href="categorias.html">Categorias</a></li>
+                        <li><a href="clientes.php">Clientes</a></li>
+                        <li><a href="fornecedores.php">Fornecedores</a></li>
+                        <li><a href="categorias.php">Categorias</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="relatorios.html">
+                    <a href="relatorios.php">
                         <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
                             </svg>
@@ -349,8 +410,7 @@
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config"
                         aria-controls="ddmenu_config" aria-expanded="false">
                         <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
                             </svg>
@@ -358,16 +418,15 @@
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
-                        <li><a href="usuarios.html">Usuários e Permissões</a></li>
-                        <li><a href="parametros.html">Parâmetros do Sistema</a></li>
+                        <li><a href="usuarios.php">Usuários e Permissões</a></li>
+                        <li><a href="parametros.php">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="suporte.html">
+                    <a href="suporte.php">
                         <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
                                 <path
@@ -390,15 +449,15 @@
                     <div class="col-lg-5 col-md-5 col-6">
                         <div class="header-left d-flex align-items-center">
                             <div class="menu-toggle-btn mr-15">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
+
                             <div class="header-search d-none d-md-flex">
-                                <form action="#">
+                                <form action="#" onsubmit="return false;">
                                     <input type="text" placeholder="Buscar produto..." id="qGlobal" />
-                                    <button type="submit" onclick="return false"><i
-                                            class="lni lni-search-alt"></i></button>
+                                    <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                                 </form>
                             </div>
                         </div>
@@ -436,10 +495,10 @@
                                         </div>
                                     </li>
                                     <li class="divider"></li>
-                                    <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
+                                    <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                                    <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
                                     <li class="divider"></li>
-                                    <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
+                                    <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -461,6 +520,12 @@
                     </div>
                 </div>
 
+                <?php if ($flash): ?>
+                    <div id="flashBox" class="alert alert-<?= e((string)$flash['type']) ?> flash-auto-hide mt-2">
+                        <?= e((string)$flash['msg']) ?>
+                    </div>
+                <?php endif; ?>
+
                 <!-- KPIs -->
                 <div class="row g-3 mb-30">
                     <div class="col-12 col-md-4">
@@ -470,7 +535,7 @@
                             </span>
                             <div>
                                 <p class="kpi-title">Crítico (zerado)</p>
-                                <p class="kpi-value" id="kpiCritico">0</p>
+                                <p class="kpi-value" id="kpiCritico"><?= (int)$kCrit ?></p>
                             </div>
                         </div>
                     </div>
@@ -481,7 +546,7 @@
                             </span>
                             <div>
                                 <p class="kpi-title">Abaixo do mínimo</p>
-                                <p class="kpi-value" id="kpiBaixo">0</p>
+                                <p class="kpi-value" id="kpiBaixo"><?= (int)$kBaixo ?></p>
                             </div>
                         </div>
                     </div>
@@ -492,7 +557,7 @@
                             </span>
                             <div>
                                 <p class="kpi-title">OK</p>
-                                <p class="kpi-value" id="kpiOk">0</p>
+                                <p class="kpi-value" id="kpiOk"><?= (int)$kOk ?></p>
                             </div>
                         </div>
                     </div>
@@ -511,17 +576,18 @@
                             <label class="form-label">Categoria</label>
                             <select class="form-select compact" id="fCategoria">
                                 <option value="">Todas</option>
-                                <option>Alimentos</option>
-                                <option>Bebidas</option>
-                                <option>Limpeza</option>
-                                <option>Higiene</option>
+                                <?php foreach ($categorias as $c): ?>
+                                    <?php $nomeCat = (string)($c['nome'] ?? '');
+                                    if ($nomeCat === '') continue; ?>
+                                    <option value="<?= e($nomeCat) ?>"><?= e($nomeCat) ?><?= (strtoupper((string)$c['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
 
                         <div class="col-12 col-md-6 col-lg-3">
                             <label class="form-label">Filtro</label>
                             <select class="form-select compact" id="fTipo">
-                                <option value="BAIXO">Somente abaixo do mínimo</option>
+                                <option value="BAIXO" selected>Somente abaixo do mínimo</option>
                                 <option value="CRITICO">Somente críticos (zerado)</option>
                                 <option value="TODOS">Mostrar todos</option>
                             </select>
@@ -529,10 +595,10 @@
 
                         <div class="col-12 col-md-6 col-lg-2">
                             <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel">
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                                     <i class="lni lni-download me-1"></i> Excel
                                 </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF">
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
                                     <i class="lni lni-printer me-1"></i> PDF
                                 </button>
                             </div>
@@ -559,61 +625,51 @@
                             </thead>
 
                             <tbody>
-                                <!-- CRÍTICO -->
-                                <tr data-cat="Bebidas" data-cod="P0100" data-prod="Refrigerante 2L" data-estoque="0"
-                                    data-min="12">
-                                    <td><img class="prod-img" alt="Refrigerante" /></td>
-                                    <td>P0100</td>
-                                    <td>Refrigerante 2L</td>
-                                    <td>Bebidas</td>
-                                    <td>Unidade</td>
-                                    <td class="td-center">0</td>
-                                    <td class="td-center">12</td>
-                                    <td class="td-center"><span class="badge-soft badge-soft-danger">CRÍTICO</span></td>
-                                    <td class="td-center">+12</td>
-                                </tr>
+                                <?php foreach ($produtos as $p): ?>
+                                    <?php
+                                    $codigo  = trim((string)($p['codigo'] ?? ''));
+                                    $nome    = trim((string)($p['nome'] ?? ''));
+                                    if ($codigo === '' && $nome === '') continue;
 
-                                <!-- BAIXO -->
-                                <tr data-cat="Alimentos" data-cod="P0002" data-prod="Açúcar 1kg" data-estoque="18"
-                                    data-min="40">
-                                    <td><img class="prod-img" alt="Açúcar" /></td>
-                                    <td>P0002</td>
-                                    <td>Açúcar 1kg</td>
-                                    <td>Alimentos</td>
-                                    <td>Pacote</td>
-                                    <td class="td-center">18</td>
-                                    <td class="td-center">40</td>
-                                    <td class="td-center"><span class="badge-soft badge-soft-warning">ABAIXO</span></td>
-                                    <td class="td-center">+22</td>
-                                </tr>
+                                    $categoria = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
+                                    $unidade   = trim((string)($p['unidade'] ?? '')) ?: '—';
+                                    $estoque   = (int)($p['estoque'] ?? 0);
+                                    $minimo    = (int)($p['minimo'] ?? 0);
 
-                                <!-- OK -->
-                                <tr data-cat="Alimentos" data-cod="P0001" data-prod="Arroz 5kg (Tipo 1)"
-                                    data-estoque="120" data-min="30">
-                                    <td><img class="prod-img" alt="Arroz" /></td>
-                                    <td>P0001</td>
-                                    <td>Arroz 5kg (Tipo 1)</td>
-                                    <td>Alimentos</td>
-                                    <td>Pacote</td>
-                                    <td class="td-center">120</td>
-                                    <td class="td-center">30</td>
-                                    <td class="td-center"><span class="badge-soft badge-soft-success">OK</span></td>
-                                    <td class="td-center">0</td>
-                                </tr>
+                                    $st = 'OK';
+                                    if ($estoque <= 0 && $minimo > 0) $st = 'CRITICO';
+                                    elseif ($estoque < $minimo) $st = 'BAIXO';
 
-                                <!-- BAIXO -->
-                                <tr data-cat="Limpeza" data-cod="P0003" data-prod="Detergente 500ml" data-estoque="9"
-                                    data-min="25">
-                                    <td><img class="prod-img" alt="Detergente" /></td>
-                                    <td>P0003</td>
-                                    <td>Detergente 500ml</td>
-                                    <td>Limpeza</td>
-                                    <td>Unidade</td>
-                                    <td class="td-center">9</td>
-                                    <td class="td-center">25</td>
-                                    <td class="td-center"><span class="badge-soft badge-soft-warning">ABAIXO</span></td>
-                                    <td class="td-center">+16</td>
-                                </tr>
+                                    $sug = max(0, $minimo - $estoque);
+
+                                    $badge = $st === 'CRITICO'
+                                        ? '<span class="badge-soft badge-soft-danger">CRÍTICO</span>'
+                                        : ($st === 'BAIXO'
+                                            ? '<span class="badge-soft badge-soft-warning">ABAIXO</span>'
+                                            : '<span class="badge-soft badge-soft-success">OK</span>');
+
+                                    $imgDb = trim((string)($p['imagem'] ?? ''));
+                                    $img   = produto_img_url($imgDb);
+                                    ?>
+                                    <tr
+                                        data-cat="<?= e($categoria) ?>"
+                                        data-cod="<?= e($codigo ?: '—') ?>"
+                                        data-prod="<?= e($nome ?: '—') ?>"
+                                        data-estoque="<?= (int)$estoque ?>"
+                                        data-min="<?= (int)$minimo ?>">
+                                        <td>
+                                            <img class="prod-img" alt="<?= e($nome ?: $codigo) ?>" src="<?= e($img) ?>" />
+                                        </td>
+                                        <td><?= e($codigo ?: '—') ?></td>
+                                        <td><?= e($nome ?: '—') ?></td>
+                                        <td><?= e($categoria) ?></td>
+                                        <td><?= e($unidade) ?></td>
+                                        <td class="td-center"><?= (int)$estoque ?></td>
+                                        <td class="td-center"><?= (int)$minimo ?></td>
+                                        <td class="td-center"><?= $badge ?></td>
+                                        <td class="td-center"><?= ($st === 'OK') ? '0' : ('+' . (int)$sug) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
@@ -646,6 +702,16 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
     <script>
+        // flash 1.5s
+        (function() {
+            const box = document.getElementById('flashBox');
+            if (!box) return;
+            setTimeout(() => {
+                box.classList.add('hide');
+                setTimeout(() => box.remove(), 400);
+            }, 1500);
+        })();
+
         const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
         <rect width="100%" height="100%" fill="#f1f5f9"/>
@@ -655,8 +721,16 @@
       </svg>
     `);
 
-        // imagens default
-        document.querySelectorAll("img.prod-img").forEach(img => img.src = DEFAULT_IMG);
+        // fallback imagem
+        document.querySelectorAll("img.prod-img").forEach(img => {
+            const src = (img.getAttribute('src') || '').trim();
+            if (!src) img.src = DEFAULT_IMG;
+            img.addEventListener('error', () => {
+                img.src = DEFAULT_IMG;
+            }, {
+                once: true
+            });
+        });
 
         const tb = document.getElementById('tbMinimo');
         const qMinimo = document.getElementById('qMinimo');
@@ -669,7 +743,9 @@
         const kpiBaixo = document.getElementById('kpiBaixo');
         const kpiOk = document.getElementById('kpiOk');
 
-        function norm(s) { return String(s ?? '').toLowerCase().trim(); }
+        function norm(s) {
+            return String(s ?? '').toLowerCase().trim();
+        }
 
         function calcStatus(estoque, minimo) {
             const e = Number(estoque || 0);
@@ -686,18 +762,17 @@
             return `<span class="badge-soft badge-soft-gray">—</span>`;
         }
 
-        // recalcula situação e sugestão (para manter consistente se você trocar dados)
         function rebuildRow(tr) {
             const estoque = Number(tr.getAttribute('data-estoque') || 0);
             const minimo = Number(tr.getAttribute('data-min') || 0);
             const st = calcStatus(estoque, minimo);
             const sug = Math.max(0, minimo - estoque);
 
-            // colunas fixas: estoque (6), minimo (7), situação (8), sugestão (9)
+            // colunas fixas: estoque(5), minimo(6), situação(7), sugestão(8)
             tr.children[5].innerText = String(estoque);
             tr.children[6].innerText = String(minimo);
             tr.children[7].innerHTML = badge(st);
-            tr.children[8].innerText = st === 'OK' ? '0' : `+${sug}`;
+            tr.children[8].innerText = (st === 'OK') ? '0' : `+${sug}`;
         }
 
         function aplicarFiltros() {
@@ -708,20 +783,21 @@
             const rows = Array.from(tb.querySelectorAll('tbody tr'));
             let shown = 0;
 
-            let nCritico = 0, nBaixo = 0, nOk = 0;
+            let nCrit = 0,
+                nBaixo = 0,
+                nOk = 0;
 
             rows.forEach(tr => {
-                // garante cálculo atualizado
                 rebuildRow(tr);
 
                 const text = norm(tr.innerText);
                 const rCat = norm(tr.getAttribute('data-cat'));
+
                 const estoque = Number(tr.getAttribute('data-estoque') || 0);
                 const minimo = Number(tr.getAttribute('data-min') || 0);
                 const st = calcStatus(estoque, minimo);
 
-                // KPIs contam total (não apenas exibidos)
-                if (st === 'CRITICO') nCritico++;
+                if (st === 'CRITICO') nCrit++;
                 else if (st === 'BAIXO') nBaixo++;
                 else nOk++;
 
@@ -731,13 +807,13 @@
 
                 if (tipo === 'CRITICO' && st !== 'CRITICO') ok = false;
                 if (tipo === 'BAIXO' && st !== 'BAIXO' && st !== 'CRITICO') ok = false; // abaixo inclui crítico
-                if (tipo === 'TODOS') ok = ok; // nada
+                // TODOS: não filtra por status
 
                 tr.style.display = ok ? '' : 'none';
                 if (ok) shown++;
             });
 
-            kpiCritico.textContent = String(nCritico);
+            kpiCritico.textContent = String(nCrit);
             kpiBaixo.textContent = String(nBaixo);
             kpiOk.textContent = String(nOk);
 
@@ -745,7 +821,10 @@
         }
 
         qMinimo.addEventListener('input', aplicarFiltros);
-        qGlobal.addEventListener('input', aplicarFiltros);
+        qGlobal.addEventListener('input', () => {
+            qMinimo.value = qGlobal.value;
+            aplicarFiltros();
+        });
         fCategoria.addEventListener('change', aplicarFiltros);
         fTipo.addEventListener('change', aplicarFiltros);
         aplicarFiltros();
@@ -770,10 +849,9 @@
                 tr.children[5].innerText.trim(),
                 tr.children[6].innerText.trim(),
                 tr.children[7].innerText.trim(),
-                tr.children[8].innerText.trim()
+                tr.children[8].innerText.trim(),
             ]));
 
-            // centralizar: estoque=4, mínimo=5, situação=6, sugestão=7
             const isCenterCol = (idx) => (idx === 4 || idx === 5 || idx === 6 || idx === 7);
 
             let html = `
@@ -800,15 +878,17 @@
             html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
             body.forEach(r => {
                 html += `<tr>${r.map((c, idx) => {
-                    const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-                    const cls = isCenterCol(idx) ? 'center' : '';
-                    return `<td class="${cls}">${safe}</td>`;
-                }).join('')}</tr>`;
+          const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+          const cls = isCenterCol(idx) ? 'center' : '';
+          return `<td class="${cls}">${safe}</td>`;
+        }).join('')}</tr>`;
             });
 
             html += `</table></body></html>`;
 
-            const blob = new Blob(["\ufeff" + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const blob = new Blob(["\ufeff" + html], {
+                type: 'application/vnd.ms-excel;charset=utf-8;'
+            });
             const url = URL.createObjectURL(blob);
 
             const a = document.createElement('a');
@@ -821,7 +901,7 @@
         }
         document.getElementById('btnExcel').addEventListener('click', exportExcel);
 
-        // ✅ PDF (igual ao print)
+        // ✅ PDF
         function exportPDF() {
             if (!window.jspdf || !window.jspdf.jsPDF) {
                 alert('Biblioteca do PDF não carregou.');
@@ -836,8 +916,14 @@
             const cat = fCategoria.value || 'Todas';
             const tipo = fTipo.value || 'BAIXO';
 
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const {
+                jsPDF
+            } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'pt',
+                format: 'a4'
+            });
 
             const M = 70;
 
@@ -851,7 +937,9 @@
             doc.text(`Gerado em:  ${dt}`, M, 75);
             doc.text(`Categoria:  ${cat} | Filtro:  ${tipo}`, M, 92);
 
-            const head = [['Código', 'Produto', 'Categoria', 'Unidade', 'Estoque', 'Mínimo', 'Situação', 'Sugestão']];
+            const head = [
+                ['Código', 'Produto', 'Categoria', 'Unidade', 'Estoque', 'Mínimo', 'Situação', 'Sugestão']
+            ];
 
             const body = rows.map(tr => ([
                 tr.children[1].innerText.trim(),
@@ -861,20 +949,28 @@
                 tr.children[5].innerText.trim(),
                 tr.children[6].innerText.trim(),
                 tr.children[7].innerText.trim(),
-                tr.children[8].innerText.trim()
+                tr.children[8].innerText.trim(),
             ]));
 
             doc.autoTable({
                 head,
                 body,
                 startY: 115,
-                margin: { left: M, right: M },
+                margin: {
+                    left: M,
+                    right: M
+                },
                 theme: 'plain',
                 styles: {
                     font: 'helvetica',
                     fontSize: 9,
                     textColor: [17, 24, 39],
-                    cellPadding: { top: 6, right: 6, bottom: 6, left: 6 },
+                    cellPadding: {
+                        top: 6,
+                        right: 6,
+                        bottom: 6,
+                        left: 6
+                    },
                     lineWidth: 0
                 },
                 headStyles: {
@@ -883,14 +979,24 @@
                     fontStyle: 'bold',
                     lineWidth: 0
                 },
-                alternateRowStyles: { fillColor: [248, 250, 252] },
-                columnStyles: {
-                    4: { halign: 'center' }, // Estoque
-                    5: { halign: 'center' }, // Mínimo
-                    6: { halign: 'center' }, // Situação
-                    7: { halign: 'center' }  // Sugestão
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252]
                 },
-                didParseCell: function (data) {
+                columnStyles: {
+                    4: {
+                        halign: 'center'
+                    },
+                    5: {
+                        halign: 'center'
+                    },
+                    6: {
+                        halign: 'center'
+                    },
+                    7: {
+                        halign: 'center'
+                    }
+                },
+                didParseCell: function(data) {
                     data.cell.styles.lineWidth = 0;
                 }
             });
