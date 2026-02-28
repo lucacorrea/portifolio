@@ -2,19 +2,6 @@
 
 declare(strict_types=1);
 
-/**
- * _helpers.php
- * Coloque em: /assets/dados/_helpers.php
- *
- * Usado pelos seus .php (produtos.php, entradas.php, saidas.php, estoque-minimo.php, etc.)
- * para:
- *  - escapar HTML (e)
- *  - CSRF (csrf_token, csrf_validate, csrf_input)
- *  - flash messages (flash_set, flash_pop)
- *  - helpers de request (post, get, is_post)
- *  - helpers de número/moeda (brl_to_float, float_to_brl)
- */
-
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
