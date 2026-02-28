@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 session_start();
 require_once __DIR__ . '/assets/conexao.php';
-require_once __DIR__ . '/assets/dados/_helpers.php';
+require_once __DIR__ . '/assets/dados/estoque-minimo/_helpers.php';
 
 $pdo = db();
 
