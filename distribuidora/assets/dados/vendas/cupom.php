@@ -2,155 +2,124 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../conexao.php';
-require_once __DIR__ . '/./_helpers.php';
 
 $pdo = db();
 
-$id = to_int($_GET['id'] ?? 0);
-if ($id <= 0) {
-  echo "ID inválido.";
-  exit;
+$id = (int)($_GET['id'] ?? 0);
+if ($id <= 0) { http_response_code(400); echo "ID inválido."; exit; }
+
+$st = $pdo->prepare("SELECT * FROM vendas WHERE id = ?");
+$st->execute([$id]);
+$venda = $st->fetch(PDO::FETCH_ASSOC);
+
+if (!$venda) { http_response_code(404); echo "Venda não encontrada."; exit; }
+
+$st2 = $pdo->prepare("SELECT * FROM venda_itens WHERE venda_id = ? ORDER BY id ASC");
+$st2->execute([$id]);
+$itens = $st2->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+function money(float $v): string {
+  return 'R$ ' . number_format($v, 2, ',', '.');
 }
 
-$stmt = $pdo->prepare("SELECT * FROM vendas WHERE id = :id");
-$stmt->execute([':id' => $id]);
-$v = $stmt->fetch();
-
-if (!$v) {
-  echo "Venda não encontrada.";
-  exit;
-}
-
-$stmtItens = $pdo->prepare("
-  SELECT s.id, s.produto_id, s.qtd, s.preco, s.total,
-         p.codigo, p.nome
-  FROM saidas s
-  JOIN produtos p ON p.id = s.produto_id
-  WHERE s.pedido = :pedido
-  ORDER BY s.id ASC
-");
-$stmtItens->execute([':pedido' => (string)$id]);
-$itens = $stmtItens->fetchAll();
-
-function fmtMoney($v): string { return 'R$ ' . number_format((float)$v, 2, ',', '.'); }
-function brDate(string $ymd): string {
-  $ymd = trim($ymd);
-  if (!$ymd) return '';
-  $p = explode('-', $ymd);
-  if (count($p) !== 3) return $ymd;
-  return $p[2] . '/' . $p[1] . '/' . $p[0];
-}
-
-$pay = [];
-if (!empty($v['pagamento_json'])) {
-  $pay = json_decode((string)$v['pagamento_json'], true);
-  if (!is_array($pay)) $pay = [];
-}
-
-$cliente = (string)($v['cliente'] ?? 'CONSUMIDOR FINAL');
-$canal = (string)($v['canal'] ?? 'PRESENCIAL');
-$endereco = (string)($v['endereco'] ?? '');
-$obs = (string)($v['obs'] ?? '');
+$auto = (int)($_GET['auto'] ?? 0) === 1;
 ?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Cupom #<?= e((string)$id) ?></title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cupom Venda #<?= (int)$venda['id'] ?></title>
   <style>
-    @page { size: 80mm auto; margin: 6mm; }
-    body { margin:0; padding:0; font-family: "Courier New", monospace; color:#000; }
-    .wrap { width: 72mm; margin: 0 auto; font-size: 11px; }
-    .center { text-align:center; }
-    .bold { font-weight:800; }
-    .small { font-size:10px; }
-    .hr { border-top: 1px dashed #000; margin: 6px 0; }
-    .row { display:flex; justify-content:space-between; gap:10px; }
-    .row span:last-child { text-align:right; white-space:nowrap; }
-    .item { margin: 6px 0; }
-    .top { margin-top: 4px; }
-    .mono { letter-spacing: .2px; }
-    .printbtn { display:none; }
-    @media screen {
-      .printbtn { display:block; margin:10px auto; width:72mm; }
-      button { width:100%; padding:10px; font-weight:800; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 16px; color:#0f172a; }
+    .box { max-width: 520px; margin: 0 auto; }
+    .top { text-align: center; margin-bottom: 10px; }
+    .top h2 { margin: 0; font-size: 18px; }
+    .muted { color:#64748b; font-size: 12px; }
+    hr { border:0; border-top:1px dashed #cbd5e1; margin: 10px 0; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding: 6px 0; font-size: 12px; }
+    th { text-align:left; border-bottom: 1px solid #e2e8f0; }
+    td.r, th.r { text-align: right; }
+    .tot { font-size: 14px; font-weight: 800; }
+    .btns { display:flex; gap:8px; justify-content:center; margin-top:12px; }
+    button { padding: 10px 12px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; cursor:pointer; font-weight:700; }
+    @media print {
+      .btns { display:none; }
+      body { padding: 0; }
+      .box { max-width: 100%; }
     }
   </style>
 </head>
 <body>
-  <div class="printbtn"><button onclick="window.print()">IMPRIMIR</button></div>
+  <div class="box">
+    <div class="top">
+      <h2>COMPROVANTE DE VENDA</h2>
+      <div class="muted">Venda #<?= (int)$venda['id'] ?> • <?= htmlspecialchars((string)$venda['created_at']) ?></div>
+      <div class="muted">Canal: <?= htmlspecialchars((string)$venda['canal']) ?></div>
+    </div>
 
-  <div class="wrap mono">
-    <div class="center bold">PAINEL DA DISTRIBUIDORA</div>
-    <div class="center small">CUPOM (MODELO)</div>
-    <div class="hr"></div>
+    <hr>
 
-    <div class="row"><span class="bold">VENDA</span><span>#<?= e((string)$id) ?></span></div>
-    <div class="row"><span class="bold">DATA</span><span><?= e(brDate((string)$v['data'])) ?></span></div>
-    <div class="row"><span class="bold">CLIENTE</span><span><?= e($cliente) ?></span></div>
-    <div class="row"><span class="bold">ENTREGA</span><span><?= e($canal) ?></span></div>
-
-    <?php if ($canal === 'DELIVERY'): ?>
-      <div class="top small">END: <?= e($endereco ?: '-') ?></div>
-      <?php if ($obs !== ''): ?>
-        <div class="top small">OBS: <?= e($obs) ?></div>
+    <div class="muted">
+      Cliente: <b><?= htmlspecialchars((string)($venda['cliente'] ?? 'Consumidor Final')) ?></b><br>
+      <?php if (($venda['canal'] ?? '') === 'DELIVERY'): ?>
+        Endereço: <b><?= htmlspecialchars((string)($venda['endereco'] ?? '')) ?></b><br>
+        Obs: <b><?= htmlspecialchars((string)($venda['obs'] ?? '')) ?></b><br>
       <?php endif; ?>
-    <?php endif; ?>
+    </div>
 
-    <div class="hr"></div>
-    <div class="row bold"><span>ITENS</span><span></span></div>
+    <hr>
 
-    <?php if (!$itens): ?>
-      <div class="small">—</div>
-    <?php else: ?>
-      <?php foreach ($itens as $idx => $it): ?>
-        <div class="item">
-          <div class="row">
-            <span><?= e(str_pad((string)($idx+1), 3, '0', STR_PAD_LEFT) . ' ' . mb_strtoupper((string)$it['nome'])) ?></span>
-          </div>
-          <div class="row small">
-            <span><?= e((string)$it['codigo']) ?></span>
-            <span><?= e((string)$it['qtd']) ?> x <?= e(fmtMoney((float)$it['preco'])) ?> = <?= e(fmtMoney((float)$it['total'])) ?></span>
-          </div>
-        </div>
-      <?php endforeach; ?>
-    <?php endif; ?>
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th class="r">Qtd</th>
+          <th class="r">Unit</th>
+          <th class="r">Sub</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($itens as $it): ?>
+          <tr>
+            <td>
+              <b><?= htmlspecialchars((string)$it['nome']) ?></b><br>
+              <span class="muted"><?= htmlspecialchars((string)$it['codigo']) ?></span>
+            </td>
+            <td class="r"><?= (int)$it['qtd'] ?></td>
+            <td class="r"><?= money((float)$it['preco_unit']) ?></td>
+            <td class="r"><?= money((float)$it['subtotal']) ?></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
 
-    <div class="hr"></div>
+    <hr>
 
-    <div class="row"><span>SUBTOTAL</span><span><?= e(fmtMoney((float)$v['subtotal'])) ?></span></div>
-    <div class="row"><span>DESCONTO</span><span>- <?= e(fmtMoney((float)$v['desconto_valor'])) ?></span></div>
-    <div class="row"><span>TAXA ENTREGA</span><span><?= e(fmtMoney((float)$v['taxa_entrega'])) ?></span></div>
+    <table>
+      <tr><td class="muted">Subtotal</td><td class="r"><?= money((float)$venda['subtotal']) ?></td></tr>
+      <tr><td class="muted">Desconto</td><td class="r">- <?= money((float)$venda['desconto_valor']) ?></td></tr>
+      <tr><td class="muted">Taxa entrega</td><td class="r"><?= money((float)$venda['taxa_entrega']) ?></td></tr>
+      <tr><td class="tot">TOTAL</td><td class="r tot"><?= money((float)$venda['total']) ?></td></tr>
+    </table>
 
-    <div class="hr"></div>
-    <div class="row bold"><span>TOTAL</span><span><?= e(fmtMoney((float)$v['total'])) ?></span></div>
+    <hr>
 
-    <div class="hr"></div>
-    <div class="row bold"><span>PAGAMENTO</span><span></span></div>
+    <div class="muted">
+      Pagamento: <b><?= htmlspecialchars((string)$venda['pagamento']) ?></b>
+    </div>
 
-    <?php if (($pay['mode'] ?? '') === 'MULTI'): ?>
-      <?php foreach (($pay['parts'] ?? []) as $p): ?>
-        <div class="row">
-          <span><?= e((string)($p['method'] ?? '')) ?></span>
-          <span><?= e(fmtMoney((float)($p['value'] ?? 0))) ?></span>
-        </div>
-      <?php endforeach; ?>
-      <div class="row"><span>TROCO</span><span><?= e(fmtMoney((float)($pay['troco'] ?? 0))) ?></span></div>
-    <?php else: ?>
-      <div class="row">
-        <span><?= e((string)($pay['method'] ?? $v['pagamento'])) ?></span>
-        <span><?= e(fmtMoney((float)($pay['paid'] ?? $v['total']))) ?></span>
-      </div>
-      <div class="row"><span>TROCO</span><span><?= e(fmtMoney((float)($pay['troco'] ?? 0))) ?></span></div>
-    <?php endif; ?>
-
-    <div class="hr"></div>
-    <div class="center small">OBRIGADO PELA PREFERÊNCIA!</div>
+    <div class="btns">
+      <button onclick="window.print()">Imprimir</button>
+      <button onclick="window.close()">Fechar</button>
+    </div>
   </div>
 
   <script>
-    // auto-print se abrir em nova aba
-    // window.print();
+    <?php if ($auto): ?>
+      window.addEventListener('load', () => setTimeout(() => window.print(), 350));
+    <?php endif; ?>
   </script>
 </body>
 </html>

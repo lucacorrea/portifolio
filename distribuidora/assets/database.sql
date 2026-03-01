@@ -136,3 +136,4 @@ CREATE TABLE IF NOT EXISTS vendas (
 CREATE INDEX idx_vendas_data ON vendas (data);
 CREATE INDEX idx_vendas_cliente ON vendas (cliente);
 CREATE INDEX idx_vendas_canal ON vendas (canal);
+
