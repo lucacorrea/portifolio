@@ -1,140 +1,281 @@
 <?php
 declare(strict_types=1);
-session_start();
 
 require_once __DIR__ . '/../../conexao.php';
 require_once __DIR__ . '/./_helpers.php';
 
-if (!is_post()) redirect('../../vendas.php');
-csrf_validate_or_die('csrf');
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+  json_response(['ok' => false, 'msg' => 'Método inválido.'], 405);
+}
 
 $pdo = db();
+$in = json_input();
 
-$id       = to_int(post('id', 0), 0);
-$data     = to_str(post('data', ''));
-$pedido   = to_str(post('pedido', ''));
-$cliente  = to_str(post('cliente', ''));
-$canal    = strtoupper(to_str(post('canal', 'PRESENCIAL')));
-$pagamento= strtoupper(to_str(post('pagamento', 'DINHEIRO')));
-$obs      = to_str(post('obs', ''));
-
-$produtoIds = $_POST['produto_id'] ?? [];
-$qtds       = $_POST['qtd'] ?? [];
-$precos     = $_POST['preco'] ?? [];
-
-if ($data === '' || $cliente === '') {
-  flash_set('danger', 'Informe a data e o cliente.');
-  redirect('../../vendas.php');
+$csrf = (string)($in['csrf_token'] ?? '');
+if (!csrf_validate_token($csrf)) {
+  json_response(['ok' => false, 'msg' => 'CSRF inválido. Recarregue a página.'], 403);
 }
 
-$validCanal = in_array($canal, ['PRESENCIAL','DELIVERY'], true) ? $canal : 'PRESENCIAL';
+$customer = trim((string)($in['customer'] ?? ''));
+$customer = $customer !== '' ? $customer : 'CONSUMIDOR FINAL';
 
-$items = [];
-for ($i=0; $i < max(count($produtoIds), count($qtds), count($precos)); $i++) {
-  $pid = isset($produtoIds[$i]) ? to_int($produtoIds[$i], 0) : 0;
-  $qtd = isset($qtds[$i]) ? to_int($qtds[$i], 0) : 0;
-  $pre = isset($precos[$i]) ? brl_to_float((string)$precos[$i]) : 0.0;
+$delivery = $in['delivery'] ?? [];
+$deliveryMode = strtoupper(trim((string)($delivery['mode'] ?? 'PRESENCIAL')));
+$deliveryMode = $deliveryMode === 'DELIVERY' ? 'DELIVERY' : 'PRESENCIAL';
 
-  if ($pid <= 0) continue;
-  if ($qtd <= 0) continue;
+$address = trim((string)($delivery['address'] ?? ''));
+$obs = trim((string)($delivery['obs'] ?? ''));
+$fee = ($deliveryMode === 'DELIVERY') ? to_float($delivery['fee'] ?? 0) : 0.0;
 
-  $items[] = ['produto_id' => $pid, 'qtd' => $qtd, 'preco' => $pre];
+if ($deliveryMode === 'DELIVERY' && $address === '') {
+  json_response(['ok' => false, 'msg' => 'Informe o endereço do Delivery.'], 422);
 }
 
-if (!$items) {
-  flash_set('danger', 'Adicione pelo menos 1 item na venda.');
-  redirect('../../vendas.php');
+$discount = $in['discount'] ?? [];
+$dTipo = strtoupper(trim((string)($discount['tipo'] ?? 'PERC')));
+$dTipo = in_array($dTipo, ['PERC', 'VALOR'], true) ? $dTipo : 'PERC';
+$dValor = to_float($discount['valor'] ?? 0);
+
+$items = $in['items'] ?? [];
+if (!is_array($items) || count($items) < 1) {
+  json_response(['ok' => false, 'msg' => 'Adicione pelo menos 1 item.'], 422);
 }
 
-// carrega produtos p/ validar preço/estoque
-$ids = array_values(array_unique(array_map(fn($x) => (int)$x['produto_id'], $items)));
-$in  = implode(',', array_fill(0, count($ids), '?'));
-$stP = $pdo->prepare("SELECT id, nome, preco, estoque FROM produtos WHERE id IN ($in)");
-$stP->execute($ids);
-$prodMap = [];
-while ($p = $stP->fetch(PDO::FETCH_ASSOC)) {
-  $prodMap[(int)$p['id']] = $p;
-}
+$pay = $in['pay'] ?? [];
+$payMode = strtoupper(trim((string)($pay['mode'] ?? 'UNICO')));
+$payMode = $payMode === 'MULTI' ? 'MULTI' : 'UNICO';
 
-// valida todos os itens
-foreach ($items as &$it) {
-  $pid = (int)$it['produto_id'];
-  if (!isset($prodMap[$pid])) {
-    flash_set('danger', 'Produto inválido na venda.');
-    redirect('../../vendas.php');
+$today = date('Y-m-d');
+$nowBR = date('d/m/Y H:i');
+
+function calc_discount(float $sub, string $tipo, float $valor): float {
+  if ($valor <= 0) return 0.0;
+  if ($tipo === 'PERC') {
+    $p = min(100.0, max(0.0, $valor));
+    return ($sub * $p) / 100.0;
   }
-  // se preço veio 0, usa o preço do produto
-  if ((float)$it['preco'] <= 0) $it['preco'] = (float)$prodMap[$pid]['preco'];
+  return min($sub, max(0.0, $valor));
 }
-unset($it);
 
 try {
   $pdo->beginTransaction();
 
-  // EDITAR: devolve estoque antigo e apaga itens antigos
-  if ($id > 0) {
-    $stOld = $pdo->prepare("SELECT produto_id, qtd FROM venda_itens WHERE venda_id = ?");
-    $stOld->execute([$id]);
-    $old = $stOld->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($old as $o) {
-      $pid = (int)$o['produto_id'];
-      $qtd = (int)$o['qtd'];
-      $up = $pdo->prepare("UPDATE produtos SET estoque = estoque + ? WHERE id = ?");
-      $up->execute([$qtd, $pid]);
-    }
-
-    $pdo->prepare("DELETE FROM venda_itens WHERE venda_id = ?")->execute([$id]);
-
-    $pdo->prepare("
-      UPDATE vendas
-      SET data = ?, pedido = ?, cliente = ?, canal = ?, pagamento = ?, obs = ?
-      WHERE id = ?
-    ")->execute([$data, $pedido ?: null, $cliente, $validCanal, $pagamento, $obs ?: null, $id]);
+  // cria cabeçalho da venda (valores serão atualizados ao final)
+  $pagamentoStr = 'DINHEIRO';
+  if ($payMode === 'UNICO') {
+    $pagamentoStr = strtoupper(trim((string)($pay['method'] ?? 'DINHEIRO')));
   } else {
-    $pdo->prepare("
-      INSERT INTO vendas (data, pedido, cliente, canal, pagamento, obs, total)
-      VALUES (?, ?, ?, ?, ?, ?, 0.00)
-    ")->execute([$data, $pedido ?: null, $cliente, $validCanal, $pagamento, $obs ?: null]);
-    $id = (int)$pdo->lastInsertId();
+    $pagamentoStr = 'MULTI';
   }
 
-  // insere itens + baixa estoque
-  $totalVenda = 0.0;
+  $stmtV = $pdo->prepare("
+    INSERT INTO vendas (data, cliente, canal, endereco, obs, desconto_tipo, desconto_valor, taxa_entrega,
+                        subtotal, total, pagamento_mode, pagamento, pagamento_json)
+    VALUES (:data, :cliente, :canal, :endereco, :obs, :dtipo, :dvalor, :taxa,
+            0, 0, :pmode, :pag, :pjson)
+  ");
+  $stmtV->execute([
+    ':data'    => $today,
+    ':cliente' => $customer,
+    ':canal'   => $deliveryMode,
+    ':endereco'=> ($deliveryMode === 'DELIVERY') ? $address : null,
+    ':obs'     => ($deliveryMode === 'DELIVERY' && $obs !== '') ? $obs : null,
+    ':dtipo'   => $dTipo,
+    ':dvalor'  => $dValor,
+    ':taxa'    => $fee,
+    ':pmode'   => $payMode,
+    ':pag'     => $pagamentoStr,
+    ':pjson'   => null,
+  ]);
+
+  $vendaId = (int)$pdo->lastInsertId();
+  if ($vendaId <= 0) throw new RuntimeException('Falha ao criar venda.');
+
+  $subtotal = 0.0;
+  $outItems = [];
+
+  $stmtP = $pdo->prepare("SELECT id, codigo, nome, unidade, preco, estoque, status FROM produtos WHERE id = :id FOR UPDATE");
+  $stmtS = $pdo->prepare("
+    INSERT INTO saidas (data, pedido, cliente, canal, pagamento, produto_id, unidade, qtd, preco, total)
+    VALUES (:data, :pedido, :cliente, :canal, :pagamento, :produto_id, :unidade, :qtd, :preco, :total)
+  ");
+  $stmtUpd = $pdo->prepare("UPDATE produtos SET estoque = estoque - :qtd WHERE id = :id");
 
   foreach ($items as $it) {
-    $pid = (int)$it['produto_id'];
-    $qtd = (int)$it['qtd'];
-    $pre = (float)$it['preco'];
-    $tot = $qtd * $pre;
+    if (!is_array($it)) continue;
 
-    // baixa estoque com trava: só baixa se tiver
-    $up = $pdo->prepare("UPDATE produtos SET estoque = estoque - ? WHERE id = ? AND estoque >= ?");
-    $up->execute([$qtd, $pid, $qtd]);
-    if ($up->rowCount() <= 0) {
-      $nome = (string)$prodMap[$pid]['nome'];
-      throw new RuntimeException("Estoque insuficiente para: {$nome}");
+    $pid = to_int($it['product_id'] ?? 0);
+    $qty = to_int($it['qty'] ?? 0);
+
+    if ($pid <= 0 || $qty <= 0) {
+      throw new RuntimeException('Item inválido no carrinho.');
     }
 
-    $pdo->prepare("
-      INSERT INTO venda_itens (venda_id, produto_id, qtd, preco, total)
-      VALUES (?, ?, ?, ?, ?)
-    ")->execute([$id, $pid, $qtd, $pre, $tot]);
+    $stmtP->execute([':id' => $pid]);
+    $p = $stmtP->fetch();
 
-    $totalVenda += $tot;
+    if (!$p) throw new RuntimeException("Produto ID {$pid} não encontrado.");
+    if (($p['status'] ?? '') !== 'ATIVO') throw new RuntimeException("Produto {$p['nome']} está inativo.");
+
+    $estoque = (int)($p['estoque'] ?? 0);
+    if ($qty > $estoque) {
+      throw new RuntimeException("Estoque insuficiente: {$p['nome']} (disp. {$estoque}).");
+    }
+
+    $preco = (float)($p['preco'] ?? 0);
+    $linhaTotal = $preco * $qty;
+    $subtotal += $linhaTotal;
+
+    $stmtS->execute([
+      ':data'      => $today,
+      ':pedido'    => (string)$vendaId,     // pedido = ID da venda
+      ':cliente'   => $customer,
+      ':canal'     => $deliveryMode,
+      ':pagamento' => $pagamentoStr,
+      ':produto_id'=> $pid,
+      ':unidade'   => (string)($p['unidade'] ?? ''),
+      ':qtd'       => $qty,
+      ':preco'     => $preco,
+      ':total'     => $linhaTotal,
+    ]);
+
+    $stmtUpd->execute([':qtd' => $qty, ':id' => $pid]);
+
+    $outItems[] = [
+      'product_id' => $pid,
+      'code' => (string)$p['codigo'],
+      'name' => (string)$p['nome'],
+      'qty' => $qty,
+      'price' => $preco,
+      'total' => $linhaTotal,
+    ];
   }
 
-  $pdo->prepare("UPDATE vendas SET total = ? WHERE id = ?")->execute([$totalVenda, $id]);
+  $desc = calc_discount($subtotal, $dTipo, $dValor);
+  $total = max(0.0, ($subtotal - $desc) + $fee);
+
+  if ($total <= 0.0) {
+    throw new RuntimeException('Total inválido.');
+  }
+
+  // valida pagamento no servidor
+  $troco = 0.0;
+
+  if ($payMode === 'UNICO') {
+    $method = strtoupper(trim((string)($pay['method'] ?? 'DINHEIRO')));
+    $paid = to_float($pay['paid'] ?? 0);
+
+    if ($method === 'DINHEIRO') {
+      if ($paid + 0.0001 < $total) throw new RuntimeException('No dinheiro, valor pago deve ser >= total.');
+      $troco = max(0.0, $paid - $total);
+    } else {
+      if (abs($paid - $total) > 0.01) throw new RuntimeException('Para Pix/Cartão/Boleto, valor pago deve ser igual ao total.');
+    }
+
+    $payJson = [
+      'mode' => 'UNICO',
+      'method' => $method,
+      'paid' => $paid,
+      'troco' => $troco,
+    ];
+    $pagamentoStr = $method;
+
+  } else {
+    $parts = $pay['parts'] ?? [];
+    if (!is_array($parts) || count($parts) < 1) throw new RuntimeException('Pagamento múltiplo inválido.');
+
+    $sum = 0.0;
+    $hasCash = false;
+    $normParts = [];
+
+    foreach ($parts as $p) {
+      if (!is_array($p)) continue;
+      $m = strtoupper(trim((string)($p['method'] ?? 'PIX')));
+      $v = to_float($p['value'] ?? 0);
+      if ($v <= 0) continue;
+
+      if ($m === 'DINHEIRO') $hasCash = true;
+      $sum += $v;
+      $normParts[] = ['method' => $m, 'value' => $v];
+    }
+
+    if ($sum <= 0) throw new RuntimeException('Informe valores de pagamento.');
+
+    $diff = $sum - $total; // pag - total
+    $ok = false;
+
+    if (abs($diff) <= 0.01) {
+      $ok = true;
+      $troco = 0.0;
+    } elseif ($diff > 0.01 && $hasCash) {
+      $ok = true;
+      $troco = $diff;
+    }
+
+    if (!$ok) throw new RuntimeException('Pagamento múltiplo inválido. Ajuste os valores.');
+
+    $payJson = [
+      'mode' => 'MULTI',
+      'parts' => $normParts,
+      'sum' => $sum,
+      'troco' => $troco,
+    ];
+    $pagamentoStr = 'MULTI';
+  }
+
+  // atualiza cabeçalho com valores finais + json pagamento
+  $stmtUpV = $pdo->prepare("
+    UPDATE vendas
+    SET subtotal = :sub,
+        total = :total,
+        desconto_tipo = :dtipo,
+        desconto_valor = :desc,
+        taxa_entrega = :fee,
+        pagamento_mode = :pmode,
+        pagamento = :pag,
+        pagamento_json = :pjson
+    WHERE id = :id
+  ");
+  $stmtUpV->execute([
+    ':sub' => $subtotal,
+    ':total' => $total,
+    ':dtipo' => $dTipo,
+    ':desc' => $desc,
+    ':fee' => $fee,
+    ':pmode' => $payMode,
+    ':pag' => $pagamentoStr,
+    ':pjson' => json_encode($payJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ':id' => $vendaId,
+  ]);
 
   $pdo->commit();
 
-  flash_set('success', 'Venda salva com sucesso! (estoque atualizado)');
-  redirect('../../vendas.php');
+  json_response([
+    'ok' => true,
+    'msg' => "Venda #{$vendaId} confirmada!",
+    'sale' => [
+      'no' => $vendaId,
+      'date' => $nowBR,
+      'customer' => $customer,
+      'delivery' => [
+        'mode' => $deliveryMode,
+        'address' => ($deliveryMode === 'DELIVERY') ? $address : '',
+        'fee' => $fee,
+        'obs' => ($deliveryMode === 'DELIVERY') ? $obs : '',
+      ],
+      'discount' => ['tipo' => $dTipo, 'valor' => $dValor, 'aplicado' => $desc],
+      'totals' => ['sub' => $subtotal, 'desc' => $desc, 'fee' => $fee],
+      'total' => $total,
+      'pay' => $payJson,
+      'items' => $outItems,
+      'print_url' => "cupom.php?id={$vendaId}",
+    ],
+    'next' => $vendaId + 1,
+  ]);
 
 } catch (Throwable $e) {
   if ($pdo->inTransaction()) $pdo->rollBack();
-  flash_set('danger', 'Erro ao salvar venda: ' . $e->getMessage());
-  redirect('../../vendas.php');
+  json_response(['ok' => false, 'msg' => $e->getMessage()], 422);
 }
 
 ?>
