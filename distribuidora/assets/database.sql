@@ -137,3 +137,28 @@ CREATE INDEX idx_vendas_data ON vendas (data);
 CREATE INDEX idx_vendas_cliente ON vendas (cliente);
 CREATE INDEX idx_vendas_canal ON vendas (canal);
 
+
+CREATE TABLE IF NOT EXISTS devolucoes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  venda_no INT NULL,
+  cliente VARCHAR(180) NULL,
+
+  data DATE NOT NULL,
+  hora TIME NOT NULL,
+
+  tipo VARCHAR(10) NOT NULL DEFAULT 'TOTAL', -- TOTAL | PARCIAL
+  produto VARCHAR(255) NULL,                 -- usado quando PARCIAL
+  qtd INT NULL,                              -- usado quando PARCIAL
+  valor DECIMAL(10,2) NOT NULL DEFAULT 0,
+
+  motivo VARCHAR(40) NOT NULL DEFAULT 'OUTRO',
+  obs VARCHAR(255) NULL,
+
+  status VARCHAR(12) NOT NULL DEFAULT 'ABERTO', -- ABERTO | CONCLUIDO | CANCELADO
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_devol_data   ON devolucoes (data);
+CREATE INDEX idx_devol_status ON devolucoes (status);
+CREATE INDEX idx_devol_venda  ON devolucoes (venda_no);
