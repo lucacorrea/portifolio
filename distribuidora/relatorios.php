@@ -1,3 +1,603 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * relatorios.php
+ * - Página + endpoint JSON (action=fetch) no mesmo arquivo
+ * - Lê do MySQL (tabelas: vendas, saidas, entradas, produtos, categorias, fornecedores, devolucoes)
+ *
+ * Ajuste os includes abaixo conforme seu projeto.
+ */
+
+@date_default_timezone_set('America/Manaus');
+
+// Helpers (csrf/flash/etc) - use se existir no seu projeto
+$helpers = __DIR__ . '/assets/dados/_helpers.php';
+if (is_file($helpers)) require_once $helpers;
+
+// Conexão PDO (precisa existir db():PDO). Ajuste o caminho se necessário:
+$con = __DIR__ . '/assets/php/conexao.php';
+if (is_file($con)) require_once $con;
+
+if (!function_exists('db')) {
+  http_response_code(500);
+  echo "ERRO: função db():PDO não encontrada. Verifique /assets/php/conexao.php";
+  exit;
+}
+
+/* =========================
+   Utils
+========================= */
+
+function iso_date_or_empty(?string $s): string {
+  $s = trim((string)$s);
+  if ($s === '') return '';
+  return preg_match('/^\d{4}-\d{2}-\d{2}$/', $s) ? $s : '';
+}
+
+function str_or_null(?string $s): ?string {
+  $s = trim((string)$s);
+  return $s === '' ? null : $s;
+}
+
+function br_date(?string $iso): string {
+  $iso = trim((string)$iso);
+  if ($iso === '') return '—';
+  $dt = DateTime::createFromFormat('Y-m-d', $iso);
+  return $dt ? $dt->format('d/m/Y') : '—';
+}
+
+function br_datetime(?string $sqlDt): string {
+  $sqlDt = trim((string)$sqlDt);
+  if ($sqlDt === '') return '—';
+  // aceita "Y-m-d H:i:s"
+  $dt = DateTime::createFromFormat('Y-m-d H:i:s', $sqlDt);
+  if (!$dt) {
+    // tenta parse genérico
+    try { $dt = new DateTime($sqlDt); } catch (\Throwable $e) { return '—'; }
+  }
+  return $dt->format('d/m/Y H:i');
+}
+
+function br_money($n): string {
+  $v = (float)$n;
+  return 'R$ ' . number_format($v, 2, ',', '.');
+}
+
+function br_num($n, int $dec = 3): string {
+  $v = (float)$n;
+  // remove zeros finais com cuidado
+  $s = number_format($v, $dec, ',', '.');
+  if ($dec > 0) {
+    $s = rtrim($s, '0');
+    $s = rtrim($s, ',');
+  }
+  return $s === '' ? '0' : $s;
+}
+
+function entrega_label(?string $canal): string {
+  $c = strtoupper(trim((string)$canal));
+  if ($c === 'DELIVERY') return 'Delivery';
+  if ($c === 'PRESENCIAL') return 'Presencial';
+  return $canal ? $canal : '—';
+}
+
+function pagamento_label(?string $mode, ?string $pay): string {
+  $m = strtoupper(trim((string)$mode));
+  $p = strtoupper(trim((string)$pay));
+  if ($m === 'MULTI' || $p === 'MULTI') return 'Múltiplos';
+  return $pay && trim($pay) !== '' ? $pay : '—';
+}
+
+function like_q(string $q): string {
+  // LIKE com wildcards
+  return '%' . $q . '%';
+}
+
+/* =========================
+   Builders (SQL -> report)
+========================= */
+
+function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q): array {
+  $where = [];
+  $params = [];
+
+  if ($dtIni !== '') { $where[] = "v.data >= :dtIni"; $params[':dtIni'] = $dtIni; }
+  if ($dtFim !== '') { $where[] = "v.data <= :dtFim"; $params[':dtFim'] = $dtFim; }
+
+  $q = trim($q);
+  if ($q !== '') {
+    $where[] = "(CAST(v.id AS CHAR) LIKE :q OR v.cliente LIKE :q OR v.canal LIKE :q OR v.pagamento LIKE :q OR v.pagamento_mode LIKE :q)";
+    $params[':q'] = like_q($q);
+  }
+
+  $sql = "
+    SELECT
+      v.id, v.data, v.cliente, v.canal,
+      v.pagamento_mode, v.pagamento,
+      v.total, v.created_at
+    FROM vendas v
+    " . (count($where) ? "WHERE " . implode(" AND ", $where) : "") . "
+    ORDER BY v.data DESC, v.id DESC
+  ";
+
+  $st = $pdo->prepare($sql);
+  $st->execute($params);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $head = ["Nº Venda", "Data/Hora", "Cliente", "Entrega", "Pagamento", "Total"];
+  $body = [];
+  $sum = 0.0;
+
+  foreach ($rows as $r) {
+    $id = (int)($r['id'] ?? 0);
+    $cliente = trim((string)($r['cliente'] ?? ''));
+    if ($cliente === '') $cliente = 'Consumidor Final';
+
+    $total = (float)($r['total'] ?? 0);
+    $sum += $total;
+
+    $body[] = [
+      '#' . $id,
+      br_datetime((string)($r['created_at'] ?? '')),
+      $cliente,
+      entrega_label((string)($r['canal'] ?? '')),
+      pagamento_label((string)($r['pagamento_mode'] ?? ''), (string)($r['pagamento'] ?? '')),
+      br_money($total),
+    ];
+  }
+
+  return [
+    'title' => 'Vendas (Resumo)',
+    'head' => $head,
+    'body' => $body,
+    'sum' => $sum,
+    'sum_text' => br_money($sum),
+    'sum_label' => 'Total vendido',
+    'rightCols' => [5],
+    'centerCols' => [0, 3, 4],
+  ];
+}
+
+function report_vendas_itens(PDO $pdo, string $dtIni, string $dtFim, string $q): array {
+  // Usa tabela SAIDAS como "itens" (pois não existe venda_itens no seu DDL)
+  $where = [];
+  $params = [];
+
+  if ($dtIni !== '') { $where[] = "s.data >= :dtIni"; $params[':dtIni'] = $dtIni; }
+  if ($dtFim !== '') { $where[] = "s.data <= :dtFim"; $params[':dtFim'] = $dtFim; }
+
+  $q = trim($q);
+  if ($q !== '') {
+    $where[] = "(
+      s.pedido LIKE :q OR s.cliente LIKE :q OR s.canal LIKE :q OR s.pagamento LIKE :q
+      OR p.codigo LIKE :q OR p.nome LIKE :q
+    )";
+    $params[':q'] = like_q($q);
+  }
+
+  $sql = "
+    SELECT
+      s.pedido, s.data, s.cliente, s.canal, s.pagamento,
+      s.qtd, s.preco, s.total,
+      p.codigo, p.nome AS produto
+    FROM saidas s
+    INNER JOIN produtos p ON p.id = s.produto_id
+    " . (count($where) ? "WHERE " . implode(" AND ", $where) : "") . "
+    ORDER BY s.data DESC, s.pedido DESC, p.nome ASC
+  ";
+
+  $st = $pdo->prepare($sql);
+  $st->execute($params);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $head = ["Pedido", "Data", "Cliente", "Canal", "Pagamento", "Código", "Produto", "Qtd", "Unitário", "Total"];
+  $body = [];
+  $sum = 0.0;
+
+  foreach ($rows as $r) {
+    $cliente = trim((string)($r['cliente'] ?? ''));
+    if ($cliente === '') $cliente = 'Consumidor Final';
+
+    $total = (float)($r['total'] ?? 0);
+    $sum += $total;
+
+    $body[] = [
+      (string)($r['pedido'] ?? '—'),
+      br_date((string)($r['data'] ?? '')),
+      $cliente,
+      (string)($r['canal'] ?? '—'),
+      (string)($r['pagamento'] ?? '—'),
+      (string)($r['codigo'] ?? '—'),
+      (string)($r['produto'] ?? '—'),
+      br_num($r['qtd'] ?? 0, 3),
+      br_money((float)($r['preco'] ?? 0)),
+      br_money($total),
+    ];
+  }
+
+  return [
+    'title' => 'Vendas (Itens)',
+    'head' => $head,
+    'body' => $body,
+    'sum' => $sum,
+    'sum_text' => br_money($sum),
+    'sum_label' => 'Soma dos totais',
+    'rightCols' => [8, 9],
+    'centerCols' => [7],
+  ];
+}
+
+function report_produtos(PDO $pdo, string $q): array {
+  $where = [];
+  $params = [];
+
+  $q = trim($q);
+  if ($q !== '') {
+    $where[] = "(
+      p.codigo LIKE :q OR p.nome LIKE :q OR c.nome LIKE :q OR f.nome LIKE :q
+      OR p.unidade LIKE :q OR p.status LIKE :q
+    )";
+    $params[':q'] = like_q($q);
+  }
+
+  $sql = "
+    SELECT
+      p.codigo, p.nome, p.unidade, p.preco, p.estoque, p.minimo, p.status,
+      c.nome AS categoria,
+      f.nome AS fornecedor
+    FROM produtos p
+    LEFT JOIN categorias c ON c.id = p.categoria_id
+    LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
+    " . (count($where) ? "WHERE " . implode(" AND ", $where) : "") . "
+    ORDER BY p.nome ASC
+  ";
+
+  $st = $pdo->prepare($sql);
+  $st->execute($params);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $head = ["Código", "Produto", "Categoria", "Fornecedor", "Unidade", "Preço", "Estoque", "Mínimo", "Status"];
+  $body = [];
+  $sum = 0.0;
+
+  foreach ($rows as $r) {
+    $preco = (float)($r['preco'] ?? 0);
+    $sum += $preco;
+
+    $body[] = [
+      (string)($r['codigo'] ?? '—'),
+      (string)($r['nome'] ?? '—'),
+      (string)($r['categoria'] ?? '—'),
+      (string)($r['fornecedor'] ?? '—'),
+      (string)($r['unidade'] ?? '—'),
+      br_money($preco),
+      (string)($r['estoque'] ?? '0'),
+      (string)($r['minimo'] ?? '0'),
+      (string)($r['status'] ?? '—'),
+    ];
+  }
+
+  return [
+    'title' => 'Produtos (Cadastro)',
+    'head' => $head,
+    'body' => $body,
+    'sum' => $sum,
+    'sum_text' => br_money($sum),
+    'sum_label' => 'Soma dos preços',
+    'rightCols' => [5],
+    'centerCols' => [6, 7, 8],
+  ];
+}
+
+function report_estoque_minimo(PDO $pdo, string $q): array {
+  $where = ["p.estoque < p.minimo"];
+  $params = [];
+
+  $q = trim($q);
+  if ($q !== '') {
+    $where[] = "(p.codigo LIKE :q OR p.nome LIKE :q)";
+    $params[':q'] = like_q($q);
+  }
+
+  $sql = "
+    SELECT p.codigo, p.nome, p.estoque, p.minimo, (p.estoque - p.minimo) AS diff
+    FROM produtos p
+    WHERE " . implode(" AND ", $where) . "
+    ORDER BY diff ASC, p.nome ASC
+  ";
+
+  $st = $pdo->prepare($sql);
+  $st->execute($params);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $head = ["Código", "Produto", "Estoque", "Mínimo", "Diferença"];
+  $body = [];
+  $sum = 0.0;
+
+  foreach ($rows as $r) {
+    $diff = (float)($r['diff'] ?? 0);
+    $sum += abs($diff);
+
+    $body[] = [
+      (string)($r['codigo'] ?? '—'),
+      (string)($r['nome'] ?? '—'),
+      (string)($r['estoque'] ?? '0'),
+      (string)($r['minimo'] ?? '0'),
+      (string)$diff,
+    ];
+  }
+
+  return [
+    'title' => 'Estoque Mínimo',
+    'head' => $head,
+    'body' => $body,
+    'sum' => $sum,
+    'sum_text' => br_num($sum, 0),
+    'sum_label' => 'Soma do déficit (abs)',
+    'rightCols' => [],
+    'centerCols' => [2, 3, 4],
+  ];
+}
+
+function report_devolucoes(PDO $pdo, string $dtIni, string $dtFim, string $q): array {
+  $where = [];
+  $params = [];
+
+  if ($dtIni !== '') { $where[] = "d.data >= :dtIni"; $params[':dtIni'] = $dtIni; }
+  if ($dtFim !== '') { $where[] = "d.data <= :dtFim"; $params[':dtFim'] = $dtFim; }
+
+  $q = trim($q);
+  if ($q !== '') {
+    $where[] = "(
+      CAST(d.id AS CHAR) LIKE :q OR CAST(d.venda_no AS CHAR) LIKE :q OR d.cliente LIKE :q
+      OR d.tipo LIKE :q OR d.produto LIKE :q OR d.motivo LIKE :q OR d.status LIKE :q
+    )";
+    $params[':q'] = like_q($q);
+  }
+
+  $sql = "
+    SELECT d.id, d.venda_no, d.cliente, d.data, d.hora, d.tipo, d.produto, d.qtd, d.motivo, d.status, d.valor
+    FROM devolucoes d
+    " . (count($where) ? "WHERE " . implode(" AND ", $where) : "") . "
+    ORDER BY d.data DESC, d.hora DESC, d.id DESC
+  ";
+
+  $st = $pdo->prepare($sql);
+  $st->execute($params);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $head = ["ID", "Data/Hora", "Venda", "Cliente", "Tipo", "Produto", "Qtd", "Motivo", "Status", "Valor"];
+  $body = [];
+  $sum = 0.0;
+
+  foreach ($rows as $r) {
+    $cliente = trim((string)($r['cliente'] ?? ''));
+    if ($cliente === '') $cliente = 'Consumidor Final';
+
+    $valor = (float)($r['valor'] ?? 0);
+    $sum += $valor;
+
+    $dtText = br_date((string)($r['data'] ?? '')) . ' ' . (string)($r['hora'] ?? '—');
+    $venda = ($r['venda_no'] !== null && (string)$r['venda_no'] !== '') ? ('#' . (string)$r['venda_no']) : '—';
+
+    $tipo = (string)($r['tipo'] ?? 'TOTAL');
+    $produto = ($tipo === 'PARCIAL') ? ((string)($r['produto'] ?? '—')) : '—';
+    $qtd = ($tipo === 'PARCIAL') ? ((string)($r['qtd'] ?? '—')) : '—';
+
+    $body[] = [
+      (string)($r['id'] ?? '—'),
+      $dtText,
+      $venda,
+      $cliente,
+      $tipo,
+      $produto,
+      $qtd,
+      (string)($r['motivo'] ?? '—'),
+      (string)($r['status'] ?? '—'),
+      br_money($valor),
+    ];
+  }
+
+  return [
+    'title' => 'Devoluções',
+    'head' => $head,
+    'body' => $body,
+    'sum' => $sum,
+    'sum_text' => br_money($sum),
+    'sum_label' => 'Total devolvido',
+    'rightCols' => [9],
+    'centerCols' => [0, 2, 4, 6, 8],
+  ];
+}
+
+function report_entradas(PDO $pdo, string $dtIni, string $dtFim, string $q): array {
+  $where = [];
+  $params = [];
+
+  if ($dtIni !== '') { $where[] = "e.data >= :dtIni"; $params[':dtIni'] = $dtIni; }
+  if ($dtFim !== '') { $where[] = "e.data <= :dtFim"; $params[':dtFim'] = $dtFim; }
+
+  $q = trim($q);
+  if ($q !== '') {
+    $where[] = "(
+      e.nf LIKE :q OR f.nome LIKE :q OR p.codigo LIKE :q OR p.nome LIKE :q OR e.unidade LIKE :q
+    )";
+    $params[':q'] = like_q($q);
+  }
+
+  $sql = "
+    SELECT
+      e.data, e.nf, e.qtd, e.custo, e.total, e.unidade,
+      f.nome AS fornecedor,
+      p.codigo, p.nome AS produto
+    FROM entradas e
+    INNER JOIN fornecedores f ON f.id = e.fornecedor_id
+    INNER JOIN produtos p ON p.id = e.produto_id
+    " . (count($where) ? "WHERE " . implode(" AND ", $where) : "") . "
+    ORDER BY e.data DESC, e.id DESC
+  ";
+
+  $st = $pdo->prepare($sql);
+  $st->execute($params);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $head = ["Data", "NF", "Fornecedor", "Código", "Produto", "Qtd", "Unidade", "Custo", "Total"];
+  $body = [];
+  $sum = 0.0;
+
+  foreach ($rows as $r) {
+    $total = (float)($r['total'] ?? 0);
+    $sum += $total;
+
+    $body[] = [
+      br_date((string)($r['data'] ?? '')),
+      (string)($r['nf'] ?? '—'),
+      (string)($r['fornecedor'] ?? '—'),
+      (string)($r['codigo'] ?? '—'),
+      (string)($r['produto'] ?? '—'),
+      (string)($r['qtd'] ?? '0'),
+      (string)($r['unidade'] ?? '—'),
+      br_money((float)($r['custo'] ?? 0)),
+      br_money($total),
+    ];
+  }
+
+  return [
+    'title' => 'Entradas',
+    'head' => $head,
+    'body' => $body,
+    'sum' => $sum,
+    'sum_text' => br_money($sum),
+    'sum_label' => 'Total de entradas',
+    'rightCols' => [7, 8],
+    'centerCols' => [5, 6],
+  ];
+}
+
+function report_saidas(PDO $pdo, string $dtIni, string $dtFim, string $q): array {
+  $where = [];
+  $params = [];
+
+  if ($dtIni !== '') { $where[] = "s.data >= :dtIni"; $params[':dtIni'] = $dtIni; }
+  if ($dtFim !== '') { $where[] = "s.data <= :dtFim"; $params[':dtFim'] = $dtFim; }
+
+  $q = trim($q);
+  if ($q !== '') {
+    $where[] = "(
+      s.pedido LIKE :q OR s.cliente LIKE :q OR s.canal LIKE :q OR s.pagamento LIKE :q
+      OR p.codigo LIKE :q OR p.nome LIKE :q
+    )";
+    $params[':q'] = like_q($q);
+  }
+
+  $sql = "
+    SELECT
+      s.data, s.pedido, s.cliente, s.canal, s.pagamento,
+      s.qtd, s.preco, s.total, s.unidade,
+      p.codigo, p.nome AS produto
+    FROM saidas s
+    INNER JOIN produtos p ON p.id = s.produto_id
+    " . (count($where) ? "WHERE " . implode(" AND ", $where) : "") . "
+    ORDER BY s.data DESC, s.id DESC
+  ";
+
+  $st = $pdo->prepare($sql);
+  $st->execute($params);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $head = ["Data", "Pedido", "Cliente", "Canal", "Pagamento", "Código", "Produto", "Qtd", "Unid.", "Unitário", "Total"];
+  $body = [];
+  $sum = 0.0;
+
+  foreach ($rows as $r) {
+    $cliente = trim((string)($r['cliente'] ?? ''));
+    if ($cliente === '') $cliente = 'Consumidor Final';
+
+    $total = (float)($r['total'] ?? 0);
+    $sum += $total;
+
+    $body[] = [
+      br_date((string)($r['data'] ?? '')),
+      (string)($r['pedido'] ?? '—'),
+      $cliente,
+      (string)($r['canal'] ?? '—'),
+      (string)($r['pagamento'] ?? '—'),
+      (string)($r['codigo'] ?? '—'),
+      (string)($r['produto'] ?? '—'),
+      br_num($r['qtd'] ?? 0, 3),
+      (string)($r['unidade'] ?? '—'),
+      br_money((float)($r['preco'] ?? 0)),
+      br_money($total),
+    ];
+  }
+
+  return [
+    'title' => 'Saídas',
+    'head' => $head,
+    'body' => $body,
+    'sum' => $sum,
+    'sum_text' => br_money($sum),
+    'sum_label' => 'Total de saídas',
+    'rightCols' => [9, 10],
+    'centerCols' => [7, 8],
+  ];
+}
+
+function build_report(PDO $pdo, string $tipo, string $dtIni, string $dtFim, string $q): array {
+  $tipo = strtoupper(trim($tipo));
+
+  // whitelist
+  $allowed = [
+    'VENDAS_RESUMO', 'VENDAS_ITENS', 'PRODUTOS', 'ESTOQUE_MINIMO',
+    'DEVOLUCOES', 'ENTRADAS', 'SAIDAS'
+  ];
+  if (!in_array($tipo, $allowed, true)) $tipo = 'VENDAS_RESUMO';
+
+  if ($tipo === 'VENDAS_RESUMO') return report_vendas_resumo($pdo, $dtIni, $dtFim, $q);
+  if ($tipo === 'VENDAS_ITENS')  return report_vendas_itens($pdo, $dtIni, $dtFim, $q);
+  if ($tipo === 'PRODUTOS')      return report_produtos($pdo, $q);
+  if ($tipo === 'ESTOQUE_MINIMO')return report_estoque_minimo($pdo, $q);
+  if ($tipo === 'DEVOLUCOES')    return report_devolucoes($pdo, $dtIni, $dtFim, $q);
+  if ($tipo === 'ENTRADAS')      return report_entradas($pdo, $dtIni, $dtFim, $q);
+  if ($tipo === 'SAIDAS')        return report_saidas($pdo, $dtIni, $dtFim, $q);
+
+  return report_vendas_resumo($pdo, $dtIni, $dtFim, $q);
+}
+
+/* =========================
+   AJAX endpoint
+========================= */
+
+if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
+  header('Content-Type: application/json; charset=utf-8');
+
+  try {
+    $pdo = db();
+
+    $tipo  = (string)($_GET['tipo'] ?? 'VENDAS_RESUMO');
+    $dtIni = iso_date_or_empty((string)($_GET['dt_ini'] ?? ''));
+    $dtFim = iso_date_or_empty((string)($_GET['dt_fim'] ?? ''));
+    $q     = (string)($_GET['q'] ?? '');
+
+    $rep = build_report($pdo, $tipo, $dtIni, $dtFim, $q);
+
+    echo json_encode([
+      'ok' => true,
+      'report' => $rep
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+  } catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode([
+      'ok' => false,
+      'error' => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  }
+  exit;
+}
+
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -17,285 +617,69 @@
 
   <style>
     /* dropdown do profile: largura acompanha conteúdo */
-    .profile-box .dropdown-menu {
-      width: max-content;
-      min-width: 260px;
-      max-width: calc(100vw - 24px);
-    }
-
-    .profile-box .dropdown-menu .author-info {
-      width: max-content;
-      max-width: 100%;
-      display: flex !important;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .profile-box .dropdown-menu .author-info .content {
-      min-width: 0;
-      max-width: 100%;
-    }
-
-    .profile-box .dropdown-menu .author-info .content a {
-      display: inline-block;
-      white-space: nowrap;
-      max-width: 100%;
-    }
+    .profile-box .dropdown-menu { width: max-content; min-width: 260px; max-width: calc(100vw - 24px); }
+    .profile-box .dropdown-menu .author-info { width: max-content; max-width: 100%; display: flex !important; align-items: center; gap: 10px; }
+    .profile-box .dropdown-menu .author-info .content { min-width: 0; max-width: 100%; }
+    .profile-box .dropdown-menu .author-info .content a { display: inline-block; white-space: nowrap; max-width: 100%; }
 
     /* Botões compactos */
-    .main-btn.btn-compact {
-      height: 38px !important;
-      padding: 8px 14px !important;
-      font-size: 13px !important;
-      line-height: 1 !important;
-    }
+    .main-btn.btn-compact { height: 38px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1 !important; }
+    .main-btn.btn-compact i { font-size: 14px; vertical-align: -1px; }
 
-    .main-btn.btn-compact i {
-      font-size: 14px;
-      vertical-align: -1px;
-    }
-
-    .icon-btn {
-      height: 34px !important;
-      width: 42px !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-    }
-
-    .form-control.compact,
-    .form-select.compact {
-      height: 38px;
-      padding: 8px 12px;
-      font-size: 13px;
-    }
-
-    .muted {
-      font-size: 12px;
-      color: #64748b;
-    }
+    .icon-btn { height: 34px !important; width: 42px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+    .form-control.compact, .form-select.compact { height: 38px; padding: 8px 12px; font-size: 13px; }
+    .muted { font-size: 12px; color: #64748b; }
 
     /* Cards */
-    .cardx {
-      border: 1px solid rgba(148, 163, 184, .28);
-      border-radius: 16px;
-      background: #fff;
-      overflow: hidden;
-    }
-
-    .cardx .head {
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(148, 163, 184, .22);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .cardx .body {
-      padding: 14px;
-    }
+    .cardx { border: 1px solid rgba(148, 163, 184, .28); border-radius: 16px; background: #fff; overflow: hidden; }
+    .cardx .head { padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, .22); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .cardx .body { padding: 14px; }
 
     /* ✅ para Atalhos e Prévia ficarem com o MESMO height */
-    .cardx.fill {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .cardx.fill .body {
-      flex: 1 1 auto;
-    }
+    .cardx.fill { height: 100%; display: flex; flex-direction: column; }
+    .cardx.fill .body { flex: 1 1 auto; }
 
     /* Pills */
-    .pill {
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, .25);
-      font-weight: 900;
-      font-size: 12px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(248, 250, 252, .7);
-      white-space: nowrap;
-    }
+    .pill { padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, .25); font-weight: 900; font-size: 12px; display: inline-flex; align-items: center; gap: 8px; background: rgba(248, 250, 252, .7); white-space: nowrap; }
+    .pill.primary { border-color: rgba(37, 99, 235, .28); background: rgba(239, 246, 255, .75); color: #0b5ed7; }
+    .pill.ok { border-color: rgba(34, 197, 94, .25); background: rgba(240, 253, 244, .9); color: #166534; }
+    .pill.warn { border-color: rgba(245, 158, 11, .28); background: rgba(255, 251, 235, .9); color: #92400e; }
+    .pill.bad { border-color: rgba(239, 68, 68, .25); background: rgba(254, 242, 242, .9); color: #991b1b; }
 
-    .pill.primary {
-      border-color: rgba(37, 99, 235, .28);
-      background: rgba(239, 246, 255, .75);
-      color: #0b5ed7;
-    }
-
-    .pill.ok {
-      border-color: rgba(34, 197, 94, .25);
-      background: rgba(240, 253, 244, .9);
-      color: #166534;
-    }
-
-    .pill.warn {
-      border-color: rgba(245, 158, 11, .28);
-      background: rgba(255, 251, 235, .9);
-      color: #92400e;
-    }
-
-    .pill.bad {
-      border-color: rgba(239, 68, 68, .25);
-      background: rgba(254, 242, 242, .9);
-      color: #991b1b;
-    }
-
-    /* ✅ Filtros alinhados (sem desalinho por texto extra dentro da coluna) */
-    .filters-row .form-label {
-      margin-bottom: 6px;
-    }
-
-    .filters-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
+    /* ✅ Filtros alinhados */
+    .filters-row .form-label { margin-bottom: 6px; }
+    .filters-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
     /* Tabela */
-    .table td,
-    .table th {
-      vertical-align: middle;
-    }
+    .table td, .table th { vertical-align: middle; }
+    .table-responsive { -webkit-overflow-scrolling: touch; }
 
-    .table-responsive {
-      -webkit-overflow-scrolling: touch;
-    }
+    #tbRel { width: 100%; min-width: 980px; }
+    #tbRel th, #tbRel td { white-space: nowrap !important; }
 
-    #tbRel {
-      width: 100%;
-      min-width: 980px;
-    }
+    /* ✅ Prévia */
+    .rel-table-wrap { flex: 1 1 auto; min-height: 260px; }
+    .box-tot { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; background: #fff; padding: 12px; margin-top: auto !important; }
+    .tot-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #334155; margin-bottom: 8px; font-weight: 900; }
+    .tot-row:last-child { margin-bottom: 0; }
+    .tot-hr { height: 1px; background: rgba(148, 163, 184, .22); margin: 10px 0; }
 
-    #tbRel th,
-    #tbRel td {
-      white-space: nowrap !important;
-    }
-
-    /* ✅ Prévia: tabela cresce e o box total fica “colado” embaixo */
-    .rel-table-wrap {
-      flex: 1 1 auto;
-      min-height: 260px;
-    }
-
-    .box-tot {
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 14px;
-      background: #fff;
-      padding: 12px;
-      margin-top: auto !important;
-    }
-
-    .tot-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: #334155;
-      margin-bottom: 8px;
-      font-weight: 900;
-    }
-
-    .tot-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .tot-hr {
-      height: 1px;
-      background: rgba(148, 163, 184, .22);
-      margin: 10px 0;
-    }
-
-    .grand {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 10px;
-      margin-top: 4px;
-    }
-
-    .grand .lbl {
-      font-weight: 1000;
-      color: #0f172a;
-      font-size: 16px;
-    }
-
-    .grand .val {
-      font-weight: 1000;
-      color: #0b5ed7;
-      font-size: 26px;
-      letter-spacing: .2px;
-    }
+    .grand { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 4px; }
+    .grand .lbl { font-weight: 1000; color: #0f172a; font-size: 16px; }
+    .grand .val { font-weight: 1000; color: #0b5ed7; font-size: 26px; letter-spacing: .2px; }
 
     /* Atalhos */
-    .quick-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-
-    .quick {
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 14px;
-      padding: 12px;
-      background: rgba(248, 250, 252, .6);
-      cursor: pointer;
-      transition: .12s ease;
-    }
-
-    .quick:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 10px 22px rgba(15, 23, 42, .08);
-      background: rgba(239, 246, 255, .65);
-      border-color: rgba(37, 99, 235, .30);
-    }
-
-    .quick .t {
-      font-weight: 1000;
-      color: #0f172a;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
-
-    .quick .d {
-      font-size: 12px;
-      color: #64748b;
-      margin-bottom: 8px;
-    }
-
-    .quick .tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 900;
-      color: #0b5ed7;
-      background: rgba(239, 246, 255, .9);
-      border: 1px solid rgba(37, 99, 235, .22);
-      padding: 5px 10px;
-      border-radius: 999px;
-    }
+    .quick-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .quick { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; padding: 12px; background: rgba(248, 250, 252, .6); cursor: pointer; transition: .12s ease; }
+    .quick:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15, 23, 42, .08); background: rgba(239, 246, 255, .65); border-color: rgba(37, 99, 235, .30); }
+    .quick .t { font-weight: 1000; color: #0f172a; font-size: 13px; margin-bottom: 4px; }
+    .quick .d { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+    .quick .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 900; color: #0b5ed7; background: rgba(239, 246, 255, .9); border: 1px solid rgba(37, 99, 235, .22); padding: 5px 10px; border-radius: 999px; }
 
     @media (max-width: 991.98px) {
-      #tbRel {
-        min-width: 900px;
-      }
-
-      .grand .val {
-        font-size: 22px;
-      }
-
-      .filters-actions {
-        justify-content: flex-start;
-      }
+      #tbRel { min-width: 900px; }
+      .grand .val { font-size: 22px; }
+      .filters-actions { justify-content: flex-start; }
     }
   </style>
 </head>
@@ -320,10 +704,8 @@
           <a href="dashboard.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
-                <path
-                  d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
+                <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
+                <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
               </svg>
             </span>
             <span class="text">Dashboard</span>
@@ -332,12 +714,10 @@
 
         <!-- Operações -->
         <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
-            aria-controls="ddmenu_operacoes" aria-expanded="false">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
+                <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
               </svg>
             </span>
             <span class="text">Operações</span>
@@ -351,14 +731,11 @@
 
         <!-- Estoque -->
         <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
-            aria-controls="ddmenu_estoque" aria-expanded="false">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
-                <path
-                  d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
+                <path d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
+                <path d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
               </svg>
             </span>
             <span class="text">Estoque</span>
@@ -374,18 +751,13 @@
 
         <!-- Cadastros -->
         <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros"
-            aria-controls="ddmenu_cadastros" aria-expanded="false">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                <path
-                  d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                <path
-                  d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                <path
-                  d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
+                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
+                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
+                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
+                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
               </svg>
             </span>
             <span class="text">Cadastros</span>
@@ -402,8 +774,7 @@
           <a href="relatorios.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
+                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
               </svg>
             </span>
             <span class="text">Relatórios</span>
@@ -413,12 +784,10 @@
         <span class="divider"><hr /></span>
 
         <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config"
-            aria-controls="ddmenu_config" aria-expanded="false">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
+                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
               </svg>
             </span>
             <span class="text">Configurações</span>
@@ -433,10 +802,8 @@
           <a href="suporte.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                <path
-                  d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
+                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
+                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
               </svg>
             </span>
             <span class="text">Suporte</span>
@@ -471,8 +838,7 @@
           <div class="col-lg-7 col-md-7 col-6">
             <div class="header-right">
               <div class="profile-box ml-15">
-                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile"
-                  data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
                   <div class="profile-info">
                     <div class="info">
                       <div class="image">
@@ -494,8 +860,7 @@
                       </div>
                       <div class="content">
                         <h4 class="text-sm">Administrador</h4>
-                        <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
-                          href="#">Admin</a>
+                        <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs" href="#">Admin</a>
                       </div>
                     </div>
                   </li>
@@ -549,8 +914,8 @@
                   <option value="PRODUTOS">Produtos (Cadastro)</option>
                   <option value="ESTOQUE_MINIMO">Estoque Mínimo</option>
                   <option value="DEVOLUCOES">Devoluções</option>
-                  <option value="ENTRADAS">Entradas (se existir)</option>
-                  <option value="SAIDAS">Saídas (se existir)</option>
+                  <option value="ENTRADAS">Entradas</option>
+                  <option value="SAIDAS">Saídas</option>
                 </select>
               </div>
 
@@ -582,12 +947,12 @@
               </div>
 
               <div class="col-12">
-                <div class="muted mt-1">* Alguns relatórios dependem de dados salvos no LocalStorage.</div>
+                <div class="muted mt-1">* Os dados deste relatório vêm do banco MySQL.</div>
               </div>
 
               <div class="col-12">
                 <label class="form-label">Busca (filtro extra)</label>
-                <input class="form-control compact" id="qRel" placeholder="Cliente, código, produto..." />
+                <input class="form-control compact" id="qRel" placeholder="Cliente, pedido, código, produto..." />
               </div>
             </div>
           </div>
@@ -612,12 +977,12 @@
                   </div>
                   <div class="quick" data-quick="VENDAS_ITENS">
                     <div class="t">Vendas (Itens)</div>
-                    <div class="d">Itens por venda (produto, qtd, preço, subtotal).</div>
+                    <div class="d">Itens (usa a tabela Saídas como detalhamento).</div>
                     <div class="tag"><i class="lni lni-list"></i> Detalhado</div>
                   </div>
                   <div class="quick" data-quick="ESTOQUE_MINIMO">
                     <div class="t">Estoque Mínimo</div>
-                    <div class="d">Itens abaixo do mínimo (se tiver estoque/mínimo).</div>
+                    <div class="d">Itens abaixo do mínimo (estoque/minimo).</div>
                     <div class="tag"><i class="lni lni-warning"></i> Estoque</div>
                   </div>
                   <div class="quick" data-quick="DEVOLUCOES">
@@ -656,12 +1021,11 @@
 
                 <div class="box-tot mt-3">
                   <div class="tot-row"><span>Linhas</span><span id="tRows">0</span></div>
-                  <div class="tot-row"><span>Somatório (coluna total)</span><span id="tSum"
-                      style="font-weight:1000;color:#0b5ed7;">R$ 0,00</span></div>
+                  <div class="tot-row"><span>Somatório</span><span id="tSum" style="font-weight:1000;color:#0b5ed7;">—</span></div>
                   <div class="tot-hr"></div>
                   <div class="grand">
                     <span class="lbl">TOTAL</span>
-                    <span class="val" id="tGrand">R$ 0,00</span>
+                    <span class="val" id="tGrand">—</span>
                   </div>
                   <div class="muted mt-2" id="tNote">* O somatório depende do tipo de relatório.</div>
                 </div>
@@ -696,15 +1060,6 @@
 
   <script>
     // ==============================
-    // LocalStorage keys
-    // ==============================
-    const LS_PRODUCTS = "dist_products_v1";
-    const LS_SALES = "dist_sales_pdv_v1";
-    const LS_DEV = "dist_devolucoes_v1";
-    const LS_ENTRADAS = "dist_entradas_v1";
-    const LS_SAIDAS = "dist_saidas_v1";
-
-    // ==============================
     // Helpers
     // ==============================
     function safeText(s) {
@@ -716,82 +1071,20 @@
         .replaceAll("'", "&#039;");
     }
 
-    function moneyToNumber(txt) {
-      let s = String(txt ?? "").trim();
-      if (!s) return 0;
-      s = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
-      const n = Number(s);
-      return isNaN(n) ? 0 : n;
-    }
-
     function numberToMoney(n) {
       const v = Number(n || 0);
-      return "R$ " + v.toFixed(2).replace(".", ",");
+      const s = v.toFixed(2).replace(".", ",");
+      // separador de milhar simples
+      const parts = s.split(",");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return "R$ " + parts.join(",");
     }
 
-    function loadJson(key, fallback) {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : fallback;
-      } catch {
-        return fallback;
-      }
-    }
-
-    function parseBRDateTime(str) {
-      const s = String(str || "").trim();
-      const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-      if (!m) return null;
-      const dd = Number(m[1]), mm = Number(m[2]) - 1, yy = Number(m[3]);
-      const hh = Number(m[4]), mi = Number(m[5]);
-      const d = new Date(yy, mm, dd, hh, mi, 0, 0);
-      return isNaN(d.getTime()) ? null : d;
-    }
-
-    function parseISODateTime(dateISO, timeISO) {
-      const d = String(dateISO || "").trim();
-      if (!d) return null;
-      const t = String(timeISO || "00:00").trim();
-      const dt = new Date(`${d}T${t}:00`);
-      return isNaN(dt.getTime()) ? null : dt;
-    }
-
-    function inRange(dateObj, fromISO, toISO) {
-      if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return true;
-      if (fromISO) {
-        const a = new Date(fromISO + "T00:00:00");
-        if (dateObj < a) return false;
-      }
-      if (toISO) {
-        const b = new Date(toISO + "T23:59:59");
-        if (dateObj > b) return false;
-      }
-      return true;
-    }
-
-    function pick(obj, keys, fallback = "") {
-      for (const k of keys) {
-        if (obj && obj[k] != null && String(obj[k]).trim() !== "") return obj[k];
-      }
-      return fallback;
-    }
-
-    function payLabel(pay) {
-      if (!pay) return "—";
-      if (pay.mode === "UNICO") return String(pay.method || "—");
-      if (pay.mode === "MULTI") return "Múltiplos";
-      return "—";
-    }
-
-    function entregaLabel(delivery) {
-      if (!delivery) return "—";
-      return (delivery.mode === "DELIVERY") ? "Delivery" : "Presencial";
-    }
-
-    function applyTextFilter(rows, q, rowJoinFn) {
-      const s = String(q || "").toLowerCase().trim();
-      if (!s) return rows;
-      return rows.filter(r => String(rowJoinFn(r) || "").toLowerCase().includes(s));
+    function setInfo(type, ok = true) {
+      pillInfo.className = ok ? "pill primary" : "pill bad";
+      pillInfo.innerHTML = ok
+        ? `<i class="lni lni-bolt"></i> ${safeText(type)}`
+        : `<i class="lni lni-warning"></i> ${safeText(type)}`;
     }
 
     // ==============================
@@ -830,271 +1123,16 @@
       head: [],
       body: [],
       sum: 0,
-      sumLabel: "Somatório",
-      rightCols: new Set(),
-      centerCols: new Set()
+      sum_text: "—",
+      sum_label: "Somatório",
+      rightCols: [],
+      centerCols: []
     };
 
-    function setInfo(type, ok = true) {
-      pillInfo.className = ok ? "pill primary" : "pill bad";
-      pillInfo.innerHTML = ok
-        ? `<i class="lni lni-bolt"></i> ${safeText(type)}`
-        : `<i class="lni lni-warning"></i> ${safeText(type)}`;
-    }
-
     // ==============================
-    // Data sources
+    // Fetch report (MySQL)
     // ==============================
-    function getProducts() {
-      const arr = loadJson(LS_PRODUCTS, []);
-      return (arr || []).map(x => ({
-        code: String(pick(x, ["code", "codigo"], "")).trim(),
-        name: String(pick(x, ["name", "produto", "nome"], "")).trim(),
-        price: Number(pick(x, ["price", "preco"], 0)) || 0,
-        category: String(pick(x, ["category", "categoria"], "")),
-        unit: String(pick(x, ["unit", "unidade"], "")),
-        stock: (x.stock != null ? Number(x.stock) : (x.estoque != null ? Number(x.estoque) : null)),
-        min: (x.min != null ? Number(x.min) : (x.minimo != null ? Number(x.minimo) : null)),
-        status: String(pick(x, ["status"], "")),
-      })).filter(p => p.code && p.name);
-    }
-
-    function getSales() { return loadJson(LS_SALES, []); }
-    function getDevs() { return loadJson(LS_DEV, []); }
-    function getEntradas() { return loadJson(LS_ENTRADAS, []); }
-    function getSaidas() { return loadJson(LS_SAIDAS, []); }
-
-    // ==============================
-    // Builders
-    // ==============================
-    function buildVendasResumo(fromISO, toISO, q) {
-      const sales = getSales();
-      let rows = (sales || []).map(s => {
-        const d = parseBRDateTime(s.date || "");
-        const total = Number(s.total || 0);
-        const cust = s.customer ? String(s.customer) : "Consumidor Final";
-        return {
-          no: Number(s.no || 0),
-          date: s.date || "",
-          _dateObj: d,
-          customer: cust,
-          entrega: entregaLabel(s.delivery),
-          pagamento: payLabel(s.pay),
-          total: total
-        };
-      });
-
-      rows = rows.filter(r => inRange(r._dateObj, fromISO, toISO));
-      rows = applyTextFilter(rows, q, r => `${r.no} ${r.date} ${r.customer} ${r.entrega} ${r.pagamento}`);
-
-      const head = ["Nº Venda", "Data/Hora", "Cliente", "Entrega", "Pagamento", "Total"];
-      const body = rows.map(r => [
-        `#${r.no || "—"}`,
-        r.date || "—",
-        r.customer || "—",
-        r.entrega || "—",
-        r.pagamento || "—",
-        numberToMoney(r.total || 0)
-      ]);
-
-      const sum = rows.reduce((a, r) => a + (Number(r.total || 0)), 0);
-
-      return {
-        title: "Vendas (Resumo)",
-        head,
-        body,
-        sum,
-        sumLabel: "Total vendido",
-        rightCols: new Set([5]),
-        centerCols: new Set([0, 3, 4])
-      };
-    }
-
-    function buildVendasItens(fromISO, toISO, q) {
-      const sales = getSales();
-      let flat = [];
-      (sales || []).forEach(s => {
-        const d = parseBRDateTime(s.date || "");
-        if (!inRange(d, fromISO, toISO)) return;
-
-        const no = Number(s.no || 0);
-        const cust = s.customer ? String(s.customer) : "Consumidor Final";
-        const entrega = entregaLabel(s.delivery);
-        const itens = Array.isArray(s.items) ? s.items : [];
-
-        itens.forEach(it => {
-          const qty = Number(it.qty || 0);
-          const price = Number(it.price || 0);
-          const sub = qty * price;
-          flat.push({
-            no, date: s.date || "",
-            _dateObj: d,
-            customer: cust,
-            entrega,
-            code: String(it.code || ""),
-            product: String(it.name || ""),
-            qty, price, sub
-          });
-        });
-      });
-
-      flat = applyTextFilter(flat, q, r => `${r.no} ${r.date} ${r.customer} ${r.entrega} ${r.code} ${r.product}`);
-
-      const head = ["Venda", "Data/Hora", "Cliente", "Entrega", "Código", "Produto", "Qtd", "Unitário", "Subtotal"];
-      const body = flat.map(r => [
-        `#${r.no || "—"}`,
-        r.date || "—",
-        r.customer || "—",
-        r.entrega || "—",
-        r.code || "—",
-        r.product || "—",
-        String(r.qty || 0),
-        numberToMoney(r.price || 0),
-        numberToMoney(r.sub || 0),
-      ]);
-
-      const sum = flat.reduce((a, r) => a + (Number(r.sub || 0)), 0);
-
-      return {
-        title: "Vendas (Itens)",
-        head,
-        body,
-        sum,
-        sumLabel: "Soma dos subtotais",
-        rightCols: new Set([7, 8]),
-        centerCols: new Set([0, 3, 6])
-      };
-    }
-
-    function buildProdutos(q) {
-      const prods = getProducts();
-      let rows = applyTextFilter(prods, q, r => `${r.code} ${r.name} ${r.category} ${r.unit} ${r.status}`);
-
-      const hasCat = rows.some(r => r.category);
-      const hasUnit = rows.some(r => r.unit);
-      const hasStock = rows.some(r => r.stock != null && !isNaN(r.stock));
-      const hasMin = rows.some(r => r.min != null && !isNaN(r.min));
-      const hasStatus = rows.some(r => r.status);
-
-      const head = ["Código", "Produto"];
-      if (hasCat) head.push("Categoria");
-      if (hasUnit) head.push("Unidade");
-      head.push("Preço");
-      if (hasStock) head.push("Estoque");
-      if (hasMin) head.push("Mínimo");
-      if (hasStatus) head.push("Status");
-
-      const body = rows.map(r => {
-        const arr = [r.code, r.name];
-        if (hasCat) arr.push(r.category || "—");
-        if (hasUnit) arr.push(r.unit || "—");
-        arr.push(numberToMoney(r.price || 0));
-        if (hasStock) arr.push((r.stock != null && !isNaN(r.stock)) ? String(r.stock) : "—");
-        if (hasMin) arr.push((r.min != null && !isNaN(r.min)) ? String(r.min) : "—");
-        if (hasStatus) arr.push(r.status || "—");
-        return arr;
-      });
-
-      const sum = rows.reduce((a, r) => a + (Number(r.price || 0)), 0);
-      const rightCols = new Set([head.indexOf("Preço")].filter(i => i >= 0));
-      const centerCols = new Set();
-      if (head.includes("Estoque")) centerCols.add(head.indexOf("Estoque"));
-      if (head.includes("Mínimo")) centerCols.add(head.indexOf("Mínimo"));
-
-      return { title: "Produtos (Cadastro)", head, body, sum, sumLabel: "Soma dos preços", rightCols, centerCols };
-    }
-
-    function buildEstoqueMinimo(q) {
-      const prods = getProducts();
-      let rows = prods
-        .filter(p => p.stock != null && p.min != null && !isNaN(p.stock) && !isNaN(p.min))
-        .map(p => ({ ...p, diff: (Number(p.stock) - Number(p.min)) }))
-        .filter(p => p.stock < p.min);
-
-      rows = applyTextFilter(rows, q, r => `${r.code} ${r.name} ${r.category} ${r.unit}`);
-
-      const head = ["Código", "Produto", "Estoque", "Mínimo", "Diferença"];
-      const body = rows.map(r => [r.code, r.name, String(r.stock), String(r.min), String(r.diff)]);
-      const sum = rows.reduce((a, r) => a + Math.abs(Number(r.diff || 0)), 0);
-
-      return {
-        title: "Estoque Mínimo",
-        head,
-        body,
-        sum,
-        sumLabel: "Soma déficit (abs)",
-        rightCols: new Set([]),
-        centerCols: new Set([2, 3, 4])
-      };
-    }
-
-    function buildDevolucoes(fromISO, toISO, q) {
-      const devs = getDevs();
-      let rows = (devs || []).map(d => {
-        const dt = parseISODateTime(d.date, d.time);
-        const dtText = (d.date ? `${String(d.date).split("-").reverse().join("/")}` : "—") + " " + (d.time || "—");
-        return {
-          id: d.id || "—",
-          dtText,
-          _dateObj: dt,
-          saleNo: d.saleNo ? `#${d.saleNo}` : "—",
-          customer: d.customer ? d.customer : "Consumidor Final",
-          type: d.type || "TOTAL",
-          product: d.type === "PARCIAL" ? (d.product || "—") : "—",
-          qty: d.type === "PARCIAL" ? (d.qty || 1) : "—",
-          reason: d.reason || "—",
-          status: d.status || "ABERTO",
-          amount: Number(d.amount || 0)
-        };
-      });
-
-      rows = rows.filter(r => inRange(r._dateObj, fromISO, toISO));
-      rows = applyTextFilter(rows, q, r => `${r.id} ${r.dtText} ${r.saleNo} ${r.customer} ${r.type} ${r.product} ${r.reason} ${r.status}`);
-
-      const head = ["ID", "Data/Hora", "Venda", "Cliente", "Tipo", "Produto", "Qtd", "Motivo", "Status", "Valor"];
-      const body = rows.map(r => [
-        r.id, r.dtText, r.saleNo, r.customer, r.type, r.product, String(r.qty), r.reason, r.status, numberToMoney(r.amount || 0)
-      ]);
-
-      const sum = rows.reduce((a, r) => a + (Number(r.amount || 0)), 0);
-
-      return {
-        title: "Devoluções",
-        head,
-        body,
-        sum,
-        sumLabel: "Total devolvido",
-        rightCols: new Set([9]),
-        centerCols: new Set([0, 2, 4, 6, 8])
-      };
-    }
-
-    function buildMovimentoGeneric(list, title, fromISO, toISO, q) {
-      let rows = (list || []).map(x => {
-        const dateISO = pick(x, ["date", "data"], "");
-        const timeISO = pick(x, ["time", "hora"], "");
-        const dt = parseISODateTime(dateISO, timeISO);
-        const dtText = dt ? dt.toLocaleString("pt-BR") : (dateISO ? `${dateISO.split("-").reverse().join("/")}${timeISO ? (" " + timeISO) : ""}` : "—");
-        const code = String(pick(x, ["code", "codigo"], "") || "");
-        const prod = String(pick(x, ["product", "produto", "name", "nome"], "") || "");
-        const qty = Number(pick(x, ["qty", "quantidade"], 0)) || 0;
-        const unit = String(pick(x, ["unit", "unidade"], "") || "");
-        const obs = String(pick(x, ["obs", "note", "observacao"], "") || "");
-        const user = String(pick(x, ["user", "usuario"], "") || "");
-        return { dt, dtText, code, prod, qty, unit, obs, user };
-      });
-
-      rows = rows.filter(r => inRange(r.dt, fromISO, toISO));
-      rows = applyTextFilter(rows, q, r => `${r.dtText} ${r.code} ${r.prod} ${r.unit} ${r.obs} ${r.user}`);
-
-      const head = ["Data/Hora", "Código", "Produto", "Qtd", "Unidade", "Obs", "Usuário"];
-      const body = rows.map(r => [r.dtText, r.code || "—", r.prod || "—", String(r.qty || 0), r.unit || "—", r.obs || "—", r.user || "—"]);
-      const sum = rows.reduce((a, r) => a + (Number(r.qty || 0)), 0);
-
-      return { title, head, body, sum, sumLabel: "Soma quantidades", rightCols: new Set([]), centerCols: new Set([3]) };
-    }
-
-    function buildReport() {
+    async function fetchReport() {
       const tipo = rTipo.value;
       const fromISO = dtIni.value || "";
       const toISO = dtFim.value || "";
@@ -1106,51 +1144,63 @@
         pillPeriod.innerHTML = `<i class="lni lni-calendar"></i> Período: —`;
       }
 
-      try {
-        if (tipo === "VENDAS_RESUMO") return buildVendasResumo(fromISO, toISO, q);
-        if (tipo === "VENDAS_ITENS") return buildVendasItens(fromISO, toISO, q);
-        if (tipo === "PRODUTOS") return buildProdutos(q);
-        if (tipo === "ESTOQUE_MINIMO") return buildEstoqueMinimo(q);
-        if (tipo === "DEVOLUCOES") return buildDevolucoes(fromISO, toISO, q);
-        if (tipo === "ENTRADAS") return buildMovimentoGeneric(getEntradas(), "Entradas", fromISO, toISO, q);
-        if (tipo === "SAIDAS") return buildMovimentoGeneric(getSaidas(), "Saídas", fromISO, toISO, q);
-        return buildVendasResumo(fromISO, toISO, q);
-      } catch (e) {
-        setInfo("ERRO AO GERAR", false);
-        return { title: "Erro", head: ["Mensagem"], body: [[String(e && e.message ? e.message : e)]], sum: 0, sumLabel: "Somatório", rightCols: new Set(), centerCols: new Set() };
+      const params = new URLSearchParams({
+        action: "fetch",
+        tipo,
+        dt_ini: fromISO,
+        dt_fim: toISO,
+        q
+      });
+
+      const res = await fetch("relatorios.php?" + params.toString(), {
+        headers: { "Accept": "application/json" }
+      });
+
+      const json = await res.json().catch(() => null);
+      if (!json || !json.ok) {
+        const msg = (json && json.error) ? json.error : "Falha ao carregar relatório.";
+        throw new Error(msg);
       }
+
+      return json.report;
     }
 
     // ==============================
     // Render
     // ==============================
     function renderTable(rep) {
-      CURRENT = rep;
+      CURRENT = rep || CURRENT;
 
-      theadRel.innerHTML = `<tr>${rep.head.map((h, idx) => {
-        const cls = rep.rightCols.has(idx) ? "text-end" : (rep.centerCols.has(idx) ? "text-center" : "");
+      const right = new Set((rep.rightCols || []).map(n => Number(n)));
+      const center = new Set((rep.centerCols || []).map(n => Number(n)));
+
+      theadRel.innerHTML = `<tr>${(rep.head || []).map((h, idx) => {
+        const cls = right.has(idx) ? "text-end" : (center.has(idx) ? "text-center" : "");
         return `<th class="${cls}">${safeText(h)}</th>`;
       }).join("")}</tr>`;
 
-      tbodyRel.innerHTML = rep.body.map(row => `
+      tbodyRel.innerHTML = (rep.body || []).map(row => `
         <tr>
-          ${row.map((c, idx) => {
-            const cls = rep.rightCols.has(idx) ? "text-end" : (rep.centerCols.has(idx) ? "text-center" : "");
+          ${(row || []).map((c, idx) => {
+            const cls = right.has(idx) ? "text-end" : (center.has(idx) ? "text-center" : "");
             return `<td class="${cls}">${safeText(c)}</td>`;
           }).join("")}
         </tr>
       `).join("");
 
-      const count = rep.body.length;
+      const count = (rep.body || []).length;
       hintNone.style.display = count ? "none" : "block";
 
       pillCount.innerHTML = `<i class="lni lni-checkmark-circle"></i> ${count} linhas`;
       tRows.textContent = String(count);
-      tSum.textContent = numberToMoney(rep.sum || 0);
-      tGrand.textContent = numberToMoney(rep.sum || 0);
-      tNote.textContent = `* ${rep.sumLabel || "Somatório"}.`;
 
-      setInfo(rep.title, true);
+      // somatório (já vem formatado do PHP em sum_text)
+      const sumText = rep.sum_text || numberToMoney(rep.sum || 0);
+      tSum.textContent = sumText;
+      tGrand.textContent = sumText;
+
+      tNote.textContent = `* ${rep.sum_label || "Somatório"}.`;
+      setInfo(rep.title || "Relatório", true);
     }
 
     // ==============================
@@ -1164,8 +1214,8 @@
       const dt = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR");
       const periodo = pillPeriod.textContent.replace("Período:", "").trim() || "—";
 
-      const isRight = (idx) => rep.rightCols && rep.rightCols.has(idx);
-      const isCenter = (idx) => rep.centerCols && rep.centerCols.has(idx);
+      const right = new Set((rep.rightCols || []).map(n => Number(n)));
+      const center = new Set((rep.centerCols || []).map(n => Number(n)));
 
       let html = `
         <html><head><meta charset="utf-8">
@@ -1183,20 +1233,20 @@
 
       const colN = rep.head.length;
 
-      html += `<tr><td class="title" colspan="${colN}">PAINEL DA DISTRIBUIDORA - ${safeText(rep.title).toUpperCase()}</td></tr>`;
+      html += `<tr><td class="title" colspan="${colN}">PAINEL DA DISTRIBUIDORA - ${safeText(String(rep.title || "RELATÓRIO").toUpperCase())}</td></tr>`;
       html += `<tr><td class="muted">Gerado em:</td><td colspan="${colN - 1}">${safeText(dt)}</td></tr>`;
       html += `<tr><td class="muted">Período:</td><td colspan="${colN - 1}">${safeText(periodo)}</td></tr>`;
-      html += `<tr><td class="muted">Somatório:</td><td colspan="${colN - 1}">${safeText(numberToMoney(rep.sum || 0))} (${safeText(rep.sumLabel || "")})</td></tr>`;
+      html += `<tr><td class="muted">Somatório:</td><td colspan="${colN - 1}">${safeText(rep.sum_text || "—")} (${safeText(rep.sum_label || "")})</td></tr>`;
       html += `<tr class="spacer"><td colspan="${colN}"></td></tr>`;
 
       html += `<tr>${rep.head.map((h, idx) => {
-        const cls = isRight(idx) ? "right" : (isCenter(idx) ? "center" : "");
+        const cls = right.has(idx) ? "right" : (center.has(idx) ? "center" : "");
         return `<th class="${cls}">${safeText(h)}</th>`;
       }).join("")}</tr>`;
 
-      rep.body.forEach(row => {
-        html += `<tr>${row.map((c, idx) => {
-          const cls = isRight(idx) ? "right" : (isCenter(idx) ? "center" : "");
+      (rep.body || []).forEach(row => {
+        html += `<tr>${(row || []).map((c, idx) => {
+          const cls = right.has(idx) ? "right" : (center.has(idx) ? "center" : "");
           return `<td class="${cls}">${safeText(c)}</td>`;
         }).join("")}</tr>`;
       });
@@ -1207,7 +1257,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `relatorio_${rep.title.toLowerCase().replace(/\s+/g, "_")}.xls`;
+      a.download = `relatorio_${String(rep.title || "relatorio").toLowerCase().replace(/\s+/g, "_")}.xls`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1227,6 +1277,9 @@
       const dt = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR");
       const periodo = pillPeriod.textContent.replace("Período:", "").trim() || "—";
 
+      const right = new Set((rep.rightCols || []).map(n => Number(n)));
+      const center = new Set((rep.centerCols || []).map(n => Number(n)));
+
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
 
@@ -1234,13 +1287,13 @@
       doc.setTextColor(0, 0, 0);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
-      doc.text(`PAINEL DA DISTRIBUIDORA - ${String(rep.title).toUpperCase()}`, M, 55);
+      doc.text(`PAINEL DA DISTRIBUIDORA - ${String(rep.title || "RELATÓRIO").toUpperCase()}`, M, 55);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.text(`Gerado em: ${dt}`, M, 75);
       doc.text(`Período: ${periodo}`, M, 92);
-      doc.text(`Somatório: ${numberToMoney(rep.sum || 0)} (${rep.sumLabel || ""})`, M, 108);
+      doc.text(`Somatório: ${rep.sum_text || "—"} (${rep.sum_label || ""})`, M, 108);
 
       doc.autoTable({
         head: [rep.head],
@@ -1264,21 +1317,36 @@
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didParseCell: function (data) {
           const col = data.column.index;
-          if (rep.rightCols && rep.rightCols.has(col)) data.cell.styles.halign = "right";
-          if (rep.centerCols && rep.centerCols.has(col)) data.cell.styles.halign = "center";
+          if (right.has(col)) data.cell.styles.halign = "right";
+          if (center.has(col)) data.cell.styles.halign = "center";
           data.cell.styles.lineWidth = 0;
         }
       });
 
-      doc.save(`relatorio_${rep.title.toLowerCase().replace(/\s+/g, "_")}.pdf`);
+      doc.save(`relatorio_${String(rep.title || "relatorio").toLowerCase().replace(/\s+/g, "_")}.pdf`);
     }
 
     // ==============================
     // Gerar
     // ==============================
-    function gerar() {
-      const rep = buildReport();
-      renderTable(rep);
+    async function gerar() {
+      setInfo("CARREGANDO...", true);
+      try {
+        const rep = await fetchReport();
+        renderTable(rep);
+      } catch (e) {
+        setInfo("ERRO AO GERAR", false);
+        renderTable({
+          title: "Erro",
+          head: ["Mensagem"],
+          body: [[String(e && e.message ? e.message : e)]],
+          sum: 0,
+          sum_text: "—",
+          sum_label: "Somatório",
+          rightCols: [],
+          centerCols: []
+        });
+      }
     }
 
     // ==============================
@@ -1316,8 +1384,7 @@
     // ==============================
     // Init
     // ==============================
-    function init() { gerar(); }
-    init();
+    gerar();
   </script>
 </body>
 
