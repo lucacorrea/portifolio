@@ -923,6 +923,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
             </a>
             <div class="collapse text-black" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./relatorioIndividual.php"><i class="ti-bar-chart mr-2"></i> Relatório Individual</a></li>
                 <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
                 <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
                 <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
