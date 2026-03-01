@@ -34,41 +34,18 @@ function csrf_token(): string {
   return (string)$_SESSION['csrf_token'];
 }
 
-/**
- * Valida CSRF em POST normal (form-data).
- * Para requisições JSON (fetch), use csrf_validate_token($token) no seu endpoint.
- */
-function csrf_validate_or_redirect(string $redirectPath): void {
-  $posted = (string)($_POST['csrf_token'] ?? '');
-  $sess   = (string)($_SESSION['csrf_token'] ?? '');
-  if (!$posted || !$sess || !hash_equals($sess, $posted)) {
-    flash_set('danger', 'CSRF inválido. Recarregue a página.');
-    redirect_to($redirectPath);
-  }
-}
-
-/** Valida CSRF recebendo token (útil pra JSON/fetch) */
 function csrf_validate_token(string $postedToken): bool {
   $posted = (string)$postedToken;
   $sess   = (string)($_SESSION['csrf_token'] ?? '');
   return ($posted !== '' && $sess !== '' && hash_equals($sess, $posted));
 }
 
-/** POST only */
-function require_post_or_redirect(string $redirectPath): void {
-  if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    flash_set('danger', 'Requisição inválida.');
-    redirect_to($redirectPath);
-  }
-}
-
-/** Helpers JSON */
+/** JSON helpers */
 function json_input(): array {
   $raw = file_get_contents('php://input');
   $data = json_decode($raw ?: '', true);
   return is_array($data) ? $data : [];
 }
-
 function json_response(array $data, int $code = 200): void {
   http_response_code($code);
   header('Content-Type: application/json; charset=utf-8');
@@ -76,12 +53,12 @@ function json_response(array $data, int $code = 200): void {
   exit;
 }
 
+/** Cast helpers */
 function to_int($v, int $default = 0): int {
   if ($v === null) return $default;
   if (is_numeric($v)) return (int)$v;
   return $default;
 }
-
 function to_float($v, float $default = 0.0): float {
   if ($v === null) return $default;
   if (is_numeric($v)) return (float)$v;
