@@ -1,43 +1,3 @@
-<?php
-
-declare(strict_types=1);
-
-require_once __DIR__ . '/assets/conexao.php';
-require_once __DIR__ . '/assets/dados/vendas/_helpers.php';
-
-$csrf  = csrf_token();
-$flash = flash_pop();
-
-$pdo = db();
-
-function brDate(string $ymd): string
-{
-    $ymd = trim($ymd);
-    if (!$ymd) return '';
-    $p = explode('-', $ymd);
-    if (count($p) !== 3) return $ymd;
-    return $p[2] . '/' . $p[1] . '/' . $p[0];
-}
-function fmtMoney($v): string
-{
-    return 'R$ ' . number_format((float)$v, 2, ',', '.');
-}
-
-$nextNo = 1;
-try {
-    $nextNo = (int)$pdo->query("SELECT COALESCE(MAX(id),0)+1 FROM vendas")->fetchColumn();
-} catch (Throwable $e) {
-    $nextNo = 1;
-}
-
-$last = [];
-try {
-    $st = $pdo->query("SELECT id, data, total, created_at FROM vendas ORDER BY id DESC LIMIT 10");
-    $last = $st->fetchAll();
-} catch (Throwable $e) {
-    $last = [];
-}
-?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -45,8 +5,6 @@ try {
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <meta name="csrf-token" content="<?= e($csrf) ?>">
 
     <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
     <title>Painel da Distribuidora | Vendas (PDV)</title>
@@ -113,9 +71,14 @@ try {
             font-size: 13px;
         }
 
+        /* =============================
+       PDV layout (altura alinhada)
+       ============================= */
         .pdv-row {
             align-items: stretch;
         }
+
+        /* garante colunas com mesma altura no desktop */
 
         .pdv-left-col,
         .pdv-right-col {
@@ -124,6 +87,7 @@ try {
             flex-direction: column;
         }
 
+        /* Cartões */
         .pdv-card {
             border: 1px solid rgba(148, 163, 184, .28);
             border-radius: 16px;
@@ -145,15 +109,18 @@ try {
             padding: 14px;
         }
 
+        /* ✅ Card da busca precisa permitir dropdown não ser cortado */
         .pdv-card.pdv-search {
             overflow: visible;
             position: relative;
             z-index: 50;
         }
 
+        /* ✅ Card dos itens vai “crescer” até alinhar com o checkout */
         .pdv-card.items-card {
             flex: 1 1 auto;
             min-height: 520px;
+            /* dá “corpo” mesmo sem itens */
             display: flex;
             flex-direction: column;
         }
@@ -165,14 +132,17 @@ try {
             min-height: 0;
         }
 
+        /* área rolável interna (vertical), mantendo layout alinhado */
         .items-scroll {
             flex: 1 1 auto;
             min-height: 320px;
+            /* garante altura similar ao exemplo */
             overflow: auto;
             -webkit-overflow-scrolling: touch;
             border-radius: 12px;
         }
 
+        /* Checkout ocupa a coluna toda (alinhamento com itens) */
         .pdv-right-col .pdv-card {
             height: 100%;
             display: flex;
@@ -183,9 +153,13 @@ try {
             flex: 1 1 auto;
             min-height: 0;
             overflow: auto;
+            /* se a direita crescer, rola por dentro */
             -webkit-overflow-scrolling: touch;
         }
 
+        /* =============================
+       Busca e sugestões
+       ============================= */
         .search-wrap {
             position: relative;
         }
@@ -201,6 +175,7 @@ try {
             border-radius: 14px;
             box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
             max-height: 340px;
+            /* ✅ mais alto + rolagem */
             overflow-y: auto;
             overflow-x: hidden;
             display: none;
@@ -260,6 +235,7 @@ try {
             white-space: nowrap;
         }
 
+        /* Preview */
         .preview-box {
             width: 100%;
             height: 130px;
@@ -293,11 +269,19 @@ try {
             max-width: 220px;
         }
 
+        /* =============================
+       Tabela itens
+       ============================= */
         .table td,
         .table th {
             vertical-align: middle;
         }
 
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ✅ reduz min-width e evita scroll “extra” */
         #tbItens {
             width: 100%;
             min-width: 720px;
@@ -314,6 +298,7 @@ try {
             gap: 6px;
         }
 
+        /* ✅ QTD menor para não estourar */
         .qty-btn {
             height: 34px !important;
             width: 34px !important;
@@ -346,6 +331,10 @@ try {
             -moz-appearance: textfield;
         }
 
+        /* =============================
+       Checkout
+       ============================= */
+        /* Checkout panel */
         .checkout-head {
             background: #0b5ed7;
             color: #fff;
@@ -502,6 +491,7 @@ try {
             font-size: 12px;
         }
 
+        /* Últimos cupons */
         .last-box {
             border: 1px solid rgba(148, 163, 184, .25);
             border-radius: 14px;
@@ -596,7 +586,7 @@ try {
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="index.php" class="d-flex align-items-center gap-2">
+            <a href="index.html" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
             </a>
         </div>
@@ -604,7 +594,7 @@ try {
         <nav class="sidebar-nav">
             <ul>
                 <li class="nav-item">
-                    <a href="index.php">
+                    <a href="index.html">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -631,9 +621,9 @@ try {
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
-                        <li><a href="pedidos.php">Pedidos</a></li>
-                        <li><a href="vendas.php" class="active">Vendas</a></li>
-                        <li><a href="devolucoes.php">Devoluções</a></li>
+                        <li><a href="pedidos.html">Pedidos</a></li>
+                        <li><a href="vendas.html" class="active">Vendas</a></li>
+                        <li><a href="devolucoes.html">Devoluções</a></li>
                     </ul>
                 </li>
 
@@ -652,11 +642,11 @@ try {
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse dropdown-nav">
-                        <li><a href="produtos.php">Produtos</a></li>
-                        <li><a href="inventario.php">Inventário</a></li>
-                        <li><a href="entradas.php">Entradas</a></li>
-                        <li><a href="saidas.php">Saídas</a></li>
-                        <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
+                        <li><a href="produtos.html">Produtos</a></li>
+                        <li><a href="inventario.html">Inventário</a></li>
+                        <li><a href="entradas.html">Entradas</a></li>
+                        <li><a href="saidas.html">Saídas</a></li>
+                        <li><a href="estoque-minimo.html">Estoque Mínimo</a></li>
                     </ul>
                 </li>
 
@@ -666,27 +656,32 @@ try {
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
-                                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
+                                <path
+                                    d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
+                                <path
+                                    d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
+                                <path
+                                    d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
+                                <path
+                                    d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
                             </svg>
                         </span>
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-                        <li><a href="clientes.php">Clientes</a></li>
-                        <li><a href="fornecedores.php">Fornecedores</a></li>
-                        <li><a href="categorias.php">Categorias</a></li>
+                        <li><a href="clientes.html">Clientes</a></li>
+                        <li><a href="fornecedores.html">Fornecedores</a></li>
+                        <li><a href="categorias.html">Categorias</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="relatorios.php">
+                    <a href="relatorios.html">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
-                                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
+                                <path
+                                    d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
                             </svg>
                         </span>
                         <span class="text">Relatórios</span>
@@ -703,24 +698,27 @@ try {
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
-                                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
+                                <path
+                                    d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
                             </svg>
                         </span>
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
-                        <li><a href="usuarios.php">Usuários e Permissões</a></li>
-                        <li><a href="parametros.php">Parâmetros do Sistema</a></li>
+                        <li><a href="usuarios.html">Usuários e Permissões</a></li>
+                        <li><a href="parametros.html">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="suporte.php">
+                    <a href="suporte.html">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
-                                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
+                                <path
+                                    d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
+                                <path
+                                    d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
                             </svg>
                         </span>
                         <span class="text">Suporte</span>
@@ -739,14 +737,16 @@ try {
                     <div class="col-lg-5 col-md-5 col-6">
                         <div class="header-left d-flex align-items-center">
                             <div class="menu-toggle-btn mr-15">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact"
+                                    type="button">
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
                             <div class="header-search d-none d-md-flex">
                                 <form action="#">
                                     <input type="text" placeholder="Atalho: F4 pesquisar..." id="qGlobal" />
-                                    <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
+                                    <button type="submit" onclick="return false"><i
+                                            class="lni lni-search-alt"></i></button>
                                 </form>
                             </div>
                         </div>
@@ -759,7 +759,8 @@ try {
                                     data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="profile-info">
                                         <div class="info">
-                                            <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
+                                            <div class="image"><img src="assets/images/profile/profile-image.png"
+                                                    alt="perfil" /></div>
                                             <div>
                                                 <h6 class="fw-500">Administrador</h6>
                                                 <p>Distribuidora</p>
@@ -771,18 +772,20 @@ try {
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
                                     <li>
                                         <div class="author-info flex items-center !p-1">
-                                            <div class="image"><img src="assets/images/profile/profile-image.png" alt="image" /></div>
+                                            <div class="image"><img src="assets/images/profile/profile-image.png"
+                                                    alt="image" /></div>
                                             <div class="content">
                                                 <h4 class="text-sm">Administrador</h4>
-                                                <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs" href="#">Admin</a>
+                                                <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
+                                                    href="#">Admin</a>
                                             </div>
                                         </div>
                                     </li>
                                     <li class="divider"></li>
-                                    <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                                    <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
+                                    <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
                                     <li class="divider"></li>
-                                    <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
+                                    <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -799,15 +802,12 @@ try {
                         <div class="col-md-6">
                             <div class="title">
                                 <h2>Terminal de Vendas (PDV)</h2>
-                                <div class="muted">Ponto de Venda & Checkout — <b>F4</b> pesquisar | <b>F2</b> confirmar</div>
+                                <div class="muted">Ponto de Venda & Checkout — <b>F4</b> pesquisar | <b>F2</b> confirmar
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <?php if ($flash): ?>
-                    <div class="alert alert-<?= e($flash['type']) ?>"><?= e($flash['msg']) ?></div>
-                <?php endif; ?>
 
                 <div class="row g-3 mb-30 pdv-row">
                     <!-- LEFT -->
@@ -824,7 +824,8 @@ try {
                                                     placeholder="Nome ou código..." autocomplete="off" />
                                                 <div class="suggest" id="suggest"></div>
                                             </div>
-                                            <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar o 1º resultado.</div>
+                                            <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar
+                                                o 1º resultado.</div>
                                         </div>
 
                                         <div class="col-12 col-md-4">
@@ -848,13 +849,15 @@ try {
                                         <i class="lni lni-cart me-1"></i> Itens da Venda
                                     </div>
                                     <div class="d-flex gap-2 flex-wrap">
-                                        <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
+                                        <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar"
+                                            type="button">
                                             <i class="lni lni-trash-can me-1"></i> Limpar
                                         </button>
                                     </div>
                                 </div>
 
                                 <div class="pdv-body">
+                                    <!-- ✅ área interna que cresce até alinhar com checkout -->
                                     <div class="items-scroll">
                                         <div class="table-responsive">
                                             <table class="table text-nowrap mb-0" id="tbItens">
@@ -872,7 +875,8 @@ try {
                                             </table>
                                         </div>
 
-                                        <div class="muted p-3" id="hintEmpty" style="display:none;">Aguardando inclusão de produtos...</div>
+                                        <div class="muted p-3" id="hintEmpty" style="display:none;">Aguardando inclusão
+                                            de produtos...</div>
                                     </div>
                                 </div>
                             </div>
@@ -884,14 +888,15 @@ try {
                         <div class="pdv-right-col">
                             <div class="pdv-card">
                                 <div class="checkout-head">
-                                    <h6 style="color:#fff;"><i class="lni lni-calculator me-1"></i> Checkout</h6>
-                                    <span class="badge bg-light text-dark" id="saleNo">Venda #<?= (int)$nextNo ?></span>
+                                    <h6 style="color: #fff;"><i class="lni lni-calculator me-1"></i> Checkout</h6>
+                                    <span class="badge bg-light text-dark" id="saleNo">Venda #—</span>
                                 </div>
 
                                 <div class="checkout-body">
                                     <div class="mb-3">
                                         <label class="form-label">Cliente</label>
-                                        <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" />
+                                        <input class="form-control compact" id="cCliente"
+                                            placeholder="CPF ou Nome (Opcional)" />
                                         <div class="muted mt-1">Consumidor final (se vazio).</div>
                                     </div>
 
@@ -905,11 +910,13 @@ try {
 
                                     <div class="mb-3" id="wrapDelivery" style="display:none;">
                                         <label class="form-label">Endereço</label>
-                                        <input class="form-control compact mb-2" id="cEndereco" placeholder="Rua, nº, bairro, referência..." />
+                                        <input class="form-control compact mb-2" id="cEndereco"
+                                            placeholder="Rua, nº, bairro, referência..." />
                                         <div class="row g-2">
                                             <div class="col-6">
                                                 <label class="form-label">Taxa entrega</label>
-                                                <input class="form-control compact" id="cEntrega" placeholder="0,00" value="0,00" />
+                                                <input class="form-control compact" id="cEntrega" placeholder="0,00"
+                                                    value="0,00" />
                                             </div>
                                             <div class="col-6">
                                                 <label class="form-label">Observação</label>
@@ -928,7 +935,8 @@ try {
                                                 </select>
                                             </div>
                                             <div class="col-7">
-                                                <input class="form-control compact" id="dValor" placeholder="0" value="0" />
+                                                <input class="form-control compact" id="dValor" placeholder="0"
+                                                    value="0" />
                                             </div>
                                         </div>
                                         <div class="muted mt-1">Desconto aplicado no subtotal (antes da taxa).</div>
@@ -945,30 +953,40 @@ try {
                                         <!-- único -->
                                         <div id="wrapPagUnico">
                                             <div class="pay-grid mb-2" id="payBtns">
-                                                <div class="pay-btn active" data-pay="DINHEIRO"><i class="lni lni-coin"></i> Dinheiro</div>
-                                                <div class="pay-btn" data-pay="PIX"><i class="lni lni-telegram-original"></i> Pix</div>
-                                                <div class="pay-btn" data-pay="CARTAO"><i class="lni lni-credit-cards"></i> Cartão</div>
-                                                <div class="pay-btn" data-pay="BOLETO"><i class="lni lni-ticket-alt"></i> Boleto</div>
+                                                <div class="pay-btn active" data-pay="DINHEIRO"><i
+                                                        class="lni lni-coin"></i> Dinheiro</div>
+                                                <div class="pay-btn" data-pay="PIX"><i
+                                                        class="lni lni-telegram-original"></i> Pix</div>
+                                                <div class="pay-btn" data-pay="CARTAO"><i
+                                                        class="lni lni-credit-cards"></i> Cartão</div>
+                                                <div class="pay-btn" data-pay="BOLETO"><i
+                                                        class="lni lni-ticket-alt"></i> Boleto</div>
                                             </div>
 
                                             <div class="row g-2">
                                                 <div class="col-6">
                                                     <label class="form-label">Valor pago</label>
-                                                    <input class="form-control compact" id="pValor" placeholder="0,00" value="0,00" />
+                                                    <input class="form-control compact" id="pValor" placeholder="0,00"
+                                                        value="0,00" />
                                                 </div>
                                                 <div class="col-6">
                                                     <label class="form-label">Troco</label>
-                                                    <input class="form-control compact" id="pTroco" value="0,00" readonly />
+                                                    <input class="form-control compact" id="pTroco" value="0,00"
+                                                        readonly />
                                                 </div>
                                             </div>
-                                            <div class="muted mt-1" id="hintTroco" style="display:none;">Em dinheiro pode ser maior que o total (troco automático).</div>
+                                            <div class="muted mt-1" id="hintTroco" style="display:none;">Em dinheiro
+                                                pode ser maior que o total (troco automático).</div>
                                         </div>
 
                                         <!-- múltiplos -->
                                         <div id="wrapPagMulti" style="display:none;">
-                                            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-                                                <div class="muted">Some os pagamentos para fechar o total. Se passar do total, precisa ter Dinheiro (troco).</div>
-                                                <button class="main-btn light-btn btn-hover btn-compact" id="btnAddPay" type="button">
+                                            <div
+                                                class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                                                <div class="muted">Some os pagamentos para fechar o total. Se passar do
+                                                    total, precisa ter Dinheiro (troco).</div>
+                                                <button class="main-btn light-btn btn-hover btn-compact" id="btnAddPay"
+                                                    type="button">
                                                     <i class="lni lni-plus me-1"></i> Adicionar
                                                 </button>
                                             </div>
@@ -976,19 +994,25 @@ try {
                                             <div id="paysWrap"></div>
 
                                             <div class="totals mt-2">
-                                                <div class="tot-row"><span>Somatório</span><span id="mSum">R$ 0,00</span></div>
-                                                <div class="tot-row"><span>Diferença (Pag - Total)</span><span id="mDiff">R$ 0,00</span></div>
-                                                <div class="tot-row"><span>Troco</span><span id="mTroco">R$ 0,00</span></div>
+                                                <div class="tot-row"><span>Somatório</span><span id="mSum">R$
+                                                        0,00</span></div>
+                                                <div class="tot-row"><span>Diferença (Pag - Total)</span><span
+                                                        id="mDiff">R$ 0,00</span></div>
+                                                <div class="tot-row"><span>Troco</span><span id="mTroco">R$ 0,00</span>
+                                                </div>
                                                 <div class="msg-ok mt-2" id="mOk">✅ Pagamento OK.</div>
-                                                <div class="msg-err mt-2" id="mErr">⚠️ Pagamento inválido. Ajuste os valores.</div>
+                                                <div class="msg-err mt-2" id="mErr">⚠️ Pagamento inválido. Ajuste os
+                                                    valores.</div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div class="totals mb-3">
                                         <div class="tot-row"><span>Subtotal</span><span id="tSub">R$ 0,00</span></div>
-                                        <div class="tot-row"><span>Desconto</span><span id="tDesc">- R$ 0,00</span></div>
-                                        <div class="tot-row"><span>Taxa entrega</span><span id="tEnt">R$ 0,00</span></div>
+                                        <div class="tot-row"><span>Desconto</span><span id="tDesc">- R$ 0,00</span>
+                                        </div>
+                                        <div class="tot-row"><span>Taxa entrega</span><span id="tEnt">R$ 0,00</span>
+                                        </div>
                                         <div class="tot-hr"></div>
                                         <div class="grand">
                                             <span class="lbl">TOTAL</span>
@@ -997,12 +1021,14 @@ try {
                                     </div>
 
                                     <div class="d-grid gap-2">
-                                        <button class="main-btn primary-btn btn-hover btn-compact" id="btnConfirmar" type="button">
+                                        <button class="main-btn primary-btn btn-hover btn-compact" id="btnConfirmar"
+                                            type="button">
                                             <i class="lni lni-checkmark-circle me-1"></i> CONFIRMAR VENDA (F2)
                                         </button>
                                         <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="chkPrint" checked />
-                                            <label class="form-check-label" for="chkPrint">Imprimir cupom após confirmar</label>
+                                            <label class="form-check-label" for="chkPrint">Imprimir cupom após
+                                                confirmar</label>
                                         </div>
                                     </div>
 
@@ -1015,31 +1041,7 @@ try {
                                                 <i class="lni lni-reload"></i>
                                             </button>
                                         </div>
-                                        <div class="list" id="lastList">
-                                            <?php if (!$last): ?>
-                                                <div class="cup">
-                                                    <div class="left">
-                                                        <div class="n">—</div>
-                                                        <div class="s">Sem cupons ainda</div>
-                                                    </div>
-                                                    <div class="right">
-                                                        <div class="v">R$ 0,00</div>
-                                                    </div>
-                                                </div>
-                                                <?php else: foreach ($last as $s): ?>
-                                                    <div class="cup">
-                                                        <div class="left">
-                                                            <div class="n">Venda #<?= (int)$s['id'] ?></div>
-                                                            <div class="s"><?= e((string)$s['created_at']) ?></div>
-                                                        </div>
-                                                        <div class="right">
-                                                            <div class="v"><?= e(fmtMoney((float)$s['total'])) ?></div>
-                                                            <div class="st">CONCLUÍDO</div>
-                                                        </div>
-                                                    </div>
-                                            <?php endforeach;
-                                            endif; ?>
-                                        </div>
+                                        <div class="list" id="lastList"></div>
                                     </div>
 
                                 </div>
@@ -1069,19 +1071,20 @@ try {
     <script src="assets/js/main.js"></script>
 
     <script>
-        /* ==============================
-   PDV (MySQL) - JS
-============================== */
-        const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+        // ==============================
+        // Dados / Storage
+        // ==============================
+        const LS_PRODUCTS = "dist_products_v1";
+        const LS_SALES = "dist_sales_pdv_v1";
 
         const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
-  <rect width="100%" height="100%" fill="#f1f5f9"/>
-  <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
-  <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
-</svg>
-`);
+      <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+        <rect width="100%" height="100%" fill="#f1f5f9"/>
+        <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
+        <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
+      </svg>
+    `);
 
         function safeText(s) {
             return String(s ?? "")
@@ -1105,29 +1108,74 @@ try {
             return "R$ " + v.toFixed(2).replace(".", ",");
         }
 
-        function fetchJSON(url, opts = {}) {
-            return fetch(url, opts).then(async (r) => {
-                const data = await r.json().catch(() => ({}));
-                if (!r.ok) throw new Error(data.msg || "Erro na requisição.");
-                return data;
-            });
+        function nowBR() {
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, "0");
+            return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
 
-        /* ==============================
-           Estado
-        ============================== */
+        function loadJson(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
+        function saveJson(key, val) {
+            localStorage.setItem(key, JSON.stringify(val));
+        }
+
+        function seedProductsIfEmpty() {
+            const p = loadJson(LS_PRODUCTS, []);
+            if (Array.isArray(p) && p.length) return;
+            const seed = [
+                { code: "P0001", name: "Arroz 5kg (Tipo 1)", price: 28.90, img: DEFAULT_IMG },
+                { code: "P0002", name: "Açúcar 1kg", price: 6.50, img: DEFAULT_IMG },
+                { code: "P0003", name: "Detergente 500ml", price: 3.20, img: DEFAULT_IMG },
+                { code: "P0004", name: "Refrigerante 2L", price: 10.00, img: DEFAULT_IMG },
+            ];
+            saveJson(LS_PRODUCTS, seed);
+        }
+
+        function getProducts() {
+            seedProductsIfEmpty();
+            const arr = loadJson(LS_PRODUCTS, []);
+            return (arr || []).map(x => ({
+                code: String(x.code || x.codigo || "").trim(),
+                name: String(x.name || x.produto || "").trim(),
+                price: Number(x.price ?? x.preco ?? 0) || 0,
+                img: String(x.img || x.imagem || DEFAULT_IMG),
+            })).filter(x => x.code && x.name);
+        }
+
+        function getSales() { return loadJson(LS_SALES, []); }
+
+        function addSale(sale) {
+            const all = getSales();
+            all.unshift(sale);
+            saveJson(LS_SALES, all.slice(0, 100));
+        }
+
+        function nextSaleNo() {
+            const all = getSales();
+            const nums = all.map(x => Number(x.no || 0)).filter(n => n > 0);
+            return (nums.length ? Math.max(...nums) : 0) + 1;
+        }
+
+        // ==============================
+        // Estado PDV
+        // ==============================
+        let PRODUCTS = [];
         let CART = [];
         let PAY_MODE = "UNICO"; // UNICO | MULTI
         let PAY_SELECTED = "DINHEIRO";
         let DELIVERY_MODE = "PRESENCIAL"; // PRESENCIAL | DELIVERY
-        let LAST_SUGG = [];
 
-        let searchTimer = null;
-        let searchAbort = null;
-
-        /* ==============================
-           DOM
-        ============================== */
+        // ==============================
+        // DOM
+        // ==============================
         const qProd = document.getElementById("qProd");
         const suggest = document.getElementById("suggest");
         const qGlobal = document.getElementById("qGlobal");
@@ -1181,9 +1229,9 @@ try {
         const lastList = document.getElementById("lastList");
         const btnRefreshLast = document.getElementById("btnRefreshLast");
 
-        /* ==============================
-           UI
-        ============================== */
+        // ==============================
+        // UI helpers
+        // ==============================
         function setPreview(prod) {
             const img = (prod && prod.img) ? prod.img : DEFAULT_IMG;
             previewImg.src = img;
@@ -1191,78 +1239,55 @@ try {
         }
 
         function showSuggest(list) {
-            if (!list.length) {
-                suggest.style.display = "none";
-                suggest.innerHTML = "";
-                return;
-            }
+            if (!list.length) { suggest.style.display = "none"; suggest.innerHTML = ""; return; }
             suggest.innerHTML = list.map(p => `
-    <div class="it" data-id="${Number(p.id)}">
-      <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
-      <div class="meta">
-        <div class="t">${safeText(p.name)}</div>
-        <div class="s">${safeText(p.code)} • Estoque: ${Number(p.stock ?? 0)}</div>
-      </div>
-      <div class="price">${numberToMoney(p.price)}</div>
-    </div>
-  `).join("");
+        <div class="it" data-code="${safeText(p.code)}">
+          <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
+          <div class="meta">
+            <div class="t">${safeText(p.name)}</div>
+            <div class="s">${safeText(p.code)}</div>
+          </div>
+          <div class="price">${numberToMoney(p.price)}</div>
+        </div>
+      `).join("");
             suggest.style.display = "block";
             suggest.scrollTop = 0;
         }
 
-        function hideSuggest() {
-            suggest.style.display = "none";
-            suggest.innerHTML = "";
-        }
+        function hideSuggest() { suggest.style.display = "none"; suggest.innerHTML = ""; }
 
-        /* ==============================
-           Carrinho
-        ============================== */
+        // ==============================
+        // Carrinho
+        // ==============================
         function addToCart(prod) {
             if (!prod) return;
-
-            const idx = CART.findIndex(x => x.product_id === prod.id);
+            const idx = CART.findIndex(x => x.code === prod.code);
             if (idx >= 0) CART[idx].qty += 1;
-            else CART.push({
-                product_id: prod.id,
-                code: prod.code,
-                name: prod.name,
-                price: Number(prod.price || 0),
-                img: prod.img || DEFAULT_IMG,
-                unit: prod.unit || "",
-                qty: 1
-            });
-
+            else CART.push({ code: prod.code, name: prod.name, price: prod.price, img: prod.img || DEFAULT_IMG, qty: 1 });
             setPreview(prod);
             renderCart();
             recalcAll();
         }
 
-        function removeFromCart(product_id) {
-            CART = CART.filter(x => x.product_id !== product_id);
-            renderCart();
-            recalcAll();
-        }
+        function removeFromCart(code) { CART = CART.filter(x => x.code !== code); renderCart(); recalcAll(); }
 
-        function changeQty(product_id, delta) {
-            const it = CART.find(x => x.product_id === product_id);
+        function changeQty(code, delta) {
+            const it = CART.find(x => x.code === code);
             if (!it) return;
             it.qty = Math.max(1, Number(it.qty || 1) + delta);
             renderCart();
             recalcAll();
         }
 
-        function setQty(product_id, qty) {
-            const it = CART.find(x => x.product_id === product_id);
+        function setQty(code, qty) {
+            const it = CART.find(x => x.code === code);
             if (!it) return;
             it.qty = Math.max(1, Number(qty || 1));
             renderCart();
             recalcAll();
         }
 
-        function calcSubtotal() {
-            return CART.reduce((acc, it) => acc + (Number(it.qty || 0) * Number(it.price || 0)), 0);
-        }
+        function calcSubtotal() { return CART.reduce((acc, it) => acc + (Number(it.qty || 0) * Number(it.price || 0)), 0); }
 
         function calcDiscount(sub) {
             const tipo = dTipo.value;
@@ -1284,34 +1309,34 @@ try {
             return Math.max(0, (sub - desc) + ent);
         }
 
-        /* ==============================
-           Pagamento
-        ============================== */
+        // ==============================
+        // Pagamento
+        // ==============================
         function payRowTpl(method = "PIX", value = "0,00") {
             return `
-    <div class="pay-split-row">
-      <div class="row g-2 align-items-end">
-        <div class="col-6">
-          <label class="form-label">Forma</label>
-          <select class="form-select compact mMethod">
-            <option value="DINHEIRO" ${method==="DINHEIRO"?"selected":""}>Dinheiro</option>
-            <option value="PIX" ${method==="PIX"?"selected":""}>Pix</option>
-            <option value="CARTAO" ${method==="CARTAO"?"selected":""}>Cartão</option>
-            <option value="BOLETO" ${method==="BOLETO"?"selected":""}>Boleto</option>
-          </select>
+        <div class="pay-split-row">
+          <div class="row g-2 align-items-end">
+            <div class="col-6">
+              <label class="form-label">Forma</label>
+              <select class="form-select compact mMethod">
+                <option value="DINHEIRO" ${method === "DINHEIRO" ? "selected" : ""}>Dinheiro</option>
+                <option value="PIX" ${method === "PIX" ? "selected" : ""}>Pix</option>
+                <option value="CARTAO" ${method === "CARTAO" ? "selected" : ""}>Cartão</option>
+                <option value="BOLETO" ${method === "BOLETO" ? "selected" : ""}>Boleto</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label">Valor</label>
+              <input class="form-control compact mValue" value="${safeText(value)}" placeholder="0,00" />
+            </div>
+            <div class="col-2 d-grid">
+              <button class="main-btn danger-btn-outline btn-hover btn-compact btnRemPay" type="button" style="height:38px!important;padding:0!important;">
+                <i class="lni lni-trash-can"></i>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="col-4">
-          <label class="form-label">Valor</label>
-          <input class="form-control compact mValue" value="${safeText(value)}" placeholder="0,00" />
-        </div>
-        <div class="col-2 d-grid">
-          <button class="main-btn danger-btn-outline btn-hover btn-compact btnRemPay" type="button" style="height:38px!important;padding:0!important;">
-            <i class="lni lni-trash-can"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
+      `;
         }
 
         function ensureOnePayRow() {
@@ -1323,38 +1348,27 @@ try {
             const rows = Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => {
                 const m = row.querySelector(".mMethod")?.value || "PIX";
                 const v = moneyToNumber(row.querySelector(".mValue")?.value || "0");
-                return {
-                    method: m,
-                    value: v
-                };
+                return { method: m, value: v };
             }).filter(x => x.value > 0);
 
             const sum = rows.reduce((a, x) => a + x.value, 0);
             const diff = sum - total;
             const hasCash = rows.some(x => x.method === "DINHEIRO");
 
-            let ok = false,
-                troco = 0;
+            let ok = false;
+            let troco = 0;
+
             if (Math.abs(diff) < 0.009) ok = true;
-            else if (diff > 0.009 && hasCash) {
-                ok = true;
-                troco = diff;
-            }
+            else if (diff > 0.009 && hasCash) { ok = true; troco = diff; }
 
             mSum.textContent = numberToMoney(sum);
             mDiff.textContent = numberToMoney(diff);
             mTroco.textContent = numberToMoney(troco);
+
             mOk.style.display = ok ? "block" : "none";
             mErr.style.display = ok ? "none" : "block";
 
-            return {
-                ok,
-                rows,
-                sum,
-                diff,
-                troco,
-                total
-            };
+            return { ok, rows, sum, diff, troco, total };
         }
 
         function computeSinglePay() {
@@ -1362,8 +1376,9 @@ try {
             const paid = moneyToNumber(pValor.value);
             const method = PAY_SELECTED;
 
-            let ok = false,
-                troco = 0;
+            let ok = false;
+            let troco = 0;
+
             if (method === "DINHEIRO") {
                 ok = paid >= total && total > 0;
                 troco = ok ? (paid - total) : 0;
@@ -1373,19 +1388,14 @@ try {
                 ok = (Math.abs(paid - total) < 0.009) && total > 0;
                 troco = 0;
             }
+
             pTroco.value = troco.toFixed(2).replace(".", ",");
-            return {
-                ok,
-                method,
-                paid,
-                troco,
-                total
-            };
+            return { ok, method, paid, troco, total };
         }
 
-        /* ==============================
-           Render
-        ============================== */
+        // ==============================
+        // Render
+        // ==============================
         function renderCart() {
             tbodyItens.innerHTML = "";
             hintEmpty.style.display = CART.length ? "none" : "block";
@@ -1393,33 +1403,31 @@ try {
             CART.forEach((it, i) => {
                 const sub = Number(it.qty || 0) * Number(it.price || 0);
                 tbodyItens.insertAdjacentHTML("beforeend", `
-      <tr data-pid="${Number(it.product_id)}">
-        <td>${i+1}</td>
-        <td>
-          <div class="d-flex align-items-center gap-2">
-            <img class="pimg" src="${safeText(it.img||DEFAULT_IMG)}" alt="">
-            <div style="min-width:0;">
-              <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">
-                ${safeText(it.name)}
+          <tr data-code="${safeText(it.code)}">
+            <td>${i + 1}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
+                <div style="min-width:0;">
+                  <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">${safeText(it.name)}</div>
+                  <div class="muted">${safeText(it.code)}</div>
+                </div>
               </div>
-              <div class="muted">${safeText(it.code)}</div>
-            </div>
-          </div>
-        </td>
-        <td>
-          <div class="qty-ctrl">
-            <button class="main-btn light-btn btn-hover btn-compact qty-btn btnMinus" type="button" title="-1"><i class="lni lni-minus"></i></button>
-            <input class="qty-pill iQty" type="number" min="1" value="${Number(it.qty||1)}" />
-            <button class="main-btn light-btn btn-hover btn-compact qty-btn btnPlus" type="button" title="+1"><i class="lni lni-plus"></i></button>
-          </div>
-        </td>
-        <td class="text-end">${numberToMoney(it.price)}</td>
-        <td class="text-end" style="font-weight:1000;">${numberToMoney(sub)}</td>
-        <td class="text-center">
-          <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnRemove" type="button" title="Remover"><i class="lni lni-trash-can"></i></button>
-        </td>
-      </tr>
-    `);
+            </td>
+            <td>
+              <div class="qty-ctrl">
+                <button class="main-btn light-btn btn-hover btn-compact qty-btn btnMinus" type="button" title="-1"><i class="lni lni-minus"></i></button>
+                <input class="qty-pill iQty" type="number" min="1" value="${Number(it.qty || 1)}" />
+                <button class="main-btn light-btn btn-hover btn-compact qty-btn btnPlus" type="button" title="+1"><i class="lni lni-plus"></i></button>
+              </div>
+            </td>
+            <td class="text-end">${numberToMoney(it.price)}</td>
+            <td class="text-end" style="font-weight:1000;">${numberToMoney(sub)}</td>
+            <td class="text-center">
+              <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnRemove" type="button" title="Remover"><i class="lni lni-trash-can"></i></button>
+            </td>
+          </tr>
+        `);
             });
         }
 
@@ -1438,93 +1446,47 @@ try {
             else computeMultiPay();
         }
 
-        /* ==============================
-           Últimos cupons (server)
-        ============================== */
-        async function renderLastSales() {
-            try {
-                const r = await fetchJSON("ultimasVendas.php");
-                const all = (r.items || []).slice(0, 10);
-
-                if (!all.length) {
-                    lastList.innerHTML = `<div class="cup"><div class="left"><div class="n">—</div><div class="s">Sem cupons ainda</div></div><div class="right"><div class="v">R$ 0,00</div></div></div>`;
-                    return;
-                }
-
-                lastList.innerHTML = all.map(s => `
-      <div class="cup" style="cursor:pointer;" data-id="${Number(s.id)}" title="Clique para imprimir">
-        <div class="left">
-          <div class="n">Venda #${Number(s.id)}</div>
-          <div class="s">${safeText(s.date || "")}</div>
-        </div>
-        <div class="right">
-          <div class="v">${numberToMoney(s.total || 0)}</div>
-          <div class="st">CONCLUÍDO</div>
-        </div>
-      </div>
-    `).join("");
-
-                if (r.next) saleNo.textContent = `Venda #${Number(r.next)}`;
-            } catch (e) {
-                console.error(e);
+        function renderLastSales() {
+            const all = getSales().slice(0, 10);
+            if (!all.length) {
+                lastList.innerHTML = `<div class="cup"><div class="left"><div class="n">—</div><div class="s">Sem cupons ainda</div></div><div class="right"><div class="v">R$ 0,00</div></div></div>`;
+                return;
             }
+            lastList.innerHTML = all.map(s => `
+        <div class="cup">
+          <div class="left">
+            <div class="n">Venda #${Number(s.no || 0)}</div>
+            <div class="s">${safeText(s.date || "")}</div>
+          </div>
+          <div class="right">
+            <div class="v">${numberToMoney(s.total || 0)}</div>
+            <div class="st">CONCLUÍDO</div>
+          </div>
+        </div>
+      `).join("");
         }
 
-        /* ==============================
-           Busca (server)
-        ============================== */
-        async function searchProducts(q) {
-            const s = String(q || "").trim();
+        // ==============================
+        // Busca / Sugestões
+        // ==============================
+        function queryProducts(q) {
+            const s = String(q || "").toLowerCase().trim();
             if (!s) return [];
-
-            if (searchAbort) searchAbort.abort();
-            searchAbort = new AbortController();
-
-            const url = "buscarProdutos.php?q=" + encodeURIComponent(s);
-            const r = await fetch(url, {
-                signal: searchAbort.signal
-            });
-            const data = await r.json().catch(() => ({}));
-            if (!r.ok || data.ok === false) return [];
-
-            return (data.items || []).map(p => ({
-                id: Number(p.id),
-                code: String(p.code || ""),
-                name: String(p.name || ""),
-                unit: String(p.unit || ""),
-                price: Number(p.price || 0),
-                stock: Number(p.stock || 0),
-                img: (p.img && String(p.img).trim() !== "") ? String(p.img) : DEFAULT_IMG
-            }));
+            return PRODUCTS
+                .filter(p => (p.name || "").toLowerCase().includes(s) || (p.code || "").toLowerCase().includes(s))
+                .slice(0, 30);
         }
 
-        function refreshSuggestDebounced() {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(async () => {
-                try {
-                    LAST_SUGG = await searchProducts(qProd.value);
-                    showSuggest(LAST_SUGG);
-                } catch {
-                    LAST_SUGG = [];
-                    showSuggest([]);
-                }
-            }, 180);
-        }
+        function refreshSuggest() { showSuggest(queryProducts(qProd.value)); }
 
-        qProd.addEventListener("input", refreshSuggestDebounced);
-        qProd.addEventListener("focus", refreshSuggestDebounced);
+        qProd.addEventListener("input", refreshSuggest);
+        qProd.addEventListener("focus", refreshSuggest);
 
-        qProd.addEventListener("keydown", async (e) => {
+        qProd.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
                 e.preventDefault();
-                if (!LAST_SUGG.length) {
-                    LAST_SUGG = await searchProducts(qProd.value);
-                }
-                if (LAST_SUGG.length) {
-                    addToCart(LAST_SUGG[0]);
-                    qProd.value = "";
-                    hideSuggest();
-                }
+                const list = queryProducts(qProd.value);
+                if (list.length) { addToCart(list[0]); qProd.value = ""; hideSuggest(); }
             }
             if (e.key === "Escape") hideSuggest();
         });
@@ -1532,21 +1494,19 @@ try {
         suggest.addEventListener("click", (e) => {
             const it = e.target.closest(".it");
             if (!it) return;
-            const id = Number(it.getAttribute("data-id") || 0);
-            const prod = LAST_SUGG.find(p => p.id === id);
+            const code = it.getAttribute("data-code");
+            const prod = PRODUCTS.find(p => p.code === code);
             addToCart(prod);
             qProd.value = "";
             hideSuggest();
             qProd.focus();
         });
 
-        document.addEventListener("click", (e) => {
-            if (!e.target.closest(".search-wrap")) hideSuggest();
-        });
+        document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) hideSuggest(); });
 
-        /* ==============================
-           Entrega toggle
-        ============================== */
+        // ==============================
+        // Entrega toggle
+        // ==============================
         function setDeliveryMode(mode) {
             DELIVERY_MODE = mode;
             const isDel = mode === "DELIVERY";
@@ -1554,23 +1514,21 @@ try {
             chipPres.classList.toggle("active", !isDel);
             wrapDelivery.style.display = isDel ? "block" : "none";
 
-            if (!isDel) {
-                cEndereco.value = "";
-                cEntrega.value = "0,00";
-                cObs.value = "";
-            }
+            if (!isDel) { cEndereco.value = ""; cEntrega.value = "0,00"; cObs.value = ""; }
             recalcAll();
         }
+
         chipPres.addEventListener("click", () => setDeliveryMode("PRESENCIAL"));
         chipDel.addEventListener("click", () => setDeliveryMode("DELIVERY"));
         cEntrega.addEventListener("input", recalcAll);
 
+        // Desconto
         dTipo.addEventListener("change", recalcAll);
         dValor.addEventListener("input", recalcAll);
 
-        /* ==============================
-           Pagamento toggle
-        ============================== */
+        // ==============================
+        // Pagamento toggle
+        // ==============================
         function setPayMode(mode) {
             PAY_MODE = mode;
             const isMulti = mode === "MULTI";
@@ -1578,9 +1536,11 @@ try {
             chipPagUnico.classList.toggle("active", !isMulti);
             wrapPagMulti.style.display = isMulti ? "block" : "none";
             wrapPagUnico.style.display = isMulti ? "none" : "block";
+
             if (isMulti) ensureOnePayRow();
             recalcAll();
         }
+
         chipPagUnico.addEventListener("click", () => setPayMode("UNICO"));
         chipPagMulti.addEventListener("click", () => setPayMode("MULTI"));
 
@@ -1592,12 +1552,14 @@ try {
             btn.classList.add("active");
             recalcAll();
         });
+
         pValor.addEventListener("input", recalcAll);
 
         btnAddPay.addEventListener("click", () => {
             paysWrap.insertAdjacentHTML("beforeend", payRowTpl("PIX", "0,00"));
             recalcAll();
         });
+
         paysWrap.addEventListener("click", (e) => {
             const btn = e.target.closest(".btnRemPay");
             if (!btn) return;
@@ -1606,33 +1568,30 @@ try {
             ensureOnePayRow();
             recalcAll();
         });
-        paysWrap.addEventListener("input", (e) => {
-            if (e.target.closest(".pay-split-row")) recalcAll();
-        });
-        paysWrap.addEventListener("change", (e) => {
-            if (e.target.closest(".pay-split-row")) recalcAll();
-        });
 
-        /* ==============================
-           Carrinho events
-        ============================== */
+        paysWrap.addEventListener("input", (e) => { if (e.target.closest(".pay-split-row")) recalcAll(); });
+        paysWrap.addEventListener("change", (e) => { if (e.target.closest(".pay-split-row")) recalcAll(); });
+
+        // ==============================
+        // Carrinho events
+        // ==============================
         tbodyItens.addEventListener("click", (e) => {
             const tr = e.target.closest("tr");
             if (!tr) return;
-            const pid = Number(tr.getAttribute("data-pid") || 0);
-            if (!pid) return;
+            const code = tr.getAttribute("data-code");
+            if (!code) return;
 
-            if (e.target.closest(".btnRemove")) return removeFromCart(pid);
-            if (e.target.closest(".btnMinus")) return changeQty(pid, -1);
-            if (e.target.closest(".btnPlus")) return changeQty(pid, +1);
+            if (e.target.closest(".btnRemove")) return removeFromCart(code);
+            if (e.target.closest(".btnMinus")) return changeQty(code, -1);
+            if (e.target.closest(".btnPlus")) return changeQty(code, +1);
         });
 
         tbodyItens.addEventListener("input", (e) => {
             const tr = e.target.closest("tr");
             if (!tr) return;
-            const pid = Number(tr.getAttribute("data-pid") || 0);
-            if (!pid) return;
-            if (e.target.classList.contains("iQty")) setQty(pid, e.target.value);
+            const code = tr.getAttribute("data-code");
+            if (!code) return;
+            if (e.target.classList.contains("iQty")) setQty(code, e.target.value);
         });
 
         btnLimpar.addEventListener("click", () => {
@@ -1643,176 +1602,197 @@ try {
             setPreview(null);
         });
 
-        /* ==============================
-           Confirmar venda (server)
-        ============================== */
-        function validateSaleClient() {
-            if (!CART.length) return {
-                ok: false,
-                msg: "Adicione pelo menos 1 item."
-            };
-            if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return {
-                ok: false,
-                msg: "Informe o endereço do Delivery."
-            };
+        // ==============================
+        // Cupom fiscal (80mm)
+        // ==============================
+        function buildReceiptHtml(sale) {
+            const hr = () => `<div class="hr"></div>`;
+
+            const items = sale.items.map((it, idx) => {
+                const sub = it.qty * it.price;
+                const name = String(it.name || "").toUpperCase();
+                const code = String(it.code || "");
+                return `
+          <div class="item">
+            <div class="row"><span>${String(idx + 1).padStart(3, "0")} ${safeText(name)}</span></div>
+            <div class="row small">
+              <span>${safeText(code)}</span>
+              <span>${it.qty} x ${numberToMoney(it.price)} = ${numberToMoney(sub)}</span>
+            </div>
+          </div>
+        `;
+            }).join("");
+
+            const payLines = (sale.pay.mode === "UNICO")
+                ? `<div class="row"><span>${safeText(String(sale.pay.method).toUpperCase())}</span><span>${numberToMoney(sale.pay.paid)}</span></div>`
+                : (sale.pay.parts || []).map(p => `
+            <div class="row"><span>${safeText(String(p.method).toUpperCase())}</span><span>${numberToMoney(p.value)}</span></div>
+          `).join("");
+
+            const entregaTxt = (sale.delivery.mode === "DELIVERY") ? "DELIVERY" : "PRESENCIAL";
+            const clienteTxt = sale.customer ? sale.customer : "CONSUMIDOR FINAL";
+            const enderecoTxt = (sale.delivery.mode === "DELIVERY") ? (sale.delivery.address || "-") : "";
+
+            return `
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Cupom #${sale.no}</title>
+            <style>
+              @page { size: 80mm auto; margin: 6mm; }
+              body { margin: 0; padding: 0; font-family: "Courier New", monospace; color: #000; }
+              .wrap { width: 72mm; margin: 0 auto; font-size: 11px; }
+              .center { text-align: center; }
+              .bold { font-weight: 800; }
+              .small { font-size: 10px; }
+              .hr { border-top: 1px dashed #000; margin: 6px 0; }
+              .row { display: flex; justify-content: space-between; gap: 10px; }
+              .row span:last-child { text-align: right; white-space: nowrap; }
+              .item { margin: 6px 0; }
+              .top { margin-top: 4px; }
+              .mono { letter-spacing: .2px; }
+            </style>
+          </head>
+          <body>
+            <div class="wrap mono">
+              <div class="center bold">PAINEL DA DISTRIBUIDORA</div>
+              <div class="center small">CUPOM FISCAL (MODELO)</div>
+              ${hr()}
+              <div class="row"><span class="bold">VENDA</span><span>#${sale.no}</span></div>
+              <div class="row"><span class="bold">DATA</span><span>${safeText(sale.date)}</span></div>
+              <div class="row"><span class="bold">CLIENTE</span><span>${safeText(clienteTxt)}</span></div>
+              <div class="row"><span class="bold">ENTREGA</span><span>${entregaTxt}</span></div>
+              ${sale.delivery.mode === "DELIVERY" ? `<div class="top small">END: ${safeText(enderecoTxt)}</div>` : ``}
+              ${hr()}
+              <div class="row bold"><span>ITENS</span><span></span></div>
+              ${items || `<div class="small">—</div>`}
+              ${hr()}
+              <div class="row"><span>SUBTOTAL</span><span>${numberToMoney(sale.totals.sub)}</span></div>
+              <div class="row"><span>DESCONTO</span><span>- ${numberToMoney(sale.totals.desc)}</span></div>
+              <div class="row"><span>TAXA ENTREGA</span><span>${numberToMoney(sale.totals.fee)}</span></div>
+              ${hr()}
+              <div class="row bold"><span>TOTAL</span><span>${numberToMoney(sale.total)}</span></div>
+              ${hr()}
+              <div class="row bold"><span>PAGAMENTO</span><span></span></div>
+              ${payLines || `<div class="row"><span>—</span><span>—</span></div>`}
+              <div class="row"><span>TROCO</span><span>${numberToMoney(sale.pay.troco || 0)}</span></div>
+              ${hr()}
+              <div class="center small">OBRIGADO PELA PREFERÊNCIA!</div>
+            </div>
+            <script>window.print();<\/script>
+          </body>
+        </html>
+      `;
+        }
+
+        // ==============================
+        // Confirmar venda
+        // ==============================
+        function validateSale() {
+            if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
+            if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return { ok: false, msg: "Informe o endereço do Delivery." };
+
             const total = calcTotal();
-            if (total <= 0) return {
-                ok: false,
-                msg: "Total inválido."
-            };
+            if (total <= 0) return { ok: false, msg: "Total inválido." };
 
             if (PAY_MODE === "UNICO") {
                 const r = computeSinglePay();
                 if (!r.ok) {
-                    if (r.method === "DINHEIRO") return {
-                        ok: false,
-                        msg: "No dinheiro, o valor pago deve ser >= total."
-                    };
-                    return {
-                        ok: false,
-                        msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total."
-                    };
+                    if (r.method === "DINHEIRO") return { ok: false, msg: "No dinheiro, o valor pago deve ser >= total." };
+                    return { ok: false, msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total." };
                 }
-                return {
-                    ok: true
-                };
+                return { ok: true, pay: { mode: "UNICO", method: r.method, paid: r.paid, troco: r.troco } };
             }
 
             const m = computeMultiPay();
-            if (!m.ok) return {
-                ok: false,
-                msg: "Pagamento múltiplo inválido. Ajuste os valores."
-            };
-            return {
-                ok: true
-            };
+            if (!m.ok) return { ok: false, msg: "Pagamento múltiplo inválido. Ajuste os valores." };
+            return { ok: true, pay: { mode: "MULTI", parts: m.rows, troco: m.troco, sum: m.sum } };
         }
 
-        async function confirmSale() {
-            const v = validateSaleClient();
-            if (!v.ok) {
-                alert(v.msg);
-                return;
-            }
+        function confirmSale() {
+            const v = validateSale();
+            if (!v.ok) { alert(v.msg); return; }
 
-            const payload = {
-                csrf_token: CSRF,
+            const sub = calcSubtotal();
+            const desc = calcDiscount(sub);
+            const fee = calcDeliveryFee();
+            const total = calcTotal();
+            const no = nextSaleNo();
+            const date = nowBR();
+
+            const sale = {
+                no,
+                date,
                 customer: String(cCliente.value || "").trim(),
+                items: CART.map(it => ({ code: it.code, name: it.name, qty: Number(it.qty || 0), price: Number(it.price || 0) })),
                 delivery: {
                     mode: DELIVERY_MODE,
                     address: DELIVERY_MODE === "DELIVERY" ? String(cEndereco.value || "").trim() : "",
-                    fee: DELIVERY_MODE === "DELIVERY" ? moneyToNumber(cEntrega.value) : 0,
+                    fee: fee,
                     obs: DELIVERY_MODE === "DELIVERY" ? String(cObs.value || "").trim() : ""
                 },
-                discount: {
-                    tipo: dTipo.value,
-                    valor: moneyToNumber(dValor.value)
-                },
-                pay: (PAY_MODE === "UNICO") ?
-                    {
-                        mode: "UNICO",
-                        method: PAY_SELECTED,
-                        paid: moneyToNumber(pValor.value)
-                    } :
-                    {
-                        mode: "MULTI",
-                        parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
-                            method: row.querySelector(".mMethod")?.value || "PIX",
-                            value: moneyToNumber(row.querySelector(".mValue")?.value || "0")
-                        }))
-                    },
-                items: CART.map(it => ({
-                    product_id: it.product_id,
-                    qty: Number(it.qty || 0)
-                }))
+                totals: { sub, desc, fee },
+                total,
+                pay: v.pay,
             };
 
-            btnConfirmar.disabled = true;
+            addSale(sale);
+            renderLastSales();
 
-            try {
-                const r = await fetchJSON("salvarVendas.php", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                alert(r.msg || "Venda confirmada!");
-
-                if (chkPrint.checked && r.sale && r.sale.print_url) {
-                    const w = window.open(r.sale.print_url, "_blank");
-                    if (!w) alert("Pop-up bloqueado. Permita pop-ups para imprimir.");
-                }
-
-                // reset
-                CART = [];
-                renderCart();
-                setPreview(null);
-
-                cCliente.value = "";
-                setDeliveryMode("PRESENCIAL");
-
-                dTipo.value = "PERC";
-                dValor.value = "0";
-
-                setPayMode("UNICO");
-                PAY_SELECTED = "DINHEIRO";
-                payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
-                payBtns.querySelector('.pay-btn[data-pay="DINHEIRO"]').classList.add("active");
-                pValor.value = "0,00";
-                pTroco.value = "0,00";
-
-                paysWrap.innerHTML = "";
-                ensureOnePayRow();
-
-                recalcAll();
-                saleNo.textContent = `Venda #${Number(r.next || (Number(r.sale?.no||0)+1) || 1)}`;
-
-                await renderLastSales();
-                qProd.focus();
-
-            } catch (e) {
-                alert(e.message || "Erro ao salvar venda.");
-            } finally {
-                btnConfirmar.disabled = false;
+            if (chkPrint.checked) {
+                const html = buildReceiptHtml(sale);
+                const w = window.open("", "_blank");
+                if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+                else { alert("Pop-up bloqueado. Permita pop-ups para imprimir."); }
             }
+
+            // reset
+            CART = [];
+            renderCart();
+            setPreview(null);
+
+            cCliente.value = "";
+            setDeliveryMode("PRESENCIAL");
+
+            dTipo.value = "PERC";
+            dValor.value = "0";
+
+            setPayMode("UNICO");
+            PAY_SELECTED = "DINHEIRO";
+            payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
+            payBtns.querySelector('.pay-btn[data-pay="DINHEIRO"]').classList.add("active");
+            pValor.value = "0,00";
+            pTroco.value = "0,00";
+
+            paysWrap.innerHTML = "";
+            ensureOnePayRow();
+
+            recalcAll();
+            saleNo.textContent = `Venda #${nextSaleNo()}`;
+            alert(`Venda #${no} confirmada!`);
+            qProd.focus();
         }
 
         btnConfirmar.addEventListener("click", confirmSale);
 
-        /* ==============================
-           Atalhos teclado
-        ============================== */
+        // ==============================
+        // Atalhos teclado
+        // ==============================
         document.addEventListener("keydown", (e) => {
-            if (e.key === "F4") {
-                e.preventDefault();
-                qProd.focus();
-                return;
-            }
-            if (e.key === "F2") {
-                e.preventDefault();
-                confirmSale();
-                return;
-            }
+            if (e.key === "F4") { e.preventDefault(); qProd.focus(); return; }
+            if (e.key === "F2") { e.preventDefault(); confirmSale(); return; }
             if (e.key === "Escape") hideSuggest();
         });
 
-        /* ==============================
-           Últimos cupons click (imprimir)
-        ============================== */
-        lastList.addEventListener("click", (e) => {
-            const cup = e.target.closest(".cup");
-            if (!cup) return;
-            const id = Number(cup.getAttribute("data-id") || 0);
-            if (id > 0) window.open(`cupom.php?id=${id}`, "_blank");
-        });
-
-        /* ==============================
-           Init
-        ============================== */
+        // ==============================
+        // Init
+        // ==============================
         function init() {
+            PRODUCTS = getProducts();
             setPreview(null);
+
+            saleNo.textContent = `Venda #${nextSaleNo()}`;
+
             setDeliveryMode("PRESENCIAL");
             setPayMode("UNICO");
             ensureOnePayRow();
@@ -1823,11 +1803,12 @@ try {
 
             qGlobal.addEventListener("input", () => {
                 qProd.value = qGlobal.value;
-                refreshSuggestDebounced();
+                refreshSuggest();
             });
 
             btnRefreshLast.addEventListener("click", renderLastSales);
         }
+
         init();
     </script>
 </body>
