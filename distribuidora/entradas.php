@@ -1,66 +1,454 @@
 <?php
-
 declare(strict_types=1);
 
-require_once __DIR__ . '/assets/conexao.php';
-require_once __DIR__ . '/assets/dados/entradas/_helpers.php';
+/**
+ * vendas.php (PDV) - funcional com MySQL (tabelas: produtos/saidas/fornecedores/categorias/entradas/inventario_itens)
+ * Requer:
+ *   - ./assets/conexao.php  (função db():PDO)
+ *   - ./assets/dados/entradas/_helpers.php (helpers: e(), flash, csrf, redirect, etc.)
+ */
 
-$csrf  = csrf_token();
+date_default_timezone_set('America/Manaus');
+
+require_once __DIR__ . '/assets/conexao.php';
+require_once __DIR__ . '/assets/dados/vendas/_helpers.php';
+
+$pdo  = db();
+$csrf = csrf_token();
 $flash = flash_pop();
 
-$pdo = db();
-
-function brDate(string $ymd): string
-{
+/** ===== Helpers locais ===== */
+function brDate(string $ymd): string {
     $ymd = trim($ymd);
     if (!$ymd) return '';
     $p = explode('-', $ymd);
     if (count($p) !== 3) return $ymd;
     return $p[2] . '/' . $p[1] . '/' . $p[0];
 }
-
-function fmtMoney($v): string
-{
+function fmtMoney($v): string {
     return 'R$ ' . number_format((float)$v, 2, ',', '.');
 }
-
 /**
  * Banco (produtos.imagem): images/arquivo.png
  * Exibir em páginas na raiz: assets/dados/produtos/images/arquivo.png
  */
-function img_url_from_db(string $dbValue): string
-{
+function img_url_from_db(string $dbValue): string {
     $v = trim($dbValue);
     if ($v === '') return '';
     if (preg_match('~^(https?://|/|assets/)~i', $v)) return $v;
     $v = ltrim($v, '/');
     return 'assets/dados/produtos/' . $v;
 }
+function json_out(array $data, int $status = 200): void {
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+function read_json_body(): array {
+    $raw = file_get_contents('php://input');
+    $j = json_decode($raw ?: '', true);
+    return is_array($j) ? $j : [];
+}
+function csrf_ok_from_payload(array $payload): bool {
+    $posted = (string)($payload['csrf_token'] ?? $_POST['csrf_token'] ?? '');
+    $sess   = (string)($_SESSION['csrf_token'] ?? '');
+    return ($posted !== '' && $sess !== '' && hash_equals($sess, $posted));
+}
+function money_to_cents($val): int {
+    // aceita "0,00", "0.00", "R$ 0,00"
+    $s = trim((string)$val);
+    if ($s === '') return 0;
+    $s = preg_replace('/[^\d,.\-]/', '', $s);
+    $s = str_replace('.', '', $s);      // remove milhar
+    $s = str_replace(',', '.', $s);     // decimal
+    $n = (float)$s;
+    return (int) round($n * 100);
+}
+function cents_to_money(int $cents): float {
+    return $cents / 100;
+}
 
-// selects
-$fornecedores = $pdo->query("SELECT id, nome, status FROM fornecedores ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
-$produtos = $pdo->query("
-  SELECT p.id, p.codigo, p.nome, p.unidade, p.imagem, p.fornecedor_id,
-         f.nome AS fornecedor_nome
-  FROM produtos p
-  LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
-  ORDER BY p.nome ASC
-  LIMIT 5000
-")->fetchAll(PDO::FETCH_ASSOC);
+/** ====== ENDPOINTS (AJAX) ====== */
+$action = (string)($_GET['action'] ?? '');
 
-// lista entradas
-$entradas = $pdo->query("
-  SELECT e.*,
-         f.nome AS fornecedor_nome,
-         p.codigo AS produto_codigo,
-         p.nome AS produto_nome,
-         p.imagem AS produto_imagem
-  FROM entradas e
-  LEFT JOIN fornecedores f ON f.id = e.fornecedor_id
-  LEFT JOIN produtos p ON p.id = e.produto_id
-  ORDER BY e.data DESC, e.id DESC
-  LIMIT 5000
-")->fetchAll(PDO::FETCH_ASSOC);
+/**
+ * GET vendas.php?action=search&q=...
+ * Retorna produtos para o dropdown de sugestões.
+ */
+if ($action === 'search') {
+    $q = trim((string)($_GET['q'] ?? ''));
+    if ($q === '') json_out(['ok' => true, 'items' => []]);
+
+    $like = '%' . $q . '%';
+
+    $st = $pdo->prepare("
+        SELECT
+            p.id, p.codigo, p.nome, p.unidade, p.preco, p.estoque, p.imagem,
+            c.nome AS categoria_nome,
+            f.nome AS fornecedor_nome
+        FROM produtos p
+        LEFT JOIN categorias c ON c.id = p.categoria_id
+        LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
+        WHERE p.status = 'ATIVO'
+          AND (p.nome LIKE :q OR p.codigo LIKE :q)
+        ORDER BY
+            CASE WHEN p.codigo = :qExact THEN 0 ELSE 1 END,
+            p.nome ASC
+        LIMIT 30
+    ");
+    $st->execute([
+        ':q' => $like,
+        ':qExact' => $q,
+    ]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+    $items = array_map(function ($r) {
+        $img = img_url_from_db((string)($r['imagem'] ?? ''));
+        return [
+            'id' => (int)$r['id'],
+            'code' => (string)$r['codigo'],
+            'name' => (string)$r['nome'],
+            'unidade' => (string)($r['unidade'] ?? ''),
+            'price' => (float)($r['preco'] ?? 0),
+            'stock' => (int)($r['estoque'] ?? 0),
+            'img' => $img,
+            'categoria' => (string)($r['categoria_nome'] ?? ''),
+            'fornecedor' => (string)($r['fornecedor_nome'] ?? ''),
+        ];
+    }, $rows);
+
+    json_out(['ok' => true, 'items' => $items]);
+}
+
+/**
+ * GET vendas.php?action=last
+ * Retorna últimos pedidos (agrupados por saidas.pedido).
+ */
+if ($action === 'last') {
+    $rows = $pdo->query("
+        SELECT
+            pedido,
+            MAX(data) AS data,
+            MIN(cliente) AS cliente,
+            MIN(canal) AS canal,
+            MIN(pagamento) AS pagamento,
+            SUM(total) AS total,
+            MAX(id) AS last_id
+        FROM saidas
+        GROUP BY pedido
+        ORDER BY last_id DESC
+        LIMIT 10
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $items = array_map(fn($r) => [
+        'pedido' => (string)$r['pedido'],
+        'data' => brDate((string)$r['data']),
+        'cliente' => (string)$r['cliente'],
+        'canal' => (string)$r['canal'],
+        'pagamento' => (string)$r['pagamento'],
+        'total' => (float)$r['total'],
+    ], $rows);
+
+    json_out(['ok' => true, 'items' => $items]);
+}
+
+/**
+ * GET vendas.php?action=get_pedido&pedido=...
+ * Retorna detalhes do pedido para reimpressão.
+ */
+if ($action === 'get_pedido') {
+    $pedido = trim((string)($_GET['pedido'] ?? ''));
+    if ($pedido === '') json_out(['ok' => false, 'msg' => 'Pedido inválido.'], 400);
+
+    $st = $pdo->prepare("
+        SELECT
+            s.id, s.data, s.pedido, s.cliente, s.canal, s.pagamento,
+            s.produto_id, s.unidade, s.qtd, s.preco, s.total,
+            p.codigo AS produto_codigo,
+            p.nome AS produto_nome
+        FROM saidas s
+        LEFT JOIN produtos p ON p.id = s.produto_id
+        WHERE s.pedido = :pedido
+        ORDER BY s.id ASC
+    ");
+    $st->execute([':pedido' => $pedido]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+    if (!$rows) json_out(['ok' => false, 'msg' => 'Pedido não encontrado.'], 404);
+
+    $sum = 0.0;
+    $items = [];
+    foreach ($rows as $r) {
+        $sum += (float)$r['total'];
+        $items[] = [
+            'code' => (string)($r['produto_codigo'] ?? ''),
+            'name' => (string)($r['produto_nome'] ?? ''),
+            'qty' => (int)($r['qtd'] ?? 0),
+            'price' => (float)($r['preco'] ?? 0),
+            'total' => (float)($r['total'] ?? 0),
+            'unidade' => (string)($r['unidade'] ?? ''),
+        ];
+    }
+
+    $head = $rows[0];
+    json_out([
+        'ok' => true,
+        'sale' => [
+            'pedido' => (string)$head['pedido'],
+            'date' => brDate((string)$head['data']),
+            'customer' => (string)$head['cliente'],
+            'canal' => (string)$head['canal'],
+            'pagamento' => (string)$head['pagamento'],
+            'items' => $items,
+            'total' => $sum,
+        ]
+    ]);
+}
+
+/**
+ * POST vendas.php?action=confirm
+ * Body JSON:
+ *  {
+ *    csrf_token,
+ *    customer,
+ *    delivery:{mode,address,fee,obs},
+ *    discount:{type,value},
+ *    pay:{mode,method,paid,parts:[{method,value}]},
+ *    items:[{id,qty}]
+ *  }
+ */
+if ($action === 'confirm') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        json_out(['ok' => false, 'msg' => 'Método inválido.'], 405);
+    }
+
+    $payload = read_json_body();
+
+    if (!csrf_ok_from_payload($payload)) {
+        json_out(['ok' => false, 'msg' => 'CSRF inválido. Recarregue a página.'], 403);
+    }
+
+    $itemsIn = $payload['items'] ?? [];
+    if (!is_array($itemsIn) || count($itemsIn) === 0) {
+        json_out(['ok' => false, 'msg' => 'Adicione pelo menos 1 item.'], 400);
+    }
+
+    // normaliza cliente / canal
+    $customer = trim((string)($payload['customer'] ?? ''));
+    if ($customer === '') $customer = 'CONSUMIDOR FINAL';
+
+    $delivery = is_array($payload['delivery'] ?? null) ? $payload['delivery'] : [];
+    $deliveryMode = strtoupper(trim((string)($delivery['mode'] ?? 'PRESENCIAL')));
+    if (!in_array($deliveryMode, ['PRESENCIAL', 'DELIVERY'], true)) $deliveryMode = 'PRESENCIAL';
+
+    $deliveryAddress = trim((string)($delivery['address'] ?? ''));
+    $deliveryFeeCents = ($deliveryMode === 'DELIVERY') ? max(0, money_to_cents($delivery['fee'] ?? '0')) : 0;
+
+    if ($deliveryMode === 'DELIVERY' && $deliveryAddress === '') {
+        json_out(['ok' => false, 'msg' => 'Informe o endereço do Delivery.'], 400);
+    }
+
+    // desconto
+    $discount = is_array($payload['discount'] ?? null) ? $payload['discount'] : [];
+    $dType = strtoupper(trim((string)($discount['type'] ?? 'PERC')));
+    if (!in_array($dType, ['PERC', 'VALOR'], true)) $dType = 'PERC';
+    $dValue = (string)($discount['value'] ?? '0');
+
+    // pagamento
+    $pay = is_array($payload['pay'] ?? null) ? $payload['pay'] : [];
+    $payMode = strtoupper(trim((string)($pay['mode'] ?? 'UNICO')));
+    if (!in_array($payMode, ['UNICO', 'MULTI'], true)) $payMode = 'UNICO';
+
+    $payMethod = strtoupper(trim((string)($pay['method'] ?? 'DINHEIRO')));
+    if (!in_array($payMethod, ['DINHEIRO', 'PIX', 'CARTAO', 'BOLETO'], true)) $payMethod = 'DINHEIRO';
+
+    // itens: pegar ids únicos
+    $idQty = [];
+    foreach ($itemsIn as $it) {
+        if (!is_array($it)) continue;
+        $id = (int)($it['id'] ?? 0);
+        $qty = (int)($it['qty'] ?? 0);
+        if ($id <= 0 || $qty <= 0) continue;
+        $idQty[$id] = ($idQty[$id] ?? 0) + $qty; // soma caso repetido
+    }
+    if (!$idQty) json_out(['ok' => false, 'msg' => 'Itens inválidos.'], 400);
+
+    $ids = array_keys($idQty);
+    $place = implode(',', array_fill(0, count($ids), '?'));
+
+    $today = date('Y-m-d');
+
+    // gerar pedido
+    $pedido = 'PDV-' . date('Ymd-His') . '-' . str_pad((string)random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+
+    // pagamento (campo VARCHAR(30) na tabela)
+    $pagamentoDb = ($payMode === 'MULTI') ? 'MULTI' : $payMethod;
+    $canalDb = $deliveryMode;
+
+    $pdo->beginTransaction();
+    try {
+        // trava produtos (estoque)
+        $stP = $pdo->prepare("
+            SELECT id, codigo, nome, unidade, preco, estoque, status
+            FROM produtos
+            WHERE id IN ($place)
+              AND status = 'ATIVO'
+            FOR UPDATE
+        ");
+        $stP->execute($ids);
+        $prods = $stP->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($prods) !== count($ids)) {
+            throw new RuntimeException('Alguns produtos não foram encontrados ou estão inativos.');
+        }
+
+        // monta mapa
+        $map = [];
+        foreach ($prods as $p) $map[(int)$p['id']] = $p;
+
+        // valida estoque e calcula base em cents
+        $lines = [];
+        $baseTotalCents = 0;
+        foreach ($idQty as $pid => $qty) {
+            $p = $map[$pid] ?? null;
+            if (!$p) throw new RuntimeException('Produto inválido.');
+
+            $stock = (int)($p['estoque'] ?? 0);
+            if ($qty > $stock) {
+                throw new RuntimeException("Estoque insuficiente para: {$p['nome']} (disp.: {$stock}).");
+            }
+
+            $priceCents = (int) round(((float)$p['preco']) * 100);
+            $lineCents = (int) round($qty * $priceCents);
+            $baseTotalCents += $lineCents;
+
+            $lines[] = [
+                'produto_id' => $pid,
+                'codigo' => (string)$p['codigo'],
+                'nome' => (string)$p['nome'],
+                'unidade' => (string)($p['unidade'] ?? 'UN'),
+                'qty' => $qty,
+                'price' => (float)$p['preco'],
+                'base_cents' => $lineCents,
+                'total_cents' => 0,
+            ];
+        }
+
+        if ($baseTotalCents <= 0) throw new RuntimeException('Total inválido.');
+
+        // desconto cents
+        $discountCents = 0;
+        if ($dType === 'PERC') {
+            $perc = (float)str_replace(',', '.', preg_replace('/[^\d,.\-]/', '', $dValue));
+            if ($perc > 0) {
+                $perc = min(100.0, $perc);
+                $discountCents = (int) round($baseTotalCents * ($perc / 100.0));
+            }
+        } else {
+            $discountCents = max(0, min($baseTotalCents, money_to_cents($dValue)));
+        }
+
+        $finalTotalCents = max(0, ($baseTotalCents - $discountCents) + $deliveryFeeCents);
+        if ($finalTotalCents <= 0) throw new RuntimeException('Total inválido.');
+
+        // distribui total final proporcionalmente às linhas (para bater com soma no DB)
+        $sumAlloc = 0;
+        for ($i = 0; $i < count($lines); $i++) {
+            $share = $lines[$i]['base_cents'] / $baseTotalCents;
+            $lines[$i]['total_cents'] = (int) round($finalTotalCents * $share);
+            $sumAlloc += $lines[$i]['total_cents'];
+        }
+        // ajusta diferença por arredondamento
+        $diff = $finalTotalCents - $sumAlloc;
+        $lines[count($lines) - 1]['total_cents'] += $diff;
+
+        // valida pagamento do PDV (servidor)
+        if ($payMode === 'UNICO') {
+            $paidCents = money_to_cents($pay['paid'] ?? '0');
+            if ($payMethod === 'DINHEIRO') {
+                if ($paidCents < $finalTotalCents) throw new RuntimeException('No dinheiro, o valor pago deve ser >= total.');
+            } else {
+                if (abs($paidCents - $finalTotalCents) > 1) throw new RuntimeException('Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total.');
+            }
+        } else {
+            $parts = is_array($pay['parts'] ?? null) ? $pay['parts'] : [];
+            $sum = 0;
+            $hasCash = false;
+            foreach ($parts as $pt) {
+                if (!is_array($pt)) continue;
+                $m = strtoupper(trim((string)($pt['method'] ?? '')));
+                $v = money_to_cents($pt['value'] ?? '0');
+                if ($v <= 0) continue;
+                $sum += $v;
+                if ($m === 'DINHEIRO') $hasCash = true;
+            }
+            if ($sum < $finalTotalCents) throw new RuntimeException('Pagamento múltiplo insuficiente.');
+            if ($sum > $finalTotalCents && !$hasCash) throw new RuntimeException('Se passar do total, precisa ter Dinheiro (troco).');
+        }
+
+        // INSERT saidas (1 linha por item)
+        $stIns = $pdo->prepare("
+            INSERT INTO saidas
+              (data, pedido, cliente, canal, pagamento, produto_id, unidade, qtd, preco, total)
+            VALUES
+              (:data, :pedido, :cliente, :canal, :pagamento, :produto_id, :unidade, :qtd, :preco, :total)
+        ");
+
+        // UPDATE estoque
+        $stUp = $pdo->prepare("UPDATE produtos SET estoque = estoque - :qtd WHERE id = :id");
+
+        foreach ($lines as $ln) {
+            $stIns->execute([
+                ':data' => $today,
+                ':pedido' => $pedido,
+                ':cliente' => $customer,
+                ':canal' => $canalDb,
+                ':pagamento' => $pagamentoDb,
+                ':produto_id' => $ln['produto_id'],
+                ':unidade' => $ln['unidade'] ?: 'UN',
+                ':qtd' => $ln['qty'], // DECIMAL(10,3) ok (aqui inteiro)
+                ':preco' => $ln['price'],
+                ':total' => cents_to_money((int)$ln['total_cents']),
+            ]);
+            $stUp->execute([':qtd' => $ln['qty'], ':id' => $ln['produto_id']]);
+        }
+
+        $pdo->commit();
+
+        // resposta para UI + cupom
+        $saleOut = [
+            'pedido' => $pedido,
+            'date' => brDate($today),
+            'customer' => $customer,
+            'canal' => $canalDb,
+            'pagamento' => $pagamentoDb,
+            'delivery' => [
+                'mode' => $deliveryMode,
+                'address' => $deliveryAddress,
+                'fee' => cents_to_money($deliveryFeeCents),
+            ],
+            'totals' => [
+                'base' => cents_to_money($baseTotalCents),
+                'discount' => cents_to_money($discountCents),
+                'fee' => cents_to_money($deliveryFeeCents),
+            ],
+            'total' => cents_to_money($finalTotalCents),
+            'items' => array_map(fn($ln) => [
+                'code' => $ln['codigo'],
+                'name' => $ln['nome'],
+                'qty' => $ln['qty'],
+                'price' => $ln['price'],
+                'total' => cents_to_money((int)$ln['total_cents']),
+                'unidade' => $ln['unidade'],
+            ], $lines),
+        ];
+
+        json_out(['ok' => true, 'sale' => $saleOut]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        json_out(['ok' => false, 'msg' => $e->getMessage()], 400);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -71,148 +459,125 @@ $entradas = $pdo->query("
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
-    <title>Painel da Distribuidora | Entradas</title>
+    <title>Painel da Distribuidora | Vendas (PDV)</title>
 
+    <!-- ========== CSS ========= -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
-        .profile-box .dropdown-menu {
-            width: max-content;
-            min-width: 260px;
-            max-width: calc(100vw - 24px)
-        }
+        /* dropdown do profile: largura acompanha conteúdo */
+        .profile-box .dropdown-menu { width: max-content; min-width: 260px; max-width: calc(100vw - 24px); }
+        .profile-box .dropdown-menu .author-info { width: max-content; max-width: 100%; display: flex !important; align-items: center; gap: 10px; }
+        .profile-box .dropdown-menu .author-info .content { min-width: 0; max-width: 100%; }
+        .profile-box .dropdown-menu .author-info .content a { display: inline-block; white-space: nowrap; max-width: 100%; }
 
-        .profile-box .dropdown-menu .author-info {
-            width: max-content;
-            max-width: 100%;
-            display: flex !important;
-            align-items: center;
-            gap: 10px
-        }
+        /* Botões compactos */
+        .main-btn.btn-compact { height: 38px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1 !important; }
+        .main-btn.btn-compact i { font-size: 14px; vertical-align: -1px; }
+        .icon-btn { height: 34px !important; width: 42px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+        .form-control.compact, .form-select.compact { height: 38px; padding: 8px 12px; font-size: 13px; }
 
-        .profile-box .dropdown-menu .author-info .content {
-            min-width: 0;
-            max-width: 100%
-        }
+        /* PDV layout (altura alinhada) */
+        .pdv-row { align-items: stretch; }
+        .pdv-left-col, .pdv-right-col { height: 100%; display: flex; flex-direction: column; }
 
-        .profile-box .dropdown-menu .author-info .content a {
-            display: inline-block;
-            white-space: nowrap;
-            max-width: 100%
-        }
+        .pdv-card { border: 1px solid rgba(148, 163, 184, .28); border-radius: 16px; background: #fff; overflow: hidden; }
+        .pdv-card .pdv-head { padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, .22); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .pdv-card .pdv-body { padding: 14px; }
 
-        .main-btn.btn-compact {
-            height: 38px !important;
-            padding: 8px 14px !important;
-            font-size: 13px !important;
-            line-height: 1 !important
-        }
+        .pdv-card.pdv-search { overflow: visible; position: relative; z-index: 50; }
+        .pdv-card.items-card { flex: 1 1 auto; min-height: 520px; display: flex; flex-direction: column; }
+        .pdv-card.items-card .pdv-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 
-        .main-btn.btn-compact i {
-            font-size: 14px;
-            vertical-align: -1px
-        }
+        .items-scroll { flex: 1 1 auto; min-height: 320px; overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+        .pdv-right-col .pdv-card { height: 100%; display: flex; flex-direction: column; }
+        .pdv-right-col .checkout-body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
 
-        .icon-btn {
-            height: 34px !important;
-            width: 42px !important;
-            padding: 0 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important
+        /* Busca e sugestões */
+        .search-wrap { position: relative; }
+        .suggest {
+            position: absolute; z-index: 9999; left: 0; right: 0; top: calc(100% + 6px);
+            background: #fff; border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
+            max-height: 340px; overflow-y: auto; overflow-x: hidden; display: none;
+            -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
         }
+        .suggest .it { padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .suggest .it:hover { background: rgba(241, 245, 249, .9); }
+        .suggest .it.disabled { opacity: .55; cursor: not-allowed; }
+        .pimg { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; border: 1px solid rgba(148, 163, 184, .30); background: #fff; flex: 0 0 auto; }
+        .it .meta { min-width: 0; flex: 1 1 auto; }
+        .it .meta .t { font-weight: 900; font-size: 13px; color: #0f172a; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .it .meta .s { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .it .price { font-weight: 900; font-size: 13px; color: #0f172a; white-space: nowrap; }
+        .it .stk { font-weight: 900; font-size: 11px; color: #334155; background: rgba(241,245,249,.9); border: 1px solid rgba(148,163,184,.25); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
 
-        .table td,
-        .table th {
-            vertical-align: middle
-        }
+        /* Preview */
+        .preview-box { width: 100%; height: 130px; border-radius: 16px; border: 1px dashed rgba(148, 163, 184, .55); background: rgba(248, 250, 252, .7); display: flex; align-items: center; justify-content: center; padding: 10px; text-align: center; }
+        .preview-box img { width: 86px; height: 86px; border-radius: 16px; object-fit: cover; border: 1px solid rgba(148, 163, 184, .30); background: #fff; margin-bottom: 6px; }
+        .preview-name { font-weight: 900; font-size: 12px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 
-        .minw-120 {
-            min-width: 120px
-        }
+        /* Tabela itens */
+        .table td, .table th { vertical-align: middle; }
+        .table-responsive { -webkit-overflow-scrolling: touch; }
+        #tbItens { width: 100%; min-width: 720px; }
+        #tbItens th, #tbItens td { white-space: nowrap !important; }
 
-        .minw-140 {
-            min-width: 140px
-        }
+        .qty-ctrl { display: inline-flex; align-items: center; gap: 6px; }
+        .qty-btn { height: 34px !important; width: 34px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; border-radius: 10px !important; }
+        .qty-pill { width: 64px !important; height: 34px !important; text-align: center; font-weight: 900; border: 1px solid rgba(148, 163, 184, .30); border-radius: 10px; padding: 4px 6px; background: #fff; font-size: 13px; }
+        .qty-pill::-webkit-outer-spin-button, .qty-pill::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .qty-pill { -moz-appearance: textfield; }
 
-        .minw-160 {
-            min-width: 160px
-        }
+        /* Checkout */
+        .checkout-head { background: #0b5ed7; color: #fff; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .checkout-head h6 { margin: 0; font-weight: 900; letter-spacing: .2px; }
+        .checkout-body { padding: 14px; }
 
-        .minw-200 {
-            min-width: 200px
-        }
+        .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .pay-btn { border: 1px solid rgba(148, 163, 184, .35); background: #fff; border-radius: 12px; padding: 12px 12px; display: flex; align-items: center; gap: 10px; justify-content: flex-start; font-weight: 900; cursor: pointer; user-select: none; transition: .12s ease; min-height: 44px; }
+        .pay-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15, 23, 42, .08); }
+        .pay-btn.active { outline: 2px solid rgba(37, 99, 235, .35); border-color: rgba(37, 99, 235, .55); background: rgba(239, 246, 255, .65); }
+        .pay-btn i { font-size: 18px; }
 
-        .table-responsive {
-            -webkit-overflow-scrolling: touch
-        }
+        .totals { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; background: #fff; padding: 12px; }
+        .tot-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #334155; margin-bottom: 8px; font-weight: 800; }
+        .tot-row:last-child { margin-bottom: 0; }
+        .tot-hr { height: 1px; background: rgba(148, 163, 184, .22); margin: 10px 0; }
+        .grand { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 6px; }
+        .grand .lbl { font-weight: 900; color: #0f172a; font-size: 18px; }
+        .grand .val { font-weight: 1000; color: #0b5ed7; font-size: 30px; letter-spacing: .2px; }
 
-        #tbEntradas {
-            width: 100%;
-            min-width: 1320px
-        }
+        .chip-toggle { display: flex; gap: 10px; flex-wrap: wrap; }
+        .chip { border: 1px solid rgba(148, 163, 184, .35); border-radius: 999px; padding: 8px 12px; cursor: pointer; font-weight: 900; font-size: 12px; user-select: none; background: #fff; }
+        .chip.active { background: rgba(239, 246, 255, .75); border-color: rgba(37, 99, 235, .55); outline: 2px solid rgba(37, 99, 235, .25); }
+        .muted { font-size: 12px; color: #64748b; }
 
-        #tbEntradas th,
-        #tbEntradas td {
-            white-space: nowrap !important;
-            word-break: normal !important;
-            overflow-wrap: normal !important
-        }
+        .pay-split-row { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; padding: 12px; background: #fff; margin-bottom: 10px; }
+        .msg-ok { display: none; color: #16a34a; font-weight: 900; font-size: 12px; }
+        .msg-err { display: none; color: #b91c1c; font-weight: 900; font-size: 12px; }
 
-        .prod-img {
-            width: 42px;
-            height: 42px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 1px solid rgba(148, 163, 184, .35);
-            background: #fff
-        }
+        /* Últimos cupons */
+        .last-box { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; overflow: hidden; background: #fff; margin-top: 12px; }
+        .last-box .head { padding: 10px 12px; border-bottom: 1px solid rgba(148, 163, 184, .18); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .last-box .head .t { font-weight: 900; font-size: 12px; color: #0f172a; text-transform: uppercase; letter-spacing: .4px; }
+        .last-box .list { max-height: 220px; overflow: auto; }
+        .cup { padding: 10px 12px; border-bottom: 1px solid rgba(148, 163, 184, .12); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; cursor: pointer; }
+        .cup:last-child { border-bottom: none; }
+        .cup:hover { background: rgba(248,250,252,.8); }
+        .cup .left .n { font-weight: 900; color: #0f172a; }
+        .cup .left .s { color: #64748b; font-size: 12px; }
+        .cup .right { text-align: right; white-space: nowrap; }
+        .cup .right .v { font-weight: 1000; color: #0b5ed7; }
+        .cup .right .st { font-weight: 900; color: #16a34a; font-size: 11px; }
 
-        .td-center {
-            text-align: center
-        }
-
-        .td-right {
-            text-align: right
-        }
-
-        .form-control.compact,
-        .form-select.compact {
-            height: 38px;
-            padding: 8px 12px;
-            font-size: 13px
-        }
-
-        .img-preview {
-            width: 110px;
-            height: 110px;
-            object-fit: cover;
-            border-radius: 16px;
-            border: 1px dashed rgba(148, 163, 184, .6);
-            background: #fff
-        }
-
-        .img-block {
-            max-width: 320px;
-            width: 100%
-        }
-
-        .flash-auto-hide {
-            transition: opacity .35s ease, transform .35s ease
-        }
-
-        .flash-auto-hide.hide {
-            opacity: 0;
-            transform: translateY(-6px);
-            pointer-events: none
-        }
-
-        .muted {
-            font-size: 12px;
-            color: #64748b
+        @media (max-width: 991.98px) {
+            .pay-grid { grid-template-columns: 1fr; }
+            #tbItens { min-width: 720px; }
+            .grand .val { font-size: 26px; }
         }
     </style>
 </head>
@@ -225,16 +590,15 @@ $entradas = $pdo->query("
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="index.php" class="d-flex align-items-center gap-2">
+            <a href="index.html" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
             </a>
         </div>
 
         <nav class="sidebar-nav">
             <ul>
-                <!-- Dashboard (sem dropdown) -->
                 <li class="nav-item">
-                    <a href="index.php">
+                    <a href="index.html">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -248,10 +612,9 @@ $entradas = $pdo->query("
                     </a>
                 </li>
 
-                <!-- Operações -->
-                <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
-                        aria-controls="ddmenu_operacoes" aria-expanded="false">
+                <li class="nav-item nav-item-has-children active">
+                    <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
+                        aria-controls="ddmenu_operacoes" aria-expanded="true">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -261,17 +624,16 @@ $entradas = $pdo->query("
                         </span>
                         <span class="text">Operações</span>
                     </a>
-                    <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-                        <li><a href="pedidos.php">Pedidos</a></li>
-                        <li><a href="vendas.php">Vendas</a></li>
-                        <li><a href="devolucoes.php">Devoluções</a></li>
+                    <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
+                        <li><a href="pedidos.html">Pedidos</a></li>
+                        <li><a href="vendas.php" class="active">Vendas</a></li>
+                        <li><a href="devolucoes.html">Devoluções</a></li>
                     </ul>
                 </li>
 
-                <!-- Estoque -->
-                <li class="nav-item nav-item-has-children active">
-                    <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
-                        aria-controls="ddmenu_estoque" aria-expanded="true">
+                <li class="nav-item nav-item-has-children">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
+                        aria-controls="ddmenu_estoque" aria-expanded="false">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -283,12 +645,12 @@ $entradas = $pdo->query("
                         </span>
                         <span class="text">Estoque</span>
                     </a>
-                    <ul id="ddmenu_estoque" class="collapse show dropdown-nav">
-                        <li><a href="produtos.php">Produtos</a></li>
-                        <li><a href="inventario.php">Inventário</a></li>
-                        <li><a href="entradas.php" class="active">Entradas</a></li>
-                        <li><a href="saidas.php">Saídas</a></li>
-                        <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
+                    <ul id="ddmenu_estoque" class="collapse dropdown-nav">
+                        <li><a href="produtos.html">Produtos</a></li>
+                        <li><a href="inventario.html">Inventário</a></li>
+                        <li><a href="entradas.html">Entradas</a></li>
+                        <li><a href="saidas.html">Saídas</a></li>
+                        <li><a href="estoque-minimo.html">Estoque Mínimo</a></li>
                     </ul>
                 </li>
 
@@ -311,14 +673,14 @@ $entradas = $pdo->query("
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-                        <li><a href="clientes.php">Clientes</a></li>
-                        <li><a href="fornecedores.php">Fornecedores</a></li>
-                        <li><a href="categorias.php">Categorias</a></li>
+                        <li><a href="clientes.html">Clientes</a></li>
+                        <li><a href="fornecedores.html">Fornecedores</a></li>
+                        <li><a href="categorias.html">Categorias</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="relatorios.php">
+                    <a href="relatorios.html">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -347,13 +709,13 @@ $entradas = $pdo->query("
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
-                        <li><a href="usuarios.php">Usuários e Permissões</a></li>
-                        <li><a href="parametros.php">Parâmetros do Sistema</a></li>
+                        <li><a href="usuarios.html">Usuários e Permissões</a></li>
+                        <li><a href="parametros.html">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="suporte.php">
+                    <a href="suporte.html">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -379,13 +741,14 @@ $entradas = $pdo->query("
                     <div class="col-lg-5 col-md-5 col-6">
                         <div class="header-left d-flex align-items-center">
                             <div class="menu-toggle-btn mr-15">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact"
+                                    type="button">
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
                             <div class="header-search d-none d-md-flex">
-                                <form action="#" onsubmit="return false;">
-                                    <input type="text" placeholder="Buscar produto..." id="qGlobal" />
+                                <form action="#">
+                                    <input type="text" placeholder="Atalho: F4 pesquisar..." id="qGlobal" />
                                     <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                                 </form>
                             </div>
@@ -399,9 +762,8 @@ $entradas = $pdo->query("
                                     data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="profile-info">
                                         <div class="info">
-                                            <div class="image">
-                                                <img src="assets/images/profile/profile-image.png" alt="perfil" />
-                                            </div>
+                                            <div class="image"><img src="assets/images/profile/profile-image.png"
+                                                    alt="perfil" /></div>
                                             <div>
                                                 <h6 class="fw-500">Administrador</h6>
                                                 <p>Distribuidora</p>
@@ -411,10 +773,22 @@ $entradas = $pdo->query("
                                 </button>
 
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                                    <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                                    <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
+                                    <li>
+                                        <div class="author-info flex items-center !p-1">
+                                            <div class="image"><img src="assets/images/profile/profile-image.png"
+                                                    alt="image" /></div>
+                                            <div class="content">
+                                                <h4 class="text-sm">Administrador</h4>
+                                                <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
+                                                    href="#">Admin</a>
+                                            </div>
+                                        </div>
+                                    </li>
                                     <li class="divider"></li>
-                                    <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
+                                    <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
+                                    <li class="divider"></li>
+                                    <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -430,133 +804,234 @@ $entradas = $pdo->query("
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="title">
-                                <h2>Entradas</h2>
+                                <h2>Terminal de Vendas (PDV)</h2>
+                                <div class="muted">Ponto de Venda & Checkout — <b>F4</b> pesquisar | <b>F2</b> confirmar</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <?php if ($flash): ?>
-                    <div id="flashBox" class="alert alert-<?= e((string)$flash['type']) ?> flash-auto-hide mt-2">
+                    <div class="alert alert-<?= e((string)$flash['type']) ?> py-2">
                         <?= e((string)$flash['msg']) ?>
                     </div>
                 <?php endif; ?>
 
-                <!-- Toolbar -->
-                <div class="card-style mb-30">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <label class="form-label">Pesquisar</label>
-                            <input type="text" class="form-control compact" id="qEntradas" placeholder="NF, produto, fornecedor..." />
-                        </div>
+                <div class="row g-3 mb-30 pdv-row">
+                    <!-- LEFT -->
+                    <div class="col-12 col-lg-8">
+                        <div class="pdv-left-col">
+                            <!-- Search + Preview -->
+                            <div class="pdv-card pdv-search mb-3">
+                                <div class="pdv-body">
+                                    <div class="row g-3 align-items-stretch">
+                                        <div class="col-12 col-md-8">
+                                            <label class="form-label">Pesquisar Produto (F4)</label>
+                                            <div class="search-wrap">
+                                                <input class="form-control compact" id="qProd"
+                                                    placeholder="Nome ou código..." autocomplete="off" />
+                                                <div class="suggest" id="suggest"></div>
+                                            </div>
+                                            <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar o 1º resultado.</div>
+                                        </div>
 
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <label class="form-label">Fornecedor</label>
-                            <select class="form-select compact" id="fFornecedor">
-                                <option value="">Todos</option>
-                                <?php foreach ($fornecedores as $f): ?>
-                                    <option value="<?= (int)$f['id'] ?>"><?= e((string)$f['nome']) ?><?= (strtoupper((string)$f['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label">Imagem</label>
+                                            <div class="preview-box">
+                                                <div>
+                                                    <img id="previewImg" alt="Prévia" />
+                                                    <div class="preview-name" id="previewName">AGUARDANDO...</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <label class="form-label">Período</label>
-                            <div class="d-flex gap-2">
-                                <input type="date" class="form-control compact" id="dtIni" />
-                                <input type="date" class="form-control compact" id="dtFim" />
+                                </div>
+                            </div>
+
+                            <!-- Itens -->
+                            <div class="pdv-card items-card">
+                                <div class="pdv-head">
+                                    <div style="font-weight: 1000; color:#0f172a;">
+                                        <i class="lni lni-cart me-1"></i> Itens da Venda
+                                    </div>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
+                                            <i class="lni lni-trash-can me-1"></i> Limpar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="pdv-body">
+                                    <div class="items-scroll">
+                                        <div class="table-responsive">
+                                            <table class="table text-nowrap mb-0" id="tbItens">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="min-width:70px;">Item</th>
+                                                        <th style="min-width:360px;">Produto</th>
+                                                        <th style="min-width:140px;">Qtd</th>
+                                                        <th style="min-width:140px;" class="text-end">Unitário</th>
+                                                        <th style="min-width:160px;" class="text-end">Subtotal</th>
+                                                        <th style="min-width:120px;" class="text-center">Ações</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tbodyItens"></tbody>
+                                            </table>
+                                        </div>
+
+                                        <div class="muted p-3" id="hintEmpty" style="display:none;">Aguardando inclusão de produtos...</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
-                                <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal"
-                                    data-bs-target="#modalEntrada" id="btnNovo" type="button">
-                                    <i class="lni lni-plus me-1"></i> Nova
-                                </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
-                                    <i class="lni lni-download me-1"></i> Excel
-                                </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
-                                    <i class="lni lni-printer me-1"></i> PDF
-                                </button>
+                    <!-- RIGHT: Checkout -->
+                    <div class="col-12 col-lg-4">
+                        <div class="pdv-right-col">
+                            <div class="pdv-card">
+                                <div class="checkout-head">
+                                    <h6 style="color: #fff;"><i class="lni lni-calculator me-1"></i> Checkout</h6>
+                                    <span class="badge bg-light text-dark" id="saleNo">Pedido #—</span>
+                                </div>
+
+                                <div class="checkout-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Cliente</label>
+                                        <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" />
+                                        <div class="muted mt-1">Consumidor final (se vazio).</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Forma de Entrega</label>
+                                        <div class="chip-toggle">
+                                            <div class="chip active" id="chipPres">Presencial</div>
+                                            <div class="chip" id="chipDel">Delivery</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3" id="wrapDelivery" style="display:none;">
+                                        <label class="form-label">Endereço</label>
+                                        <input class="form-control compact mb-2" id="cEndereco" placeholder="Rua, nº, bairro, referência..." />
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <label class="form-label">Taxa entrega</label>
+                                                <input class="form-control compact" id="cEntrega" placeholder="0,00" value="0,00" />
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label">Observação</label>
+                                                <input class="form-control compact" id="cObs" placeholder="Opcional" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Desconto</label>
+                                        <div class="row g-2">
+                                            <div class="col-5">
+                                                <select class="form-select compact" id="dTipo">
+                                                    <option value="PERC">%</option>
+                                                    <option value="VALOR">R$</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-7">
+                                                <input class="form-control compact" id="dValor" placeholder="0" value="0" />
+                                            </div>
+                                        </div>
+                                        <div class="muted mt-1">Desconto aplicado no subtotal (antes da taxa).</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Método de Pagamento</label>
+
+                                        <div class="chip-toggle mb-2">
+                                            <div class="chip active" id="chipPagUnico">Único</div>
+                                            <div class="chip" id="chipPagMulti">Múltiplos</div>
+                                        </div>
+
+                                        <!-- único -->
+                                        <div id="wrapPagUnico">
+                                            <div class="pay-grid mb-2" id="payBtns">
+                                                <div class="pay-btn active" data-pay="DINHEIRO"><i class="lni lni-coin"></i> Dinheiro</div>
+                                                <div class="pay-btn" data-pay="PIX"><i class="lni lni-telegram-original"></i> Pix</div>
+                                                <div class="pay-btn" data-pay="CARTAO"><i class="lni lni-credit-cards"></i> Cartão</div>
+                                                <div class="pay-btn" data-pay="BOLETO"><i class="lni lni-ticket-alt"></i> Boleto</div>
+                                            </div>
+
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <label class="form-label">Valor pago</label>
+                                                    <input class="form-control compact" id="pValor" placeholder="0,00" value="0,00" />
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label">Troco</label>
+                                                    <input class="form-control compact" id="pTroco" value="0,00" readonly />
+                                                </div>
+                                            </div>
+                                            <div class="muted mt-1" id="hintTroco" style="display:none;">Em dinheiro pode ser maior que o total (troco automático).</div>
+                                        </div>
+
+                                        <!-- múltiplos -->
+                                        <div id="wrapPagMulti" style="display:none;">
+                                            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                                                <div class="muted">Some os pagamentos para fechar o total. Se passar do total, precisa ter Dinheiro (troco).</div>
+                                                <button class="main-btn light-btn btn-hover btn-compact" id="btnAddPay" type="button">
+                                                    <i class="lni lni-plus me-1"></i> Adicionar
+                                                </button>
+                                            </div>
+
+                                            <div id="paysWrap"></div>
+
+                                            <div class="totals mt-2">
+                                                <div class="tot-row"><span>Somatório</span><span id="mSum">R$ 0,00</span></div>
+                                                <div class="tot-row"><span>Diferença (Pag - Total)</span><span id="mDiff">R$ 0,00</span></div>
+                                                <div class="tot-row"><span>Troco</span><span id="mTroco">R$ 0,00</span></div>
+                                                <div class="msg-ok mt-2" id="mOk">✅ Pagamento OK.</div>
+                                                <div class="msg-err mt-2" id="mErr">⚠️ Pagamento inválido. Ajuste os valores.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="totals mb-3">
+                                        <div class="tot-row"><span>Subtotal</span><span id="tSub">R$ 0,00</span></div>
+                                        <div class="tot-row"><span>Desconto</span><span id="tDesc">- R$ 0,00</span></div>
+                                        <div class="tot-row"><span>Taxa entrega</span><span id="tEnt">R$ 0,00</span></div>
+                                        <div class="tot-hr"></div>
+                                        <div class="grand">
+                                            <span class="lbl">TOTAL</span>
+                                            <span class="val" id="tTotal">R$ 0,00</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid gap-2">
+                                        <button class="main-btn primary-btn btn-hover btn-compact" id="btnConfirmar" type="button">
+                                            <i class="lni lni-checkmark-circle me-1"></i> CONFIRMAR VENDA (F2)
+                                        </button>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="chkPrint" checked />
+                                            <label class="form-check-label" for="chkPrint">Imprimir cupom após confirmar</label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Últimos cupons -->
+                                    <div class="last-box">
+                                        <div class="head">
+                                            <div class="t">Últimos cupons</div>
+                                            <button class="main-btn light-btn btn-hover btn-compact" id="btnRefreshLast"
+                                                type="button" style="height:32px!important;padding:6px 10px!important;">
+                                                <i class="lni lni-reload"></i>
+                                            </button>
+                                        </div>
+                                        <div class="list" id="lastList"></div>
+                                    </div>
+
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tabela -->
-                <div class="card-style mb-30">
-                    <div class="table-responsive">
-                        <table class="table text-nowrap" id="tbEntradas">
-                            <thead>
-                                <tr>
-                                    <th class="minw-120">Imagem</th>
-                                    <th class="minw-140">Data</th>
-                                    <th class="minw-140">NF</th>
-                                    <th class="minw-200">Fornecedor</th>
-                                    <th class="minw-140">Código</th>
-                                    <th class="minw-200">Produto</th>
-                                    <th class="minw-140">Unidade</th>
-                                    <th class="minw-140 td-center">Qtd</th>
-                                    <th class="minw-140 td-center">Custo</th>
-                                    <th class="minw-160 td-center">Total</th>
-                                    <th class="minw-140 text-end">Ações</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                <?php foreach ($entradas as $eRow): ?>
-                                    <?php
-                                    $id = (int)$eRow['id'];
-                                    $dataYmd = (string)$eRow['data'];
-                                    $nf = (string)$eRow['nf'];
-                                    $forId = (int)$eRow['fornecedor_id'];
-                                    $forNome = trim((string)($eRow['fornecedor_nome'] ?? '')) ?: '—';
-                                    $prodId = (int)$eRow['produto_id'];
-                                    $prodCod = trim((string)($eRow['produto_codigo'] ?? '')) ?: '—';
-                                    $prodNome = trim((string)($eRow['produto_nome'] ?? '')) ?: '—';
-                                    $unidade = trim((string)($eRow['unidade'] ?? '')) ?: '—';
-                                    $qtd = (int)($eRow['qtd'] ?? 0);
-                                    $custo = (float)($eRow['custo'] ?? 0);
-                                    $total = (float)($eRow['total'] ?? 0);
-                                    $img = img_url_from_db((string)($eRow['produto_imagem'] ?? ''));
-                                    ?>
-                                    <tr
-                                        data-id="<?= $id ?>"
-                                        data-data="<?= e($dataYmd) ?>"
-                                        data-nf="<?= e($nf) ?>"
-                                        data-fornecedor-id="<?= $forId ?>"
-                                        data-produto-id="<?= $prodId ?>"
-                                        data-unidade="<?= e($unidade) ?>"
-                                        data-qtd="<?= $qtd ?>"
-                                        data-custo="<?= e((string)$custo) ?>">
-                                        <td><img class="prod-img" alt="<?= e($prodNome) ?>" src="<?= e($img) ?>" /></td>
-                                        <td class="date"><?= e(brDate($dataYmd)) ?></td>
-                                        <td class="nf"><?= e($nf) ?></td>
-                                        <td class="forn"><?= e($forNome) ?></td>
-                                        <td class="cod"><?= e($prodCod) ?></td>
-                                        <td class="prod"><?= e($prodNome) ?></td>
-                                        <td class="und"><?= e($unidade) ?></td>
-                                        <td class="td-center qtd"><?= $qtd ?></td>
-                                        <td class="td-center custo"><?= e(fmtMoney($custo)) ?></td>
-                                        <td class="td-center total"><?= e(fmtMoney($total)) ?></td>
-                                        <td class="text-end">
-                                            <button class="main-btn light-btn btn-hover icon-btn btnEdit" type="button" title="Editar">
-                                                <i class="lni lni-pencil"></i>
-                                            </button>
-                                            <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" type="button" title="Excluir">
-                                                <i class="lni lni-trash-can"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <p class="text-sm text-gray mt-2 mb-0" id="infoCount"></p>
-                </div>
             </div>
         </section>
 
@@ -573,531 +1048,751 @@ $entradas = $pdo->query("
         </footer>
     </main>
 
-    <!-- DELETE FORM -->
-    <form id="frmDelete" action="assets/dados/entradas/excluirEntradas.php" method="post" style="display:none;">
-        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <input type="hidden" name="id" id="delId" value="">
-    </form>
-
-    <!-- Modal Entrada (MESMO ESTILO) -->
-    <div class="modal fade" id="modalEntrada" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalEntradaTitle">Nova Entrada</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-
-                <div class="modal-body">
-                    <form id="formEntrada" action="assets/dados/entradas/salvarEntradas.php" method="post">
-                        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-                        <input type="hidden" name="id" id="eId" value="">
-
-                        <div class="row g-3">
-                            <!-- IMAGEM CENTRAL (vem do produto) -->
-                            <div class="col-12">
-                                <div class="d-flex justify-content-center">
-                                    <div class="img-block text-center">
-                                        <label class="form-label">Imagem (do Produto)</label>
-                                        <div class="d-flex flex-column gap-2 align-items-center">
-                                            <img id="previewImg" class="img-preview" alt="Prévia" />
-                                            <div class="muted">A imagem é puxada do cadastro de Produtos.</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <hr class="my-2">
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">Data</label>
-                                <input type="date" class="form-control compact" id="pData" name="data" required />
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">NF</label>
-                                <input type="text" class="form-control compact" id="pNF" name="nf" placeholder="Ex: NF-1022" required />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label">Fornecedor</label>
-                                <select class="form-select compact" id="pFornecedor" name="fornecedor_id" required>
-                                    <option value="">Selecione…</option>
-                                    <?php foreach ($fornecedores as $f): ?>
-                                        <option value="<?= (int)$f['id'] ?>"><?= e((string)$f['nome']) ?><?= (strtoupper((string)$f['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div class="col-md-12">
-                                <label class="form-label">Produto</label>
-                                <select class="form-select compact" id="pProdutoId" name="produto_id" required>
-                                    <option value="">Selecione…</option>
-                                    <?php foreach ($produtos as $p): ?>
-                                        <?php $img = img_url_from_db((string)($p['imagem'] ?? '')); ?>
-                                        <option
-                                            value="<?= (int)$p['id'] ?>"
-                                            data-codigo="<?= e((string)$p['codigo']) ?>"
-                                            data-nome="<?= e((string)$p['nome']) ?>"
-                                            data-unidade="<?= e((string)$p['unidade']) ?>"
-                                            data-img="<?= e($img) ?>">
-                                            <?= e((string)$p['nome']) ?> (<?= e((string)$p['codigo']) ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">Código</label>
-                                <input type="text" class="form-control compact" id="pCodigo" placeholder="—" readonly />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label">Produto</label>
-                                <input type="text" class="form-control compact" id="pProdutoNome" placeholder="—" readonly />
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">Unidade</label>
-                                <select class="form-select compact" id="pUnidade" name="unidade" required>
-                                    <option value="">Selecione…</option>
-                                    <option>Unidade</option>
-                                    <option>Pacote</option>
-                                    <option>Caixa</option>
-                                    <option>Kg</option>
-                                    <option>Litro</option>
-                                </select>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Qtd</label>
-                                <input type="number" class="form-control compact td-center" id="pQtd" name="qtd" min="0" value="0" required />
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Custo (un)</label>
-                                <input type="text" class="form-control compact td-center" id="pCusto" name="custo" placeholder="0,00" required />
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Total</label>
-                                <input type="text" class="form-control compact td-center" id="pTotal" placeholder="0,00" readonly />
-                            </div>
-                        </div>
-                    </form>
-
-                    <p class="text-sm text-gray mt-3 mb-0">
-                        O total é calculado automaticamente: <b>Qtd × Custo</b>.
-                    </p>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" form="formEntrada" class="main-btn primary-btn btn-hover btn-compact">
-                        <i class="lni lni-save me-1"></i> Salvar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <!-- ========= JS ========= -->
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-
     <script>
-        // flash 1.5s
-        (function() {
-            const box = document.getElementById('flashBox');
-            if (!box) return;
-            setTimeout(() => {
-                box.classList.add('hide');
-                setTimeout(() => box.remove(), 400);
-            }, 1500);
-        })();
+        // CSRF (PHP)
+        const CSRF_TOKEN = <?= json_encode($csrf, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
+        // ===== Default Img =====
         const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
-        <rect width="100%" height="100%" fill="#f1f5f9"/>
-        <path d="M18 68l18-18 12 12 10-10 20 20" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="34" cy="34" r="7" fill="#94a3b8"/>
-        <text x="50%" y="86%" text-anchor="middle" font-family="Arial" font-size="10" fill="#64748b">Sem imagem</text>
-      </svg>
-    `);
+          <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+            <rect width="100%" height="100%" fill="#f1f5f9"/>
+            <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
+            <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
+          </svg>
+        `);
 
-        // fallback imagens
-        document.querySelectorAll("img.prod-img").forEach(img => {
-            const src = img.getAttribute('src') || '';
-            if (!src) img.src = DEFAULT_IMG;
-            img.addEventListener('error', () => img.src = DEFAULT_IMG, {
-                once: true
-            });
-        });
-
-        const tb = document.getElementById('tbEntradas');
-        const qEntradas = document.getElementById('qEntradas');
-        const qGlobal = document.getElementById('qGlobal');
-        const fFornecedor = document.getElementById('fFornecedor');
-        const dtIni = document.getElementById('dtIni');
-        const dtFim = document.getElementById('dtFim');
-        const infoCount = document.getElementById('infoCount');
-
-        function norm(s) {
-            return String(s ?? '').toLowerCase().trim();
+        function safeText(s) {
+            return String(s ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
         }
-
-        function parseBRL(txt) {
-            let s = String(txt ?? '').trim();
-            s = s.replace(/\s/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.');
+        function moneyToNumber(txt) {
+            let s = String(txt ?? "").trim();
+            if (!s) return 0;
+            s = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
             const n = Number(s);
             return isNaN(n) ? 0 : n;
         }
-
-        function fmtBRL(n) {
-            return 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
+        function numberToMoney(n) {
+            const v = Number(n || 0);
+            return "R$ " + v.toFixed(2).replace(".", ",");
         }
 
-        function brDateFromYMD(ymd) {
-            const [y, m, d] = String(ymd || '').split('-');
-            if (!y || !m || !d) return '';
-            return `${d}/${m}/${y}`;
+        // ===== Estado PDV =====
+        let CART = []; // {id, code, name, price, img, unidade, stock, qty}
+        let PAY_MODE = "UNICO"; // UNICO | MULTI
+        let PAY_SELECTED = "DINHEIRO";
+        let DELIVERY_MODE = "PRESENCIAL"; // PRESENCIAL | DELIVERY
+        let LAST_SUGGEST = [];
+
+        // ===== DOM =====
+        const qProd = document.getElementById("qProd");
+        const suggest = document.getElementById("suggest");
+        const qGlobal = document.getElementById("qGlobal");
+
+        const previewImg = document.getElementById("previewImg");
+        const previewName = document.getElementById("previewName");
+
+        const tbodyItens = document.getElementById("tbodyItens");
+        const hintEmpty = document.getElementById("hintEmpty");
+        const btnLimpar = document.getElementById("btnLimpar");
+
+        const saleNo = document.getElementById("saleNo");
+
+        const cCliente = document.getElementById("cCliente");
+        const chipPres = document.getElementById("chipPres");
+        const chipDel = document.getElementById("chipDel");
+        const wrapDelivery = document.getElementById("wrapDelivery");
+        const cEndereco = document.getElementById("cEndereco");
+        const cEntrega = document.getElementById("cEntrega");
+        const cObs = document.getElementById("cObs");
+
+        const dTipo = document.getElementById("dTipo");
+        const dValor = document.getElementById("dValor");
+
+        const chipPagUnico = document.getElementById("chipPagUnico");
+        const chipPagMulti = document.getElementById("chipPagMulti");
+        const wrapPagUnico = document.getElementById("wrapPagUnico");
+        const wrapPagMulti = document.getElementById("wrapPagMulti");
+
+        const payBtns = document.getElementById("payBtns");
+        const pValor = document.getElementById("pValor");
+        const pTroco = document.getElementById("pTroco");
+        const hintTroco = document.getElementById("hintTroco");
+
+        const btnAddPay = document.getElementById("btnAddPay");
+        const paysWrap = document.getElementById("paysWrap");
+        const mSum = document.getElementById("mSum");
+        const mDiff = document.getElementById("mDiff");
+        const mTroco = document.getElementById("mTroco");
+        const mOk = document.getElementById("mOk");
+        const mErr = document.getElementById("mErr");
+
+        const tSub = document.getElementById("tSub");
+        const tDesc = document.getElementById("tDesc");
+        const tEnt = document.getElementById("tEnt");
+        const tTotal = document.getElementById("tTotal");
+
+        const btnConfirmar = document.getElementById("btnConfirmar");
+        const chkPrint = document.getElementById("chkPrint");
+
+        const lastList = document.getElementById("lastList");
+        const btnRefreshLast = document.getElementById("btnRefreshLast");
+
+        // ===== UI helpers =====
+        function setPreview(prod) {
+            const img = (prod && prod.img) ? prod.img : DEFAULT_IMG;
+            previewImg.src = img;
+            previewName.textContent = prod ? prod.name : "AGUARDANDO...";
+        }
+        function showSuggest(list) {
+            LAST_SUGGEST = list || [];
+            if (!LAST_SUGGEST.length) { suggest.style.display = "none"; suggest.innerHTML = ""; return; }
+
+            suggest.innerHTML = LAST_SUGGEST.map(p => {
+                const disabled = (Number(p.stock || 0) <= 0);
+                return `
+                    <div class="it ${disabled ? "disabled" : ""}" data-id="${safeText(p.id)}" data-disabled="${disabled ? "1" : "0"}">
+                      <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
+                      <div class="meta">
+                        <div class="t">${safeText(p.name)}</div>
+                        <div class="s">${safeText(p.code)} • ${safeText(p.unidade || "UN")} ${p.categoria ? "• " + safeText(p.categoria) : ""}</div>
+                      </div>
+                      <span class="stk">Est: ${Number(p.stock || 0)}</span>
+                      <div class="price">${numberToMoney(p.price)}</div>
+                    </div>
+                `;
+            }).join("");
+
+            suggest.style.display = "block";
+            suggest.scrollTop = 0;
+        }
+        function hideSuggest() { suggest.style.display = "none"; suggest.innerHTML = ""; LAST_SUGGEST = []; }
+
+        async function apiSearchProducts(q) {
+            const qs = new URLSearchParams({ action: "search", q: q });
+            const r = await fetch("vendas.php?" + qs.toString(), { headers: { "Accept": "application/json" } });
+            const j = await r.json();
+            if (!j || !j.ok) return [];
+            return j.items || [];
         }
 
-        function aplicarFiltros() {
-            const q = norm(qEntradas.value || qGlobal.value);
-            const fornId = String(fFornecedor.value || '').trim();
-            const ini = dtIni.value || '';
-            const fim = dtFim.value || '';
+        // ===== Carrinho =====
+        function addToCart(prod) {
+            if (!prod) return;
+            if (Number(prod.stock || 0) <= 0) { alert("Sem estoque para este produto."); return; }
 
-            const rows = Array.from(tb.querySelectorAll('tbody tr'));
-            let shown = 0;
-
-            rows.forEach(tr => {
-                const text = norm(tr.innerText);
-                const rFornId = String(tr.getAttribute('data-fornecedor-id') || '').trim();
-                const rData = tr.getAttribute('data-data') || '';
-
-                let ok = true;
-                if (q && !text.includes(q)) ok = false;
-                if (fornId && rFornId !== fornId) ok = false;
-
-                if (ini && rData && rData < ini) ok = false;
-                if (fim && rData && rData > fim) ok = false;
-
-                tr.style.display = ok ? '' : 'none';
-                if (ok) shown++;
-            });
-
-            infoCount.textContent = `Mostrando ${shown} entrada(s).`;
-        }
-
-        qEntradas.addEventListener('input', aplicarFiltros);
-        qGlobal.addEventListener('input', aplicarFiltros);
-        fFornecedor.addEventListener('change', aplicarFiltros);
-        dtIni.addEventListener('change', aplicarFiltros);
-        dtFim.addEventListener('change', aplicarFiltros);
-        aplicarFiltros();
-
-        // ===== Modal =====
-        const modalEl = document.getElementById('modalEntrada');
-        const modal = new bootstrap.Modal(modalEl);
-        const modalTitle = document.getElementById('modalEntradaTitle');
-
-        const eId = document.getElementById('eId');
-        const previewImg = document.getElementById('previewImg');
-
-        const pData = document.getElementById('pData');
-        const pNF = document.getElementById('pNF');
-        const pFornecedorSel = document.getElementById('pFornecedor');
-
-        const pProdutoId = document.getElementById('pProdutoId');
-        const pCodigo = document.getElementById('pCodigo');
-        const pProdutoNome = document.getElementById('pProdutoNome');
-        const pUnidade = document.getElementById('pUnidade');
-
-        const pQtd = document.getElementById('pQtd');
-        const pCusto = document.getElementById('pCusto');
-        const pTotal = document.getElementById('pTotal');
-
-        function setPreview(src) {
-            previewImg.src = src || DEFAULT_IMG;
-        }
-
-        function hojeYMD() {
-            const d = new Date();
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${dd}`;
-        }
-
-        function limparForm() {
-            eId.value = '';
-            pData.value = hojeYMD();
-            pNF.value = '';
-            pFornecedorSel.value = '';
-            pProdutoId.value = '';
-            pCodigo.value = '—';
-            pProdutoNome.value = '—';
-            pUnidade.value = '';
-            pQtd.value = 0;
-            pCusto.value = '';
-            pTotal.value = fmtBRL(0);
-            setPreview(DEFAULT_IMG);
-        }
-
-        function recalcularTotal() {
-            const qtd = Number(pQtd.value || 0);
-            const custo = parseBRL(pCusto.value);
-            pTotal.value = fmtBRL(qtd * custo);
-        }
-        pQtd.addEventListener('input', recalcularTotal);
-        pCusto.addEventListener('input', recalcularTotal);
-
-        // quando muda produto
-        pProdutoId.addEventListener('change', () => {
-            const opt = pProdutoId.options[pProdutoId.selectedIndex];
-            if (!opt || !opt.value) {
-                pCodigo.value = '—';
-                pProdutoNome.value = '—';
-                setPreview(DEFAULT_IMG);
-                return;
+            const idx = CART.findIndex(x => x.id === prod.id);
+            if (idx >= 0) {
+                const next = CART[idx].qty + 1;
+                if (next > CART[idx].stock) { alert("Quantidade acima do estoque."); return; }
+                CART[idx].qty = next;
+            } else {
+                CART.push({
+                    id: Number(prod.id),
+                    code: String(prod.code || ""),
+                    name: String(prod.name || ""),
+                    price: Number(prod.price || 0),
+                    img: String(prod.img || DEFAULT_IMG),
+                    unidade: String(prod.unidade || "UN"),
+                    stock: Number(prod.stock || 0),
+                    qty: 1
+                });
             }
-            pCodigo.value = opt.getAttribute('data-codigo') || '—';
-            pProdutoNome.value = opt.getAttribute('data-nome') || '—';
-            const und = opt.getAttribute('data-unidade') || '';
-            if (und) pUnidade.value = und;
-            const img = opt.getAttribute('data-img') || '';
-            setPreview(img || DEFAULT_IMG);
+            setPreview(prod);
+            renderCart();
+            recalcAll();
+        }
+        function removeFromCart(id) { CART = CART.filter(x => x.id !== id); renderCart(); recalcAll(); }
+        function changeQty(id, delta) {
+            const it = CART.find(x => x.id === id);
+            if (!it) return;
+            let next = Math.max(1, Number(it.qty || 1) + delta);
+            next = Math.min(next, Number(it.stock || 0));
+            if (next <= 0) next = 1;
+            it.qty = next;
+            renderCart();
+            recalcAll();
+        }
+        function setQty(id, qty) {
+            const it = CART.find(x => x.id === id);
+            if (!it) return;
+            let q = Math.max(1, Number(qty || 1));
+            q = Math.min(q, Number(it.stock || 0));
+            if (!Number.isFinite(q)) q = 1;
+            it.qty = q;
+            renderCart();
+            recalcAll();
+        }
+
+        function calcSubtotal() { return CART.reduce((acc, it) => acc + (Number(it.qty || 0) * Number(it.price || 0)), 0); }
+        function calcDiscount(sub) {
+            const tipo = dTipo.value;
+            const v = moneyToNumber(String(dValor.value ?? "").trim());
+            if (!v || v <= 0) return 0;
+            if (tipo === "PERC") return (sub * Math.min(100, v)) / 100;
+            return Math.min(sub, v);
+        }
+        function calcDeliveryFee() {
+            if (DELIVERY_MODE !== "DELIVERY") return 0;
+            return moneyToNumber(cEntrega.value);
+        }
+        function calcTotal() {
+            const sub = calcSubtotal();
+            const desc = calcDiscount(sub);
+            const ent = calcDeliveryFee();
+            return Math.max(0, (sub - desc) + ent);
+        }
+
+        // ===== Pagamento =====
+        function payRowTpl(method = "PIX", value = "0,00") {
+            return `
+                <div class="pay-split-row">
+                  <div class="row g-2 align-items-end">
+                    <div class="col-6">
+                      <label class="form-label">Forma</label>
+                      <select class="form-select compact mMethod">
+                        <option value="DINHEIRO" ${method === "DINHEIRO" ? "selected" : ""}>Dinheiro</option>
+                        <option value="PIX" ${method === "PIX" ? "selected" : ""}>Pix</option>
+                        <option value="CARTAO" ${method === "CARTAO" ? "selected" : ""}>Cartão</option>
+                        <option value="BOLETO" ${method === "BOLETO" ? "selected" : ""}>Boleto</option>
+                      </select>
+                    </div>
+                    <div class="col-4">
+                      <label class="form-label">Valor</label>
+                      <input class="form-control compact mValue" value="${safeText(value)}" placeholder="0,00" />
+                    </div>
+                    <div class="col-2 d-grid">
+                      <button class="main-btn danger-btn-outline btn-hover btn-compact btnRemPay" type="button" style="height:38px!important;padding:0!important;">
+                        <i class="lni lni-trash-can"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+            `;
+        }
+        function ensureOnePayRow() {
+            if (!paysWrap.querySelector(".pay-split-row")) paysWrap.innerHTML = payRowTpl("PIX", "0,00");
+        }
+
+        function computeMultiPay() {
+            const total = calcTotal();
+            const rows = Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => {
+                const m = row.querySelector(".mMethod")?.value || "PIX";
+                const v = moneyToNumber(row.querySelector(".mValue")?.value || "0");
+                return { method: m, value: v };
+            }).filter(x => x.value > 0);
+
+            const sum = rows.reduce((a, x) => a + x.value, 0);
+            const diff = sum - total;
+            const hasCash = rows.some(x => x.method === "DINHEIRO");
+
+            let ok = false;
+            let troco = 0;
+
+            if (Math.abs(diff) < 0.009) ok = true;
+            else if (diff > 0.009 && hasCash) { ok = true; troco = diff; }
+
+            mSum.textContent = numberToMoney(sum);
+            mDiff.textContent = numberToMoney(diff);
+            mTroco.textContent = numberToMoney(troco);
+
+            mOk.style.display = ok ? "block" : "none";
+            mErr.style.display = ok ? "none" : "block";
+
+            return { ok, rows, sum, diff, troco, total };
+        }
+
+        function computeSinglePay() {
+            const total = calcTotal();
+            const paid = moneyToNumber(pValor.value);
+            const method = PAY_SELECTED;
+
+            let ok = false;
+            let troco = 0;
+
+            if (method === "DINHEIRO") {
+                ok = paid >= total && total > 0;
+                troco = ok ? (paid - total) : 0;
+                hintTroco.style.display = "block";
+            } else {
+                hintTroco.style.display = "none";
+                ok = (Math.abs(paid - total) < 0.009) && total > 0;
+                troco = 0;
+            }
+
+            pTroco.value = troco.toFixed(2).replace(".", ",");
+            return { ok, method, paid, troco, total };
+        }
+
+        // ===== Render =====
+        function renderCart() {
+            tbodyItens.innerHTML = "";
+            hintEmpty.style.display = CART.length ? "none" : "block";
+
+            CART.forEach((it, i) => {
+                const sub = Number(it.qty || 0) * Number(it.price || 0);
+                tbodyItens.insertAdjacentHTML("beforeend", `
+                    <tr data-id="${safeText(it.id)}">
+                      <td>${i + 1}</td>
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
+                          <div style="min-width:0;">
+                            <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px;">${safeText(it.name)}</div>
+                            <div class="muted">${safeText(it.code)} • ${safeText(it.unidade || "UN")} • Est: ${Number(it.stock || 0)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="qty-ctrl">
+                          <button class="main-btn light-btn btn-hover btn-compact qty-btn btnMinus" type="button" title="-1"><i class="lni lni-minus"></i></button>
+                          <input class="qty-pill iQty" type="number" min="1" step="1" max="${Number(it.stock || 0)}" value="${Number(it.qty || 1)}" />
+                          <button class="main-btn light-btn btn-hover btn-compact qty-btn btnPlus" type="button" title="+1"><i class="lni lni-plus"></i></button>
+                        </div>
+                      </td>
+                      <td class="text-end">${numberToMoney(it.price)}</td>
+                      <td class="text-end" style="font-weight:1000;">${numberToMoney(sub)}</td>
+                      <td class="text-center">
+                        <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnRemove" type="button" title="Remover"><i class="lni lni-trash-can"></i></button>
+                      </td>
+                    </tr>
+                `);
+            });
+        }
+
+        function recalcAll() {
+            const sub = calcSubtotal();
+            const desc = calcDiscount(sub);
+            const ent = calcDeliveryFee();
+            const total = Math.max(0, (sub - desc) + ent);
+
+            tSub.textContent = numberToMoney(sub);
+            tDesc.textContent = "- " + numberToMoney(desc);
+            tEnt.textContent = numberToMoney(ent);
+            tTotal.textContent = numberToMoney(total);
+
+            if (PAY_MODE === "UNICO") computeSinglePay();
+            else computeMultiPay();
+        }
+
+        async function renderLastSales() {
+            try {
+                const r = await fetch("vendas.php?action=last", { headers: { "Accept": "application/json" } });
+                const j = await r.json();
+                const all = (j && j.ok) ? (j.items || []) : [];
+
+                if (!all.length) {
+                    lastList.innerHTML = `<div class="cup"><div class="left"><div class="n">—</div><div class="s">Sem cupons ainda</div></div><div class="right"><div class="v">R$ 0,00</div></div></div>`;
+                    return;
+                }
+
+                lastList.innerHTML = all.map(s => `
+                    <div class="cup" data-pedido="${safeText(s.pedido)}" title="Clique para reimprimir">
+                      <div class="left">
+                        <div class="n">${safeText(s.pedido)}</div>
+                        <div class="s">${safeText(s.data)} • ${safeText(s.canal)} • ${safeText(s.pagamento)}</div>
+                      </div>
+                      <div class="right">
+                        <div class="v">${numberToMoney(s.total || 0)}</div>
+                        <div class="st">CONCLUÍDO</div>
+                      </div>
+                    </div>
+                `).join("");
+            } catch (e) {
+                lastList.innerHTML = `<div class="cup"><div class="left"><div class="n">—</div><div class="s">Falha ao carregar cupons</div></div><div class="right"><div class="v">—</div></div></div>`;
+            }
+        }
+
+        // ===== Busca / Sugestões (DB) =====
+        let searchTimer = null;
+        async function refreshSuggest() {
+            const q = String(qProd.value || "").trim();
+            if (!q) { hideSuggest(); return; }
+
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(async () => {
+                const list = await apiSearchProducts(q);
+                showSuggest(list);
+            }, 150);
+        }
+
+        qProd.addEventListener("input", refreshSuggest);
+        qProd.addEventListener("focus", refreshSuggest);
+
+        qProd.addEventListener("keydown", async (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                // garante que tem lista atual
+                if (!LAST_SUGGEST.length) {
+                    const list = await apiSearchProducts(qProd.value);
+                    showSuggest(list);
+                }
+                const first = LAST_SUGGEST[0];
+                if (first) { addToCart(first); qProd.value = ""; hideSuggest(); }
+            }
+            if (e.key === "Escape") hideSuggest();
         });
 
-        document.getElementById('btnNovo').addEventListener('click', () => {
-            modalTitle.textContent = 'Nova Entrada';
-            limparForm();
+        suggest.addEventListener("click", (e) => {
+            const it = e.target.closest(".it");
+            if (!it) return;
+            if (it.getAttribute("data-disabled") === "1") return;
+
+            const id = Number(it.getAttribute("data-id") || 0);
+            const prod = LAST_SUGGEST.find(p => Number(p.id) === id);
+            addToCart(prod);
+            qProd.value = "";
+            hideSuggest();
+            qProd.focus();
         });
 
-        // editar / excluir
-        tb.addEventListener('click', (e) => {
-            const tr = e.target.closest('tr');
+        document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) hideSuggest(); });
+
+        // ===== Entrega toggle =====
+        function setDeliveryMode(mode) {
+            DELIVERY_MODE = mode;
+            const isDel = mode === "DELIVERY";
+            chipDel.classList.toggle("active", isDel);
+            chipPres.classList.toggle("active", !isDel);
+            wrapDelivery.style.display = isDel ? "block" : "none";
+
+            if (!isDel) { cEndereco.value = ""; cEntrega.value = "0,00"; cObs.value = ""; }
+            recalcAll();
+        }
+        chipPres.addEventListener("click", () => setDeliveryMode("PRESENCIAL"));
+        chipDel.addEventListener("click", () => setDeliveryMode("DELIVERY"));
+        cEntrega.addEventListener("input", recalcAll);
+
+        // Desconto
+        dTipo.addEventListener("change", recalcAll);
+        dValor.addEventListener("input", recalcAll);
+
+        // ===== Pagamento toggle =====
+        function setPayMode(mode) {
+            PAY_MODE = mode;
+            const isMulti = mode === "MULTI";
+            chipPagMulti.classList.toggle("active", isMulti);
+            chipPagUnico.classList.toggle("active", !isMulti);
+            wrapPagMulti.style.display = isMulti ? "block" : "none";
+            wrapPagUnico.style.display = isMulti ? "none" : "block";
+
+            if (isMulti) ensureOnePayRow();
+            recalcAll();
+        }
+
+        chipPagUnico.addEventListener("click", () => setPayMode("UNICO"));
+        chipPagMulti.addEventListener("click", () => setPayMode("MULTI"));
+
+        payBtns.addEventListener("click", (e) => {
+            const btn = e.target.closest(".pay-btn");
+            if (!btn) return;
+            PAY_SELECTED = btn.getAttribute("data-pay") || "DINHEIRO";
+            payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            recalcAll();
+        });
+
+        pValor.addEventListener("input", recalcAll);
+
+        btnAddPay.addEventListener("click", () => {
+            paysWrap.insertAdjacentHTML("beforeend", payRowTpl("PIX", "0,00"));
+            recalcAll();
+        });
+
+        paysWrap.addEventListener("click", (e) => {
+            const btn = e.target.closest(".btnRemPay");
+            if (!btn) return;
+            const row = btn.closest(".pay-split-row");
+            if (row) row.remove();
+            ensureOnePayRow();
+            recalcAll();
+        });
+
+        paysWrap.addEventListener("input", (e) => { if (e.target.closest(".pay-split-row")) recalcAll(); });
+        paysWrap.addEventListener("change", (e) => { if (e.target.closest(".pay-split-row")) recalcAll(); });
+
+        // ===== Carrinho events =====
+        tbodyItens.addEventListener("click", (e) => {
+            const tr = e.target.closest("tr");
             if (!tr) return;
+            const id = Number(tr.getAttribute("data-id") || 0);
+            if (!id) return;
 
-            const btnDel = e.target.closest('.btnDel');
-            if (btnDel) {
-                const id = tr.getAttribute('data-id') || '';
-                const nf = tr.querySelector('.nf')?.innerText.trim() || '';
-                if (confirm(`Remover entrada ${nf}?`)) {
-                    document.getElementById('delId').value = id;
-                    document.getElementById('frmDelete').submit();
-                }
-                return;
+            if (e.target.closest(".btnRemove")) return removeFromCart(id);
+            if (e.target.closest(".btnMinus")) return changeQty(id, -1);
+            if (e.target.closest(".btnPlus")) return changeQty(id, +1);
+        });
+
+        tbodyItens.addEventListener("input", (e) => {
+            const tr = e.target.closest("tr");
+            if (!tr) return;
+            const id = Number(tr.getAttribute("data-id") || 0);
+            if (!id) return;
+            if (e.target.classList.contains("iQty")) setQty(id, e.target.value);
+        });
+
+        btnLimpar.addEventListener("click", () => {
+            if (CART.length && !confirm("Limpar todos os itens da venda?")) return;
+            CART = [];
+            renderCart();
+            recalcAll();
+            setPreview(null);
+        });
+
+        // ===== Cupom fiscal (80mm) =====
+        function buildReceiptHtml(sale) {
+            const hr = () => `<div class="hr"></div>`;
+            const items = (sale.items || []).map((it, idx) => {
+                const sub = Number(it.total || (it.qty * it.price));
+                const name = String(it.name || "").toUpperCase();
+                const code = String(it.code || "");
+                return `
+                    <div class="item">
+                      <div class="row"><span>${String(idx + 1).padStart(3, "0")} ${safeText(name)}</span></div>
+                      <div class="row small">
+                        <span>${safeText(code)}</span>
+                        <span>${Number(it.qty)} x ${numberToMoney(it.price)} = ${numberToMoney(sub)}</span>
+                      </div>
+                    </div>
+                `;
+            }).join("");
+
+            const entregaTxt = (sale.delivery && sale.delivery.mode === "DELIVERY") ? "DELIVERY" : "PRESENCIAL";
+            const clienteTxt = sale.customer ? sale.customer : "CONSUMIDOR FINAL";
+            const enderecoTxt = (sale.delivery && sale.delivery.mode === "DELIVERY") ? (sale.delivery.address || "-") : "";
+
+            // pagamento exibido (simples)
+            const pg = safeText(String(sale.pagamento || sale.pay?.method || "—"));
+
+            return `
+                <html>
+                  <head>
+                    <meta charset="utf-8">
+                    <title>Cupom ${safeText(sale.pedido || "")}</title>
+                    <style>
+                      @page { size: 80mm auto; margin: 6mm; }
+                      body { margin: 0; padding: 0; font-family: "Courier New", monospace; color: #000; }
+                      .wrap { width: 72mm; margin: 0 auto; font-size: 11px; }
+                      .center { text-align: center; }
+                      .bold { font-weight: 800; }
+                      .small { font-size: 10px; }
+                      .hr { border-top: 1px dashed #000; margin: 6px 0; }
+                      .row { display: flex; justify-content: space-between; gap: 10px; }
+                      .row span:last-child { text-align: right; white-space: nowrap; }
+                      .item { margin: 6px 0; }
+                      .top { margin-top: 4px; }
+                      .mono { letter-spacing: .2px; }
+                    </style>
+                  </head>
+                  <body>
+                    <div class="wrap mono">
+                      <div class="center bold">PAINEL DA DISTRIBUIDORA</div>
+                      <div class="center small">CUPOM (MODELO)</div>
+                      ${hr()}
+                      <div class="row"><span class="bold">PEDIDO</span><span>${safeText(sale.pedido || "—")}</span></div>
+                      <div class="row"><span class="bold">DATA</span><span>${safeText(sale.date || "")}</span></div>
+                      <div class="row"><span class="bold">CLIENTE</span><span>${safeText(clienteTxt)}</span></div>
+                      <div class="row"><span class="bold">ENTREGA</span><span>${entregaTxt}</span></div>
+                      ${(sale.delivery && sale.delivery.mode === "DELIVERY") ? `<div class="top small">END: ${safeText(enderecoTxt)}</div>` : ``}
+                      ${hr()}
+                      <div class="row bold"><span>ITENS</span><span></span></div>
+                      ${items || `<div class="small">—</div>`}
+                      ${hr()}
+                      <div class="row"><span>TOTAL</span><span>${numberToMoney(sale.total || 0)}</span></div>
+                      ${hr()}
+                      <div class="row bold"><span>PAGAMENTO</span><span></span></div>
+                      <div class="row"><span>${pg}</span><span></span></div>
+                      ${hr()}
+                      <div class="center small">OBRIGADO PELA PREFERÊNCIA!</div>
+                    </div>
+                    <script>window.print();<\/script>
+                  </body>
+                </html>
+            `;
+        }
+
+        // ===== Confirmar venda (DB) =====
+        function validateSaleClient() {
+            if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
+            if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return { ok: false, msg: "Informe o endereço do Delivery." };
+
+            const total = calcTotal();
+            if (total <= 0) return { ok: false, msg: "Total inválido." };
+
+            // estoque client
+            for (const it of CART) {
+                if (Number(it.qty || 0) > Number(it.stock || 0)) return { ok: false, msg: `Estoque insuficiente: ${it.name}` };
             }
 
-            const btnEdit = e.target.closest('.btnEdit');
-            if (btnEdit) {
-                modalTitle.textContent = 'Editar Entrada';
+            if (PAY_MODE === "UNICO") {
+                const r = computeSinglePay();
+                if (!r.ok) {
+                    if (r.method === "DINHEIRO") return { ok: false, msg: "No dinheiro, o valor pago deve ser >= total." };
+                    return { ok: false, msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total." };
+                }
+                return { ok: true };
+            }
 
-                eId.value = tr.getAttribute('data-id') || '';
-                pData.value = tr.getAttribute('data-data') || hojeYMD();
-                pNF.value = tr.getAttribute('data-nf') || '';
-                pFornecedorSel.value = tr.getAttribute('data-fornecedor-id') || '';
+            const m = computeMultiPay();
+            if (!m.ok) return { ok: false, msg: "Pagamento múltiplo inválido. Ajuste os valores." };
+            return { ok: true };
+        }
 
-                pProdutoId.value = tr.getAttribute('data-produto-id') || '';
-                // dispara change pra preencher código/nome/unidade/img
-                pProdutoId.dispatchEvent(new Event('change'));
+        async function confirmSale() {
+            const v = validateSaleClient();
+            if (!v.ok) { alert(v.msg); return; }
 
-                pUnidade.value = tr.getAttribute('data-unidade') || pUnidade.value || '';
-                pQtd.value = tr.getAttribute('data-qtd') || 0;
+            const payload = {
+                csrf_token: CSRF_TOKEN,
+                customer: String(cCliente.value || "").trim(),
+                delivery: {
+                    mode: DELIVERY_MODE,
+                    address: DELIVERY_MODE === "DELIVERY" ? String(cEndereco.value || "").trim() : "",
+                    fee: DELIVERY_MODE === "DELIVERY" ? String(cEntrega.value || "0,00") : "0,00",
+                    obs: DELIVERY_MODE === "DELIVERY" ? String(cObs.value || "").trim() : ""
+                },
+                discount: {
+                    type: String(dTipo.value || "PERC"),
+                    value: String(dValor.value || "0")
+                },
+                pay: (PAY_MODE === "UNICO")
+                    ? { mode: "UNICO", method: PAY_SELECTED, paid: String(pValor.value || "0,00") }
+                    : { mode: "MULTI", parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
+                        method: row.querySelector(".mMethod")?.value || "PIX",
+                        value: row.querySelector(".mValue")?.value || "0,00"
+                    })) },
+                items: CART.map(it => ({ id: Number(it.id), qty: Number(it.qty || 0) }))
+            };
 
-                const custoNum = String(tr.getAttribute('data-custo') || '0').replace('.', ',');
-                pCusto.value = custoNum;
-                recalcularTotal();
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = `<i class="lni lni-spinner-arrow me-1"></i> Processando...`;
+            try {
+                const r = await fetch("vendas.php?action=confirm", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const j = await r.json();
+                if (!j || !j.ok) throw new Error(j?.msg || "Falha ao confirmar.");
 
-                modal.show();
+                const sale = j.sale;
+                saleNo.textContent = `Pedido #${sale.pedido}`;
+
+                if (chkPrint.checked) {
+                    const html = buildReceiptHtml(sale);
+                    const w = window.open("", "_blank");
+                    if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+                    else { alert("Pop-up bloqueado. Permita pop-ups para imprimir."); }
+                }
+
+                // reset UI
+                CART = [];
+                renderCart();
+                setPreview(null);
+
+                cCliente.value = "";
+                setDeliveryMode("PRESENCIAL");
+
+                dTipo.value = "PERC";
+                dValor.value = "0";
+
+                setPayMode("UNICO");
+                PAY_SELECTED = "DINHEIRO";
+                payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
+                payBtns.querySelector('.pay-btn[data-pay="DINHEIRO"]').classList.add("active");
+                pValor.value = "0,00";
+                pTroco.value = "0,00";
+
+                paysWrap.innerHTML = "";
+                ensureOnePayRow();
+
+                recalcAll();
+                await renderLastSales();
+
+                alert(`Venda confirmada! Pedido: ${sale.pedido}`);
+                qProd.focus();
+            } catch (e) {
+                alert(String(e?.message || e));
+            } finally {
+                btnConfirmar.disabled = false;
+                btnConfirmar.innerHTML = `<i class="lni lni-checkmark-circle me-1"></i> CONFIRMAR VENDA (F2)`;
+            }
+        }
+
+        btnConfirmar.addEventListener("click", confirmSale);
+
+        // Reimprimir: clique em um cupom (pega detalhes do pedido)
+        lastList.addEventListener("click", async (e) => {
+            const cup = e.target.closest(".cup");
+            if (!cup) return;
+            const pedido = cup.getAttribute("data-pedido");
+            if (!pedido) return;
+
+            try {
+                const qs = new URLSearchParams({ action: "get_pedido", pedido: pedido });
+                const r = await fetch("vendas.php?" + qs.toString(), { headers: { "Accept": "application/json" } });
+                const j = await r.json();
+                if (!j || !j.ok) throw new Error(j?.msg || "Pedido não encontrado.");
+
+                // adapta para cupom
+                const sale = j.sale;
+                const html = buildReceiptHtml({
+                    pedido: sale.pedido,
+                    date: sale.date,
+                    customer: sale.customer,
+                    canal: sale.canal,
+                    pagamento: sale.pagamento,
+                    items: sale.items.map(it => ({
+                        code: it.code, name: it.name, qty: it.qty, price: it.price, total: it.total
+                    })),
+                    total: sale.total,
+                    delivery: { mode: (sale.canal === "DELIVERY" ? "DELIVERY" : "PRESENCIAL"), address: "" }
+                });
+
+                const w = window.open("", "_blank");
+                if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+                else { alert("Pop-up bloqueado. Permita pop-ups para imprimir."); }
+            } catch (err) {
+                alert(String(err?.message || err));
             }
         });
 
-        // init preview no modal
-        setPreview(DEFAULT_IMG);
+        // ===== Atalhos teclado =====
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "F4") { e.preventDefault(); qProd.focus(); return; }
+            if (e.key === "F2") { e.preventDefault(); confirmSale(); return; }
+            if (e.key === "Escape") hideSuggest();
+        });
 
-        // ✅ Excel (igual ao seu modelo)
-        function exportExcel() {
-            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
+        // ===== Init =====
+        function init() {
+            setPreview(null);
 
-            const now = new Date();
-            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+            setDeliveryMode("PRESENCIAL");
+            setPayMode("UNICO");
+            ensureOnePayRow();
 
-            const fornTxt = fFornecedor.value ? fFornecedor.options[fFornecedor.selectedIndex].text : 'Todos';
-            const ini = dtIni.value || '—';
-            const fim = dtFim.value || '—';
+            renderCart();
+            recalcAll();
+            renderLastSales();
 
-            const header = ['Data', 'NF', 'Fornecedor', 'Código', 'Produto', 'Unidade', 'Qtd', 'Custo', 'Total'];
-
-            const body = rows.map(tr => ([
-                tr.querySelector('.date')?.innerText.trim() || '',
-                tr.querySelector('.nf')?.innerText.trim() || '',
-                tr.querySelector('.forn')?.innerText.trim() || '',
-                tr.querySelector('.cod')?.innerText.trim() || '',
-                tr.querySelector('.prod')?.innerText.trim() || '',
-                tr.querySelector('.und')?.innerText.trim() || '',
-                tr.querySelector('.qtd')?.innerText.trim() || '',
-                tr.querySelector('.custo')?.innerText.trim() || '',
-                tr.querySelector('.total')?.innerText.trim() || ''
-            ]));
-
-            const isCenterCol = (idx) => (idx === 6 || idx === 7 || idx === 8);
-
-            let html = `
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              table { border: 0.6px solid #999; font-family: Arial; font-size: 12px; }
-              td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
-              th { background: #f1f5f9; font-weight: 700; }
-              .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
-              .muted { color: #555; font-weight: 700; }
-              .center { text-align: center; }
-            </style>
-          </head>
-          <body>
-            <table>
-      `;
-
-            html += `<tr><td class="title" colspan="9">PAINEL DA DISTRIBUIDORA - ENTRADAS</td></tr>`;
-            html += `<tr><td class="muted">Gerado em:</td><td colspan="8">${dt}</td></tr>`;
-            html += `<tr><td class="muted">Fornecedor:</td><td>${fornTxt}</td><td class="muted">Período:</td><td colspan="6">${ini} até ${fim}</td></tr>`;
-            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
-
-            body.forEach(r => {
-                html += `<tr>${r.map((c, idx) => {
-          const safe = String(c).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-          const cls = isCenterCol(idx) ? 'center' : '';
-          return `<td class="${cls}">${safe}</td>`;
-        }).join('')}</tr>`;
+            qGlobal.addEventListener("input", () => {
+                qProd.value = qGlobal.value;
+                refreshSuggest();
             });
 
-            html += `</table></body></html>`;
-
-            const blob = new Blob(["\ufeff" + html], {
-                type: 'application/vnd.ms-excel;charset=utf-8;'
-            });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'entradas.xls';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
+            btnRefreshLast.addEventListener("click", renderLastSales);
         }
-        document.getElementById('btnExcel').addEventListener('click', exportExcel);
-
-        // ✅ PDF (igual ao seu modelo)
-        function exportPDF() {
-            if (!window.jspdf || !window.jspdf.jsPDF) {
-                alert('Biblioteca do PDF não carregou.');
-                return;
-            }
-
-            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
-            const now = new Date();
-            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
-
-            const fornTxt = fFornecedor.value ? fFornecedor.options[fFornecedor.selectedIndex].text : 'Todos';
-            const ini = dtIni.value || '—';
-            const fim = dtFim.value || '—';
-
-            const {
-                jsPDF
-            } = window.jspdf;
-            const doc = new jsPDF({
-                orientation: 'landscape',
-                unit: 'pt',
-                format: 'a4'
-            });
-
-            const M = 70;
-
-            doc.setTextColor(0, 0, 0);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
-            doc.text('PAINEL DA DISTRIBUIDORA - ENTRADAS', M, 55);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.text(`Gerado em:  ${dt}`, M, 75);
-            doc.text(`Fornecedor:  ${fornTxt} | Período:  ${ini} até ${fim}`, M, 92);
-
-            const head = [
-                ['Data', 'NF', 'Fornecedor', 'Código', 'Produto', 'Unidade', 'Qtd', 'Custo', 'Total']
-            ];
-
-            const body = rows.map(tr => ([
-                tr.querySelector('.date')?.innerText.trim() || '',
-                tr.querySelector('.nf')?.innerText.trim() || '',
-                tr.querySelector('.forn')?.innerText.trim() || '',
-                tr.querySelector('.cod')?.innerText.trim() || '',
-                tr.querySelector('.prod')?.innerText.trim() || '',
-                tr.querySelector('.und')?.innerText.trim() || '',
-                tr.querySelector('.qtd')?.innerText.trim() || '',
-                tr.querySelector('.custo')?.innerText.trim() || '',
-                tr.querySelector('.total')?.innerText.trim() || ''
-            ]));
-
-            doc.autoTable({
-                head,
-                body,
-                startY: 115,
-                margin: {
-                    left: M,
-                    right: M
-                },
-                theme: 'plain',
-                styles: {
-                    font: 'helvetica',
-                    fontSize: 9,
-                    textColor: [17, 24, 39],
-                    cellPadding: {
-                        top: 6,
-                        right: 6,
-                        bottom: 6,
-                        left: 6
-                    },
-                    lineWidth: 0
-                },
-                headStyles: {
-                    fillColor: [241, 245, 249],
-                    textColor: [17, 24, 39],
-                    fontStyle: 'bold',
-                    lineWidth: 0
-                },
-                alternateRowStyles: {
-                    fillColor: [248, 250, 252]
-                },
-                columnStyles: {
-                    6: {
-                        halign: 'center'
-                    },
-                    7: {
-                        halign: 'center'
-                    },
-                    8: {
-                        halign: 'center'
-                    }
-                },
-                didParseCell: function(data) {
-                    data.cell.styles.lineWidth = 0;
-                }
-            });
-
-            doc.save('entradas.pdf');
-        }
-        document.getElementById('btnPDF').addEventListener('click', exportPDF);
+        init();
     </script>
 </body>
 
