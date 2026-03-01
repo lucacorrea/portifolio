@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -183,35 +184,135 @@ function fmtMoney($v): string
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    .profile-box .dropdown-menu { width: max-content; min-width: 260px; max-width: calc(100vw - 24px); }
-    .profile-box .dropdown-menu .author-info { width: max-content; max-width: 100%; display: flex !important; align-items: center; gap: 10px; }
-    .profile-box .dropdown-menu .author-info .content { min-width: 0; max-width: 100%; }
-    .profile-box .dropdown-menu .author-info .content a { display: inline-block; white-space: nowrap; max-width: 100%; }
+    .profile-box .dropdown-menu {
+      width: max-content;
+      min-width: 260px;
+      max-width: calc(100vw - 24px);
+    }
 
-    .main-btn.btn-compact { height: 38px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1 !important; }
-    .main-btn.btn-compact i { font-size: 14px; vertical-align: -1px; }
-    .icon-btn { height: 34px !important; width: 42px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+    .profile-box .dropdown-menu .author-info {
+      width: max-content;
+      max-width: 100%;
+      display: flex !important;
+      align-items: center;
+      gap: 10px;
+    }
 
-    .form-control.compact, .form-select.compact { height: 38px; padding: 8px 12px; font-size: 13px; }
+    .profile-box .dropdown-menu .author-info .content {
+      min-width: 0;
+      max-width: 100%;
+    }
 
-    .pdv-row { align-items: stretch; }
-    .pdv-left-col, .pdv-right-col { height: 100%; display: flex; flex-direction: column; }
+    .profile-box .dropdown-menu .author-info .content a {
+      display: inline-block;
+      white-space: nowrap;
+      max-width: 100%;
+    }
 
-    .pdv-card { border: 1px solid rgba(148, 163, 184, .28); border-radius: 16px; background: #fff; overflow: hidden; }
-    .pdv-card .pdv-head { padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, .22); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-    .pdv-card .pdv-body { padding: 14px; }
+    .main-btn.btn-compact {
+      height: 38px !important;
+      padding: 8px 14px !important;
+      font-size: 13px !important;
+      line-height: 1 !important;
+    }
 
-    .pdv-card.pdv-search { overflow: visible; position: relative; z-index: 50; }
+    .main-btn.btn-compact i {
+      font-size: 14px;
+      vertical-align: -1px;
+    }
 
-    .pdv-card.items-card { flex: 1 1 auto; min-height: 520px; display: flex; flex-direction: column; }
-    .pdv-card.items-card .pdv-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+    .icon-btn {
+      height: 34px !important;
+      width: 42px !important;
+      padding: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
 
-    .items-scroll { flex: 1 1 auto; min-height: 320px; overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+    .form-control.compact,
+    .form-select.compact {
+      height: 38px;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
 
-    .pdv-right-col .pdv-card { height: 100%; display: flex; flex-direction: column; }
-    .pdv-right-col .checkout-body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
+    .pdv-row {
+      align-items: stretch;
+    }
 
-    .search-wrap { position: relative; }
+    .pdv-left-col,
+    .pdv-right-col {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pdv-card {
+      border: 1px solid rgba(148, 163, 184, .28);
+      border-radius: 16px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .pdv-card .pdv-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(148, 163, 184, .22);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pdv-card .pdv-body {
+      padding: 14px;
+    }
+
+    .pdv-card.pdv-search {
+      overflow: visible;
+      position: relative;
+      z-index: 50;
+    }
+
+    .pdv-card.items-card {
+      flex: 1 1 auto;
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pdv-card.items-card .pdv-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .items-scroll {
+      flex: 1 1 auto;
+      min-height: 320px;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 12px;
+    }
+
+    .pdv-right-col .pdv-card {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pdv-right-col .checkout-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
 
     .suggest {
       position: absolute;
@@ -231,76 +332,382 @@ function fmtMoney($v): string
       overscroll-behavior: contain;
     }
 
-    .suggest .it { padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    .suggest .it:hover { background: rgba(241, 245, 249, .9); }
+    .suggest .it {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
 
-    .pimg { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; border: 1px solid rgba(148, 163, 184, .30); background: #fff; flex: 0 0 auto; }
+    .suggest .it:hover {
+      background: rgba(241, 245, 249, .9);
+    }
 
-    .it .meta { min-width: 0; flex: 1 1 auto; }
-    .it .meta .t { font-weight: 900; font-size: 13px; color: #0f172a; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .it .meta .s { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .it .price { font-weight: 900; font-size: 13px; color: #0f172a; white-space: nowrap; }
+    .pimg {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid rgba(148, 163, 184, .30);
+      background: #fff;
+      flex: 0 0 auto;
+    }
 
-    .preview-box { width: 100%; height: 130px; border-radius: 16px; border: 1px dashed rgba(148, 163, 184, .55); background: rgba(248, 250, 252, .7); display: flex; align-items: center; justify-content: center; padding: 10px; text-align: center; }
-    .preview-box img { width: 86px; height: 86px; border-radius: 16px; object-fit: cover; border: 1px solid rgba(148, 163, 184, .30); background: #fff; margin-bottom: 6px; }
-    .preview-name { font-weight: 900; font-size: 12px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+    .it .meta {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
 
-    .table td, .table th { vertical-align: middle; }
+    .it .meta .t {
+      font-weight: 900;
+      font-size: 13px;
+      color: #0f172a;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-    #tbItens { width: 100%; min-width: 720px; }
-    #tbItens th, #tbItens td { white-space: nowrap !important; }
+    .it .meta .s {
+      font-size: 12px;
+      color: #64748b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-    .qty-ctrl { display: inline-flex; align-items: center; gap: 6px; }
-    .qty-btn { height: 34px !important; width: 34px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; border-radius: 10px !important; }
-    .qty-pill { width: 64px !important; height: 34px !important; text-align: center; font-weight: 900; border: 1px solid rgba(148, 163, 184, .30); border-radius: 10px; padding: 4px 6px; background: #fff; font-size: 13px; }
-    .qty-pill::-webkit-outer-spin-button, .qty-pill::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .qty-pill { -moz-appearance: textfield; }
+    .it .price {
+      font-weight: 900;
+      font-size: 13px;
+      color: #0f172a;
+      white-space: nowrap;
+    }
 
-    .checkout-head { background: #0b5ed7; color: #fff; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .checkout-head h6 { margin: 0; font-weight: 900; letter-spacing: .2px; }
-    .checkout-body { padding: 14px; }
+    .preview-box {
+      width: 100%;
+      height: 130px;
+      border-radius: 16px;
+      border: 1px dashed rgba(148, 163, 184, .55);
+      background: rgba(248, 250, 252, .7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      text-align: center;
+    }
 
-    .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .pay-btn { border: 1px solid rgba(148, 163, 184, .35); background: #fff; border-radius: 12px; padding: 12px 12px; display: flex; align-items: center; gap: 10px; justify-content: flex-start; font-weight: 900; cursor: pointer; user-select: none; transition: .12s ease; min-height: 44px; }
-    .pay-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15, 23, 42, .08); }
-    .pay-btn.active { outline: 2px solid rgba(37, 99, 235, .35); border-color: rgba(37, 99, 235, .55); background: rgba(239, 246, 255, .65); }
-    .pay-btn i { font-size: 18px; }
+    .preview-box img {
+      width: 86px;
+      height: 86px;
+      border-radius: 16px;
+      object-fit: cover;
+      border: 1px solid rgba(148, 163, 184, .30);
+      background: #fff;
+      margin-bottom: 6px;
+    }
 
-    .totals { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; background: #fff; padding: 12px; }
-    .tot-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #334155; margin-bottom: 8px; font-weight: 800; }
-    .tot-row:last-child { margin-bottom: 0; }
-    .tot-hr { height: 1px; background: rgba(148, 163, 184, .22); margin: 10px 0; }
+    .preview-name {
+      font-weight: 900;
+      font-size: 12px;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
 
-    .grand { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 6px; }
-    .grand .lbl { font-weight: 900; color: #0f172a; font-size: 18px; }
-    .grand .val { font-weight: 1000; color: #0b5ed7; font-size: 30px; letter-spacing: .2px; }
+    .table td,
+    .table th {
+      vertical-align: middle;
+    }
 
-    .chip-toggle { display: flex; gap: 10px; flex-wrap: wrap; }
-    .chip { border: 1px solid rgba(148, 163, 184, .35); border-radius: 999px; padding: 8px 12px; cursor: pointer; font-weight: 900; font-size: 12px; user-select: none; background: #fff; }
-    .chip.active { background: rgba(239, 246, 255, .75); border-color: rgba(37, 99, 235, .55); outline: 2px solid rgba(37, 99, 235, .25); }
+    #tbItens {
+      width: 100%;
+      min-width: 720px;
+    }
 
-    .muted { font-size: 12px; color: #64748b; }
+    #tbItens th,
+    #tbItens td {
+      white-space: nowrap !important;
+    }
 
-    .pay-split-row { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; padding: 12px; background: #fff; margin-bottom: 10px; }
-    .msg-ok { display: none; color: #16a34a; font-weight: 900; font-size: 12px; }
-    .msg-err { display: none; color: #b91c1c; font-weight: 900; font-size: 12px; }
+    .qty-ctrl {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
 
-    .last-box { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; overflow: hidden; background: #fff; margin-top: 12px; }
-    .last-box .head { padding: 10px 12px; border-bottom: 1px solid rgba(148, 163, 184, .18); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .last-box .head .t { font-weight: 900; font-size: 12px; color: #0f172a; text-transform: uppercase; letter-spacing: .4px; }
-    .last-box .list { max-height: 220px; overflow: auto; }
-    .cup { padding: 10px 12px; border-bottom: 1px solid rgba(148, 163, 184, .12); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
-    .cup:last-child { border-bottom: none; }
-    .cup .left .n { font-weight: 900; color: #0f172a; }
-    .cup .left .s { color: #64748b; font-size: 12px; }
-    .cup .right { text-align: right; white-space: nowrap; }
-    .cup .right .v { font-weight: 1000; color: #0b5ed7; }
-    .cup .right .st { font-weight: 900; color: #16a34a; font-size: 11px; }
+    .qty-btn {
+      height: 34px !important;
+      width: 34px !important;
+      padding: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 10px !important;
+    }
+
+    .qty-pill {
+      width: 64px !important;
+      height: 34px !important;
+      text-align: center;
+      font-weight: 900;
+      border: 1px solid rgba(148, 163, 184, .30);
+      border-radius: 10px;
+      padding: 4px 6px;
+      background: #fff;
+      font-size: 13px;
+    }
+
+    .qty-pill::-webkit-outer-spin-button,
+    .qty-pill::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .qty-pill {
+      -moz-appearance: textfield;
+    }
+
+    .checkout-head {
+      background: #0b5ed7;
+      color: #fff;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .checkout-head h6 {
+      margin: 0;
+      font-weight: 900;
+      letter-spacing: .2px;
+    }
+
+    .checkout-body {
+      padding: 14px;
+    }
+
+    .pay-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .pay-btn {
+      border: 1px solid rgba(148, 163, 184, .35);
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: flex-start;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+      transition: .12s ease;
+      min-height: 44px;
+    }
+
+    .pay-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, .08);
+    }
+
+    .pay-btn.active {
+      outline: 2px solid rgba(37, 99, 235, .35);
+      border-color: rgba(37, 99, 235, .55);
+      background: rgba(239, 246, 255, .65);
+    }
+
+    .pay-btn i {
+      font-size: 18px;
+    }
+
+    .totals {
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 14px;
+      background: #fff;
+      padding: 12px;
+    }
+
+    .tot-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #334155;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+
+    .tot-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .tot-hr {
+      height: 1px;
+      background: rgba(148, 163, 184, .22);
+      margin: 10px 0;
+    }
+
+    .grand {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .grand .lbl {
+      font-weight: 900;
+      color: #0f172a;
+      font-size: 18px;
+    }
+
+    .grand .val {
+      font-weight: 1000;
+      color: #0b5ed7;
+      font-size: 30px;
+      letter-spacing: .2px;
+    }
+
+    .chip-toggle {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      border: 1px solid rgba(148, 163, 184, .35);
+      border-radius: 999px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 12px;
+      user-select: none;
+      background: #fff;
+    }
+
+    .chip.active {
+      background: rgba(239, 246, 255, .75);
+      border-color: rgba(37, 99, 235, .55);
+      outline: 2px solid rgba(37, 99, 235, .25);
+    }
+
+    .muted {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .pay-split-row {
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+      margin-bottom: 10px;
+    }
+
+    .msg-ok {
+      display: none;
+      color: #16a34a;
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .msg-err {
+      display: none;
+      color: #b91c1c;
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .last-box {
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+      margin-top: 12px;
+    }
+
+    .last-box .head {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, .18);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .last-box .head .t {
+      font-weight: 900;
+      font-size: 12px;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .last-box .list {
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    .cup {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, .12);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    .cup:last-child {
+      border-bottom: none;
+    }
+
+    .cup .left .n {
+      font-weight: 900;
+      color: #0f172a;
+    }
+
+    .cup .left .s {
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .cup .right {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .cup .right .v {
+      font-weight: 1000;
+      color: #0b5ed7;
+    }
+
+    .cup .right .st {
+      font-weight: 900;
+      color: #16a34a;
+      font-size: 11px;
+    }
 
     @media (max-width: 991.98px) {
-      .pay-grid { grid-template-columns: 1fr; }
-      #tbItens { min-width: 720px; }
-      .grand .val { font-size: 26px; }
+      .pay-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #tbItens {
+        min-width: 720px;
+      }
+
+      .grand .val {
+        font-size: 26px;
+      }
     }
   </style>
 </head>
@@ -363,7 +770,9 @@ function fmtMoney($v): string
         </li>
 
         <li class="nav-item"><a href="relatorios.php"><span class="text">Relatórios</span></a></li>
-        <span class="divider"><hr /></span>
+        <span class="divider">
+          <hr />
+        </span>
         <li class="nav-item"><a href="suporte.php"><span class="text">Suporte</span></a></li>
       </ul>
     </nav>
@@ -664,18 +1073,19 @@ function fmtMoney($v): string
                             <div class="v">R$ 0,00</div>
                           </div>
                         </div>
-                      <?php else: foreach ($last as $s): ?>
-                        <div class="cup" style="cursor:pointer;" data-id="<?= (int)$s['id'] ?>" title="Clique para imprimir">
-                          <div class="left">
-                            <div class="n">Venda #<?= (int)$s['id'] ?></div>
-                            <div class="s"><?= e((string)$s['created_at']) ?></div>
+                        <?php else: foreach ($last as $s): ?>
+                          <div class="cup" style="cursor:pointer;" data-id="<?= (int)$s['id'] ?>" title="Clique para imprimir">
+                            <div class="left">
+                              <div class="n">Venda #<?= (int)$s['id'] ?></div>
+                              <div class="s"><?= e((string)$s['created_at']) ?></div>
+                            </div>
+                            <div class="right">
+                              <div class="v"><?= e(fmtMoney((float)$s['total'])) ?></div>
+                              <div class="st">CONCLUÍDO</div>
+                            </div>
                           </div>
-                          <div class="right">
-                            <div class="v"><?= e(fmtMoney((float)$s['total'])) ?></div>
-                            <div class="st">CONCLUÍDO</div>
-                          </div>
-                        </div>
-                      <?php endforeach; endif; ?>
+                      <?php endforeach;
+                      endif; ?>
                     </div>
                   </div>
 
@@ -759,7 +1169,9 @@ function fmtMoney($v): string
       scope.querySelectorAll("img").forEach(img => {
         img.addEventListener("error", () => {
           img.src = DEFAULT_IMG;
-        }, { once: true });
+        }, {
+          once: true
+        });
       });
     }
 
@@ -1105,16 +1517,23 @@ function fmtMoney($v): string
       const rows = Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => {
         const m = row.querySelector(".mMethod")?.value || "PIX";
         const v = moneyToNumber(row.querySelector(".mValue")?.value || "0");
-        return { method: m, value: v };
+        return {
+          method: m,
+          value: v
+        };
       }).filter(x => x.value > 0);
 
       const sum = rows.reduce((a, x) => a + x.value, 0);
       const diff = sum - total;
       const hasCash = rows.some(x => x.method === "DINHEIRO");
 
-      let ok = false, troco = 0;
+      let ok = false,
+        troco = 0;
       if (Math.abs(diff) < 0.009) ok = true;
-      else if (diff > 0.009 && hasCash) { ok = true; troco = diff; }
+      else if (diff > 0.009 && hasCash) {
+        ok = true;
+        troco = diff;
+      }
 
       mSum.textContent = numberToMoney(sum);
       mDiff.textContent = numberToMoney(diff);
@@ -1123,7 +1542,14 @@ function fmtMoney($v): string
       mOk.style.display = ok ? "block" : "none";
       mErr.style.display = ok ? "none" : "block";
 
-      return { ok, rows, sum, diff, troco, total };
+      return {
+        ok,
+        rows,
+        sum,
+        diff,
+        troco,
+        total
+      };
     }
 
     function computeSinglePay() {
@@ -1131,7 +1557,8 @@ function fmtMoney($v): string
       const paid = moneyToNumber(pValor.value);
       const method = PAY_SELECTED;
 
-      let ok = false, troco = 0;
+      let ok = false,
+        troco = 0;
       if (method === "DINHEIRO") {
         ok = paid >= total && total > 0;
         troco = ok ? (paid - total) : 0;
@@ -1142,7 +1569,13 @@ function fmtMoney($v): string
         troco = 0;
       }
       pTroco.value = troco.toFixed(2).replace(".", ",");
-      return { ok, method, paid, troco, total };
+      return {
+        ok,
+        method,
+        paid,
+        troco,
+        total
+      };
     }
 
     /* ==============================
@@ -1335,28 +1768,53 @@ function fmtMoney($v): string
        (continua usando salvarVendas.php)
     ============================== */
     function validateSaleClient() {
-      if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
-      if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return { ok: false, msg: "Informe o endereço do Delivery." };
+      if (!CART.length) return {
+        ok: false,
+        msg: "Adicione pelo menos 1 item."
+      };
+      if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return {
+        ok: false,
+        msg: "Informe o endereço do Delivery."
+      };
       const total = calcTotal();
-      if (total <= 0) return { ok: false, msg: "Total inválido." };
+      if (total <= 0) return {
+        ok: false,
+        msg: "Total inválido."
+      };
 
       if (PAY_MODE === "UNICO") {
         const r = computeSinglePay();
         if (!r.ok) {
-          if (r.method === "DINHEIRO") return { ok: false, msg: "No dinheiro, o valor pago deve ser >= total." };
-          return { ok: false, msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total." };
+          if (r.method === "DINHEIRO") return {
+            ok: false,
+            msg: "No dinheiro, o valor pago deve ser >= total."
+          };
+          return {
+            ok: false,
+            msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total."
+          };
         }
-        return { ok: true };
+        return {
+          ok: true
+        };
       }
 
       const m = computeMultiPay();
-      if (!m.ok) return { ok: false, msg: "Pagamento múltiplo inválido. Ajuste os valores." };
-      return { ok: true };
+      if (!m.ok) return {
+        ok: false,
+        msg: "Pagamento múltiplo inválido. Ajuste os valores."
+      };
+      return {
+        ok: true
+      };
     }
 
     async function confirmSale() {
       const v = validateSaleClient();
-      if (!v.ok) { alert(v.msg); return; }
+      if (!v.ok) {
+        alert(v.msg);
+        return;
+      }
 
       const payload = {
         csrf_token: CSRF,
@@ -1367,17 +1825,27 @@ function fmtMoney($v): string
           fee: DELIVERY_MODE === "DELIVERY" ? moneyToNumber(cEntrega.value) : 0,
           obs: DELIVERY_MODE === "DELIVERY" ? String(cObs.value || "").trim() : ""
         },
-        discount: { tipo: dTipo.value, valor: moneyToNumber(dValor.value) },
-        pay: (PAY_MODE === "UNICO")
-          ? { mode: "UNICO", method: PAY_SELECTED, paid: moneyToNumber(pValor.value) }
-          : {
-              mode: "MULTI",
-              parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
-                method: row.querySelector(".mMethod")?.value || "PIX",
-                value: moneyToNumber(row.querySelector(".mValue")?.value || "0")
-              }))
-            },
-        items: CART.map(it => ({ product_id: it.product_id, qty: Number(it.qty || 0) }))
+        discount: {
+          tipo: dTipo.value,
+          valor: moneyToNumber(dValor.value)
+        },
+        pay: (PAY_MODE === "UNICO") ?
+          {
+            mode: "UNICO",
+            method: PAY_SELECTED,
+            paid: moneyToNumber(pValor.value)
+          } :
+          {
+            mode: "MULTI",
+            parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
+              method: row.querySelector(".mMethod")?.value || "PIX",
+              value: moneyToNumber(row.querySelector(".mValue")?.value || "0")
+            }))
+          },
+        items: CART.map(it => ({
+          product_id: it.product_id,
+          qty: Number(it.qty || 0)
+        }))
       };
 
       btnConfirmar.disabled = true;
@@ -1385,7 +1853,9 @@ function fmtMoney($v): string
       try {
         const r = await fetchJSON("assets/dados/vendas/salvarVendas.php", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify(payload)
         });
 
@@ -1434,8 +1904,16 @@ function fmtMoney($v): string
        Atalhos teclado
     ============================== */
     document.addEventListener("keydown", (e) => {
-      if (e.key === "F4") { e.preventDefault(); qProd.focus(); return; }
-      if (e.key === "F2") { e.preventDefault(); confirmSale(); return; }
+      if (e.key === "F4") {
+        e.preventDefault();
+        qProd.focus();
+        return;
+      }
+      if (e.key === "F2") {
+        e.preventDefault();
+        confirmSale();
+        return;
+      }
       if (e.key === "Escape") hideSuggest();
     });
 
@@ -1474,4 +1952,5 @@ function fmtMoney($v): string
     init();
   </script>
 </body>
+
 </html>

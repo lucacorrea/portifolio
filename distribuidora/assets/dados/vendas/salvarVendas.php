@@ -270,7 +270,7 @@ try {
     'sale' => [
       'id' => $saleId,
       'no' => $saleId,
-      'print_url' => "cupom.php?id={$saleId}&auto=1"
+      'print_url' => "assets/dados/vendas/cupom.php?id={$saleId}&auto=1"
     ],
     'next' => $next
   ]);
