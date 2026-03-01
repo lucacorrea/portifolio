@@ -24,7 +24,6 @@ function json_out(array $data, int $code = 200): void
   echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   exit;
 }
-
 function table_missing(Throwable $e): bool
 {
   $m = strtolower($e->getMessage());
@@ -63,16 +62,11 @@ if (isset($_GET['ajax'])) {
 
   try {
 
-    /* =========================
-       buscarVendas (DIGITA -> LISTA)
-       - digita: 12 ou "maria"
-       - retorna: id, created_at, cliente, total, canal
-    ========================= */
+    // ===== buscar vendas digitando =====
     if ($ajax === 'buscarVendas') {
       $q = trim((string)($_GET['q'] ?? ''));
       if ($q === '') json_out(['ok' => true, 'items' => []]);
 
-      // Se for número: busca por id "começa com"
       if (preg_match('/^\d+$/', $q)) {
         $st = $pdo->prepare("
           SELECT id, created_at, cliente, total, canal
@@ -83,7 +77,6 @@ if (isset($_GET['ajax'])) {
         ");
         $st->execute([':start' => $q . '%']);
       } else {
-        // texto: busca por cliente
         $st = $pdo->prepare("
           SELECT id, created_at, cliente, total, canal
           FROM vendas
@@ -108,9 +101,7 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'items' => $items]);
     }
 
-    /* =========================
-       itensVenda (pega itens da venda selecionada)
-    ========================= */
+    // ===== itens da venda selecionada =====
     if ($ajax === 'itensVenda') {
       $id = (int)($_GET['id'] ?? 0);
       if ($id <= 0) json_out(['ok' => true, 'items' => []]);
@@ -139,9 +130,7 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'items' => $items]);
     }
 
-    /* =========================
-       LIST
-    ========================= */
+    // ===== list devolucoes =====
     if ($ajax === 'list') {
       $st = $pdo->query("SELECT * FROM devolucoes ORDER BY id DESC LIMIT 1500");
       $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -167,9 +156,7 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'items' => $items]);
     }
 
-    /* =========================
-       SAVE
-    ========================= */
+    // ===== save devolucao =====
     if ($ajax === 'save') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -283,9 +270,7 @@ if (isset($_GET['ajax'])) {
       ]);
     }
 
-    /* =========================
-       DEL
-    ========================= */
+    // ===== delete =====
     if ($ajax === 'del') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -300,9 +285,7 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'msg' => 'Devolução excluída.']);
     }
 
-    /* =========================
-       IMPORT
-    ========================= */
+    // ===== import =====
     if ($ajax === 'import') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -407,6 +390,25 @@ $flash = flash_pop();
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
+    .profile-box .dropdown-menu {
+      width: max-content;
+      min-width: 260px;
+      max-width: calc(100vw - 24px)
+    }
+
+    .profile-box .dropdown-menu .author-info {
+      width: max-content;
+      max-width: 100%;
+      display: flex !important;
+      align-items: center;
+      gap: 10px
+    }
+
+    .profile-box .dropdown-menu .author-info .content {
+      min-width: 0;
+      max-width: 100%
+    }
+
     .main-btn.btn-compact {
       height: 38px !important;
       padding: 8px 14px !important;
@@ -610,7 +612,22 @@ $flash = flash_pop();
       border: 1px solid rgba(239, 68, 68, .25)
     }
 
-    /* dropdowns */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .toolbar .grow {
+      flex: 1 1 260px;
+      min-width: 240px
+    }
+
+    .toolbar .w180 {
+      min-width: 180px
+    }
+
     .search-wrap {
       position: relative
     }
@@ -657,20 +674,60 @@ $flash = flash_pop();
       white-space: nowrap
     }
 
-    .toolbar {
+    /* Itens da venda */
+    .sale-box {
+      border: 1px solid rgba(148, 163, 184, .22);
+      border-radius: 14px;
+      background: rgba(248, 250, 252, .7);
+      padding: 10px 12px;
+      max-height: 180px;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .sale-row {
       display: flex;
+      justify-content: space-between;
       gap: 10px;
-      flex-wrap: wrap;
-      align-items: center
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(148, 163, 184, .35);
+      font-size: 12px;
     }
 
-    .toolbar .grow {
-      flex: 1 1 260px;
-      min-width: 240px
+    .sale-row:last-child {
+      border-bottom: none
     }
 
-    .toolbar .w180 {
-      min-width: 180px
+    .sale-row .left {
+      min-width: 0
+    }
+
+    .sale-row .left .nm {
+      font-weight: 900;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px
+    }
+
+    .sale-row .left .cd {
+      color: #64748b;
+      font-size: 12px
+    }
+
+    .sale-row .right {
+      white-space: nowrap;
+      text-align: right
+    }
+
+    .sale-mini {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px
     }
 
     @media(max-width:991.98px) {
@@ -690,6 +747,7 @@ $flash = flash_pop();
     <div class="spinner"></div>
   </div>
 
+  <!-- sidebar -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -815,9 +873,9 @@ $flash = flash_pop();
           <div class="alert alert-<?= e($flash['type']) ?>"><?= e($flash['msg']) ?></div>
         <?php endif; ?>
 
-        <div class="row g-3 mb-30">
-          <!-- Form -->
-          <div class="col-12 col-lg-4">
+        <!-- ✅ AGORA: Lançamento (col-6) + Resumo (col-6) -->
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-lg-6">
             <div class="cardx">
               <div class="head">
                 <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-package me-1"></i> Lançamento</div>
@@ -832,7 +890,7 @@ $flash = flash_pop();
                     <input class="form-control compact" id="dVendaNo" placeholder="Digite nº da venda ou nome do cliente..." autocomplete="off" />
                     <div class="suggest" id="saleSuggest"></div>
                   </div>
-                  <div class="muted mt-1">Dica: digite e selecione na lista para preencher cliente e itens.</div>
+                  <div class="muted mt-1">Selecione na lista para puxar cliente e itens.</div>
                 </div>
 
                 <div class="mb-3">
@@ -865,7 +923,7 @@ $flash = flash_pop();
                     <input class="form-control compact" id="dProduto" placeholder="Nome / Código do produto" autocomplete="off" />
                     <div class="suggest" id="prodSuggest"></div>
                   </div>
-                  <div class="muted mt-1">Se você selecionou a venda, aqui sugere apenas itens da venda.</div>
+                  <div class="muted mt-1">Se selecionou a venda, sugere apenas itens da venda.</div>
                 </div>
 
                 <div class="row g-2">
@@ -876,6 +934,16 @@ $flash = flash_pop();
                   <div class="col-6 mb-3">
                     <label class="form-label">Valor (R$)</label>
                     <input class="form-control compact" id="dValor" placeholder="0,00" value="0,00" />
+                  </div>
+                </div>
+
+                <!-- ✅ Itens da venda aparecem aqui -->
+                <div class="mb-3" id="saleItemsWrap" style="display:none;">
+                  <label class="form-label">Itens da Venda Selecionada</label>
+                  <div class="sale-box" id="saleItemsBox"></div>
+                  <div class="sale-mini">
+                    <div id="saleMiniLeft">—</div>
+                    <div id="saleMiniRight">—</div>
                   </div>
                 </div>
 
@@ -912,8 +980,10 @@ $flash = flash_pop();
                 </div>
               </div>
             </div>
+          </div>
 
-            <div class="cardx mt-3">
+          <div class="col-12 col-lg-6">
+            <div class="cardx h-100">
               <div class="head">
                 <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-stats-up me-1"></i> Resumo</div>
               </div>
@@ -932,13 +1002,14 @@ $flash = flash_pop();
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Lista -->
-          <div class="col-12 col-lg-8">
+        <!-- ✅ AGORA: TABELA embaixo (col-12) -->
+        <div class="row g-3 mb-30">
+          <div class="col-12">
             <div class="cardx">
               <div class="head">
                 <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-list me-1"></i> Listagem</div>
-
                 <div class="toolbar" style="width:100%;">
                   <input class="form-control compact grow" id="qDev" placeholder="Buscar: venda, cliente, produto, motivo..." />
                   <select class="form-select compact w180" id="fStatus">
@@ -947,11 +1018,9 @@ $flash = flash_pop();
                     <option value="CONCLUIDO">Concluído</option>
                     <option value="CANCELADO">Cancelado</option>
                   </select>
-
                   <button class="main-btn light-btn btn-hover btn-compact" id="btnExport" type="button">
                     <i class="lni lni-download me-1"></i> Exportar JSON
                   </button>
-
                   <button class="main-btn light-btn btn-hover btn-compact" id="btnImport" type="button">
                     <i class="lni lni-upload me-1"></i> Importar JSON
                   </button>
@@ -980,13 +1049,12 @@ $flash = flash_pop();
                     <tbody id="tbodyDev"></tbody>
                   </table>
                 </div>
-
                 <div class="muted mt-2" id="hintNone" style="display:none;">Nenhuma devolução encontrada.</div>
               </div>
             </div>
           </div>
-
         </div>
+
       </div>
     </section>
 
@@ -1009,8 +1077,6 @@ $flash = flash_pop();
   <script>
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const AJAX_URL = "devolucoes.php";
-
-    // fallback produtos (se não escolher venda)
     const PRODUCTS = <?= json_encode($PRODUTOS_CACHE, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     function safeText(s) {
@@ -1063,11 +1129,11 @@ $flash = flash_pop();
     let DEV = [];
     let TYPE = "TOTAL";
     let SALE_SELECTED = null; // {id, customer, total, canal, date}
-    let SALE_ITEMS = []; // itens da venda (autocomplete parcial)
-    let LAST_PROD = [];
+    let SALE_ITEMS = []; // [{code,name,qty,subtotal,unit,price}]
     let LAST_SALES = [];
-    let prodTimer = null;
-    let saleTimer = null;
+    let LAST_PROD = [];
+    let saleTimer = null,
+      prodTimer = null;
     let saleAbort = null;
 
     // DOM
@@ -1082,10 +1148,12 @@ $flash = flash_pop();
     const dCliente = document.getElementById("dCliente");
     const dData = document.getElementById("dData");
     const dHora = document.getElementById("dHora");
+
     const dProduto = document.getElementById("dProduto");
     const prodSuggest = document.getElementById("prodSuggest");
     const dQtd = document.getElementById("dQtd");
     const dValor = document.getElementById("dValor");
+
     const dMotivo = document.getElementById("dMotivo");
     const dObs = document.getElementById("dObs");
     const dStatus = document.getElementById("dStatus");
@@ -1093,6 +1161,11 @@ $flash = flash_pop();
     const chipTotal = document.getElementById("chipTotal");
     const chipParcial = document.getElementById("chipParcial");
     const formMode = document.getElementById("formMode");
+
+    const saleItemsWrap = document.getElementById("saleItemsWrap");
+    const saleItemsBox = document.getElementById("saleItemsBox");
+    const saleMiniLeft = document.getElementById("saleMiniLeft");
+    const saleMiniRight = document.getElementById("saleMiniRight");
 
     const qDev = document.getElementById("qDev");
     const fStatus = document.getElementById("fStatus");
@@ -1108,20 +1181,29 @@ $flash = flash_pop();
     const btnImport = document.getElementById("btnImport");
     const fileImport = document.getElementById("fileImport");
 
-    // UI helpers
+    // UI mode
     function setType(type) {
       TYPE = type;
       const isTotal = type === "TOTAL";
       chipTotal.classList.toggle("active", isTotal);
       chipParcial.classList.toggle("active", !isTotal);
 
+      // continua bloqueando produto/qtd no TOTAL (mas agora preenche automaticamente se tiver venda selecionada)
       dProduto.disabled = isTotal;
       dQtd.disabled = isTotal;
 
       if (isTotal) {
-        dProduto.value = "";
-        dQtd.value = 1;
+        // se já tem venda selecionada, preenche "produto" e qtd total
+        applyTotalFromSaleIfAny();
         hideProdSuggest();
+      } else {
+        // parcial: libera campos
+        if (SALE_SELECTED) {
+          // limpa para escolher um item da venda
+          dProduto.value = "";
+          dQtd.value = 1;
+          // mantém valor como está
+        }
       }
     }
 
@@ -1132,6 +1214,19 @@ $flash = flash_pop();
       } else {
         formMode.className = "pill warn";
         formMode.innerHTML = `<i class="lni lni-pencil"></i> NOVO`;
+      }
+    }
+
+    function clearSaleSelection() {
+      SALE_SELECTED = null;
+      SALE_ITEMS = [];
+      LAST_SALES = [];
+      hideSaleSuggest();
+      hideSaleItems();
+      // volta "produto/qtd" default se total
+      if (TYPE === "TOTAL") {
+        dProduto.value = "";
+        dQtd.value = 1;
       }
     }
 
@@ -1148,29 +1243,8 @@ $flash = flash_pop();
       dMotivo.value = "OUTRO";
       dObs.value = "";
       dStatus.value = "ABERTO";
-      SALE_SELECTED = null;
-      SALE_ITEMS = [];
-      LAST_SALES = [];
-      hideSaleSuggest();
-      hideProdSuggest();
+      clearSaleSelection();
       setFormMode("NEW");
-    }
-
-    function badgeStatus(s) {
-      if (s === "CONCLUIDO") return `<span class="badge-soft b-done">CONCLUÍDO</span>`;
-      if (s === "CANCELADO") return `<span class="badge-soft b-cancel">CANCELADO</span>`;
-      return `<span class="badge-soft b-open">EM ABERTO</span>`;
-    }
-
-    function motivoLabel(m) {
-      const map = {
-        "DEFEITO": "Defeito",
-        "TROCA": "Troca",
-        "ARREPENDIMENTO": "Arrependimento",
-        "AVARIA_TRANSPORTE": "Avaria Transporte",
-        "OUTRO": "Outro"
-      };
-      return map[m] || m || "-";
     }
 
     // ===== Venda suggest =====
@@ -1225,8 +1299,81 @@ $flash = flash_pop();
       }, 140);
     }
 
-    dVendaNo.addEventListener("input", refreshSaleDebounced);
+    dVendaNo.addEventListener("input", () => {
+      // se o usuário mudou o campo depois de selecionar, limpa seleção
+      if (SALE_SELECTED && String(SALE_SELECTED.id) !== dVendaNo.value.trim()) {
+        clearSaleSelection();
+      }
+      refreshSaleDebounced();
+    });
     dVendaNo.addEventListener("focus", refreshSaleDebounced);
+
+    async function loadSaleItems(saleId) {
+      try {
+        const r = await fetchJSON(`${AJAX_URL}?ajax=itensVenda&id=${saleId}`);
+        SALE_ITEMS = (r.items || []).map(x => ({
+          id: Number(x.id),
+          code: String(x.code || ""),
+          name: String(x.name || ""),
+          qty: Number(x.qty || 0),
+          unit: String(x.unit || ""),
+          price: Number(x.price || 0),
+          subtotal: Number(x.subtotal || 0),
+        }));
+      } catch {
+        SALE_ITEMS = [];
+      }
+    }
+
+    function renderSaleItems() {
+      if (!SALE_SELECTED || !SALE_ITEMS.length) {
+        hideSaleItems();
+        return;
+      }
+
+      saleItemsWrap.style.display = "block";
+      saleItemsBox.innerHTML = SALE_ITEMS.map(it => `
+      <div class="sale-row">
+        <div class="left">
+          <div class="nm">${safeText(it.name)}</div>
+          <div class="cd">${safeText(it.code)} • ${Number(it.qty||0)} ${safeText(it.unit||"")}</div>
+        </div>
+        <div class="right">
+          <div style="font-weight:900;color:#0f172a;">${numberToMoney(it.subtotal||0)}</div>
+          <div class="muted">Unit: ${numberToMoney(it.price||0)}</div>
+        </div>
+      </div>
+    `).join("");
+
+      const sumQty = SALE_ITEMS.reduce((a, x) => a + Number(x.qty || 0), 0);
+      const sumSub = SALE_ITEMS.reduce((a, x) => a + Number(x.subtotal || 0), 0);
+
+      saleMiniLeft.textContent = `Itens: ${SALE_ITEMS.length} • Qtd total: ${sumQty}`;
+      saleMiniRight.textContent = `Subtotal itens: ${numberToMoney(sumSub)}`;
+    }
+
+    function hideSaleItems() {
+      saleItemsWrap.style.display = "none";
+      saleItemsBox.innerHTML = "";
+      saleMiniLeft.textContent = "—";
+      saleMiniRight.textContent = "—";
+    }
+
+    function applyTotalFromSaleIfAny() {
+      if (!SALE_SELECTED) return;
+      const nItens = SALE_ITEMS.length;
+      const sumQty = SALE_ITEMS.reduce((a, x) => a + Number(x.qty || 0), 0);
+
+      // preenche produto e qtd (mesmo desabilitado)
+      dProduto.value = `VENDA #${SALE_SELECTED.id} (TOTAL - ${nItens} itens)`;
+      dQtd.value = sumQty > 0 ? sumQty : 1;
+
+      // se valor estiver zerado, joga total da venda
+      const curVal = moneyToNumber(dValor.value);
+      if (curVal <= 0 && Number(SALE_SELECTED.total || 0) > 0) {
+        dValor.value = Number(SALE_SELECTED.total || 0).toFixed(2).replace(".", ",");
+      }
+    }
 
     saleSuggest.addEventListener("click", async (e) => {
       const it = e.target.closest(".it");
@@ -1235,51 +1382,37 @@ $flash = flash_pop();
       const v = LAST_SALES.find(x => Number(x.id) === id);
       if (!v) return;
 
-      // selecionou venda
       SALE_SELECTED = v;
       dVendaNo.value = String(v.id);
       dCliente.value = String(v.customer || "Consumidor Final");
       hideSaleSuggest();
 
-      // dica: se devolução total e valor ainda 0, joga o total da venda
-      const curVal = moneyToNumber(dValor.value);
-      if (TYPE === "TOTAL" && curVal <= 0 && Number(v.total || 0) > 0) {
-        dValor.value = Number(v.total || 0).toFixed(2).replace(".", ",");
-      }
+      await loadSaleItems(id);
+      renderSaleItems();
 
-      // carrega itens da venda (pra sugestão do produto)
-      try {
-        const r = await fetchJSON(`${AJAX_URL}?ajax=itensVenda&id=${id}`);
-        SALE_ITEMS = (r.items || []).map(x => ({
-          id: Number(x.id),
-          code: String(x.code || ""),
-          name: String(x.name || ""),
-        }));
-      } catch {
-        SALE_ITEMS = [];
+      // se estiver no TOTAL, preencher produto/qtd baseado na venda
+      if (TYPE === "TOTAL") {
+        applyTotalFromSaleIfAny();
       }
-
-      // se estiver no parcial, já foca no produto
-      if (TYPE === "PARCIAL") setTimeout(() => dProduto.focus(), 50);
     });
 
     document.addEventListener("click", (e) => {
       if (!e.target.closest("#saleSuggest") && !e.target.closest("#dVendaNo")) hideSaleSuggest();
     });
 
-    // ===== Produto suggest (prioriza itens da venda) =====
+    // ===== Produto suggest =====
     function showProdSuggest(list) {
       if (!list.length) {
         hideProdSuggest();
         return;
       }
       prodSuggest.innerHTML = list.map(p => `
-      <div class="it" data-key="${safeText(p.code)}">
+      <div class="it" data-code="${safeText(p.code)}">
         <div style="min-width:0">
           <div class="t">${safeText(p.name)}</div>
-          <div class="s">${safeText(p.code)}</div>
+          <div class="s">${safeText(p.code)}${(p.qty!=null && p.qty>0) ? ` • Qtd venda: ${Number(p.qty)}` : ""}</div>
         </div>
-        <div class="s">OK</div>
+        <div class="s">${(p.subtotal!=null && p.subtotal>0) ? numberToMoney(p.subtotal) : "OK"}</div>
       </div>
     `).join("");
       prodSuggest.style.display = "block";
@@ -1300,7 +1433,7 @@ $flash = flash_pop();
       if (!s) return [];
       const sDig = onlyDigits(s);
 
-      const source = (SALE_ITEMS && SALE_ITEMS.length) ? SALE_ITEMS : PRODUCTS;
+      const source = (SALE_SELECTED && SALE_ITEMS.length) ? SALE_ITEMS : PRODUCTS;
 
       const out = [];
       for (const p of source) {
@@ -1327,21 +1460,48 @@ $flash = flash_pop();
 
     dProduto.addEventListener("input", refreshProdDebounced);
     dProduto.addEventListener("focus", refreshProdDebounced);
+
     prodSuggest.addEventListener("click", (e) => {
       const it = e.target.closest(".it");
       if (!it) return;
-      const code = it.getAttribute("data-key") || "";
+      const code = it.getAttribute("data-code") || "";
       const p = LAST_PROD.find(x => String(x.code || "") === code);
       if (!p) return;
+
       dProduto.value = `${p.code} - ${p.name}`;
+
+      // se veio de item da venda, auto-preenche qtd/valor
+      if (SALE_SELECTED && SALE_ITEMS.length) {
+        if (Number(p.qty || 0) > 0) dQtd.value = Number(p.qty);
+        if (Number(p.subtotal || 0) > 0) dValor.value = Number(p.subtotal).toFixed(2).replace(".", ",");
+      }
+
       hideProdSuggest();
       dQtd.focus();
     });
+
     document.addEventListener("click", (e) => {
       if (!e.target.closest("#prodSuggest") && !e.target.closest("#dProduto")) hideProdSuggest();
     });
 
     // ===== Listagem devoluções =====
+    function badgeStatus(s) {
+      if (s === "CONCLUIDO") return `<span class="badge-soft b-done">CONCLUÍDO</span>`;
+      if (s === "CANCELADO") return `<span class="badge-soft b-cancel">CANCELADO</span>`;
+      return `<span class="badge-soft b-open">EM ABERTO</span>`;
+    }
+
+    function motivoLabel(m) {
+      const map = {
+        "DEFEITO": "Defeito",
+        "TROCA": "Troca",
+        "ARREPENDIMENTO": "Arrependimento",
+        "AVARIA_TRANSPORTE": "Avaria Transporte",
+        "OUTRO": "Outro"
+      };
+      return map[m] || m || "-";
+    }
+
     function getFiltered() {
       const q = (qDev.value || qGlobal.value || "").toLowerCase().trim();
       const st = fStatus.value;
@@ -1541,13 +1701,18 @@ $flash = flash_pop();
       dCliente.value = x.customer || "";
       dData.value = x.date || nowISODate();
       dHora.value = (x.time || nowISOTime()).slice(0, 5);
+
       setType(x.type === "PARCIAL" ? "PARCIAL" : "TOTAL");
       dProduto.value = x.product || "";
       dQtd.value = x.qty || 1;
+
       dValor.value = Number(x.amount || 0).toFixed(2).replace(".", ",");
       dMotivo.value = x.reason || "OUTRO";
       dObs.value = x.note || "";
       dStatus.value = x.status || "ABERTO";
+
+      // edição não puxa venda automaticamente
+      clearSaleSelection();
       setFormMode("EDIT");
       window.scrollTo({
         top: 0,
@@ -1620,7 +1785,7 @@ $flash = flash_pop();
       reader.readAsText(file);
     }
 
-    // Events gerais
+    // Events
     btnNova.addEventListener("click", resetForm);
     btnSalvar.addEventListener("click", saveDev);
     btnLimpar.addEventListener("click", resetForm);
