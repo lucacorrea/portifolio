@@ -114,17 +114,23 @@ CREATE TABLE IF NOT EXISTS saidas (
 CREATE TABLE IF NOT EXISTS vendas (
   id INT AUTO_INCREMENT PRIMARY KEY,
   data DATE NOT NULL,
-  cliente_id INT NOT NULL,
-  produto_id INT NOT NULL,
-  canal VARCHAR(20) NOT NULL DEFAULT 'PRESENCIAL',   -- PRESENCIAL | DELIVERY
-  pagamento VARCHAR(30) NOT NULL DEFAULT 'DINHEIRO', -- DINHEIRO | PIX | CARTÃO | TRANSFERÊNCIA ...
-  quantidade DECIMAL(10,3) NOT NULL DEFAULT 0,
-  preco_unit DECIMAL(10,2) NOT NULL DEFAULT 0,
-  total DECIMAL(10,2) NOT NULL DEFAULT 0,
-  obs VARCHAR(255) NULL,
+  pedido VARCHAR(40) DEFAULT NULL,
+  cliente VARCHAR(190) NOT NULL,
+  canal VARCHAR(20) NOT NULL DEFAULT 'PRESENCIAL',
+  pagamento VARCHAR(30) NOT NULL DEFAULT 'DINHEIRO',
+  obs VARCHAR(255) DEFAULT NULL,
+  total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_vendas_data ON vendas (data);
-CREATE INDEX idx_vendas_cliente ON vendas (cliente_id);
-CREATE INDEX idx_vendas_produto ON vendas (produto_id);
+CREATE TABLE IF NOT EXISTS venda_itens (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  venda_id INT NOT NULL,
+  produto_id INT NOT NULL,
+  qtd INT NOT NULL DEFAULT 0,
+  preco DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  -- sem FK, mas "como se tivesse":
+  INDEX (venda_id),
+  INDEX (produto_id)
+);

@@ -1,3 +1,73 @@
+<?php
+
+declare(strict_types=1);
+session_start();
+
+require_once __DIR__ . '/assets/conexao.php';
+require_once __DIR__ . '/assets/dados/vendas/_helpers.php';
+
+$pdo = db();
+
+$flash = flash_pop();
+
+$IMG_PREFIX = 'assets/dados/produtos/'; // pq no banco fica: images/arquivo.png
+
+function img_url(string $img, string $prefix): string
+{
+    $img = trim($img);
+    if ($img === '') return '';
+    if (str_starts_with($img, 'http://') || str_starts_with($img, 'https://') || str_starts_with($img, 'data:')) return $img;
+    return $prefix . ltrim($img, '/'); // vira: assets/dados/produtos/images/...
+}
+
+// produtos p/ montar itens no modal
+$produtos = $pdo->query("
+  SELECT id, codigo, nome, unidade, preco, estoque, minimo, imagem
+  FROM produtos
+  ORDER BY nome ASC
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// lista de vendas (últimas 500)
+$vendas = $pdo->query("
+  SELECT v.*,
+         (SELECT COUNT(*) FROM venda_itens vi WHERE vi.venda_id = v.id) AS itens_qtd
+  FROM vendas v
+  ORDER BY v.id DESC
+  LIMIT 500
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// itens das vendas (pra editar no modal)
+$itensByVenda = [];
+if ($vendas) {
+    $ids = array_map(fn($x) => (int)$x['id'], $vendas);
+    $in  = implode(',', array_fill(0, count($ids), '?'));
+
+    $st = $pdo->prepare("
+    SELECT vi.venda_id, vi.produto_id, vi.qtd, vi.preco, vi.total,
+           p.codigo, p.nome, p.unidade, p.imagem
+    FROM venda_itens vi
+    JOIN produtos p ON p.id = vi.produto_id
+    WHERE vi.venda_id IN ($in)
+    ORDER BY vi.id ASC
+  ");
+    $st->execute($ids);
+
+    while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+        $vid = (int)$r['venda_id'];
+        if (!isset($itensByVenda[$vid])) $itensByVenda[$vid] = [];
+        $itensByVenda[$vid][] = [
+            'produto_id' => (int)$r['produto_id'],
+            'codigo'     => (string)$r['codigo'],
+            'nome'       => (string)$r['nome'],
+            'unidade'    => (string)$r['unidade'],
+            'imagem'     => img_url((string)($r['imagem'] ?? ''), $IMG_PREFIX),
+            'qtd'        => (int)$r['qtd'],
+            'preco'      => (float)$r['preco'],
+            'total'      => (float)$r['total'],
+        ];
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -5,44 +75,21 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
-    <title>Painel da Distribuidora | Vendas (PDV)</title>
+    <title>Painel da Distribuidora | Vendas</title>
 
-    <!-- ========== CSS ========= -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
-        /* dropdown do profile: largura acompanha conteúdo */
         .profile-box .dropdown-menu {
             width: max-content;
             min-width: 260px;
             max-width: calc(100vw - 24px);
         }
 
-        .profile-box .dropdown-menu .author-info {
-            width: max-content;
-            max-width: 100%;
-            display: flex !important;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .profile-box .dropdown-menu .author-info .content {
-            min-width: 0;
-            max-width: 100%;
-        }
-
-        .profile-box .dropdown-menu .author-info .content a {
-            display: inline-block;
-            white-space: nowrap;
-            max-width: 100%;
-        }
-
-        /* Botões compactos */
         .main-btn.btn-compact {
             height: 38px !important;
             padding: 8px 14px !important;
@@ -71,207 +118,6 @@
             font-size: 13px;
         }
 
-        /* =============================
-       PDV layout (altura alinhada)
-       ============================= */
-        .pdv-row {
-            align-items: stretch;
-        }
-
-        /* garante colunas com mesma altura no desktop */
-
-        .pdv-left-col,
-        .pdv-right-col {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Cartões */
-        .pdv-card {
-            border: 1px solid rgba(148, 163, 184, .28);
-            border-radius: 16px;
-            background: #fff;
-            overflow: hidden;
-        }
-
-        .pdv-card .pdv-head {
-            padding: 12px 14px;
-            border-bottom: 1px solid rgba(148, 163, 184, .22);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .pdv-card .pdv-body {
-            padding: 14px;
-        }
-
-        /* ✅ Card da busca precisa permitir dropdown não ser cortado */
-        .pdv-card.pdv-search {
-            overflow: visible;
-            position: relative;
-            z-index: 50;
-        }
-
-        /* ✅ Card dos itens vai “crescer” até alinhar com o checkout */
-        .pdv-card.items-card {
-            flex: 1 1 auto;
-            min-height: 520px;
-            /* dá “corpo” mesmo sem itens */
-            display: flex;
-            flex-direction: column;
-        }
-
-        .pdv-card.items-card .pdv-body {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-
-        /* área rolável interna (vertical), mantendo layout alinhado */
-        .items-scroll {
-            flex: 1 1 auto;
-            min-height: 320px;
-            /* garante altura similar ao exemplo */
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
-            border-radius: 12px;
-        }
-
-        /* Checkout ocupa a coluna toda (alinhamento com itens) */
-        .pdv-right-col .pdv-card {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .pdv-right-col .checkout-body {
-            flex: 1 1 auto;
-            min-height: 0;
-            overflow: auto;
-            /* se a direita crescer, rola por dentro */
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* =============================
-       Busca e sugestões
-       ============================= */
-        .search-wrap {
-            position: relative;
-        }
-
-        .suggest {
-            position: absolute;
-            z-index: 9999;
-            left: 0;
-            right: 0;
-            top: calc(100% + 6px);
-            background: #fff;
-            border: 1px solid rgba(148, 163, 184, .25);
-            border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
-            max-height: 340px;
-            /* ✅ mais alto + rolagem */
-            overflow-y: auto;
-            overflow-x: hidden;
-            display: none;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-        }
-
-        .suggest .it {
-            padding: 10px 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-        }
-
-        .suggest .it:hover {
-            background: rgba(241, 245, 249, .9);
-        }
-
-        .pimg {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            object-fit: cover;
-            border: 1px solid rgba(148, 163, 184, .30);
-            background: #fff;
-            flex: 0 0 auto;
-        }
-
-        .it .meta {
-            min-width: 0;
-            flex: 1 1 auto;
-        }
-
-        .it .meta .t {
-            font-weight: 900;
-            font-size: 13px;
-            color: #0f172a;
-            line-height: 1.1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .it .meta .s {
-            font-size: 12px;
-            color: #64748b;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .it .price {
-            font-weight: 900;
-            font-size: 13px;
-            color: #0f172a;
-            white-space: nowrap;
-        }
-
-        /* Preview */
-        .preview-box {
-            width: 100%;
-            height: 130px;
-            border-radius: 16px;
-            border: 1px dashed rgba(148, 163, 184, .55);
-            background: rgba(248, 250, 252, .7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px;
-            text-align: center;
-        }
-
-        .preview-box img {
-            width: 86px;
-            height: 86px;
-            border-radius: 16px;
-            object-fit: cover;
-            border: 1px solid rgba(148, 163, 184, .30);
-            background: #fff;
-            margin-bottom: 6px;
-        }
-
-        .preview-name {
-            font-weight: 900;
-            font-size: 12px;
-            color: #0f172a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 220px;
-        }
-
-        /* =============================
-       Tabela itens
-       ============================= */
         .table td,
         .table th {
             vertical-align: middle;
@@ -281,187 +127,65 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* ✅ reduz min-width e evita scroll “extra” */
-        #tbItens {
+        #tbVendas {
             width: 100%;
-            min-width: 720px;
+            min-width: 1320px;
         }
 
-        #tbItens th,
-        #tbItens td {
+        #tbVendas th,
+        #tbVendas td {
             white-space: nowrap !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
         }
 
-        .qty-ctrl {
+        .prod-img {
+            width: 42px;
+            height: 42px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, .35);
+            background: #fff;
+        }
+
+        .img-preview {
+            width: 110px;
+            height: 110px;
+            object-fit: cover;
+            border-radius: 16px;
+            border: 1px dashed rgba(148, 163, 184, .6);
+            background: #fff;
+        }
+
+        .img-block {
+            max-width: 320px;
+            width: 100%;
+        }
+
+        .badge-soft {
+            padding: .35rem .6rem;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: .72rem;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            min-width: 92px;
         }
 
-        /* ✅ QTD menor para não estourar */
-        .qty-btn {
-            height: 34px !important;
-            width: 34px !important;
-            padding: 0 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            border-radius: 10px !important;
+        .badge-soft-success {
+            background: rgba(34, 197, 94, .12);
+            color: #16a34a;
         }
 
-        .qty-pill {
-            width: 64px !important;
-            height: 34px !important;
-            text-align: center;
-            font-weight: 900;
-            border: 1px solid rgba(148, 163, 184, .30);
-            border-radius: 10px;
-            padding: 4px 6px;
-            background: #fff;
-            font-size: 13px;
+        .badge-soft-gray {
+            background: rgba(148, 163, 184, .18);
+            color: #475569;
         }
 
-        .qty-pill::-webkit-outer-spin-button,
-        .qty-pill::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-
-        .qty-pill {
-            -moz-appearance: textfield;
-        }
-
-        /* =============================
-       Checkout
-       ============================= */
-        /* Checkout panel */
-        .checkout-head {
-            background: #0b5ed7;
-            color: #fff;
-            padding: 12px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .checkout-head h6 {
-            margin: 0;
-            font-weight: 900;
-            letter-spacing: .2px;
-        }
-
-        .checkout-body {
-            padding: 14px;
-        }
-
-        .pay-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .pay-btn {
-            border: 1px solid rgba(148, 163, 184, .35);
-            background: #fff;
-            border-radius: 12px;
-            padding: 12px 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            justify-content: flex-start;
-            font-weight: 900;
-            cursor: pointer;
-            user-select: none;
-            transition: .12s ease;
-            min-height: 44px;
-        }
-
-        .pay-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 22px rgba(15, 23, 42, .08);
-        }
-
-        .pay-btn.active {
-            outline: 2px solid rgba(37, 99, 235, .35);
-            border-color: rgba(37, 99, 235, .55);
-            background: rgba(239, 246, 255, .65);
-        }
-
-        .pay-btn i {
-            font-size: 18px;
-        }
-
-        .totals {
-            border: 1px solid rgba(148, 163, 184, .25);
-            border-radius: 14px;
-            background: #fff;
-            padding: 12px;
-        }
-
-        .tot-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            font-size: 13px;
-            color: #334155;
-            margin-bottom: 8px;
-            font-weight: 800;
-        }
-
-        .tot-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .tot-hr {
-            height: 1px;
-            background: rgba(148, 163, 184, .22);
-            margin: 10px 0;
-        }
-
-        .grand {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 10px;
-            margin-top: 6px;
-        }
-
-        .grand .lbl {
-            font-weight: 900;
-            color: #0f172a;
-            font-size: 18px;
-        }
-
-        .grand .val {
-            font-weight: 1000;
-            color: #0b5ed7;
-            font-size: 30px;
-            letter-spacing: .2px;
-        }
-
-        .chip-toggle {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .chip {
-            border: 1px solid rgba(148, 163, 184, .35);
-            border-radius: 999px;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-weight: 900;
-            font-size: 12px;
-            user-select: none;
-            background: #fff;
-        }
-
-        .chip.active {
-            background: rgba(239, 246, 255, .75);
-            border-color: rgba(37, 99, 235, .55);
-            outline: 2px solid rgba(37, 99, 235, .25);
+        .badge-soft-warning {
+            background: rgba(245, 158, 11, .12);
+            color: #b45309;
         }
 
         .muted {
@@ -469,111 +193,52 @@
             color: #64748b;
         }
 
-        .pay-split-row {
-            border: 1px solid rgba(148, 163, 184, .25);
-            border-radius: 14px;
-            padding: 12px;
-            background: #fff;
-            margin-bottom: 10px;
+        .td-center {
+            text-align: center;
         }
 
-        .msg-ok {
-            display: none;
-            color: #16a34a;
-            font-weight: 900;
-            font-size: 12px;
-        }
-
-        .msg-err {
-            display: none;
-            color: #b91c1c;
-            font-weight: 900;
-            font-size: 12px;
-        }
-
-        /* Últimos cupons */
-        .last-box {
-            border: 1px solid rgba(148, 163, 184, .25);
-            border-radius: 14px;
-            overflow: hidden;
-            background: #fff;
-            margin-top: 12px;
-        }
-
-        .last-box .head {
-            padding: 10px 12px;
-            border-bottom: 1px solid rgba(148, 163, 184, .18);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .last-box .head .t {
-            font-weight: 900;
-            font-size: 12px;
-            color: #0f172a;
-            text-transform: uppercase;
-            letter-spacing: .4px;
-        }
-
-        .last-box .list {
-            max-height: 220px;
-            overflow: auto;
-        }
-
-        .cup {
-            padding: 10px 12px;
-            border-bottom: 1px solid rgba(148, 163, 184, .12);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            font-size: 12px;
-        }
-
-        .cup:last-child {
-            border-bottom: none;
-        }
-
-        .cup .left .n {
-            font-weight: 900;
-            color: #0f172a;
-        }
-
-        .cup .left .s {
-            color: #64748b;
-            font-size: 12px;
-        }
-
-        .cup .right {
+        .td-right {
             text-align: right;
-            white-space: nowrap;
         }
 
-        .cup .right .v {
-            font-weight: 1000;
-            color: #0b5ed7;
+        .flash-auto-hide {
+            transition: opacity .35s ease, transform .35s ease;
         }
 
-        .cup .right .st {
-            font-weight: 900;
-            color: #16a34a;
-            font-size: 11px;
+        .flash-auto-hide.hide {
+            opacity: 0;
+            transform: translateY(-6px);
+            pointer-events: none;
         }
 
-        @media (max-width: 991.98px) {
-            .pay-grid {
-                grid-template-columns: 1fr;
-            }
+        /* tabela itens do modal */
+        #tbItens th,
+        #tbItens td {
+            vertical-align: middle;
+        }
 
-            #tbItens {
-                min-width: 720px;
-            }
+        #tbItens select,
+        #tbItens input {
+            height: 38px;
+            font-size: 13px;
+        }
 
-            .grand .val {
-                font-size: 26px;
-            }
+        .mini {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .modal-content {
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid rgba(148, 163, 184, .22);
+        }
+
+        .modal-footer {
+            border-top: 1px solid rgba(148, 163, 184, .22);
         }
     </style>
 </head>
@@ -586,7 +251,7 @@
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="index.html" class="d-flex align-items-center gap-2">
+            <a href="index.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
             </a>
         </div>
@@ -594,96 +259,56 @@
         <nav class="sidebar-nav">
             <ul>
                 <li class="nav-item">
-                    <a href="index.html">
-                        <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
-                                <path
-                                    d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
-                            </svg>
-                        </span>
+                    <a href="index.php">
+                        <span class="icon"><i class="lni lni-dashboard"></i></span>
                         <span class="text">Dashboard</span>
                     </a>
                 </li>
 
+                <!-- Operações -->
                 <li class="nav-item nav-item-has-children active">
-                    <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
-                        aria-controls="ddmenu_operacoes" aria-expanded="true">
-                        <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
-                            </svg>
-                        </span>
+                    <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="true">
+                        <span class="icon"><i class="lni lni-grid-alt"></i></span>
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
-                        <li><a href="pedidos.html">Pedidos</a></li>
-                        <li><a href="vendas.html" class="active">Vendas</a></li>
-                        <li><a href="devolucoes.html">Devoluções</a></li>
+                        <li><a href="pedidos.php">Pedidos</a></li>
+                        <li class="active"><a href="vendas.php" class="active">Vendas</a></li>
+                        <li><a href="devolucoes.php">Devoluções</a></li>
                     </ul>
                 </li>
 
+                <!-- Estoque -->
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
-                        aria-controls="ddmenu_estoque" aria-expanded="false">
-                        <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
-                                <path
-                                    d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
-                            </svg>
-                        </span>
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
+                        <span class="icon"><i class="lni lni-archive"></i></span>
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse dropdown-nav">
-                        <li><a href="produtos.html">Produtos</a></li>
-                        <li><a href="inventario.html">Inventário</a></li>
-                        <li><a href="entradas.html">Entradas</a></li>
-                        <li><a href="saidas.html">Saídas</a></li>
-                        <li><a href="estoque-minimo.html">Estoque Mínimo</a></li>
+                        <li><a href="produtos.php">Produtos</a></li>
+                        <li><a href="inventario.php">Inventário</a></li>
+                        <li><a href="entradas.php">Entradas</a></li>
+                        <li><a href="saidas.php">Saídas</a></li>
+                        <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
                     </ul>
                 </li>
 
+                <!-- Cadastros -->
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros"
-                        aria-controls="ddmenu_cadastros" aria-expanded="false">
-                        <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                                <path
-                                    d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                                <path
-                                    d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                                <path
-                                    d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
-                            </svg>
-                        </span>
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
+                        <span class="icon"><i class="lni lni-users"></i></span>
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-                        <li><a href="clientes.html">Clientes</a></li>
-                        <li><a href="fornecedores.html">Fornecedores</a></li>
-                        <li><a href="categorias.html">Categorias</a></li>
+                        <li><a href="clientes.php">Clientes</a></li>
+                        <li><a href="fornecedores.php">Fornecedores</a></li>
+                        <li><a href="categorias.php">Categorias</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="relatorios.html">
-                        <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
-                            </svg>
-                        </span>
+                    <a href="relatorios.php">
+                        <span class="icon"><i class="lni lni-book"></i></span>
                         <span class="text">Relatórios</span>
                     </a>
                 </li>
@@ -693,34 +318,19 @@
                 </span>
 
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config"
-                        aria-controls="ddmenu_config" aria-expanded="false">
-                        <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
-                            </svg>
-                        </span>
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
+                        <span class="icon"><i class="lni lni-cog"></i></span>
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
-                        <li><a href="usuarios.html">Usuários e Permissões</a></li>
-                        <li><a href="parametros.html">Parâmetros do Sistema</a></li>
+                        <li><a href="usuarios.php">Usuários e Permissões</a></li>
+                        <li><a href="parametros.php">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="suporte.html">
-                        <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                                <path
-                                    d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
-                            </svg>
-                        </span>
+                    <a href="suporte.php">
+                        <span class="icon"><i class="lni lni-support"></i></span>
                         <span class="text">Suporte</span>
                     </a>
                 </li>
@@ -737,16 +347,14 @@
                     <div class="col-lg-5 col-md-5 col-6">
                         <div class="header-left d-flex align-items-center">
                             <div class="menu-toggle-btn mr-15">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact"
-                                    type="button">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
                             <div class="header-search d-none d-md-flex">
-                                <form action="#">
-                                    <input type="text" placeholder="Atalho: F4 pesquisar..." id="qGlobal" />
-                                    <button type="submit" onclick="return false"><i
-                                            class="lni lni-search-alt"></i></button>
+                                <form action="#" onsubmit="return false;">
+                                    <input type="text" placeholder="Buscar venda..." id="qGlobal" />
+                                    <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                                 </form>
                             </div>
                         </div>
@@ -755,12 +363,10 @@
                     <div class="col-lg-7 col-md-7 col-6">
                         <div class="header-right">
                             <div class="profile-box ml-15">
-                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="profile-info">
                                         <div class="info">
-                                            <div class="image"><img src="assets/images/profile/profile-image.png"
-                                                    alt="perfil" /></div>
+                                            <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
                                             <div>
                                                 <h6 class="fw-500">Administrador</h6>
                                                 <p>Distribuidora</p>
@@ -770,22 +376,10 @@
                                 </button>
 
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                                    <li>
-                                        <div class="author-info flex items-center !p-1">
-                                            <div class="image"><img src="assets/images/profile/profile-image.png"
-                                                    alt="image" /></div>
-                                            <div class="content">
-                                                <h4 class="text-sm">Administrador</h4>
-                                                <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
-                                                    href="#">Admin</a>
-                                            </div>
-                                        </div>
-                                    </li>
+                                    <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                                    <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
                                     <li class="divider"></li>
-                                    <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
-                                    <li class="divider"></li>
-                                    <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
+                                    <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -801,253 +395,134 @@
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="title">
-                                <h2>Terminal de Vendas (PDV)</h2>
-                                <div class="muted">Ponto de Venda & Checkout — <b>F4</b> pesquisar | <b>F2</b> confirmar
-                                </div>
+                                <h2>Vendas</h2>
+                            </div>
+                            <div class="muted">Ao salvar, o sistema dá baixa no estoque do produto.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <?php if ($flash):
+                    $t = (string)$flash['type'];
+                    $cls = in_array($t, ['success', 'danger', 'warning', 'info'], true) ? $t : 'info';
+                ?>
+                    <div id="flashBox" class="alert alert-<?= e($cls) ?> flash-auto-hide mt-2">
+                        <?= e((string)$flash['msg']) ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Toolbar -->
+                <div class="card-style mb-30">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label">Pesquisar</label>
+                            <input type="text" class="form-control compact" id="qVendas" placeholder="Pedido, cliente, produto..." />
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label">Canal</label>
+                            <select class="form-select compact" id="fCanal">
+                                <option value="">Todos</option>
+                                <option value="PRESENCIAL">Presencial</option>
+                                <option value="DELIVERY">Delivery</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label">Período</label>
+                            <div class="d-flex gap-2">
+                                <input type="date" class="form-control compact" id="dtIni" />
+                                <input type="date" class="form-control compact" id="dtFim" />
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
+                                <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal" data-bs-target="#modalVenda" id="btnNovo" type="button">
+                                    <i class="lni lni-plus me-1"></i> Nova
+                                </button>
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
+                                    <i class="lni lni-download me-1"></i> Excel
+                                </button>
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
+                                    <i class="lni lni-printer me-1"></i> PDF
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="row g-3 mb-30 pdv-row">
-                    <!-- LEFT -->
-                    <div class="col-12 col-lg-8">
-                        <div class="pdv-left-col">
-                            <!-- Search + Preview -->
-                            <div class="pdv-card pdv-search mb-3">
-                                <div class="pdv-body">
-                                    <div class="row g-3 align-items-stretch">
-                                        <div class="col-12 col-md-8">
-                                            <label class="form-label">Pesquisar Produto (F4)</label>
-                                            <div class="search-wrap">
-                                                <input class="form-control compact" id="qProd"
-                                                    placeholder="Nome ou código..." autocomplete="off" />
-                                                <div class="suggest" id="suggest"></div>
-                                            </div>
-                                            <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar
-                                                o 1º resultado.</div>
-                                        </div>
+                <!-- Tabela -->
+                <div class="card-style mb-30">
+                    <div class="table-responsive">
+                        <table class="table text-nowrap" id="tbVendas">
+                            <thead>
+                                <tr>
+                                    <th style="min-width:120px;">Imagem</th>
+                                    <th style="min-width:140px;">Data</th>
+                                    <th style="min-width:140px;">Pedido</th>
+                                    <th style="min-width:240px;">Cliente</th>
+                                    <th style="min-width:140px;" class="td-center">Canal</th>
+                                    <th style="min-width:140px;" class="td-center">Pagamento</th>
+                                    <th style="min-width:120px;" class="td-center">Itens</th>
+                                    <th style="min-width:160px;" class="td-center">Total</th>
+                                    <th style="min-width:160px;" class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($vendas as $v):
+                                    $id = (int)$v['id'];
+                                    $dataYmd = (string)$v['data'];
+                                    $dataBR = $dataYmd ? date('d/m/Y', strtotime($dataYmd)) : '';
+                                    $canal = strtoupper((string)$v['canal']);
+                                    $pag = strtoupper((string)$v['pagamento']);
+                                    $pedido = (string)($v['pedido'] ?? '');
+                                    $cliente = (string)$v['cliente'];
+                                    $itensQtd = (int)($v['itens_qtd'] ?? 0);
+                                    $total = (float)($v['total'] ?? 0);
 
-                                        <div class="col-12 col-md-4">
-                                            <label class="form-label">Imagem</label>
-                                            <div class="preview-box">
-                                                <div>
-                                                    <img id="previewImg" alt="Prévia" />
-                                                    <div class="preview-name" id="previewName">AGUARDANDO...</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            <!-- Itens -->
-                            <div class="pdv-card items-card">
-                                <div class="pdv-head">
-                                    <div style="font-weight: 1000; color:#0f172a;">
-                                        <i class="lni lni-cart me-1"></i> Itens da Venda
-                                    </div>
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar"
-                                            type="button">
-                                            <i class="lni lni-trash-can me-1"></i> Limpar
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="pdv-body">
-                                    <!-- ✅ área interna que cresce até alinhar com checkout -->
-                                    <div class="items-scroll">
-                                        <div class="table-responsive">
-                                            <table class="table text-nowrap mb-0" id="tbItens">
-                                                <thead>
-                                                    <tr>
-                                                        <th style="min-width:70px;">Item</th>
-                                                        <th style="min-width:320px;">Produto</th>
-                                                        <th style="min-width:140px;">Qtd</th>
-                                                        <th style="min-width:140px;" class="text-end">Unitário</th>
-                                                        <th style="min-width:160px;" class="text-end">Subtotal</th>
-                                                        <th style="min-width:120px;" class="text-center">Ações</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="tbodyItens"></tbody>
-                                            </table>
-                                        </div>
-
-                                        <div class="muted p-3" id="hintEmpty" style="display:none;">Aguardando inclusão
-                                            de produtos...</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RIGHT: Checkout -->
-                    <div class="col-12 col-lg-4">
-                        <div class="pdv-right-col">
-                            <div class="pdv-card">
-                                <div class="checkout-head">
-                                    <h6 style="color: #fff;"><i class="lni lni-calculator me-1"></i> Checkout</h6>
-                                    <span class="badge bg-light text-dark" id="saleNo">Venda #—</span>
-                                </div>
-
-                                <div class="checkout-body">
-                                    <div class="mb-3">
-                                        <label class="form-label">Cliente</label>
-                                        <input class="form-control compact" id="cCliente"
-                                            placeholder="CPF ou Nome (Opcional)" />
-                                        <div class="muted mt-1">Consumidor final (se vazio).</div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Forma de Entrega</label>
-                                        <div class="chip-toggle">
-                                            <div class="chip active" id="chipPres">Presencial</div>
-                                            <div class="chip" id="chipDel">Delivery</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3" id="wrapDelivery" style="display:none;">
-                                        <label class="form-label">Endereço</label>
-                                        <input class="form-control compact mb-2" id="cEndereco"
-                                            placeholder="Rua, nº, bairro, referência..." />
-                                        <div class="row g-2">
-                                            <div class="col-6">
-                                                <label class="form-label">Taxa entrega</label>
-                                                <input class="form-control compact" id="cEntrega" placeholder="0,00"
-                                                    value="0,00" />
-                                            </div>
-                                            <div class="col-6">
-                                                <label class="form-label">Observação</label>
-                                                <input class="form-control compact" id="cObs" placeholder="Opcional" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Desconto</label>
-                                        <div class="row g-2">
-                                            <div class="col-5">
-                                                <select class="form-select compact" id="dTipo">
-                                                    <option value="PERC">%</option>
-                                                    <option value="VALOR">R$</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-7">
-                                                <input class="form-control compact" id="dValor" placeholder="0"
-                                                    value="0" />
-                                            </div>
-                                        </div>
-                                        <div class="muted mt-1">Desconto aplicado no subtotal (antes da taxa).</div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Método de Pagamento</label>
-
-                                        <div class="chip-toggle mb-2">
-                                            <div class="chip active" id="chipPagUnico">Único</div>
-                                            <div class="chip" id="chipPagMulti">Múltiplos</div>
-                                        </div>
-
-                                        <!-- único -->
-                                        <div id="wrapPagUnico">
-                                            <div class="pay-grid mb-2" id="payBtns">
-                                                <div class="pay-btn active" data-pay="DINHEIRO"><i
-                                                        class="lni lni-coin"></i> Dinheiro</div>
-                                                <div class="pay-btn" data-pay="PIX"><i
-                                                        class="lni lni-telegram-original"></i> Pix</div>
-                                                <div class="pay-btn" data-pay="CARTAO"><i
-                                                        class="lni lni-credit-cards"></i> Cartão</div>
-                                                <div class="pay-btn" data-pay="BOLETO"><i
-                                                        class="lni lni-ticket-alt"></i> Boleto</div>
-                                            </div>
-
-                                            <div class="row g-2">
-                                                <div class="col-6">
-                                                    <label class="form-label">Valor pago</label>
-                                                    <input class="form-control compact" id="pValor" placeholder="0,00"
-                                                        value="0,00" />
-                                                </div>
-                                                <div class="col-6">
-                                                    <label class="form-label">Troco</label>
-                                                    <input class="form-control compact" id="pTroco" value="0,00"
-                                                        readonly />
-                                                </div>
-                                            </div>
-                                            <div class="muted mt-1" id="hintTroco" style="display:none;">Em dinheiro
-                                                pode ser maior que o total (troco automático).</div>
-                                        </div>
-
-                                        <!-- múltiplos -->
-                                        <div id="wrapPagMulti" style="display:none;">
-                                            <div
-                                                class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-                                                <div class="muted">Some os pagamentos para fechar o total. Se passar do
-                                                    total, precisa ter Dinheiro (troco).</div>
-                                                <button class="main-btn light-btn btn-hover btn-compact" id="btnAddPay"
-                                                    type="button">
-                                                    <i class="lni lni-plus me-1"></i> Adicionar
-                                                </button>
-                                            </div>
-
-                                            <div id="paysWrap"></div>
-
-                                            <div class="totals mt-2">
-                                                <div class="tot-row"><span>Somatório</span><span id="mSum">R$
-                                                        0,00</span></div>
-                                                <div class="tot-row"><span>Diferença (Pag - Total)</span><span
-                                                        id="mDiff">R$ 0,00</span></div>
-                                                <div class="tot-row"><span>Troco</span><span id="mTroco">R$ 0,00</span>
-                                                </div>
-                                                <div class="msg-ok mt-2" id="mOk">✅ Pagamento OK.</div>
-                                                <div class="msg-err mt-2" id="mErr">⚠️ Pagamento inválido. Ajuste os
-                                                    valores.</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="totals mb-3">
-                                        <div class="tot-row"><span>Subtotal</span><span id="tSub">R$ 0,00</span></div>
-                                        <div class="tot-row"><span>Desconto</span><span id="tDesc">- R$ 0,00</span>
-                                        </div>
-                                        <div class="tot-row"><span>Taxa entrega</span><span id="tEnt">R$ 0,00</span>
-                                        </div>
-                                        <div class="tot-hr"></div>
-                                        <div class="grand">
-                                            <span class="lbl">TOTAL</span>
-                                            <span class="val" id="tTotal">R$ 0,00</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="d-grid gap-2">
-                                        <button class="main-btn primary-btn btn-hover btn-compact" id="btnConfirmar"
-                                            type="button">
-                                            <i class="lni lni-checkmark-circle me-1"></i> CONFIRMAR VENDA (F2)
-                                        </button>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="chkPrint" checked />
-                                            <label class="form-check-label" for="chkPrint">Imprimir cupom após
-                                                confirmar</label>
-                                        </div>
-                                    </div>
-
-                                    <!-- Últimos cupons -->
-                                    <div class="last-box">
-                                        <div class="head">
-                                            <div class="t">Últimos cupons</div>
-                                            <button class="main-btn light-btn btn-hover btn-compact" id="btnRefreshLast"
-                                                type="button" style="height:32px!important;padding:6px 10px!important;">
-                                                <i class="lni lni-reload"></i>
+                                    $firstImg = '';
+                                    $items = $itensByVenda[$id] ?? [];
+                                    if ($items) $firstImg = (string)($items[0]['imagem'] ?? '');
+                                ?>
+                                    <tr
+                                        data-id="<?= $id ?>"
+                                        data-data="<?= e($dataYmd) ?>"
+                                        data-canal="<?= e($canal) ?>"
+                                        data-pedido="<?= e($pedido) ?>"
+                                        data-cliente="<?= e($cliente) ?>"
+                                        data-pagamento="<?= e($pag) ?>"
+                                        data-obs="<?= e((string)($v['obs'] ?? '')) ?>"
+                                        data-total="<?= e((string)$total) ?>">
+                                        <td>
+                                            <img class="prod-img" src="<?= e($firstImg) ?>" alt="img" />
+                                        </td>
+                                        <td class="date"><?= e($dataBR) ?></td>
+                                        <td class="ped"><?= e($pedido ?: ('VENDA-' . $id)) ?></td>
+                                        <td class="cli"><?= e($cliente) ?></td>
+                                        <td class="td-center canal"><?= e($canal) ?></td>
+                                        <td class="td-center pagto"><?= e($pag) ?></td>
+                                        <td class="td-center itens"><?= $itensQtd ?></td>
+                                        <td class="td-center total"><?= e(float_to_brl($total)) ?></td>
+                                        <td class="text-end">
+                                            <button class="main-btn light-btn btn-hover icon-btn btnEdit" type="button" title="Editar">
+                                                <i class="lni lni-pencil"></i>
                                             </button>
-                                        </div>
-                                        <div class="list" id="lastList"></div>
-                                    </div>
+                                            <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" type="button" title="Excluir">
+                                                <i class="lni lni-trash-can"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
 
-                                </div>
-                            </div>
-                        </div>
+                                    <script type="application/json" id="itens-<?= $id ?>">
+                                        <?= json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                                    </script>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
+
+                    <p class="text-sm text-gray mt-2 mb-0" id="infoCount"></p>
                 </div>
 
             </div>
@@ -1066,750 +541,600 @@
         </footer>
     </main>
 
-    <!-- ========= JS ========= -->
+    <!-- DELETE FORM -->
+    <form id="frmDelete" action="assets/dados/vendas/excluirVendas.php" method="post" style="display:none;">
+        <?= csrf_input() ?>
+        <input type="hidden" name="id" id="delId" value="">
+    </form>
+
+    <!-- Modal Venda -->
+    <div class="modal fade" id="modalVenda" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="modalVendaTitle" style="font-weight:1000;">Nova Venda</h5>
+                        <div class="muted" id="modalVendaSub">Preencha os dados e adicione os itens.</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="formVenda" action="assets/dados/vendas/salvarVendas.php" method="post">
+                        <?= csrf_input() ?>
+                        <input type="hidden" name="id" id="vId" value="">
+
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label">Data</label>
+                                <input type="date" class="form-control compact" name="data" id="vData" required>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Pedido</label>
+                                <input type="text" class="form-control compact" name="pedido" id="vPedido" placeholder="Ex: PED-0009">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Cliente *</label>
+                                <input type="text" class="form-control compact" name="cliente" id="vCliente" placeholder="Nome do cliente" required>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Canal</label>
+                                <select class="form-select compact" name="canal" id="vCanal" required>
+                                    <option value="PRESENCIAL">Presencial</option>
+                                    <option value="DELIVERY">Delivery</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Pagamento</label>
+                                <select class="form-select compact" name="pagamento" id="vPagamento" required>
+                                    <option>DINHEIRO</option>
+                                    <option>PIX</option>
+                                    <option>CARTÃO</option>
+                                    <option>TRANSFERÊNCIA</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Observação</label>
+                                <input type="text" class="form-control compact" name="obs" id="vObs" placeholder="Opcional">
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                            <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-cart me-1"></i> Itens da venda</div>
+                            <button type="button" class="main-btn light-btn btn-hover btn-compact" id="btnAddItem">
+                                <i class="lni lni-plus me-1"></i> Adicionar item
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table" id="tbItens">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width:420px;">Produto</th>
+                                        <th style="min-width:130px;" class="td-center">Unidade</th>
+                                        <th style="min-width:130px;" class="td-center">Estoque</th>
+                                        <th style="min-width:140px;" class="td-center">Preço</th>
+                                        <th style="min-width:120px;" class="td-center">Qtd</th>
+                                        <th style="min-width:160px;" class="td-center">Subtotal</th>
+                                        <th style="min-width:90px;" class="td-center">Rem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyItens"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-2">
+                            <div style="min-width:280px;">
+                                <div class="d-flex justify-content-between">
+                                    <div style="font-weight:900;color:#0f172a;">Total</div>
+                                    <div style="font-weight:900;color:#0f172a;" id="vTotalTxt">R$ 0,00</div>
+                                </div>
+                                <div class="mini">* Ao salvar: baixa no estoque do(s) produto(s).</div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="formVenda" class="main-btn primary-btn btn-hover btn-compact">
+                        <i class="lni lni-save me-1"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
 
+    <!-- jsPDF + AutoTable (PDF) -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
     <script>
-        // ==============================
-        // Dados / Storage
-        // ==============================
-        const LS_PRODUCTS = "dist_products_v1";
-        const LS_SALES = "dist_sales_pdv_v1";
+        // flash 1.5s
+        (function() {
+            const box = document.getElementById('flashBox');
+            if (!box) return;
+            setTimeout(() => {
+                box.classList.add('hide');
+                setTimeout(() => box.remove(), 400);
+            }, 1500);
+        })();
 
         const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+      <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
         <rect width="100%" height="100%" fill="#f1f5f9"/>
-        <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
-        <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
+        <path d="M18 68l18-18 12 12 10-10 20 20" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="34" cy="34" r="7" fill="#94a3b8"/>
+        <text x="50%" y="86%" text-anchor="middle" font-family="Arial" font-size="10" fill="#64748b">Sem imagem</text>
       </svg>
     `);
 
-        function safeText(s) {
-            return String(s ?? "")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
+        // fallback img na lista
+        document.querySelectorAll("img.prod-img").forEach(img => {
+            const src = img.getAttribute('src') || '';
+            if (!src) img.src = DEFAULT_IMG;
+            img.addEventListener('error', () => img.src = DEFAULT_IMG, {
+                once: true
+            });
+        });
+
+        const tb = document.getElementById('tbVendas');
+        const qVendas = document.getElementById('qVendas');
+        const qGlobal = document.getElementById('qGlobal');
+        const fCanal = document.getElementById('fCanal');
+        const dtIni = document.getElementById('dtIni');
+        const dtFim = document.getElementById('dtFim');
+        const infoCount = document.getElementById('infoCount');
+
+        function norm(s) {
+            return String(s ?? '').toLowerCase().trim();
         }
 
-        function moneyToNumber(txt) {
-            let s = String(txt ?? "").trim();
-            if (!s) return 0;
-            s = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+        function aplicarFiltros() {
+            const q = norm(qVendas.value || qGlobal.value);
+            const canal = (fCanal.value || '').toUpperCase();
+            const ini = dtIni.value || '';
+            const fim = dtFim.value || '';
+
+            const rows = Array.from(tb.querySelectorAll('tbody tr'));
+            let shown = 0;
+
+            rows.forEach(tr => {
+                const text = norm(tr.innerText);
+                const rCanal = (tr.getAttribute('data-canal') || '').toUpperCase();
+                const rData = tr.getAttribute('data-data') || '';
+
+                let ok = true;
+                if (q && !text.includes(q)) ok = false;
+                if (canal && rCanal !== canal) ok = false;
+
+                if (ini && rData && rData < ini) ok = false;
+                if (fim && rData && rData > fim) ok = false;
+
+                tr.style.display = ok ? '' : 'none';
+                if (ok) shown++;
+            });
+
+            infoCount.textContent = `Mostrando ${shown} venda(s).`;
+        }
+
+        qVendas.addEventListener('input', aplicarFiltros);
+        qGlobal.addEventListener('input', aplicarFiltros);
+        fCanal.addEventListener('change', aplicarFiltros);
+        dtIni.addEventListener('change', aplicarFiltros);
+        dtFim.addEventListener('change', aplicarFiltros);
+        aplicarFiltros();
+
+        // ===== Modal =====
+        const modalEl = document.getElementById('modalVenda');
+        const modal = new bootstrap.Modal(modalEl);
+
+        const modalTitle = document.getElementById('modalVendaTitle');
+        const modalSub = document.getElementById('modalVendaSub');
+
+        const vId = document.getElementById('vId');
+        const vData = document.getElementById('vData');
+        const vPedido = document.getElementById('vPedido');
+        const vCliente = document.getElementById('vCliente');
+        const vCanal = document.getElementById('vCanal');
+        const vPagamento = document.getElementById('vPagamento');
+        const vObs = document.getElementById('vObs');
+
+        const tbodyItens = document.getElementById('tbodyItens');
+        const vTotalTxt = document.getElementById('vTotalTxt');
+
+        function parseBRL(txt) {
+            let s = String(txt ?? '').trim();
+            s = s.replace(/\s/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.');
             const n = Number(s);
             return isNaN(n) ? 0 : n;
         }
 
-        function numberToMoney(n) {
-            const v = Number(n || 0);
-            return "R$ " + v.toFixed(2).replace(".", ",");
+        function fmtBRL(n) {
+            return 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
         }
 
-        function nowBR() {
-            const d = new Date();
-            const pad = (n) => String(n).padStart(2, "0");
-            return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        }
+        const PROD_OPTIONS_HTML = `
+      <option value="">Selecione…</option>
+      <?php foreach ($produtos as $p):
+            $pid = (int)$p['id'];
+            $cod = (string)$p['codigo'];
+            $nome = (string)$p['nome'];
+            $und = (string)($p['unidade'] ?? '');
+            $preco = (float)($p['preco'] ?? 0);
+            $est = (int)($p['estoque'] ?? 0);
+            $img = img_url((string)($p['imagem'] ?? ''), $IMG_PREFIX);
+        ?>
+        <option
+          value="<?= $pid ?>"
+          data-codigo="<?= e($cod) ?>"
+          data-nome="<?= e($nome) ?>"
+          data-unidade="<?= e($und) ?>"
+          data-preco="<?= e((string)$preco) ?>"
+          data-estoque="<?= e((string)$est) ?>"
+          data-img="<?= e($img) ?>"
+        ><?= e($cod . ' - ' . $nome) ?></option>
+      <?php endforeach; ?>
+    `;
 
-        function loadJson(key, fallback) {
-            try {
-                const raw = localStorage.getItem(key);
-                return raw ? JSON.parse(raw) : fallback;
-            } catch {
-                return fallback;
+        function makeItemRow(item) {
+            // item: {produto_id, qtd, preco}
+            const pid = item && item.produto_id ? String(item.produto_id) : '';
+            const qtd = item && item.qtd ? Number(item.qtd) : 1;
+            const preco = item && (item.preco !== undefined) ? Number(item.preco) : 0;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+        <td>
+          <select class="form-select compact it-prod" name="produto_id[]">${PROD_OPTIONS_HTML}</select>
+          <div class="mini it-mini"></div>
+        </td>
+        <td class="td-center"><span class="it-und">—</span></td>
+        <td class="td-center"><span class="it-est">—</span></td>
+        <td class="td-center">
+          <input class="form-control compact td-center it-preco" name="preco[]" value="${preco ? String(preco).replace('.',',') : ''}" placeholder="0,00">
+        </td>
+        <td class="td-center">
+          <input type="number" min="1" class="form-control compact td-center it-qtd" name="qtd[]" value="${qtd}">
+        </td>
+        <td class="td-center"><span class="it-sub">R$ 0,00</span></td>
+        <td class="td-center">
+          <button type="button" class="main-btn danger-btn-outline btn-hover icon-btn it-del" title="Remover">
+            <i class="lni lni-trash-can"></i>
+          </button>
+        </td>
+      `;
+
+            const sel = tr.querySelector('.it-prod');
+            const inpQtd = tr.querySelector('.it-qtd');
+            const inpPreco = tr.querySelector('.it-preco');
+
+            if (pid) sel.value = pid;
+
+            function syncFromSelect() {
+                const opt = sel.options[sel.selectedIndex];
+                if (!opt || !sel.value) {
+                    tr.querySelector('.it-und').textContent = '—';
+                    tr.querySelector('.it-est').textContent = '—';
+                    tr.querySelector('.it-mini').textContent = '';
+                    calcRow();
+                    return;
+                }
+                const und = opt.getAttribute('data-unidade') || '';
+                const est = opt.getAttribute('data-estoque') || '0';
+                const precoOpt = opt.getAttribute('data-preco') || '0';
+                const cod = opt.getAttribute('data-codigo') || '';
+                const nome = opt.getAttribute('data-nome') || '';
+                tr.querySelector('.it-und').textContent = und || '—';
+                tr.querySelector('.it-est').textContent = est;
+                tr.querySelector('.it-mini').textContent = `Produto: ${cod} • ${nome}`;
+                // se preço vazio, seta o do produto
+                if (!String(inpPreco.value || '').trim()) {
+                    inpPreco.value = String(Number(precoOpt || 0)).toFixed(2).replace('.', ',');
+                }
+                calcRow();
             }
-        }
 
-        function saveJson(key, val) {
-            localStorage.setItem(key, JSON.stringify(val));
-        }
+            function calcRow() {
+                const q = Number(inpQtd.value || 0);
+                const p = parseBRL(inpPreco.value);
+                const sub = q * p;
+                tr.querySelector('.it-sub').textContent = fmtBRL(sub);
+                calcTotal();
+            }
 
-        function seedProductsIfEmpty() {
-            const p = loadJson(LS_PRODUCTS, []);
-            if (Array.isArray(p) && p.length) return;
-            const seed = [
-                { code: "P0001", name: "Arroz 5kg (Tipo 1)", price: 28.90, img: DEFAULT_IMG },
-                { code: "P0002", name: "Açúcar 1kg", price: 6.50, img: DEFAULT_IMG },
-                { code: "P0003", name: "Detergente 500ml", price: 3.20, img: DEFAULT_IMG },
-                { code: "P0004", name: "Refrigerante 2L", price: 10.00, img: DEFAULT_IMG },
-            ];
-            saveJson(LS_PRODUCTS, seed);
-        }
+            sel.addEventListener('change', syncFromSelect);
+            inpQtd.addEventListener('input', calcRow);
+            inpPreco.addEventListener('input', calcRow);
 
-        function getProducts() {
-            seedProductsIfEmpty();
-            const arr = loadJson(LS_PRODUCTS, []);
-            return (arr || []).map(x => ({
-                code: String(x.code || x.codigo || "").trim(),
-                name: String(x.name || x.produto || "").trim(),
-                price: Number(x.price ?? x.preco ?? 0) || 0,
-                img: String(x.img || x.imagem || DEFAULT_IMG),
-            })).filter(x => x.code && x.name);
-        }
+            tr.querySelector('.it-del').addEventListener('click', () => {
+                tr.remove();
+                calcTotal();
+            });
 
-        function getSales() { return loadJson(LS_SALES, []); }
-
-        function addSale(sale) {
-            const all = getSales();
-            all.unshift(sale);
-            saveJson(LS_SALES, all.slice(0, 100));
-        }
-
-        function nextSaleNo() {
-            const all = getSales();
-            const nums = all.map(x => Number(x.no || 0)).filter(n => n > 0);
-            return (nums.length ? Math.max(...nums) : 0) + 1;
-        }
-
-        // ==============================
-        // Estado PDV
-        // ==============================
-        let PRODUCTS = [];
-        let CART = [];
-        let PAY_MODE = "UNICO"; // UNICO | MULTI
-        let PAY_SELECTED = "DINHEIRO";
-        let DELIVERY_MODE = "PRESENCIAL"; // PRESENCIAL | DELIVERY
-
-        // ==============================
-        // DOM
-        // ==============================
-        const qProd = document.getElementById("qProd");
-        const suggest = document.getElementById("suggest");
-        const qGlobal = document.getElementById("qGlobal");
-
-        const previewImg = document.getElementById("previewImg");
-        const previewName = document.getElementById("previewName");
-
-        const tbodyItens = document.getElementById("tbodyItens");
-        const hintEmpty = document.getElementById("hintEmpty");
-        const btnLimpar = document.getElementById("btnLimpar");
-
-        const saleNo = document.getElementById("saleNo");
-
-        const cCliente = document.getElementById("cCliente");
-        const chipPres = document.getElementById("chipPres");
-        const chipDel = document.getElementById("chipDel");
-        const wrapDelivery = document.getElementById("wrapDelivery");
-        const cEndereco = document.getElementById("cEndereco");
-        const cEntrega = document.getElementById("cEntrega");
-        const cObs = document.getElementById("cObs");
-
-        const dTipo = document.getElementById("dTipo");
-        const dValor = document.getElementById("dValor");
-
-        const chipPagUnico = document.getElementById("chipPagUnico");
-        const chipPagMulti = document.getElementById("chipPagMulti");
-        const wrapPagUnico = document.getElementById("wrapPagUnico");
-        const wrapPagMulti = document.getElementById("wrapPagMulti");
-
-        const payBtns = document.getElementById("payBtns");
-        const pValor = document.getElementById("pValor");
-        const pTroco = document.getElementById("pTroco");
-        const hintTroco = document.getElementById("hintTroco");
-
-        const btnAddPay = document.getElementById("btnAddPay");
-        const paysWrap = document.getElementById("paysWrap");
-        const mSum = document.getElementById("mSum");
-        const mDiff = document.getElementById("mDiff");
-        const mTroco = document.getElementById("mTroco");
-        const mOk = document.getElementById("mOk");
-        const mErr = document.getElementById("mErr");
-
-        const tSub = document.getElementById("tSub");
-        const tDesc = document.getElementById("tDesc");
-        const tEnt = document.getElementById("tEnt");
-        const tTotal = document.getElementById("tTotal");
-
-        const btnConfirmar = document.getElementById("btnConfirmar");
-        const chkPrint = document.getElementById("chkPrint");
-
-        const lastList = document.getElementById("lastList");
-        const btnRefreshLast = document.getElementById("btnRefreshLast");
-
-        // ==============================
-        // UI helpers
-        // ==============================
-        function setPreview(prod) {
-            const img = (prod && prod.img) ? prod.img : DEFAULT_IMG;
-            previewImg.src = img;
-            previewName.textContent = prod ? prod.name : "AGUARDANDO...";
-        }
-
-        function showSuggest(list) {
-            if (!list.length) { suggest.style.display = "none"; suggest.innerHTML = ""; return; }
-            suggest.innerHTML = list.map(p => `
-        <div class="it" data-code="${safeText(p.code)}">
-          <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
-          <div class="meta">
-            <div class="t">${safeText(p.name)}</div>
-            <div class="s">${safeText(p.code)}</div>
-          </div>
-          <div class="price">${numberToMoney(p.price)}</div>
-        </div>
-      `).join("");
-            suggest.style.display = "block";
-            suggest.scrollTop = 0;
-        }
-
-        function hideSuggest() { suggest.style.display = "none"; suggest.innerHTML = ""; }
-
-        // ==============================
-        // Carrinho
-        // ==============================
-        function addToCart(prod) {
-            if (!prod) return;
-            const idx = CART.findIndex(x => x.code === prod.code);
-            if (idx >= 0) CART[idx].qty += 1;
-            else CART.push({ code: prod.code, name: prod.name, price: prod.price, img: prod.img || DEFAULT_IMG, qty: 1 });
-            setPreview(prod);
-            renderCart();
-            recalcAll();
-        }
-
-        function removeFromCart(code) { CART = CART.filter(x => x.code !== code); renderCart(); recalcAll(); }
-
-        function changeQty(code, delta) {
-            const it = CART.find(x => x.code === code);
-            if (!it) return;
-            it.qty = Math.max(1, Number(it.qty || 1) + delta);
-            renderCart();
-            recalcAll();
-        }
-
-        function setQty(code, qty) {
-            const it = CART.find(x => x.code === code);
-            if (!it) return;
-            it.qty = Math.max(1, Number(qty || 1));
-            renderCart();
-            recalcAll();
-        }
-
-        function calcSubtotal() { return CART.reduce((acc, it) => acc + (Number(it.qty || 0) * Number(it.price || 0)), 0); }
-
-        function calcDiscount(sub) {
-            const tipo = dTipo.value;
-            const v = moneyToNumber(String(dValor.value ?? "").trim());
-            if (!v || v <= 0) return 0;
-            if (tipo === "PERC") return (sub * Math.min(100, v)) / 100;
-            return Math.min(sub, v);
-        }
-
-        function calcDeliveryFee() {
-            if (DELIVERY_MODE !== "DELIVERY") return 0;
-            return moneyToNumber(cEntrega.value);
+            // inicial
+            syncFromSelect();
+            return tr;
         }
 
         function calcTotal() {
-            const sub = calcSubtotal();
-            const desc = calcDiscount(sub);
-            const ent = calcDeliveryFee();
-            return Math.max(0, (sub - desc) + ent);
-        }
-
-        // ==============================
-        // Pagamento
-        // ==============================
-        function payRowTpl(method = "PIX", value = "0,00") {
-            return `
-        <div class="pay-split-row">
-          <div class="row g-2 align-items-end">
-            <div class="col-6">
-              <label class="form-label">Forma</label>
-              <select class="form-select compact mMethod">
-                <option value="DINHEIRO" ${method === "DINHEIRO" ? "selected" : ""}>Dinheiro</option>
-                <option value="PIX" ${method === "PIX" ? "selected" : ""}>Pix</option>
-                <option value="CARTAO" ${method === "CARTAO" ? "selected" : ""}>Cartão</option>
-                <option value="BOLETO" ${method === "BOLETO" ? "selected" : ""}>Boleto</option>
-              </select>
-            </div>
-            <div class="col-4">
-              <label class="form-label">Valor</label>
-              <input class="form-control compact mValue" value="${safeText(value)}" placeholder="0,00" />
-            </div>
-            <div class="col-2 d-grid">
-              <button class="main-btn danger-btn-outline btn-hover btn-compact btnRemPay" type="button" style="height:38px!important;padding:0!important;">
-                <i class="lni lni-trash-can"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-        }
-
-        function ensureOnePayRow() {
-            if (!paysWrap.querySelector(".pay-split-row")) paysWrap.innerHTML = payRowTpl("PIX", "0,00");
-        }
-
-        function computeMultiPay() {
-            const total = calcTotal();
-            const rows = Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => {
-                const m = row.querySelector(".mMethod")?.value || "PIX";
-                const v = moneyToNumber(row.querySelector(".mValue")?.value || "0");
-                return { method: m, value: v };
-            }).filter(x => x.value > 0);
-
-            const sum = rows.reduce((a, x) => a + x.value, 0);
-            const diff = sum - total;
-            const hasCash = rows.some(x => x.method === "DINHEIRO");
-
-            let ok = false;
-            let troco = 0;
-
-            if (Math.abs(diff) < 0.009) ok = true;
-            else if (diff > 0.009 && hasCash) { ok = true; troco = diff; }
-
-            mSum.textContent = numberToMoney(sum);
-            mDiff.textContent = numberToMoney(diff);
-            mTroco.textContent = numberToMoney(troco);
-
-            mOk.style.display = ok ? "block" : "none";
-            mErr.style.display = ok ? "none" : "block";
-
-            return { ok, rows, sum, diff, troco, total };
-        }
-
-        function computeSinglePay() {
-            const total = calcTotal();
-            const paid = moneyToNumber(pValor.value);
-            const method = PAY_SELECTED;
-
-            let ok = false;
-            let troco = 0;
-
-            if (method === "DINHEIRO") {
-                ok = paid >= total && total > 0;
-                troco = ok ? (paid - total) : 0;
-                hintTroco.style.display = "block";
-            } else {
-                hintTroco.style.display = "none";
-                ok = (Math.abs(paid - total) < 0.009) && total > 0;
-                troco = 0;
-            }
-
-            pTroco.value = troco.toFixed(2).replace(".", ",");
-            return { ok, method, paid, troco, total };
-        }
-
-        // ==============================
-        // Render
-        // ==============================
-        function renderCart() {
-            tbodyItens.innerHTML = "";
-            hintEmpty.style.display = CART.length ? "none" : "block";
-
-            CART.forEach((it, i) => {
-                const sub = Number(it.qty || 0) * Number(it.price || 0);
-                tbodyItens.insertAdjacentHTML("beforeend", `
-          <tr data-code="${safeText(it.code)}">
-            <td>${i + 1}</td>
-            <td>
-              <div class="d-flex align-items-center gap-2">
-                <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
-                <div style="min-width:0;">
-                  <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">${safeText(it.name)}</div>
-                  <div class="muted">${safeText(it.code)}</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <div class="qty-ctrl">
-                <button class="main-btn light-btn btn-hover btn-compact qty-btn btnMinus" type="button" title="-1"><i class="lni lni-minus"></i></button>
-                <input class="qty-pill iQty" type="number" min="1" value="${Number(it.qty || 1)}" />
-                <button class="main-btn light-btn btn-hover btn-compact qty-btn btnPlus" type="button" title="+1"><i class="lni lni-plus"></i></button>
-              </div>
-            </td>
-            <td class="text-end">${numberToMoney(it.price)}</td>
-            <td class="text-end" style="font-weight:1000;">${numberToMoney(sub)}</td>
-            <td class="text-center">
-              <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnRemove" type="button" title="Remover"><i class="lni lni-trash-can"></i></button>
-            </td>
-          </tr>
-        `);
+            const rows = Array.from(tbodyItens.querySelectorAll('tr'));
+            let total = 0;
+            rows.forEach(tr => {
+                const subTxt = tr.querySelector('.it-sub')?.textContent || '0';
+                total += parseBRL(subTxt);
             });
+            vTotalTxt.textContent = fmtBRL(total);
         }
 
-        function recalcAll() {
-            const sub = calcSubtotal();
-            const desc = calcDiscount(sub);
-            const ent = calcDeliveryFee();
-            const total = Math.max(0, (sub - desc) + ent);
-
-            tSub.textContent = numberToMoney(sub);
-            tDesc.textContent = "- " + numberToMoney(desc);
-            tEnt.textContent = numberToMoney(ent);
-            tTotal.textContent = numberToMoney(total);
-
-            if (PAY_MODE === "UNICO") computeSinglePay();
-            else computeMultiPay();
+        function setToday() {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            vData.value = `${yyyy}-${mm}-${dd}`;
         }
 
-        function renderLastSales() {
-            const all = getSales().slice(0, 10);
-            if (!all.length) {
-                lastList.innerHTML = `<div class="cup"><div class="left"><div class="n">—</div><div class="s">Sem cupons ainda</div></div><div class="right"><div class="v">R$ 0,00</div></div></div>`;
+        function openNew() {
+            modalTitle.textContent = 'Nova Venda';
+            modalSub.textContent = 'Preencha os dados e adicione os itens.';
+            vId.value = '';
+            setToday();
+            vPedido.value = '';
+            vCliente.value = '';
+            vCanal.value = 'PRESENCIAL';
+            vPagamento.value = 'DINHEIRO';
+            vObs.value = '';
+            tbodyItens.innerHTML = '';
+            tbodyItens.appendChild(makeItemRow(null));
+            calcTotal();
+            modal.show();
+            setTimeout(() => vCliente.focus(), 150);
+        }
+
+        document.getElementById('btnNovo').addEventListener('click', openNew);
+        document.getElementById('btnAddItem').addEventListener('click', () => {
+            tbodyItens.appendChild(makeItemRow(null));
+            calcTotal();
+        });
+
+        // editar/excluir na tabela
+        tb.addEventListener('click', (e) => {
+            const tr = e.target.closest('tr');
+            if (!tr) return;
+
+            const btnDel = e.target.closest('.btnDel');
+            if (btnDel) {
+                const id = tr.getAttribute('data-id');
+                const ped = tr.getAttribute('data-pedido') || ('VENDA-' + id);
+                if (confirm(`Excluir ${ped}? (o estoque será devolvido)`)) {
+                    document.getElementById('delId').value = id || '';
+                    document.getElementById('frmDelete').submit();
+                }
                 return;
             }
-            lastList.innerHTML = all.map(s => `
-        <div class="cup">
-          <div class="left">
-            <div class="n">Venda #${Number(s.no || 0)}</div>
-            <div class="s">${safeText(s.date || "")}</div>
-          </div>
-          <div class="right">
-            <div class="v">${numberToMoney(s.total || 0)}</div>
-            <div class="st">CONCLUÍDO</div>
-          </div>
-        </div>
-      `).join("");
-        }
 
-        // ==============================
-        // Busca / Sugestões
-        // ==============================
-        function queryProducts(q) {
-            const s = String(q || "").toLowerCase().trim();
-            if (!s) return [];
-            return PRODUCTS
-                .filter(p => (p.name || "").toLowerCase().includes(s) || (p.code || "").toLowerCase().includes(s))
-                .slice(0, 30);
-        }
+            const btnEdit = e.target.closest('.btnEdit');
+            if (btnEdit) {
+                const id = tr.getAttribute('data-id') || '';
+                modalTitle.textContent = 'Editar Venda';
+                modalSub.textContent = 'Altere e salve. (o sistema ajusta estoque pela diferença)';
+                vId.value = id;
 
-        function refreshSuggest() { showSuggest(queryProducts(qProd.value)); }
+                vData.value = tr.getAttribute('data-data') || '';
+                vPedido.value = tr.getAttribute('data-pedido') || '';
+                vCliente.value = tr.getAttribute('data-cliente') || '';
+                vCanal.value = (tr.getAttribute('data-canal') || 'PRESENCIAL').toUpperCase();
+                vPagamento.value = (tr.getAttribute('data-pagamento') || 'DINHEIRO').toUpperCase();
+                vObs.value = tr.getAttribute('data-obs') || '';
 
-        qProd.addEventListener("input", refreshSuggest);
-        qProd.addEventListener("focus", refreshSuggest);
-
-        qProd.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                const list = queryProducts(qProd.value);
-                if (list.length) { addToCart(list[0]); qProd.value = ""; hideSuggest(); }
-            }
-            if (e.key === "Escape") hideSuggest();
-        });
-
-        suggest.addEventListener("click", (e) => {
-            const it = e.target.closest(".it");
-            if (!it) return;
-            const code = it.getAttribute("data-code");
-            const prod = PRODUCTS.find(p => p.code === code);
-            addToCart(prod);
-            qProd.value = "";
-            hideSuggest();
-            qProd.focus();
-        });
-
-        document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) hideSuggest(); });
-
-        // ==============================
-        // Entrega toggle
-        // ==============================
-        function setDeliveryMode(mode) {
-            DELIVERY_MODE = mode;
-            const isDel = mode === "DELIVERY";
-            chipDel.classList.toggle("active", isDel);
-            chipPres.classList.toggle("active", !isDel);
-            wrapDelivery.style.display = isDel ? "block" : "none";
-
-            if (!isDel) { cEndereco.value = ""; cEntrega.value = "0,00"; cObs.value = ""; }
-            recalcAll();
-        }
-
-        chipPres.addEventListener("click", () => setDeliveryMode("PRESENCIAL"));
-        chipDel.addEventListener("click", () => setDeliveryMode("DELIVERY"));
-        cEntrega.addEventListener("input", recalcAll);
-
-        // Desconto
-        dTipo.addEventListener("change", recalcAll);
-        dValor.addEventListener("input", recalcAll);
-
-        // ==============================
-        // Pagamento toggle
-        // ==============================
-        function setPayMode(mode) {
-            PAY_MODE = mode;
-            const isMulti = mode === "MULTI";
-            chipPagMulti.classList.toggle("active", isMulti);
-            chipPagUnico.classList.toggle("active", !isMulti);
-            wrapPagMulti.style.display = isMulti ? "block" : "none";
-            wrapPagUnico.style.display = isMulti ? "none" : "block";
-
-            if (isMulti) ensureOnePayRow();
-            recalcAll();
-        }
-
-        chipPagUnico.addEventListener("click", () => setPayMode("UNICO"));
-        chipPagMulti.addEventListener("click", () => setPayMode("MULTI"));
-
-        payBtns.addEventListener("click", (e) => {
-            const btn = e.target.closest(".pay-btn");
-            if (!btn) return;
-            PAY_SELECTED = btn.getAttribute("data-pay") || "DINHEIRO";
-            payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            recalcAll();
-        });
-
-        pValor.addEventListener("input", recalcAll);
-
-        btnAddPay.addEventListener("click", () => {
-            paysWrap.insertAdjacentHTML("beforeend", payRowTpl("PIX", "0,00"));
-            recalcAll();
-        });
-
-        paysWrap.addEventListener("click", (e) => {
-            const btn = e.target.closest(".btnRemPay");
-            if (!btn) return;
-            const row = btn.closest(".pay-split-row");
-            if (row) row.remove();
-            ensureOnePayRow();
-            recalcAll();
-        });
-
-        paysWrap.addEventListener("input", (e) => { if (e.target.closest(".pay-split-row")) recalcAll(); });
-        paysWrap.addEventListener("change", (e) => { if (e.target.closest(".pay-split-row")) recalcAll(); });
-
-        // ==============================
-        // Carrinho events
-        // ==============================
-        tbodyItens.addEventListener("click", (e) => {
-            const tr = e.target.closest("tr");
-            if (!tr) return;
-            const code = tr.getAttribute("data-code");
-            if (!code) return;
-
-            if (e.target.closest(".btnRemove")) return removeFromCart(code);
-            if (e.target.closest(".btnMinus")) return changeQty(code, -1);
-            if (e.target.closest(".btnPlus")) return changeQty(code, +1);
-        });
-
-        tbodyItens.addEventListener("input", (e) => {
-            const tr = e.target.closest("tr");
-            if (!tr) return;
-            const code = tr.getAttribute("data-code");
-            if (!code) return;
-            if (e.target.classList.contains("iQty")) setQty(code, e.target.value);
-        });
-
-        btnLimpar.addEventListener("click", () => {
-            if (CART.length && !confirm("Limpar todos os itens da venda?")) return;
-            CART = [];
-            renderCart();
-            recalcAll();
-            setPreview(null);
-        });
-
-        // ==============================
-        // Cupom fiscal (80mm)
-        // ==============================
-        function buildReceiptHtml(sale) {
-            const hr = () => `<div class="hr"></div>`;
-
-            const items = sale.items.map((it, idx) => {
-                const sub = it.qty * it.price;
-                const name = String(it.name || "").toUpperCase();
-                const code = String(it.code || "");
-                return `
-          <div class="item">
-            <div class="row"><span>${String(idx + 1).padStart(3, "0")} ${safeText(name)}</span></div>
-            <div class="row small">
-              <span>${safeText(code)}</span>
-              <span>${it.qty} x ${numberToMoney(it.price)} = ${numberToMoney(sub)}</span>
-            </div>
-          </div>
-        `;
-            }).join("");
-
-            const payLines = (sale.pay.mode === "UNICO")
-                ? `<div class="row"><span>${safeText(String(sale.pay.method).toUpperCase())}</span><span>${numberToMoney(sale.pay.paid)}</span></div>`
-                : (sale.pay.parts || []).map(p => `
-            <div class="row"><span>${safeText(String(p.method).toUpperCase())}</span><span>${numberToMoney(p.value)}</span></div>
-          `).join("");
-
-            const entregaTxt = (sale.delivery.mode === "DELIVERY") ? "DELIVERY" : "PRESENCIAL";
-            const clienteTxt = sale.customer ? sale.customer : "CONSUMIDOR FINAL";
-            const enderecoTxt = (sale.delivery.mode === "DELIVERY") ? (sale.delivery.address || "-") : "";
-
-            return `
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Cupom #${sale.no}</title>
-            <style>
-              @page { size: 80mm auto; margin: 6mm; }
-              body { margin: 0; padding: 0; font-family: "Courier New", monospace; color: #000; }
-              .wrap { width: 72mm; margin: 0 auto; font-size: 11px; }
-              .center { text-align: center; }
-              .bold { font-weight: 800; }
-              .small { font-size: 10px; }
-              .hr { border-top: 1px dashed #000; margin: 6px 0; }
-              .row { display: flex; justify-content: space-between; gap: 10px; }
-              .row span:last-child { text-align: right; white-space: nowrap; }
-              .item { margin: 6px 0; }
-              .top { margin-top: 4px; }
-              .mono { letter-spacing: .2px; }
-            </style>
-          </head>
-          <body>
-            <div class="wrap mono">
-              <div class="center bold">PAINEL DA DISTRIBUIDORA</div>
-              <div class="center small">CUPOM FISCAL (MODELO)</div>
-              ${hr()}
-              <div class="row"><span class="bold">VENDA</span><span>#${sale.no}</span></div>
-              <div class="row"><span class="bold">DATA</span><span>${safeText(sale.date)}</span></div>
-              <div class="row"><span class="bold">CLIENTE</span><span>${safeText(clienteTxt)}</span></div>
-              <div class="row"><span class="bold">ENTREGA</span><span>${entregaTxt}</span></div>
-              ${sale.delivery.mode === "DELIVERY" ? `<div class="top small">END: ${safeText(enderecoTxt)}</div>` : ``}
-              ${hr()}
-              <div class="row bold"><span>ITENS</span><span></span></div>
-              ${items || `<div class="small">—</div>`}
-              ${hr()}
-              <div class="row"><span>SUBTOTAL</span><span>${numberToMoney(sale.totals.sub)}</span></div>
-              <div class="row"><span>DESCONTO</span><span>- ${numberToMoney(sale.totals.desc)}</span></div>
-              <div class="row"><span>TAXA ENTREGA</span><span>${numberToMoney(sale.totals.fee)}</span></div>
-              ${hr()}
-              <div class="row bold"><span>TOTAL</span><span>${numberToMoney(sale.total)}</span></div>
-              ${hr()}
-              <div class="row bold"><span>PAGAMENTO</span><span></span></div>
-              ${payLines || `<div class="row"><span>—</span><span>—</span></div>`}
-              <div class="row"><span>TROCO</span><span>${numberToMoney(sale.pay.troco || 0)}</span></div>
-              ${hr()}
-              <div class="center small">OBRIGADO PELA PREFERÊNCIA!</div>
-            </div>
-            <script>window.print();<\/script>
-          </body>
-        </html>
-      `;
-        }
-
-        // ==============================
-        // Confirmar venda
-        // ==============================
-        function validateSale() {
-            if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
-            if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return { ok: false, msg: "Informe o endereço do Delivery." };
-
-            const total = calcTotal();
-            if (total <= 0) return { ok: false, msg: "Total inválido." };
-
-            if (PAY_MODE === "UNICO") {
-                const r = computeSinglePay();
-                if (!r.ok) {
-                    if (r.method === "DINHEIRO") return { ok: false, msg: "No dinheiro, o valor pago deve ser >= total." };
-                    return { ok: false, msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total." };
+                // itens do script json
+                const js = document.getElementById('itens-' + id);
+                let itens = [];
+                try {
+                    itens = js ? JSON.parse(js.textContent || '[]') : [];
+                } catch {
+                    itens = [];
                 }
-                return { ok: true, pay: { mode: "UNICO", method: r.method, paid: r.paid, troco: r.troco } };
+
+                tbodyItens.innerHTML = '';
+                if (!itens.length) {
+                    tbodyItens.appendChild(makeItemRow(null));
+                } else {
+                    itens.forEach(it => {
+                        tbodyItens.appendChild(makeItemRow({
+                            produto_id: it.produto_id,
+                            qtd: it.qtd,
+                            preco: it.preco
+                        }));
+                    });
+                }
+                calcTotal();
+
+                modal.show();
             }
-
-            const m = computeMultiPay();
-            if (!m.ok) return { ok: false, msg: "Pagamento múltiplo inválido. Ajuste os valores." };
-            return { ok: true, pay: { mode: "MULTI", parts: m.rows, troco: m.troco, sum: m.sum } };
-        }
-
-        function confirmSale() {
-            const v = validateSale();
-            if (!v.ok) { alert(v.msg); return; }
-
-            const sub = calcSubtotal();
-            const desc = calcDiscount(sub);
-            const fee = calcDeliveryFee();
-            const total = calcTotal();
-            const no = nextSaleNo();
-            const date = nowBR();
-
-            const sale = {
-                no,
-                date,
-                customer: String(cCliente.value || "").trim(),
-                items: CART.map(it => ({ code: it.code, name: it.name, qty: Number(it.qty || 0), price: Number(it.price || 0) })),
-                delivery: {
-                    mode: DELIVERY_MODE,
-                    address: DELIVERY_MODE === "DELIVERY" ? String(cEndereco.value || "").trim() : "",
-                    fee: fee,
-                    obs: DELIVERY_MODE === "DELIVERY" ? String(cObs.value || "").trim() : ""
-                },
-                totals: { sub, desc, fee },
-                total,
-                pay: v.pay,
-            };
-
-            addSale(sale);
-            renderLastSales();
-
-            if (chkPrint.checked) {
-                const html = buildReceiptHtml(sale);
-                const w = window.open("", "_blank");
-                if (w) { w.document.open(); w.document.write(html); w.document.close(); }
-                else { alert("Pop-up bloqueado. Permita pop-ups para imprimir."); }
-            }
-
-            // reset
-            CART = [];
-            renderCart();
-            setPreview(null);
-
-            cCliente.value = "";
-            setDeliveryMode("PRESENCIAL");
-
-            dTipo.value = "PERC";
-            dValor.value = "0";
-
-            setPayMode("UNICO");
-            PAY_SELECTED = "DINHEIRO";
-            payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
-            payBtns.querySelector('.pay-btn[data-pay="DINHEIRO"]').classList.add("active");
-            pValor.value = "0,00";
-            pTroco.value = "0,00";
-
-            paysWrap.innerHTML = "";
-            ensureOnePayRow();
-
-            recalcAll();
-            saleNo.textContent = `Venda #${nextSaleNo()}`;
-            alert(`Venda #${no} confirmada!`);
-            qProd.focus();
-        }
-
-        btnConfirmar.addEventListener("click", confirmSale);
-
-        // ==============================
-        // Atalhos teclado
-        // ==============================
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "F4") { e.preventDefault(); qProd.focus(); return; }
-            if (e.key === "F2") { e.preventDefault(); confirmSale(); return; }
-            if (e.key === "Escape") hideSuggest();
         });
 
-        // ==============================
-        // Init
-        // ==============================
-        function init() {
-            PRODUCTS = getProducts();
-            setPreview(null);
+        // ✅ Excel (.xls) estilizado
+        function exportExcel() {
+            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
 
-            saleNo.textContent = `Venda #${nextSaleNo()}`;
+            const now = new Date();
+            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
 
-            setDeliveryMode("PRESENCIAL");
-            setPayMode("UNICO");
-            ensureOnePayRow();
+            const canal = fCanal.value || 'Todos';
+            const ini = dtIni.value || '—';
+            const fim = dtFim.value || '—';
 
-            renderCart();
-            recalcAll();
-            renderLastSales();
+            const header = ['Data', 'Pedido', 'Cliente', 'Canal', 'Pagamento', 'Itens', 'Total'];
 
-            qGlobal.addEventListener("input", () => {
-                qProd.value = qGlobal.value;
-                refreshSuggest();
+            const body = rows.map(tr => ([
+                tr.querySelector('.date')?.innerText.trim() || '',
+                tr.querySelector('.ped')?.innerText.trim() || '',
+                tr.querySelector('.cli')?.innerText.trim() || '',
+                tr.querySelector('.canal')?.innerText.trim() || '',
+                tr.querySelector('.pagto')?.innerText.trim() || '',
+                tr.querySelector('.itens')?.innerText.trim() || '',
+                tr.querySelector('.total')?.innerText.trim() || ''
+            ]));
+
+            const isCenterCol = (idx) => (idx === 3 || idx === 4 || idx === 5 || idx === 6);
+
+            let html = `
+        <html><head><meta charset="utf-8">
+          <style>
+            table { border:0.6px solid #999; font-family:Arial; font-size:12px; }
+            td,th { border:1px solid #999; padding:6px 8px; vertical-align:middle; }
+            th { background:#f1f5f9; font-weight:700; }
+            .title { font-size:16px; font-weight:700; background:#eef2ff; text-align:center; }
+            .muted { color:#555; font-weight:700; }
+            .center { text-align:center; }
+          </style>
+        </head><body><table>
+      `;
+
+            html += `<tr><td class="title" colspan="7">PAINEL DA DISTRIBUIDORA - VENDAS</td></tr>`;
+            html += `<tr><td class="muted">Gerado em:</td><td colspan="6">${dt}</td></tr>`;
+            html += `<tr><td class="muted">Canal:</td><td>${canal}</td><td class="muted">Período:</td><td colspan="4">${ini} até ${fim}</td></tr>`;
+
+            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx)?'center':''}">${h}</th>`).join('')}</tr>`;
+            body.forEach(r => {
+                html += `<tr>${r.map((c, idx) => {
+          const safe = String(c).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+          const cls = isCenterCol(idx) ? 'center' : '';
+          return `<td class="${cls}">${safe}</td>`;
+        }).join('')}</tr>`;
             });
 
-            btnRefreshLast.addEventListener("click", renderLastSales);
-        }
+            html += `</table></body></html>`;
 
-        init();
+            const blob = new Blob(["\ufeff" + html], {
+                type: 'application/vnd.ms-excel;charset=utf-8;'
+            });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'vendas.xls';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+        document.getElementById('btnExcel').addEventListener('click', exportExcel);
+
+        // ✅ PDF
+        function exportPDF() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('Biblioteca do PDF não carregou.');
+                return;
+            }
+
+            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
+
+            const now = new Date();
+            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+
+            const canal = fCanal.value || 'Todos';
+            const ini = dtIni.value || '—';
+            const fim = dtFim.value || '—';
+
+            const {
+                jsPDF
+            } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'pt',
+                format: 'a4'
+            });
+
+            const M = 70;
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text('PAINEL DA DISTRIBUIDORA - VENDAS', M, 55);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.text(`Gerado em:  ${dt}`, M, 75);
+            doc.text(`Canal:  ${canal} | Período:  ${ini} até ${fim}`, M, 92);
+
+            const head = [
+                ['Data', 'Pedido', 'Cliente', 'Canal', 'Pagamento', 'Itens', 'Total']
+            ];
+
+            const body = rows.map(tr => ([
+                tr.querySelector('.date')?.innerText.trim() || '',
+                tr.querySelector('.ped')?.innerText.trim() || '',
+                tr.querySelector('.cli')?.innerText.trim() || '',
+                tr.querySelector('.canal')?.innerText.trim() || '',
+                tr.querySelector('.pagto')?.innerText.trim() || '',
+                tr.querySelector('.itens')?.innerText.trim() || '',
+                tr.querySelector('.total')?.innerText.trim() || '',
+            ]));
+
+            doc.autoTable({
+                head,
+                body,
+                startY: 115,
+                margin: {
+                    left: M,
+                    right: M
+                },
+                theme: 'plain',
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 9,
+                    cellPadding: {
+                        top: 6,
+                        right: 6,
+                        bottom: 6,
+                        left: 6
+                    },
+                    lineWidth: 0
+                },
+                headStyles: {
+                    fillColor: [241, 245, 249],
+                    fontStyle: 'bold',
+                    lineWidth: 0
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252]
+                },
+                columnStyles: {
+                    3: {
+                        halign: 'center'
+                    },
+                    4: {
+                        halign: 'center'
+                    },
+                    5: {
+                        halign: 'center'
+                    },
+                    6: {
+                        halign: 'center'
+                    }
+                },
+                didParseCell: function(data) {
+                    data.cell.styles.lineWidth = 0;
+                }
+            });
+
+            doc.save('vendas.pdf');
+        }
+        document.getElementById('btnPDF').addEventListener('click', exportPDF);
     </script>
 </body>
 
