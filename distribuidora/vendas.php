@@ -244,10 +244,6 @@ if ($vendas) {
 </head>
 
 <body>
-    <div id="preloader">
-        <div class="spinner"></div>
-    </div>
-
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
