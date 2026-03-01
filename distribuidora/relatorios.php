@@ -12,11 +12,11 @@ declare(strict_types=1);
 @date_default_timezone_set('America/Manaus');
 
 // Helpers (csrf/flash/etc) - use se existir no seu projeto
-$helpers = __DIR__ . '/assets/dados/_helpers.php';
+$helpers = __DIR__ . '/assets/dados//relstorios/_helpers.php';
 if (is_file($helpers)) require_once $helpers;
 
 // Conexão PDO (precisa existir db():PDO). Ajuste o caminho se necessário:
-$con = __DIR__ . '/assets/php/conexao.php';
+$con = __DIR__ . '/assets/conexao.php';
 if (is_file($con)) require_once $con;
 
 if (!function_exists('db')) {
