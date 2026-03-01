@@ -305,7 +305,7 @@ foreach ($produtos as $p) {
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="index.php" class="d-flex align-items-center gap-2">
+            <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
             </a>
         </div>
@@ -313,7 +313,7 @@ foreach ($produtos as $p) {
         <nav class="sidebar-nav">
             <ul>
                 <li class="nav-item">
-                    <a href="index.php">
+                    <a href="dashboard.php">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
@@ -338,7 +338,7 @@ foreach ($produtos as $p) {
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-                        <li><a href="pedidos.php">Pedidos</a></li>
+                        <li><a href="vendidos.php">vendidos</a></li>
                         <li><a href="vendas.php">Vendas</a></li>
                         <li><a href="devolucoes.php">Devoluções</a></li>
                     </ul>

@@ -243,7 +243,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
-      <a href="index.php" class="d-flex align-items-center gap-2">
+      <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
       </a>
     </div>
@@ -252,7 +252,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       <ul>
         <!-- Dashboard -->
         <li class="nav-item">
-          <a href="index.php">
+          <a href="dashboard.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -360,13 +360,13 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             <span class="text">Configurações</span>
           </a>
           <ul id="ddmenu_config" class="collapse dropdown-nav">
-            <li><a href="usuarios.html">Usuários e Permissões</a></li>
-            <li><a href="parametros.html">Parâmetros do Sistema</a></li>
+            <li><a href="usuarios.php">Usuários e Permissões</a></li>
+            <li><a href="parametros.php">Parâmetros do Sistema</a></li>
           </ul>
         </li>
 
         <li class="nav-item">
-          <a href="suporte.html">
+          <a href="suporte.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -421,10 +421,10 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                   </div>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                  <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                  <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
+                  <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                  <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
                   <li class="divider"></li>
-                  <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
+                  <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
                 </ul>
               </div>
             </div>
