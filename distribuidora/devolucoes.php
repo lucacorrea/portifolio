@@ -31,7 +31,117 @@ function table_missing(Throwable $e): bool
 }
 
 /* =========================================================
-   PRODUTOS (fallback) - carrega 1x
+   ESTOQUE (reposição ao concluir devolução)
+   - Só mexe no estoque quando status = CONCLUIDO
+   - Se mudar de CONCLUIDO -> ABERTO/CANCELADO, desfaz (subtrai)
+========================================================= */
+
+function extract_product_code(string $product): string
+{
+  $p = trim(str_replace(["\r", "\n", "\t"], ' ', $product));
+  if ($p === '') return '';
+  // Se for "CODIGO - Nome"
+  if (strpos($p, ' - ') !== false) {
+    $parts = explode(' - ', $p, 2);
+    $c = trim($parts[0] ?? '');
+    return $c;
+  }
+  // fallback: pega o primeiro "token"
+  if (preg_match('/^([A-Za-z0-9._-]+)/', $p, $m)) return trim($m[1]);
+  return '';
+}
+
+/**
+ * Gera mapa de reposição de estoque:
+ *   [codigo => qtd]
+ * Só retorna algo se status = CONCLUIDO.
+ *
+ * TOTAL: usa venda_itens (pela venda_no).
+ * PARCIAL: usa produto (string) + qtd.
+ */
+function devolucao_effect(PDO $pdo, array $dev): array
+{
+  $status = strtoupper(trim((string)($dev['status'] ?? '')));
+  if ($status !== 'CONCLUIDO') return [];
+
+  $type   = strtoupper(trim((string)($dev['type'] ?? $dev['tipo'] ?? 'TOTAL')));
+  $saleNo = (int)($dev['saleNo'] ?? $dev['venda_no'] ?? 0);
+
+  $effect = [];
+
+  if ($type === 'TOTAL') {
+    if ($saleNo <= 0) return []; // sem venda, não dá pra repor corretamente
+
+    $st = $pdo->prepare("SELECT codigo, qtd FROM venda_itens WHERE venda_id = ? ORDER BY id ASC");
+    $st->execute([$saleNo]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($rows as $r) {
+      $code = trim((string)($r['codigo'] ?? ''));
+      $qty  = (int)($r['qtd'] ?? 0);
+      if ($code === '' || $qty <= 0) continue;
+      $effect[$code] = ($effect[$code] ?? 0) + $qty;
+    }
+    return $effect;
+  }
+
+  // PARCIAL
+  $product = (string)($dev['product'] ?? $dev['produto'] ?? '');
+  $qty     = (int)($dev['qty'] ?? $dev['qtd'] ?? 0);
+  if ($qty <= 0) return [];
+
+  $code = extract_product_code($product);
+  if ($code === '') return []; // sem código, não repõe
+  $effect[$code] = ($effect[$code] ?? 0) + $qty;
+  return $effect;
+}
+
+/**
+ * Aplica delta no estoque:
+ * - delta pode ser positivo (repor) ou negativo (desfazer)
+ * - nunca deixa estoque negativo
+ * Retorna lista de códigos não encontrados.
+ */
+function apply_stock_delta(PDO $pdo, array $deltaMap): array
+{
+  $missing = [];
+
+  $up = $pdo->prepare("
+    UPDATE produtos
+    SET estoque = GREATEST(0, estoque + :delta)
+    WHERE codigo = :codigo
+    LIMIT 1
+  ");
+
+  foreach ($deltaMap as $code => $delta) {
+    $code = trim((string)$code);
+    $delta = (int)$delta;
+    if ($code === '' || $delta === 0) continue;
+
+    $up->execute([
+      ':delta' => $delta,
+      ':codigo' => $code,
+    ]);
+
+    if ($up->rowCount() === 0) {
+      $missing[] = $code;
+    }
+  }
+
+  return $missing;
+}
+
+/** soma mapas: $a + $b (b pode ter negativos) */
+function map_add(array $a, array $b): array
+{
+  foreach ($b as $k => $v) {
+    $a[$k] = (int)($a[$k] ?? 0) + (int)$v;
+    if ((int)$a[$k] === 0) unset($a[$k]);
+  }
+  return $a;
+}
+
+/* =========================================================
+   PRODUTOS (fallback) - carrega 1x (para autocomplete quando não tiver venda)
 ========================================================= */
 $PRODUTOS_CACHE = [];
 try {
@@ -156,7 +266,7 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'items' => $items]);
     }
 
-    // ===== save devolucao =====
+    // ===== save devolucao (COM ESTOQUE) =====
     if ($ajax === 'save') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -182,14 +292,6 @@ if (isset($_GET['ajax'])) {
 
       if ($amount <= 0) json_out(['ok' => false, 'msg' => 'Informe um valor (R$) maior que zero.'], 400);
 
-      if ($type === 'TOTAL') {
-        $product = '';
-        $qty = 0;
-      } else {
-        if ($product === '') json_out(['ok' => false, 'msg' => 'Informe o produto para devolução parcial.'], 400);
-        if ($qty < 1) json_out(['ok' => false, 'msg' => 'Informe a quantidade (mín. 1).'], 400);
-      }
-
       $reason = strtoupper(trim((string)($payload['reason'] ?? 'OUTRO')));
       $allowReason = ['DEFEITO', 'TROCA', 'ARREPENDIMENTO', 'AVARIA_TRANSPORTE', 'OUTRO'];
       if (!in_array($reason, $allowReason, true)) $reason = 'OUTRO';
@@ -200,58 +302,136 @@ if (isset($_GET['ajax'])) {
       $allowStatus = ['ABERTO', 'CONCLUIDO', 'CANCELADO'];
       if (!in_array($status, $allowStatus, true)) $status = 'ABERTO';
 
-      if ($id > 0) {
-        $st = $pdo->prepare("
-          UPDATE devolucoes
-          SET venda_no=:venda_no, cliente=:cliente, data=:data, hora=:hora,
-              tipo=:tipo, produto=:produto, qtd=:qtd, valor=:valor,
-              motivo=:motivo, obs=:obs, status=:status
-          WHERE id=:id
-        ");
-        $st->execute([
-          ':venda_no' => $saleNo,
-          ':cliente'  => ($customer !== '' ? $customer : null),
-          ':data'     => $date,
-          ':hora'     => $time,
-          ':tipo'     => $type,
-          ':produto'  => ($type === 'PARCIAL' ? $product : null),
-          ':qtd'      => ($type === 'PARCIAL' ? $qty : null),
-          ':valor'    => $amount,
-          ':motivo'   => $reason,
-          ':obs'      => ($note !== '' ? $note : null),
-          ':status'   => $status,
-          ':id'       => $id,
-        ]);
+      // validações por tipo
+      if ($type === 'TOTAL') {
+        $product = '';
+        $qty = 0;
+
+        // se for CONCLUIDO, precisa de venda_no para repor estoque corretamente
+        if ($status === 'CONCLUIDO' && (!$saleNo || $saleNo <= 0)) {
+          json_out(['ok' => false, 'msg' => 'Para concluir uma devolução TOTAL, informe o nº da venda (para repor estoque).'], 400);
+        }
       } else {
-        $st = $pdo->prepare("
-          INSERT INTO devolucoes
-            (venda_no, cliente, data, hora, tipo, produto, qtd, valor, motivo, obs, status)
-          VALUES
-            (:venda_no, :cliente, :data, :hora, :tipo, :produto, :qtd, :valor, :motivo, :obs, :status)
-        ");
-        $st->execute([
-          ':venda_no' => $saleNo,
-          ':cliente'  => ($customer !== '' ? $customer : null),
-          ':data'     => $date,
-          ':hora'     => $time,
-          ':tipo'     => $type,
-          ':produto'  => ($type === 'PARCIAL' ? $product : null),
-          ':qtd'      => ($type === 'PARCIAL' ? $qty : null),
-          ':valor'    => $amount,
-          ':motivo'   => $reason,
-          ':obs'      => ($note !== '' ? $note : null),
-          ':status'   => $status,
-        ]);
-        $id = (int)$pdo->lastInsertId();
+        if ($product === '') json_out(['ok' => false, 'msg' => 'Informe o produto para devolução parcial.'], 400);
+        if ($qty < 1) json_out(['ok' => false, 'msg' => 'Informe a quantidade (mín. 1).'], 400);
+
+        if ($status === 'CONCLUIDO') {
+          $code = extract_product_code($product);
+          if ($code === '') {
+            json_out(['ok' => false, 'msg' => 'Para concluir devolução PARCIAL, informe o produto com código (ex: P0001 - Arroz).'], 400);
+          }
+        }
       }
 
+      // ===== TRANSAÇÃO: salva devolução + ajusta estoque corretamente
+      $pdo->beginTransaction();
+      $missing = [];
+
+      try {
+        $old = null;
+        if ($id > 0) {
+          $stOld = $pdo->prepare("SELECT * FROM devolucoes WHERE id = ? FOR UPDATE");
+          $stOld->execute([$id]);
+          $old = $stOld->fetch(PDO::FETCH_ASSOC);
+          if (!$old) {
+            $pdo->rollBack();
+            json_out(['ok' => false, 'msg' => 'Devolução não encontrada para editar.'], 404);
+          }
+        }
+
+        // efeitos (estoque) antigo e novo
+        $oldEffect = $old ? devolucao_effect($pdo, [
+          'status' => (string)($old['status'] ?? ''),
+          'tipo'   => (string)($old['tipo'] ?? 'TOTAL'),
+          'venda_no' => (int)($old['venda_no'] ?? 0),
+          'produto' => (string)($old['produto'] ?? ''),
+          'qtd'    => (int)($old['qtd'] ?? 0),
+        ]) : [];
+
+        $newEffect = devolucao_effect($pdo, [
+          'status' => $status,
+          'type'   => $type,
+          'saleNo' => (int)($saleNo ?? 0),
+          'product' => $product,
+          'qty'    => ($type === 'PARCIAL' ? $qty : 0),
+        ]);
+
+        // delta = new - old
+        $delta = $newEffect;
+        $negOld = [];
+        foreach ($oldEffect as $k => $v) $negOld[$k] = -1 * (int)$v;
+        $delta = map_add($delta, $negOld);
+
+        // aplica delta no estoque
+        if ($delta) {
+          $missing = apply_stock_delta($pdo, $delta);
+        }
+
+        // grava devolução
+        if ($id > 0) {
+          $st = $pdo->prepare("
+            UPDATE devolucoes
+            SET venda_no=:venda_no, cliente=:cliente, data=:data, hora=:hora,
+                tipo=:tipo, produto=:produto, qtd=:qtd, valor=:valor,
+                motivo=:motivo, obs=:obs, status=:status
+            WHERE id=:id
+          ");
+          $st->execute([
+            ':venda_no' => $saleNo,
+            ':cliente'  => ($customer !== '' ? $customer : null),
+            ':data'     => $date,
+            ':hora'     => $time,
+            ':tipo'     => $type,
+            ':produto'  => ($type === 'PARCIAL' ? $product : null),
+            ':qtd'      => ($type === 'PARCIAL' ? $qty : null),
+            ':valor'    => $amount,
+            ':motivo'   => $reason,
+            ':obs'      => ($note !== '' ? $note : null),
+            ':status'   => $status,
+            ':id'       => $id,
+          ]);
+        } else {
+          $st = $pdo->prepare("
+            INSERT INTO devolucoes
+              (venda_no, cliente, data, hora, tipo, produto, qtd, valor, motivo, obs, status)
+            VALUES
+              (:venda_no, :cliente, :data, :hora, :tipo, :produto, :qtd, :valor, :motivo, :obs, :status)
+          ");
+          $st->execute([
+            ':venda_no' => $saleNo,
+            ':cliente'  => ($customer !== '' ? $customer : null),
+            ':data'     => $date,
+            ':hora'     => $time,
+            ':tipo'     => $type,
+            ':produto'  => ($type === 'PARCIAL' ? $product : null),
+            ':qtd'      => ($type === 'PARCIAL' ? $qty : null),
+            ':valor'    => $amount,
+            ':motivo'   => $reason,
+            ':obs'      => ($note !== '' ? $note : null),
+            ':status'   => $status,
+          ]);
+          $id = (int)$pdo->lastInsertId();
+        }
+
+        $pdo->commit();
+      } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+      }
+
+      // devolve registro
       $st = $pdo->prepare("SELECT * FROM devolucoes WHERE id=?");
       $st->execute([$id]);
       $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
 
+      $msg = 'Devolução salva com sucesso!';
+      if ($missing) {
+        $msg .= ' (Atenção: produto(s) não encontrado(s) para repor estoque: ' . implode(', ', $missing) . ')';
+      }
+
       json_out([
         'ok' => true,
-        'msg' => 'Devolução salva com sucesso!',
+        'msg' => $msg,
         'item' => [
           'id' => (int)($r['id'] ?? $id),
           'saleNo' => ($r['venda_no'] !== null ? (int)$r['venda_no'] : null),
@@ -266,11 +446,14 @@ if (isset($_GET['ajax'])) {
           'note' => (string)($r['obs'] ?? ''),
           'status' => (string)($r['status'] ?? $status),
           'created_at' => (string)($r['created_at'] ?? ''),
+        ],
+        'stock' => [
+          'missing_codes' => $missing
         ]
       ]);
     }
 
-    // ===== delete =====
+    // ===== delete (se estava CONCLUIDO, desfaz estoque) =====
     if ($ajax === 'del') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -279,13 +462,49 @@ if (isset($_GET['ajax'])) {
       $id = to_int($payload['id'] ?? 0);
       if ($id <= 0) json_out(['ok' => false, 'msg' => 'ID inválido.'], 400);
 
-      $st = $pdo->prepare("DELETE FROM devolucoes WHERE id=?");
-      $st->execute([$id]);
+      $pdo->beginTransaction();
+      $missing = [];
 
-      json_out(['ok' => true, 'msg' => 'Devolução excluída.']);
+      try {
+        $stOld = $pdo->prepare("SELECT * FROM devolucoes WHERE id = ? FOR UPDATE");
+        $stOld->execute([$id]);
+        $old = $stOld->fetch(PDO::FETCH_ASSOC);
+        if (!$old) {
+          $pdo->rollBack();
+          json_out(['ok' => false, 'msg' => 'Devolução não encontrada.'], 404);
+        }
+
+        $oldEffect = devolucao_effect($pdo, [
+          'status' => (string)($old['status'] ?? ''),
+          'tipo'   => (string)($old['tipo'] ?? 'TOTAL'),
+          'venda_no' => (int)($old['venda_no'] ?? 0),
+          'produto' => (string)($old['produto'] ?? ''),
+          'qtd'    => (int)($old['qtd'] ?? 0),
+        ]);
+
+        // desfaz (delta negativo)
+        if ($oldEffect) {
+          $neg = [];
+          foreach ($oldEffect as $k => $v) $neg[$k] = -1 * (int)$v;
+          $missing = apply_stock_delta($pdo, $neg);
+        }
+
+        $st = $pdo->prepare("DELETE FROM devolucoes WHERE id=?");
+        $st->execute([$id]);
+
+        $pdo->commit();
+      } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+      }
+
+      $msg = 'Devolução excluída.';
+      if ($missing) $msg .= ' (Atenção: não encontrei no estoque: ' . implode(', ', $missing) . ')';
+
+      json_out(['ok' => true, 'msg' => $msg]);
     }
 
-    // ===== import =====
+    // ===== import (não mexe em estoque; você pode concluir depois) =====
     if ($ajax === 'import') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -338,6 +557,9 @@ if (isset($_GET['ajax'])) {
         $allowStatus = ['ABERTO', 'CONCLUIDO', 'CANCELADO'];
         if (!in_array($status, $allowStatus, true)) $status = 'ABERTO';
 
+        // Import não mexe estoque (pra evitar bagunça). Você conclui depois no sistema.
+        if ($status === 'CONCLUIDO') $status = 'ABERTO';
+
         $ins->execute([
           ':venda_no' => $saleNo,
           ':cliente'  => ($customer !== '' ? $customer : null),
@@ -360,7 +582,7 @@ if (isset($_GET['ajax'])) {
     json_out(['ok' => false, 'msg' => 'Ação ajax inválida.'], 400);
   } catch (Throwable $e) {
     if (table_missing($e)) {
-      json_out(['ok' => false, 'msg' => "Tabela necessária não encontrada (devolucoes/vendas/venda_itens). Rode os SQLs."], 500);
+      json_out(['ok' => false, 'msg' => "Tabela necessária não encontrada (devolucoes/vendas/venda_itens/produtos). Rode os SQLs."], 500);
     }
     json_out(['ok' => false, 'msg' => $e->getMessage()], 500);
   }
@@ -747,18 +969,15 @@ $flash = flash_pop();
     <div class="spinner"></div>
   </div>
 
-  <!-- sidebar -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
       </a>
     </div>
-
     <nav class="sidebar-nav">
       <ul>
         <li class="nav-item"><a href="dashboard.php"><span class="text">Dashboard</span></a></li>
-
         <li class="nav-item nav-item-has-children active">
           <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="true">
             <span class="text">Operações</span>
@@ -769,7 +988,6 @@ $flash = flash_pop();
             <li><a href="devolucoes.php" class="active">Devoluções</a></li>
           </ul>
         </li>
-
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
             <span class="text">Estoque</span>
@@ -782,18 +1000,6 @@ $flash = flash_pop();
             <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
           </ul>
         </li>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="text">Cadastros</span>
-          </a>
-          <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-            <li><a href="clientes.php">Clientes</a></li>
-            <li><a href="fornecedores.php">Fornecedores</a></li>
-            <li><a href="categorias.php">Categorias</a></li>
-          </ul>
-        </li>
-
         <li class="nav-item"><a href="relatorios.php"><span class="text">Relatórios</span></a></li>
         <span class="divider">
           <hr />
@@ -873,7 +1079,7 @@ $flash = flash_pop();
           <div class="alert alert-<?= e($flash['type']) ?>"><?= e($flash['msg']) ?></div>
         <?php endif; ?>
 
-        <!-- ✅ AGORA: Lançamento (col-6) + Resumo (col-6) -->
+        <!-- Lançamento col-6 + Resumo col-6 -->
         <div class="row g-3 mb-3">
           <div class="col-12 col-lg-6">
             <div class="cardx">
@@ -937,7 +1143,6 @@ $flash = flash_pop();
                   </div>
                 </div>
 
-                <!-- ✅ Itens da venda aparecem aqui -->
                 <div class="mb-3" id="saleItemsWrap" style="display:none;">
                   <label class="form-label">Itens da Venda Selecionada</label>
                   <div class="sale-box" id="saleItemsBox"></div>
@@ -968,6 +1173,7 @@ $flash = flash_pop();
                     <option value="CONCLUIDO">Concluído</option>
                     <option value="CANCELADO">Cancelado</option>
                   </select>
+                  <div class="muted mt-1">* Estoque só é reposto quando <b>CONCLUÍDO</b>.</div>
                 </div>
 
                 <div class="d-grid gap-2">
@@ -1004,7 +1210,7 @@ $flash = flash_pop();
           </div>
         </div>
 
-        <!-- ✅ AGORA: TABELA embaixo (col-12) -->
+        <!-- Tabela col-12 -->
         <div class="row g-3 mb-30">
           <div class="col-12">
             <div class="cardx">
@@ -1125,18 +1331,16 @@ $flash = flash_pop();
       return `${d}/${m}/${y} ${t}`;
     }
 
-    // State
     let DEV = [];
     let TYPE = "TOTAL";
-    let SALE_SELECTED = null; // {id, customer, total, canal, date}
-    let SALE_ITEMS = []; // [{code,name,qty,subtotal,unit,price}]
+    let SALE_SELECTED = null;
+    let SALE_ITEMS = [];
     let LAST_SALES = [];
     let LAST_PROD = [];
     let saleTimer = null,
       prodTimer = null;
     let saleAbort = null;
 
-    // DOM
     const qGlobal = document.getElementById("qGlobal");
     const btnNova = document.getElementById("btnNova");
     const btnSalvar = document.getElementById("btnSalvar");
@@ -1181,32 +1385,6 @@ $flash = flash_pop();
     const btnImport = document.getElementById("btnImport");
     const fileImport = document.getElementById("fileImport");
 
-    // UI mode
-    function setType(type) {
-      TYPE = type;
-      const isTotal = type === "TOTAL";
-      chipTotal.classList.toggle("active", isTotal);
-      chipParcial.classList.toggle("active", !isTotal);
-
-      // continua bloqueando produto/qtd no TOTAL (mas agora preenche automaticamente se tiver venda selecionada)
-      dProduto.disabled = isTotal;
-      dQtd.disabled = isTotal;
-
-      if (isTotal) {
-        // se já tem venda selecionada, preenche "produto" e qtd total
-        applyTotalFromSaleIfAny();
-        hideProdSuggest();
-      } else {
-        // parcial: libera campos
-        if (SALE_SELECTED) {
-          // limpa para escolher um item da venda
-          dProduto.value = "";
-          dQtd.value = 1;
-          // mantém valor como está
-        }
-      }
-    }
-
     function setFormMode(mode) {
       if (mode === "EDIT") {
         formMode.className = "pill ok";
@@ -1217,16 +1395,55 @@ $flash = flash_pop();
       }
     }
 
+    function hideSaleSuggest() {
+      saleSuggest.style.display = "none";
+      saleSuggest.innerHTML = "";
+    }
+
+    function hideProdSuggest() {
+      prodSuggest.style.display = "none";
+      prodSuggest.innerHTML = "";
+    }
+
+    function hideSaleItems() {
+      saleItemsWrap.style.display = "none";
+      saleItemsBox.innerHTML = "";
+      saleMiniLeft.textContent = "—";
+      saleMiniRight.textContent = "—";
+    }
+
     function clearSaleSelection() {
       SALE_SELECTED = null;
       SALE_ITEMS = [];
       LAST_SALES = [];
       hideSaleSuggest();
       hideSaleItems();
-      // volta "produto/qtd" default se total
-      if (TYPE === "TOTAL") {
-        dProduto.value = "";
-        dQtd.value = 1;
+    }
+
+    function applyTotalFromSaleIfAny() {
+      if (!SALE_SELECTED) return;
+      const sumQty = SALE_ITEMS.reduce((a, x) => a + Number(x.qty || 0), 0);
+      dProduto.value = `VENDA #${SALE_SELECTED.id} (TOTAL - ${SALE_ITEMS.length} itens)`;
+      dQtd.value = sumQty > 0 ? sumQty : 1;
+
+      const curVal = moneyToNumber(dValor.value);
+      if (curVal <= 0 && Number(SALE_SELECTED.total || 0) > 0) {
+        dValor.value = Number(SALE_SELECTED.total || 0).toFixed(2).replace(".", ",");
+      }
+    }
+
+    function setType(type) {
+      TYPE = type;
+      const isTotal = type === "TOTAL";
+      chipTotal.classList.toggle("active", isTotal);
+      chipParcial.classList.toggle("active", !isTotal);
+
+      dProduto.disabled = isTotal;
+      dQtd.disabled = isTotal;
+
+      if (isTotal) {
+        hideProdSuggest();
+        applyTotalFromSaleIfAny();
       }
     }
 
@@ -1236,6 +1453,7 @@ $flash = flash_pop();
       dCliente.value = "";
       dData.value = nowISODate();
       dHora.value = nowISOTime();
+      TYPE = "TOTAL";
       setType("TOTAL");
       dProduto.value = "";
       dQtd.value = 1;
@@ -1247,7 +1465,7 @@ $flash = flash_pop();
       setFormMode("NEW");
     }
 
-    // ===== Venda suggest =====
+    // ===== buscar vendas =====
     function showSaleSuggest(list) {
       if (!list.length) {
         hideSaleSuggest();
@@ -1264,11 +1482,6 @@ $flash = flash_pop();
     `).join("");
       saleSuggest.style.display = "block";
       saleSuggest.scrollTop = 0;
-    }
-
-    function hideSaleSuggest() {
-      saleSuggest.style.display = "none";
-      saleSuggest.innerHTML = "";
     }
 
     async function searchSales(q) {
@@ -1300,7 +1513,6 @@ $flash = flash_pop();
     }
 
     dVendaNo.addEventListener("input", () => {
-      // se o usuário mudou o campo depois de selecionar, limpa seleção
       if (SALE_SELECTED && String(SALE_SELECTED.id) !== dVendaNo.value.trim()) {
         clearSaleSelection();
       }
@@ -1330,7 +1542,6 @@ $flash = flash_pop();
         hideSaleItems();
         return;
       }
-
       saleItemsWrap.style.display = "block";
       saleItemsBox.innerHTML = SALE_ITEMS.map(it => `
       <div class="sale-row">
@@ -1347,32 +1558,8 @@ $flash = flash_pop();
 
       const sumQty = SALE_ITEMS.reduce((a, x) => a + Number(x.qty || 0), 0);
       const sumSub = SALE_ITEMS.reduce((a, x) => a + Number(x.subtotal || 0), 0);
-
       saleMiniLeft.textContent = `Itens: ${SALE_ITEMS.length} • Qtd total: ${sumQty}`;
       saleMiniRight.textContent = `Subtotal itens: ${numberToMoney(sumSub)}`;
-    }
-
-    function hideSaleItems() {
-      saleItemsWrap.style.display = "none";
-      saleItemsBox.innerHTML = "";
-      saleMiniLeft.textContent = "—";
-      saleMiniRight.textContent = "—";
-    }
-
-    function applyTotalFromSaleIfAny() {
-      if (!SALE_SELECTED) return;
-      const nItens = SALE_ITEMS.length;
-      const sumQty = SALE_ITEMS.reduce((a, x) => a + Number(x.qty || 0), 0);
-
-      // preenche produto e qtd (mesmo desabilitado)
-      dProduto.value = `VENDA #${SALE_SELECTED.id} (TOTAL - ${nItens} itens)`;
-      dQtd.value = sumQty > 0 ? sumQty : 1;
-
-      // se valor estiver zerado, joga total da venda
-      const curVal = moneyToNumber(dValor.value);
-      if (curVal <= 0 && Number(SALE_SELECTED.total || 0) > 0) {
-        dValor.value = Number(SALE_SELECTED.total || 0).toFixed(2).replace(".", ",");
-      }
     }
 
     saleSuggest.addEventListener("click", async (e) => {
@@ -1390,40 +1577,15 @@ $flash = flash_pop();
       await loadSaleItems(id);
       renderSaleItems();
 
-      // se estiver no TOTAL, preencher produto/qtd baseado na venda
-      if (TYPE === "TOTAL") {
-        applyTotalFromSaleIfAny();
-      }
+      if (TYPE === "TOTAL") applyTotalFromSaleIfAny();
     });
 
     document.addEventListener("click", (e) => {
       if (!e.target.closest("#saleSuggest") && !e.target.closest("#dVendaNo")) hideSaleSuggest();
+      if (!e.target.closest("#prodSuggest") && !e.target.closest("#dProduto")) hideProdSuggest();
     });
 
-    // ===== Produto suggest =====
-    function showProdSuggest(list) {
-      if (!list.length) {
-        hideProdSuggest();
-        return;
-      }
-      prodSuggest.innerHTML = list.map(p => `
-      <div class="it" data-code="${safeText(p.code)}">
-        <div style="min-width:0">
-          <div class="t">${safeText(p.name)}</div>
-          <div class="s">${safeText(p.code)}${(p.qty!=null && p.qty>0) ? ` • Qtd venda: ${Number(p.qty)}` : ""}</div>
-        </div>
-        <div class="s">${(p.subtotal!=null && p.subtotal>0) ? numberToMoney(p.subtotal) : "OK"}</div>
-      </div>
-    `).join("");
-      prodSuggest.style.display = "block";
-      prodSuggest.scrollTop = 0;
-    }
-
-    function hideProdSuggest() {
-      prodSuggest.style.display = "none";
-      prodSuggest.innerHTML = "";
-    }
-
+    // ===== produto suggest (parcial) =====
     function onlyDigits(s) {
       return String(s || "").replace(/\D+/g, "");
     }
@@ -1444,6 +1606,24 @@ $flash = flash_pop();
       }
       out.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
       return out.slice(0, 20);
+    }
+
+    function showProdSuggest(list) {
+      if (!list.length) {
+        hideProdSuggest();
+        return;
+      }
+      prodSuggest.innerHTML = list.map(p => `
+      <div class="it" data-code="${safeText(p.code)}">
+        <div style="min-width:0">
+          <div class="t">${safeText(p.name)}</div>
+          <div class="s">${safeText(p.code)}${(p.qty!=null && p.qty>0) ? ` • Qtd venda: ${Number(p.qty)}` : ""}</div>
+        </div>
+        <div class="s">${(p.subtotal!=null && p.subtotal>0) ? numberToMoney(p.subtotal) : "OK"}</div>
+      </div>
+    `).join("");
+      prodSuggest.style.display = "block";
+      prodSuggest.scrollTop = 0;
     }
 
     function refreshProdDebounced() {
@@ -1469,22 +1649,14 @@ $flash = flash_pop();
       if (!p) return;
 
       dProduto.value = `${p.code} - ${p.name}`;
-
-      // se veio de item da venda, auto-preenche qtd/valor
       if (SALE_SELECTED && SALE_ITEMS.length) {
         if (Number(p.qty || 0) > 0) dQtd.value = Number(p.qty);
         if (Number(p.subtotal || 0) > 0) dValor.value = Number(p.subtotal).toFixed(2).replace(".", ",");
       }
-
       hideProdSuggest();
-      dQtd.focus();
     });
 
-    document.addEventListener("click", (e) => {
-      if (!e.target.closest("#prodSuggest") && !e.target.closest("#dProduto")) hideProdSuggest();
-    });
-
-    // ===== Listagem devoluções =====
+    // ===== listagem devoluções =====
     function badgeStatus(s) {
       if (s === "CONCLUIDO") return `<span class="badge-soft b-done">CONCLUÍDO</span>`;
       if (s === "CANCELADO") return `<span class="badge-soft b-cancel">CANCELADO</span>`;
@@ -1505,7 +1677,6 @@ $flash = flash_pop();
     function getFiltered() {
       const q = (qDev.value || qGlobal.value || "").toLowerCase().trim();
       const st = fStatus.value;
-
       return DEV.filter(x => {
         if (st && x.status !== st) return false;
         if (!q) return true;
@@ -1702,16 +1873,16 @@ $flash = flash_pop();
       dData.value = x.date || nowISODate();
       dHora.value = (x.time || nowISOTime()).slice(0, 5);
 
-      setType(x.type === "PARCIAL" ? "PARCIAL" : "TOTAL");
+      TYPE = (x.type === "PARCIAL") ? "PARCIAL" : "TOTAL";
+      setType(TYPE);
+
       dProduto.value = x.product || "";
       dQtd.value = x.qty || 1;
-
       dValor.value = Number(x.amount || 0).toFixed(2).replace(".", ",");
       dMotivo.value = x.reason || "OUTRO";
       dObs.value = x.note || "";
       dStatus.value = x.status || "ABERTO";
 
-      // edição não puxa venda automaticamente
       clearSaleSelection();
       setFormMode("EDIT");
       window.scrollTo({
@@ -1721,7 +1892,7 @@ $flash = flash_pop();
     }
 
     async function deleteDev(id) {
-      if (!confirm(`Excluir devolução #${id}?`)) return;
+      if (!confirm(`Excluir devolução #${id}? (Se estava CONCLUÍDO, o estoque será desfeito.)`)) return;
       try {
         await fetchJSON(`${AJAX_URL}?ajax=del`, {
           method: "POST",
@@ -1785,7 +1956,6 @@ $flash = flash_pop();
       reader.readAsText(file);
     }
 
-    // Events
     btnNova.addEventListener("click", resetForm);
     btnSalvar.addEventListener("click", saveDev);
     btnLimpar.addEventListener("click", resetForm);
