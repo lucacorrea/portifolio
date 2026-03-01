@@ -33,36 +33,28 @@ function csrf_token(): string {
   }
   return (string)$_SESSION['csrf_token'];
 }
-
 function csrf_validate_token(string $postedToken): bool {
   $posted = (string)$postedToken;
   $sess   = (string)($_SESSION['csrf_token'] ?? '');
   return ($posted !== '' && $sess !== '' && hash_equals($sess, $posted));
 }
 
-/** JSON helpers */
+/** Helpers JSON */
 function json_input(): array {
   $raw = file_get_contents('php://input');
   $data = json_decode($raw ?: '', true);
   return is_array($data) ? $data : [];
 }
-function json_response(array $data, int $code = 200): void {
-  http_response_code($code);
-  header('Content-Type: application/json; charset=utf-8');
-  echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-  exit;
-}
 
-/** Cast helpers */
 function to_int($v, int $default = 0): int {
   if ($v === null) return $default;
   if (is_numeric($v)) return (int)$v;
   return $default;
 }
+
 function to_float($v, float $default = 0.0): float {
   if ($v === null) return $default;
   if (is_numeric($v)) return (float)$v;
-
   $s = (string)$v;
   $s = preg_replace('/[^\d,.\-]/', '', $s ?? '');
   $s = str_replace('.', '', $s);
