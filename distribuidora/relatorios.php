@@ -4,24 +4,23 @@ declare(strict_types=1);
 /**
  * relatorios.php
  * - Página + endpoint JSON (action=fetch) no mesmo arquivo
+ * - Endpoint de sugestões (action=suggest) para autocomplete
  * - Lê do MySQL (tabelas: vendas, saidas, entradas, produtos, categorias, fornecedores, devolucoes)
- *
- * Ajuste os includes abaixo conforme seu projeto.
  */
 
 @date_default_timezone_set('America/Manaus');
 
-// Helpers (csrf/flash/etc) - use se existir no seu projeto
+// Helpers (csrf/flash/etc)
 $helpers = __DIR__ . '/assets/dados/relatorios/_helpers.php';
 if (is_file($helpers)) require_once $helpers;
 
-// Conexão PDO (precisa existir db():PDO). Ajuste o caminho se necessário:
+// Conexão PDO (precisa existir db():PDO)
 $con = __DIR__ . '/assets/conexao.php';
 if (is_file($con)) require_once $con;
 
 if (!function_exists('db')) {
   http_response_code(500);
-  echo "ERRO: função db():PDO não encontrada. Verifique /assets/php/conexao.php";
+  echo "ERRO: função db():PDO não encontrada. Verifique /assets/conexao.php";
   exit;
 }
 
@@ -35,11 +34,6 @@ function iso_date_or_empty(?string $s): string {
   return preg_match('/^\d{4}-\d{2}-\d{2}$/', $s) ? $s : '';
 }
 
-function str_or_null(?string $s): ?string {
-  $s = trim((string)$s);
-  return $s === '' ? null : $s;
-}
-
 function br_date(?string $iso): string {
   $iso = trim((string)$iso);
   if ($iso === '') return '—';
@@ -50,10 +44,8 @@ function br_date(?string $iso): string {
 function br_datetime(?string $sqlDt): string {
   $sqlDt = trim((string)$sqlDt);
   if ($sqlDt === '') return '—';
-  // aceita "Y-m-d H:i:s"
   $dt = DateTime::createFromFormat('Y-m-d H:i:s', $sqlDt);
   if (!$dt) {
-    // tenta parse genérico
     try { $dt = new DateTime($sqlDt); } catch (\Throwable $e) { return '—'; }
   }
   return $dt->format('d/m/Y H:i');
@@ -66,7 +58,6 @@ function br_money($n): string {
 
 function br_num($n, int $dec = 3): string {
   $v = (float)$n;
-  // remove zeros finais com cuidado
   $s = number_format($v, $dec, ',', '.');
   if ($dec > 0) {
     $s = rtrim($s, '0');
@@ -90,14 +81,33 @@ function pagamento_label(?string $mode, ?string $pay): string {
 }
 
 function like_q(string $q): string {
-  // LIKE com wildcards
   return '%' . $q . '%';
+}
+
+/**
+ * Monta um OR com LIKE usando placeholders ÚNICOS (evita HY093 com emulate_prepares=false).
+ * Ex: add_like_or(['a','b'], 'x', $params, 'q') => (a LIKE :q1 OR b LIKE :q2)
+ */
+function add_like_or(array $fields, string $q, array &$params, string $prefix = 'q'): string {
+  $q = like_q($q);
+  $parts = [];
+  $i = 1;
+  foreach ($fields as $f) {
+    $ph = ':' . $prefix . $i;
+    $parts[] = "{$f} LIKE {$ph}";
+    $params[$ph] = $q;
+    $i++;
+  }
+  return '(' . implode(' OR ', $parts) . ')';
 }
 
 /* =========================
    Builders (SQL -> report)
 ========================= */
 
+/**
+ * REGRA: se a venda tiver devolução (status <> CANCELADO), NÃO aparece em Vendas.
+ */
 function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q): array {
   $where = [];
   $params = [];
@@ -105,10 +115,22 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
   if ($dtIni !== '') { $where[] = "v.data >= :dtIni"; $params[':dtIni'] = $dtIni; }
   if ($dtFim !== '') { $where[] = "v.data <= :dtFim"; $params[':dtFim'] = $dtFim; }
 
+  // Excluir devolvidas
+  $where[] = "NOT EXISTS (
+    SELECT 1 FROM devolucoes d
+    WHERE d.venda_no = v.id
+      AND d.status <> 'CANCELADO'
+  )";
+
   $q = trim($q);
   if ($q !== '') {
-    $where[] = "(CAST(v.id AS CHAR) LIKE :q OR v.cliente LIKE :q OR v.canal LIKE :q OR v.pagamento LIKE :q OR v.pagamento_mode LIKE :q)";
-    $params[':q'] = like_q($q);
+    $where[] = add_like_or([
+      "CAST(v.id AS CHAR)",
+      "v.cliente",
+      "v.canal",
+      "v.pagamento",
+      "v.pagamento_mode"
+    ], $q, $params, 'qv');
   }
 
   $sql = "
@@ -159,21 +181,37 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
   ];
 }
 
+/**
+ * Vendas (Itens) usa a tabela SAIDAS como detalhamento.
+ * Também tenta excluir devolvidas quando s.pedido for numérico e bater no devolucoes.venda_no.
+ */
 function report_vendas_itens(PDO $pdo, string $dtIni, string $dtFim, string $q): array {
-  // Usa tabela SAIDAS como "itens" (pois não existe venda_itens no seu DDL)
   $where = [];
   $params = [];
 
   if ($dtIni !== '') { $where[] = "s.data >= :dtIni"; $params[':dtIni'] = $dtIni; }
   if ($dtFim !== '') { $where[] = "s.data <= :dtFim"; $params[':dtFim'] = $dtFim; }
 
+  // Excluir itens de pedidos "numéricos" que tenham devolução (status <> CANCELADO)
+  $where[] = "(
+    s.pedido NOT REGEXP '^[0-9]+$'
+    OR NOT EXISTS (
+      SELECT 1 FROM devolucoes d
+      WHERE d.status <> 'CANCELADO'
+        AND d.venda_no = CAST(s.pedido AS UNSIGNED)
+    )
+  )";
+
   $q = trim($q);
   if ($q !== '') {
-    $where[] = "(
-      s.pedido LIKE :q OR s.cliente LIKE :q OR s.canal LIKE :q OR s.pagamento LIKE :q
-      OR p.codigo LIKE :q OR p.nome LIKE :q
-    )";
-    $params[':q'] = like_q($q);
+    $where[] = add_like_or([
+      "s.pedido",
+      "s.cliente",
+      "s.canal",
+      "s.pagamento",
+      "p.codigo",
+      "p.nome"
+    ], $q, $params, 'qi');
   }
 
   $sql = "
@@ -234,11 +272,14 @@ function report_produtos(PDO $pdo, string $q): array {
 
   $q = trim($q);
   if ($q !== '') {
-    $where[] = "(
-      p.codigo LIKE :q OR p.nome LIKE :q OR c.nome LIKE :q OR f.nome LIKE :q
-      OR p.unidade LIKE :q OR p.status LIKE :q
-    )";
-    $params[':q'] = like_q($q);
+    $where[] = add_like_or([
+      "p.codigo",
+      "p.nome",
+      "c.nome",
+      "f.nome",
+      "p.unidade",
+      "p.status"
+    ], $q, $params, 'qp');
   }
 
   $sql = "
@@ -296,8 +337,7 @@ function report_estoque_minimo(PDO $pdo, string $q): array {
 
   $q = trim($q);
   if ($q !== '') {
-    $where[] = "(p.codigo LIKE :q OR p.nome LIKE :q)";
-    $params[':q'] = like_q($q);
+    $where[] = add_like_or(["p.codigo", "p.nome"], $q, $params, 'qm');
   }
 
   $sql = "
@@ -349,11 +389,15 @@ function report_devolucoes(PDO $pdo, string $dtIni, string $dtFim, string $q): a
 
   $q = trim($q);
   if ($q !== '') {
-    $where[] = "(
-      CAST(d.id AS CHAR) LIKE :q OR CAST(d.venda_no AS CHAR) LIKE :q OR d.cliente LIKE :q
-      OR d.tipo LIKE :q OR d.produto LIKE :q OR d.motivo LIKE :q OR d.status LIKE :q
-    )";
-    $params[':q'] = like_q($q);
+    $where[] = add_like_or([
+      "CAST(d.id AS CHAR)",
+      "CAST(d.venda_no AS CHAR)",
+      "d.cliente",
+      "d.tipo",
+      "d.produto",
+      "d.motivo",
+      "d.status"
+    ], $q, $params, 'qd');
   }
 
   $sql = "
@@ -420,10 +464,13 @@ function report_entradas(PDO $pdo, string $dtIni, string $dtFim, string $q): arr
 
   $q = trim($q);
   if ($q !== '') {
-    $where[] = "(
-      e.nf LIKE :q OR f.nome LIKE :q OR p.codigo LIKE :q OR p.nome LIKE :q OR e.unidade LIKE :q
-    )";
-    $params[':q'] = like_q($q);
+    $where[] = add_like_or([
+      "e.nf",
+      "f.nome",
+      "p.codigo",
+      "p.nome",
+      "e.unidade"
+    ], $q, $params, 'qe');
   }
 
   $sql = "
@@ -484,11 +531,14 @@ function report_saidas(PDO $pdo, string $dtIni, string $dtFim, string $q): array
 
   $q = trim($q);
   if ($q !== '') {
-    $where[] = "(
-      s.pedido LIKE :q OR s.cliente LIKE :q OR s.canal LIKE :q OR s.pagamento LIKE :q
-      OR p.codigo LIKE :q OR p.nome LIKE :q
-    )";
-    $params[':q'] = like_q($q);
+    $where[] = add_like_or([
+      "s.pedido",
+      "s.cliente",
+      "s.canal",
+      "s.pagamento",
+      "p.codigo",
+      "p.nome"
+    ], $q, $params, 'qs');
   }
 
   $sql = "
@@ -546,12 +596,7 @@ function report_saidas(PDO $pdo, string $dtIni, string $dtFim, string $q): array
 
 function build_report(PDO $pdo, string $tipo, string $dtIni, string $dtFim, string $q): array {
   $tipo = strtoupper(trim($tipo));
-
-  // whitelist
-  $allowed = [
-    'VENDAS_RESUMO', 'VENDAS_ITENS', 'PRODUTOS', 'ESTOQUE_MINIMO',
-    'DEVOLUCOES', 'ENTRADAS', 'SAIDAS'
-  ];
+  $allowed = ['VENDAS_RESUMO','VENDAS_ITENS','PRODUTOS','ESTOQUE_MINIMO','DEVOLUCOES','ENTRADAS','SAIDAS'];
   if (!in_array($tipo, $allowed, true)) $tipo = 'VENDAS_RESUMO';
 
   if ($tipo === 'VENDAS_RESUMO') return report_vendas_resumo($pdo, $dtIni, $dtFim, $q);
@@ -566,9 +611,8 @@ function build_report(PDO $pdo, string $tipo, string $dtIni, string $dtFim, stri
 }
 
 /* =========================
-   AJAX endpoint
+   AJAX endpoint: fetch
 ========================= */
-
 if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
   header('Content-Type: application/json; charset=utf-8');
 
@@ -582,17 +626,211 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
 
     $rep = build_report($pdo, $tipo, $dtIni, $dtFim, $q);
 
-    echo json_encode([
-      'ok' => true,
-      'report' => $rep
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
+    echo json_encode(['ok' => true, 'report' => $rep], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode([
-      'ok' => false,
-      'error' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  }
+  exit;
+}
+
+/* =========================
+   AJAX endpoint: suggest (autocomplete)
+========================= */
+if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
+  header('Content-Type: application/json; charset=utf-8');
+
+  try {
+    $pdo = db();
+
+    $tipo  = strtoupper(trim((string)($_GET['tipo'] ?? 'VENDAS_RESUMO')));
+    $q     = trim((string)($_GET['q'] ?? ''));
+    $dtIni = iso_date_or_empty((string)($_GET['dt_ini'] ?? ''));
+    $dtFim = iso_date_or_empty((string)($_GET['dt_fim'] ?? ''));
+
+    if ($q === '' || mb_strlen($q) < 1) {
+      echo json_encode(['ok' => true, 'items' => []], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+      exit;
+    }
+
+    $items = [];
+
+    // Helpers para filtros de data em sugestões
+    $wDate = [];
+    $pDate = [];
+    if ($dtIni !== '') { $wDate[] = "x.data >= :dtIni"; $pDate[':dtIni'] = $dtIni; }
+    if ($dtFim !== '') { $wDate[] = "x.data <= :dtFim"; $pDate[':dtFim'] = $dtFim; }
+
+    if ($tipo === 'VENDAS_RESUMO') {
+      $params = $pDate;
+
+      // Sugere: IDs de venda + clientes (somente não devolvidas)
+      $sql = "
+        (SELECT
+          CONCAT('#', v.id, ' — ', COALESCE(NULLIF(v.cliente,''),'Consumidor Final')) AS label,
+          CAST(v.id AS CHAR) AS value
+        FROM vendas v
+        WHERE
+          " . ($dtIni !== '' ? "v.data >= :dtIni AND " : "") . "
+          " . ($dtFim !== '' ? "v.data <= :dtFim AND " : "") . "
+          NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')
+          AND " . add_like_or(["CAST(v.id AS CHAR)"], $q, $params, 's1') . "
+        ORDER BY v.id DESC
+        LIMIT 6)
+        UNION ALL
+        (SELECT
+          CONCAT('Cliente — ', v.cliente) AS label,
+          v.cliente AS value
+        FROM vendas v
+        WHERE
+          v.cliente IS NOT NULL AND v.cliente <> ''
+          AND " . ($dtIni !== '' ? "v.data >= :dtIni AND " : "") . "
+          " . ($dtFim !== '' ? "v.data <= :dtFim AND " : "") . "
+          NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')
+          AND " . add_like_or(["v.cliente"], $q, $params, 's2') . "
+        GROUP BY v.cliente
+        ORDER BY v.cliente ASC
+        LIMIT 6)
+        LIMIT 10
+      ";
+
+      $st = $pdo->prepare($sql);
+      $st->execute($params);
+      $items = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    elseif ($tipo === 'VENDAS_ITENS') {
+      $params = $pDate;
+      $sql = "
+        SELECT
+          CONCAT(p.codigo, ' — ', p.nome) AS label,
+          p.codigo AS value
+        FROM saidas s
+        INNER JOIN produtos p ON p.id = s.produto_id
+        WHERE
+          " . ($dtIni !== '' ? "s.data >= :dtIni AND " : "") . "
+          " . ($dtFim !== '' ? "s.data <= :dtFim AND " : "") . "
+          " . add_like_or(["p.codigo", "p.nome", "s.pedido", "s.cliente"], $q, $params, 'si') . "
+        GROUP BY p.codigo, p.nome
+        ORDER BY p.nome ASC
+        LIMIT 10
+      ";
+      $st = $pdo->prepare($sql);
+      $st->execute($params);
+      $items = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    elseif ($tipo === 'PRODUTOS' || $tipo === 'ESTOQUE_MINIMO') {
+      $params = [];
+      $w = [];
+      if ($tipo === 'ESTOQUE_MINIMO') $w[] = "p.estoque < p.minimo";
+      $w[] = add_like_or(["p.codigo","p.nome","c.nome"], $q, $params, 'sp');
+      $sql = "
+        SELECT
+          CONCAT(p.codigo, ' — ', p.nome) AS label,
+          p.codigo AS value
+        FROM produtos p
+        LEFT JOIN categorias c ON c.id = p.categoria_id
+        WHERE " . implode(" AND ", $w) . "
+        ORDER BY p.nome ASC
+        LIMIT 10
+      ";
+      $st = $pdo->prepare($sql);
+      $st->execute($params);
+      $items = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    elseif ($tipo === 'DEVOLUCOES') {
+      $params = $pDate;
+      $sql = "
+        (SELECT
+          CONCAT('Venda #', d.venda_no) AS label,
+          CAST(d.venda_no AS CHAR) AS value
+        FROM devolucoes d
+        WHERE
+          " . ($dtIni !== '' ? "d.data >= :dtIni AND " : "") . "
+          " . ($dtFim !== '' ? "d.data <= :dtFim AND " : "") . "
+          d.venda_no IS NOT NULL
+          AND " . add_like_or(["CAST(d.venda_no AS CHAR)"], $q, $params, 'sd1') . "
+        GROUP BY d.venda_no
+        ORDER BY d.venda_no DESC
+        LIMIT 6)
+        UNION ALL
+        (SELECT
+          CONCAT('Cliente — ', d.cliente) AS label,
+          d.cliente AS value
+        FROM devolucoes d
+        WHERE
+          d.cliente IS NOT NULL AND d.cliente <> ''
+          AND " . ($dtIni !== '' ? "d.data >= :dtIni AND " : "") . "
+          " . ($dtFim !== '' ? "d.data <= :dtFim AND " : "") . "
+          AND " . add_like_or(["d.cliente"], $q, $params, 'sd2') . "
+        GROUP BY d.cliente
+        ORDER BY d.cliente ASC
+        LIMIT 6)
+        LIMIT 10
+      ";
+      $st = $pdo->prepare($sql);
+      $st->execute($params);
+      $items = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    elseif ($tipo === 'ENTRADAS') {
+      $params = $pDate;
+      $sql = "
+        SELECT
+          CONCAT('NF ', e.nf, ' — ', f.nome) AS label,
+          e.nf AS value
+        FROM entradas e
+        INNER JOIN fornecedores f ON f.id = e.fornecedor_id
+        INNER JOIN produtos p ON p.id = e.produto_id
+        WHERE
+          " . ($dtIni !== '' ? "e.data >= :dtIni AND " : "") . "
+          " . ($dtFim !== '' ? "e.data <= :dtFim AND " : "") . "
+          " . add_like_or(["e.nf","f.nome","p.codigo","p.nome"], $q, $params, 'se') . "
+        GROUP BY e.nf, f.nome
+        ORDER BY e.data DESC
+        LIMIT 10
+      ";
+      $st = $pdo->prepare($sql);
+      $st->execute($params);
+      $items = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    elseif ($tipo === 'SAIDAS') {
+      $params = $pDate;
+      $sql = "
+        SELECT
+          CONCAT('Pedido ', s.pedido, ' — ', COALESCE(NULLIF(s.cliente,''),'Consumidor Final')) AS label,
+          s.pedido AS value
+        FROM saidas s
+        INNER JOIN produtos p ON p.id = s.produto_id
+        WHERE
+          " . ($dtIni !== '' ? "s.data >= :dtIni AND " : "") . "
+          " . ($dtFim !== '' ? "s.data <= :dtFim AND " : "") . "
+          " . add_like_or(["s.pedido","s.cliente","p.codigo","p.nome"], $q, $params, 'ss') . "
+        GROUP BY s.pedido, s.cliente
+        ORDER BY s.data DESC
+        LIMIT 10
+      ";
+      $st = $pdo->prepare($sql);
+      $st->execute($params);
+      $items = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    // Normaliza retorno (label/value)
+    $out = [];
+    foreach ($items as $it) {
+      $label = (string)($it['label'] ?? '');
+      $value = (string)($it['value'] ?? '');
+      if ($label === '' || $value === '') continue;
+      $out[] = ['label' => $label, 'value' => $value];
+    }
+
+    echo json_encode(['ok' => true, 'items' => $out], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  } catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   }
   exit;
 }
@@ -600,7 +838,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -616,59 +853,45 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    /* dropdown do profile: largura acompanha conteúdo */
     .profile-box .dropdown-menu { width: max-content; min-width: 260px; max-width: calc(100vw - 24px); }
     .profile-box .dropdown-menu .author-info { width: max-content; max-width: 100%; display: flex !important; align-items: center; gap: 10px; }
     .profile-box .dropdown-menu .author-info .content { min-width: 0; max-width: 100%; }
     .profile-box .dropdown-menu .author-info .content a { display: inline-block; white-space: nowrap; max-width: 100%; }
 
-    /* Botões compactos */
     .main-btn.btn-compact { height: 38px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1 !important; }
     .main-btn.btn-compact i { font-size: 14px; vertical-align: -1px; }
-
-    .icon-btn { height: 34px !important; width: 42px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
     .form-control.compact, .form-select.compact { height: 38px; padding: 8px 12px; font-size: 13px; }
     .muted { font-size: 12px; color: #64748b; }
 
-    /* Cards */
     .cardx { border: 1px solid rgba(148, 163, 184, .28); border-radius: 16px; background: #fff; overflow: hidden; }
     .cardx .head { padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, .22); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
     .cardx .body { padding: 14px; }
-
-    /* ✅ para Atalhos e Prévia ficarem com o MESMO height */
     .cardx.fill { height: 100%; display: flex; flex-direction: column; }
     .cardx.fill .body { flex: 1 1 auto; }
 
-    /* Pills */
     .pill { padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, .25); font-weight: 900; font-size: 12px; display: inline-flex; align-items: center; gap: 8px; background: rgba(248, 250, 252, .7); white-space: nowrap; }
     .pill.primary { border-color: rgba(37, 99, 235, .28); background: rgba(239, 246, 255, .75); color: #0b5ed7; }
     .pill.ok { border-color: rgba(34, 197, 94, .25); background: rgba(240, 253, 244, .9); color: #166534; }
     .pill.warn { border-color: rgba(245, 158, 11, .28); background: rgba(255, 251, 235, .9); color: #92400e; }
     .pill.bad { border-color: rgba(239, 68, 68, .25); background: rgba(254, 242, 242, .9); color: #991b1b; }
 
-    /* ✅ Filtros alinhados */
     .filters-row .form-label { margin-bottom: 6px; }
     .filters-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
-    /* Tabela */
     .table td, .table th { vertical-align: middle; }
     .table-responsive { -webkit-overflow-scrolling: touch; }
-
     #tbRel { width: 100%; min-width: 980px; }
     #tbRel th, #tbRel td { white-space: nowrap !important; }
 
-    /* ✅ Prévia */
     .rel-table-wrap { flex: 1 1 auto; min-height: 260px; }
     .box-tot { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; background: #fff; padding: 12px; margin-top: auto !important; }
     .tot-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #334155; margin-bottom: 8px; font-weight: 900; }
     .tot-row:last-child { margin-bottom: 0; }
     .tot-hr { height: 1px; background: rgba(148, 163, 184, .22); margin: 10px 0; }
-
     .grand { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 4px; }
     .grand .lbl { font-weight: 1000; color: #0f172a; font-size: 16px; }
     .grand .val { font-weight: 1000; color: #0b5ed7; font-size: 26px; letter-spacing: .2px; }
 
-    /* Atalhos */
     .quick-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
     .quick { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; padding: 12px; background: rgba(248, 250, 252, .6); cursor: pointer; transition: .12s ease; }
     .quick:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15, 23, 42, .08); background: rgba(239, 246, 255, .65); border-color: rgba(37, 99, 235, .30); }
@@ -685,9 +908,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
 </head>
 
 <body>
-  <div id="preloader">
-    <div class="spinner"></div>
-  </div>
+  <div id="preloader"><div class="spinner"></div></div>
 
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
@@ -699,7 +920,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
 
     <nav class="sidebar-nav">
       <ul>
-        <!-- Dashboard -->
         <li class="nav-item">
           <a href="dashboard.php">
             <span class="icon">
@@ -712,7 +932,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
           </a>
         </li>
 
-        <!-- Operações -->
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
             <span class="icon">
@@ -729,7 +948,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
           </ul>
         </li>
 
-        <!-- Estoque -->
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
             <span class="icon">
@@ -749,7 +967,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
           </ul>
         </li>
 
-        <!-- Cadastros -->
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
             <span class="icon">
@@ -769,7 +986,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
           </ul>
         </li>
 
-        <!-- Relatórios ativo -->
         <li class="nav-item active">
           <a href="relatorios.php">
             <span class="icon">
@@ -829,6 +1045,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
               <div class="header-search d-none d-md-flex">
                 <form action="#">
                   <input type="text" placeholder="Buscar no relatório..." id="qGlobal" />
+                  <datalist id="dlGlobalSug"></datalist>
                   <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                 </form>
               </div>
@@ -885,13 +1102,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
             <div class="col-md-8">
               <div class="title">
                 <h2>Relatórios</h2>
-                <div class="muted">Filtros alinhados • Atalhos e Prévia com o mesmo height.</div>
+                <div class="muted">Autocomplete • Devolvidas saem de Vendas e ficam em Devoluções.</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- FILTROS (ALINHADOS) -->
         <div class="cardx mb-3">
           <div class="head">
             <div style="font-weight:1000;color:#0f172a;">
@@ -947,20 +1163,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
               </div>
 
               <div class="col-12">
-                <div class="muted mt-1">* Os dados deste relatório vêm do banco MySQL.</div>
+                <div class="muted mt-1">* Digite na busca e escolha uma sugestão na lista.</div>
               </div>
 
               <div class="col-12">
                 <label class="form-label">Busca (filtro extra)</label>
                 <input class="form-control compact" id="qRel" placeholder="Cliente, pedido, código, produto..." />
+                <datalist id="dlRelSug"></datalist>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ✅ ATALHOS + PRÉVIA (MESMO HEIGHT) -->
         <div class="row g-3 mb-30 align-items-stretch">
-          <!-- Atalhos -->
           <div class="col-12 col-lg-4">
             <div class="cardx fill">
               <div class="head">
@@ -972,22 +1187,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
                 <div class="quick-grid">
                   <div class="quick" data-quick="VENDAS_RESUMO">
                     <div class="t">Vendas (Resumo)</div>
-                    <div class="d">Lista de vendas com total, cliente, pagamento e entrega.</div>
+                    <div class="d">Somente vendas não devolvidas.</div>
                     <div class="tag"><i class="lni lni-cart"></i> Operações</div>
                   </div>
                   <div class="quick" data-quick="VENDAS_ITENS">
                     <div class="t">Vendas (Itens)</div>
-                    <div class="d">Itens (usa a tabela Saídas como detalhamento).</div>
+                    <div class="d">Itens (Saídas) — tenta excluir devolvidas.</div>
                     <div class="tag"><i class="lni lni-list"></i> Detalhado</div>
                   </div>
                   <div class="quick" data-quick="ESTOQUE_MINIMO">
                     <div class="t">Estoque Mínimo</div>
-                    <div class="d">Itens abaixo do mínimo (estoque/minimo).</div>
+                    <div class="d">Abaixo do mínimo.</div>
                     <div class="tag"><i class="lni lni-warning"></i> Estoque</div>
                   </div>
                   <div class="quick" data-quick="DEVOLUCOES">
                     <div class="t">Devoluções</div>
-                    <div class="d">Lista devoluções com status e valores.</div>
+                    <div class="d">Onde ficam as vendas devolvidas.</div>
                     <div class="tag"><i class="lni lni-package"></i> Pós-venda</div>
                   </div>
                 </div>
@@ -999,7 +1214,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
             </div>
           </div>
 
-          <!-- Prévia -->
           <div class="col-12 col-lg-8">
             <div class="cardx fill">
               <div class="head">
@@ -1050,18 +1264,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
     </footer>
   </main>
 
-  <!-- ========= JS ========= -->
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
 
-  <!-- jsPDF + AutoTable -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
   <script>
-    // ==============================
-    // Helpers
-    // ==============================
     function safeText(s) {
       return String(s ?? "")
         .replaceAll("&", "&amp;")
@@ -1074,7 +1283,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
     function numberToMoney(n) {
       const v = Number(n || 0);
       const s = v.toFixed(2).replace(".", ",");
-      // separador de milhar simples
       const parts = s.split(",");
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
       return "R$ " + parts.join(",");
@@ -1087,15 +1295,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
         : `<i class="lni lni-warning"></i> ${safeText(type)}`;
     }
 
-    // ==============================
-    // DOM
-    // ==============================
+    function debounce(fn, ms = 250) {
+      let t = null;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
+
     const qGlobal = document.getElementById("qGlobal");
+    const dlGlobalSug = document.getElementById("dlGlobalSug");
 
     const rTipo = document.getElementById("rTipo");
     const dtIni = document.getElementById("dtIni");
     const dtFim = document.getElementById("dtFim");
     const qRel = document.getElementById("qRel");
+    const dlRelSug = document.getElementById("dlRelSug");
 
     const btnGerar = document.getElementById("btnGerar");
     const btnPDF = document.getElementById("btnPDF");
@@ -1115,9 +1330,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
     const tGrand = document.getElementById("tGrand");
     const tNote = document.getElementById("tNote");
 
-    // ==============================
-    // Estado
-    // ==============================
+    // datalist binding
+    qRel.setAttribute("list", "dlRelSug");
+    qGlobal.setAttribute("list", "dlGlobalSug");
+
     let CURRENT = {
       title: "Relatório",
       head: [],
@@ -1129,9 +1345,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
       centerCols: []
     };
 
-    // ==============================
-    // Fetch report (MySQL)
-    // ==============================
     async function fetchReport() {
       const tipo = rTipo.value;
       const fromISO = dtIni.value || "";
@@ -1152,22 +1365,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
         q
       });
 
-      const res = await fetch("relatorios.php?" + params.toString(), {
-        headers: { "Accept": "application/json" }
-      });
-
+      const res = await fetch("relatorios.php?" + params.toString(), { headers: { "Accept": "application/json" } });
       const json = await res.json().catch(() => null);
-      if (!json || !json.ok) {
-        const msg = (json && json.error) ? json.error : "Falha ao carregar relatório.";
-        throw new Error(msg);
-      }
 
+      if (!json || !json.ok) throw new Error((json && json.error) ? json.error : "Falha ao carregar relatório.");
       return json.report;
     }
 
-    // ==============================
-    // Render
-    // ==============================
     function renderTable(rep) {
       CURRENT = rep || CURRENT;
 
@@ -1194,7 +1398,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
       pillCount.innerHTML = `<i class="lni lni-checkmark-circle"></i> ${count} linhas`;
       tRows.textContent = String(count);
 
-      // somatório (já vem formatado do PHP em sum_text)
       const sumText = rep.sum_text || numberToMoney(rep.sum || 0);
       tSum.textContent = sumText;
       tGrand.textContent = sumText;
@@ -1203,9 +1406,74 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
       setInfo(rep.title || "Relatório", true);
     }
 
-    // ==============================
-    // Export
-    // ==============================
+    async function fetchSuggest(targetDatalist) {
+      const tipo = rTipo.value;
+      const fromISO = dtIni.value || "";
+      const toISO = dtFim.value || "";
+      const q = qRel.value || "";
+
+      if (!q || q.trim().length < 1) {
+        targetDatalist.innerHTML = "";
+        return;
+      }
+
+      const params = new URLSearchParams({
+        action: "suggest",
+        tipo,
+        dt_ini: fromISO,
+        dt_fim: toISO,
+        q
+      });
+
+      const res = await fetch("relatorios.php?" + params.toString(), { headers: { "Accept": "application/json" } });
+      const json = await res.json().catch(() => null);
+      if (!json || !json.ok) {
+        targetDatalist.innerHTML = "";
+        return;
+      }
+
+      // datalist usa <option value="">
+      const items = Array.isArray(json.items) ? json.items : [];
+      targetDatalist.innerHTML = items.slice(0, 10).map(it => {
+        const label = String(it.label || it.value || "");
+        const value = String(it.value || "");
+        // mostro label no dropdown (alguns browsers exibem value apenas; então coloco value e deixo label em data)
+        return `<option value="${safeText(value)}" label="${safeText(label)}"></option>`;
+      }).join("");
+    }
+
+    const debouncedGerar = debounce(async () => {
+      setInfo("CARREGANDO...", true);
+      try {
+        const rep = await fetchReport();
+        renderTable(rep);
+      } catch (e) {
+        setInfo("ERRO AO GERAR", false);
+        renderTable({
+          title: "Erro",
+          head: ["Mensagem"],
+          body: [[String(e && e.message ? e.message : e)]],
+          sum: 0,
+          sum_text: "—",
+          sum_label: "Somatório",
+          rightCols: [],
+          centerCols: []
+        });
+      }
+    }, 280);
+
+    const debouncedSuggest = debounce(async () => {
+      await fetchSuggest(dlRelSug);
+      await fetchSuggest(dlGlobalSug);
+    }, 220);
+
+    function syncInputs(from) {
+      if (from === 'global') qRel.value = qGlobal.value;
+      if (from === 'rel') qGlobal.value = qRel.value;
+      debouncedSuggest();
+      debouncedGerar();
+    }
+
     function exportExcel() {
       const rep = CURRENT;
       if (!rep || !rep.head || !rep.body) { alert("Gere um relatório primeiro."); return; }
@@ -1267,11 +1535,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
     function exportPDF() {
       const rep = CURRENT;
       if (!rep || !rep.head || !rep.body) { alert("Gere um relatório primeiro."); return; }
-
-      if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert("Biblioteca do PDF não carregou.");
-        return;
-      }
+      if (!window.jspdf || !window.jspdf.jsPDF) { alert("Biblioteca do PDF não carregou."); return; }
 
       const now = new Date();
       const dt = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR");
@@ -1301,19 +1565,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
         startY: 130,
         margin: { left: M, right: M },
         theme: "plain",
-        styles: {
-          font: "helvetica",
-          fontSize: 9,
-          textColor: [17, 24, 39],
-          cellPadding: { top: 6, right: 6, bottom: 6, left: 6 },
-          lineWidth: 0
-        },
-        headStyles: {
-          fillColor: [241, 245, 249],
-          textColor: [17, 24, 39],
-          fontStyle: "bold",
-          lineWidth: 0
-        },
+        styles: { font: "helvetica", fontSize: 9, textColor: [17, 24, 39], cellPadding: { top: 6, right: 6, bottom: 6, left: 6 }, lineWidth: 0 },
+        headStyles: { fillColor: [241, 245, 249], textColor: [17, 24, 39], fontStyle: "bold", lineWidth: 0 },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didParseCell: function (data) {
           const col = data.column.index;
@@ -1326,33 +1579,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
       doc.save(`relatorio_${String(rep.title || "relatorio").toLowerCase().replace(/\s+/g, "_")}.pdf`);
     }
 
-    // ==============================
-    // Gerar
-    // ==============================
-    async function gerar() {
-      setInfo("CARREGANDO...", true);
-      try {
-        const rep = await fetchReport();
-        renderTable(rep);
-      } catch (e) {
-        setInfo("ERRO AO GERAR", false);
-        renderTable({
-          title: "Erro",
-          head: ["Mensagem"],
-          body: [[String(e && e.message ? e.message : e)]],
-          sum: 0,
-          sum_text: "—",
-          sum_label: "Somatório",
-          rightCols: [],
-          centerCols: []
-        });
-      }
-    }
-
-    // ==============================
-    // Eventos
-    // ==============================
-    btnGerar.addEventListener("click", gerar);
+    btnGerar.addEventListener("click", () => debouncedGerar());
     btnExcel.addEventListener("click", exportExcel);
     btnPDF.addEventListener("click", exportPDF);
 
@@ -1362,30 +1589,30 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
       dtFim.value = "";
       qRel.value = "";
       qGlobal.value = "";
-      gerar();
+      dlRelSug.innerHTML = "";
+      dlGlobalSug.innerHTML = "";
+      debouncedGerar();
     });
 
-    qGlobal.addEventListener("input", () => {
-      qRel.value = qGlobal.value;
-      gerar();
-    });
+    // autocomplete + gerar enquanto digita (com debounce)
+    qGlobal.addEventListener("input", () => syncInputs('global'));
+    qRel.addEventListener("input", () => syncInputs('rel'));
 
-    qRel.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); gerar(); }
-    });
+    // quando muda tipo/data, atualiza sugestões e relatório
+    rTipo.addEventListener("change", () => { debouncedSuggest(); debouncedGerar(); });
+    dtIni.addEventListener("change", () => { debouncedSuggest(); debouncedGerar(); });
+    dtFim.addEventListener("change", () => { debouncedSuggest(); debouncedGerar(); });
 
+    // atalhos
     document.querySelectorAll(".quick").forEach(el => {
       el.addEventListener("click", () => {
         const t = el.getAttribute("data-quick");
-        if (t) { rTipo.value = t; gerar(); }
+        if (t) { rTipo.value = t; debouncedSuggest(); debouncedGerar(); }
       });
     });
 
-    // ==============================
-    // Init
-    // ==============================
-    gerar();
+    // init
+    debouncedGerar();
   </script>
 </body>
-
 </html>
