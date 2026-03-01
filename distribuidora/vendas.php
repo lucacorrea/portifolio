@@ -1008,7 +1008,7 @@ async function searchProducts(q) {
   if (searchAbort) searchAbort.abort();
   searchAbort = new AbortController();
 
-  const url = "assets/dados/vendas/buscarProdutos.php?q=" + encodeURIComponent(s);
+  const url = "./assets/dados/vendas/buscarProdutos.php?q=" + encodeURIComponent(s);
   const r = await fetch(url, { signal: searchAbort.signal });
   const data = await r.json().catch(()=>({}));
   if (!r.ok || data.ok === false) return [];
