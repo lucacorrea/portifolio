@@ -1008,7 +1008,7 @@ async function searchProducts(q) {
   if (searchAbort) searchAbort.abort();
   searchAbort = new AbortController();
 
-  const url = "./assets/dados/vendas/buscarProdutos.php?q=" + encodeURIComponent(s);
+  const url = "assets/dados/vendas/buscarProdutos.php?q=" + encodeURIComponent(s);
   const r = await fetch(url, { signal: searchAbort.signal });
   const data = await r.json().catch(()=>({}));
   if (!r.ok || data.ok === false) return [];
@@ -1214,7 +1214,7 @@ async function confirmSale() {
   btnConfirmar.disabled = true;
 
   try {
-    const r = await fetchJSON("./assets/dados/vendas/salvarVendas.php", {
+    const r = await fetchJSON("assets/dados/vendas/salvarVendas.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
