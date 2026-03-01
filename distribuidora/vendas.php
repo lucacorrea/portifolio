@@ -1,455 +1,3 @@
-<?php
-declare(strict_types=1);
-
-/**
- * vendas.php (PDV) - funcional com MySQL (tabelas: produtos/saidas/fornecedores/categorias/entradas/inventario_itens)
- * Requer:
- *   - ./assets/conexao.php  (função db():PDO)
- *   - ./assets/dados/entradas/_helpers.php (helpers: e(), flash, csrf, redirect, etc.)
- */
-
-date_default_timezone_set('America/Manaus');
-
-require_once __DIR__ . '/assets/conexao.php';
-require_once __DIR__ . '/assets/dados/Vendas/_helpers.php';
-
-$pdo  = db();
-$csrf = csrf_token();
-$flash = flash_pop();
-
-/** ===== Helpers locais ===== */
-function brDate(string $ymd): string {
-    $ymd = trim($ymd);
-    if (!$ymd) return '';
-    $p = explode('-', $ymd);
-    if (count($p) !== 3) return $ymd;
-    return $p[2] . '/' . $p[1] . '/' . $p[0];
-}
-function fmtMoney($v): string {
-    return 'R$ ' . number_format((float)$v, 2, ',', '.');
-}
-/**
- * Banco (produtos.imagem): images/arquivo.png
- * Exibir em páginas na raiz: assets/dados/produtos/images/arquivo.png
- */
-function img_url_from_db(string $dbValue): string {
-    $v = trim($dbValue);
-    if ($v === '') return '';
-    if (preg_match('~^(https?://|/|assets/)~i', $v)) return $v;
-    $v = ltrim($v, '/');
-    return 'assets/dados/produtos/' . $v;
-}
-function json_out(array $data, int $status = 200): void {
-    http_response_code($status);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-function read_json_body(): array {
-    $raw = file_get_contents('php://input');
-    $j = json_decode($raw ?: '', true);
-    return is_array($j) ? $j : [];
-}
-function csrf_ok_from_payload(array $payload): bool {
-    $posted = (string)($payload['csrf_token'] ?? $_POST['csrf_token'] ?? '');
-    $sess   = (string)($_SESSION['csrf_token'] ?? '');
-    return ($posted !== '' && $sess !== '' && hash_equals($sess, $posted));
-}
-function money_to_cents($val): int {
-    // aceita "0,00", "0.00", "R$ 0,00"
-    $s = trim((string)$val);
-    if ($s === '') return 0;
-    $s = preg_replace('/[^\d,.\-]/', '', $s);
-    $s = str_replace('.', '', $s);      // remove milhar
-    $s = str_replace(',', '.', $s);     // decimal
-    $n = (float)$s;
-    return (int) round($n * 100);
-}
-function cents_to_money(int $cents): float {
-    return $cents / 100;
-}
-
-/** ====== ENDPOINTS (AJAX) ====== */
-$action = (string)($_GET['action'] ?? '');
-
-/**
- * GET vendas.php?action=search&q=...
- * Retorna produtos para o dropdown de sugestões.
- */
-if ($action === 'search') {
-    $q = trim((string)($_GET['q'] ?? ''));
-    if ($q === '') json_out(['ok' => true, 'items' => []]);
-
-    $like = '%' . $q . '%';
-
-    $st = $pdo->prepare("
-        SELECT
-            p.id, p.codigo, p.nome, p.unidade, p.preco, p.estoque, p.imagem,
-            c.nome AS categoria_nome,
-            f.nome AS fornecedor_nome
-        FROM produtos p
-        LEFT JOIN categorias c ON c.id = p.categoria_id
-        LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
-        WHERE p.status = 'ATIVO'
-          AND (p.nome LIKE :q OR p.codigo LIKE :q)
-        ORDER BY
-            CASE WHEN p.codigo = :qExact THEN 0 ELSE 1 END,
-            p.nome ASC
-        LIMIT 30
-    ");
-    $st->execute([
-        ':q' => $like,
-        ':qExact' => $q,
-    ]);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-
-    $items = array_map(function ($r) {
-        $img = img_url_from_db((string)($r['imagem'] ?? ''));
-        return [
-            'id' => (int)$r['id'],
-            'code' => (string)$r['codigo'],
-            'name' => (string)$r['nome'],
-            'unidade' => (string)($r['unidade'] ?? ''),
-            'price' => (float)($r['preco'] ?? 0),
-            'stock' => (int)($r['estoque'] ?? 0),
-            'img' => $img,
-            'categoria' => (string)($r['categoria_nome'] ?? ''),
-            'fornecedor' => (string)($r['fornecedor_nome'] ?? ''),
-        ];
-    }, $rows);
-
-    json_out(['ok' => true, 'items' => $items]);
-}
-
-/**
- * GET vendas.php?action=last
- * Retorna últimos pedidos (agrupados por saidas.pedido).
- */
-if ($action === 'last') {
-    $rows = $pdo->query("
-        SELECT
-            pedido,
-            MAX(data) AS data,
-            MIN(cliente) AS cliente,
-            MIN(canal) AS canal,
-            MIN(pagamento) AS pagamento,
-            SUM(total) AS total,
-            MAX(id) AS last_id
-        FROM saidas
-        GROUP BY pedido
-        ORDER BY last_id DESC
-        LIMIT 10
-    ")->fetchAll(PDO::FETCH_ASSOC);
-
-    $items = array_map(fn($r) => [
-        'pedido' => (string)$r['pedido'],
-        'data' => brDate((string)$r['data']),
-        'cliente' => (string)$r['cliente'],
-        'canal' => (string)$r['canal'],
-        'pagamento' => (string)$r['pagamento'],
-        'total' => (float)$r['total'],
-    ], $rows);
-
-    json_out(['ok' => true, 'items' => $items]);
-}
-
-/**
- * GET vendas.php?action=get_pedido&pedido=...
- * Retorna detalhes do pedido para reimpressão.
- */
-if ($action === 'get_pedido') {
-    $pedido = trim((string)($_GET['pedido'] ?? ''));
-    if ($pedido === '') json_out(['ok' => false, 'msg' => 'Pedido inválido.'], 400);
-
-    $st = $pdo->prepare("
-        SELECT
-            s.id, s.data, s.pedido, s.cliente, s.canal, s.pagamento,
-            s.produto_id, s.unidade, s.qtd, s.preco, s.total,
-            p.codigo AS produto_codigo,
-            p.nome AS produto_nome
-        FROM saidas s
-        LEFT JOIN produtos p ON p.id = s.produto_id
-        WHERE s.pedido = :pedido
-        ORDER BY s.id ASC
-    ");
-    $st->execute([':pedido' => $pedido]);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-    if (!$rows) json_out(['ok' => false, 'msg' => 'Pedido não encontrado.'], 404);
-
-    $sum = 0.0;
-    $items = [];
-    foreach ($rows as $r) {
-        $sum += (float)$r['total'];
-        $items[] = [
-            'code' => (string)($r['produto_codigo'] ?? ''),
-            'name' => (string)($r['produto_nome'] ?? ''),
-            'qty' => (int)($r['qtd'] ?? 0),
-            'price' => (float)($r['preco'] ?? 0),
-            'total' => (float)($r['total'] ?? 0),
-            'unidade' => (string)($r['unidade'] ?? ''),
-        ];
-    }
-
-    $head = $rows[0];
-    json_out([
-        'ok' => true,
-        'sale' => [
-            'pedido' => (string)$head['pedido'],
-            'date' => brDate((string)$head['data']),
-            'customer' => (string)$head['cliente'],
-            'canal' => (string)$head['canal'],
-            'pagamento' => (string)$head['pagamento'],
-            'items' => $items,
-            'total' => $sum,
-        ]
-    ]);
-}
-
-/**
- * POST vendas.php?action=confirm
- * Body JSON:
- *  {
- *    csrf_token,
- *    customer,
- *    delivery:{mode,address,fee,obs},
- *    discount:{type,value},
- *    pay:{mode,method,paid,parts:[{method,value}]},
- *    items:[{id,qty}]
- *  }
- */
-if ($action === 'confirm') {
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-        json_out(['ok' => false, 'msg' => 'Método inválido.'], 405);
-    }
-
-    $payload = read_json_body();
-
-    if (!csrf_ok_from_payload($payload)) {
-        json_out(['ok' => false, 'msg' => 'CSRF inválido. Recarregue a página.'], 403);
-    }
-
-    $itemsIn = $payload['items'] ?? [];
-    if (!is_array($itemsIn) || count($itemsIn) === 0) {
-        json_out(['ok' => false, 'msg' => 'Adicione pelo menos 1 item.'], 400);
-    }
-
-    // normaliza cliente / canal
-    $customer = trim((string)($payload['customer'] ?? ''));
-    if ($customer === '') $customer = 'CONSUMIDOR FINAL';
-
-    $delivery = is_array($payload['delivery'] ?? null) ? $payload['delivery'] : [];
-    $deliveryMode = strtoupper(trim((string)($delivery['mode'] ?? 'PRESENCIAL')));
-    if (!in_array($deliveryMode, ['PRESENCIAL', 'DELIVERY'], true)) $deliveryMode = 'PRESENCIAL';
-
-    $deliveryAddress = trim((string)($delivery['address'] ?? ''));
-    $deliveryFeeCents = ($deliveryMode === 'DELIVERY') ? max(0, money_to_cents($delivery['fee'] ?? '0')) : 0;
-
-    if ($deliveryMode === 'DELIVERY' && $deliveryAddress === '') {
-        json_out(['ok' => false, 'msg' => 'Informe o endereço do Delivery.'], 400);
-    }
-
-    // desconto
-    $discount = is_array($payload['discount'] ?? null) ? $payload['discount'] : [];
-    $dType = strtoupper(trim((string)($discount['type'] ?? 'PERC')));
-    if (!in_array($dType, ['PERC', 'VALOR'], true)) $dType = 'PERC';
-    $dValue = (string)($discount['value'] ?? '0');
-
-    // pagamento
-    $pay = is_array($payload['pay'] ?? null) ? $payload['pay'] : [];
-    $payMode = strtoupper(trim((string)($pay['mode'] ?? 'UNICO')));
-    if (!in_array($payMode, ['UNICO', 'MULTI'], true)) $payMode = 'UNICO';
-
-    $payMethod = strtoupper(trim((string)($pay['method'] ?? 'DINHEIRO')));
-    if (!in_array($payMethod, ['DINHEIRO', 'PIX', 'CARTAO', 'BOLETO'], true)) $payMethod = 'DINHEIRO';
-
-    // itens: pegar ids únicos
-    $idQty = [];
-    foreach ($itemsIn as $it) {
-        if (!is_array($it)) continue;
-        $id = (int)($it['id'] ?? 0);
-        $qty = (int)($it['qty'] ?? 0);
-        if ($id <= 0 || $qty <= 0) continue;
-        $idQty[$id] = ($idQty[$id] ?? 0) + $qty; // soma caso repetido
-    }
-    if (!$idQty) json_out(['ok' => false, 'msg' => 'Itens inválidos.'], 400);
-
-    $ids = array_keys($idQty);
-    $place = implode(',', array_fill(0, count($ids), '?'));
-
-    $today = date('Y-m-d');
-
-    // gerar pedido
-    $pedido = 'PDV-' . date('Ymd-His') . '-' . str_pad((string)random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-
-    // pagamento (campo VARCHAR(30) na tabela)
-    $pagamentoDb = ($payMode === 'MULTI') ? 'MULTI' : $payMethod;
-    $canalDb = $deliveryMode;
-
-    $pdo->beginTransaction();
-    try {
-        // trava produtos (estoque)
-        $stP = $pdo->prepare("
-            SELECT id, codigo, nome, unidade, preco, estoque, status
-            FROM produtos
-            WHERE id IN ($place)
-              AND status = 'ATIVO'
-            FOR UPDATE
-        ");
-        $stP->execute($ids);
-        $prods = $stP->fetchAll(PDO::FETCH_ASSOC);
-
-        if (count($prods) !== count($ids)) {
-            throw new RuntimeException('Alguns produtos não foram encontrados ou estão inativos.');
-        }
-
-        // monta mapa
-        $map = [];
-        foreach ($prods as $p) $map[(int)$p['id']] = $p;
-
-        // valida estoque e calcula base em cents
-        $lines = [];
-        $baseTotalCents = 0;
-        foreach ($idQty as $pid => $qty) {
-            $p = $map[$pid] ?? null;
-            if (!$p) throw new RuntimeException('Produto inválido.');
-
-            $stock = (int)($p['estoque'] ?? 0);
-            if ($qty > $stock) {
-                throw new RuntimeException("Estoque insuficiente para: {$p['nome']} (disp.: {$stock}).");
-            }
-
-            $priceCents = (int) round(((float)$p['preco']) * 100);
-            $lineCents = (int) round($qty * $priceCents);
-            $baseTotalCents += $lineCents;
-
-            $lines[] = [
-                'produto_id' => $pid,
-                'codigo' => (string)$p['codigo'],
-                'nome' => (string)$p['nome'],
-                'unidade' => (string)($p['unidade'] ?? 'UN'),
-                'qty' => $qty,
-                'price' => (float)$p['preco'],
-                'base_cents' => $lineCents,
-                'total_cents' => 0,
-            ];
-        }
-
-        if ($baseTotalCents <= 0) throw new RuntimeException('Total inválido.');
-
-        // desconto cents
-        $discountCents = 0;
-        if ($dType === 'PERC') {
-            $perc = (float)str_replace(',', '.', preg_replace('/[^\d,.\-]/', '', $dValue));
-            if ($perc > 0) {
-                $perc = min(100.0, $perc);
-                $discountCents = (int) round($baseTotalCents * ($perc / 100.0));
-            }
-        } else {
-            $discountCents = max(0, min($baseTotalCents, money_to_cents($dValue)));
-        }
-
-        $finalTotalCents = max(0, ($baseTotalCents - $discountCents) + $deliveryFeeCents);
-        if ($finalTotalCents <= 0) throw new RuntimeException('Total inválido.');
-
-        // distribui total final proporcionalmente às linhas (para bater com soma no DB)
-        $sumAlloc = 0;
-        for ($i = 0; $i < count($lines); $i++) {
-            $share = $lines[$i]['base_cents'] / $baseTotalCents;
-            $lines[$i]['total_cents'] = (int) round($finalTotalCents * $share);
-            $sumAlloc += $lines[$i]['total_cents'];
-        }
-        // ajusta diferença por arredondamento
-        $diff = $finalTotalCents - $sumAlloc;
-        $lines[count($lines) - 1]['total_cents'] += $diff;
-
-        // valida pagamento do PDV (servidor)
-        if ($payMode === 'UNICO') {
-            $paidCents = money_to_cents($pay['paid'] ?? '0');
-            if ($payMethod === 'DINHEIRO') {
-                if ($paidCents < $finalTotalCents) throw new RuntimeException('No dinheiro, o valor pago deve ser >= total.');
-            } else {
-                if (abs($paidCents - $finalTotalCents) > 1) throw new RuntimeException('Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total.');
-            }
-        } else {
-            $parts = is_array($pay['parts'] ?? null) ? $pay['parts'] : [];
-            $sum = 0;
-            $hasCash = false;
-            foreach ($parts as $pt) {
-                if (!is_array($pt)) continue;
-                $m = strtoupper(trim((string)($pt['method'] ?? '')));
-                $v = money_to_cents($pt['value'] ?? '0');
-                if ($v <= 0) continue;
-                $sum += $v;
-                if ($m === 'DINHEIRO') $hasCash = true;
-            }
-            if ($sum < $finalTotalCents) throw new RuntimeException('Pagamento múltiplo insuficiente.');
-            if ($sum > $finalTotalCents && !$hasCash) throw new RuntimeException('Se passar do total, precisa ter Dinheiro (troco).');
-        }
-
-        // INSERT saidas (1 linha por item)
-        $stIns = $pdo->prepare("
-            INSERT INTO saidas
-              (data, pedido, cliente, canal, pagamento, produto_id, unidade, qtd, preco, total)
-            VALUES
-              (:data, :pedido, :cliente, :canal, :pagamento, :produto_id, :unidade, :qtd, :preco, :total)
-        ");
-
-        // UPDATE estoque
-        $stUp = $pdo->prepare("UPDATE produtos SET estoque = estoque - :qtd WHERE id = :id");
-
-        foreach ($lines as $ln) {
-            $stIns->execute([
-                ':data' => $today,
-                ':pedido' => $pedido,
-                ':cliente' => $customer,
-                ':canal' => $canalDb,
-                ':pagamento' => $pagamentoDb,
-                ':produto_id' => $ln['produto_id'],
-                ':unidade' => $ln['unidade'] ?: 'UN',
-                ':qtd' => $ln['qty'], // DECIMAL(10,3) ok (aqui inteiro)
-                ':preco' => $ln['price'],
-                ':total' => cents_to_money((int)$ln['total_cents']),
-            ]);
-            $stUp->execute([':qtd' => $ln['qty'], ':id' => $ln['produto_id']]);
-        }
-
-        $pdo->commit();
-
-        // resposta para UI + cupom
-        $saleOut = [
-            'pedido' => $pedido,
-            'date' => brDate($today),
-            'customer' => $customer,
-            'canal' => $canalDb,
-            'pagamento' => $pagamentoDb,
-            'delivery' => [
-                'mode' => $deliveryMode,
-                'address' => $deliveryAddress,
-                'fee' => cents_to_money($deliveryFeeCents),
-            ],
-            'totals' => [
-                'base' => cents_to_money($baseTotalCents),
-                'discount' => cents_to_money($discountCents),
-                'fee' => cents_to_money($deliveryFeeCents),
-            ],
-            'total' => cents_to_money($finalTotalCents),
-            'items' => array_map(fn($ln) => [
-                'code' => $ln['codigo'],
-                'name' => $ln['nome'],
-                'qty' => $ln['qty'],
-                'price' => $ln['price'],
-                'total' => cents_to_money((int)$ln['total_cents']),
-                'unidade' => $ln['unidade'],
-            ], $lines),
-        ];
-
-        json_out(['ok' => true, 'sale' => $saleOut]);
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        json_out(['ok' => false, 'msg' => $e->getMessage()], 400);
-    }
-}
-?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -469,115 +17,563 @@ if ($action === 'confirm') {
 
     <style>
         /* dropdown do profile: largura acompanha conteúdo */
-        .profile-box .dropdown-menu { width: max-content; min-width: 260px; max-width: calc(100vw - 24px); }
-        .profile-box .dropdown-menu .author-info { width: max-content; max-width: 100%; display: flex !important; align-items: center; gap: 10px; }
-        .profile-box .dropdown-menu .author-info .content { min-width: 0; max-width: 100%; }
-        .profile-box .dropdown-menu .author-info .content a { display: inline-block; white-space: nowrap; max-width: 100%; }
+        .profile-box .dropdown-menu {
+            width: max-content;
+            min-width: 260px;
+            max-width: calc(100vw - 24px);
+        }
+
+        .profile-box .dropdown-menu .author-info {
+            width: max-content;
+            max-width: 100%;
+            display: flex !important;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .profile-box .dropdown-menu .author-info .content {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .profile-box .dropdown-menu .author-info .content a {
+            display: inline-block;
+            white-space: nowrap;
+            max-width: 100%;
+        }
 
         /* Botões compactos */
-        .main-btn.btn-compact { height: 38px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1 !important; }
-        .main-btn.btn-compact i { font-size: 14px; vertical-align: -1px; }
-        .icon-btn { height: 34px !important; width: 42px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
-        .form-control.compact, .form-select.compact { height: 38px; padding: 8px 12px; font-size: 13px; }
-
-        /* PDV layout (altura alinhada) */
-        .pdv-row { align-items: stretch; }
-        .pdv-left-col, .pdv-right-col { height: 100%; display: flex; flex-direction: column; }
-
-        .pdv-card { border: 1px solid rgba(148, 163, 184, .28); border-radius: 16px; background: #fff; overflow: hidden; }
-        .pdv-card .pdv-head { padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, .22); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-        .pdv-card .pdv-body { padding: 14px; }
-
-        .pdv-card.pdv-search { overflow: visible; position: relative; z-index: 50; }
-        .pdv-card.items-card { flex: 1 1 auto; min-height: 520px; display: flex; flex-direction: column; }
-        .pdv-card.items-card .pdv-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
-
-        .items-scroll { flex: 1 1 auto; min-height: 320px; overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
-        .pdv-right-col .pdv-card { height: 100%; display: flex; flex-direction: column; }
-        .pdv-right-col .checkout-body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
-
-        /* Busca e sugestões */
-        .search-wrap { position: relative; }
-        .suggest {
-            position: absolute; z-index: 9999; left: 0; right: 0; top: calc(100% + 6px);
-            background: #fff; border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
-            max-height: 340px; overflow-y: auto; overflow-x: hidden; display: none;
-            -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+        .main-btn.btn-compact {
+            height: 38px !important;
+            padding: 8px 14px !important;
+            font-size: 13px !important;
+            line-height: 1 !important;
         }
-        .suggest .it { padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .suggest .it:hover { background: rgba(241, 245, 249, .9); }
-        .suggest .it.disabled { opacity: .55; cursor: not-allowed; }
-        .pimg { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; border: 1px solid rgba(148, 163, 184, .30); background: #fff; flex: 0 0 auto; }
-        .it .meta { min-width: 0; flex: 1 1 auto; }
-        .it .meta .t { font-weight: 900; font-size: 13px; color: #0f172a; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .it .meta .s { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .it .price { font-weight: 900; font-size: 13px; color: #0f172a; white-space: nowrap; }
-        .it .stk { font-weight: 900; font-size: 11px; color: #334155; background: rgba(241,245,249,.9); border: 1px solid rgba(148,163,184,.25); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+
+        .main-btn.btn-compact i {
+            font-size: 14px;
+            vertical-align: -1px;
+        }
+
+        .icon-btn {
+            height: 34px !important;
+            width: 42px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .form-control.compact,
+        .form-select.compact {
+            height: 38px;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        /* =============================
+       PDV layout (altura alinhada)
+       ============================= */
+        .pdv-row {
+            align-items: stretch;
+        }
+
+        /* garante colunas com mesma altura no desktop */
+
+        .pdv-left-col,
+        .pdv-right-col {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Cartões */
+        .pdv-card {
+            border: 1px solid rgba(148, 163, 184, .28);
+            border-radius: 16px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .pdv-card .pdv-head {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(148, 163, 184, .22);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pdv-card .pdv-body {
+            padding: 14px;
+        }
+
+        /* ✅ Card da busca precisa permitir dropdown não ser cortado */
+        .pdv-card.pdv-search {
+            overflow: visible;
+            position: relative;
+            z-index: 50;
+        }
+
+        /* ✅ Card dos itens vai “crescer” até alinhar com o checkout */
+        .pdv-card.items-card {
+            flex: 1 1 auto;
+            min-height: 520px;
+            /* dá “corpo” mesmo sem itens */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pdv-card.items-card .pdv-body {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        /* área rolável interna (vertical), mantendo layout alinhado */
+        .items-scroll {
+            flex: 1 1 auto;
+            min-height: 320px;
+            /* garante altura similar ao exemplo */
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 12px;
+        }
+
+        /* Checkout ocupa a coluna toda (alinhamento com itens) */
+        .pdv-right-col .pdv-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pdv-right-col .checkout-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+            /* se a direita crescer, rola por dentro */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* =============================
+       Busca e sugestões
+       ============================= */
+        .search-wrap {
+            position: relative;
+        }
+
+        .suggest {
+            position: absolute;
+            z-index: 9999;
+            left: 0;
+            right: 0;
+            top: calc(100% + 6px);
+            background: #fff;
+            border: 1px solid rgba(148, 163, 184, .25);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
+            max-height: 340px;
+            /* ✅ mais alto + rolagem */
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: none;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        .suggest .it {
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .suggest .it:hover {
+            background: rgba(241, 245, 249, .9);
+        }
+
+        .pimg {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 1px solid rgba(148, 163, 184, .30);
+            background: #fff;
+            flex: 0 0 auto;
+        }
+
+        .it .meta {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .it .meta .t {
+            font-weight: 900;
+            font-size: 13px;
+            color: #0f172a;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .it .meta .s {
+            font-size: 12px;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .it .price {
+            font-weight: 900;
+            font-size: 13px;
+            color: #0f172a;
+            white-space: nowrap;
+        }
 
         /* Preview */
-        .preview-box { width: 100%; height: 130px; border-radius: 16px; border: 1px dashed rgba(148, 163, 184, .55); background: rgba(248, 250, 252, .7); display: flex; align-items: center; justify-content: center; padding: 10px; text-align: center; }
-        .preview-box img { width: 86px; height: 86px; border-radius: 16px; object-fit: cover; border: 1px solid rgba(148, 163, 184, .30); background: #fff; margin-bottom: 6px; }
-        .preview-name { font-weight: 900; font-size: 12px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+        .preview-box {
+            width: 100%;
+            height: 130px;
+            border-radius: 16px;
+            border: 1px dashed rgba(148, 163, 184, .55);
+            background: rgba(248, 250, 252, .7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            text-align: center;
+        }
 
-        /* Tabela itens */
-        .table td, .table th { vertical-align: middle; }
-        .table-responsive { -webkit-overflow-scrolling: touch; }
-        #tbItens { width: 100%; min-width: 720px; }
-        #tbItens th, #tbItens td { white-space: nowrap !important; }
+        .preview-box img {
+            width: 86px;
+            height: 86px;
+            border-radius: 16px;
+            object-fit: cover;
+            border: 1px solid rgba(148, 163, 184, .30);
+            background: #fff;
+            margin-bottom: 6px;
+        }
 
-        .qty-ctrl { display: inline-flex; align-items: center; gap: 6px; }
-        .qty-btn { height: 34px !important; width: 34px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; border-radius: 10px !important; }
-        .qty-pill { width: 64px !important; height: 34px !important; text-align: center; font-weight: 900; border: 1px solid rgba(148, 163, 184, .30); border-radius: 10px; padding: 4px 6px; background: #fff; font-size: 13px; }
-        .qty-pill::-webkit-outer-spin-button, .qty-pill::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .qty-pill { -moz-appearance: textfield; }
+        .preview-name {
+            font-weight: 900;
+            font-size: 12px;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
 
-        /* Checkout */
-        .checkout-head { background: #0b5ed7; color: #fff; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .checkout-head h6 { margin: 0; font-weight: 900; letter-spacing: .2px; }
-        .checkout-body { padding: 14px; }
+        /* =============================
+       Tabela itens
+       ============================= */
+        .table td,
+        .table th {
+            vertical-align: middle;
+        }
 
-        .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .pay-btn { border: 1px solid rgba(148, 163, 184, .35); background: #fff; border-radius: 12px; padding: 12px 12px; display: flex; align-items: center; gap: 10px; justify-content: flex-start; font-weight: 900; cursor: pointer; user-select: none; transition: .12s ease; min-height: 44px; }
-        .pay-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15, 23, 42, .08); }
-        .pay-btn.active { outline: 2px solid rgba(37, 99, 235, .35); border-color: rgba(37, 99, 235, .55); background: rgba(239, 246, 255, .65); }
-        .pay-btn i { font-size: 18px; }
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
 
-        .totals { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; background: #fff; padding: 12px; }
-        .tot-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #334155; margin-bottom: 8px; font-weight: 800; }
-        .tot-row:last-child { margin-bottom: 0; }
-        .tot-hr { height: 1px; background: rgba(148, 163, 184, .22); margin: 10px 0; }
-        .grand { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 6px; }
-        .grand .lbl { font-weight: 900; color: #0f172a; font-size: 18px; }
-        .grand .val { font-weight: 1000; color: #0b5ed7; font-size: 30px; letter-spacing: .2px; }
+        /* ✅ reduz min-width e evita scroll “extra” */
+        #tbItens {
+            width: 100%;
+            min-width: 720px;
+        }
 
-        .chip-toggle { display: flex; gap: 10px; flex-wrap: wrap; }
-        .chip { border: 1px solid rgba(148, 163, 184, .35); border-radius: 999px; padding: 8px 12px; cursor: pointer; font-weight: 900; font-size: 12px; user-select: none; background: #fff; }
-        .chip.active { background: rgba(239, 246, 255, .75); border-color: rgba(37, 99, 235, .55); outline: 2px solid rgba(37, 99, 235, .25); }
-        .muted { font-size: 12px; color: #64748b; }
+        #tbItens th,
+        #tbItens td {
+            white-space: nowrap !important;
+        }
 
-        .pay-split-row { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; padding: 12px; background: #fff; margin-bottom: 10px; }
-        .msg-ok { display: none; color: #16a34a; font-weight: 900; font-size: 12px; }
-        .msg-err { display: none; color: #b91c1c; font-weight: 900; font-size: 12px; }
+        .qty-ctrl {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ✅ QTD menor para não estourar */
+        .qty-btn {
+            height: 34px !important;
+            width: 34px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 10px !important;
+        }
+
+        .qty-pill {
+            width: 64px !important;
+            height: 34px !important;
+            text-align: center;
+            font-weight: 900;
+            border: 1px solid rgba(148, 163, 184, .30);
+            border-radius: 10px;
+            padding: 4px 6px;
+            background: #fff;
+            font-size: 13px;
+        }
+
+        .qty-pill::-webkit-outer-spin-button,
+        .qty-pill::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .qty-pill {
+            -moz-appearance: textfield;
+        }
+
+        /* =============================
+       Checkout
+       ============================= */
+        /* Checkout panel */
+        .checkout-head {
+            background: #0b5ed7;
+            color: #fff;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .checkout-head h6 {
+            margin: 0;
+            font-weight: 900;
+            letter-spacing: .2px;
+        }
+
+        .checkout-body {
+            padding: 14px;
+        }
+
+        .pay-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .pay-btn {
+            border: 1px solid rgba(148, 163, 184, .35);
+            background: #fff;
+            border-radius: 12px;
+            padding: 12px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: flex-start;
+            font-weight: 900;
+            cursor: pointer;
+            user-select: none;
+            transition: .12s ease;
+            min-height: 44px;
+        }
+
+        .pay-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 22px rgba(15, 23, 42, .08);
+        }
+
+        .pay-btn.active {
+            outline: 2px solid rgba(37, 99, 235, .35);
+            border-color: rgba(37, 99, 235, .55);
+            background: rgba(239, 246, 255, .65);
+        }
+
+        .pay-btn i {
+            font-size: 18px;
+        }
+
+        .totals {
+            border: 1px solid rgba(148, 163, 184, .25);
+            border-radius: 14px;
+            background: #fff;
+            padding: 12px;
+        }
+
+        .tot-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #334155;
+            margin-bottom: 8px;
+            font-weight: 800;
+        }
+
+        .tot-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .tot-hr {
+            height: 1px;
+            background: rgba(148, 163, 184, .22);
+            margin: 10px 0;
+        }
+
+        .grand {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .grand .lbl {
+            font-weight: 900;
+            color: #0f172a;
+            font-size: 18px;
+        }
+
+        .grand .val {
+            font-weight: 1000;
+            color: #0b5ed7;
+            font-size: 30px;
+            letter-spacing: .2px;
+        }
+
+        .chip-toggle {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            border: 1px solid rgba(148, 163, 184, .35);
+            border-radius: 999px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 900;
+            font-size: 12px;
+            user-select: none;
+            background: #fff;
+        }
+
+        .chip.active {
+            background: rgba(239, 246, 255, .75);
+            border-color: rgba(37, 99, 235, .55);
+            outline: 2px solid rgba(37, 99, 235, .25);
+        }
+
+        .muted {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .pay-split-row {
+            border: 1px solid rgba(148, 163, 184, .25);
+            border-radius: 14px;
+            padding: 12px;
+            background: #fff;
+            margin-bottom: 10px;
+        }
+
+        .msg-ok {
+            display: none;
+            color: #16a34a;
+            font-weight: 900;
+            font-size: 12px;
+        }
+
+        .msg-err {
+            display: none;
+            color: #b91c1c;
+            font-weight: 900;
+            font-size: 12px;
+        }
 
         /* Últimos cupons */
-        .last-box { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; overflow: hidden; background: #fff; margin-top: 12px; }
-        .last-box .head { padding: 10px 12px; border-bottom: 1px solid rgba(148, 163, 184, .18); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .last-box .head .t { font-weight: 900; font-size: 12px; color: #0f172a; text-transform: uppercase; letter-spacing: .4px; }
-        .last-box .list { max-height: 220px; overflow: auto; }
-        .cup { padding: 10px 12px; border-bottom: 1px solid rgba(148, 163, 184, .12); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; cursor: pointer; }
-        .cup:last-child { border-bottom: none; }
-        .cup:hover { background: rgba(248,250,252,.8); }
-        .cup .left .n { font-weight: 900; color: #0f172a; }
-        .cup .left .s { color: #64748b; font-size: 12px; }
-        .cup .right { text-align: right; white-space: nowrap; }
-        .cup .right .v { font-weight: 1000; color: #0b5ed7; }
-        .cup .right .st { font-weight: 900; color: #16a34a; font-size: 11px; }
+        .last-box {
+            border: 1px solid rgba(148, 163, 184, .25);
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+            margin-top: 12px;
+        }
+
+        .last-box .head {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(148, 163, 184, .18);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .last-box .head .t {
+            font-weight: 900;
+            font-size: 12px;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+        }
+
+        .last-box .list {
+            max-height: 220px;
+            overflow: auto;
+        }
+
+        .cup {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(148, 163, 184, .12);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 12px;
+        }
+
+        .cup:last-child {
+            border-bottom: none;
+        }
+
+        .cup .left .n {
+            font-weight: 900;
+            color: #0f172a;
+        }
+
+        .cup .left .s {
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .cup .right {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .cup .right .v {
+            font-weight: 1000;
+            color: #0b5ed7;
+        }
+
+        .cup .right .st {
+            font-weight: 900;
+            color: #16a34a;
+            font-size: 11px;
+        }
 
         @media (max-width: 991.98px) {
-            .pay-grid { grid-template-columns: 1fr; }
-            #tbItens { min-width: 720px; }
-            .grand .val { font-size: 26px; }
+            .pay-grid {
+                grid-template-columns: 1fr;
+            }
+
+            #tbItens {
+                min-width: 720px;
+            }
+
+            .grand .val {
+                font-size: 26px;
+            }
         }
     </style>
 </head>
@@ -626,7 +622,7 @@ if ($action === 'confirm') {
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
                         <li><a href="pedidos.html">Pedidos</a></li>
-                        <li><a href="vendas.php" class="active">Vendas</a></li>
+                        <li><a href="vendas.html" class="active">Vendas</a></li>
                         <li><a href="devolucoes.html">Devoluções</a></li>
                     </ul>
                 </li>
@@ -749,7 +745,8 @@ if ($action === 'confirm') {
                             <div class="header-search d-none d-md-flex">
                                 <form action="#">
                                     <input type="text" placeholder="Atalho: F4 pesquisar..." id="qGlobal" />
-                                    <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
+                                    <button type="submit" onclick="return false"><i
+                                            class="lni lni-search-alt"></i></button>
                                 </form>
                             </div>
                         </div>
@@ -805,17 +802,12 @@ if ($action === 'confirm') {
                         <div class="col-md-6">
                             <div class="title">
                                 <h2>Terminal de Vendas (PDV)</h2>
-                                <div class="muted">Ponto de Venda & Checkout — <b>F4</b> pesquisar | <b>F2</b> confirmar</div>
+                                <div class="muted">Ponto de Venda & Checkout — <b>F4</b> pesquisar | <b>F2</b> confirmar
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <?php if ($flash): ?>
-                    <div class="alert alert-<?= e((string)$flash['type']) ?> py-2">
-                        <?= e((string)$flash['msg']) ?>
-                    </div>
-                <?php endif; ?>
 
                 <div class="row g-3 mb-30 pdv-row">
                     <!-- LEFT -->
@@ -832,7 +824,8 @@ if ($action === 'confirm') {
                                                     placeholder="Nome ou código..." autocomplete="off" />
                                                 <div class="suggest" id="suggest"></div>
                                             </div>
-                                            <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar o 1º resultado.</div>
+                                            <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar
+                                                o 1º resultado.</div>
                                         </div>
 
                                         <div class="col-12 col-md-4">
@@ -856,20 +849,22 @@ if ($action === 'confirm') {
                                         <i class="lni lni-cart me-1"></i> Itens da Venda
                                     </div>
                                     <div class="d-flex gap-2 flex-wrap">
-                                        <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
+                                        <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar"
+                                            type="button">
                                             <i class="lni lni-trash-can me-1"></i> Limpar
                                         </button>
                                     </div>
                                 </div>
 
                                 <div class="pdv-body">
+                                    <!-- ✅ área interna que cresce até alinhar com checkout -->
                                     <div class="items-scroll">
                                         <div class="table-responsive">
                                             <table class="table text-nowrap mb-0" id="tbItens">
                                                 <thead>
                                                     <tr>
                                                         <th style="min-width:70px;">Item</th>
-                                                        <th style="min-width:360px;">Produto</th>
+                                                        <th style="min-width:320px;">Produto</th>
                                                         <th style="min-width:140px;">Qtd</th>
                                                         <th style="min-width:140px;" class="text-end">Unitário</th>
                                                         <th style="min-width:160px;" class="text-end">Subtotal</th>
@@ -880,7 +875,8 @@ if ($action === 'confirm') {
                                             </table>
                                         </div>
 
-                                        <div class="muted p-3" id="hintEmpty" style="display:none;">Aguardando inclusão de produtos...</div>
+                                        <div class="muted p-3" id="hintEmpty" style="display:none;">Aguardando inclusão
+                                            de produtos...</div>
                                     </div>
                                 </div>
                             </div>
@@ -893,13 +889,14 @@ if ($action === 'confirm') {
                             <div class="pdv-card">
                                 <div class="checkout-head">
                                     <h6 style="color: #fff;"><i class="lni lni-calculator me-1"></i> Checkout</h6>
-                                    <span class="badge bg-light text-dark" id="saleNo">Pedido #—</span>
+                                    <span class="badge bg-light text-dark" id="saleNo">Venda #—</span>
                                 </div>
 
                                 <div class="checkout-body">
                                     <div class="mb-3">
                                         <label class="form-label">Cliente</label>
-                                        <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" />
+                                        <input class="form-control compact" id="cCliente"
+                                            placeholder="CPF ou Nome (Opcional)" />
                                         <div class="muted mt-1">Consumidor final (se vazio).</div>
                                     </div>
 
@@ -913,11 +910,13 @@ if ($action === 'confirm') {
 
                                     <div class="mb-3" id="wrapDelivery" style="display:none;">
                                         <label class="form-label">Endereço</label>
-                                        <input class="form-control compact mb-2" id="cEndereco" placeholder="Rua, nº, bairro, referência..." />
+                                        <input class="form-control compact mb-2" id="cEndereco"
+                                            placeholder="Rua, nº, bairro, referência..." />
                                         <div class="row g-2">
                                             <div class="col-6">
                                                 <label class="form-label">Taxa entrega</label>
-                                                <input class="form-control compact" id="cEntrega" placeholder="0,00" value="0,00" />
+                                                <input class="form-control compact" id="cEntrega" placeholder="0,00"
+                                                    value="0,00" />
                                             </div>
                                             <div class="col-6">
                                                 <label class="form-label">Observação</label>
@@ -936,7 +935,8 @@ if ($action === 'confirm') {
                                                 </select>
                                             </div>
                                             <div class="col-7">
-                                                <input class="form-control compact" id="dValor" placeholder="0" value="0" />
+                                                <input class="form-control compact" id="dValor" placeholder="0"
+                                                    value="0" />
                                             </div>
                                         </div>
                                         <div class="muted mt-1">Desconto aplicado no subtotal (antes da taxa).</div>
@@ -953,30 +953,40 @@ if ($action === 'confirm') {
                                         <!-- único -->
                                         <div id="wrapPagUnico">
                                             <div class="pay-grid mb-2" id="payBtns">
-                                                <div class="pay-btn active" data-pay="DINHEIRO"><i class="lni lni-coin"></i> Dinheiro</div>
-                                                <div class="pay-btn" data-pay="PIX"><i class="lni lni-telegram-original"></i> Pix</div>
-                                                <div class="pay-btn" data-pay="CARTAO"><i class="lni lni-credit-cards"></i> Cartão</div>
-                                                <div class="pay-btn" data-pay="BOLETO"><i class="lni lni-ticket-alt"></i> Boleto</div>
+                                                <div class="pay-btn active" data-pay="DINHEIRO"><i
+                                                        class="lni lni-coin"></i> Dinheiro</div>
+                                                <div class="pay-btn" data-pay="PIX"><i
+                                                        class="lni lni-telegram-original"></i> Pix</div>
+                                                <div class="pay-btn" data-pay="CARTAO"><i
+                                                        class="lni lni-credit-cards"></i> Cartão</div>
+                                                <div class="pay-btn" data-pay="BOLETO"><i
+                                                        class="lni lni-ticket-alt"></i> Boleto</div>
                                             </div>
 
                                             <div class="row g-2">
                                                 <div class="col-6">
                                                     <label class="form-label">Valor pago</label>
-                                                    <input class="form-control compact" id="pValor" placeholder="0,00" value="0,00" />
+                                                    <input class="form-control compact" id="pValor" placeholder="0,00"
+                                                        value="0,00" />
                                                 </div>
                                                 <div class="col-6">
                                                     <label class="form-label">Troco</label>
-                                                    <input class="form-control compact" id="pTroco" value="0,00" readonly />
+                                                    <input class="form-control compact" id="pTroco" value="0,00"
+                                                        readonly />
                                                 </div>
                                             </div>
-                                            <div class="muted mt-1" id="hintTroco" style="display:none;">Em dinheiro pode ser maior que o total (troco automático).</div>
+                                            <div class="muted mt-1" id="hintTroco" style="display:none;">Em dinheiro
+                                                pode ser maior que o total (troco automático).</div>
                                         </div>
 
                                         <!-- múltiplos -->
                                         <div id="wrapPagMulti" style="display:none;">
-                                            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-                                                <div class="muted">Some os pagamentos para fechar o total. Se passar do total, precisa ter Dinheiro (troco).</div>
-                                                <button class="main-btn light-btn btn-hover btn-compact" id="btnAddPay" type="button">
+                                            <div
+                                                class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                                                <div class="muted">Some os pagamentos para fechar o total. Se passar do
+                                                    total, precisa ter Dinheiro (troco).</div>
+                                                <button class="main-btn light-btn btn-hover btn-compact" id="btnAddPay"
+                                                    type="button">
                                                     <i class="lni lni-plus me-1"></i> Adicionar
                                                 </button>
                                             </div>
@@ -984,19 +994,25 @@ if ($action === 'confirm') {
                                             <div id="paysWrap"></div>
 
                                             <div class="totals mt-2">
-                                                <div class="tot-row"><span>Somatório</span><span id="mSum">R$ 0,00</span></div>
-                                                <div class="tot-row"><span>Diferença (Pag - Total)</span><span id="mDiff">R$ 0,00</span></div>
-                                                <div class="tot-row"><span>Troco</span><span id="mTroco">R$ 0,00</span></div>
+                                                <div class="tot-row"><span>Somatório</span><span id="mSum">R$
+                                                        0,00</span></div>
+                                                <div class="tot-row"><span>Diferença (Pag - Total)</span><span
+                                                        id="mDiff">R$ 0,00</span></div>
+                                                <div class="tot-row"><span>Troco</span><span id="mTroco">R$ 0,00</span>
+                                                </div>
                                                 <div class="msg-ok mt-2" id="mOk">✅ Pagamento OK.</div>
-                                                <div class="msg-err mt-2" id="mErr">⚠️ Pagamento inválido. Ajuste os valores.</div>
+                                                <div class="msg-err mt-2" id="mErr">⚠️ Pagamento inválido. Ajuste os
+                                                    valores.</div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div class="totals mb-3">
                                         <div class="tot-row"><span>Subtotal</span><span id="tSub">R$ 0,00</span></div>
-                                        <div class="tot-row"><span>Desconto</span><span id="tDesc">- R$ 0,00</span></div>
-                                        <div class="tot-row"><span>Taxa entrega</span><span id="tEnt">R$ 0,00</span></div>
+                                        <div class="tot-row"><span>Desconto</span><span id="tDesc">- R$ 0,00</span>
+                                        </div>
+                                        <div class="tot-row"><span>Taxa entrega</span><span id="tEnt">R$ 0,00</span>
+                                        </div>
                                         <div class="tot-hr"></div>
                                         <div class="grand">
                                             <span class="lbl">TOTAL</span>
@@ -1005,12 +1021,14 @@ if ($action === 'confirm') {
                                     </div>
 
                                     <div class="d-grid gap-2">
-                                        <button class="main-btn primary-btn btn-hover btn-compact" id="btnConfirmar" type="button">
+                                        <button class="main-btn primary-btn btn-hover btn-compact" id="btnConfirmar"
+                                            type="button">
                                             <i class="lni lni-checkmark-circle me-1"></i> CONFIRMAR VENDA (F2)
                                         </button>
                                         <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="chkPrint" checked />
-                                            <label class="form-check-label" for="chkPrint">Imprimir cupom após confirmar</label>
+                                            <label class="form-check-label" for="chkPrint">Imprimir cupom após
+                                                confirmar</label>
                                         </div>
                                     </div>
 
@@ -1053,18 +1071,20 @@ if ($action === 'confirm') {
     <script src="assets/js/main.js"></script>
 
     <script>
-        // CSRF (PHP)
-        const CSRF_TOKEN = <?= json_encode($csrf, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        // ==============================
+        // Dados / Storage
+        // ==============================
+        const LS_PRODUCTS = "dist_products_v1";
+        const LS_SALES = "dist_sales_pdv_v1";
 
-        // ===== Default Img =====
         const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
-            <rect width="100%" height="100%" fill="#f1f5f9"/>
-            <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
-            <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
-          </svg>
-        `);
+      <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+        <rect width="100%" height="100%" fill="#f1f5f9"/>
+        <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
+        <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
+      </svg>
+    `);
 
         function safeText(s) {
             return String(s ?? "")
@@ -1074,6 +1094,7 @@ if ($action === 'confirm') {
                 .replaceAll('"', "&quot;")
                 .replaceAll("'", "&#039;");
         }
+
         function moneyToNumber(txt) {
             let s = String(txt ?? "").trim();
             if (!s) return 0;
@@ -1081,19 +1102,80 @@ if ($action === 'confirm') {
             const n = Number(s);
             return isNaN(n) ? 0 : n;
         }
+
         function numberToMoney(n) {
             const v = Number(n || 0);
             return "R$ " + v.toFixed(2).replace(".", ",");
         }
 
-        // ===== Estado PDV =====
-        let CART = []; // {id, code, name, price, img, unidade, stock, qty}
+        function nowBR() {
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, "0");
+            return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function loadJson(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
+        function saveJson(key, val) {
+            localStorage.setItem(key, JSON.stringify(val));
+        }
+
+        function seedProductsIfEmpty() {
+            const p = loadJson(LS_PRODUCTS, []);
+            if (Array.isArray(p) && p.length) return;
+            const seed = [
+                { code: "P0001", name: "Arroz 5kg (Tipo 1)", price: 28.90, img: DEFAULT_IMG },
+                { code: "P0002", name: "Açúcar 1kg", price: 6.50, img: DEFAULT_IMG },
+                { code: "P0003", name: "Detergente 500ml", price: 3.20, img: DEFAULT_IMG },
+                { code: "P0004", name: "Refrigerante 2L", price: 10.00, img: DEFAULT_IMG },
+            ];
+            saveJson(LS_PRODUCTS, seed);
+        }
+
+        function getProducts() {
+            seedProductsIfEmpty();
+            const arr = loadJson(LS_PRODUCTS, []);
+            return (arr || []).map(x => ({
+                code: String(x.code || x.codigo || "").trim(),
+                name: String(x.name || x.produto || "").trim(),
+                price: Number(x.price ?? x.preco ?? 0) || 0,
+                img: String(x.img || x.imagem || DEFAULT_IMG),
+            })).filter(x => x.code && x.name);
+        }
+
+        function getSales() { return loadJson(LS_SALES, []); }
+
+        function addSale(sale) {
+            const all = getSales();
+            all.unshift(sale);
+            saveJson(LS_SALES, all.slice(0, 100));
+        }
+
+        function nextSaleNo() {
+            const all = getSales();
+            const nums = all.map(x => Number(x.no || 0)).filter(n => n > 0);
+            return (nums.length ? Math.max(...nums) : 0) + 1;
+        }
+
+        // ==============================
+        // Estado PDV
+        // ==============================
+        let PRODUCTS = [];
+        let CART = [];
         let PAY_MODE = "UNICO"; // UNICO | MULTI
         let PAY_SELECTED = "DINHEIRO";
         let DELIVERY_MODE = "PRESENCIAL"; // PRESENCIAL | DELIVERY
-        let LAST_SUGGEST = [];
 
-        // ===== DOM =====
+        // ==============================
+        // DOM
+        // ==============================
         const qProd = document.getElementById("qProd");
         const suggest = document.getElementById("suggest");
         const qGlobal = document.getElementById("qGlobal");
@@ -1147,93 +1229,66 @@ if ($action === 'confirm') {
         const lastList = document.getElementById("lastList");
         const btnRefreshLast = document.getElementById("btnRefreshLast");
 
-        // ===== UI helpers =====
+        // ==============================
+        // UI helpers
+        // ==============================
         function setPreview(prod) {
             const img = (prod && prod.img) ? prod.img : DEFAULT_IMG;
             previewImg.src = img;
             previewName.textContent = prod ? prod.name : "AGUARDANDO...";
         }
+
         function showSuggest(list) {
-            LAST_SUGGEST = list || [];
-            if (!LAST_SUGGEST.length) { suggest.style.display = "none"; suggest.innerHTML = ""; return; }
-
-            suggest.innerHTML = LAST_SUGGEST.map(p => {
-                const disabled = (Number(p.stock || 0) <= 0);
-                return `
-                    <div class="it ${disabled ? "disabled" : ""}" data-id="${safeText(p.id)}" data-disabled="${disabled ? "1" : "0"}">
-                      <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
-                      <div class="meta">
-                        <div class="t">${safeText(p.name)}</div>
-                        <div class="s">${safeText(p.code)} • ${safeText(p.unidade || "UN")} ${p.categoria ? "• " + safeText(p.categoria) : ""}</div>
-                      </div>
-                      <span class="stk">Est: ${Number(p.stock || 0)}</span>
-                      <div class="price">${numberToMoney(p.price)}</div>
-                    </div>
-                `;
-            }).join("");
-
+            if (!list.length) { suggest.style.display = "none"; suggest.innerHTML = ""; return; }
+            suggest.innerHTML = list.map(p => `
+        <div class="it" data-code="${safeText(p.code)}">
+          <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
+          <div class="meta">
+            <div class="t">${safeText(p.name)}</div>
+            <div class="s">${safeText(p.code)}</div>
+          </div>
+          <div class="price">${numberToMoney(p.price)}</div>
+        </div>
+      `).join("");
             suggest.style.display = "block";
             suggest.scrollTop = 0;
         }
-        function hideSuggest() { suggest.style.display = "none"; suggest.innerHTML = ""; LAST_SUGGEST = []; }
 
-        async function apiSearchProducts(q) {
-            const qs = new URLSearchParams({ action: "search", q: q });
-            const r = await fetch("vendas.php?" + qs.toString(), { headers: { "Accept": "application/json" } });
-            const j = await r.json();
-            if (!j || !j.ok) return [];
-            return j.items || [];
-        }
+        function hideSuggest() { suggest.style.display = "none"; suggest.innerHTML = ""; }
 
-        // ===== Carrinho =====
+        // ==============================
+        // Carrinho
+        // ==============================
         function addToCart(prod) {
             if (!prod) return;
-            if (Number(prod.stock || 0) <= 0) { alert("Sem estoque para este produto."); return; }
-
-            const idx = CART.findIndex(x => x.id === prod.id);
-            if (idx >= 0) {
-                const next = CART[idx].qty + 1;
-                if (next > CART[idx].stock) { alert("Quantidade acima do estoque."); return; }
-                CART[idx].qty = next;
-            } else {
-                CART.push({
-                    id: Number(prod.id),
-                    code: String(prod.code || ""),
-                    name: String(prod.name || ""),
-                    price: Number(prod.price || 0),
-                    img: String(prod.img || DEFAULT_IMG),
-                    unidade: String(prod.unidade || "UN"),
-                    stock: Number(prod.stock || 0),
-                    qty: 1
-                });
-            }
+            const idx = CART.findIndex(x => x.code === prod.code);
+            if (idx >= 0) CART[idx].qty += 1;
+            else CART.push({ code: prod.code, name: prod.name, price: prod.price, img: prod.img || DEFAULT_IMG, qty: 1 });
             setPreview(prod);
             renderCart();
             recalcAll();
         }
-        function removeFromCart(id) { CART = CART.filter(x => x.id !== id); renderCart(); recalcAll(); }
-        function changeQty(id, delta) {
-            const it = CART.find(x => x.id === id);
+
+        function removeFromCart(code) { CART = CART.filter(x => x.code !== code); renderCart(); recalcAll(); }
+
+        function changeQty(code, delta) {
+            const it = CART.find(x => x.code === code);
             if (!it) return;
-            let next = Math.max(1, Number(it.qty || 1) + delta);
-            next = Math.min(next, Number(it.stock || 0));
-            if (next <= 0) next = 1;
-            it.qty = next;
+            it.qty = Math.max(1, Number(it.qty || 1) + delta);
             renderCart();
             recalcAll();
         }
-        function setQty(id, qty) {
-            const it = CART.find(x => x.id === id);
+
+        function setQty(code, qty) {
+            const it = CART.find(x => x.code === code);
             if (!it) return;
-            let q = Math.max(1, Number(qty || 1));
-            q = Math.min(q, Number(it.stock || 0));
-            if (!Number.isFinite(q)) q = 1;
-            it.qty = q;
+            it.qty = Math.max(1, Number(qty || 1));
             renderCart();
             recalcAll();
         }
 
         function calcSubtotal() { return CART.reduce((acc, it) => acc + (Number(it.qty || 0) * Number(it.price || 0)), 0); }
+
         function calcDiscount(sub) {
             const tipo = dTipo.value;
             const v = moneyToNumber(String(dValor.value ?? "").trim());
@@ -1241,10 +1296,12 @@ if ($action === 'confirm') {
             if (tipo === "PERC") return (sub * Math.min(100, v)) / 100;
             return Math.min(sub, v);
         }
+
         function calcDeliveryFee() {
             if (DELIVERY_MODE !== "DELIVERY") return 0;
             return moneyToNumber(cEntrega.value);
         }
+
         function calcTotal() {
             const sub = calcSubtotal();
             const desc = calcDiscount(sub);
@@ -1252,33 +1309,36 @@ if ($action === 'confirm') {
             return Math.max(0, (sub - desc) + ent);
         }
 
-        // ===== Pagamento =====
+        // ==============================
+        // Pagamento
+        // ==============================
         function payRowTpl(method = "PIX", value = "0,00") {
             return `
-                <div class="pay-split-row">
-                  <div class="row g-2 align-items-end">
-                    <div class="col-6">
-                      <label class="form-label">Forma</label>
-                      <select class="form-select compact mMethod">
-                        <option value="DINHEIRO" ${method === "DINHEIRO" ? "selected" : ""}>Dinheiro</option>
-                        <option value="PIX" ${method === "PIX" ? "selected" : ""}>Pix</option>
-                        <option value="CARTAO" ${method === "CARTAO" ? "selected" : ""}>Cartão</option>
-                        <option value="BOLETO" ${method === "BOLETO" ? "selected" : ""}>Boleto</option>
-                      </select>
-                    </div>
-                    <div class="col-4">
-                      <label class="form-label">Valor</label>
-                      <input class="form-control compact mValue" value="${safeText(value)}" placeholder="0,00" />
-                    </div>
-                    <div class="col-2 d-grid">
-                      <button class="main-btn danger-btn-outline btn-hover btn-compact btnRemPay" type="button" style="height:38px!important;padding:0!important;">
-                        <i class="lni lni-trash-can"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-            `;
+        <div class="pay-split-row">
+          <div class="row g-2 align-items-end">
+            <div class="col-6">
+              <label class="form-label">Forma</label>
+              <select class="form-select compact mMethod">
+                <option value="DINHEIRO" ${method === "DINHEIRO" ? "selected" : ""}>Dinheiro</option>
+                <option value="PIX" ${method === "PIX" ? "selected" : ""}>Pix</option>
+                <option value="CARTAO" ${method === "CARTAO" ? "selected" : ""}>Cartão</option>
+                <option value="BOLETO" ${method === "BOLETO" ? "selected" : ""}>Boleto</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label">Valor</label>
+              <input class="form-control compact mValue" value="${safeText(value)}" placeholder="0,00" />
+            </div>
+            <div class="col-2 d-grid">
+              <button class="main-btn danger-btn-outline btn-hover btn-compact btnRemPay" type="button" style="height:38px!important;padding:0!important;">
+                <i class="lni lni-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
         }
+
         function ensureOnePayRow() {
             if (!paysWrap.querySelector(".pay-split-row")) paysWrap.innerHTML = payRowTpl("PIX", "0,00");
         }
@@ -1333,7 +1393,9 @@ if ($action === 'confirm') {
             return { ok, method, paid, troco, total };
         }
 
-        // ===== Render =====
+        // ==============================
+        // Render
+        // ==============================
         function renderCart() {
             tbodyItens.innerHTML = "";
             hintEmpty.style.display = CART.length ? "none" : "block";
@@ -1341,31 +1403,31 @@ if ($action === 'confirm') {
             CART.forEach((it, i) => {
                 const sub = Number(it.qty || 0) * Number(it.price || 0);
                 tbodyItens.insertAdjacentHTML("beforeend", `
-                    <tr data-id="${safeText(it.id)}">
-                      <td>${i + 1}</td>
-                      <td>
-                        <div class="d-flex align-items-center gap-2">
-                          <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
-                          <div style="min-width:0;">
-                            <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px;">${safeText(it.name)}</div>
-                            <div class="muted">${safeText(it.code)} • ${safeText(it.unidade || "UN")} • Est: ${Number(it.stock || 0)}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div class="qty-ctrl">
-                          <button class="main-btn light-btn btn-hover btn-compact qty-btn btnMinus" type="button" title="-1"><i class="lni lni-minus"></i></button>
-                          <input class="qty-pill iQty" type="number" min="1" step="1" max="${Number(it.stock || 0)}" value="${Number(it.qty || 1)}" />
-                          <button class="main-btn light-btn btn-hover btn-compact qty-btn btnPlus" type="button" title="+1"><i class="lni lni-plus"></i></button>
-                        </div>
-                      </td>
-                      <td class="text-end">${numberToMoney(it.price)}</td>
-                      <td class="text-end" style="font-weight:1000;">${numberToMoney(sub)}</td>
-                      <td class="text-center">
-                        <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnRemove" type="button" title="Remover"><i class="lni lni-trash-can"></i></button>
-                      </td>
-                    </tr>
-                `);
+          <tr data-code="${safeText(it.code)}">
+            <td>${i + 1}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
+                <div style="min-width:0;">
+                  <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">${safeText(it.name)}</div>
+                  <div class="muted">${safeText(it.code)}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="qty-ctrl">
+                <button class="main-btn light-btn btn-hover btn-compact qty-btn btnMinus" type="button" title="-1"><i class="lni lni-minus"></i></button>
+                <input class="qty-pill iQty" type="number" min="1" value="${Number(it.qty || 1)}" />
+                <button class="main-btn light-btn btn-hover btn-compact qty-btn btnPlus" type="button" title="+1"><i class="lni lni-plus"></i></button>
+              </div>
+            </td>
+            <td class="text-end">${numberToMoney(it.price)}</td>
+            <td class="text-end" style="font-weight:1000;">${numberToMoney(sub)}</td>
+            <td class="text-center">
+              <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnRemove" type="button" title="Remover"><i class="lni lni-trash-can"></i></button>
+            </td>
+          </tr>
+        `);
             });
         }
 
@@ -1384,60 +1446,47 @@ if ($action === 'confirm') {
             else computeMultiPay();
         }
 
-        async function renderLastSales() {
-            try {
-                const r = await fetch("vendas.php?action=last", { headers: { "Accept": "application/json" } });
-                const j = await r.json();
-                const all = (j && j.ok) ? (j.items || []) : [];
-
-                if (!all.length) {
-                    lastList.innerHTML = `<div class="cup"><div class="left"><div class="n">—</div><div class="s">Sem cupons ainda</div></div><div class="right"><div class="v">R$ 0,00</div></div></div>`;
-                    return;
-                }
-
-                lastList.innerHTML = all.map(s => `
-                    <div class="cup" data-pedido="${safeText(s.pedido)}" title="Clique para reimprimir">
-                      <div class="left">
-                        <div class="n">${safeText(s.pedido)}</div>
-                        <div class="s">${safeText(s.data)} • ${safeText(s.canal)} • ${safeText(s.pagamento)}</div>
-                      </div>
-                      <div class="right">
-                        <div class="v">${numberToMoney(s.total || 0)}</div>
-                        <div class="st">CONCLUÍDO</div>
-                      </div>
-                    </div>
-                `).join("");
-            } catch (e) {
-                lastList.innerHTML = `<div class="cup"><div class="left"><div class="n">—</div><div class="s">Falha ao carregar cupons</div></div><div class="right"><div class="v">—</div></div></div>`;
+        function renderLastSales() {
+            const all = getSales().slice(0, 10);
+            if (!all.length) {
+                lastList.innerHTML = `<div class="cup"><div class="left"><div class="n">—</div><div class="s">Sem cupons ainda</div></div><div class="right"><div class="v">R$ 0,00</div></div></div>`;
+                return;
             }
+            lastList.innerHTML = all.map(s => `
+        <div class="cup">
+          <div class="left">
+            <div class="n">Venda #${Number(s.no || 0)}</div>
+            <div class="s">${safeText(s.date || "")}</div>
+          </div>
+          <div class="right">
+            <div class="v">${numberToMoney(s.total || 0)}</div>
+            <div class="st">CONCLUÍDO</div>
+          </div>
+        </div>
+      `).join("");
         }
 
-        // ===== Busca / Sugestões (DB) =====
-        let searchTimer = null;
-        async function refreshSuggest() {
-            const q = String(qProd.value || "").trim();
-            if (!q) { hideSuggest(); return; }
-
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(async () => {
-                const list = await apiSearchProducts(q);
-                showSuggest(list);
-            }, 150);
+        // ==============================
+        // Busca / Sugestões
+        // ==============================
+        function queryProducts(q) {
+            const s = String(q || "").toLowerCase().trim();
+            if (!s) return [];
+            return PRODUCTS
+                .filter(p => (p.name || "").toLowerCase().includes(s) || (p.code || "").toLowerCase().includes(s))
+                .slice(0, 30);
         }
+
+        function refreshSuggest() { showSuggest(queryProducts(qProd.value)); }
 
         qProd.addEventListener("input", refreshSuggest);
         qProd.addEventListener("focus", refreshSuggest);
 
-        qProd.addEventListener("keydown", async (e) => {
+        qProd.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
                 e.preventDefault();
-                // garante que tem lista atual
-                if (!LAST_SUGGEST.length) {
-                    const list = await apiSearchProducts(qProd.value);
-                    showSuggest(list);
-                }
-                const first = LAST_SUGGEST[0];
-                if (first) { addToCart(first); qProd.value = ""; hideSuggest(); }
+                const list = queryProducts(qProd.value);
+                if (list.length) { addToCart(list[0]); qProd.value = ""; hideSuggest(); }
             }
             if (e.key === "Escape") hideSuggest();
         });
@@ -1445,10 +1494,8 @@ if ($action === 'confirm') {
         suggest.addEventListener("click", (e) => {
             const it = e.target.closest(".it");
             if (!it) return;
-            if (it.getAttribute("data-disabled") === "1") return;
-
-            const id = Number(it.getAttribute("data-id") || 0);
-            const prod = LAST_SUGGEST.find(p => Number(p.id) === id);
+            const code = it.getAttribute("data-code");
+            const prod = PRODUCTS.find(p => p.code === code);
             addToCart(prod);
             qProd.value = "";
             hideSuggest();
@@ -1457,7 +1504,9 @@ if ($action === 'confirm') {
 
         document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) hideSuggest(); });
 
-        // ===== Entrega toggle =====
+        // ==============================
+        // Entrega toggle
+        // ==============================
         function setDeliveryMode(mode) {
             DELIVERY_MODE = mode;
             const isDel = mode === "DELIVERY";
@@ -1468,6 +1517,7 @@ if ($action === 'confirm') {
             if (!isDel) { cEndereco.value = ""; cEntrega.value = "0,00"; cObs.value = ""; }
             recalcAll();
         }
+
         chipPres.addEventListener("click", () => setDeliveryMode("PRESENCIAL"));
         chipDel.addEventListener("click", () => setDeliveryMode("DELIVERY"));
         cEntrega.addEventListener("input", recalcAll);
@@ -1476,7 +1526,9 @@ if ($action === 'confirm') {
         dTipo.addEventListener("change", recalcAll);
         dValor.addEventListener("input", recalcAll);
 
-        // ===== Pagamento toggle =====
+        // ==============================
+        // Pagamento toggle
+        // ==============================
         function setPayMode(mode) {
             PAY_MODE = mode;
             const isMulti = mode === "MULTI";
@@ -1520,24 +1572,26 @@ if ($action === 'confirm') {
         paysWrap.addEventListener("input", (e) => { if (e.target.closest(".pay-split-row")) recalcAll(); });
         paysWrap.addEventListener("change", (e) => { if (e.target.closest(".pay-split-row")) recalcAll(); });
 
-        // ===== Carrinho events =====
+        // ==============================
+        // Carrinho events
+        // ==============================
         tbodyItens.addEventListener("click", (e) => {
             const tr = e.target.closest("tr");
             if (!tr) return;
-            const id = Number(tr.getAttribute("data-id") || 0);
-            if (!id) return;
+            const code = tr.getAttribute("data-code");
+            if (!code) return;
 
-            if (e.target.closest(".btnRemove")) return removeFromCart(id);
-            if (e.target.closest(".btnMinus")) return changeQty(id, -1);
-            if (e.target.closest(".btnPlus")) return changeQty(id, +1);
+            if (e.target.closest(".btnRemove")) return removeFromCart(code);
+            if (e.target.closest(".btnMinus")) return changeQty(code, -1);
+            if (e.target.closest(".btnPlus")) return changeQty(code, +1);
         });
 
         tbodyItens.addEventListener("input", (e) => {
             const tr = e.target.closest("tr");
             if (!tr) return;
-            const id = Number(tr.getAttribute("data-id") || 0);
-            if (!id) return;
-            if (e.target.classList.contains("iQty")) setQty(id, e.target.value);
+            const code = tr.getAttribute("data-code");
+            if (!code) return;
+            if (e.target.classList.contains("iQty")) setQty(code, e.target.value);
         });
 
         btnLimpar.addEventListener("click", () => {
@@ -1548,90 +1602,98 @@ if ($action === 'confirm') {
             setPreview(null);
         });
 
-        // ===== Cupom fiscal (80mm) =====
+        // ==============================
+        // Cupom fiscal (80mm)
+        // ==============================
         function buildReceiptHtml(sale) {
             const hr = () => `<div class="hr"></div>`;
-            const items = (sale.items || []).map((it, idx) => {
-                const sub = Number(it.total || (it.qty * it.price));
+
+            const items = sale.items.map((it, idx) => {
+                const sub = it.qty * it.price;
                 const name = String(it.name || "").toUpperCase();
                 const code = String(it.code || "");
                 return `
-                    <div class="item">
-                      <div class="row"><span>${String(idx + 1).padStart(3, "0")} ${safeText(name)}</span></div>
-                      <div class="row small">
-                        <span>${safeText(code)}</span>
-                        <span>${Number(it.qty)} x ${numberToMoney(it.price)} = ${numberToMoney(sub)}</span>
-                      </div>
-                    </div>
-                `;
+          <div class="item">
+            <div class="row"><span>${String(idx + 1).padStart(3, "0")} ${safeText(name)}</span></div>
+            <div class="row small">
+              <span>${safeText(code)}</span>
+              <span>${it.qty} x ${numberToMoney(it.price)} = ${numberToMoney(sub)}</span>
+            </div>
+          </div>
+        `;
             }).join("");
 
-            const entregaTxt = (sale.delivery && sale.delivery.mode === "DELIVERY") ? "DELIVERY" : "PRESENCIAL";
-            const clienteTxt = sale.customer ? sale.customer : "CONSUMIDOR FINAL";
-            const enderecoTxt = (sale.delivery && sale.delivery.mode === "DELIVERY") ? (sale.delivery.address || "-") : "";
+            const payLines = (sale.pay.mode === "UNICO")
+                ? `<div class="row"><span>${safeText(String(sale.pay.method).toUpperCase())}</span><span>${numberToMoney(sale.pay.paid)}</span></div>`
+                : (sale.pay.parts || []).map(p => `
+            <div class="row"><span>${safeText(String(p.method).toUpperCase())}</span><span>${numberToMoney(p.value)}</span></div>
+          `).join("");
 
-            // pagamento exibido (simples)
-            const pg = safeText(String(sale.pagamento || sale.pay?.method || "—"));
+            const entregaTxt = (sale.delivery.mode === "DELIVERY") ? "DELIVERY" : "PRESENCIAL";
+            const clienteTxt = sale.customer ? sale.customer : "CONSUMIDOR FINAL";
+            const enderecoTxt = (sale.delivery.mode === "DELIVERY") ? (sale.delivery.address || "-") : "";
 
             return `
-                <html>
-                  <head>
-                    <meta charset="utf-8">
-                    <title>Cupom ${safeText(sale.pedido || "")}</title>
-                    <style>
-                      @page { size: 80mm auto; margin: 6mm; }
-                      body { margin: 0; padding: 0; font-family: "Courier New", monospace; color: #000; }
-                      .wrap { width: 72mm; margin: 0 auto; font-size: 11px; }
-                      .center { text-align: center; }
-                      .bold { font-weight: 800; }
-                      .small { font-size: 10px; }
-                      .hr { border-top: 1px dashed #000; margin: 6px 0; }
-                      .row { display: flex; justify-content: space-between; gap: 10px; }
-                      .row span:last-child { text-align: right; white-space: nowrap; }
-                      .item { margin: 6px 0; }
-                      .top { margin-top: 4px; }
-                      .mono { letter-spacing: .2px; }
-                    </style>
-                  </head>
-                  <body>
-                    <div class="wrap mono">
-                      <div class="center bold">PAINEL DA DISTRIBUIDORA</div>
-                      <div class="center small">CUPOM (MODELO)</div>
-                      ${hr()}
-                      <div class="row"><span class="bold">PEDIDO</span><span>${safeText(sale.pedido || "—")}</span></div>
-                      <div class="row"><span class="bold">DATA</span><span>${safeText(sale.date || "")}</span></div>
-                      <div class="row"><span class="bold">CLIENTE</span><span>${safeText(clienteTxt)}</span></div>
-                      <div class="row"><span class="bold">ENTREGA</span><span>${entregaTxt}</span></div>
-                      ${(sale.delivery && sale.delivery.mode === "DELIVERY") ? `<div class="top small">END: ${safeText(enderecoTxt)}</div>` : ``}
-                      ${hr()}
-                      <div class="row bold"><span>ITENS</span><span></span></div>
-                      ${items || `<div class="small">—</div>`}
-                      ${hr()}
-                      <div class="row"><span>TOTAL</span><span>${numberToMoney(sale.total || 0)}</span></div>
-                      ${hr()}
-                      <div class="row bold"><span>PAGAMENTO</span><span></span></div>
-                      <div class="row"><span>${pg}</span><span></span></div>
-                      ${hr()}
-                      <div class="center small">OBRIGADO PELA PREFERÊNCIA!</div>
-                    </div>
-                    <script>window.print();<\/script>
-                  </body>
-                </html>
-            `;
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Cupom #${sale.no}</title>
+            <style>
+              @page { size: 80mm auto; margin: 6mm; }
+              body { margin: 0; padding: 0; font-family: "Courier New", monospace; color: #000; }
+              .wrap { width: 72mm; margin: 0 auto; font-size: 11px; }
+              .center { text-align: center; }
+              .bold { font-weight: 800; }
+              .small { font-size: 10px; }
+              .hr { border-top: 1px dashed #000; margin: 6px 0; }
+              .row { display: flex; justify-content: space-between; gap: 10px; }
+              .row span:last-child { text-align: right; white-space: nowrap; }
+              .item { margin: 6px 0; }
+              .top { margin-top: 4px; }
+              .mono { letter-spacing: .2px; }
+            </style>
+          </head>
+          <body>
+            <div class="wrap mono">
+              <div class="center bold">PAINEL DA DISTRIBUIDORA</div>
+              <div class="center small">CUPOM FISCAL (MODELO)</div>
+              ${hr()}
+              <div class="row"><span class="bold">VENDA</span><span>#${sale.no}</span></div>
+              <div class="row"><span class="bold">DATA</span><span>${safeText(sale.date)}</span></div>
+              <div class="row"><span class="bold">CLIENTE</span><span>${safeText(clienteTxt)}</span></div>
+              <div class="row"><span class="bold">ENTREGA</span><span>${entregaTxt}</span></div>
+              ${sale.delivery.mode === "DELIVERY" ? `<div class="top small">END: ${safeText(enderecoTxt)}</div>` : ``}
+              ${hr()}
+              <div class="row bold"><span>ITENS</span><span></span></div>
+              ${items || `<div class="small">—</div>`}
+              ${hr()}
+              <div class="row"><span>SUBTOTAL</span><span>${numberToMoney(sale.totals.sub)}</span></div>
+              <div class="row"><span>DESCONTO</span><span>- ${numberToMoney(sale.totals.desc)}</span></div>
+              <div class="row"><span>TAXA ENTREGA</span><span>${numberToMoney(sale.totals.fee)}</span></div>
+              ${hr()}
+              <div class="row bold"><span>TOTAL</span><span>${numberToMoney(sale.total)}</span></div>
+              ${hr()}
+              <div class="row bold"><span>PAGAMENTO</span><span></span></div>
+              ${payLines || `<div class="row"><span>—</span><span>—</span></div>`}
+              <div class="row"><span>TROCO</span><span>${numberToMoney(sale.pay.troco || 0)}</span></div>
+              ${hr()}
+              <div class="center small">OBRIGADO PELA PREFERÊNCIA!</div>
+            </div>
+            <script>window.print();<\/script>
+          </body>
+        </html>
+      `;
         }
 
-        // ===== Confirmar venda (DB) =====
-        function validateSaleClient() {
+        // ==============================
+        // Confirmar venda
+        // ==============================
+        function validateSale() {
             if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
             if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return { ok: false, msg: "Informe o endereço do Delivery." };
 
             const total = calcTotal();
             if (total <= 0) return { ok: false, msg: "Total inválido." };
-
-            // estoque client
-            for (const it of CART) {
-                if (Number(it.qty || 0) > Number(it.stock || 0)) return { ok: false, msg: `Estoque insuficiente: ${it.name}` };
-            }
 
             if (PAY_MODE === "UNICO") {
                 const r = computeSinglePay();
@@ -1639,143 +1701,97 @@ if ($action === 'confirm') {
                     if (r.method === "DINHEIRO") return { ok: false, msg: "No dinheiro, o valor pago deve ser >= total." };
                     return { ok: false, msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total." };
                 }
-                return { ok: true };
+                return { ok: true, pay: { mode: "UNICO", method: r.method, paid: r.paid, troco: r.troco } };
             }
 
             const m = computeMultiPay();
             if (!m.ok) return { ok: false, msg: "Pagamento múltiplo inválido. Ajuste os valores." };
-            return { ok: true };
+            return { ok: true, pay: { mode: "MULTI", parts: m.rows, troco: m.troco, sum: m.sum } };
         }
 
-        async function confirmSale() {
-            const v = validateSaleClient();
+        function confirmSale() {
+            const v = validateSale();
             if (!v.ok) { alert(v.msg); return; }
 
-            const payload = {
-                csrf_token: CSRF_TOKEN,
+            const sub = calcSubtotal();
+            const desc = calcDiscount(sub);
+            const fee = calcDeliveryFee();
+            const total = calcTotal();
+            const no = nextSaleNo();
+            const date = nowBR();
+
+            const sale = {
+                no,
+                date,
                 customer: String(cCliente.value || "").trim(),
+                items: CART.map(it => ({ code: it.code, name: it.name, qty: Number(it.qty || 0), price: Number(it.price || 0) })),
                 delivery: {
                     mode: DELIVERY_MODE,
                     address: DELIVERY_MODE === "DELIVERY" ? String(cEndereco.value || "").trim() : "",
-                    fee: DELIVERY_MODE === "DELIVERY" ? String(cEntrega.value || "0,00") : "0,00",
+                    fee: fee,
                     obs: DELIVERY_MODE === "DELIVERY" ? String(cObs.value || "").trim() : ""
                 },
-                discount: {
-                    type: String(dTipo.value || "PERC"),
-                    value: String(dValor.value || "0")
-                },
-                pay: (PAY_MODE === "UNICO")
-                    ? { mode: "UNICO", method: PAY_SELECTED, paid: String(pValor.value || "0,00") }
-                    : { mode: "MULTI", parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
-                        method: row.querySelector(".mMethod")?.value || "PIX",
-                        value: row.querySelector(".mValue")?.value || "0,00"
-                    })) },
-                items: CART.map(it => ({ id: Number(it.id), qty: Number(it.qty || 0) }))
+                totals: { sub, desc, fee },
+                total,
+                pay: v.pay,
             };
 
-            btnConfirmar.disabled = true;
-            btnConfirmar.innerHTML = `<i class="lni lni-spinner-arrow me-1"></i> Processando...`;
-            try {
-                const r = await fetch("vendas.php?action=confirm", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                const j = await r.json();
-                if (!j || !j.ok) throw new Error(j?.msg || "Falha ao confirmar.");
+            addSale(sale);
+            renderLastSales();
 
-                const sale = j.sale;
-                saleNo.textContent = `Pedido #${sale.pedido}`;
-
-                if (chkPrint.checked) {
-                    const html = buildReceiptHtml(sale);
-                    const w = window.open("", "_blank");
-                    if (w) { w.document.open(); w.document.write(html); w.document.close(); }
-                    else { alert("Pop-up bloqueado. Permita pop-ups para imprimir."); }
-                }
-
-                // reset UI
-                CART = [];
-                renderCart();
-                setPreview(null);
-
-                cCliente.value = "";
-                setDeliveryMode("PRESENCIAL");
-
-                dTipo.value = "PERC";
-                dValor.value = "0";
-
-                setPayMode("UNICO");
-                PAY_SELECTED = "DINHEIRO";
-                payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
-                payBtns.querySelector('.pay-btn[data-pay="DINHEIRO"]').classList.add("active");
-                pValor.value = "0,00";
-                pTroco.value = "0,00";
-
-                paysWrap.innerHTML = "";
-                ensureOnePayRow();
-
-                recalcAll();
-                await renderLastSales();
-
-                alert(`Venda confirmada! Pedido: ${sale.pedido}`);
-                qProd.focus();
-            } catch (e) {
-                alert(String(e?.message || e));
-            } finally {
-                btnConfirmar.disabled = false;
-                btnConfirmar.innerHTML = `<i class="lni lni-checkmark-circle me-1"></i> CONFIRMAR VENDA (F2)`;
+            if (chkPrint.checked) {
+                const html = buildReceiptHtml(sale);
+                const w = window.open("", "_blank");
+                if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+                else { alert("Pop-up bloqueado. Permita pop-ups para imprimir."); }
             }
+
+            // reset
+            CART = [];
+            renderCart();
+            setPreview(null);
+
+            cCliente.value = "";
+            setDeliveryMode("PRESENCIAL");
+
+            dTipo.value = "PERC";
+            dValor.value = "0";
+
+            setPayMode("UNICO");
+            PAY_SELECTED = "DINHEIRO";
+            payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
+            payBtns.querySelector('.pay-btn[data-pay="DINHEIRO"]').classList.add("active");
+            pValor.value = "0,00";
+            pTroco.value = "0,00";
+
+            paysWrap.innerHTML = "";
+            ensureOnePayRow();
+
+            recalcAll();
+            saleNo.textContent = `Venda #${nextSaleNo()}`;
+            alert(`Venda #${no} confirmada!`);
+            qProd.focus();
         }
 
         btnConfirmar.addEventListener("click", confirmSale);
 
-        // Reimprimir: clique em um cupom (pega detalhes do pedido)
-        lastList.addEventListener("click", async (e) => {
-            const cup = e.target.closest(".cup");
-            if (!cup) return;
-            const pedido = cup.getAttribute("data-pedido");
-            if (!pedido) return;
-
-            try {
-                const qs = new URLSearchParams({ action: "get_pedido", pedido: pedido });
-                const r = await fetch("vendas.php?" + qs.toString(), { headers: { "Accept": "application/json" } });
-                const j = await r.json();
-                if (!j || !j.ok) throw new Error(j?.msg || "Pedido não encontrado.");
-
-                // adapta para cupom
-                const sale = j.sale;
-                const html = buildReceiptHtml({
-                    pedido: sale.pedido,
-                    date: sale.date,
-                    customer: sale.customer,
-                    canal: sale.canal,
-                    pagamento: sale.pagamento,
-                    items: sale.items.map(it => ({
-                        code: it.code, name: it.name, qty: it.qty, price: it.price, total: it.total
-                    })),
-                    total: sale.total,
-                    delivery: { mode: (sale.canal === "DELIVERY" ? "DELIVERY" : "PRESENCIAL"), address: "" }
-                });
-
-                const w = window.open("", "_blank");
-                if (w) { w.document.open(); w.document.write(html); w.document.close(); }
-                else { alert("Pop-up bloqueado. Permita pop-ups para imprimir."); }
-            } catch (err) {
-                alert(String(err?.message || err));
-            }
-        });
-
-        // ===== Atalhos teclado =====
+        // ==============================
+        // Atalhos teclado
+        // ==============================
         document.addEventListener("keydown", (e) => {
             if (e.key === "F4") { e.preventDefault(); qProd.focus(); return; }
             if (e.key === "F2") { e.preventDefault(); confirmSale(); return; }
             if (e.key === "Escape") hideSuggest();
         });
 
-        // ===== Init =====
+        // ==============================
+        // Init
+        // ==============================
         function init() {
+            PRODUCTS = getProducts();
             setPreview(null);
+
+            saleNo.textContent = `Venda #${nextSaleNo()}`;
 
             setDeliveryMode("PRESENCIAL");
             setPayMode("UNICO");
@@ -1792,6 +1808,7 @@ if ($action === 'confirm') {
 
             btnRefreshLast.addEventListener("click", renderLastSales);
         }
+
         init();
     </script>
 </body>
