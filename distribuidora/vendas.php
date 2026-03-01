@@ -1,13 +1,11 @@
 <?php
-
 declare(strict_types=1);
 
 /**
  * vendas.php (PDV)
  * - HTML normal
- * - AJAX interno:
- *    vendas.php?ajax=buscarProdutos&q=...
- *    vendas.php?ajax=ultimasVendas
+ * - AJAX interno SOMENTE para "ultimasVendas" (refresh dos cupons)
+ * - Busca de produtos: SEM AJAX, SEM ENTER pra buscar (filtra LOCAL no JS enquanto digita)
  */
 
 // ✅ BLINDA: evita “JSON quebrado” por warnings/avisos
@@ -64,119 +62,13 @@ function img_url(string $raw): string
 }
 
 /* =========================
-   Gera candidatos para buscar
-========================= */
-function build_candidates(string $q): array
-{
-  $q = trim($q);
-  if ($q === '') return [];
-
-  $cands = [$q];
-
-  if (preg_match('/^\d+$/', $q)) {
-    $noZeros = ltrim($q, '0');
-    if ($noZeros === '') $noZeros = '0';
-
-    for ($len = strlen($noZeros); $len <= 5; $len++) {
-      $cands[] = str_pad($noZeros, $len, '0', STR_PAD_LEFT);
-    }
-    if (strlen($q) < 5) {
-      $cands[] = str_pad($q, 5, '0', STR_PAD_LEFT);
-    }
-    $cands[] = $noZeros;
-  }
-
-  $len = strlen($q);
-  for ($i = $len - 1; $i >= 2; $i--) {
-    $cands[] = substr($q, 0, $i);
-    if (count($cands) >= 10) break;
-  }
-
-  $uniq = [];
-  foreach ($cands as $c) {
-    $c = trim($c);
-    if ($c === '') continue;
-    $uniq[$c] = true;
-  }
-  return array_keys($uniq);
-}
-
-/* =========================
-   ENDPOINTS INTERNOS (AJAX)
+   ENDPOINT INTERNO (AJAX)
+   - só pra "ultimasVendas"
 ========================= */
 if (isset($_GET['ajax'])) {
   $ajax = (string)($_GET['ajax'] ?? '');
 
   try {
-    if ($ajax === 'buscarProdutos') {
-      $q = trim((string)($_GET['q'] ?? ''));
-      if ($q === '') json_out(['ok' => true, 'items' => []]);
-
-      $sql = "
-                SELECT id, codigo, nome, unidade, preco, estoque, obs, imagem, status
-                FROM produtos
-                WHERE (
-                    status IS NULL
-                    OR status = ''
-                    OR UPPER(TRIM(status)) = 'ATIVO'
-                )
-                AND (
-                    codigo LIKE :like
-                    OR nome   LIKE :like
-                )
-                ORDER BY
-                  CASE
-                    WHEN codigo = :exact THEN 0
-                    WHEN codigo LIKE :start THEN 1
-                    WHEN nome   LIKE :start THEN 2
-                    ELSE 3
-                  END,
-                  nome ASC
-                LIMIT 30
-            ";
-
-      $stmt = $pdo->prepare($sql);
-
-      $rows = [];
-      foreach (build_candidates($q) as $cand) {
-        $like  = '%' . $cand . '%';
-        $start = $cand . '%';
-
-        $stmt->execute([
-          ':like'  => $like,
-          ':exact' => $cand,
-          ':start' => $start,
-        ]);
-
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        if ($rows) break;
-      }
-
-      $items = array_map(static function (array $r): array {
-        $img = trim((string)($r['imagem'] ?? ''));
-
-        // fallback: se imagem estiver vazia e você salvou o caminho no OBS
-        if ($img === '') {
-          $obs = trim((string)($r['obs'] ?? ''));
-          if (preg_match('~^(images/|uploads/|img/|prod_).+~i', $obs)) {
-            $img = $obs;
-          }
-        }
-
-        return [
-          'id'    => (int)($r['id'] ?? 0),
-          'code'  => (string)($r['codigo'] ?? ''),
-          'name'  => (string)($r['nome'] ?? ''),
-          'unit'  => (string)($r['unidade'] ?? ''),
-          'price' => (float)($r['preco'] ?? 0),
-          'stock' => (int)($r['estoque'] ?? 0),
-          'img'   => img_url($img), // ✅ aqui sai: assets/dados/produtos/images/...
-        ];
-      }, $rows);
-
-      json_out(['ok' => true, 'items' => $items]);
-    }
-
     if ($ajax === 'ultimasVendas') {
       try {
         $st = $pdo->query("SELECT id, total, created_at, canal FROM vendas ORDER BY id DESC LIMIT 10");
@@ -208,6 +100,45 @@ if (isset($_GET['ajax'])) {
   } catch (Throwable $e) {
     json_out(['ok' => false, 'msg' => $e->getMessage()], 500);
   }
+}
+
+/* =========================
+   CARREGA PRODUTOS 1x (SEM AJAX)
+   - Filtra no JS enquanto digita
+   - Ajuste LIMIT se tiver MUITO produto
+========================= */
+$PRODUTOS_CACHE = [];
+try {
+  $stP = $pdo->query("
+    SELECT id, codigo, nome, unidade, preco, estoque, obs, imagem, status
+    FROM produtos
+    WHERE (status IS NULL OR status = '' OR UPPER(TRIM(status))='ATIVO')
+    ORDER BY nome ASC
+    LIMIT 6000
+  ");
+  $rowsP = $stP->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $PRODUTOS_CACHE = array_map(static function (array $r): array {
+    $img = trim((string)($r['imagem'] ?? ''));
+
+    // fallback: se imagem estiver vazia e você salvou o caminho no OBS
+    if ($img === '') {
+      $obs = trim((string)($r['obs'] ?? ''));
+      if (preg_match('~^(images/|uploads/|img/|prod_).+~i', $obs)) $img = $obs;
+    }
+
+    return [
+      'id'    => (int)($r['id'] ?? 0),
+      'code'  => (string)($r['codigo'] ?? ''),
+      'name'  => (string)($r['nome'] ?? ''),
+      'unit'  => (string)($r['unidade'] ?? ''),
+      'price' => (float)($r['preco'] ?? 0),
+      'stock' => (int)($r['estoque'] ?? 0),
+      'img'   => img_url($img),
+    ];
+  }, $rowsP);
+} catch (Throwable $e) {
+  $PRODUTOS_CACHE = [];
 }
 
 /* =========================
@@ -252,135 +183,35 @@ function fmtMoney($v): string
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    .profile-box .dropdown-menu {
-      width: max-content;
-      min-width: 260px;
-      max-width: calc(100vw - 24px);
-    }
+    .profile-box .dropdown-menu { width: max-content; min-width: 260px; max-width: calc(100vw - 24px); }
+    .profile-box .dropdown-menu .author-info { width: max-content; max-width: 100%; display: flex !important; align-items: center; gap: 10px; }
+    .profile-box .dropdown-menu .author-info .content { min-width: 0; max-width: 100%; }
+    .profile-box .dropdown-menu .author-info .content a { display: inline-block; white-space: nowrap; max-width: 100%; }
 
-    .profile-box .dropdown-menu .author-info {
-      width: max-content;
-      max-width: 100%;
-      display: flex !important;
-      align-items: center;
-      gap: 10px;
-    }
+    .main-btn.btn-compact { height: 38px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1 !important; }
+    .main-btn.btn-compact i { font-size: 14px; vertical-align: -1px; }
+    .icon-btn { height: 34px !important; width: 42px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
 
-    .profile-box .dropdown-menu .author-info .content {
-      min-width: 0;
-      max-width: 100%;
-    }
+    .form-control.compact, .form-select.compact { height: 38px; padding: 8px 12px; font-size: 13px; }
 
-    .profile-box .dropdown-menu .author-info .content a {
-      display: inline-block;
-      white-space: nowrap;
-      max-width: 100%;
-    }
+    .pdv-row { align-items: stretch; }
+    .pdv-left-col, .pdv-right-col { height: 100%; display: flex; flex-direction: column; }
 
-    .main-btn.btn-compact {
-      height: 38px !important;
-      padding: 8px 14px !important;
-      font-size: 13px !important;
-      line-height: 1 !important;
-    }
+    .pdv-card { border: 1px solid rgba(148, 163, 184, .28); border-radius: 16px; background: #fff; overflow: hidden; }
+    .pdv-card .pdv-head { padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, .22); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .pdv-card .pdv-body { padding: 14px; }
 
-    .main-btn.btn-compact i {
-      font-size: 14px;
-      vertical-align: -1px;
-    }
+    .pdv-card.pdv-search { overflow: visible; position: relative; z-index: 50; }
 
-    .icon-btn {
-      height: 34px !important;
-      width: 42px !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-    }
+    .pdv-card.items-card { flex: 1 1 auto; min-height: 520px; display: flex; flex-direction: column; }
+    .pdv-card.items-card .pdv-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 
-    .form-control.compact,
-    .form-select.compact {
-      height: 38px;
-      padding: 8px 12px;
-      font-size: 13px;
-    }
+    .items-scroll { flex: 1 1 auto; min-height: 320px; overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
 
-    .pdv-row {
-      align-items: stretch;
-    }
+    .pdv-right-col .pdv-card { height: 100%; display: flex; flex-direction: column; }
+    .pdv-right-col .checkout-body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
 
-    .pdv-left-col,
-    .pdv-right-col {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .pdv-card {
-      border: 1px solid rgba(148, 163, 184, .28);
-      border-radius: 16px;
-      background: #fff;
-      overflow: hidden;
-    }
-
-    .pdv-card .pdv-head {
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(148, 163, 184, .22);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .pdv-card .pdv-body {
-      padding: 14px;
-    }
-
-    .pdv-card.pdv-search {
-      overflow: visible;
-      position: relative;
-      z-index: 50;
-    }
-
-    .pdv-card.items-card {
-      flex: 1 1 auto;
-      min-height: 520px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .pdv-card.items-card .pdv-body {
-      flex: 1 1 auto;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .items-scroll {
-      flex: 1 1 auto;
-      min-height: 320px;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      border-radius: 12px;
-    }
-
-    .pdv-right-col .pdv-card {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .pdv-right-col .checkout-body {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .search-wrap {
-      position: relative;
-    }
+    .search-wrap { position: relative; }
 
     .suggest {
       position: absolute;
@@ -400,382 +231,76 @@ function fmtMoney($v): string
       overscroll-behavior: contain;
     }
 
-    .suggest .it {
-      padding: 10px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-    }
+    .suggest .it { padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .suggest .it:hover { background: rgba(241, 245, 249, .9); }
 
-    .suggest .it:hover {
-      background: rgba(241, 245, 249, .9);
-    }
+    .pimg { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; border: 1px solid rgba(148, 163, 184, .30); background: #fff; flex: 0 0 auto; }
 
-    .pimg {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      object-fit: cover;
-      border: 1px solid rgba(148, 163, 184, .30);
-      background: #fff;
-      flex: 0 0 auto;
-    }
+    .it .meta { min-width: 0; flex: 1 1 auto; }
+    .it .meta .t { font-weight: 900; font-size: 13px; color: #0f172a; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .it .meta .s { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .it .price { font-weight: 900; font-size: 13px; color: #0f172a; white-space: nowrap; }
 
-    .it .meta {
-      min-width: 0;
-      flex: 1 1 auto;
-    }
+    .preview-box { width: 100%; height: 130px; border-radius: 16px; border: 1px dashed rgba(148, 163, 184, .55); background: rgba(248, 250, 252, .7); display: flex; align-items: center; justify-content: center; padding: 10px; text-align: center; }
+    .preview-box img { width: 86px; height: 86px; border-radius: 16px; object-fit: cover; border: 1px solid rgba(148, 163, 184, .30); background: #fff; margin-bottom: 6px; }
+    .preview-name { font-weight: 900; font-size: 12px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 
-    .it .meta .t {
-      font-weight: 900;
-      font-size: 13px;
-      color: #0f172a;
-      line-height: 1.1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .table td, .table th { vertical-align: middle; }
 
-    .it .meta .s {
-      font-size: 12px;
-      color: #64748b;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    #tbItens { width: 100%; min-width: 720px; }
+    #tbItens th, #tbItens td { white-space: nowrap !important; }
 
-    .it .price {
-      font-weight: 900;
-      font-size: 13px;
-      color: #0f172a;
-      white-space: nowrap;
-    }
+    .qty-ctrl { display: inline-flex; align-items: center; gap: 6px; }
+    .qty-btn { height: 34px !important; width: 34px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; border-radius: 10px !important; }
+    .qty-pill { width: 64px !important; height: 34px !important; text-align: center; font-weight: 900; border: 1px solid rgba(148, 163, 184, .30); border-radius: 10px; padding: 4px 6px; background: #fff; font-size: 13px; }
+    .qty-pill::-webkit-outer-spin-button, .qty-pill::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .qty-pill { -moz-appearance: textfield; }
 
-    .preview-box {
-      width: 100%;
-      height: 130px;
-      border-radius: 16px;
-      border: 1px dashed rgba(148, 163, 184, .55);
-      background: rgba(248, 250, 252, .7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-      text-align: center;
-    }
+    .checkout-head { background: #0b5ed7; color: #fff; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .checkout-head h6 { margin: 0; font-weight: 900; letter-spacing: .2px; }
+    .checkout-body { padding: 14px; }
 
-    .preview-box img {
-      width: 86px;
-      height: 86px;
-      border-radius: 16px;
-      object-fit: cover;
-      border: 1px solid rgba(148, 163, 184, .30);
-      background: #fff;
-      margin-bottom: 6px;
-    }
+    .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pay-btn { border: 1px solid rgba(148, 163, 184, .35); background: #fff; border-radius: 12px; padding: 12px 12px; display: flex; align-items: center; gap: 10px; justify-content: flex-start; font-weight: 900; cursor: pointer; user-select: none; transition: .12s ease; min-height: 44px; }
+    .pay-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15, 23, 42, .08); }
+    .pay-btn.active { outline: 2px solid rgba(37, 99, 235, .35); border-color: rgba(37, 99, 235, .55); background: rgba(239, 246, 255, .65); }
+    .pay-btn i { font-size: 18px; }
 
-    .preview-name {
-      font-weight: 900;
-      font-size: 12px;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 220px;
-    }
+    .totals { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; background: #fff; padding: 12px; }
+    .tot-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #334155; margin-bottom: 8px; font-weight: 800; }
+    .tot-row:last-child { margin-bottom: 0; }
+    .tot-hr { height: 1px; background: rgba(148, 163, 184, .22); margin: 10px 0; }
 
-    .table td,
-    .table th {
-      vertical-align: middle;
-    }
+    .grand { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 6px; }
+    .grand .lbl { font-weight: 900; color: #0f172a; font-size: 18px; }
+    .grand .val { font-weight: 1000; color: #0b5ed7; font-size: 30px; letter-spacing: .2px; }
 
-    #tbItens {
-      width: 100%;
-      min-width: 720px;
-    }
+    .chip-toggle { display: flex; gap: 10px; flex-wrap: wrap; }
+    .chip { border: 1px solid rgba(148, 163, 184, .35); border-radius: 999px; padding: 8px 12px; cursor: pointer; font-weight: 900; font-size: 12px; user-select: none; background: #fff; }
+    .chip.active { background: rgba(239, 246, 255, .75); border-color: rgba(37, 99, 235, .55); outline: 2px solid rgba(37, 99, 235, .25); }
 
-    #tbItens th,
-    #tbItens td {
-      white-space: nowrap !important;
-    }
+    .muted { font-size: 12px; color: #64748b; }
 
-    .qty-ctrl {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .pay-split-row { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; padding: 12px; background: #fff; margin-bottom: 10px; }
+    .msg-ok { display: none; color: #16a34a; font-weight: 900; font-size: 12px; }
+    .msg-err { display: none; color: #b91c1c; font-weight: 900; font-size: 12px; }
 
-    .qty-btn {
-      height: 34px !important;
-      width: 34px !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      border-radius: 10px !important;
-    }
-
-    .qty-pill {
-      width: 64px !important;
-      height: 34px !important;
-      text-align: center;
-      font-weight: 900;
-      border: 1px solid rgba(148, 163, 184, .30);
-      border-radius: 10px;
-      padding: 4px 6px;
-      background: #fff;
-      font-size: 13px;
-    }
-
-    .qty-pill::-webkit-outer-spin-button,
-    .qty-pill::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
-    .qty-pill {
-      -moz-appearance: textfield;
-    }
-
-    .checkout-head {
-      background: #0b5ed7;
-      color: #fff;
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .checkout-head h6 {
-      margin: 0;
-      font-weight: 900;
-      letter-spacing: .2px;
-    }
-
-    .checkout-body {
-      padding: 14px;
-    }
-
-    .pay-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .pay-btn {
-      border: 1px solid rgba(148, 163, 184, .35);
-      background: #fff;
-      border-radius: 12px;
-      padding: 12px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      justify-content: flex-start;
-      font-weight: 900;
-      cursor: pointer;
-      user-select: none;
-      transition: .12s ease;
-      min-height: 44px;
-    }
-
-    .pay-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 10px 22px rgba(15, 23, 42, .08);
-    }
-
-    .pay-btn.active {
-      outline: 2px solid rgba(37, 99, 235, .35);
-      border-color: rgba(37, 99, 235, .55);
-      background: rgba(239, 246, 255, .65);
-    }
-
-    .pay-btn i {
-      font-size: 18px;
-    }
-
-    .totals {
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 14px;
-      background: #fff;
-      padding: 12px;
-    }
-
-    .tot-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: #334155;
-      margin-bottom: 8px;
-      font-weight: 800;
-    }
-
-    .tot-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .tot-hr {
-      height: 1px;
-      background: rgba(148, 163, 184, .22);
-      margin: 10px 0;
-    }
-
-    .grand {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 10px;
-      margin-top: 6px;
-    }
-
-    .grand .lbl {
-      font-weight: 900;
-      color: #0f172a;
-      font-size: 18px;
-    }
-
-    .grand .val {
-      font-weight: 1000;
-      color: #0b5ed7;
-      font-size: 30px;
-      letter-spacing: .2px;
-    }
-
-    .chip-toggle {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .chip {
-      border: 1px solid rgba(148, 163, 184, .35);
-      border-radius: 999px;
-      padding: 8px 12px;
-      cursor: pointer;
-      font-weight: 900;
-      font-size: 12px;
-      user-select: none;
-      background: #fff;
-    }
-
-    .chip.active {
-      background: rgba(239, 246, 255, .75);
-      border-color: rgba(37, 99, 235, .55);
-      outline: 2px solid rgba(37, 99, 235, .25);
-    }
-
-    .muted {
-      font-size: 12px;
-      color: #64748b;
-    }
-
-    .pay-split-row {
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 14px;
-      padding: 12px;
-      background: #fff;
-      margin-bottom: 10px;
-    }
-
-    .msg-ok {
-      display: none;
-      color: #16a34a;
-      font-weight: 900;
-      font-size: 12px;
-    }
-
-    .msg-err {
-      display: none;
-      color: #b91c1c;
-      font-weight: 900;
-      font-size: 12px;
-    }
-
-    .last-box {
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 14px;
-      overflow: hidden;
-      background: #fff;
-      margin-top: 12px;
-    }
-
-    .last-box .head {
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(148, 163, 184, .18);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .last-box .head .t {
-      font-weight: 900;
-      font-size: 12px;
-      color: #0f172a;
-      text-transform: uppercase;
-      letter-spacing: .4px;
-    }
-
-    .last-box .list {
-      max-height: 220px;
-      overflow: auto;
-    }
-
-    .cup {
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(148, 163, 184, .12);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 12px;
-    }
-
-    .cup:last-child {
-      border-bottom: none;
-    }
-
-    .cup .left .n {
-      font-weight: 900;
-      color: #0f172a;
-    }
-
-    .cup .left .s {
-      color: #64748b;
-      font-size: 12px;
-    }
-
-    .cup .right {
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    .cup .right .v {
-      font-weight: 1000;
-      color: #0b5ed7;
-    }
-
-    .cup .right .st {
-      font-weight: 900;
-      color: #16a34a;
-      font-size: 11px;
-    }
+    .last-box { border: 1px solid rgba(148, 163, 184, .25); border-radius: 14px; overflow: hidden; background: #fff; margin-top: 12px; }
+    .last-box .head { padding: 10px 12px; border-bottom: 1px solid rgba(148, 163, 184, .18); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .last-box .head .t { font-weight: 900; font-size: 12px; color: #0f172a; text-transform: uppercase; letter-spacing: .4px; }
+    .last-box .list { max-height: 220px; overflow: auto; }
+    .cup { padding: 10px 12px; border-bottom: 1px solid rgba(148, 163, 184, .12); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+    .cup:last-child { border-bottom: none; }
+    .cup .left .n { font-weight: 900; color: #0f172a; }
+    .cup .left .s { color: #64748b; font-size: 12px; }
+    .cup .right { text-align: right; white-space: nowrap; }
+    .cup .right .v { font-weight: 1000; color: #0b5ed7; }
+    .cup .right .st { font-weight: 900; color: #16a34a; font-size: 11px; }
 
     @media (max-width: 991.98px) {
-      .pay-grid {
-        grid-template-columns: 1fr;
-      }
-
-      #tbItens {
-        min-width: 720px;
-      }
-
-      .grand .val {
-        font-size: 26px;
-      }
+      .pay-grid { grid-template-columns: 1fr; }
+      #tbItens { min-width: 720px; }
+      .grand .val { font-size: 26px; }
     }
   </style>
 </head>
@@ -838,9 +363,7 @@ function fmtMoney($v): string
         </li>
 
         <li class="nav-item"><a href="relatorios.php"><span class="text">Relatórios</span></a></li>
-        <span class="divider">
-          <hr />
-        </span>
+        <span class="divider"><hr /></span>
         <li class="nav-item"><a href="suporte.php"><span class="text">Suporte</span></a></li>
       </ul>
     </nav>
@@ -936,8 +459,7 @@ function fmtMoney($v): string
                     <div class="col-12 col-md-8">
                       <label class="form-label">Pesquisar Produto (F4)</label>
                       <div class="search-wrap">
-                        <input class="form-control compact" id="qProd"
-                          placeholder="Nome ou código..." autocomplete="off" />
+                        <input class="form-control compact" id="qProd" placeholder="Nome ou código..." autocomplete="off" />
                         <div class="suggest" id="suggest"></div>
                       </div>
                       <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar o 1º resultado.</div>
@@ -1142,19 +664,18 @@ function fmtMoney($v): string
                             <div class="v">R$ 0,00</div>
                           </div>
                         </div>
-                        <?php else: foreach ($last as $s): ?>
-                          <div class="cup" style="cursor:pointer;" data-id="<?= (int)$s['id'] ?>" title="Clique para imprimir">
-                            <div class="left">
-                              <div class="n">Venda #<?= (int)$s['id'] ?></div>
-                              <div class="s"><?= e((string)$s['created_at']) ?></div>
-                            </div>
-                            <div class="right">
-                              <div class="v"><?= e(fmtMoney((float)$s['total'])) ?></div>
-                              <div class="st">CONCLUÍDO</div>
-                            </div>
+                      <?php else: foreach ($last as $s): ?>
+                        <div class="cup" style="cursor:pointer;" data-id="<?= (int)$s['id'] ?>" title="Clique para imprimir">
+                          <div class="left">
+                            <div class="n">Venda #<?= (int)$s['id'] ?></div>
+                            <div class="s"><?= e((string)$s['created_at']) ?></div>
                           </div>
-                      <?php endforeach;
-                      endif; ?>
+                          <div class="right">
+                            <div class="v"><?= e(fmtMoney((float)$s['total'])) ?></div>
+                            <div class="st">CONCLUÍDO</div>
+                          </div>
+                        </div>
+                      <?php endforeach; endif; ?>
                     </div>
                   </div>
 
@@ -1185,8 +706,13 @@ function fmtMoney($v): string
 
   <script>
     /* ==============================
-   PDV (MySQL) - JS
-============================== */
+       PRODUTOS (SEM AJAX) - vem do PHP
+    ============================== */
+    const PRODUCTS = <?= json_encode($PRODUTOS_CACHE, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+    /* ==============================
+       PDV - JS
+    ============================== */
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const AJAX_URL = "vendas.php";
 
@@ -1233,9 +759,7 @@ function fmtMoney($v): string
       scope.querySelectorAll("img").forEach(img => {
         img.addEventListener("error", () => {
           img.src = DEFAULT_IMG;
-        }, {
-          once: true
-        });
+        }, { once: true });
       });
     }
 
@@ -1247,9 +771,7 @@ function fmtMoney($v): string
     let PAY_SELECTED = "DINHEIRO";
     let DELIVERY_MODE = "PRESENCIAL";
     let LAST_SUGG = [];
-
     let searchTimer = null;
-    let searchAbort = null;
 
     /* ==============================
        DOM
@@ -1324,15 +846,15 @@ function fmtMoney($v): string
         return;
       }
       suggest.innerHTML = list.map(p => `
-    <div class="it" data-id="${Number(p.id)}">
-      <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
-      <div class="meta">
-        <div class="t">${safeText(p.name)}</div>
-        <div class="s">${safeText(p.code)} • Estoque: ${Number(p.stock ?? 0)}</div>
-      </div>
-      <div class="price">${numberToMoney(p.price)}</div>
-    </div>
-  `).join("");
+        <div class="it" data-id="${Number(p.id)}">
+          <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
+          <div class="meta">
+            <div class="t">${safeText(p.name)}</div>
+            <div class="s">${safeText(p.code)} • Estoque: ${Number(p.stock ?? 0)}</div>
+          </div>
+          <div class="price">${numberToMoney(p.price)}</div>
+        </div>
+      `).join("");
       suggest.style.display = "block";
       suggest.scrollTop = 0;
       bindImgFallback(suggest);
@@ -1342,6 +864,138 @@ function fmtMoney($v): string
       suggest.style.display = "none";
       suggest.innerHTML = "";
     }
+
+    /* ==============================
+       Busca LOCAL (SEM AJAX)
+       - aceita "0005" pra achar "P0005"
+    ============================== */
+    function onlyDigits(s) {
+      return String(s || "").replace(/\D+/g, "");
+    }
+
+    function buildCandidates(q) {
+      q = String(q || "").trim();
+      if (!q) return [];
+      const cands = [q];
+
+      if (/^\d+$/.test(q)) {
+        const nz = q.replace(/^0+/, "") || "0";
+        for (let len = nz.length; len <= 5; len++) cands.push(nz.padStart(len, "0"));
+        if (q.length < 5) cands.push(q.padStart(5, "0"));
+        cands.push(nz);
+      }
+
+      const out = [];
+      const seen = new Set();
+      for (const c of cands) {
+        const v = String(c).trim();
+        if (!v || seen.has(v)) continue;
+        seen.add(v);
+        out.push(v);
+      }
+      return out;
+    }
+
+    function filterProductsLocal(q) {
+      const sRaw = String(q || "").trim().toLowerCase();
+      if (!sRaw) return [];
+
+      const sDigits = onlyDigits(sRaw);
+      const cands = buildCandidates(sDigits || sRaw);
+
+      const res = [];
+      for (const p of PRODUCTS) {
+        const code = String(p.code || "").toLowerCase();
+        const name = String(p.name || "").toLowerCase();
+        const codeDigits = onlyDigits(code);
+
+        let hit = false;
+
+        // busca normal
+        if (code.includes(sRaw) || name.includes(sRaw)) hit = true;
+
+        // busca por dígitos (0005 => P0005)
+        if (!hit && sDigits) {
+          if (codeDigits.includes(sDigits)) hit = true;
+          else if (cands.some(c => codeDigits.includes(c))) hit = true;
+        }
+
+        if (hit) res.push(p);
+      }
+
+      // ordena melhor match
+      res.sort((a, b) => {
+        const ac = String(a.code || "").toLowerCase();
+        const bc = String(b.code || "").toLowerCase();
+        const an = String(a.name || "").toLowerCase();
+        const bn = String(b.name || "").toLowerCase();
+        const ad = onlyDigits(ac);
+        const bd = onlyDigits(bc);
+
+        function score(code, name, digits) {
+          if (sDigits && digits === sDigits) return 0;
+          if (sDigits && digits.startsWith(sDigits)) return 1;
+          if (code.startsWith(sRaw)) return 2;
+          if (name.startsWith(sRaw)) return 3;
+          return 4;
+        }
+
+        const sa = score(ac, an, ad);
+        const sb = score(bc, bn, bd);
+        if (sa !== sb) return sa - sb;
+        return an.localeCompare(bn);
+      });
+
+      return res.slice(0, 30);
+    }
+
+    function refreshSuggestDebounced() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        const q = qProd.value.trim();
+        if (!q) {
+          LAST_SUGG = [];
+          showSuggest([]);
+          return;
+        }
+        LAST_SUGG = filterProductsLocal(q);
+        showSuggest(LAST_SUGG);
+      }, 120);
+    }
+
+    qProd.addEventListener("input", refreshSuggestDebounced);
+    qProd.addEventListener("focus", refreshSuggestDebounced);
+
+    qProd.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!LAST_SUGG.length) {
+          LAST_SUGG = filterProductsLocal(qProd.value);
+          showSuggest(LAST_SUGG);
+        }
+        if (LAST_SUGG.length) {
+          addToCart(LAST_SUGG[0]);
+          qProd.value = "";
+          hideSuggest();
+        }
+      }
+      if (e.key === "Escape") hideSuggest();
+    });
+
+    suggest.addEventListener("click", (e) => {
+      const it = e.target.closest(".it");
+      if (!it) return;
+      const id = Number(it.getAttribute("data-id") || 0);
+      const prod = LAST_SUGG.find(p => Number(p.id) === id);
+      addToCart(prod);
+      qProd.value = "";
+      hideSuggest();
+      qProd.focus();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-wrap")) hideSuggest();
+    });
 
     /* ==============================
        Carrinho
@@ -1356,7 +1010,7 @@ function fmtMoney($v): string
         code: prod.code,
         name: prod.name,
         price: Number(prod.price || 0),
-        img: prod.img || DEFAULT_IMG,
+        img: (prod.img && String(prod.img).trim() !== "") ? prod.img : DEFAULT_IMG,
         unit: prod.unit || "",
         qty: 1
       });
@@ -1417,29 +1071,29 @@ function fmtMoney($v): string
     ============================== */
     function payRowTpl(method = "PIX", value = "0,00") {
       return `
-    <div class="pay-split-row">
-      <div class="row g-2 align-items-end">
-        <div class="col-6">
-          <label class="form-label">Forma</label>
-          <select class="form-select compact mMethod">
-            <option value="DINHEIRO" ${method==="DINHEIRO"?"selected":""}>Dinheiro</option>
-            <option value="PIX" ${method==="PIX"?"selected":""}>Pix</option>
-            <option value="CARTAO" ${method==="CARTAO"?"selected":""}>Cartão</option>
-            <option value="BOLETO" ${method==="BOLETO"?"selected":""}>Boleto</option>
-          </select>
+        <div class="pay-split-row">
+          <div class="row g-2 align-items-end">
+            <div class="col-6">
+              <label class="form-label">Forma</label>
+              <select class="form-select compact mMethod">
+                <option value="DINHEIRO" ${method==="DINHEIRO"?"selected":""}>Dinheiro</option>
+                <option value="PIX" ${method==="PIX"?"selected":""}>Pix</option>
+                <option value="CARTAO" ${method==="CARTAO"?"selected":""}>Cartão</option>
+                <option value="BOLETO" ${method==="BOLETO"?"selected":""}>Boleto</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label">Valor</label>
+              <input class="form-control compact mValue" value="${safeText(value)}" placeholder="0,00" />
+            </div>
+            <div class="col-2 d-grid">
+              <button class="main-btn danger-btn-outline btn-hover btn-compact btnRemPay" type="button" style="height:38px!important;padding:0!important;">
+                <i class="lni lni-trash-can"></i>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="col-4">
-          <label class="form-label">Valor</label>
-          <input class="form-control compact mValue" value="${safeText(value)}" placeholder="0,00" />
-        </div>
-        <div class="col-2 d-grid">
-          <button class="main-btn danger-btn-outline btn-hover btn-compact btnRemPay" type="button" style="height:38px!important;padding:0!important;">
-            <i class="lni lni-trash-can"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
+      `;
     }
 
     function ensureOnePayRow() {
@@ -1451,23 +1105,16 @@ function fmtMoney($v): string
       const rows = Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => {
         const m = row.querySelector(".mMethod")?.value || "PIX";
         const v = moneyToNumber(row.querySelector(".mValue")?.value || "0");
-        return {
-          method: m,
-          value: v
-        };
+        return { method: m, value: v };
       }).filter(x => x.value > 0);
 
       const sum = rows.reduce((a, x) => a + x.value, 0);
       const diff = sum - total;
       const hasCash = rows.some(x => x.method === "DINHEIRO");
 
-      let ok = false,
-        troco = 0;
+      let ok = false, troco = 0;
       if (Math.abs(diff) < 0.009) ok = true;
-      else if (diff > 0.009 && hasCash) {
-        ok = true;
-        troco = diff;
-      }
+      else if (diff > 0.009 && hasCash) { ok = true; troco = diff; }
 
       mSum.textContent = numberToMoney(sum);
       mDiff.textContent = numberToMoney(diff);
@@ -1476,14 +1123,7 @@ function fmtMoney($v): string
       mOk.style.display = ok ? "block" : "none";
       mErr.style.display = ok ? "none" : "block";
 
-      return {
-        ok,
-        rows,
-        sum,
-        diff,
-        troco,
-        total
-      };
+      return { ok, rows, sum, diff, troco, total };
     }
 
     function computeSinglePay() {
@@ -1491,8 +1131,7 @@ function fmtMoney($v): string
       const paid = moneyToNumber(pValor.value);
       const method = PAY_SELECTED;
 
-      let ok = false,
-        troco = 0;
+      let ok = false, troco = 0;
       if (method === "DINHEIRO") {
         ok = paid >= total && total > 0;
         troco = ok ? (paid - total) : 0;
@@ -1503,13 +1142,7 @@ function fmtMoney($v): string
         troco = 0;
       }
       pTroco.value = troco.toFixed(2).replace(".", ",");
-      return {
-        ok,
-        method,
-        paid,
-        troco,
-        total
-      };
+      return { ok, method, paid, troco, total };
     }
 
     /* ==============================
@@ -1522,33 +1155,33 @@ function fmtMoney($v): string
       CART.forEach((it, i) => {
         const sub = Number(it.qty || 0) * Number(it.price || 0);
         tbodyItens.insertAdjacentHTML("beforeend", `
-      <tr data-pid="${Number(it.product_id)}">
-        <td>${i+1}</td>
-        <td>
-          <div class="d-flex align-items-center gap-2">
-            <img class="pimg" src="${safeText(it.img||DEFAULT_IMG)}" alt="">
-            <div style="min-width:0;">
-              <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">
-                ${safeText(it.name)}
+          <tr data-pid="${Number(it.product_id)}">
+            <td>${i + 1}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
+                <div style="min-width:0;">
+                  <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">
+                    ${safeText(it.name)}
+                  </div>
+                  <div class="muted">${safeText(it.code)}</div>
+                </div>
               </div>
-              <div class="muted">${safeText(it.code)}</div>
-            </div>
-          </div>
-        </td>
-        <td>
-          <div class="qty-ctrl">
-            <button class="main-btn light-btn btn-hover btn-compact qty-btn btnMinus" type="button" title="-1"><i class="lni lni-minus"></i></button>
-            <input class="qty-pill iQty" type="number" min="1" value="${Number(it.qty||1)}" />
-            <button class="main-btn light-btn btn-hover btn-compact qty-btn btnPlus" type="button" title="+1"><i class="lni lni-plus"></i></button>
-          </div>
-        </td>
-        <td class="text-end">${numberToMoney(it.price)}</td>
-        <td class="text-end" style="font-weight:1000;">${numberToMoney(sub)}</td>
-        <td class="text-center">
-          <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnRemove" type="button" title="Remover"><i class="lni lni-trash-can"></i></button>
-        </td>
-      </tr>
-    `);
+            </td>
+            <td>
+              <div class="qty-ctrl">
+                <button class="main-btn light-btn btn-hover btn-compact qty-btn btnMinus" type="button" title="-1"><i class="lni lni-minus"></i></button>
+                <input class="qty-pill iQty" type="number" min="1" value="${Number(it.qty || 1)}" />
+                <button class="main-btn light-btn btn-hover btn-compact qty-btn btnPlus" type="button" title="+1"><i class="lni lni-plus"></i></button>
+              </div>
+            </td>
+            <td class="text-end">${numberToMoney(it.price)}</td>
+            <td class="text-end" style="font-weight:1000;">${numberToMoney(sub)}</td>
+            <td class="text-center">
+              <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnRemove" type="button" title="Remover"><i class="lni lni-trash-can"></i></button>
+            </td>
+          </tr>
+        `);
       });
 
       bindImgFallback(tbodyItens);
@@ -1583,106 +1216,23 @@ function fmtMoney($v): string
         }
 
         lastList.innerHTML = all.map(s => `
-      <div class="cup" style="cursor:pointer;" data-id="${Number(s.id)}" title="Clique para imprimir">
-        <div class="left">
-          <div class="n">Venda #${Number(s.id)}</div>
-          <div class="s">${safeText(s.date || "")}</div>
-        </div>
-        <div class="right">
-          <div class="v">${numberToMoney(s.total || 0)}</div>
-          <div class="st">CONCLUÍDO</div>
-        </div>
-      </div>
-    `).join("");
+          <div class="cup" style="cursor:pointer;" data-id="${Number(s.id)}" title="Clique para imprimir">
+            <div class="left">
+              <div class="n">Venda #${Number(s.id)}</div>
+              <div class="s">${safeText(s.date || "")}</div>
+            </div>
+            <div class="right">
+              <div class="v">${numberToMoney(s.total || 0)}</div>
+              <div class="st">CONCLUÍDO</div>
+            </div>
+          </div>
+        `).join("");
 
         if (r.next) saleNo.textContent = `Venda #${Number(r.next)}`;
       } catch (e) {
         console.error("ultimasVendas:", e);
       }
     }
-
-    /* ==============================
-       Busca (server) - traz enquanto digita
-    ============================== */
-    async function searchProducts(q) {
-      const s = String(q || "").trim();
-      if (!s) return [];
-
-      if (searchAbort) searchAbort.abort();
-      searchAbort = new AbortController();
-
-      const url = `${AJAX_URL}?ajax=buscarProdutos&q=` + encodeURIComponent(s);
-      const r = await fetch(url, {
-        signal: searchAbort.signal
-      });
-
-      // se veio HTML/erro, não quebra a página
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok || data.ok === false) {
-        console.warn("buscarProdutos erro:", r.status, data);
-        return [];
-      }
-
-      return (data.items || []).map(p => ({
-        id: Number(p.id),
-        code: String(p.code || ""),
-        name: String(p.name || ""),
-        unit: String(p.unit || ""),
-        price: Number(p.price || 0),
-        stock: Number(p.stock || 0),
-        img: (p.img && String(p.img).trim() !== "") ? String(p.img) : DEFAULT_IMG
-      }));
-    }
-
-    function refreshSuggestDebounced() {
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(async () => {
-        try {
-          const q = qProd.value.trim();
-          if (!q) {
-            LAST_SUGG = [];
-            showSuggest([]);
-            return;
-          }
-
-          LAST_SUGG = await searchProducts(q);
-          showSuggest(LAST_SUGG);
-        } catch (e) {
-          LAST_SUGG = [];
-          showSuggest([]);
-        }
-      }, 180);
-    }
-
-    qProd.addEventListener("input", refreshSuggestDebounced);
-    qProd.addEventListener("focus", refreshSuggestDebounced);
-
-    qProd.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (!LAST_SUGG.length) LAST_SUGG = await searchProducts(qProd.value);
-        if (LAST_SUGG.length) {
-          addToCart(LAST_SUGG[0]);
-          qProd.value = "";
-          hideSuggest();
-        }
-      }
-      if (e.key === "Escape") hideSuggest();
-    });
-
-    suggest.addEventListener("click", (e) => {
-      const it = e.target.closest(".it");
-      if (!it) return;
-      const id = Number(it.getAttribute("data-id") || 0);
-      const prod = LAST_SUGG.find(p => p.id === id);
-      addToCart(prod);
-      qProd.value = "";
-      hideSuggest();
-      qProd.focus();
-    });
-    document.addEventListener("click", (e) => {
-      if (!e.target.closest(".search-wrap")) hideSuggest();
-    });
 
     /* ==============================
        Entrega toggle
@@ -1782,55 +1332,31 @@ function fmtMoney($v): string
 
     /* ==============================
        Confirmar venda (server)
+       (continua usando salvarVendas.php)
     ============================== */
     function validateSaleClient() {
-      if (!CART.length) return {
-        ok: false,
-        msg: "Adicione pelo menos 1 item."
-      };
-      if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return {
-        ok: false,
-        msg: "Informe o endereço do Delivery."
-      };
+      if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
+      if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return { ok: false, msg: "Informe o endereço do Delivery." };
       const total = calcTotal();
-      if (total <= 0) return {
-        ok: false,
-        msg: "Total inválido."
-      };
+      if (total <= 0) return { ok: false, msg: "Total inválido." };
 
       if (PAY_MODE === "UNICO") {
         const r = computeSinglePay();
         if (!r.ok) {
-          if (r.method === "DINHEIRO") return {
-            ok: false,
-            msg: "No dinheiro, o valor pago deve ser >= total."
-          };
-          return {
-            ok: false,
-            msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total."
-          };
+          if (r.method === "DINHEIRO") return { ok: false, msg: "No dinheiro, o valor pago deve ser >= total." };
+          return { ok: false, msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total." };
         }
-        return {
-          ok: true
-        };
+        return { ok: true };
       }
 
       const m = computeMultiPay();
-      if (!m.ok) return {
-        ok: false,
-        msg: "Pagamento múltiplo inválido. Ajuste os valores."
-      };
-      return {
-        ok: true
-      };
+      if (!m.ok) return { ok: false, msg: "Pagamento múltiplo inválido. Ajuste os valores." };
+      return { ok: true };
     }
 
     async function confirmSale() {
       const v = validateSaleClient();
-      if (!v.ok) {
-        alert(v.msg);
-        return;
-      }
+      if (!v.ok) { alert(v.msg); return; }
 
       const payload = {
         csrf_token: CSRF,
@@ -1841,27 +1367,17 @@ function fmtMoney($v): string
           fee: DELIVERY_MODE === "DELIVERY" ? moneyToNumber(cEntrega.value) : 0,
           obs: DELIVERY_MODE === "DELIVERY" ? String(cObs.value || "").trim() : ""
         },
-        discount: {
-          tipo: dTipo.value,
-          valor: moneyToNumber(dValor.value)
-        },
-        pay: (PAY_MODE === "UNICO") ?
-          {
-            mode: "UNICO",
-            method: PAY_SELECTED,
-            paid: moneyToNumber(pValor.value)
-          } :
-          {
-            mode: "MULTI",
-            parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
-              method: row.querySelector(".mMethod")?.value || "PIX",
-              value: moneyToNumber(row.querySelector(".mValue")?.value || "0")
-            }))
-          },
-        items: CART.map(it => ({
-          product_id: it.product_id,
-          qty: Number(it.qty || 0)
-        }))
+        discount: { tipo: dTipo.value, valor: moneyToNumber(dValor.value) },
+        pay: (PAY_MODE === "UNICO")
+          ? { mode: "UNICO", method: PAY_SELECTED, paid: moneyToNumber(pValor.value) }
+          : {
+              mode: "MULTI",
+              parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
+                method: row.querySelector(".mMethod")?.value || "PIX",
+                value: moneyToNumber(row.querySelector(".mValue")?.value || "0")
+              }))
+            },
+        items: CART.map(it => ({ product_id: it.product_id, qty: Number(it.qty || 0) }))
       };
 
       btnConfirmar.disabled = true;
@@ -1869,9 +1385,7 @@ function fmtMoney($v): string
       try {
         const r = await fetchJSON("assets/dados/vendas/salvarVendas.php", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
@@ -1903,7 +1417,7 @@ function fmtMoney($v): string
         ensureOnePayRow();
 
         recalcAll();
-        saleNo.textContent = `Venda #${Number(r.next || (Number(r.sale?.no||0)+1) || 1)}`;
+        saleNo.textContent = `Venda #${Number(r.next || (Number(r.sale?.no || 0) + 1) || 1)}`;
 
         await renderLastSales();
         qProd.focus();
@@ -1920,16 +1434,8 @@ function fmtMoney($v): string
        Atalhos teclado
     ============================== */
     document.addEventListener("keydown", (e) => {
-      if (e.key === "F4") {
-        e.preventDefault();
-        qProd.focus();
-        return;
-      }
-      if (e.key === "F2") {
-        e.preventDefault();
-        confirmSale();
-        return;
-      }
+      if (e.key === "F4") { e.preventDefault(); qProd.focus(); return; }
+      if (e.key === "F2") { e.preventDefault(); confirmSale(); return; }
       if (e.key === "Escape") hideSuggest();
     });
 
@@ -1963,11 +1469,9 @@ function fmtMoney($v): string
 
       btnRefreshLast.addEventListener("click", renderLastSales);
 
-      // foco inicial
       setTimeout(() => qProd.focus(), 200);
     }
     init();
   </script>
 </body>
-
 </html>
