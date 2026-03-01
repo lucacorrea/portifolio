@@ -77,6 +77,35 @@ function hasColumn(PDO $pdo, string $table, string $column): bool
     return (int)$st->fetchColumn() > 0;
 }
 
+/**
+ * Filtra $params para conter SOMENTE placeholders realmente presentes no SQL,
+ * evitando HY093 quando o PDO está com EMULATE_PREPARES=false.
+ */
+function params_for_sql(string $sql, array $params): array
+{
+    preg_match_all('/:([a-zA-Z0-9_]+)/', $sql, $m);
+    $need = array_unique($m[1] ?? []);
+    $out = [];
+
+    foreach ($need as $name) {
+        $k1 = ':' . $name;
+        if (array_key_exists($k1, $params)) {
+            $out[$k1] = $params[$k1];
+            continue;
+        }
+        if (array_key_exists($name, $params)) {
+            $out[$k1] = $params[$name];
+        }
+    }
+    return $out;
+}
+
+function exec_stmt(PDOStatement $st, array $params): void
+{
+    $filtered = params_for_sql($st->queryString, $params);
+    $st->execute($filtered);
+}
+
 /* ======================
    FEIRA FIXA
 ====================== */
@@ -97,12 +126,11 @@ if (
 /* ======================
    CAMPOS (COMPAT)
 ====================== */
-$colDataVenda = hasColumn($pdo, 'vendas', 'data_venda');          // opcional
-$colDataHora  = hasColumn($pdo, 'vendas', 'data_hora');           // no seu schema: SIM
-$colFormaPgto = hasColumn($pdo, 'vendas', 'forma_pagamento');     // no seu schema: SIM
-$colStatus    = hasColumn($pdo, 'vendas', 'status');              // no seu schema: SIM
+$colDataVenda = hasColumn($pdo, 'vendas', 'data_venda');      // opcional
+$colDataHora  = hasColumn($pdo, 'vendas', 'data_hora');       // no seu schema: SIM
+$colFormaPgto = hasColumn($pdo, 'vendas', 'forma_pagamento'); // no seu schema: SIM
+$colStatus    = hasColumn($pdo, 'vendas', 'status');          // no seu schema: SIM
 
-// campo de data base (datetime ou date)
 if ($colDataHora) {
     $dateField = "v.data_hora";
 } elseif ($colDataVenda) {
@@ -117,17 +145,14 @@ $dateExprDate = "DATE($dateField)";
 ====================== */
 $tipoFiltro = ($_GET['tipo'] ?? 'mes') === 'dia' ? 'dia' : 'mes';
 $dataRaw = (string)($_GET['data'] ?? '');
-
 $today = date('Y-m-d');
 
 if ($tipoFiltro === 'dia') {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRaw)) $dataRaw = $today;
-
     $periodStart = $dataRaw;
     $periodEnd   = $dataRaw;
     $labelPeriodo = date('d/m/Y', strtotime($dataRaw));
 } else {
-    // aceita YYYY-MM ou YYYY-MM-DD
     if (preg_match('/^\d{4}-\d{2}$/', $dataRaw)) {
         $mesSel = $dataRaw;
     } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRaw)) {
@@ -157,7 +182,7 @@ try {
         AND p.ativo = 1
       ORDER BY p.nome ASC
     ");
-        $st->execute([':f' => $feiraId]);
+        exec_stmt($st, [':f' => $feiraId]);
         $produtoresList = $st->fetchAll(PDO::FETCH_ASSOC);
 
         if (!$produtorId && !empty($produtoresList)) {
@@ -165,14 +190,11 @@ try {
         }
 
         if ($produtorId) {
-            // comunidades é opcional no relatório (mas existe no seu schema). Se não existir, só pega dados do produtor.
             $hasComunidades = hasTable($pdo, 'comunidades') && hasColumn($pdo, 'produtores', 'comunidade_id');
 
             if ($hasComunidades) {
                 $st = $pdo->prepare("
-          SELECT
-            p.*,
-            c.nome AS comunidade_nome
+          SELECT p.*, c.nome AS comunidade_nome
           FROM produtores p
           LEFT JOIN comunidades c ON c.id = p.comunidade_id
           WHERE p.id = :id AND p.feira_id = :f
@@ -187,7 +209,7 @@ try {
         ");
             }
 
-            $st->execute([':id' => $produtorId, ':f' => $feiraId]);
+            exec_stmt($st, [':id' => $produtorId, ':f' => $feiraId]);
             $produtorInfo = $st->fetch(PDO::FETCH_ASSOC);
 
             if (!$produtorInfo) {
@@ -215,7 +237,7 @@ $offsetDias     = ($pageDias - 1) * $PER_PAGE;
 $offsetVendas   = ($pageVendas - 1) * $PER_PAGE;
 
 /* ======================
-   URL HELPER (paginação/links)
+   URL HELPER
 ====================== */
 function url_with(array $overrides = []): string
 {
@@ -256,8 +278,8 @@ try {
     if (!$err && $produtorId) {
 
         $paramsBase = [
-            ':f' => $feiraId,
-            ':p' => $produtorId,
+            ':f'   => $feiraId,
+            ':p'   => $produtorId,
             ':ini' => $periodStart,
         ];
 
@@ -268,9 +290,7 @@ try {
             $paramsBase[':fim'] = $periodEnd;
         }
 
-        // IMPORTANTE:
-        // Como uma venda pode (teoricamente) ter itens de vários produtores,
-        // o "total do produtor" é calculado por SUM(vi.subtotal) filtrando por produtor.
+        // Regra: total do produtor = SUM(vi.subtotal) filtrando itens do produtor
         $whereJoinProdutor = "
       v.feira_id = :f
       AND vi.feira_id = :f
@@ -280,9 +300,7 @@ try {
       AND $whereData
     ";
 
-        /* ======================
-       RESUMO (KPIs)
-    ====================== */
+        /* RESUMO (KPIs) */
         $st = $pdo->prepare("
       SELECT
         COUNT(DISTINCT v.id) AS vendas_qtd,
@@ -295,7 +313,7 @@ try {
       JOIN produtores p ON p.id = pr.produtor_id
       WHERE $whereJoinProdutor
     ");
-        $st->execute($paramsBase);
+        exec_stmt($st, $paramsBase);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $resumo['vendas_qtd'] = (int)($r['vendas_qtd'] ?? 0);
@@ -304,9 +322,7 @@ try {
         $resumo['produtos_distintos'] = (int)($r['produtos_distintos'] ?? 0);
         $resumo['ticket'] = $resumo['vendas_qtd'] > 0 ? ($resumo['total'] / $resumo['vendas_qtd']) : 0;
 
-        /* ======================
-       POR PAGAMENTO (do produtor)
-    ====================== */
+        /* POR PAGAMENTO */
         if ($colFormaPgto) {
             $st = $pdo->prepare("
         SELECT
@@ -321,14 +337,11 @@ try {
         GROUP BY pagamento
         ORDER BY total DESC
       ");
-            $st->execute($paramsBase);
+            exec_stmt($st, $paramsBase);
             $porPagamento = $st->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        /* ======================
-       PRODUTOS VENDIDOS (PAGINADO)
-    ====================== */
-        // total grupos
+        /* PRODUTOS VENDIDOS (PAGINADO) */
         $st = $pdo->prepare("
       SELECT COUNT(DISTINCT pr.id) AS total_grupos
       FROM vendas v
@@ -337,7 +350,7 @@ try {
       JOIN produtores p ON p.id = pr.produtor_id
       WHERE $whereJoinProdutor
     ");
-        $st->execute($paramsBase);
+        exec_stmt($st, $paramsBase);
         $totalProdutos = (int)$st->fetchColumn();
         $totalPagesProdutos = max(1, (int)ceil($totalProdutos / $PER_PAGE));
 
@@ -368,12 +381,10 @@ try {
       ORDER BY total DESC
       LIMIT $PER_PAGE OFFSET $offsetProdutos
     ");
-        $st->execute($paramsBase);
+        exec_stmt($st, $paramsBase);
         $porProduto = $st->fetchAll(PDO::FETCH_ASSOC);
 
-        /* ======================
-       POR DIA (PAGINADO) - só faz sentido no filtro mensal
-    ====================== */
+        /* POR DIA (somente no mês) */
         if ($tipoFiltro === 'mes') {
             $st = $pdo->prepare("
         SELECT COUNT(DISTINCT $dateExprDate) AS total_dias
@@ -383,7 +394,7 @@ try {
         JOIN produtores p ON p.id = pr.produtor_id
         WHERE $whereJoinProdutor
       ");
-            $st->execute($paramsBase);
+            exec_stmt($st, $paramsBase);
             $totalDias = (int)$st->fetchColumn();
             $totalPagesDias = max(1, (int)ceil($totalDias / $PER_PAGE));
 
@@ -402,13 +413,11 @@ try {
         ORDER BY dia DESC
         LIMIT $PER_PAGE OFFSET $offsetDias
       ");
-            $st->execute($paramsBase);
+            exec_stmt($st, $paramsBase);
             $porDia = $st->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        /* ======================
-       VENDAS DO PRODUTOR (PAGINADO)
-    ====================== */
+        /* VENDAS DO PRODUTOR (PAGINADO) */
         $st = $pdo->prepare("
       SELECT COUNT(DISTINCT v.id) AS total_vendas
       FROM vendas v
@@ -417,7 +426,7 @@ try {
       JOIN produtores p ON p.id = pr.produtor_id
       WHERE $whereJoinProdutor
     ");
-        $st->execute($paramsBase);
+        exec_stmt($st, $paramsBase);
         $totalVendas = (int)$st->fetchColumn();
         $totalPagesVendas = max(1, (int)ceil($totalVendas / $PER_PAGE));
 
@@ -441,14 +450,11 @@ try {
       ORDER BY v.id DESC
       LIMIT $PER_PAGE OFFSET $offsetVendas
     ");
-        $st->execute($paramsBase);
+        exec_stmt($st, $paramsBase);
         $vendasRows = $st->fetchAll(PDO::FETCH_ASSOC);
 
-        /* ======================
-       DETALHE DE UMA VENDA (opcional)
-    ====================== */
+        /* DETALHE DE UMA VENDA (opcional) */
         if ($vendaId > 0) {
-            // garante que a venda pertence ao período e tem itens desse produtor
             $st = $pdo->prepare("
         SELECT
           v.id,
@@ -465,9 +471,11 @@ try {
         GROUP BY v.id
         LIMIT 1
       ");
+
             $paramsDet = $paramsBase;
             $paramsDet[':vid'] = $vendaId;
-            $st->execute($paramsDet);
+
+            exec_stmt($st, $paramsDet);
             $vendaDetalhe = $st->fetch(PDO::FETCH_ASSOC);
 
             if ($vendaDetalhe) {
@@ -487,10 +495,9 @@ try {
             AND p.id = :p
           ORDER BY vi.id ASC
         ");
-                $st->execute([':vid' => $vendaId, ':f' => $feiraId, ':p' => $produtorId]);
+                exec_stmt($st, [':vid' => $vendaId, ':f' => $feiraId, ':p' => $produtorId]);
                 $vendaItens = $st->fetchAll(PDO::FETCH_ASSOC);
             } else {
-                // se a venda não pertence ao produtor/período, limpa o venda_id da view
                 $vendaId = 0;
             }
         }
@@ -752,7 +759,7 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
 
         <div class="container-fluid page-body-wrapper">
 
-            <!-- SIDEBAR -->
+            <!-- SIDEBAR (igual seu) -->
             <nav class="sidebar sidebar-offcanvas" id="sidebar">
                 <ul class="nav">
 
@@ -763,7 +770,6 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                         </a>
                     </li>
 
-                    <!-- CADASTROS -->
                     <li class="nav-item">
                         <a class="nav-link" data-toggle="collapse" href="#feiraCadastros">
                             <i class="ti-id-badge menu-icon"></i>
@@ -773,33 +779,16 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
 
                         <div class="collapse" id="feiraCadastros">
                             <ul class="nav flex-column sub-menu" style="background: white !important;">
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./listaProduto.php">
-                                        <i class="ti-clipboard mr-2"></i> Lista de Produtos
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./listaCategoria.php">
-                                        <i class="ti-layers mr-2"></i> Categorias
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./listaUnidade.php">
-                                        <i class="ti-ruler-pencil mr-2"></i> Unidades
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./listaProdutor.php">
-                                        <i class="ti-user mr-2"></i> Produtores
-                                    </a>
-                                </li>
+                                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
+                                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
+                                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
+                                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
                             </ul>
                         </div>
                     </li>
 
-                    <!-- MOVIMENTO -->
                     <li class="nav-item">
-                        <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
+                        <a class="nav-link" data-toggle="collapse" href="#feiraMovimento">
                             <i class="ti-exchange-vertical menu-icon"></i>
                             <span class="menu-title">Movimento</span>
                             <i class="menu-arrow"></i>
@@ -807,23 +796,14 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
 
                         <div class="collapse" id="feiraMovimento">
                             <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./lancamentos.php">
-                                        <i class="ti-write mr-2"></i> Lançamentos (Vendas)
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./fechamentoDia.php">
-                                        <i class="ti-check-box mr-2"></i> Fechamento do Dia
-                                    </a>
-                                </li>
+                                <li class="nav-item"><a class="nav-link" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
+                                <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
                             </ul>
                         </div>
                     </li>
 
-                    <!-- RELATÓRIOS -->
                     <li class="nav-item">
-                        <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
+                        <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios">
                             <i class="ti-clipboard menu-icon"></i>
                             <span class="menu-title">Relatórios</span>
                             <i class="menu-arrow"></i>
@@ -841,71 +821,29 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                                     }
                                 </style>
 
-                                <!-- ESTE ARQUIVO -->
                                 <li class="nav-item active">
                                     <a class="nav-link active" href="./relatorioFinanceiro.php" style="color:white !important; background: #231475C5 !important;">
                                         <i class="ti-user mr-2"></i> Relatório Individual do Produtor
                                     </a>
                                 </li>
 
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./relatorioProdutos.php">
-                                        <i class="ti-list mr-2"></i> Produtos Comercializados
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./relatorioMensal.php">
-                                        <i class="ti-calendar mr-2"></i> Resumo Mensal
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="./configRelatorio.php">
-                                        <i class="ti-settings mr-2"></i> Configurar
-                                    </a>
-                                </li>
+                                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
+                                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
+                                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
                             </ul>
                         </div>
                     </li>
 
-                    <!-- Título DIVERSOS -->
                     <li class="nav-item" style="pointer-events:none;">
-                        <span style="
-                  display:block;
-                  padding: 5px 15px 5px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  color: #6c757d;
-                  text-transform: uppercase;
-                ">
+                        <span style="display:block;padding:5px 15px 5px;font-size:11px;font-weight:600;letter-spacing:1px;color:#6c757d;text-transform:uppercase;">
                             Links Diversos
                         </span>
                     </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="../index.php">
-                            <i class="ti-home menu-icon"></i>
-                            <span class="menu-title"> Painel Principal</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="../alternativa/" class="nav-link">
-                            <i class="ti-shopping-cart menu-icon"></i>
-                            <span class="menu-title">Feira do Alternativa</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="../mercado/" class="nav-link">
-                            <i class="ti-shopping-cart menu-icon"></i>
-                            <span class="menu-title">Mercado Municipal</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-                            <i class="ti-headphone-alt menu-icon"></i>
-                            <span class="menu-title">Suporte</span>
-                        </a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link" href="../index.php"><i class="ti-home menu-icon"></i><span class="menu-title"> Painel Principal</span></a></li>
+                    <li class="nav-item"><a href="../alternativa/" class="nav-link"><i class="ti-shopping-cart menu-icon"></i><span class="menu-title">Feira do Alternativa</span></a></li>
+                    <li class="nav-item"><a href="../mercado/" class="nav-link"><i class="ti-shopping-cart menu-icon"></i><span class="menu-title">Mercado Municipal</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://wa.me/92991515710" target="_blank"><i class="ti-headphone-alt menu-icon"></i><span class="menu-title">Suporte</span></a></li>
 
                 </ul>
             </nav>
@@ -920,13 +858,9 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                             <div class="d-flex flex-wrap align-items-center justify-content-between">
                                 <div>
                                     <h2 class="font-weight-bold mb-1">Relatório Individual do Produtor</h2>
-                                    <span class="badge badge-primary">
-                                        Feira do Produtor — <?= h($labelPeriodo) ?>
-                                    </span>
+                                    <span class="badge badge-primary">Feira do Produtor — <?= h($labelPeriodo) ?></span>
                                     <?php if (!$err && $produtorId): ?>
-                                        <span class="badge badge-soft ml-2">
-                                            <i class="ti-user mr-1"></i> <?= h($nomeProdutor) ?>
-                                        </span>
+                                        <span class="badge badge-soft ml-2"><i class="ti-user mr-1"></i> <?= h($nomeProdutor) ?></span>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -984,20 +918,16 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                                     </button>
                                 </div>
 
-                                <div class="col-md-2 mb-2 d-none"></div>
-
                                 <div class="col-md-2 mb-2">
                                     <a href="./relatorioFinanceiro.php" class="btn btn-outline-secondary w-100">
                                         <i class="ti-reload mr-1"></i> Limpar
                                     </a>
                                 </div>
-
                             </div>
 
                             <div class="mt-2 mini-kpi">
-                                * O total do produtor é calculado pelos itens vendidos (SUM(vi.subtotal)) filtrando pelo produtor.
+                                * Total do produtor é calculado pelos itens vendidos: <b>SUM(venda_itens.subtotal)</b> filtrando pelo produtor.
                             </div>
-
                         </div>
                     </div>
 
@@ -1064,7 +994,7 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                                 <div class="card-body">
                                     <div class="d-flex align-items-center justify-content-between flex-wrap">
                                         <h4 class="mb-2 font-weight-bold">Resumo por Forma de Pagamento</h4>
-                                        <span class="mini-kpi">Agrupado por v.forma_pagamento (somando itens do produtor)</span>
+                                        <span class="mini-kpi">Somando itens do produtor</span>
                                     </div>
                                     <div class="table-responsive mt-3">
                                         <table class="table table-sm table-striped">
@@ -1140,24 +1070,18 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                                 <?php if ($totalPagesProdutos > 1): ?>
                                     <nav aria-label="Paginação produtos">
                                         <ul class="pagination mb-0">
-                                            <?php
-                                            $prev = max(1, $pageProdutos - 1);
-                                            $next = min($totalPagesProdutos, $pageProdutos + 1);
-                                            ?>
+                                            <?php $prev = max(1, $pageProdutos - 1);
+                                            $next = min($totalPagesProdutos, $pageProdutos + 1); ?>
                                             <li class="page-item <?= $pageProdutos <= 1 ? 'disabled' : '' ?>">
                                                 <a class="page-link" href="<?= h(url_with(['page_produtos' => $prev])) ?>">&laquo;</a>
                                             </li>
-
-                                            <?php
-                                            $start = max(1, $pageProdutos - 2);
-                                            $end = min($totalPagesProdutos, $pageProdutos + 2);
-                                            for ($i = $start; $i <= $end; $i++):
-                                            ?>
+                                            <?php $start = max(1, $pageProdutos - 2);
+                                            $end = min($totalPagesProdutos, $pageProdutos + 2); ?>
+                                            <?php for ($i = $start; $i <= $end; $i++): ?>
                                                 <li class="page-item <?= $i === $pageProdutos ? 'active' : '' ?>">
                                                     <a class="page-link" href="<?= h(url_with(['page_produtos' => $i])) ?>"><?= $i ?></a>
                                                 </li>
                                             <?php endfor; ?>
-
                                             <li class="page-item <?= $pageProdutos >= $totalPagesProdutos ? 'disabled' : '' ?>">
                                                 <a class="page-link" href="<?= h(url_with(['page_produtos' => $next])) ?>">&raquo;</a>
                                             </li>
@@ -1208,24 +1132,18 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                                     <?php if ($totalPagesDias > 1): ?>
                                         <nav aria-label="Paginação dias">
                                             <ul class="pagination mb-0">
-                                                <?php
-                                                $prev = max(1, $pageDias - 1);
-                                                $next = min($totalPagesDias, $pageDias + 1);
-                                                ?>
+                                                <?php $prev = max(1, $pageDias - 1);
+                                                $next = min($totalPagesDias, $pageDias + 1); ?>
                                                 <li class="page-item <?= $pageDias <= 1 ? 'disabled' : '' ?>">
                                                     <a class="page-link" href="<?= h(url_with(['page_dias' => $prev])) ?>">&laquo;</a>
                                                 </li>
-
-                                                <?php
-                                                $start = max(1, $pageDias - 2);
-                                                $end = min($totalPagesDias, $pageDias + 2);
-                                                for ($i = $start; $i <= $end; $i++):
-                                                ?>
+                                                <?php $start = max(1, $pageDias - 2);
+                                                $end = min($totalPagesDias, $pageDias + 2); ?>
+                                                <?php for ($i = $start; $i <= $end; $i++): ?>
                                                     <li class="page-item <?= $i === $pageDias ? 'active' : '' ?>">
                                                         <a class="page-link" href="<?= h(url_with(['page_dias' => $i])) ?>"><?= $i ?></a>
                                                     </li>
                                                 <?php endfor; ?>
-
                                                 <li class="page-item <?= $pageDias >= $totalPagesDias ? 'disabled' : '' ?>">
                                                     <a class="page-link" href="<?= h(url_with(['page_dias' => $next])) ?>">&raquo;</a>
                                                 </li>
@@ -1277,8 +1195,7 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                                                         <td class="text-right"><?= number_format((float)$v['itens_qtd'], 3, ',', '.') ?></td>
                                                         <td class="text-right font-weight-bold"><?= brl((float)$v['total_produtor']) ?></td>
                                                         <td class="text-right">
-                                                            <a class="btn btn-sm btn-outline-primary"
-                                                                href="<?= h(url_with(['venda_id' => (int)$v['id']])) ?>">
+                                                            <a class="btn btn-sm btn-outline-primary" href="<?= h(url_with(['venda_id' => (int)$v['id']])) ?>">
                                                                 <i class="ti-eye mr-1"></i> Itens
                                                             </a>
                                                         </td>
@@ -1292,24 +1209,18 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                                 <?php if ($totalPagesVendas > 1): ?>
                                     <nav aria-label="Paginação vendas">
                                         <ul class="pagination mb-0">
-                                            <?php
-                                            $prev = max(1, $pageVendas - 1);
-                                            $next = min($totalPagesVendas, $pageVendas + 1);
-                                            ?>
+                                            <?php $prev = max(1, $pageVendas - 1);
+                                            $next = min($totalPagesVendas, $pageVendas + 1); ?>
                                             <li class="page-item <?= $pageVendas <= 1 ? 'disabled' : '' ?>">
                                                 <a class="page-link" href="<?= h(url_with(['page_vendas' => $prev])) ?>">&laquo;</a>
                                             </li>
-
-                                            <?php
-                                            $start = max(1, $pageVendas - 2);
-                                            $end = min($totalPagesVendas, $pageVendas + 2);
-                                            for ($i = $start; $i <= $end; $i++):
-                                            ?>
+                                            <?php $start = max(1, $pageVendas - 2);
+                                            $end = min($totalPagesVendas, $pageVendas + 2); ?>
+                                            <?php for ($i = $start; $i <= $end; $i++): ?>
                                                 <li class="page-item <?= $i === $pageVendas ? 'active' : '' ?>">
                                                     <a class="page-link" href="<?= h(url_with(['page_vendas' => $i])) ?>"><?= $i ?></a>
                                                 </li>
                                             <?php endfor; ?>
-
                                             <li class="page-item <?= $pageVendas >= $totalPagesVendas ? 'disabled' : '' ?>">
                                                 <a class="page-link" href="<?= h(url_with(['page_vendas' => $next])) ?>">&raquo;</a>
                                             </li>
@@ -1319,7 +1230,7 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                             </div>
                         </div>
 
-                        <!-- DETALHE DE ITENS DA VENDA -->
+                        <!-- ITENS DA VENDA -->
                         <?php if ($vendaId && $vendaDetalhe): ?>
                             <div class="card mb-5">
                                 <div class="card-body">
@@ -1414,14 +1325,11 @@ $comunidadeProdutor = $produtorInfo['comunidade_nome'] ?? ($produtorInfo['comuni
                 let data = (inputData && inputData.value) ? inputData.value.trim() : '';
                 const produtorId = selProd ? selProd.value : '0';
 
-                // para mês, o input type="month" já vem YYYY-MM
-                // para dia, vem YYYY-MM-DD
                 const params = new URLSearchParams(window.location.search);
                 params.set('tipo', tipo);
                 params.set('data', data);
                 params.set('produtor_id', produtorId);
 
-                // reset páginas ao filtrar
                 params.delete('page_produtos');
                 params.delete('page_dias');
                 params.delete('page_vendas');
