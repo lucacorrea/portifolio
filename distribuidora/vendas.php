@@ -7,9 +7,13 @@ require_once __DIR__ . '/assets/dados/vendas/_helpers.php';
 $pdo = db();
 
 /* =========================
-   Helpers locais (JSON) - sem depender do _helpers
+   JSON (limpa qualquer saída)
 ========================= */
 function json_out(array $data, int $code = 200): void {
+    // evita JSON quebrar por warning/echo acidental
+    if (function_exists('ob_get_length') && ob_get_length()) {
+        @ob_clean();
+    }
     http_response_code($code);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -18,34 +22,140 @@ function json_out(array $data, int $code = 200): void {
 }
 
 /* =========================
-   ENDPOINTS INTERNOS (AJAX) - DENTRO DO VENDAS.PHP
+   Monta URL da imagem
+   - banco salva: images/xxx.png
+   - precisa virar: assets/dados/produtos/images/xxx.png
+========================= */
+function img_url(string $raw): string {
+    $raw = trim($raw);
+    if ($raw === '') return '';
+    if (preg_match('~^https?://~i', $raw)) return $raw;
+
+    $raw = ltrim($raw, '/');
+    $base = 'assets/dados/produtos/';
+
+    // se já veio com assets..., não duplica
+    if (strpos($raw, 'assets/') === 0) return $raw;
+
+    return rtrim($base, '/') . '/' . $raw;
+}
+
+/* =========================
+   Gera candidatos para buscar
+   - 0005 -> inclui 00005 (pad 5)
+   - remove zeros (0005 -> 5)
+   - fallback parcial
+========================= */
+function build_candidates(string $q): array {
+    $q = trim($q);
+    if ($q === '') return [];
+
+    $cands = [$q];
+
+    // numérico: cria versões com/sem zeros e pad para 5 dígitos
+    if (preg_match('/^\d+$/', $q)) {
+        $noZeros = ltrim($q, '0');
+        if ($noZeros === '') $noZeros = '0';
+
+        // pad do "sem zeros" até 5
+        for ($len = strlen($noZeros); $len <= 5; $len++) {
+            $cands[] = str_pad($noZeros, $len, '0', STR_PAD_LEFT);
+        }
+
+        // pad do original até 5 (garante 0005 -> 00005)
+        if (strlen($q) < 5) {
+            $cands[] = str_pad($q, 5, '0', STR_PAD_LEFT);
+        }
+
+        // também inclui sem zeros puro
+        $cands[] = $noZeros;
+    }
+
+    // fallback parcial (mínimo 2 chars)
+    $len = strlen($q);
+    for ($i = $len - 1; $i >= 2; $i--) {
+        $cands[] = substr($q, 0, $i);
+        if (count($cands) >= 10) break;
+    }
+
+    // unique
+    $uniq = [];
+    foreach ($cands as $c) {
+        $c = trim($c);
+        if ($c === '') continue;
+        $uniq[$c] = true;
+    }
+    return array_keys($uniq);
+}
+
+/* =========================
+   ENDPOINTS INTERNOS (AJAX)
    - vendas.php?ajax=buscarProdutos&q=...
    - vendas.php?ajax=ultimasVendas
 ========================= */
 if (isset($_GET['ajax'])) {
-    $ajax = (string)$_GET['ajax'];
+    // evita warnings quebrarem JSON
+    @ini_set('display_errors', '0');
+    @error_reporting(0);
+
+    $ajax = (string)($_GET['ajax'] ?? '');
 
     try {
         if ($ajax === 'buscarProdutos') {
             $q = trim((string)($_GET['q'] ?? ''));
             if ($q === '') json_out(['ok' => true, 'items' => []]);
 
-            $like = '%' . $q . '%';
-
-            // ✅ Mais tolerante com status (caso tenha NULL / vazio / etc)
             $sql = "
-                SELECT id, codigo, nome, unidade, preco, estoque, imagem
+                SELECT id, codigo, nome, unidade, preco, estoque, obs, imagem
                 FROM produtos
-                WHERE (status IS NULL OR status = '' OR UPPER(status) = 'ATIVO')
-                  AND (codigo LIKE :q OR nome LIKE :q)
-                ORDER BY nome ASC
+                WHERE (
+                        status IS NULL
+                        OR TRIM(status) = ''
+                        OR TRIM(UPPER(status)) = 'ATIVO'
+                )
+                AND (
+                        TRIM(codigo) LIKE :like
+                        OR TRIM(nome) LIKE :like
+                )
+                ORDER BY
+                  CASE
+                    WHEN TRIM(codigo) = :exact THEN 0
+                    WHEN TRIM(codigo) LIKE :start THEN 1
+                    WHEN TRIM(nome)   LIKE :start THEN 2
+                    ELSE 3
+                  END,
+                  nome ASC
                 LIMIT 30
             ";
-            $st = $pdo->prepare($sql);
-            $st->execute([':q' => $like]);
-            $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $stmt = $pdo->prepare($sql);
+
+            $rows = [];
+            foreach (build_candidates($q) as $cand) {
+                $like  = '%' . $cand . '%';
+                $start = $cand . '%';
+
+                $stmt->execute([
+                    ':like'  => $like,
+                    ':exact' => $cand,
+                    ':start' => $start,
+                ]);
+
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                if ($rows) break; // achou com esse candidato
+            }
 
             $items = array_map(static function(array $r): array {
+                $img = trim((string)($r['imagem'] ?? ''));
+
+                // ✅ fallback: se imagem estiver vazia e você salvou o caminho no OBS
+                if ($img === '') {
+                    $obs = trim((string)($r['obs'] ?? ''));
+                    if (preg_match('~^(images/|uploads/|img/|prod_).+~i', $obs)) {
+                        $img = $obs;
+                    }
+                }
+
                 return [
                     'id'    => (int)($r['id'] ?? 0),
                     'code'  => (string)($r['codigo'] ?? ''),
@@ -53,7 +163,7 @@ if (isset($_GET['ajax'])) {
                     'unit'  => (string)($r['unidade'] ?? ''),
                     'price' => (float)($r['preco'] ?? 0),
                     'stock' => (int)($r['estoque'] ?? 0),
-                    'img'   => (string)($r['imagem'] ?? ''),
+                    'img'   => img_url($img),
                 ];
             }, $rows);
 
@@ -61,7 +171,6 @@ if (isset($_GET['ajax'])) {
         }
 
         if ($ajax === 'ultimasVendas') {
-            // se a tabela vendas não existir ainda, devolve mensagem boa
             try {
                 $st = $pdo->query("SELECT id, data, total, created_at, canal FROM vendas ORDER BY id DESC LIMIT 10");
                 $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -97,8 +206,9 @@ if (isset($_GET['ajax'])) {
 }
 
 /* =========================
-   PÁGINA NORMAL (HTML)
+   AQUI PRA BAIXO CONTINUA SEU HTML NORMAL
 ========================= */
+
 $csrf  = csrf_token();
 $flash = flash_pop();
 
@@ -111,22 +221,7 @@ function brDate(string $ymd): string {
 }
 function fmtMoney($v): string {
     return 'R$ ' . number_format((float)$v, 2, ',', '.');
-}
-
-$nextNo = 1;
-try {
-    $nextNo = (int)$pdo->query("SELECT COALESCE(MAX(id),0)+1 FROM vendas")->fetchColumn();
-} catch (Throwable $e) {
-    $nextNo = 1;
-}
-
-$last = [];
-try {
-    $st = $pdo->query("SELECT id, data, total, created_at FROM vendas ORDER BY id DESC LIMIT 10");
-    $last = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-} catch (Throwable $e) {
-    $last = [];
-}
+} 
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
