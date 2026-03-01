@@ -5,6 +5,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
   session_start();
 }
 
+/** Escape */
 function e(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
@@ -32,6 +33,11 @@ function csrf_token(): string {
   }
   return (string)$_SESSION['csrf_token'];
 }
+
+/**
+ * Valida CSRF em POST normal (form-data).
+ * Para requisições JSON (fetch), use csrf_validate_token($token) no seu endpoint.
+ */
 function csrf_validate_or_redirect(string $redirectPath): void {
   $posted = (string)($_POST['csrf_token'] ?? '');
   $sess   = (string)($_SESSION['csrf_token'] ?? '');
@@ -41,6 +47,13 @@ function csrf_validate_or_redirect(string $redirectPath): void {
   }
 }
 
+/** Valida CSRF recebendo token (útil pra JSON/fetch) */
+function csrf_validate_token(string $postedToken): bool {
+  $posted = (string)$postedToken;
+  $sess   = (string)($_SESSION['csrf_token'] ?? '');
+  return ($posted !== '' && $sess !== '' && hash_equals($sess, $posted));
+}
+
 /** POST only */
 function require_post_or_redirect(string $redirectPath): void {
   if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -48,4 +61,3 @@ function require_post_or_redirect(string $redirectPath): void {
     redirect_to($redirectPath);
   }
 }
-?>
