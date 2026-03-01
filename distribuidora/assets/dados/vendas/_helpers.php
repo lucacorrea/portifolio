@@ -61,3 +61,35 @@ function require_post_or_redirect(string $redirectPath): void {
     redirect_to($redirectPath);
   }
 }
+
+/** Helpers JSON */
+function json_input(): array {
+  $raw = file_get_contents('php://input');
+  $data = json_decode($raw ?: '', true);
+  return is_array($data) ? $data : [];
+}
+
+function json_response(array $data, int $code = 200): void {
+  http_response_code($code);
+  header('Content-Type: application/json; charset=utf-8');
+  echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  exit;
+}
+
+function to_int($v, int $default = 0): int {
+  if ($v === null) return $default;
+  if (is_numeric($v)) return (int)$v;
+  return $default;
+}
+
+function to_float($v, float $default = 0.0): float {
+  if ($v === null) return $default;
+  if (is_numeric($v)) return (float)$v;
+  $s = (string)$v;
+  $s = preg_replace('/[^\d,.\-]/', '', $s ?? '');
+  $s = str_replace('.', '', $s);
+  $s = str_replace(',', '.', $s);
+  return is_numeric($s) ? (float)$s : $default;
+}
+
+?>

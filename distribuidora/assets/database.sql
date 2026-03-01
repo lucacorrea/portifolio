@@ -114,23 +114,25 @@ CREATE TABLE IF NOT EXISTS saidas (
 CREATE TABLE IF NOT EXISTS vendas (
   id INT AUTO_INCREMENT PRIMARY KEY,
   data DATE NOT NULL,
-  pedido VARCHAR(40) DEFAULT NULL,
-  cliente VARCHAR(190) NOT NULL,
-  canal VARCHAR(20) NOT NULL DEFAULT 'PRESENCIAL',
-  pagamento VARCHAR(30) NOT NULL DEFAULT 'DINHEIRO',
-  obs VARCHAR(255) DEFAULT NULL,
-  total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  cliente VARCHAR(180) NULL,
+  canal VARCHAR(20) NOT NULL DEFAULT 'PRESENCIAL', -- PRESENCIAL | DELIVERY
+  endereco VARCHAR(255) NULL,
+  obs VARCHAR(255) NULL,
+
+  desconto_tipo VARCHAR(10) NOT NULL DEFAULT 'PERC', -- PERC | VALOR
+  desconto_valor DECIMAL(10,2) NOT NULL DEFAULT 0,
+  taxa_entrega DECIMAL(10,2) NOT NULL DEFAULT 0,
+
+  subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total DECIMAL(10,2) NOT NULL DEFAULT 0,
+
+  pagamento_mode VARCHAR(10) NOT NULL DEFAULT 'UNICO', -- UNICO | MULTI
+  pagamento VARCHAR(30) NOT NULL DEFAULT 'DINHEIRO',   -- DINHEIRO | PIX | CARTAO | BOLETO | MULTI
+  pagamento_json TEXT NULL, -- detalhes (valores/partes/troco)
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS venda_itens (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  venda_id INT NOT NULL,
-  produto_id INT NOT NULL,
-  qtd INT NOT NULL DEFAULT 0,
-  preco DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  -- sem FK, mas "como se tivesse":
-  INDEX (venda_id),
-  INDEX (produto_id)
-);
+CREATE INDEX idx_vendas_data ON vendas (data);
+CREATE INDEX idx_vendas_cliente ON vendas (cliente);
+CREATE INDEX idx_vendas_canal ON vendas (canal);
