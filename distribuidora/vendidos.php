@@ -5,75 +5,24 @@ declare(strict_types=1);
  * - Lista todas as vendas (tabela vendas)
  * - Filtros + busca com sugestões (autocomplete)
  * - Ações: Cupom fiscal (impressão) + Detalhes (modal)
- * - Exportação: Excel (XLS via HTML) + PDF (tela print em A4)
+ * - Exportação: Excel (XLS via HTML) + PDF (tela print em A4, igual seus relatórios)
  *
- * Requisitos:
- * - assets/dados/_helpers.php (e(), csrf_token() etc) OU fallback abaixo
+ * Requisitos do seu projeto:
+ * - assets/dados/_helpers.php (funções: e(), csrf_token() etc) OU fallback abaixo
  * - assets/conexao.php (função db():PDO)
  */
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
-/* =========================================================
-   1) ACTION antes dos includes (para API JSON)
-========================================================= */
-$action = strtolower(isset($_GET['action']) ? (string)$_GET['action'] : '');
-$isApi  = in_array($action, ['fetch','one','suggest'], true);
-
-/* =========================================================
-   2) Buffer para segurar QUALQUER saída dos includes
-========================================================= */
-ob_start();
-
-/* =========================================================
-   3) Para API JSON: responder JSON em fatal/exception
-========================================================= */
-if ($isApi) {
-  ini_set('display_errors', '0');
-  error_reporting(E_ALL);
-
-  register_shutdown_function(function () use ($action) {
-    $isApiLocal = in_array($action, ['fetch','one','suggest'], true);
-    if (!$isApiLocal) return;
-
-    $err = error_get_last();
-    if (!$err) return;
-
-    while (ob_get_level() > 0) { @ob_end_clean(); }
-    http_response_code(500);
-    header('Content-Type: application/json; charset=UTF-8');
-    echo json_encode([
-      'ok'  => false,
-      'msg' => 'Erro fatal: '.$err['message'].' em '.$err['file'].':'.$err['line'],
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-  });
-
-  set_exception_handler(function ($e) {
-    while (ob_get_level() > 0) { @ob_end_clean(); }
-    http_response_code(500);
-    header('Content-Type: application/json; charset=UTF-8');
-    echo json_encode([
-      'ok'  => false,
-      'msg' => 'Exceção: '.$e->getMessage(),
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-  });
-}
-
-/* ========= INCLUDES ========= */
+/* ========= INCLUDES (ajuste se precisar) ========= */
 $helpers = __DIR__ . '/assets/dados/_helpers.php';
 if (is_file($helpers)) require_once $helpers;
 
 $con = __DIR__ . '/assets/conexao.php';
 if (is_file($con)) require_once $con;
 
-/* ========= DESCARTA qualquer saída causada pelos includes ========= */
-$bootNoise = ob_get_clean();
-ob_start();
-
-/* ========= FALLBACKS ========= */
+/* ========= FALLBACKS (caso seu helpers não tenha) ========= */
 if (!function_exists('e')) {
   function e(string $v): string { return htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 }
@@ -85,20 +34,20 @@ if (!function_exists('csrf_token')) {
   }
 }
 if (!function_exists('db')) {
-  while (ob_get_level() > 0) { @ob_end_clean(); }
   http_response_code(500);
   echo "ERRO: função db():PDO não encontrada. Verifique assets/conexao.php";
   exit;
 }
 
+
 /* ========= UTIL ========= */
 function json_out(array $payload, int $code = 200): void {
-  while (ob_get_level() > 0) { @ob_end_clean(); }
   http_response_code($code);
   header('Content-Type: application/json; charset=UTF-8');
   echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   exit;
 }
+
 function get_str(string $k, string $def = ''): string {
   return isset($_GET[$k]) ? trim((string)$_GET[$k]) : $def;
 }
@@ -108,21 +57,6 @@ function get_int(string $k, int $def = 0): int {
 }
 function brl(float $v): string {
   return 'R$ ' . number_format($v, 2, ',', '.');
-}
-function table_exists(PDO $pdo, string $table): bool {
-  $st = $pdo->prepare("SHOW TABLES LIKE :t");
-  $st->execute(['t' => $table]);
-  return (bool)$st->fetchColumn();
-}
-function table_columns(PDO $pdo, string $table): array {
-  try {
-    $st = $pdo->query("DESCRIBE `$table`");
-    $cols = [];
-    while ($r = $st->fetch(PDO::FETCH_ASSOC)) $cols[] = (string)$r['Field'];
-    return $cols;
-  } catch (Throwable $e) {
-    return [];
-  }
 }
 
 function build_where(array &$params): string {
@@ -140,6 +74,7 @@ function build_where(array &$params): string {
   if ($pag !== '' && $pag !== 'TODOS') { $where .= " AND v.pagamento = :pag "; $params['pag'] = $pag; }
 
   if ($q !== '') {
+    // Se for número puro: tenta por ID
     if (ctype_digit($q)) {
       $where .= " AND v.id = :vid ";
       $params['vid'] = (int)$q;
@@ -151,140 +86,25 @@ function build_where(array &$params): string {
   return $where;
 }
 
-/* =========================================================
-   ITENS DA VENDA:
-   ✅ PRINCIPAL: venda_itens (venda_id)
-   🔁 FALLBACK: saidas (pedido)
-========================================================= */
-function venda_itens_map(PDO $pdo): array {
-  $cols = table_columns($pdo, 'venda_itens');
-  $has = function ($c) use ($cols) { return in_array($c, $cols, true); };
-
-  return [
-    'venda_id'   => $has('venda_id') ? 'venda_id' : 'venda_id',
-    'produto_id' => $has('produto_id') ? 'produto_id' : null,
-    'codigo'     => $has('codigo') ? 'codigo' : null,
-    'nome'       => $has('nome') ? 'nome' : null,
-    'unidade'    => $has('unidade') ? 'unidade' : null,
-    'preco_unit' => $has('preco_unit') ? 'preco_unit' : ($has('preco') ? 'preco' : null),
-    'qtd'        => $has('qtd') ? 'qtd' : ($has('quantidade') ? 'quantidade' : null),
-    'subtotal'   => $has('subtotal') ? 'subtotal' : ($has('total') ? 'total' : null),
-  ];
-}
-
+/**
+ * Itens da venda (opcional):
+ * - Seu banco NÃO tem venda_itens, então tentamos buscar na tabela saidas
+ * - Mapeamento: saidas.pedido pode ser "id", "00005" ou "V{id}" (robusto)
+ */
 function fetch_items_for_sale_ids(array $saleIds): array {
   if (!$saleIds) return [];
+
   $pdo = db();
 
-  // normaliza ids
-  $uniq = [];
-  foreach ($saleIds as $id) {
-    $id = (int)$id;
-    if ($id > 0) $uniq[$id] = true;
-  }
-  $saleIds = array_keys($uniq);
-  if (!$saleIds) return [];
+  // checa se tabela saidas existe
+  $st = $pdo->query("SHOW TABLES LIKE 'saidas'");
+  if (!$st || !$st->fetchColumn()) return [];
 
-  $out = [];
-
-  // 1) venda_itens (correto)
-  if (table_exists($pdo, 'venda_itens')) {
-    $map = venda_itens_map($pdo);
-    $in = implode(',', array_fill(0, count($saleIds), '?'));
-
-    $canSnapshot = ($map['codigo'] && $map['nome'] && $map['preco_unit'] && $map['qtd']);
-
-    if ($canSnapshot) {
-      $sql = "
-        SELECT
-          vi.`{$map['venda_id']}` AS venda_id,
-          ".($map['codigo'] ? "vi.`{$map['codigo']}`" : "''")." AS codigo,
-          ".($map['nome'] ? "vi.`{$map['nome']}`" : "'Item'")." AS nome,
-          ".($map['unidade'] ? "vi.`{$map['unidade']}`" : "''")." AS unidade,
-          ".($map['preco_unit'] ? "vi.`{$map['preco_unit']}`" : "0")." AS preco_unit,
-          ".($map['qtd'] ? "vi.`{$map['qtd']}`" : "0")." AS qtd,
-          ".($map['subtotal'] ? "vi.`{$map['subtotal']}`" : "0")." AS subtotal
-        FROM venda_itens vi
-        WHERE vi.`{$map['venda_id']}` IN ($in)
-        ORDER BY vi.id ASC
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($saleIds);
-      $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-      foreach ($rows as $r) {
-        $sid = (int)($r['venda_id'] ?? 0);
-        if ($sid <= 0) continue;
-        if (!isset($out[$sid])) $out[$sid] = [];
-
-        $preco = (float)($r['preco_unit'] ?? 0);
-        $qtd   = (float)($r['qtd'] ?? 0);
-        $tot   = (float)($r['subtotal'] ?? 0);
-        if ($tot <= 0 && $preco > 0 && $qtd > 0) $tot = $preco * $qtd;
-
-        $out[$sid][] = [
-          'codigo' => (string)($r['codigo'] ?? ''),
-          'nome'   => (string)($r['nome'] ?? 'Item'),
-          'qtd'    => $qtd,
-          'un'     => (string)($r['unidade'] ?? ''),
-          'preco'  => $preco,
-          'total'  => $tot,
-        ];
-      }
-
-      if (!empty($out)) return $out;
-    }
-
-    // Se não tiver snapshot completo, tenta via join produtos (fallback interno)
-    if (table_exists($pdo, 'produtos') && $map['produto_id'] && $map['preco_unit'] && $map['qtd']) {
-      $sql = "
-        SELECT
-          vi.`{$map['venda_id']}` AS venda_id,
-          p.codigo AS codigo,
-          p.nome   AS nome,
-          COALESCE(vi.`{$map['unidade']}`, p.unidade, '') AS unidade,
-          vi.`{$map['preco_unit']}` AS preco_unit,
-          vi.`{$map['qtd']}` AS qtd,
-          ".($map['subtotal'] ? "vi.`{$map['subtotal']}`" : "0")." AS subtotal
-        FROM venda_itens vi
-        LEFT JOIN produtos p ON p.id = vi.`{$map['produto_id']}`
-        WHERE vi.`{$map['venda_id']}` IN ($in)
-        ORDER BY vi.id ASC
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($saleIds);
-      $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-      foreach ($rows as $r) {
-        $sid = (int)($r['venda_id'] ?? 0);
-        if ($sid <= 0) continue;
-        if (!isset($out[$sid])) $out[$sid] = [];
-
-        $preco = (float)($r['preco_unit'] ?? 0);
-        $qtd   = (float)($r['qtd'] ?? 0);
-        $tot   = (float)($r['subtotal'] ?? 0);
-        if ($tot <= 0 && $preco > 0 && $qtd > 0) $tot = $preco * $qtd;
-
-        $out[$sid][] = [
-          'codigo' => (string)($r['codigo'] ?? ''),
-          'nome'   => (string)($r['nome'] ?? 'Item'),
-          'qtd'    => $qtd,
-          'un'     => (string)($r['unidade'] ?? ''),
-          'preco'  => $preco,
-          'total'  => $tot,
-        ];
-      }
-
-      if (!empty($out)) return $out;
-    }
-  }
-
-  // 2) fallback saidas
-  if (!table_exists($pdo, 'saidas')) return [];
-
+  // cria chaves possíveis para procurar em saidas.pedido
   $keyToId = [];
   $keys = [];
   foreach ($saleIds as $id) {
+    $id = (int)$id;
     $k1 = (string)$id;
     $k2 = str_pad((string)$id, 5, '0', STR_PAD_LEFT);
     $k3 = 'V' . $id;
@@ -294,9 +114,10 @@ function fetch_items_for_sale_ids(array $saleIds): array {
     }
   }
   $keys = array_keys($keys);
-  if (!$keys) return [];
 
+  // placeholders
   $in = implode(',', array_fill(0, count($keys), '?'));
+
   $sql = "
     SELECT
       s.pedido, s.qtd, s.unidade, s.preco, s.total,
@@ -310,12 +131,13 @@ function fetch_items_for_sale_ids(array $saleIds): array {
   $stmt->execute($keys);
   $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+  $out = []; // saleId => itens[]
   foreach ($rows as $r) {
     $pedido = (string)($r['pedido'] ?? '');
     if (!isset($keyToId[$pedido])) continue;
-    $sid = (int)$keyToId[$pedido];
+    $sid = $keyToId[$pedido];
 
-    if (!isset($out[$sid])) $out[$sid] = [];
+    $out[$sid] ??= [];
     $out[$sid][] = [
       'codigo' => (string)($r['prod_codigo'] ?? ''),
       'nome'   => (string)($r['prod_nome'] ?? 'Item'),
@@ -325,24 +147,7 @@ function fetch_items_for_sale_ids(array $saleIds): array {
       'total'  => (float)($r['total'] ?? 0),
     ];
   }
-
   return $out;
-}
-
-function itens_preview(array $itens, int $max = 4): string {
-  if (!$itens) return '';
-  $parts = [];
-  $i = 0;
-  foreach ($itens as $it) {
-    $i++;
-    $nome = (string)($it['nome'] ?? 'Item');
-    $qtd  = (float)($it['qtd'] ?? 0);
-    $parts[] = $nome . ($qtd > 0 ? " ({$qtd})" : '');
-    if ($i >= $max) break;
-  }
-  $txt = implode(', ', $parts);
-  if (count($itens) > $max) $txt .= '…';
-  return $txt;
 }
 
 function fetch_one_sale(int $id): ?array {
@@ -353,13 +158,14 @@ function fetch_one_sale(int $id): ?array {
   if (!$v) return null;
 
   $itemsMap = fetch_items_for_sale_ids([$id]);
-  $itens = isset($itemsMap[$id]) ? $itemsMap[$id] : [];
+  $itens = $itemsMap[$id] ?? [];
 
+  // tenta totalizar itens (se existir saidas)
   $itSubtotal = 0.0;
   $itQtd = 0.0;
   foreach ($itens as $it) {
-    $itSubtotal += (float)($it['total'] ?? 0);
-    $itQtd += (float)($it['qtd'] ?? 0);
+    $itSubtotal += (float)$it['total'];
+    $itQtd += (float)$it['qtd'];
   }
 
   return [
@@ -370,14 +176,12 @@ function fetch_one_sale(int $id): ?array {
   ];
 }
 
-/* =========================================================
-   AÇÕES (API/EXPORT)
-========================================================= */
+/* ========= AÇÕES ========= */
+$action = strtolower(get_str('action'));
 
 if ($action === 'suggest') {
   $q = get_str('q');
-  $len = function_exists('mb_strlen') ? (int)mb_strlen($q) : (int)strlen($q);
-  if ($len < 2) json_out(['ok' => true, 'items' => []]);
+  if (mb_strlen($q) < 2) json_out(['ok' => true, 'items' => []]);
 
   $pdo = db();
   $stmt = $pdo->prepare("
@@ -390,132 +194,123 @@ if ($action === 'suggest') {
   ");
   $stmt->execute(['q' => $q . '%']);
   $items = [];
-  while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) $items[] = (string)$r['cliente'];
-
+  while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $items[] = (string)$r['cliente'];
+  }
   json_out(['ok' => true, 'items' => $items]);
 }
 
 if ($action === 'fetch') {
-  try {
-    $pdo = db();
+  $pdo = db();
 
-    $page = max(1, get_int('page', 1));
-    $per  = get_int('per', 25);
-    $per  = in_array($per, [10,25,50,100], true) ? $per : 25;
-    $off  = ($page - 1) * $per;
+  $page = max(1, get_int('page', 1));
+  $per = get_int('per', 25);
+  $per = in_array($per, [10,25,50,100], true) ? $per : 25;
+  $off = ($page - 1) * $per;
 
-    $params = [];
-    $where = build_where($params);
+  $params = [];
+  $where = build_where($params);
 
-    $sqlTot = "
-      SELECT
-        COUNT(*) AS qtd,
-        COALESCE(SUM(v.subtotal),0) AS subtotal,
-        COALESCE(SUM(v.desconto_valor),0) AS desconto,
-        COALESCE(SUM(v.taxa_entrega),0) AS taxa,
-        COALESCE(SUM(v.total),0) AS total
-      FROM vendas v
-      $where
-    ";
-    $stTot = $pdo->prepare($sqlTot);
-    $stTot->execute($params);
-    $tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: ['qtd'=>0,'subtotal'=>0,'desconto'=>0,'taxa'=>0,'total'=>0];
+  // totais do filtro
+  $sqlTot = "
+    SELECT
+      COUNT(*) AS qtd,
+      COALESCE(SUM(v.subtotal),0) AS subtotal,
+      COALESCE(SUM(v.desconto_valor),0) AS desconto,
+      COALESCE(SUM(v.taxa_entrega),0) AS taxa,
+      COALESCE(SUM(v.total),0) AS total
+    FROM vendas v
+    $where
+  ";
+  $stTot = $pdo->prepare($sqlTot);
+  $stTot->execute($params);
+  $tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: ['qtd'=>0,'subtotal'=>0,'desconto'=>0,'taxa'=>0,'total'=>0];
 
-    $sql = "
-      SELECT
-        v.id, v.data, v.cliente, v.canal, v.endereco, v.obs,
-        v.desconto_tipo, v.desconto_valor, v.taxa_entrega,
-        v.subtotal, v.total, v.pagamento_mode, v.pagamento, v.pagamento_json,
-        v.created_at
-      FROM vendas v
-      $where
-      ORDER BY v.id DESC
-      LIMIT $per OFFSET $off
-    ";
-    $st = $pdo->prepare($sql);
-    $st->execute($params);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  // lista paginada
+  $sql = "
+    SELECT
+      v.id, v.data, v.cliente, v.canal, v.endereco, v.obs,
+      v.desconto_tipo, v.desconto_valor, v.taxa_entrega,
+      v.subtotal, v.total, v.pagamento_mode, v.pagamento, v.pagamento_json,
+      v.created_at
+    FROM vendas v
+    $where
+    ORDER BY v.id DESC
+    LIMIT $per OFFSET $off
+  ";
+  $st = $pdo->prepare($sql);
+  $st->execute($params);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-    $ids = [];
-    foreach ($rows as $r) $ids[] = (int)$r['id'];
+  $ids = array_map(fn($r) => (int)$r['id'], $rows);
+  $itemsMap = fetch_items_for_sale_ids($ids);
 
-    $itemsMap = fetch_items_for_sale_ids($ids);
+  // anexa itens resumidos
+  $outRows = [];
+  foreach ($rows as $r) {
+    $id = (int)$r['id'];
+    $itens = $itemsMap[$id] ?? [];
+    $itTotal = 0.0;
+    $itCount = 0;
+    foreach ($itens as $it) { $itTotal += (float)$it['total']; $itCount++; }
 
-    $outRows = [];
-    foreach ($rows as $r) {
-      $id = (int)$r['id'];
-      $itens = isset($itemsMap[$id]) ? $itemsMap[$id] : [];
-
-      $itTotal = 0.0;
-      $itCount = 0;
-      foreach ($itens as $it) { $itTotal += (float)($it['total'] ?? 0); $itCount++; }
-
-      $outRows[] = [
-        'id' => $id,
-        'data' => (string)$r['data'],
-        'created_at' => (string)($r['created_at'] ?? ''),
-        'cliente' => (string)($r['cliente'] ?? ''),
-        'canal' => (string)($r['canal'] ?? ''),
-        'pagamento' => (string)($r['pagamento'] ?? ''),
-        'subtotal' => (float)($r['subtotal'] ?? 0),
-        'desconto' => (float)($r['desconto_valor'] ?? 0),
-        'taxa' => (float)($r['taxa_entrega'] ?? 0),
-        'total' => (float)($r['total'] ?? 0),
-        'endereco' => (string)($r['endereco'] ?? ''),
-        'obs' => (string)($r['obs'] ?? ''),
-        'itens' => $itens,
-        'itens_count' => $itCount,
-        'itens_total' => $itTotal,
-        'itens_preview' => itens_preview($itens, 4),
-      ];
-    }
-
-    $totalCount = (int)($tot['qtd'] ?? 0);
-    $pages = (int)max(1, ceil($totalCount / $per));
-
-    json_out([
-      'ok' => true,
-      'meta' => [
-        'page' => $page,
-        'per' => $per,
-        'pages' => $pages,
-        'total' => $totalCount,
-      ],
-      'totais' => [
-        'qtd' => (int)($tot['qtd'] ?? 0),
-        'subtotal' => (float)($tot['subtotal'] ?? 0),
-        'desconto' => (float)($tot['desconto'] ?? 0),
-        'taxa' => (float)($tot['taxa'] ?? 0),
-        'total' => (float)($tot['total'] ?? 0),
-      ],
-      'rows' => $outRows,
-    ]);
-  } catch (Throwable $e) {
-    json_out(['ok' => false, 'msg' => 'Erro no fetch: '.$e->getMessage()], 500);
+    $outRows[] = [
+      'id' => $id,
+      'data' => (string)$r['data'],
+      'created_at' => (string)($r['created_at'] ?? ''),
+      'cliente' => (string)($r['cliente'] ?? ''),
+      'canal' => (string)($r['canal'] ?? ''),
+      'pagamento' => (string)($r['pagamento'] ?? ''),
+      'subtotal' => (float)($r['subtotal'] ?? 0),
+      'desconto' => (float)($r['desconto_valor'] ?? 0),
+      'taxa' => (float)($r['taxa_entrega'] ?? 0),
+      'total' => (float)($r['total'] ?? 0),
+      'endereco' => (string)($r['endereco'] ?? ''),
+      'obs' => (string)($r['obs'] ?? ''),
+      'itens' => $itens,
+      'itens_count' => $itCount,
+      'itens_total' => $itTotal
+    ];
   }
+
+  $totalCount = (int)($tot['qtd'] ?? 0);
+  $pages = (int)max(1, ceil($totalCount / $per));
+
+  json_out([
+    'ok' => true,
+    'meta' => [
+      'page' => $page,
+      'per' => $per,
+      'pages' => $pages,
+      'total' => $totalCount,
+    ],
+    'totais' => [
+      'qtd' => (int)($tot['qtd'] ?? 0),
+      'subtotal' => (float)($tot['subtotal'] ?? 0),
+      'desconto' => (float)($tot['desconto'] ?? 0),
+      'taxa' => (float)($tot['taxa'] ?? 0),
+      'total' => (float)($tot['total'] ?? 0),
+    ],
+    'rows' => $outRows,
+  ]);
 }
 
 if ($action === 'one') {
-  try {
-    $id = get_int('id', 0);
-    if ($id <= 0) json_out(['ok' => false, 'msg' => 'ID inválido'], 400);
+  $id = get_int('id', 0);
+  if ($id <= 0) json_out(['ok' => false, 'msg' => 'ID inválido'], 400);
 
-    $one = fetch_one_sale($id);
-    if (!$one) json_out(['ok' => false, 'msg' => 'Venda não encontrada'], 404);
+  $one = fetch_one_sale($id);
+  if (!$one) json_out(['ok' => false, 'msg' => 'Venda não encontrada'], 404);
 
-    json_out(['ok' => true, 'data' => $one]);
-  } catch (Throwable $e) {
-    json_out(['ok' => false, 'msg' => 'Erro no one: '.$e->getMessage()], 500);
-  }
+  json_out(['ok' => true, 'data' => $one]);
 }
 
 if ($action === 'excel') {
-  while (ob_get_level() > 0) { @ob_end_clean(); }
-
   $pdo = db();
   $params = [];
   $where = build_where($params);
 
+  // pega tudo (limite de segurança)
   $sql = "
     SELECT
       v.id, v.data, v.cliente, v.canal, v.pagamento,
@@ -528,10 +323,6 @@ if ($action === 'excel') {
   $st = $pdo->prepare($sql);
   $st->execute($params);
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-  $ids = [];
-  foreach ($rows as $r) $ids[] = (int)$r['id'];
-  $itemsMap = fetch_items_for_sale_ids($ids);
 
   $agora = date('d/m/Y H:i');
   $di = get_str('di') ?: '—';
@@ -547,24 +338,28 @@ if ($action === 'excel') {
   header('Pragma: no-cache');
   header('Expires: 0');
 
-  echo "\xEF\xBB\xBF";
+  echo "\xEF\xBB\xBF"; // BOM pra Excel abrir UTF-8
+
+  // Estilo simples (igual seus relatórios do print)
   ?>
   <table border="0" cellpadding="4" cellspacing="0" style="width:100%;">
     <tr>
-      <td colspan="10" align="center" style="font-size:16px;font-weight:900;">
+      <td colspan="9" align="center" style="font-size:16px;font-weight:900;">
         PAINEL DA DISTRIBUIDORA - VENDIDOS
       </td>
     </tr>
-    <tr><td colspan="10" style="font-size:12px;">Gerado em: <?= e($agora) ?></td></tr>
     <tr>
-      <td colspan="10" style="font-size:12px;">
+      <td colspan="9" style="font-size:12px;">Gerado em: <?= e($agora) ?></td>
+    </tr>
+    <tr>
+      <td colspan="9" style="font-size:12px;">
         Período: <?= e($di) ?> até <?= e($df) ?> &nbsp;|&nbsp;
         Canal: <?= e($canal) ?> &nbsp;|&nbsp;
         Pagamento: <?= e($pag) ?> &nbsp;|&nbsp;
         Busca: <?= e($q) ?>
       </td>
     </tr>
-    <tr><td colspan="10"></td></tr>
+    <tr><td colspan="9"></td></tr>
   </table>
 
   <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;">
@@ -575,7 +370,6 @@ if ($action === 'excel') {
         <th>Cliente</th>
         <th>Canal</th>
         <th>Pagamento</th>
-        <th>Itens</th>
         <th>Subtotal</th>
         <th>Desconto</th>
         <th>Entrega</th>
@@ -590,18 +384,13 @@ if ($action === 'excel') {
         $sumDesc += (float)$r['desconto_valor'];
         $sumTax += (float)$r['taxa_entrega'];
         $sumTot += (float)$r['total'];
-
-        $id = (int)$r['id'];
-        $itens = isset($itemsMap[$id]) ? $itemsMap[$id] : [];
-        $itTxt = itens_preview($itens, 999);
       ?>
       <tr>
-        <td><?= $id ?></td>
+        <td><?= (int)$r['id'] ?></td>
         <td><?= e((string)$r['data']) ?></td>
         <td><?= e((string)($r['cliente'] ?? '')) ?></td>
         <td><?= e((string)($r['canal'] ?? '')) ?></td>
         <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
-        <td><?= e($itTxt) ?></td>
         <td><?= e(number_format((float)$r['subtotal'],2,',','.')) ?></td>
         <td><?= e(number_format((float)$r['desconto_valor'],2,',','.')) ?></td>
         <td><?= e(number_format((float)$r['taxa_entrega'],2,',','.')) ?></td>
@@ -611,7 +400,7 @@ if ($action === 'excel') {
     </tbody>
     <tfoot>
       <tr style="font-weight:900;background:#f8fafc;">
-        <td colspan="6" align="right">Totais</td>
+        <td colspan="5" align="right">Totais</td>
         <td><?= e(number_format($sumSub,2,',','.')) ?></td>
         <td><?= e(number_format($sumDesc,2,',','.')) ?></td>
         <td><?= e(number_format($sumTax,2,',','.')) ?></td>
@@ -624,8 +413,7 @@ if ($action === 'excel') {
 }
 
 if ($action === 'print') {
-  while (ob_get_level() > 0) { @ob_end_clean(); }
-
+  // Relatório A4 para imprimir/salvar como PDF
   $pdo = db();
   $params = [];
   $where = build_where($params);
@@ -642,10 +430,6 @@ if ($action === 'print') {
   $st = $pdo->prepare($sql);
   $st->execute($params);
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-  $ids = [];
-  foreach ($rows as $r) $ids[] = (int)$r['id'];
-  $itemsMap = fetch_items_for_sale_ids($ids);
 
   $agora = date('d/m/Y H:i:s');
   $di = get_str('di') ?: '—';
@@ -675,7 +459,7 @@ if ($action === 'print') {
       h1 { font-size: 18px; margin:0 0 8px; }
       .meta { font-size: 12px; margin: 2px 0; }
       table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-      th, td { border: 1px solid #e5e7eb; padding: 8px; font-size: 12px; vertical-align: top; }
+      th, td { border: 1px solid #e5e7eb; padding: 8px; font-size: 12px; }
       th { background: #f1f5f9; text-align: left; }
       tfoot td { font-weight: 900; background:#f8fafc; }
       .right { text-align:right; }
@@ -684,7 +468,7 @@ if ($action === 'print') {
       .btn { display:none; }
       @media screen {
         body { background:#0b1220; padding:24px; }
-        .sheet { max-width: 980px; margin:0 auto; background:#fff; border-radius: 14px; padding: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+        .sheet { max-width: 920px; margin:0 auto; background:#fff; border-radius: 14px; padding: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
         .btn { display:inline-block; margin-top:10px; padding:10px 14px; border-radius: 10px; border:1px solid #cbd5e1; cursor:pointer; font-weight:900; background:#fff; }
       }
     </style>
@@ -711,7 +495,6 @@ if ($action === 'print') {
             <th>Cliente</th>
             <th style="width:110px;">Canal</th>
             <th style="width:130px;">Pagamento</th>
-            <th>Itens</th>
             <th class="right" style="width:110px;">Subtotal</th>
             <th class="right" style="width:110px;">Desconto</th>
             <th class="right" style="width:110px;">Entrega</th>
@@ -719,18 +502,13 @@ if ($action === 'print') {
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($rows as $r):
-            $id = (int)$r['id'];
-            $itens = isset($itemsMap[$id]) ? $itemsMap[$id] : [];
-            $itTxt = itens_preview($itens, 4);
-          ?>
+          <?php foreach ($rows as $r): ?>
           <tr>
-            <td><?= $id ?></td>
+            <td><?= (int)$r['id'] ?></td>
             <td><?= e((string)$r['data']) ?></td>
             <td><?= e((string)($r['cliente'] ?? '')) ?></td>
             <td><?= e((string)($r['canal'] ?? '')) ?></td>
             <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
-            <td><?= e($itTxt ?: '—') ?></td>
             <td class="right"><?= e(brl((float)$r['subtotal'])) ?></td>
             <td class="right"><?= e(brl((float)$r['desconto_valor'])) ?></td>
             <td class="right"><?= e(brl((float)$r['taxa_entrega'])) ?></td>
@@ -740,7 +518,7 @@ if ($action === 'print') {
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="6" class="right">Totais</td>
+            <td colspan="5" class="right">Totais</td>
             <td class="right"><?= e(brl($sumSub)) ?></td>
             <td class="right"><?= e(brl($sumDesc)) ?></td>
             <td class="right"><?= e(brl($sumTax)) ?></td>
@@ -751,6 +529,7 @@ if ($action === 'print') {
     </div>
 
     <script>
+      // auto print (pra ficar "Exportar PDF" 1-clique)
       window.addEventListener('load', () => {
         setTimeout(() => window.print(), 300);
       });
@@ -762,8 +541,6 @@ if ($action === 'print') {
 }
 
 if ($action === 'cupom') {
-  while (ob_get_level() > 0) { @ob_end_clean(); }
-
   $id = get_int('id', 0);
   if ($id <= 0) { http_response_code(400); echo "ID inválido"; exit; }
 
@@ -844,15 +621,15 @@ if ($action === 'cupom') {
           </thead>
           <tbody>
             <?php if (!$itens): ?>
-              <tr><td colspan="3" class="muted">Sem itens vinculados (não encontrado em venda_itens/saidas).</td></tr>
+              <tr><td colspan="3" class="muted">Sem itens vinculados (tabela saidas não encontrou pedido).</td></tr>
             <?php else: foreach ($itens as $it): ?>
               <tr>
                 <td>
-                  <b><?= e((string)$it['nome']) ?></b>
+                  <b><?= e($it['nome']) ?></b>
                   <?php if (!empty($it['codigo'])): ?>
-                    <div class="muted"><?= e((string)$it['codigo']) ?></div>
+                    <div class="muted"><?= e($it['codigo']) ?></div>
                   <?php endif; ?>
-                  <div class="muted"><?= e((string)$it['un']) ?> • <?= e(brl((float)$it['preco'])) ?></div>
+                  <div class="muted"><?= e($it['un']) ?> • <?= e(brl((float)$it['preco'])) ?></div>
                 </td>
                 <td class="r"><?= e(rtrim(rtrim(number_format((float)$it['qtd'],3,',','.'),'0'),',')) ?></td>
                 <td class="r"><?= e(brl((float)$it['total'])) ?></td>
@@ -887,9 +664,7 @@ if ($action === 'cupom') {
   exit;
 }
 
-/* =========================================================
-   HTML (tela principal)
-========================================================= */
+/* ========= HTML (tela principal) ========= */
 $csrf = csrf_token();
 ?>
 <!DOCTYPE html>
@@ -981,7 +756,7 @@ $csrf = csrf_token();
 <body>
   <div id="preloader"><div class="spinner"></div></div>
 
-  <!-- sidebar-nav start -->
+  <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -1019,6 +794,44 @@ $csrf = csrf_token();
           </ul>
         </li>
 
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
+                <path d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
+              </svg>
+            </span>
+            <span class="text">Estoque</span>
+          </a>
+          <ul id="ddmenu_estoque" class="collapse dropdown-nav">
+            <li><a href="produtos.php">Produtos</a></li>
+            <li><a href="inventario.php">Inventário</a></li>
+            <li><a href="entradas.php">Entradas</a></li>
+            <li><a href="saidas.php">Saídas</a></li>
+            <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
+                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
+                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
+                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
+              </svg>
+            </span>
+            <span class="text">Cadastros</span>
+          </a>
+          <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
+            <li><a href="clientes.php">Clientes</a></li>
+            <li><a href="fornecedores.php">Fornecedores</a></li>
+            <li><a href="categorias.php">Categorias</a></li>
+          </ul>
+        </li>
+
         <li class="nav-item">
           <a href="relatorios.php">
             <span class="icon">
@@ -1027,6 +840,35 @@ $csrf = csrf_token();
               </svg>
             </span>
             <span class="text">Relatórios</span>
+          </a>
+        </li>
+
+        <span class="divider"><hr /></span>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
+              </svg>
+            </span>
+            <span class="text">Configurações</span>
+          </a>
+          <ul id="ddmenu_config" class="collapse dropdown-nav">
+            <li><a href="usuarios.php">Usuários e Permissões</a></li>
+            <li><a href="parametros.php">Parâmetros do Sistema</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item">
+          <a href="suporte.php">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
+                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
+              </svg>
+            </span>
+            <span class="text">Suporte</span>
           </a>
         </li>
       </ul>
@@ -1222,8 +1064,8 @@ $csrf = csrf_token();
                 </div>
 
                 <div class="muted mt-3">
-                  <b>Obs.:</b> os <b>itens</b> são buscados primeiro em <b>venda_itens</b> (correto),
-                  e se não achar, tenta em <b>saidas</b> (pedido = id / 0000id / V{id}).
+                  <b>Obs.:</b> os <b>itens</b> aparecem se a venda estiver vinculada na tabela <b>saidas</b> (campo <b>pedido</b>).
+                  Este arquivo tenta casar automaticamente: <b>id</b>, <b>0000id</b> ou <b>V{id}</b>.
                 </div>
               </div>
             </div>
@@ -1319,6 +1161,7 @@ $csrf = csrf_token();
 
   <script>
     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
     const el = (id) => document.getElementById(id);
 
     const state = {
@@ -1340,6 +1183,7 @@ $csrf = csrf_token();
 
     function fmtDate(iso){
       if(!iso) return '—';
+      // iso yyyy-mm-dd
       const p = String(iso).split('-');
       if(p.length===3) return `${p[2]}/${p[1]}/${p[0]}`;
       return iso;
@@ -1347,10 +1191,10 @@ $csrf = csrf_token();
 
     function fmtDateTime(dt){
       if(!dt) return '—';
-      const parts = String(dt).split(' ');
-      const d = parts[0] || '';
-      const t = parts[1] || '';
-      return `${fmtDate(d)} ${t}`.trim();
+      // MySQL DATETIME
+      // "2026-03-01 20:12:02"
+      const [d,t] = String(dt).split(' ');
+      return `${fmtDate(d)} ${t||''}`.trim();
     }
 
     function buildParams(){
@@ -1394,15 +1238,15 @@ $csrf = csrf_token();
       const url = `vendidos.php?${p.toString()}`;
 
       try{
-        const res = await fetch(url, {
-          headers: { 'X-CSRF': csrf, 'Accept': 'application/json' }
-        });
+        const res = await fetch(url, { headers: { 'X-CSRF': csrf }});
         const js = await res.json();
         if(!js.ok) throw new Error(js.msg || 'Falha ao carregar');
 
+        // meta
         state.page = js.meta.page;
         state.pages = js.meta.pages;
 
+        // totais
         el('tQtd').textContent = js.totais.qtd;
         el('tSub').textContent = brl(js.totais.subtotal);
         el('tDesc').textContent = brl(js.totais.desconto);
@@ -1415,10 +1259,12 @@ $csrf = csrf_token();
         el('btnPrev').disabled = state.page <= 1;
         el('btnNext').disabled = state.page >= state.pages;
 
+        // range label
         const di = el('di').value ? fmtDate(el('di').value) : '—';
         const df = el('df').value ? fmtDate(el('df').value) : '—';
         el('lblRange').textContent = `Período: ${di} até ${df}`;
 
+        // rows
         const rows = js.rows || [];
         if(!rows.length){
           el('tbody').innerHTML = `<tr><td colspan="11" class="muted">Nenhuma venda encontrada com este filtro.</td></tr>`;
@@ -1453,8 +1299,6 @@ $csrf = csrf_token();
                 ${extra>0 ? `<div class="muted mt-2">+ ${extra} item(ns)…</div>` : ``}
               </div>
             `;
-          } else if (r.itens_preview) {
-            itensHtml = `<span class="muted">${escapeHtml(r.itens_preview)}</span>`;
           }
 
           return `
@@ -1499,6 +1343,7 @@ $csrf = csrf_token();
     }
 
     function numQ(v){
+      // mostra 3 casas se precisar, senão inteiro
       const n = Number(v||0);
       if (Number.isInteger(n)) return String(n);
       return n.toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:3});
@@ -1506,9 +1351,7 @@ $csrf = csrf_token();
 
     async function openDetails(id){
       try{
-        const res = await fetch(`vendidos.php?action=one&id=${id}`, {
-          headers: { 'X-CSRF': csrf, 'Accept': 'application/json' }
-        });
+        const res = await fetch(`vendidos.php?action=one&id=${id}`, { headers: { 'X-CSRF': csrf }});
         const js = await res.json();
         if(!js.ok) throw new Error(js.msg || 'Falha ao abrir detalhes');
 
@@ -1530,7 +1373,7 @@ $csrf = csrf_token();
         el('dTotal').textContent = brl(v.total);
 
         if(!itens.length){
-          el('dItens').innerHTML = `<span class="muted">Sem itens vinculados.</span>`;
+          el('dItens').innerHTML = `<span class="muted">Sem itens vinculados (não encontrado em <b>saidas</b>).</span>`;
           el('dItensQtd').textContent = `0 itens`;
           el('dItensTot').textContent = brl(0);
         } else {
@@ -1563,11 +1406,13 @@ $csrf = csrf_token();
       window.open(`vendidos.php?action=cupom&id=${id}`, '_blank');
     }
 
+    // modal cupom
     el('btnCupomModal').addEventListener('click', () => {
       if (!state.lastCupomId) return;
       openCupom(state.lastCupomId);
     });
 
+    // paginação
     el('btnPrev').addEventListener('click', () => {
       if (state.page <= 1) return;
       state.page -= 1;
@@ -1579,6 +1424,7 @@ $csrf = csrf_token();
       load();
     });
 
+    // filtrar / limpar
     el('btnFiltrar').addEventListener('click', () => {
       state.page = 1;
       load();
@@ -1595,12 +1441,14 @@ $csrf = csrf_token();
       load();
     });
 
+    // por página
     el('per').addEventListener('change', () => {
       state.per = Number(el('per').value || 25);
       state.page = 1;
       load();
     });
 
+    // export
     el('btnExcel').addEventListener('click', () => {
       window.location.href = buildExportUrl('excel');
     });
@@ -1608,11 +1456,14 @@ $csrf = csrf_token();
       window.open(buildExportUrl('print'), '_blank');
     });
 
+    // busca global sincroniza com q
     el('qGlobal').addEventListener('input', () => {
       el('q').value = el('qGlobal').value;
       scheduleFilter();
       scheduleSuggest();
     });
+
+    // busca local com debounce (não ficar batendo no servidor a cada tecla)
     el('q').addEventListener('input', () => {
       el('qGlobal').value = el('q').value;
       scheduleFilter();
@@ -1627,8 +1478,8 @@ $csrf = csrf_token();
       }, 450);
     }
 
+    // sugestões
     function hideSuggest(){ el('suggest').style.display = 'none'; el('suggest').innerHTML=''; }
-
     function scheduleSuggest(){
       clearTimeout(state.suggestTimer);
       state.suggestTimer = setTimeout(async () => {
@@ -1636,9 +1487,7 @@ $csrf = csrf_token();
         if (q.length < 2) { hideSuggest(); return; }
 
         try{
-          const res = await fetch(`vendidos.php?action=suggest&q=${encodeURIComponent(q)}`, {
-            headers:{'X-CSRF':csrf, 'Accept':'application/json'}
-          });
+          const res = await fetch(`vendidos.php?action=suggest&q=${encodeURIComponent(q)}`, { headers:{'X-CSRF':csrf}});
           const js = await res.json();
           if(!js.ok) { hideSuggest(); return; }
           const items = js.items || [];
@@ -1660,7 +1509,6 @@ $csrf = csrf_token();
     function escapeJs(s){
       return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     }
-
     window.pickSuggest = function(name){
       el('q').value = name;
       el('qGlobal').value = name;
@@ -1671,11 +1519,12 @@ $csrf = csrf_token();
 
     document.addEventListener('click', (ev) => {
       const sw = el('suggest');
-      const wrap = sw ? sw.parentElement : null;
+      const wrap = sw?.parentElement;
       if (!wrap) return;
       if (!wrap.contains(ev.target)) hideSuggest();
     });
 
+    // init
     (function init(){
       state.per = Number(el('per').value || 25);
       load();
@@ -1683,5 +1532,3 @@ $csrf = csrf_token();
   </script>
 </body>
 </html>
-<?php
-if (ob_get_level() > 0) @ob_end_flush();
