@@ -1,16 +1,6 @@
 <?php
 declare(strict_types=1);
-/**
- * vendidos.php
- * - Lista todas as vendas (tabela vendas)
- * - Filtros + busca com sugestões (autocomplete)
- * - Ações: Cupom fiscal (impressão) + Detalhes (modal)
- * - Exportação: Excel (XLS via HTML) + PDF (tela print em A4, igual seus relatórios)
- *
- * Requisitos do seu projeto:
- * - assets/dados/_helpers.php (funções: e(), csrf_token() etc) OU fallback abaixo
- * - assets/conexao.php (função db():PDO)
- */
+
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
@@ -39,11 +29,6 @@ if (!function_exists('db')) {
   exit;
 }
 
-/* ========= SEGURANÇA (ajuste conforme seu login) ========= */
-if (empty($_SESSION['usuario_logado'])) {
-  header('Location: index.php');
-  exit;
-}
 
 /* ========= UTIL ========= */
 function json_out(array $payload, int $code = 200): void {
