@@ -4,12 +4,67 @@ declare(strict_types=1);
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
+/**
+ * 1) Descobre a action ANTES dos includes (pra configurar handler p/ API)
+ */
+$action = strtolower(isset($_GET['action']) ? (string)$_GET['action'] : '');
+$isApi = in_array($action, ['fetch','one','suggest'], true);
+
+/**
+ * 2) Buffer para segurar QUALQUER saída acidental dos includes
+ *    (ex.: dump SQL impresso, BOM, espaços, warnings, etc.)
+ */
+ob_start();
+
+/**
+ * 3) Para API JSON: se ocorrer fatal error, responder JSON (não HTML quebrado)
+ */
+if ($isApi) {
+  ini_set('display_errors', '0');
+  error_reporting(E_ALL);
+
+  register_shutdown_function(function () use ($action) {
+    $isApiLocal = in_array($action, ['fetch','one','suggest'], true);
+    if (!$isApiLocal) return;
+
+    $err = error_get_last();
+    if (!$err) return;
+
+    while (ob_get_level() > 0) { @ob_end_clean(); }
+
+    http_response_code(500);
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode([
+      'ok'  => false,
+      'msg' => 'Erro fatal: '.$err['message'].' em '.$err['file'].':'.$err['line'],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+  });
+
+  set_exception_handler(function ($e) {
+    while (ob_get_level() > 0) { @ob_end_clean(); }
+    http_response_code(500);
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode([
+      'ok'  => false,
+      'msg' => 'Exceção: '.$e->getMessage(),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+  });
+}
+
 /* ========= INCLUDES ========= */
 $helpers = __DIR__ . '/assets/dados/_helpers.php';
 if (is_file($helpers)) require_once $helpers;
 
 $con = __DIR__ . '/assets/conexao.php';
 if (is_file($con)) require_once $con;
+
+/**
+ * 4) Pega e descarta qualquer saída causada pelos includes
+ */
+$bootNoise = ob_get_clean(); // descarta tudo que foi impresso até aqui
+ob_start(); // novo buffer normal
 
 /* ========= FALLBACKS ========= */
 if (!function_exists('e')) {
@@ -22,18 +77,10 @@ if (!function_exists('csrf_token')) {
     return (string)$_SESSION['_csrf'];
   }
 }
-if (!function_exists('db')) {
-  http_response_code(500);
-  echo "ERRO: função db():PDO não encontrada. Verifique assets/conexao.php";
-  exit;
-}
 
 /* ========= UTIL ========= */
 function json_out(array $payload, int $code = 200): void {
-  // garante que não saiu nada antes
-  if (function_exists('ob_get_level')) {
-    while (ob_get_level() > 0) { @ob_end_clean(); }
-  }
+  while (ob_get_level() > 0) { @ob_end_clean(); }
   http_response_code($code);
   header('Content-Type: application/json; charset=UTF-8');
   echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -53,6 +100,28 @@ function table_exists(PDO $pdo, string $table): bool {
   $st = $pdo->prepare("SHOW TABLES LIKE :t");
   $st->execute(['t' => $table]);
   return (bool)$st->fetchColumn();
+}
+
+/* ========= db() obrigatória ========= */
+if (!function_exists('db')) {
+  if ($isApi) {
+    json_out([
+      'ok' => false,
+      'msg' => "ERRO: db():PDO não encontrada. Verifique assets/conexao.php (pode estar corrompido/virou dump SQL).",
+    ], 500);
+  }
+  while (ob_get_level() > 0) { @ob_end_clean(); }
+  http_response_code(500);
+  echo "ERRO: função db():PDO não encontrada. Verifique assets/conexao.php";
+  exit;
+}
+
+/* ========= SEGURANÇA ========= */
+if (empty($_SESSION['usuario_logado'])) {
+  if ($isApi) json_out(['ok' => false, 'msg' => 'Sessão expirada. Faça login novamente.'], 401);
+  while (ob_get_level() > 0) { @ob_end_clean(); }
+  header('Location: index.php');
+  exit;
 }
 
 function build_where(array &$params): string {
@@ -84,14 +153,13 @@ function build_where(array &$params): string {
 /**
  * Itens da venda:
  * ✅ PRINCIPAL: venda_itens (venda_id)
- * 🔁 FALLBACK: saidas (pedido) se venda_itens não existir ou não tiver dados (opcional)
+ * 🔁 FALLBACK: saidas (pedido)
  */
 function fetch_items_for_sale_ids(array $saleIds): array {
   if (!$saleIds) return [];
 
   $pdo = db();
 
-  // normaliza IDs
   $uniq = [];
   foreach ($saleIds as $id) {
     $id = (int)$id;
@@ -102,7 +170,7 @@ function fetch_items_for_sale_ids(array $saleIds): array {
 
   $out = [];
 
-  // 1) venda_itens
+  // 1) venda_itens (correto)
   if (table_exists($pdo, 'venda_itens')) {
     $in = implode(',', array_fill(0, count($saleIds), '?'));
     $sql = "
@@ -222,12 +290,15 @@ function fetch_one_sale(int $id): ?array {
 }
 
 /* ========= AÇÕES ========= */
-$action = strtolower(get_str('action'));
 
 /* ====== SUGGEST ====== */
 if ($action === 'suggest') {
   $q = get_str('q');
-  if (mb_strlen($q) < 2) json_out(['ok' => true, 'items' => []]);
+  if (function_exists('mb_strlen')) {
+    if (mb_strlen($q) < 2) json_out(['ok' => true, 'items' => []]);
+  } else {
+    if (strlen($q) < 2) json_out(['ok' => true, 'items' => []]);
+  }
 
   $pdo = db();
   $stmt = $pdo->prepare("
@@ -240,105 +311,109 @@ if ($action === 'suggest') {
   ");
   $stmt->execute(['q' => $q . '%']);
   $items = [];
-  while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $items[] = (string)$r['cliente'];
-  }
+  while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) $items[] = (string)$r['cliente'];
+
   json_out(['ok' => true, 'items' => $items]);
 }
 
 /* ====== FETCH ====== */
 if ($action === 'fetch') {
-  $pdo = db();
+  try {
+    $pdo = db();
 
-  $page = max(1, get_int('page', 1));
-  $per = get_int('per', 25);
-  $per = in_array($per, [10,25,50,100], true) ? $per : 25;
-  $off = ($page - 1) * $per;
+    $page = max(1, get_int('page', 1));
+    $per = get_int('per', 25);
+    $per = in_array($per, [10,25,50,100], true) ? $per : 25;
+    $off = ($page - 1) * $per;
 
-  $params = [];
-  $where = build_where($params);
+    $params = [];
+    $where = build_where($params);
 
-  $sqlTot = "
-    SELECT
-      COUNT(*) AS qtd,
-      COALESCE(SUM(v.subtotal),0) AS subtotal,
-      COALESCE(SUM(v.desconto_valor),0) AS desconto,
-      COALESCE(SUM(v.taxa_entrega),0) AS taxa,
-      COALESCE(SUM(v.total),0) AS total
-    FROM vendas v
-    $where
-  ";
-  $stTot = $pdo->prepare($sqlTot);
-  $stTot->execute($params);
-  $tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: ['qtd'=>0,'subtotal'=>0,'desconto'=>0,'taxa'=>0,'total'=>0];
+    $sqlTot = "
+      SELECT
+        COUNT(*) AS qtd,
+        COALESCE(SUM(v.subtotal),0) AS subtotal,
+        COALESCE(SUM(v.desconto_valor),0) AS desconto,
+        COALESCE(SUM(v.taxa_entrega),0) AS taxa,
+        COALESCE(SUM(v.total),0) AS total
+      FROM vendas v
+      $where
+    ";
+    $stTot = $pdo->prepare($sqlTot);
+    $stTot->execute($params);
+    $tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: ['qtd'=>0,'subtotal'=>0,'desconto'=>0,'taxa'=>0,'total'=>0];
 
-  $sql = "
-    SELECT
-      v.id, v.data, v.cliente, v.canal, v.endereco, v.obs,
-      v.desconto_tipo, v.desconto_valor, v.taxa_entrega,
-      v.subtotal, v.total, v.pagamento_mode, v.pagamento, v.pagamento_json,
-      v.created_at
-    FROM vendas v
-    $where
-    ORDER BY v.id DESC
-    LIMIT $per OFFSET $off
-  ";
-  $st = $pdo->prepare($sql);
-  $st->execute($params);
-  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $sql = "
+      SELECT
+        v.id, v.data, v.cliente, v.canal, v.endereco, v.obs,
+        v.desconto_tipo, v.desconto_valor, v.taxa_entrega,
+        v.subtotal, v.total, v.pagamento_mode, v.pagamento, v.pagamento_json,
+        v.created_at
+      FROM vendas v
+      $where
+      ORDER BY v.id DESC
+      LIMIT $per OFFSET $off
+    ";
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  $ids = [];
-  foreach ($rows as $r) { $ids[] = (int)$r['id']; }
-  $itemsMap = fetch_items_for_sale_ids($ids);
+    $ids = [];
+    foreach ($rows as $r) $ids[] = (int)$r['id'];
 
-  $outRows = [];
-  foreach ($rows as $r) {
-    $id = (int)$r['id'];
-    $itens = isset($itemsMap[$id]) ? $itemsMap[$id] : [];
+    $itemsMap = fetch_items_for_sale_ids($ids);
 
-    $itTotal = 0.0;
-    $itCount = 0;
-    foreach ($itens as $it) { $itTotal += (float)($it['total'] ?? 0); $itCount++; }
+    $outRows = [];
+    foreach ($rows as $r) {
+      $id = (int)$r['id'];
+      $itens = isset($itemsMap[$id]) ? $itemsMap[$id] : [];
 
-    $outRows[] = [
-      'id' => $id,
-      'data' => (string)$r['data'],
-      'created_at' => (string)($r['created_at'] ?? ''),
-      'cliente' => (string)($r['cliente'] ?? ''),
-      'canal' => (string)($r['canal'] ?? ''),
-      'pagamento' => (string)($r['pagamento'] ?? ''),
-      'subtotal' => (float)($r['subtotal'] ?? 0),
-      'desconto' => (float)($r['desconto_valor'] ?? 0),
-      'taxa' => (float)($r['taxa_entrega'] ?? 0),
-      'total' => (float)($r['total'] ?? 0),
-      'endereco' => (string)($r['endereco'] ?? ''),
-      'obs' => (string)($r['obs'] ?? ''),
-      'itens' => $itens,
-      'itens_count' => $itCount,
-      'itens_total' => $itTotal
-    ];
+      $itTotal = 0.0;
+      $itCount = 0;
+      foreach ($itens as $it) { $itTotal += (float)($it['total'] ?? 0); $itCount++; }
+
+      $outRows[] = [
+        'id' => $id,
+        'data' => (string)$r['data'],
+        'created_at' => (string)($r['created_at'] ?? ''),
+        'cliente' => (string)($r['cliente'] ?? ''),
+        'canal' => (string)($r['canal'] ?? ''),
+        'pagamento' => (string)($r['pagamento'] ?? ''),
+        'subtotal' => (float)($r['subtotal'] ?? 0),
+        'desconto' => (float)($r['desconto_valor'] ?? 0),
+        'taxa' => (float)($r['taxa_entrega'] ?? 0),
+        'total' => (float)($r['total'] ?? 0),
+        'endereco' => (string)($r['endereco'] ?? ''),
+        'obs' => (string)($r['obs'] ?? ''),
+        'itens' => $itens,
+        'itens_count' => $itCount,
+        'itens_total' => $itTotal
+      ];
+    }
+
+    $totalCount = (int)($tot['qtd'] ?? 0);
+    $pages = (int)max(1, ceil($totalCount / $per));
+
+    json_out([
+      'ok' => true,
+      'meta' => [
+        'page' => $page,
+        'per' => $per,
+        'pages' => $pages,
+        'total' => $totalCount,
+      ],
+      'totais' => [
+        'qtd' => (int)($tot['qtd'] ?? 0),
+        'subtotal' => (float)($tot['subtotal'] ?? 0),
+        'desconto' => (float)($tot['desconto'] ?? 0),
+        'taxa' => (float)($tot['taxa'] ?? 0),
+        'total' => (float)($tot['total'] ?? 0),
+      ],
+      'rows' => $outRows,
+    ]);
+  } catch (Throwable $e) {
+    json_out(['ok' => false, 'msg' => 'Erro no fetch: '.$e->getMessage()], 500);
   }
-
-  $totalCount = (int)($tot['qtd'] ?? 0);
-  $pages = (int)max(1, ceil($totalCount / $per));
-
-  json_out([
-    'ok' => true,
-    'meta' => [
-      'page' => $page,
-      'per' => $per,
-      'pages' => $pages,
-      'total' => $totalCount,
-    ],
-    'totais' => [
-      'qtd' => (int)($tot['qtd'] ?? 0),
-      'subtotal' => (float)($tot['subtotal'] ?? 0),
-      'desconto' => (float)($tot['desconto'] ?? 0),
-      'taxa' => (float)($tot['taxa'] ?? 0),
-      'total' => (float)($tot['total'] ?? 0),
-    ],
-    'rows' => $outRows,
-  ]);
 }
 
 /* ====== ONE ====== */
@@ -354,6 +429,8 @@ if ($action === 'one') {
 
 /* ====== EXCEL ====== */
 if ($action === 'excel') {
+  while (ob_get_level() > 0) { @ob_end_clean(); }
+
   $pdo = db();
   $params = [];
   $where = build_where($params);
@@ -446,6 +523,8 @@ if ($action === 'excel') {
 
 /* ====== PRINT ====== */
 if ($action === 'print') {
+  while (ob_get_level() > 0) { @ob_end_clean(); }
+
   $pdo = db();
   $params = [];
   $where = build_where($params);
@@ -477,7 +556,6 @@ if ($action === 'print') {
     $sumTax += (float)$r['taxa_entrega'];
     $sumTot += (float)$r['total'];
   }
-
   ?>
   <!doctype html>
   <html lang="pt-BR">
@@ -569,6 +647,8 @@ if ($action === 'print') {
 
 /* ====== CUPOM ====== */
 if ($action === 'cupom') {
+  while (ob_get_level() > 0) { @ob_end_clean(); }
+
   $id = get_int('id', 0);
   if ($id <= 0) { http_response_code(400); echo "ID inválido"; exit; }
 
@@ -654,7 +734,7 @@ if ($action === 'cupom') {
                   <?php endif; ?>
                   <div class="muted"><?= e((string)$it['un']) ?> • <?= e(brl((float)$it['preco'])) ?></div>
                 </td>
-                <td class="r"><?= e((string)(int)$it['qtd']) ?></td>
+                <td class="r"><?= e(rtrim(rtrim(number_format((float)$it['qtd'],3,',','.'),'0'),',')) ?></td>
                 <td class="r"><?= e(brl((float)$it['total'])) ?></td>
               </tr>
             <?php endforeach; endif; ?>
@@ -688,6 +768,13 @@ if ($action === 'cupom') {
 
 /* ========= HTML (tela principal) ========= */
 $csrf = csrf_token();
+
+/**
+ * Se quiser, você pode visualizar que tinha “lixo” de include:
+ * (não impede funcionar, mas indica arquivo corrompido)
+ */
+// $hasNoise = trim((string)$bootNoise) !== '';
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -706,7 +793,6 @@ $csrf = csrf_token();
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    /* ======= SEU CSS (igual você mandou) ======= */
     .profile-box .dropdown-menu { width: max-content; min-width: 260px; max-width: calc(100vw - 24px) }
     .profile-box .dropdown-menu .author-info { width: max-content; max-width: 100%; display: flex !important; align-items: center; gap: 10px }
     .profile-box .dropdown-menu .author-info .content { min-width: 0; max-width: 100% }
