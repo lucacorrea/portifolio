@@ -1,12 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * vendidos.php (AJUSTADO)
- * ✅ Agora busca os itens corretamente pela tabela: venda_itens (venda_itens.venda_id = vendas.id)
- * 🔁 Fallback opcional: saidas (se existir e se não houver itens em venda_itens)
- */
-
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
@@ -34,8 +28,19 @@ if (!function_exists('db')) {
   exit;
 }
 
+/* ========= (opcional) SEGURANÇA ========= */
+if (empty($_SESSION['usuario_logado'])) {
+  // se quiser JSON quando action=fetch, comente isso e trate abaixo
+  header('Location: index.php');
+  exit;
+}
+
 /* ========= UTIL ========= */
 function json_out(array $payload, int $code = 200): void {
+  // garante que não saiu nada antes
+  if (function_exists('ob_get_level')) {
+    while (ob_get_level() > 0) { @ob_end_clean(); }
+  }
   http_response_code($code);
   header('Content-Type: application/json; charset=UTF-8');
   echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -52,9 +57,9 @@ function brl(float $v): string {
   return 'R$ ' . number_format($v, 2, ',', '.');
 }
 function table_exists(PDO $pdo, string $table): bool {
-  $stmt = $pdo->prepare("SHOW TABLES LIKE :t");
-  $stmt->execute(['t' => $table]);
-  return (bool)$stmt->fetchColumn();
+  $st = $pdo->prepare("SHOW TABLES LIKE :t");
+  $st->execute(['t' => $table]);
+  return (bool)$st->fetchColumn();
 }
 
 function build_where(array &$params): string {
@@ -84,23 +89,27 @@ function build_where(array &$params): string {
 }
 
 /**
- * ITENS DA VENDA (CORRETO)
- * 1) Usa venda_itens (venda_id)
- * 2) Se não tiver (ou vier vazio), tenta saidas (pedido) como fallback
+ * Itens da venda:
+ * ✅ PRINCIPAL: venda_itens (venda_id)
+ * 🔁 FALLBACK: saidas (pedido) se venda_itens não existir ou não tiver dados (opcional)
  */
 function fetch_items_for_sale_ids(array $saleIds): array {
   if (!$saleIds) return [];
 
   $pdo = db();
-  $saleIds = array_values(array_unique(array_map('intval', $saleIds)));
-  $saleIds = array_filter($saleIds, fn($x) => $x > 0);
+
+  // normaliza IDs
+  $uniq = [];
+  foreach ($saleIds as $id) {
+    $id = (int)$id;
+    if ($id > 0) $uniq[$id] = true;
+  }
+  $saleIds = array_keys($uniq);
   if (!$saleIds) return [];
 
   $out = [];
 
-  // =========================
-  // 1) PRINCIPAL: venda_itens
-  // =========================
+  // 1) venda_itens
   if (table_exists($pdo, 'venda_itens')) {
     $in = implode(',', array_fill(0, count($saleIds), '?'));
     $sql = "
@@ -124,12 +133,13 @@ function fetch_items_for_sale_ids(array $saleIds): array {
       $sid = (int)($r['venda_id'] ?? 0);
       if ($sid <= 0) continue;
 
+      if (!isset($out[$sid])) $out[$sid] = [];
+
       $preco = (float)($r['preco_unit'] ?? 0);
       $qtd   = (float)($r['qtd'] ?? 0);
       $tot   = (float)($r['subtotal'] ?? 0);
       if ($tot <= 0 && $preco > 0 && $qtd > 0) $tot = $preco * $qtd;
 
-      $out[$sid] ??= [];
       $out[$sid][] = [
         'codigo' => (string)($r['codigo'] ?? ''),
         'nome'   => (string)($r['nome'] ?? 'Item'),
@@ -140,23 +150,19 @@ function fetch_items_for_sale_ids(array $saleIds): array {
       ];
     }
 
-    // Se achou itens para pelo menos uma venda, já retorna (sem fallback)
     if (!empty($out)) return $out;
   }
 
-  // =========================
-  // 2) FALLBACK: saidas (pedido)
-  // =========================
+  // 2) fallback saidas
   if (!table_exists($pdo, 'saidas')) return [];
 
-  // tenta casar pedido com: id, 0000id, V{id}
   $keyToId = [];
   $keys = [];
   foreach ($saleIds as $id) {
     $k1 = (string)$id;
     $k2 = str_pad((string)$id, 5, '0', STR_PAD_LEFT);
     $k3 = 'V' . $id;
-    foreach ([$k1, $k2, $k3] as $k) {
+    foreach ([$k1,$k2,$k3] as $k) {
       $keyToId[$k] = $id;
       $keys[$k] = true;
     }
@@ -183,7 +189,7 @@ function fetch_items_for_sale_ids(array $saleIds): array {
     if (!isset($keyToId[$pedido])) continue;
     $sid = (int)$keyToId[$pedido];
 
-    $out[$sid] ??= [];
+    if (!isset($out[$sid])) $out[$sid] = [];
     $out[$sid][] = [
       'codigo' => (string)($r['prod_codigo'] ?? ''),
       'nome'   => (string)($r['prod_nome'] ?? 'Item'),
@@ -205,7 +211,7 @@ function fetch_one_sale(int $id): ?array {
   if (!$v) return null;
 
   $itemsMap = fetch_items_for_sale_ids([$id]);
-  $itens = $itemsMap[$id] ?? [];
+  $itens = isset($itemsMap[$id]) ? $itemsMap[$id] : [];
 
   $itSubtotal = 0.0;
   $itQtd = 0.0;
@@ -225,6 +231,7 @@ function fetch_one_sale(int $id): ?array {
 /* ========= AÇÕES ========= */
 $action = strtolower(get_str('action'));
 
+/* ====== SUGGEST ====== */
 if ($action === 'suggest') {
   $q = get_str('q');
   if (mb_strlen($q) < 2) json_out(['ok' => true, 'items' => []]);
@@ -246,6 +253,7 @@ if ($action === 'suggest') {
   json_out(['ok' => true, 'items' => $items]);
 }
 
+/* ====== FETCH ====== */
 if ($action === 'fetch') {
   $pdo = db();
 
@@ -286,13 +294,15 @@ if ($action === 'fetch') {
   $st->execute($params);
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  $ids = array_map(fn($r) => (int)$r['id'], $rows);
+  $ids = [];
+  foreach ($rows as $r) { $ids[] = (int)$r['id']; }
   $itemsMap = fetch_items_for_sale_ids($ids);
 
   $outRows = [];
   foreach ($rows as $r) {
     $id = (int)$r['id'];
-    $itens = $itemsMap[$id] ?? [];
+    $itens = isset($itemsMap[$id]) ? $itemsMap[$id] : [];
+
     $itTotal = 0.0;
     $itCount = 0;
     foreach ($itens as $it) { $itTotal += (float)($it['total'] ?? 0); $itCount++; }
@@ -338,6 +348,7 @@ if ($action === 'fetch') {
   ]);
 }
 
+/* ====== ONE ====== */
 if ($action === 'one') {
   $id = get_int('id', 0);
   if ($id <= 0) json_out(['ok' => false, 'msg' => 'ID inválido'], 400);
@@ -348,6 +359,7 @@ if ($action === 'one') {
   json_out(['ok' => true, 'data' => $one]);
 }
 
+/* ====== EXCEL ====== */
 if ($action === 'excel') {
   $pdo = db();
   $params = [];
@@ -383,14 +395,8 @@ if ($action === 'excel') {
   echo "\xEF\xBB\xBF";
   ?>
   <table border="0" cellpadding="4" cellspacing="0" style="width:100%;">
-    <tr>
-      <td colspan="9" align="center" style="font-size:16px;font-weight:900;">
-        PAINEL DA DISTRIBUIDORA - VENDIDOS
-      </td>
-    </tr>
-    <tr>
-      <td colspan="9" style="font-size:12px;">Gerado em: <?= e($agora) ?></td>
-    </tr>
+    <tr><td colspan="9" align="center" style="font-size:16px;font-weight:900;">PAINEL DA DISTRIBUIDORA - VENDIDOS</td></tr>
+    <tr><td colspan="9" style="font-size:12px;">Gerado em: <?= e($agora) ?></td></tr>
     <tr>
       <td colspan="9" style="font-size:12px;">
         Período: <?= e($di) ?> até <?= e($df) ?> &nbsp;|&nbsp;
@@ -405,15 +411,8 @@ if ($action === 'excel') {
   <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;">
     <thead>
       <tr style="background:#eef2ff;font-weight:900;">
-        <th>ID</th>
-        <th>Data</th>
-        <th>Cliente</th>
-        <th>Canal</th>
-        <th>Pagamento</th>
-        <th>Subtotal</th>
-        <th>Desconto</th>
-        <th>Entrega</th>
-        <th>Total</th>
+        <th>ID</th><th>Data</th><th>Cliente</th><th>Canal</th><th>Pagamento</th>
+        <th>Subtotal</th><th>Desconto</th><th>Entrega</th><th>Total</th>
       </tr>
     </thead>
     <tbody>
@@ -452,6 +451,7 @@ if ($action === 'excel') {
   exit;
 }
 
+/* ====== PRINT ====== */
 if ($action === 'print') {
   $pdo = db();
   $params = [];
@@ -521,9 +521,7 @@ if ($action === 'print') {
           <div class="meta">Período: <span class="muted"><?= e($di) ?></span> até <span class="muted"><?= e($df) ?></span></div>
           <div class="meta">Canal: <span class="muted"><?= e($canal) ?></span> &nbsp;|&nbsp; Pagamento: <span class="muted"><?= e($pag) ?></span> &nbsp;|&nbsp; Busca: <span class="muted"><?= e($q) ?></span></div>
         </div>
-        <div>
-          <button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button>
-        </div>
+        <div><button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button></div>
       </div>
 
       <table>
@@ -576,6 +574,7 @@ if ($action === 'print') {
   exit;
 }
 
+/* ====== CUPOM ====== */
 if ($action === 'cupom') {
   $id = get_int('id', 0);
   if ($id <= 0) { http_response_code(400); echo "ID inválido"; exit; }
@@ -600,7 +599,6 @@ if ($action === 'cupom') {
   $desc = (float)($v['desconto_valor'] ?? 0);
   $taxa = (float)($v['taxa_entrega'] ?? 0);
   $tot = (float)($v['total'] ?? 0);
-
   ?>
   <!doctype html>
   <html lang="pt-BR">
@@ -649,15 +647,11 @@ if ($action === 'cupom') {
 
         <table>
           <thead>
-            <tr>
-              <th>Item</th>
-              <th class="r">Qtd</th>
-              <th class="r">Total</th>
-            </tr>
+            <tr><th>Item</th><th class="r">Qtd</th><th class="r">Total</th></tr>
           </thead>
           <tbody>
             <?php if (!$itens): ?>
-              <tr><td colspan="3" class="muted">Sem itens vinculados (venda_itens vazio / não encontrado).</td></tr>
+              <tr><td colspan="3" class="muted">Sem itens vinculados (venda_itens vazio).</td></tr>
             <?php else: foreach ($itens as $it): ?>
               <tr>
                 <td>
@@ -667,7 +661,7 @@ if ($action === 'cupom') {
                   <?php endif; ?>
                   <div class="muted"><?= e((string)$it['un']) ?> • <?= e(brl((float)$it['preco'])) ?></div>
                 </td>
-                <td class="r"><?= e(rtrim(rtrim(number_format((float)$it['qtd'],3,',','.'),'0'),',')) ?></td>
+                <td class="r"><?= e((string)(int)$it['qtd']) ?></td>
                 <td class="r"><?= e(brl((float)$it['total'])) ?></td>
               </tr>
             <?php endforeach; endif; ?>
@@ -684,7 +678,6 @@ if ($action === 'cupom') {
         </table>
 
         <div class="hr"></div>
-
         <div class="center meta muted">Obrigado pela preferência!</div>
 
         <button class="btn" onclick="window.print()">Imprimir</button>
@@ -720,10 +713,13 @@ $csrf = csrf_token();
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
+    /* ======= SEU CSS (igual você mandou) ======= */
     .profile-box .dropdown-menu { width: max-content; min-width: 260px; max-width: calc(100vw - 24px) }
     .profile-box .dropdown-menu .author-info { width: max-content; max-width: 100%; display: flex !important; align-items: center; gap: 10px }
     .profile-box .dropdown-menu .author-info .content { min-width: 0; max-width: 100% }
+
     .main-btn.btn-compact { height: 38px !important; padding: 8px 14px !important; font-size: 13px !important; line-height: 1 !important }
+    .icon-btn { height: 34px !important; width: 42px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important }
     .form-control.compact, .form-select.compact { height: 38px; padding: 8px 12px; font-size: 13px }
 
     .cardx { border: 1px solid rgba(148, 163, 184, .28); border-radius: 16px; background: #fff; overflow: hidden }
@@ -776,6 +772,8 @@ $csrf = csrf_token();
     .page-btn { border:1px solid rgba(148,163,184,.35); background:#fff; border-radius:10px; padding:8px 10px; font-weight:900; font-size:12px; cursor:pointer; }
     .page-btn[disabled]{ opacity:.55; cursor:not-allowed; }
     .page-info { font-size:12px; color:#64748b; font-weight:900; }
+
+    @media(max-width:991.98px) { #tbDev { min-width: 980px } .grand .val { font-size: 22px } }
   </style>
 </head>
 
@@ -852,10 +850,7 @@ $csrf = csrf_token();
                   <div class="profile-info">
                     <div class="info">
                       <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
-                      <div>
-                        <h6 class="fw-500">Administrador</h6>
-                        <p>Distribuidora</p>
-                      </div>
+                      <div><h6 class="fw-500">Administrador</h6><p>Distribuidora</p></div>
                     </div>
                   </div>
                 </button>
@@ -883,9 +878,7 @@ $csrf = csrf_token();
                 <span class="pill ok" id="pillCount">0 vendas</span>
                 <span class="muted" id="lblRange">—</span>
               </div>
-              <div class="muted mt-1">
-                Itens são carregados de <b>venda_itens</b> (venda_id = id da venda). Fallback: <b>saidas</b> (pedido) se necessário.
-              </div>
+              <div class="muted mt-1">Itens são carregados de <b>venda_itens</b> (venda_id = id da venda).</div>
             </div>
             <div class="toolbar">
               <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel"><i class="lni lni-download me-1"></i> Excel</button>
@@ -944,7 +937,6 @@ $csrf = csrf_token();
         </div>
 
         <div class="row g-3">
-          <!-- TABELA -->
           <div class="col-lg-8">
             <div class="cardx">
               <div class="head">
@@ -956,22 +948,11 @@ $csrf = csrf_token();
                   <table class="table table-hover" id="tbDev">
                     <thead>
                       <tr>
-                        <th>ID</th>
-                        <th>Data</th>
-                        <th>Cliente</th>
-                        <th>Canal</th>
-                        <th>Pagamento</th>
-                        <th>Itens</th>
-                        <th>Subtotal</th>
-                        <th>Desconto</th>
-                        <th>Entrega</th>
-                        <th>Total</th>
-                        <th>Ações</th>
+                        <th>ID</th><th>Data</th><th>Cliente</th><th>Canal</th><th>Pagamento</th>
+                        <th>Itens</th><th>Subtotal</th><th>Desconto</th><th>Entrega</th><th>Total</th><th>Ações</th>
                       </tr>
                     </thead>
-                    <tbody id="tbody">
-                      <tr><td colspan="11" class="muted">Carregando…</td></tr>
-                    </tbody>
+                    <tbody id="tbody"><tr><td colspan="11" class="muted">Carregando…</td></tr></tbody>
                   </table>
                 </div>
 
@@ -984,7 +965,6 @@ $csrf = csrf_token();
             </div>
           </div>
 
-          <!-- TOTAIS -->
           <div class="col-lg-4">
             <div class="cardx">
               <div class="head">
@@ -998,14 +978,7 @@ $csrf = csrf_token();
                   <div class="tot-row"><span>Desconto</span><span id="tDesc">R$ 0,00</span></div>
                   <div class="tot-row"><span>Entrega</span><span id="tTaxa">R$ 0,00</span></div>
                   <div class="tot-hr"></div>
-                  <div class="grand">
-                    <div class="lbl">TOTAL</div>
-                    <div class="val" id="tTotal">R$ 0,00</div>
-                  </div>
-                </div>
-
-                <div class="muted mt-3">
-                  <b>Obs.:</b> Se uma venda aparecer sem itens, verifique se existem registros em <b>venda_itens</b> para o mesmo <b>venda_id</b>.
+                  <div class="grand"><div class="lbl">TOTAL</div><div class="val" id="tTotal">R$ 0,00</div></div>
                 </div>
               </div>
             </div>
@@ -1061,10 +1034,7 @@ $csrf = csrf_token();
                   <div class="tot-row"><span>Desconto</span><span id="dDesc">R$ 0,00</span></div>
                   <div class="tot-row"><span>Entrega</span><span id="dTaxa">R$ 0,00</span></div>
                   <div class="tot-hr"></div>
-                  <div class="grand">
-                    <div class="lbl">TOTAL</div>
-                    <div class="val" id="dTotal">R$ 0,00</div>
-                  </div>
+                  <div class="grand"><div class="lbl">TOTAL</div><div class="val" id="dTotal">R$ 0,00</div></div>
                 </div>
               </div>
             </div>
@@ -1116,18 +1086,16 @@ $csrf = csrf_token();
       try { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v||0)); }
       catch(e){ return 'R$ ' + (Number(v||0).toFixed(2)).replace('.',','); }
     }
-
     function fmtDate(iso){
       if(!iso) return '—';
       const p = String(iso).split('-');
       if(p.length===3) return `${p[2]}/${p[1]}/${p[0]}`;
       return iso;
     }
-
     function fmtDateTime(dt){
       if(!dt) return '—';
-      const [d,t] = String(dt).split(' ');
-      return `${fmtDate(d)} ${t||''}`.trim();
+      const parts = String(dt).split(' ');
+      return `${fmtDate(parts[0])} ${(parts[1]||'')}`.trim();
     }
 
     function buildParams(){
@@ -1159,8 +1127,25 @@ $csrf = csrf_token();
       return `vendidos.php?${p.toString()}`;
     }
 
-    function setLoading(on){
-      el('pillLoading').style.display = on ? '' : 'none';
+    function setLoading(on){ el('pillLoading').style.display = on ? '' : 'none'; }
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, (m) => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+      }[m]));
+    }
+    function numQ(v){
+      const n = Number(v||0);
+      if (Number.isInteger(n)) return String(n);
+      return n.toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:3});
+    }
+
+    async function safeJson(res){
+      const text = await res.text();
+      try { return JSON.parse(text); }
+      catch(e){
+        throw new Error('Resposta não é JSON. Status '+res.status+' / Trecho: '+ text.slice(0,200));
+      }
     }
 
     async function load(){
@@ -1171,8 +1156,8 @@ $csrf = csrf_token();
       const url = `vendidos.php?${p.toString()}`;
 
       try{
-        const res = await fetch(url, { headers: { 'X-CSRF': csrf }});
-        const js = await res.json();
+        const res = await fetch(url, { headers: { 'X-CSRF': csrf }, credentials: 'same-origin' });
+        const js = await safeJson(res);
         if(!js.ok) throw new Error(js.msg || 'Falha ao carregar');
 
         state.page = js.meta.page;
@@ -1186,7 +1171,6 @@ $csrf = csrf_token();
 
         el('pillCount').textContent = `${js.totais.qtd} vendas`;
         el('pageInfo').textContent = `Página ${state.page} / ${state.pages}`;
-
         el('btnPrev').disabled = state.page <= 1;
         el('btnNext').disabled = state.page >= state.pages;
 
@@ -1204,8 +1188,7 @@ $csrf = csrf_token();
           const canalBadge = r.canal === 'DELIVERY'
             ? `<span class="badge-soft b-open">DELIVERY</span>`
             : `<span class="badge-soft b-done">PRESENCIAL</span>`;
-
-          const pagBadge = `<span class="badge-soft b-open">${(r.pagamento||'—')}</span>`;
+          const pagBadge = `<span class="badge-soft b-open">${escapeHtml(r.pagamento||'—')}</span>`;
 
           let itensHtml = `<span class="muted">—</span>`;
           if (r.itens && r.itens.length){
@@ -1233,10 +1216,7 @@ $csrf = csrf_token();
           return `
             <tr>
               <td><b>#${r.id}</b></td>
-              <td>
-                <div class="mini">${fmtDate(r.data)}</div>
-                <div class="muted">${fmtDateTime(r.created_at)}</div>
-              </td>
+              <td><div class="mini">${fmtDate(r.data)}</div><div class="muted">${fmtDateTime(r.created_at)}</div></td>
               <td style="max-width:260px; overflow:hidden; text-overflow:ellipsis;">
                 <div class="mini">${escapeHtml(r.cliente || '—')}</div>
                 ${r.endereco ? `<div class="muted" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.endereco)}</div>` : ``}
@@ -1265,22 +1245,10 @@ $csrf = csrf_token();
       }
     }
 
-    function escapeHtml(s){
-      return String(s ?? '').replace(/[&<>"']/g, (m) => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-      }[m]));
-    }
-
-    function numQ(v){
-      const n = Number(v||0);
-      if (Number.isInteger(n)) return String(n);
-      return n.toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:3});
-    }
-
     async function openDetails(id){
       try{
-        const res = await fetch(`vendidos.php?action=one&id=${id}`, { headers: { 'X-CSRF': csrf }});
-        const js = await res.json();
+        const res = await fetch(`vendidos.php?action=one&id=${id}`, { headers: { 'X-CSRF': csrf }, credentials:'same-origin' });
+        const js = await safeJson(res);
         if(!js.ok) throw new Error(js.msg || 'Falha ao abrir detalhes');
 
         const v = js.data.venda;
@@ -1301,7 +1269,7 @@ $csrf = csrf_token();
         el('dTotal').textContent = brl(v.total);
 
         if(!itens.length){
-          el('dItens').innerHTML = `<span class="muted">Sem itens vinculados (venda_itens vazio / não encontrado).</span>`;
+          el('dItens').innerHTML = `<span class="muted">Sem itens (venda_itens vazio).</span>`;
           el('dItensQtd').textContent = `0 itens`;
           el('dItensTot').textContent = brl(0);
         } else {
@@ -1330,30 +1298,17 @@ $csrf = csrf_token();
       }
     }
 
-    function openCupom(id){
-      window.open(`vendidos.php?action=cupom&id=${id}`, '_blank');
-    }
+    function openCupom(id){ window.open(`vendidos.php?action=cupom&id=${id}`, '_blank'); }
 
     el('btnCupomModal').addEventListener('click', () => {
       if (!state.lastCupomId) return;
       openCupom(state.lastCupomId);
     });
 
-    el('btnPrev').addEventListener('click', () => {
-      if (state.page <= 1) return;
-      state.page -= 1;
-      load();
-    });
-    el('btnNext').addEventListener('click', () => {
-      if (state.page >= state.pages) return;
-      state.page += 1;
-      load();
-    });
+    el('btnPrev').addEventListener('click', () => { if (state.page > 1){ state.page -= 1; load(); } });
+    el('btnNext').addEventListener('click', () => { if (state.page < state.pages){ state.page += 1; load(); } });
 
-    el('btnFiltrar').addEventListener('click', () => {
-      state.page = 1;
-      load();
-    });
+    el('btnFiltrar').addEventListener('click', () => { state.page = 1; load(); });
 
     function hideSuggest(){ el('suggest').style.display = 'none'; el('suggest').innerHTML=''; }
 
@@ -1369,38 +1324,17 @@ $csrf = csrf_token();
       load();
     });
 
-    el('per').addEventListener('change', () => {
-      state.per = Number(el('per').value || 25);
-      state.page = 1;
-      load();
-    });
+    el('per').addEventListener('change', () => { state.per = Number(el('per').value || 25); state.page = 1; load(); });
 
-    el('btnExcel').addEventListener('click', () => {
-      window.location.href = buildExportUrl('excel');
-    });
-    el('btnPdf').addEventListener('click', () => {
-      window.open(buildExportUrl('print'), '_blank');
-    });
+    el('btnExcel').addEventListener('click', () => { window.location.href = buildExportUrl('excel'); });
+    el('btnPdf').addEventListener('click', () => { window.open(buildExportUrl('print'), '_blank'); });
 
-    // busca global sincroniza com q
-    el('qGlobal').addEventListener('input', () => {
-      el('q').value = el('qGlobal').value;
-      scheduleFilter();
-      scheduleSuggest();
-    });
-
-    el('q').addEventListener('input', () => {
-      el('qGlobal').value = el('q').value;
-      scheduleFilter();
-      scheduleSuggest();
-    });
+    el('qGlobal').addEventListener('input', () => { el('q').value = el('qGlobal').value; scheduleFilter(); scheduleSuggest(); });
+    el('q').addEventListener('input', () => { el('qGlobal').value = el('q').value; scheduleFilter(); scheduleSuggest(); });
 
     function scheduleFilter(){
       clearTimeout(state.debounceTimer);
-      state.debounceTimer = setTimeout(() => {
-        state.page = 1;
-        load();
-      }, 450);
+      state.debounceTimer = setTimeout(() => { state.page = 1; load(); }, 450);
     }
 
     function scheduleSuggest(){
@@ -1410,9 +1344,10 @@ $csrf = csrf_token();
         if (q.length < 2) { hideSuggest(); return; }
 
         try{
-          const res = await fetch(`vendidos.php?action=suggest&q=${encodeURIComponent(q)}`, { headers:{'X-CSRF':csrf}});
-          const js = await res.json();
+          const res = await fetch(`vendidos.php?action=suggest&q=${encodeURIComponent(q)}`, { headers:{'X-CSRF':csrf}, credentials:'same-origin' });
+          const js = await safeJson(res);
           if(!js.ok) { hideSuggest(); return; }
+
           const items = js.items || [];
           if(!items.length) { hideSuggest(); return; }
 
@@ -1429,9 +1364,7 @@ $csrf = csrf_token();
       }, 220);
     }
 
-    function escapeJs(s){
-      return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    }
+    function escapeJs(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
     window.pickSuggest = function(name){
       el('q').value = name;
       el('qGlobal').value = name;
@@ -1442,15 +1375,12 @@ $csrf = csrf_token();
 
     document.addEventListener('click', (ev) => {
       const sw = el('suggest');
-      const wrap = sw?.parentElement;
+      const wrap = sw && sw.parentElement;
       if (!wrap) return;
       if (!wrap.contains(ev.target)) hideSuggest();
     });
 
-    (function init(){
-      state.per = Number(el('per').value || 25);
-      load();
-    })();
+    (function init(){ state.per = Number(el('per').value || 25); load(); })();
   </script>
 </body>
 </html>
