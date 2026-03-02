@@ -28,13 +28,6 @@ if (!function_exists('db')) {
   exit;
 }
 
-/* ========= (opcional) SEGURANÇA ========= */
-if (empty($_SESSION['usuario_logado'])) {
-  // se quiser JSON quando action=fetch, comente isso e trate abaixo
-  header('Location: index.php');
-  exit;
-}
-
 /* ========= UTIL ========= */
 function json_out(array $payload, int $code = 200): void {
   // garante que não saiu nada antes
