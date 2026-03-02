@@ -2,17 +2,6 @@
 
 declare(strict_types=1);
 
-/**
- * dashboard.php (FUNCIONAL)
- * - Usa as tabelas NECESSÁRIAS para o dashboard:
- *   vendas, produtos, categorias, entradas, saidas, devolucoes
- * - KPIs reais + gráficos reais (Chart.js) + tabelas reais
- * - Endpoint JSON no mesmo arquivo:
- *    dashboard.php?action=venda&id=123   (detalhe da venda em modal)
- *    dashboard.php?action=produto&id=10  (detalhe do produto em modal)
- *
- * Ajuste o include da conexão conforme seu projeto (db():PDO).
- */
 
 @date_default_timezone_set('America/Manaus');
 
