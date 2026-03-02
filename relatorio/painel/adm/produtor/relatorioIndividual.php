@@ -187,8 +187,12 @@ $detVendas = [];
 
 try {
   if (!$err) {
+    // NOTE: placeholders diferentes para evitar HY093 (PDO MySQL/MariaDB)
     $paramsBase = [
-      ':f'   => $feiraId,
+      ':f1'  => $feiraId,
+      ':f2'  => $feiraId,
+      ':f3'  => $feiraId,
+      ':f4'  => $feiraId,
       ':ini' => $periodStart,
       ':fim' => $periodEnd,
     ];
@@ -210,10 +214,10 @@ try {
       JOIN venda_itens vi ON vi.venda_id = v.id
       JOIN produtos pr ON pr.id = vi.produto_id
       JOIN produtores p ON p.id = pr.produtor_id
-      WHERE v.feira_id = :f
-        AND vi.feira_id = :f
-        AND pr.feira_id = :f
-        AND p.feira_id  = :f
+      WHERE v.feira_id = :f1
+        AND vi.feira_id = :f2
+        AND pr.feira_id = :f3
+        AND p.feira_id  = :f4
         AND $whereData
     ";
     $st = $pdo->prepare($sqlResumo);
@@ -233,10 +237,10 @@ try {
       JOIN venda_itens vi ON vi.venda_id = v.id
       JOIN produtos pr ON pr.id = vi.produto_id
       JOIN produtores p ON p.id = pr.produtor_id
-      WHERE v.feira_id = :f
-        AND vi.feira_id = :f
-        AND pr.feira_id = :f
-        AND p.feira_id  = :f
+      WHERE v.feira_id = :f1
+        AND vi.feira_id = :f2
+        AND pr.feira_id = :f3
+        AND p.feira_id  = :f4
         AND $whereData
     ";
     $st = $pdo->prepare($sqlCountProd);
@@ -263,10 +267,10 @@ try {
       JOIN produtos pr ON pr.id = vi.produto_id
       JOIN produtores p ON p.id = pr.produtor_id
       $joinComunidade
-      WHERE v.feira_id = :f
-        AND vi.feira_id = :f
-        AND pr.feira_id = :f
-        AND p.feira_id  = :f
+      WHERE v.feira_id = :f1
+        AND vi.feira_id = :f2
+        AND pr.feira_id = :f3
+        AND p.feira_id  = :f4
         AND $whereData
       GROUP BY p.id
       ORDER BY total DESC
@@ -281,7 +285,7 @@ try {
     ====================== */
     if ($detProdutorId > 0) {
 
-      // info do produtor
+      // info do produtor (aqui só usa 1x feira_id, pode continuar :f)
       if ($hasComunidades) {
         $st = $pdo->prepare("
           SELECT p.*, c.nome AS comunidade_nome
@@ -305,11 +309,12 @@ try {
         $paramsDet = $paramsBase;
         $paramsDet[':p'] = $detProdutorId;
 
+        // NOTE: placeholders f1..f4 pra evitar HY093
         $whereDet = "
-          v.feira_id = :f
-          AND vi.feira_id = :f
-          AND pr.feira_id = :f
-          AND p.feira_id  = :f
+          v.feira_id = :f1
+          AND vi.feira_id = :f2
+          AND pr.feira_id = :f3
+          AND p.feira_id  = :f4
           AND p.id = :p
           AND $whereData
         ";
