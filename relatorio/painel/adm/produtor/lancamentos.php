@@ -492,10 +492,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
                 <i class="ti-receipt"></i> Romaneio: <?= (int)$romaneioId ?>
               </span>
 
-              <form method="get" action="" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <input type="date" class="form-control form-control-sm" name="data" value="<?= h($dataRef) ?>" style="max-width:220px;">
-                <button class="btn btn-light btn-sm" type="submit"><i class="ti-search"></i> Ir</button>
-              </form>
+             
             </div>
           </div>
         </div>
