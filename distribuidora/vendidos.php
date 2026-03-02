@@ -39,6 +39,11 @@ if (!function_exists('db')) {
   exit;
 }
 
+/* ========= SEGURANÇA (ajuste conforme seu login) ========= */
+if (empty($_SESSION['usuario_logado'])) {
+  header('Location: index.php');
+  exit;
+}
 
 /* ========= UTIL ========= */
 function json_out(array $payload, int $code = 200): void {
