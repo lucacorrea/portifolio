@@ -689,10 +689,6 @@ $total12m = array_sum($chart1);
                 </button>
               </div>
               <div class="header-search d-none d-md-flex">
-                <form action="#" onsubmit="return false;">
-                  <input type="text" placeholder="Buscar cliente, pedido, produto..." />
-                  <button type="submit"><i class="lni lni-search-alt"></i></button>
-                </form>
               </div>
             </div>
           </div>
