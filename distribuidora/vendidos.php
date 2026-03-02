@@ -116,14 +116,6 @@ if (!function_exists('db')) {
   exit;
 }
 
-/* ========= SEGURANÇA ========= */
-if (empty($_SESSION['usuario_logado'])) {
-  if ($isApi) json_out(['ok' => false, 'msg' => 'Sessão expirada. Faça login novamente.'], 401);
-  while (ob_get_level() > 0) { @ob_end_clean(); }
-  header('Location: index.php');
-  exit;
-}
-
 function build_where(array &$params): string {
   $where = " WHERE 1=1 ";
 
