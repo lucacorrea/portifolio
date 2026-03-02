@@ -34,12 +34,6 @@ if (!function_exists('db')) {
   exit;
 }
 
-/* ========= (opcional) SEGURANÇA ========= */
-if (empty($_SESSION['usuario_logado'])) {
-  header('Location: index.php');
-  exit;
-}
-
 /* ========= UTIL ========= */
 function json_out(array $payload, int $code = 200): void {
   http_response_code($code);
