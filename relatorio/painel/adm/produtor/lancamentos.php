@@ -706,9 +706,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
             </a>
 
             <div class="collapse show" id="feiraMovimento">
-              <ul class="nav flex-column sub-menu" style="color:white !important; background: #231475C5 !important;">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
                 <li class="nav-item">
-                  <a class="nav-link" href="./lancamentos.php" style="background:#fff !important;">
+                  <a class="nav-link" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
                     <i class="ti-write mr-2"></i> Lançamentos (Vendas)
                   </a>
                 </li>
