@@ -9,7 +9,6 @@ class InteligenciaComercialController extends BaseController {
     private $intelligence;
 
     public function __construct() {
-        parent::__construct();
         AuthService::checkPermission('inteligencia', 'visualizar');
         $this->intelligence = new Intelligence();
     }

@@ -12,7 +12,6 @@ class CentroCustoController extends BaseController {
     private $costEntry;
 
     public function __construct() {
-        parent::__construct();
         AuthService::checkPermission('custos', 'visualizar');
         $this->costCenter = new CostCenter();
         $this->costEntry = new CostEntry();
