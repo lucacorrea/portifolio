@@ -700,7 +700,7 @@ $csrf = csrf_token();
             border: 1px solid rgba(148, 163, 184, .24);
             border-radius: 16px;
             background: #fff;
-            overflow: hidden;
+            overflow: hidden
         }
 
         .cardx .head {
