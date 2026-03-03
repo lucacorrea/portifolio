@@ -88,9 +88,11 @@ class AuthService extends BaseService {
         }
 
         if ($nivel === 'gerente') {
-            // Gerente: FULL Sales and Cashier, Inventory (read-only)
+            // Gerente: FULL Sales, Cashier, Costs and Intelligence
             if ($modulo === 'vendas') return true;
             if ($modulo === 'caixa') return true;
+            if ($modulo === 'custos') return true;
+            if ($modulo === 'inteligencia') return true;
             if ($modulo === 'estoque' && $acao === 'visualizar') return true;
             return false;
         }
