@@ -11,8 +11,8 @@ class Intelligence extends BaseModel {
                 WHERE v.filial_id = ? AND v.data_venda BETWEEN ? AND ? AND v.status = 'concluido'
                 GROUP BY p.id
                 ORDER BY total_qtd DESC
-                LIMIT ?";
-        return $this->query($sql, [$filial_id, $inicio, $fim, $limit])->fetchAll();
+                LIMIT $limit";
+        return $this->query($sql, [$filial_id, $inicio, $fim])->fetchAll();
     }
 
     public function getStagnantProducts(int $filial_id, int $days = 30) {
@@ -22,8 +22,8 @@ class Intelligence extends BaseModel {
                 LEFT JOIN vendas v ON vi.venda_id = v.id AND v.filial_id = ?
                 WHERE p.filial_id = ? AND p.estoque > 0
                 GROUP BY p.id
-                HAVING ultima_venda IS NULL OR ultima_venda < DATE_SUB(NOW(), INTERVAL ? DAY)";
-        return $this->query($sql, [$filial_id, $filial_id, $days])->fetchAll();
+                HAVING ultima_venda IS NULL OR ultima_venda < DATE_SUB(NOW(), INTERVAL $days DAY)";
+        return $this->query($sql, [$filial_id, $filial_id])->fetchAll();
     }
 
     public function calculateABC(int $filial_id, string $inicio, string $fim) {
