@@ -19,7 +19,7 @@ class CentroCustoController extends BaseController {
 
     public function index() {
         $filial_id = $_SESSION['filial_id'] ?? 1;
-        $centros = $this->costCenter->where(['filial_id' => $filial_id]);
+        $centros = $this->costCenter->all("nome ASC");
         $mes_atual = date('Y-m');
         $lancamentos = $this->costEntry->getDetailedByMonth($filial_id, $mes_atual);
         $resumo = $this->costEntry->getMonthlyTotals($filial_id, $mes_atual);
