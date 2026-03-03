@@ -4,7 +4,7 @@ namespace App\Models;
 class Intelligence extends BaseModel {
     
     public function getTopProducts(int $filial_id, string $inicio, string $fim, int $limit = 10) {
-        $sql = "SELECT p.id, p.nome, SUM(vi.quantidade) as total_qtd, SUM(vi.preco_total) as total_receita
+        $sql = "SELECT p.id, p.nome, SUM(vi.quantidade) as total_qtd, SUM(vi.quantidade * vi.preco_unitario) as total_receita
                 FROM vendas_itens vi
                 JOIN vendas v ON vi.venda_id = v.id
                 JOIN produtos p ON vi.produto_id = p.id
@@ -28,7 +28,7 @@ class Intelligence extends BaseModel {
 
     public function calculateABC(int $filial_id, string $inicio, string $fim) {
         // 1. Get total revenue per product
-        $sql = "SELECT produto_id, SUM(preco_total) as receita 
+        $sql = "SELECT produto_id, SUM(quantidade * preco_unitario) as receita 
                 FROM vendas_itens vi
                 JOIN vendas v ON vi.venda_id = v.id
                 WHERE v.filial_id = ? AND v.data_venda BETWEEN ? AND ? AND v.status = 'concluido'
