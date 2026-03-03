@@ -44,7 +44,26 @@ try {
     $db->exec($sqlMov);
     echo "<p style='color:green;'>✅ Tabela 'caixa_movimentacoes' criada ou já existente.</p>";
 
-    echo "<h3>3. Inserindo Permissões...</h3>";
+    echo "<h3>3. Verificando Infraestrutura de Permissões (RBAC)...</h3>";
+    $sqlRBAC = "
+    CREATE TABLE IF NOT EXISTS permissoes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        modulo VARCHAR(50) NOT NULL,
+        acao VARCHAR(50) NOT NULL,
+        descricao VARCHAR(255),
+        UNIQUE KEY uk_modulo_acao (modulo, acao)
+    ) ENGINE=InnoDB;
+
+    CREATE TABLE IF NOT EXISTS permissao_nivel (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nivel ENUM('admin', 'gerente', 'vendedor', 'tecnico', 'master') NOT NULL,
+        permissao_id INT NOT NULL,
+        FOREIGN KEY (permissao_id) REFERENCES permissoes(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB;";
+    $db->exec($sqlRBAC);
+    echo "<p style='color:green;'>✅ Tabelas de permissões verificadas/criadas.</p>";
+
+    echo "<h3>4. Inserindo Permissões de Caixa...</h3>";
     $sqlPerms = "INSERT IGNORE INTO permissoes (modulo, acao, descricao) VALUES 
     ('caixa', 'abrir', 'Abrir novo caixa'),
     ('caixa', 'fechar', 'Fechar caixa aberto'),

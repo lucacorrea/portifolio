@@ -107,11 +107,9 @@ class AuthService extends BaseService {
             $stmt->execute([$nivel, $modulo, $acao]);
             return $stmt->fetchColumn() > 0;
         } catch (\PDOException $e) {
-            // Fallback if table doesn't exist (migrations didn't run)
-            if ($e->getCode() == '42S02') {
-                return in_array($nivel, ['admin', 'master', 'gerente']);
-            }
-            throw $e;
+            // Fallback robusto se as tabelas de permissão (007_rbac_schema) não existirem
+            // Admins e Master sempre têm acesso. Gerentes e Vendedores têm acessos baseados no hardcoding acima.
+            return in_array($nivel, ['admin', 'master']);
         }
     }
 
