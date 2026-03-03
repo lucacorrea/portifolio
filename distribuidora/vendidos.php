@@ -1,6 +1,14 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * vendidos.php
+ * - Lista vendas (tabela vendas)
+ * - Itens: venda_itens (venda_id)
+ * - Modal detalhes
+ * - Export: Excel/PDF
+ * - Cupom: agora abre ./assets/dados/vendas/cupom.php
+ */
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
@@ -12,7 +20,7 @@ if (is_file($helpers)) require_once $helpers;
 $con = __DIR__ . '/assets/conexao.php';
 if (is_file($con)) require_once $con;
 
-/* ========= FALLBACKS (caso seu helpers não tenha) ========= */
+/* ========= FALLBACKS ========= */
 if (!function_exists('e')) {
     function e(string $v): string
     {
@@ -97,7 +105,7 @@ function build_where(array &$params): string
 }
 
 /**
- * Itens da venda (CORRETO): venda_itens pelo venda_id
+ * Itens: venda_itens por venda_id
  */
 function fetch_items_for_sale_ids(array $saleIds): array
 {
@@ -148,7 +156,6 @@ function fetch_items_for_sale_ids(array $saleIds): array
             'total'  => $lineTotal,
         ];
     }
-
     return $out;
 }
 
@@ -180,6 +187,20 @@ function fetch_one_sale(int $id): ?array
 
 /* ========= AÇÕES ========= */
 $action = strtolower(get_str('action'));
+
+/** compat: se alguém usar action=cupom, redireciona para o cupom real */
+if ($action === 'cupom') {
+    $id = get_int('id', 0);
+    if ($id <= 0) {
+        http_response_code(400);
+        echo "ID inválido";
+        exit;
+    }
+    $auto = isset($_GET['auto']) ? (int)$_GET['auto'] : 1;
+    $qs = http_build_query(['id' => $id, 'auto' => $auto]);
+    header('Location: ./assets/dados/vendas/cupom.php?' . $qs);
+    exit;
+}
 
 if ($action === 'suggest') {
     $q = get_str('q');
@@ -621,230 +642,7 @@ if ($action === 'print') {
     exit;
 }
 
-if ($action === 'cupom') {
-    $id = get_int('id', 0);
-    if ($id <= 0) {
-        http_response_code(400);
-        echo "ID inválido";
-        exit;
-    }
-
-    $one = fetch_one_sale($id);
-    if (!$one) {
-        http_response_code(404);
-        echo "Venda não encontrada";
-        exit;
-    }
-
-    $v = $one['venda'];
-    $itens = $one['itens'];
-
-    $dt = (string)($v['data'] ?? '');
-    $hr = '';
-    if (!empty($v['created_at'])) {
-        $ts = strtotime((string)$v['created_at']);
-        if ($ts) $hr = date('H:i:s', $ts);
-    }
-
-    $cliente = (string)($v['cliente'] ?? '');
-    $canal = (string)($v['canal'] ?? '');
-    $pag = (string)($v['pagamento'] ?? '');
-    $sub = (float)($v['subtotal'] ?? 0);
-    $desc = (float)($v['desconto_valor'] ?? 0);
-    $taxa = (float)($v['taxa_entrega'] ?? 0);
-    $tot = (float)($v['total'] ?? 0);
-
-?>
-    <!doctype html>
-    <html lang="pt-BR">
-
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Cupom Fiscal - Venda #<?= (int)$v['id'] ?></title>
-        <style>
-            @page {
-                size: 80mm auto;
-                margin: 6mm;
-            }
-
-            body {
-                font-family: Arial, Helvetica, sans-serif;
-                color: #0f172a;
-            }
-
-            .cupom {
-                width: 80mm;
-                max-width: 100%;
-            }
-
-            .center {
-                text-align: center;
-            }
-
-            .title {
-                font-weight: 900;
-                font-size: 14px;
-                margin: 0;
-            }
-
-            .meta {
-                font-size: 11px;
-                margin: 2px 0;
-            }
-
-            .hr {
-                border-top: 1px dashed #94a3b8;
-                margin: 8px 0;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-
-            th,
-            td {
-                font-size: 11px;
-                padding: 3px 0;
-                vertical-align: top;
-            }
-
-            th {
-                text-align: left;
-            }
-
-            .r {
-                text-align: right;
-                white-space: nowrap;
-            }
-
-            .muted {
-                color: #64748b;
-            }
-
-            .btn {
-                display: none;
-            }
-
-            @media screen {
-                body {
-                    background: #0b1220;
-                    padding: 24px;
-                }
-
-                .wrap {
-                    max-width: 360px;
-                    margin: 0 auto;
-                    background: #fff;
-                    border-radius: 14px;
-                    padding: 14px;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
-                }
-
-                .btn {
-                    display: inline-block;
-                    margin-top: 10px;
-                    width: 100%;
-                    padding: 10px 12px;
-                    border-radius: 12px;
-                    border: 1px solid #cbd5e1;
-                    cursor: pointer;
-                    font-weight: 900;
-                    background: #fff;
-                }
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="wrap">
-            <div class="cupom">
-                <div class="center">
-                    <p class="title">PAINEL DA DISTRIBUIDORA</p>
-                    <div class="meta muted">CUPOM FISCAL (Simples)</div>
-                </div>
-
-                <div class="hr"></div>
-
-                <div class="meta"><b>Venda:</b> #<?= (int)$v['id'] ?></div>
-                <div class="meta"><b>Data:</b> <?= e($dt) ?> <?= $hr ? ' <span class="muted">' . $hr . '</span>' : '' ?></div>
-                <div class="meta"><b>Cliente:</b> <?= e($cliente ?: '—') ?></div>
-                <div class="meta"><b>Canal:</b> <?= e($canal ?: '—') ?></div>
-                <div class="meta"><b>Pagamento:</b> <?= e($pag ?: '—') ?></div>
-
-                <div class="hr"></div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th class="r">Qtd</th>
-                            <th class="r">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!$itens): ?>
-                            <tr>
-                                <td colspan="3" class="muted">Sem itens cadastrados na tabela <b>venda_itens</b>.</td>
-                            </tr>
-                            <?php else: foreach ($itens as $it): ?>
-                                <tr>
-                                    <td>
-                                        <b><?= e((string)$it['nome']) ?></b>
-                                        <?php if (!empty($it['codigo'])): ?>
-                                            <div class="muted"><?= e((string)$it['codigo']) ?></div>
-                                        <?php endif; ?>
-                                        <div class="muted"><?= e((string)$it['un']) ?> • <?= e(brl((float)$it['preco'])) ?></div>
-                                    </td>
-                                    <td class="r"><?= e(rtrim(rtrim(number_format((float)$it['qtd'], 3, ',', '.'), '0'), ',')) ?></td>
-                                    <td class="r"><?= e(brl((float)$it['total'])) ?></td>
-                                </tr>
-                        <?php endforeach;
-                        endif; ?>
-                    </tbody>
-                </table>
-
-                <div class="hr"></div>
-
-                <table>
-                    <tr>
-                        <td>Subtotal</td>
-                        <td class="r"><?= e(brl($sub)) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Desconto</td>
-                        <td class="r"><?= e(brl($desc)) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Entrega</td>
-                        <td class="r"><?= e(brl($taxa)) ?></td>
-                    </tr>
-                    <tr>
-                        <td><b>TOTAL</b></td>
-                        <td class="r"><b><?= e(brl($tot)) ?></b></td>
-                    </tr>
-                </table>
-
-                <div class="hr"></div>
-
-                <div class="center meta muted">Obrigado pela preferência!</div>
-
-                <button class="btn" onclick="window.print()">Imprimir</button>
-            </div>
-        </div>
-
-        <script>
-            window.addEventListener('load', () => setTimeout(() => window.print(), 250));
-        </script>
-    </body>
-
-    </html>
-<?php
-    exit;
-}
-
-/* ========= HTML (tela principal) ========= */
+/* ========= HTML ========= */
 $csrf = csrf_token();
 ?>
 <!DOCTYPE html>
@@ -949,10 +747,79 @@ $csrf = csrf_token();
             align-items: center
         }
 
-        /* ===== TABELA ORGANIZADA ===== */
+        /* ====== ALTURAS IGUAIS (tabela vs totais) ====== */
+        .equal-h>.col-lg-8,
+        .equal-h>.col-lg-4 {
+            display: flex;
+        }
+
+        .equal-h>.col-lg-8>.cardx,
+        .equal-h>.col-lg-4>.cardx {
+            flex: 1 1 auto;
+        }
+
+        .equal-h>.col-lg-8>.cardx .body,
+        .equal-h>.col-lg-4>.cardx .body {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* dentro do card de totais: faz o box ocupar a altura e empurra o TOTAL para o fim */
+        .box-tot {
+            border: 1px solid rgba(148, 163, 184, .22);
+            border-radius: 14px;
+            background: #fff;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+        }
+
+        .tot-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #334155;
+            margin-bottom: 8px;
+            font-weight: 900
+        }
+
+        .tot-hr {
+            height: 1px;
+            background: rgba(148, 163, 184, .22);
+            margin: 10px 0
+        }
+
+        .grand {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin-top: auto;
+            padding-top: 8px;
+        }
+
+        .grand .lbl {
+            font-weight: 1000;
+            color: #0f172a;
+            font-size: 16px
+        }
+
+        .grand .val {
+            font-weight: 1000;
+            color: #0b5ed7;
+            font-size: 26px;
+            letter-spacing: .2px
+        }
+
+        /* ===== TABELA ===== */
         .table-responsive {
             -webkit-overflow-scrolling: touch;
-            border-radius: 14px
+            border-radius: 14px;
+            flex: 1 1 auto;
         }
 
         #tbDev {
@@ -982,7 +849,6 @@ $csrf = csrf_token();
             background: #fff;
         }
 
-        /* larguras */
         .col-id {
             width: 70px;
         }
@@ -1049,7 +915,6 @@ $csrf = csrf_token();
             max-width: 100%;
         }
 
-        /* badges */
         .badge-soft {
             font-weight: 1000;
             border-radius: 999px;
@@ -1073,7 +938,6 @@ $csrf = csrf_token();
             border: 1px solid rgba(34, 197, 94, .25)
         }
 
-        /* itens compactos */
         .items-preview {
             border: 1px solid rgba(148, 163, 184, .22);
             border-radius: 12px;
@@ -1111,7 +975,6 @@ $csrf = csrf_token();
             font-weight: 900;
         }
 
-        /* ações */
         .actions-wrap {
             display: flex;
             gap: 8px;
@@ -1125,52 +988,6 @@ $csrf = csrf_token();
             font-size: 12px !important;
             border-radius: 10px !important;
             white-space: nowrap;
-        }
-
-        /* totais box */
-        .box-tot {
-            border: 1px solid rgba(148, 163, 184, .22);
-            border-radius: 14px;
-            background: #fff;
-            padding: 12px
-        }
-
-        .tot-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            font-size: 13px;
-            color: #334155;
-            margin-bottom: 8px;
-            font-weight: 900
-        }
-
-        .tot-hr {
-            height: 1px;
-            background: rgba(148, 163, 184, .22);
-            margin: 10px 0
-        }
-
-        .grand {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 10px;
-            margin-top: 4px
-        }
-
-        .grand .lbl {
-            font-weight: 1000;
-            color: #0f172a;
-            font-size: 16px
-        }
-
-        .grand .val {
-            font-weight: 1000;
-            color: #0b5ed7;
-            font-size: 26px;
-            letter-spacing: .2px
         }
 
         .page-nav {
@@ -1203,7 +1020,19 @@ $csrf = csrf_token();
             font-weight: 900;
         }
 
-        /* modal itens */
+        /* ===== MODAL: alturas iguais (Dados vs Totais) ===== */
+        #mdDetalhes .modal-body .row.g-3>.col-md-6 {
+            display: flex;
+        }
+
+        #mdDetalhes .modal-body .row.g-3>.col-md-6>.cardx {
+            flex: 1 1 auto;
+        }
+
+        #mdDetalhes .modal-body .row.g-3>.col-md-6>.cardx .body {
+            height: 100%;
+        }
+
         .sale-box {
             border: 1px solid rgba(148, 163, 184, .22);
             border-radius: 14px;
@@ -1399,7 +1228,7 @@ $csrf = csrf_token();
 
     <div class="overlay"></div>
 
-    <main class="main-wrapper">
+    <main class="main-wrapper mb-5">
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -1523,7 +1352,8 @@ $csrf = csrf_token();
                     </div>
                 </div>
 
-                <div class="row g-3">
+                <!-- ROW COM ALTURA IGUAL -->
+                <div class="row g-3 equal-h">
                     <!-- TABELA -->
                     <div class="col-lg-8">
                         <div class="cardx">
@@ -1589,7 +1419,7 @@ $csrf = csrf_token();
                                 </div>
 
                                 <div class="muted mt-3">
-                                    <b>Obs.:</b> os <b>itens</b> são carregados da tabela <b>venda_itens</b> via <b>venda_id</b>.
+                                    <b>Obs.:</b> itens carregados de <b>venda_itens</b> via <b>venda_id</b>.
                                 </div>
                             </div>
                         </div>
@@ -1686,6 +1516,9 @@ $csrf = csrf_token();
     <script>
         const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const el = (id) => document.getElementById(id);
+
+        // caminho do cupom real
+        const CUPOM_URL = './assets/dados/vendas/cupom.php';
 
         const state = {
             page: 1,
@@ -1840,8 +1673,6 @@ $csrf = csrf_token();
             `;
                     }
 
-                    const cliente = escapeHtml(r.cliente || '—');
-
                     return `
             <tr>
               <td class="td-nowrap"><b>#${r.id}</b></td>
@@ -1850,7 +1681,7 @@ $csrf = csrf_token();
                 <div class="muted2">${fmtDateTime(r.created_at)}</div>
               </td>
               <td>
-                <div class="td-clip mini">${cliente}</div>
+                <div class="td-clip mini">${escapeHtml(r.cliente || '—')}</div>
                 ${r.endereco ? `<div class="td-clip muted2">${escapeHtml(r.endereco)}</div>` : ``}
               </td>
               <td class="td-nowrap">${canalBadge}</td>
@@ -1862,12 +1693,8 @@ $csrf = csrf_token();
               <td class="td-money">${brl(r.total)}</td>
               <td>
                 <div class="actions-wrap">
-                  <button class="main-btn light-btn btn-hover btn-action" onclick="openDetails(${r.id})">
-                    Detalhes
-                  </button>
-                  <button class="main-btn primary-btn btn-hover btn-action" onclick="openCupom(${r.id})">
-                    Cupom
-                  </button>
+                  <button class="main-btn light-btn btn-hover btn-action" onclick="openDetails(${r.id})">Detalhes</button>
+                  <button class="main-btn primary-btn btn-hover btn-action" onclick="openCupom(${r.id})">Cupom</button>
                 </div>
               </td>
             </tr>
@@ -1939,7 +1766,8 @@ $csrf = csrf_token();
         }
 
         function openCupom(id) {
-            window.open(`vendidos.php?action=cupom&id=${id}`, '_blank');
+            // vai para o cupom real (o seu arquivo)
+            window.open(`${CUPOM_URL}?id=${encodeURIComponent(id)}&auto=1`, '_blank');
         }
 
         el('btnCupomModal').addEventListener('click', () => {
@@ -1968,7 +1796,8 @@ $csrf = csrf_token();
             el('canal').value = 'TODOS';
             el('pag').value = 'TODOS';
             el('q').value = '';
-            el('qGlobal').value = '';
+            const qg = document.getElementById('qGlobal');
+            if (qg) qg.value = '';
             hideSuggest();
             state.page = 1;
             load();
@@ -1987,14 +1816,17 @@ $csrf = csrf_token();
             window.open(buildExportUrl('print'), '_blank');
         });
 
-        el('qGlobal').addEventListener('input', () => {
-            el('q').value = el('qGlobal').value;
-            scheduleFilter();
-            scheduleSuggest();
-        });
+        const qg = document.getElementById('qGlobal');
+        if (qg) {
+            qg.addEventListener('input', () => {
+                el('q').value = qg.value;
+                scheduleFilter();
+                scheduleSuggest();
+            });
+        }
 
         el('q').addEventListener('input', () => {
-            el('qGlobal').value = el('q').value;
+            if (qg) qg.value = el('q').value;
             scheduleFilter();
             scheduleSuggest();
         });
@@ -2057,7 +1889,7 @@ $csrf = csrf_token();
 
         window.pickSuggest = function(name) {
             el('q').value = name;
-            el('qGlobal').value = name;
+            if (qg) qg.value = name;
             hideSuggest();
             state.page = 1;
             load();
