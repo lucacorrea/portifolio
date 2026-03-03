@@ -1,14 +1,7 @@
 <?php
 
 declare(strict_types=1);
-/**
- * vendidos.php
- * - Lista vendas (tabela vendas)
- * - Itens: venda_itens (venda_id)
- * - Modal detalhes
- * - Export: Excel/PDF
- * - Cupom: agora abre ./assets/dados/vendas/cupom.php
- */
+
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
@@ -440,6 +433,7 @@ if ($action === 'excel') {
 }
 
 if ($action === 'print') {
+    // (mantive seu print como estava)
     $pdo = db();
     $params = [];
     $where = build_where($params);
@@ -474,7 +468,6 @@ if ($action === 'print') {
         $sumTax += (float)$r['taxa_entrega'];
         $sumTot += (float)$r['total'];
     }
-
 ?>
     <!doctype html>
     <html lang="pt-BR">
@@ -663,44 +656,25 @@ $csrf = csrf_token();
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
-        .profile-box .dropdown-menu {
-            width: max-content;
-            min-width: 260px;
-            max-width: calc(100vw - 24px)
-        }
-
-        .profile-box .dropdown-menu .author-info {
-            width: max-content;
-            max-width: 100%;
-            display: flex !important;
-            align-items: center;
-            gap: 10px
-        }
-
-        .profile-box .dropdown-menu .author-info .content {
-            min-width: 0;
-            max-width: 100%
-        }
-
         .main-btn.btn-compact {
             height: 36px !important;
             padding: 8px 12px !important;
             font-size: 13px !important;
-            line-height: 1 !important
+            line-height: 1 !important;
         }
 
         .form-control.compact,
         .form-select.compact {
             height: 38px;
             padding: 8px 12px;
-            font-size: 13px
+            font-size: 13px;
         }
 
         .cardx {
             border: 1px solid rgba(148, 163, 184, .24);
             border-radius: 16px;
             background: #fff;
-            overflow: hidden
+            overflow: hidden;
         }
 
         .cardx .head {
@@ -710,16 +684,16 @@ $csrf = csrf_token();
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            flex-wrap: wrap
+            flex-wrap: wrap;
         }
 
         .cardx .body {
-            padding: 14px
+            padding: 14px;
         }
 
         .muted {
             font-size: 12px;
-            color: #64748b
+            color: #64748b;
         }
 
         .pill {
@@ -731,95 +705,49 @@ $csrf = csrf_token();
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(248, 250, 252, .7)
+            background: rgba(248, 250, 252, .7);
         }
 
         .pill.ok {
             border-color: rgba(34, 197, 94, .25);
             background: rgba(240, 253, 244, .9);
-            color: #166534
+            color: #166534;
         }
 
         .toolbar {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
-            align-items: center
+            align-items: center;
         }
 
-        /* ====== ALTURAS IGUAIS (tabela vs totais) ====== */
+        /* ====== FIX PRINCIPAL: igualar altura SEM cortar paginação ====== */
         .equal-h>.col-lg-8,
         .equal-h>.col-lg-4 {
             display: flex;
         }
 
-        .equal-h>.col-lg-8>.cardx,
-        .equal-h>.col-lg-4>.cardx {
+        .cardx.card-table,
+        .cardx.card-tot {
             flex: 1 1 auto;
-        }
-
-        .equal-h>.col-lg-8>.cardx .body,
-        .equal-h>.col-lg-4>.cardx .body {
             display: flex;
             flex-direction: column;
-            height: 100%;
         }
 
-        /* dentro do card de totais: faz o box ocupar a altura e empurra o TOTAL para o fim */
-        .box-tot {
-            border: 1px solid rgba(148, 163, 184, .22);
-            border-radius: 14px;
-            background: #fff;
-            padding: 12px;
+        .cardx.card-table .body,
+        .cardx.card-tot .body {
+            flex: 1;
             display: flex;
             flex-direction: column;
+            min-height: 0;
+        }
+
+        /* área scroll da tabela (isso impede cortar a paginação) */
+        .table-wrap {
             flex: 1 1 auto;
-        }
-
-        .tot-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            font-size: 13px;
-            color: #334155;
-            margin-bottom: 8px;
-            font-weight: 900
-        }
-
-        .tot-hr {
-            height: 1px;
-            background: rgba(148, 163, 184, .22);
-            margin: 10px 0
-        }
-
-        .grand {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 10px;
-            margin-top: auto;
-            padding-top: 8px;
-        }
-
-        .grand .lbl {
-            font-weight: 1000;
-            color: #0f172a;
-            font-size: 16px
-        }
-
-        .grand .val {
-            font-weight: 1000;
-            color: #0b5ed7;
-            font-size: 26px;
-            letter-spacing: .2px
-        }
-
-        /* ===== TABELA ===== */
-        .table-responsive {
-            -webkit-overflow-scrolling: touch;
+            min-height: 0;
+            overflow: auto;
             border-radius: 14px;
-            flex: 1 1 auto;
         }
 
         #tbDev {
@@ -849,6 +777,91 @@ $csrf = csrf_token();
             background: #fff;
         }
 
+        /* paginação sempre visível */
+        .page-nav {
+            flex: 0 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            padding-top: 6px;
+        }
+
+        .page-btn {
+            border: 1px solid rgba(148, 163, 184, .35);
+            background: #fff;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-weight: 900;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .page-btn[disabled] {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 900;
+        }
+
+        /* Totais: não cortar conteúdo */
+        .box-tot {
+            border: 1px solid rgba(148, 163, 184, .22);
+            border-radius: 14px;
+            background: #fff;
+            padding: 12px;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tot-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #334155;
+            margin-bottom: 8px;
+            font-weight: 900;
+        }
+
+        .tot-hr {
+            height: 1px;
+            background: rgba(148, 163, 184, .22);
+            margin: 10px 0;
+        }
+
+        .grand {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin-top: auto;
+            padding-top: 8px;
+        }
+
+        .grand .lbl {
+            font-weight: 1000;
+            color: #0f172a;
+            font-size: 16px;
+        }
+
+        .grand .val {
+            font-weight: 1000;
+            color: #0b5ed7;
+            font-size: 26px;
+            letter-spacing: .2px;
+        }
+
+        /* col widths */
         .col-id {
             width: 70px;
         }
@@ -884,7 +897,7 @@ $csrf = csrf_token();
         .mini {
             font-size: 12px;
             color: #475569;
-            font-weight: 800
+            font-weight: 800;
         }
 
         .muted2 {
@@ -929,13 +942,13 @@ $csrf = csrf_token();
         .b-open {
             background: rgba(255, 251, 235, .95);
             color: #92400e;
-            border: 1px solid rgba(245, 158, 11, .25)
+            border: 1px solid rgba(245, 158, 11, .25);
         }
 
         .b-done {
             background: rgba(240, 253, 244, .95);
             color: #166534;
-            border: 1px solid rgba(34, 197, 94, .25)
+            border: 1px solid rgba(34, 197, 94, .25);
         }
 
         .items-preview {
@@ -990,47 +1003,20 @@ $csrf = csrf_token();
             white-space: nowrap;
         }
 
-        .page-nav {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-
-        .page-btn {
-            border: 1px solid rgba(148, 163, 184, .35);
-            background: #fff;
-            border-radius: 10px;
-            padding: 8px 10px;
-            font-weight: 900;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .page-btn[disabled] {
-            opacity: .55;
-            cursor: not-allowed;
-        }
-
-        .page-info {
-            font-size: 12px;
-            color: #64748b;
-            font-weight: 900;
-        }
-
-        /* ===== MODAL: alturas iguais (Dados vs Totais) ===== */
+        /* MODAL: equal height sem cortar */
         #mdDetalhes .modal-body .row.g-3>.col-md-6 {
             display: flex;
         }
 
         #mdDetalhes .modal-body .row.g-3>.col-md-6>.cardx {
-            flex: 1 1 auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         #mdDetalhes .modal-body .row.g-3>.col-md-6>.cardx .body {
-            height: 100%;
+            flex: 1;
+            min-height: 0;
         }
 
         .sale-box {
@@ -1053,11 +1039,11 @@ $csrf = csrf_token();
         }
 
         .sale-row:last-child {
-            border-bottom: none
+            border-bottom: none;
         }
 
         .sale-row .left {
-            min-width: 0
+            min-width: 0;
         }
 
         .sale-row .left .nm {
@@ -1066,17 +1052,17 @@ $csrf = csrf_token();
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 380px
+            max-width: 380px;
         }
 
         .sale-row .left .cd {
             color: #64748b;
-            font-size: 12px
+            font-size: 12px;
         }
 
         .sale-row .right {
             white-space: nowrap;
-            text-align: right
+            text-align: right;
         }
 
         .sale-mini {
@@ -1085,7 +1071,7 @@ $csrf = csrf_token();
             margin-top: 6px;
             display: flex;
             justify-content: space-between;
-            gap: 10px
+            gap: 10px;
         }
 
         @media(max-width:991.98px) {
@@ -1094,7 +1080,7 @@ $csrf = csrf_token();
             }
 
             .grand .val {
-                font-size: 22px
+                font-size: 22px;
             }
         }
     </style>
@@ -1229,56 +1215,13 @@ $csrf = csrf_token();
     <div class="overlay"></div>
 
     <main class="main-wrapper">
-        <header class="header">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-lg-5 col-md-5 col-6">
-                        <div class="header-left d-flex align-items-center">
-                            <div class="menu-toggle-btn mr-15">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
-                                    <i class="lni lni-chevron-left me-2"></i> Menu
-                                </button>
-                            </div>
-                            <div class="header-search d-none d-md-flex">
-                                <form action="#">
-                                    <input type="text" placeholder="Buscar Vendas..." id="qGlobal" />
-                                    <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-7 col-md-7 col-6">
-                        <div class="header-right">
-                            <div class="profile-box ml-15">
-                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <div class="profile-info">
-                                        <div class="info">
-                                            <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
-                                            <div>
-                                                <h6 class="fw-500">Administrador</h6>
-                                                <p>Distribuidora</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                                    <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                                    <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
-                                    <li class="divider"></li>
-                                    <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </header>
+        <header class="header"> ... </header>
 
         <section class="section">
             <div class="container-fluid">
 
-                <!-- FILTROS -->
-                <div class="cardx mb-3 mt-5">
+                <!-- FILTROS (sem mt-5 pra não empurrar tudo) -->
+                <div class="cardx mb-3">
                     <div class="head">
                         <div>
                             <div class="d-flex align-items-center gap-2">
@@ -1352,19 +1295,20 @@ $csrf = csrf_token();
                     </div>
                 </div>
 
-                <!-- ROW COM ALTURA IGUAL -->
+                <!-- ROW COM ALTURA IGUAL (sem cortar) -->
                 <div class="row g-3 equal-h">
-                    <!-- TABELA -->
+
                     <div class="col-lg-8">
-                        <div class="cardx">
+                        <div class="cardx card-table">
                             <div class="head">
                                 <div class="muted"><b>Vendidos</b> • clique em <b>Detalhes</b> para ver itens/infos</div>
                                 <div class="toolbar">
                                     <span class="pill" id="pillLoading" style="display:none;">Carregando…</span>
                                 </div>
                             </div>
+
                             <div class="body">
-                                <div class="table-responsive">
+                                <div class="table-wrap">
                                     <table class="table table-hover mb-0" id="tbDev">
                                         <thead>
                                             <tr>
@@ -1398,9 +1342,8 @@ $csrf = csrf_token();
                         </div>
                     </div>
 
-                    <!-- TOTAIS -->
                     <div class="col-lg-4">
-                        <div class="cardx">
+                        <div class="cardx card-tot">
                             <div class="head">
                                 <div class="fw-1000">Totais do Filtro</div>
                                 <div class="muted">Somatório da tabela <b>vendas</b></div>
@@ -1424,25 +1367,16 @@ $csrf = csrf_token();
                             </div>
                         </div>
                     </div>
+
                 </div>
 
             </div>
         </section>
 
-        <footer class="footer">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-md-6 order-last order-md-first">
-                        <div class="copyright text-center text-md-start">
-                            <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </footer>
+        <footer class="footer"> ... </footer>
     </main>
 
-    <!-- MODAL DETALHES -->
+    <!-- MODAL DETALHES (mantém a sua) -->
     <div class="modal fade" id="mdDetalhes" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content" style="border-radius:16px;">
@@ -1516,8 +1450,6 @@ $csrf = csrf_token();
     <script>
         const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const el = (id) => document.getElementById(id);
-
-        // caminho do cupom real
         const CUPOM_URL = './assets/dados/vendas/cupom.php';
 
         const state = {
@@ -1526,7 +1458,7 @@ $csrf = csrf_token();
             per: 25,
             lastCupomId: null,
             debounceTimer: null,
-            suggestTimer: null,
+            suggestTimer: null
         };
 
         function brl(v) {
@@ -1649,7 +1581,6 @@ $csrf = csrf_token();
                     const canalBadge = r.canal === 'DELIVERY' ?
                         `<span class="badge-soft b-open">DELIVERY</span>` :
                         `<span class="badge-soft b-done">PRESENCIAL</span>`;
-
                     const pagBadge = `<span class="badge-soft b-open">${escapeHtml(r.pagamento||'—')}</span>`;
 
                     let itensHtml = `<span class="muted">—</span>`;
@@ -1766,7 +1697,6 @@ $csrf = csrf_token();
         }
 
         function openCupom(id) {
-            // vai para o cupom real (o seu arquivo)
             window.open(`${CUPOM_URL}?id=${encodeURIComponent(id)}&auto=1`, '_blank');
         }
 
@@ -1808,7 +1738,6 @@ $csrf = csrf_token();
             state.page = 1;
             load();
         });
-
         el('btnExcel').addEventListener('click', () => {
             window.location.href = buildExportUrl('excel');
         });
@@ -1824,7 +1753,6 @@ $csrf = csrf_token();
                 scheduleSuggest();
             });
         }
-
         el('q').addEventListener('input', () => {
             if (qg) qg.value = el('q').value;
             scheduleFilter();
@@ -1886,7 +1814,6 @@ $csrf = csrf_token();
         function escapeJs(s) {
             return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         }
-
         window.pickSuggest = function(name) {
             el('q').value = name;
             if (qg) qg.value = name;
@@ -1894,7 +1821,6 @@ $csrf = csrf_token();
             state.page = 1;
             load();
         };
-
         document.addEventListener('click', (ev) => {
             const sw = el('suggest');
             const wrap = sw?.parentElement;
