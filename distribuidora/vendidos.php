@@ -1228,7 +1228,7 @@ $csrf = csrf_token();
 
     <div class="overlay"></div>
 
-    <main class="main-wrapper mb-5">
+    <main class="main-wrapper">
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
