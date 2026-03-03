@@ -81,14 +81,16 @@ class AuthService extends BaseService {
         if ($nivel === 'vendedor') {
             // Vendedor: ONLY Pre-Sales (full), Inventory (read-only) and Sales search (visualizar)
             if ($modulo === 'pre_vendas') return true;
+            if ($modulo === 'caixa') return true;
             if ($modulo === 'estoque' && $acao === 'visualizar') return true;
             if ($modulo === 'vendas' && $acao === 'visualizar') return true;
             return false;
         }
 
         if ($nivel === 'gerente') {
-            // Gerente: ONLY Sales (full) and Inventory (read-only)
+            // Gerente: FULL Sales and Cashier, Inventory (read-only)
             if ($modulo === 'vendas') return true;
+            if ($modulo === 'caixa') return true;
             if ($modulo === 'estoque' && $acao === 'visualizar') return true;
             return false;
         }

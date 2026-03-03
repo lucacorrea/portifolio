@@ -36,9 +36,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
 
-        <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
-        <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
-            <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
+        <a href="caixa.php" class="nav-link <?= $current_page == 'caixa.php' ? 'active' : '' ?>">
+            <i class="fas fa-vault"></i> <span>Controle de Caixa</span>
         </a>
         <?php endif; ?>
 

@@ -1,0 +1,18 @@
+<?php
+require_once 'autoloader.php';
+require_once 'config.php';
+
+use App\Controllers\CaixaController;
+
+$controller = new CaixaController();
+$action = $_GET['action'] ?? 'index';
+
+if ($action === 'abrir') {
+    $controller->abrir();
+} elseif ($action === 'fechar') {
+    $controller->fechar();
+} elseif ($action === 'movimentar') {
+    $controller->registrarMovimentacao();
+} else {
+    $controller->index();
+}
