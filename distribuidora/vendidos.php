@@ -1278,7 +1278,7 @@ $csrf = csrf_token();
             <div class="container-fluid">
 
                 <!-- FILTROS -->
-                <div class="cardx mb-3">
+                <div class="cardx mb-3 mt-5">
                     <div class="head">
                         <div>
                             <div class="d-flex align-items-center gap-2">
