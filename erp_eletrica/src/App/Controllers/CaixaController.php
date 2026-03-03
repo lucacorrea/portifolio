@@ -131,4 +131,9 @@ class CaixaController extends BaseController {
             exit;
         }
     }
+
+    protected function logAction(string $action, string $table = null, int $id = null, $old = null, $new = null) {
+        $audit = new \App\Services\AuditLogService();
+        $audit->record($action, $table, $id, $old, $new);
+    }
 }
