@@ -5,11 +5,9 @@ declare(strict_types=1);
  * - Lista todas as vendas (tabela vendas)
  * - Filtros + busca com sugestões (autocomplete)
  * - Ações: Cupom fiscal (impressão) + Detalhes (modal)
- * - Exportação: Excel (XLS via HTML) + PDF (tela print em A4, igual seus relatórios)
+ * - Exportação: Excel (XLS via HTML) + PDF (tela print em A4)
  *
- * Requisitos do seu projeto:
- * - assets/dados/_helpers.php (funções: e(), csrf_token() etc) OU fallback abaixo
- * - assets/conexao.php (função db():PDO)
+ * Agora: Itens vêm de venda_itens (venda_itens.venda_id) ✅
  */
 
 @date_default_timezone_set('America/Manaus');
@@ -39,7 +37,6 @@ if (!function_exists('db')) {
   exit;
 }
 
-
 /* ========= UTIL ========= */
 function json_out(array $payload, int $code = 200): void {
   http_response_code($code);
@@ -47,7 +44,6 @@ function json_out(array $payload, int $code = 200): void {
   echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   exit;
 }
-
 function get_str(string $k, string $def = ''): string {
   return isset($_GET[$k]) ? trim((string)$_GET[$k]) : $def;
 }
@@ -59,6 +55,9 @@ function brl(float $v): string {
   return 'R$ ' . number_format($v, 2, ',', '.');
 }
 
+/**
+ * Monta WHERE + params (filtros)
+ */
 function build_where(array &$params): string {
   $where = " WHERE 1=1 ";
 
@@ -70,11 +69,11 @@ function build_where(array &$params): string {
 
   if ($di !== '') { $where .= " AND v.data >= :di "; $params['di'] = $di; }
   if ($df !== '') { $where .= " AND v.data <= :df "; $params['df'] = $df; }
+
   if ($canal !== '' && $canal !== 'TODOS') { $where .= " AND v.canal = :canal "; $params['canal'] = $canal; }
   if ($pag !== '' && $pag !== 'TODOS') { $where .= " AND v.pagamento = :pag "; $params['pag'] = $pag; }
 
   if ($q !== '') {
-    // Se for número puro: tenta por ID
     if (ctype_digit($q)) {
       $where .= " AND v.id = :vid ";
       $params['vid'] = (int)$q;
@@ -87,66 +86,61 @@ function build_where(array &$params): string {
 }
 
 /**
- * Itens da venda (opcional):
- * - Seu banco NÃO tem venda_itens, então tentamos buscar na tabela saidas
- * - Mapeamento: saidas.pedido pode ser "id", "00005" ou "V{id}" (robusto)
+ * Itens da venda (AGORA CORRETO)
+ * Busca em venda_itens pelo venda_id.
  */
 function fetch_items_for_sale_ids(array $saleIds): array {
   if (!$saleIds) return [];
 
+  $saleIds = array_values(array_unique(array_map('intval', $saleIds)));
   $pdo = db();
 
-  // checa se tabela saidas existe
-  $st = $pdo->query("SHOW TABLES LIKE 'saidas'");
+  // Se a tabela não existir, evita fatal (apenas não mostra itens)
+  $st = $pdo->query("SHOW TABLES LIKE 'venda_itens'");
   if (!$st || !$st->fetchColumn()) return [];
 
-  // cria chaves possíveis para procurar em saidas.pedido
-  $keyToId = [];
-  $keys = [];
-  foreach ($saleIds as $id) {
-    $id = (int)$id;
-    $k1 = (string)$id;
-    $k2 = str_pad((string)$id, 5, '0', STR_PAD_LEFT);
-    $k3 = 'V' . $id;
-    foreach ([$k1,$k2,$k3] as $k) {
-      $keyToId[$k] = $id;
-      $keys[$k] = true;
-    }
-  }
-  $keys = array_keys($keys);
-
-  // placeholders
-  $in = implode(',', array_fill(0, count($keys), '?'));
+  $in = implode(',', array_fill(0, count($saleIds), '?'));
 
   $sql = "
     SELECT
-      s.pedido, s.qtd, s.unidade, s.preco, s.total,
-      p.codigo AS prod_codigo, p.nome AS prod_nome
-    FROM saidas s
-    LEFT JOIN produtos p ON p.id = s.produto_id
-    WHERE s.pedido IN ($in)
-    ORDER BY s.id ASC
+      vi.venda_id,
+      vi.codigo,
+      vi.nome,
+      vi.unidade,
+      vi.preco_unit,
+      vi.qtd,
+      vi.subtotal
+    FROM venda_itens vi
+    WHERE vi.venda_id IN ($in)
+    ORDER BY vi.venda_id DESC, vi.id ASC
   ";
   $stmt = $pdo->prepare($sql);
-  $stmt->execute($keys);
+  $stmt->execute($saleIds);
   $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  $out = []; // saleId => itens[]
+  $out = []; // venda_id => itens[]
   foreach ($rows as $r) {
-    $pedido = (string)($r['pedido'] ?? '');
-    if (!isset($keyToId[$pedido])) continue;
-    $sid = $keyToId[$pedido];
+    $sid = (int)($r['venda_id'] ?? 0);
+    if ($sid <= 0) continue;
+
+    $preco = (float)($r['preco_unit'] ?? 0);
+    $qtd   = (float)($r['qtd'] ?? 0);
+    $sub   = (float)($r['subtotal'] ?? 0);
+
+    // segurança: se subtotal vier 0, tenta calcular
+    $lineTotal = $sub > 0 ? $sub : ($preco * $qtd);
 
     $out[$sid] ??= [];
     $out[$sid][] = [
-      'codigo' => (string)($r['prod_codigo'] ?? ''),
-      'nome'   => (string)($r['prod_nome'] ?? 'Item'),
-      'qtd'    => (float)($r['qtd'] ?? 0),
+      'codigo' => (string)($r['codigo'] ?? ''),
+      'nome'   => (string)($r['nome'] ?? 'Item'),
+      'qtd'    => $qtd,
       'un'     => (string)($r['unidade'] ?? ''),
-      'preco'  => (float)($r['preco'] ?? 0),
-      'total'  => (float)($r['total'] ?? 0),
+      'preco'  => $preco,
+      'total'  => $lineTotal,
     ];
   }
+
   return $out;
 }
 
@@ -160,7 +154,6 @@ function fetch_one_sale(int $id): ?array {
   $itemsMap = fetch_items_for_sale_ids([$id]);
   $itens = $itemsMap[$id] ?? [];
 
-  // tenta totalizar itens (se existir saidas)
   $itSubtotal = 0.0;
   $itQtd = 0.0;
   foreach ($itens as $it) {
@@ -193,6 +186,7 @@ if ($action === 'suggest') {
     LIMIT 10
   ");
   $stmt->execute(['q' => $q . '%']);
+
   $items = [];
   while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $items[] = (string)$r['cliente'];
@@ -205,7 +199,7 @@ if ($action === 'fetch') {
 
   $page = max(1, get_int('page', 1));
   $per = get_int('per', 25);
-  $per = in_array($per, [10,25,50,100], true) ? $per : 25;
+  $per = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
   $off = ($page - 1) * $per;
 
   $params = [];
@@ -245,7 +239,6 @@ if ($action === 'fetch') {
   $ids = array_map(fn($r) => (int)$r['id'], $rows);
   $itemsMap = fetch_items_for_sale_ids($ids);
 
-  // anexa itens resumidos
   $outRows = [];
   foreach ($rows as $r) {
     $id = (int)$r['id'];
@@ -310,7 +303,6 @@ if ($action === 'excel') {
   $params = [];
   $where = build_where($params);
 
-  // pega tudo (limite de segurança)
   $sql = "
     SELECT
       v.id, v.data, v.cliente, v.canal, v.pagamento,
@@ -338,9 +330,7 @@ if ($action === 'excel') {
   header('Pragma: no-cache');
   header('Expires: 0');
 
-  echo "\xEF\xBB\xBF"; // BOM pra Excel abrir UTF-8
-
-  // Estilo simples (igual seus relatórios do print)
+  echo "\xEF\xBB\xBF";
   ?>
   <table border="0" cellpadding="4" cellspacing="0" style="width:100%;">
     <tr>
@@ -413,7 +403,6 @@ if ($action === 'excel') {
 }
 
 if ($action === 'print') {
-  // Relatório A4 para imprimir/salvar como PDF
   $pdo = db();
   $params = [];
   $where = build_where($params);
@@ -529,7 +518,6 @@ if ($action === 'print') {
     </div>
 
     <script>
-      // auto print (pra ficar "Exportar PDF" 1-clique)
       window.addEventListener('load', () => {
         setTimeout(() => window.print(), 300);
       });
@@ -621,15 +609,15 @@ if ($action === 'cupom') {
           </thead>
           <tbody>
             <?php if (!$itens): ?>
-              <tr><td colspan="3" class="muted">Sem itens vinculados (tabela saidas não encontrou pedido).</td></tr>
+              <tr><td colspan="3" class="muted">Sem itens cadastrados na tabela <b>venda_itens</b>.</td></tr>
             <?php else: foreach ($itens as $it): ?>
               <tr>
                 <td>
-                  <b><?= e($it['nome']) ?></b>
+                  <b><?= e((string)$it['nome']) ?></b>
                   <?php if (!empty($it['codigo'])): ?>
-                    <div class="muted"><?= e($it['codigo']) ?></div>
+                    <div class="muted"><?= e((string)$it['codigo']) ?></div>
                   <?php endif; ?>
-                  <div class="muted"><?= e($it['un']) ?> • <?= e(brl((float)$it['preco'])) ?></div>
+                  <div class="muted"><?= e((string)$it['un']) ?> • <?= e(brl((float)$it['preco'])) ?></div>
                 </td>
                 <td class="r"><?= e(rtrim(rtrim(number_format((float)$it['qtd'],3,',','.'),'0'),',')) ?></td>
                 <td class="r"><?= e(brl((float)$it['total'])) ?></td>
@@ -731,7 +719,6 @@ $csrf = csrf_token();
     .suggest .t { font-weight: 900; font-size: 12px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
     .suggest .s { font-size: 12px; color: #64748b; white-space: nowrap }
 
-    /* Itens da venda */
     .sale-box { border: 1px solid rgba(148, 163, 184, .22); border-radius: 14px; background: rgba(248, 250, 252, .7); padding: 10px 12px; max-height: 180px; overflow: auto; -webkit-overflow-scrolling: touch; }
     .sale-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed rgba(148, 163, 184, .35); font-size: 12px; }
     .sale-row:last-child { border-bottom: none }
@@ -1064,8 +1051,7 @@ $csrf = csrf_token();
                 </div>
 
                 <div class="muted mt-3">
-                  <b>Obs.:</b> os <b>itens</b> aparecem se a venda estiver vinculada na tabela <b>saidas</b> (campo <b>pedido</b>).
-                  Este arquivo tenta casar automaticamente: <b>id</b>, <b>0000id</b> ou <b>V{id}</b>.
+                  <b>Obs.:</b> os <b>itens</b> são carregados da tabela <b>venda_itens</b> via <b>venda_id</b>.
                 </div>
               </div>
             </div>
@@ -1161,7 +1147,6 @@ $csrf = csrf_token();
 
   <script>
     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
     const el = (id) => document.getElementById(id);
 
     const state = {
@@ -1183,7 +1168,6 @@ $csrf = csrf_token();
 
     function fmtDate(iso){
       if(!iso) return '—';
-      // iso yyyy-mm-dd
       const p = String(iso).split('-');
       if(p.length===3) return `${p[2]}/${p[1]}/${p[0]}`;
       return iso;
@@ -1191,8 +1175,6 @@ $csrf = csrf_token();
 
     function fmtDateTime(dt){
       if(!dt) return '—';
-      // MySQL DATETIME
-      // "2026-03-01 20:12:02"
       const [d,t] = String(dt).split(' ');
       return `${fmtDate(d)} ${t||''}`.trim();
     }
@@ -1230,6 +1212,18 @@ $csrf = csrf_token();
       el('pillLoading').style.display = on ? '' : 'none';
     }
 
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, (m) => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+      }[m]));
+    }
+
+    function numQ(v){
+      const n = Number(v||0);
+      if (Number.isInteger(n)) return String(n);
+      return n.toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:3});
+    }
+
     async function load(){
       setLoading(true);
       el('tbody').innerHTML = `<tr><td colspan="11" class="muted">Carregando…</td></tr>`;
@@ -1242,11 +1236,9 @@ $csrf = csrf_token();
         const js = await res.json();
         if(!js.ok) throw new Error(js.msg || 'Falha ao carregar');
 
-        // meta
         state.page = js.meta.page;
         state.pages = js.meta.pages;
 
-        // totais
         el('tQtd').textContent = js.totais.qtd;
         el('tSub').textContent = brl(js.totais.subtotal);
         el('tDesc').textContent = brl(js.totais.desconto);
@@ -1259,12 +1251,10 @@ $csrf = csrf_token();
         el('btnPrev').disabled = state.page <= 1;
         el('btnNext').disabled = state.page >= state.pages;
 
-        // range label
         const di = el('di').value ? fmtDate(el('di').value) : '—';
         const df = el('df').value ? fmtDate(el('df').value) : '—';
         el('lblRange').textContent = `Período: ${di} até ${df}`;
 
-        // rows
         const rows = js.rows || [];
         if(!rows.length){
           el('tbody').innerHTML = `<tr><td colspan="11" class="muted">Nenhuma venda encontrada com este filtro.</td></tr>`;
@@ -1276,7 +1266,7 @@ $csrf = csrf_token();
             ? `<span class="badge-soft b-open">DELIVERY</span>`
             : `<span class="badge-soft b-done">PRESENCIAL</span>`;
 
-          const pagBadge = `<span class="badge-soft b-open">${(r.pagamento||'—')}</span>`;
+          const pagBadge = `<span class="badge-soft b-open">${escapeHtml(r.pagamento||'—')}</span>`;
 
           let itensHtml = `<span class="muted">—</span>`;
           if (r.itens && r.itens.length){
@@ -1336,19 +1326,6 @@ $csrf = csrf_token();
       }
     }
 
-    function escapeHtml(s){
-      return String(s ?? '').replace(/[&<>"']/g, (m) => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-      }[m]));
-    }
-
-    function numQ(v){
-      // mostra 3 casas se precisar, senão inteiro
-      const n = Number(v||0);
-      if (Number.isInteger(n)) return String(n);
-      return n.toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:3});
-    }
-
     async function openDetails(id){
       try{
         const res = await fetch(`vendidos.php?action=one&id=${id}`, { headers: { 'X-CSRF': csrf }});
@@ -1373,7 +1350,7 @@ $csrf = csrf_token();
         el('dTotal').textContent = brl(v.total);
 
         if(!itens.length){
-          el('dItens').innerHTML = `<span class="muted">Sem itens vinculados (não encontrado em <b>saidas</b>).</span>`;
+          el('dItens').innerHTML = `<span class="muted">Sem itens cadastrados (tabela <b>venda_itens</b> vazia para esta venda).</span>`;
           el('dItensQtd').textContent = `0 itens`;
           el('dItensTot').textContent = brl(0);
         } else {
@@ -1406,13 +1383,11 @@ $csrf = csrf_token();
       window.open(`vendidos.php?action=cupom&id=${id}`, '_blank');
     }
 
-    // modal cupom
     el('btnCupomModal').addEventListener('click', () => {
       if (!state.lastCupomId) return;
       openCupom(state.lastCupomId);
     });
 
-    // paginação
     el('btnPrev').addEventListener('click', () => {
       if (state.page <= 1) return;
       state.page -= 1;
@@ -1424,7 +1399,6 @@ $csrf = csrf_token();
       load();
     });
 
-    // filtrar / limpar
     el('btnFiltrar').addEventListener('click', () => {
       state.page = 1;
       load();
@@ -1441,14 +1415,12 @@ $csrf = csrf_token();
       load();
     });
 
-    // por página
     el('per').addEventListener('change', () => {
       state.per = Number(el('per').value || 25);
       state.page = 1;
       load();
     });
 
-    // export
     el('btnExcel').addEventListener('click', () => {
       window.location.href = buildExportUrl('excel');
     });
@@ -1456,14 +1428,12 @@ $csrf = csrf_token();
       window.open(buildExportUrl('print'), '_blank');
     });
 
-    // busca global sincroniza com q
     el('qGlobal').addEventListener('input', () => {
       el('q').value = el('qGlobal').value;
       scheduleFilter();
       scheduleSuggest();
     });
 
-    // busca local com debounce (não ficar batendo no servidor a cada tecla)
     el('q').addEventListener('input', () => {
       el('qGlobal').value = el('q').value;
       scheduleFilter();
@@ -1478,8 +1448,8 @@ $csrf = csrf_token();
       }, 450);
     }
 
-    // sugestões
     function hideSuggest(){ el('suggest').style.display = 'none'; el('suggest').innerHTML=''; }
+
     function scheduleSuggest(){
       clearTimeout(state.suggestTimer);
       state.suggestTimer = setTimeout(async () => {
@@ -1509,6 +1479,7 @@ $csrf = csrf_token();
     function escapeJs(s){
       return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     }
+
     window.pickSuggest = function(name){
       el('q').value = name;
       el('qGlobal').value = name;
@@ -1524,7 +1495,6 @@ $csrf = csrf_token();
       if (!wrap.contains(ev.target)) hideSuggest();
     });
 
-    // init
     (function init(){
       state.per = Number(el('per').value || 25);
       load();
