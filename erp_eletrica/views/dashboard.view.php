@@ -19,6 +19,48 @@
     </div>
 </div>
 
+<?php if ($caixaAberto): ?>
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm bg-primary text-white">
+            <div class="card-body">
+                <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual em Caixa</div>
+                <h3 class="mb-0 fw-bold">
+                    <?= formatarMoeda($caixaAberto['valor_abertura'] + $cashierSummary['vendas_dinheiro'] + $cashierSummary['suprimentos'] - $cashierSummary['sangrias']) ?>
+                </h3>
+                <div class="mt-2 small">
+                    <span class="badge bg-white text-primary">CAIXA ABERTO</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small fw-bold text-uppercase mb-2">Vendas (Dinheiro)</div>
+                <h4 class="mb-0 fw-bold text-success">+ <?= formatarMoeda($cashierSummary['vendas_dinheiro']) ?></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small fw-bold text-uppercase mb-2">Sangrias</div>
+                <h4 class="mb-0 fw-bold text-danger">- <?= formatarMoeda($cashierSummary['sangrias']) ?></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small fw-bold text-uppercase mb-2">Suprimentos</div>
+                <h4 class="mb-0 fw-bold text-info">+ <?= formatarMoeda($cashierSummary['suprimentos']) ?></h4>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
         <div class="card h-100">

@@ -53,6 +53,13 @@ class SalesController extends BaseController {
             try {
                 $db->beginTransaction();
 
+                // Validation: Cashier Open Check
+                $cashierModel = new \App\Models\Cashier();
+                $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+                if (!$caixaAberto) {
+                    throw new \Exception("É necessário abrir o caixa antes de realizar vendas.");
+                }
+
                 // Validation: Discount Limit
                 $maxDiscount = 100; // Default if column missing
                 try {

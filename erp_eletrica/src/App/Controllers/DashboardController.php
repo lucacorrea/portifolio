@@ -76,11 +76,17 @@ class DashboardController extends BaseController {
             ORDER BY v.data_venda DESC LIMIT 5
         ")->fetchAll();
 
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $filial_id);
+        $cashierSummary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
+
         $this->render('dashboard', [
             'stats' => $stats,
             'top_produtos' => $top_produtos,
             'recentes_vendas' => $recentes_vendas,
             'faturamento_historico' => $faturamento_historico,
+            'caixaAberto' => $caixaAberto,
+            'cashierSummary' => $cashierSummary,
             'title' => 'Gestão de Materiais Elétricos',
             'pageTitle' => 'Painel de Operações Comerciais'
         ]);
