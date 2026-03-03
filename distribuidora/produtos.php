@@ -1,3 +1,55 @@
+<?php
+
+declare(strict_types=1);
+session_start();
+require_once __DIR__ . '/assets/conexao.php';
+
+function e(string $s): string
+{
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+function fmtMoney($v): string
+{
+    return 'R$ ' . number_format((float)$v, 2, ',', '.');
+}
+
+if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+$csrf = $_SESSION['csrf_token'];
+
+$flash = $_SESSION['flash'] ?? null;
+unset($_SESSION['flash']);
+
+$pdo = db();
+
+// selects
+$categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
+$fornecedores = $pdo->query("SELECT id, nome, status FROM fornecedores ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+// produtos
+$produtos = $pdo->query("
+  SELECT p.*,
+         c.nome AS categoria_nome,
+         f.nome AS fornecedor_nome
+  FROM produtos p
+  LEFT JOIN categorias c ON c.id = p.categoria_id
+  LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
+  ORDER BY p.id DESC
+  LIMIT 2000
+")->fetchAll(PDO::FETCH_ASSOC);
+
+/**
+ * ✅ CAMINHO DA IMAGEM (como você pediu)
+ * Banco: images/arquivo.png
+ * Exibir no produtos.php: ./assets/dados/produtos/images/arquivo.png
+ */
+function img_url_from_db(string $dbValue): string
+{
+    $v = trim($dbValue);
+    if ($v === '') return '';
+    $v = ltrim($v, '/');
+    return 'assets/dados/produtos/' . $v; // assets/dados/produtos/images/xxx.png
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -82,24 +134,22 @@
             min-width: 160px;
         }
 
-        /* ✅ Responsivo real: no celular NÃO “esmaga”/não deixa letras em pé (vira scroll horizontal) */
+        /* ✅ Responsivo com scroll horizontal (SEM texto em pé) */
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+
         #tbProdutos {
+            width: 100%;
             min-width: 1180px;
         }
 
-        /* Coluna Produto: pode quebrar linha (para não cortar texto) */
-        #tbProdutos th:nth-child(3),
-        #tbProdutos td:nth-child(3) {
-            white-space: normal !important;
-            word-break: break-word !important;
-            overflow-wrap: anywhere !important;
-            max-width: 420px;
-        }
-
-        /* Demais colunas: não quebrar */
-        #tbProdutos th:not(:nth-child(3)),
-        #tbProdutos td:not(:nth-child(3)) {
-            white-space: nowrap;
+        /* ✅ FORÇAR NOWRAP EM TUDO (não quebra linha) */
+        #tbProdutos th,
+        #tbProdutos td {
+            white-space: nowrap !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
         }
 
         /* badge */
@@ -153,6 +203,21 @@
             max-width: 320px;
             width: 100%;
         }
+
+        .flash-auto-hide {
+            transition: opacity .35s ease, transform .35s ease;
+        }
+
+        .flash-auto-hide.hide {
+            opacity: 0;
+            transform: translateY(-6px);
+            pointer-events: none;
+        }
+
+        .muted {
+            font-size: 12px;
+            color: #64748b;
+        }
     </style>
 </head>
 
@@ -164,7 +229,7 @@
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="index.html" class="d-flex align-items-center gap-2">
+            <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
             </a>
         </div>
@@ -173,7 +238,7 @@
             <ul>
                 <!-- Dashboard (sem dropdown) -->
                 <li class="nav-item">
-                    <a href="index.html">
+                    <a href="dashboard.php">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -201,9 +266,9 @@
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-                        <li><a href="pedidos.html">Pedidos</a></li>
-                        <li><a href="vendas.html">Vendas</a></li>
-                        <li><a href="devolucoes.html">Devoluções</a></li>
+                        <li><a href="vendidos.php">Vendidos</a></li>
+                        <li><a href="vendas.php">Vendas</a></li>
+                        <li><a href="devolucoes.php">Devoluções</a></li>
                     </ul>
                 </li>
 
@@ -223,11 +288,11 @@
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse show dropdown-nav">
-                        <li><a href="produtos.html" class="active">Produtos</a></li>
-                        <li><a href="inventario.html">Inventário</a></li>
-                        <li><a href="entradas.html">Entradas</a></li>
-                        <li><a href="saidas.html">Saídas</a></li>
-                        <li><a href="estoque-minimo.html">Estoque Mínimo</a></li>
+                        <li><a href="produtos.php" class="active">Produtos</a></li>
+                        <li><a href="inventario.php">Inventário</a></li>
+                        <li><a href="entradas.php">Entradas</a></li>
+                        <li><a href="saidas.php">Saídas</a></li>
+                        <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
                     </ul>
                 </li>
 
@@ -250,14 +315,14 @@
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-                        <li><a href="clientes.html">Clientes</a></li>
-                        <li><a href="fornecedores.html">Fornecedores</a></li>
-                        <li><a href="categorias.html">Categorias</a></li>
+                        <li><a href="clientes.php">Clientes</a></li>
+                        <li><a href="fornecedores.php">Fornecedores</a></li>
+                        <li><a href="categorias.php">Categorias</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="relatorios.html">
+                    <a href="relatorios.php">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -286,13 +351,13 @@
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
-                        <li><a href="usuarios.html">Usuários e Permissões</a></li>
-                        <li><a href="parametros.html">Parâmetros do Sistema</a></li>
+                        <li><a href="usuarios.php">Usuários e Permissões</a></li>
+                        <li><a href="parametros.php">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-item">
-                    <a href="suporte.html">
+                    <a href="suporte.php">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -318,15 +383,14 @@
                     <div class="col-lg-5 col-md-5 col-6">
                         <div class="header-left d-flex align-items-center">
                             <div class="menu-toggle-btn mr-15">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
                             <div class="header-search d-none d-md-flex">
-                                <form action="#">
+                                <form action="#" onsubmit="return false;">
                                     <input type="text" placeholder="Buscar produto..." id="qGlobal" />
-                                    <button type="submit" onclick="return false"><i
-                                            class="lni lni-search-alt"></i></button>
+                                    <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                                 </form>
                             </div>
                         </div>
@@ -351,23 +415,10 @@
                                 </button>
 
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                                    <li>
-                                        <div class="author-info flex items-center !p-1">
-                                            <div class="image">
-                                                <img src="assets/images/profile/profile-image.png" alt="image" />
-                                            </div>
-                                            <div class="content">
-                                                <h4 class="text-sm">Administrador</h4>
-                                                <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs"
-                                                    href="#">Admin</a>
-                                            </div>
-                                        </div>
-                                    </li>
+                                    <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                                    <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
                                     <li class="divider"></li>
-                                    <li><a href="perfil.html"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                                    <li><a href="usuarios.html"><i class="lni lni-cog"></i> Usuários</a></li>
-                                    <li class="divider"></li>
-                                    <li><a href="logout.html"><i class="lni lni-exit"></i> Sair</a></li>
+                                    <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -389,23 +440,27 @@
                     </div>
                 </div>
 
+                <?php if ($flash): ?>
+                    <div id="flashBox" class="alert alert-<?= e((string)$flash['type']) ?> flash-auto-hide mt-2">
+                        <?= e((string)$flash['msg']) ?>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Toolbar -->
                 <div class="card-style mb-30">
                     <div class="row g-3 align-items-end">
                         <div class="col-12 col-md-6 col-lg-3">
                             <label class="form-label">Pesquisar</label>
-                            <input type="text" class="form-control" id="qProdutos"
-                                placeholder="Nome, código, categoria..." />
+                            <input type="text" class="form-control" id="qProdutos" placeholder="Nome, código, categoria, fornecedor..." />
                         </div>
 
                         <div class="col-12 col-md-6 col-lg-3">
                             <label class="form-label">Categoria</label>
                             <select class="form-select" id="fCategoria">
                                 <option value="">Todas</option>
-                                <option>Alimentos</option>
-                                <option>Bebidas</option>
-                                <option>Limpeza</option>
-                                <option>Higiene</option>
+                                <?php foreach ($categorias as $c): ?>
+                                    <option value="<?= (int)$c['id'] ?>"><?= e((string)$c['nome']) ?><?= (strtoupper((string)$c['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
 
@@ -422,13 +477,13 @@
                         <div class="col-12 col-md-6 col-lg-3">
                             <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
                                 <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal"
-                                    data-bs-target="#modalProduto" id="btnNovo">
+                                    data-bs-target="#modalProduto" id="btnNovo" type="button">
                                     <i class="lni lni-plus me-1"></i> Novo
                                 </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel">
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                                     <i class="lni lni-download me-1"></i> Excel
                                 </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF">
+                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
                                     <i class="lni lni-printer me-1"></i> PDF
                                 </button>
                             </div>
@@ -444,7 +499,7 @@
                                 <tr>
                                     <th class="minw-120">Imagem</th>
                                     <th class="minw-140">Código</th>
-                                    <th class="text-nowrap">Produto</th>
+                                    <th>Produto</th>
                                     <th class="minw-140">Categoria</th>
                                     <th class="minw-140">Unidade</th>
                                     <th class="minw-140">Preço</th>
@@ -456,77 +511,60 @@
                             </thead>
 
                             <tbody>
-                                <tr data-categoria="Alimentos" data-status="ATIVO" data-baixo="0">
-                                    <td><img class="prod-img" alt="Arroz" /></td>
-                                    <td class="text-nowrap">P0001</td>
-                                    <td class="text-nowrap">Arroz 5kg (Tipo 1)</td>
-                                    <td class="text-nowrap">Alimentos</td>
-                                    <td class="text-nowrap">Pacote</td>
-                                    <td class="text-nowrap">R$ 28,90</td>
-                                    <td class="text-nowrap">120</td>
-                                    <td class="text-nowrap">30</td>
-                                    <td class="text-nowrap"><span class="badge-soft badge-soft-success">ATIVO</span></td>
-                                    <td class="text-end">
-                                        <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i
-                                                class="lni lni-pencil"></i></button>
-                                        <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel"
-                                            title="Excluir"><i class="lni lni-trash-can"></i></button>
-                                    </td>
-                                </tr>
+                                <?php foreach ($produtos as $p): ?>
+                                    <?php
+                                    $id = (int)$p['id'];
+                                    $catId = (int)($p['categoria_id'] ?? 0);
+                                    $forId = (int)($p['fornecedor_id'] ?? 0);
 
-                                <tr data-categoria="Alimentos" data-status="ATIVO" data-baixo="1">
-                                    <td><img class="prod-img" alt="Açúcar" /></td>
-                                    <td class="text-nowrap">P0002</td>
-                                    <td class="text-nowrap">Açúcar 1kg</td>
-                                    <td class="text-nowrap">Alimentos</td>
-                                    <td class="text-nowrap">Pacote</td>
-                                    <td class="text-nowrap">R$ 6,50</td>
-                                    <td class="text-nowrap">18</td>
-                                    <td class="text-nowrap">40</td>
-                                    <td class="text-nowrap"><span class="badge-soft badge-soft-warning">BAIXO</span></td>
-                                    <td class="text-end">
-                                        <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i
-                                                class="lni lni-pencil"></i></button>
-                                        <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel"
-                                            title="Excluir"><i class="lni lni-trash-can"></i></button>
-                                    </td>
-                                </tr>
+                                    $status = strtoupper((string)($p['status'] ?? 'ATIVO')) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+                                    $estoque = (int)($p['estoque'] ?? 0);
+                                    $minimo = (int)($p['minimo'] ?? 0);
+                                    $baixo = ($status !== 'INATIVO') && ($estoque < $minimo);
 
-                                <tr data-categoria="Limpeza" data-status="ATIVO" data-baixo="1">
-                                    <td><img class="prod-img" alt="Detergente" /></td>
-                                    <td class="text-nowrap">P0003</td>
-                                    <td class="text-nowrap">Detergente 500ml</td>
-                                    <td class="text-nowrap">Limpeza</td>
-                                    <td class="text-nowrap">Unidade</td>
-                                    <td class="text-nowrap">R$ 3,20</td>
-                                    <td class="text-nowrap">9</td>
-                                    <td class="text-nowrap">25</td>
-                                    <td class="text-nowrap"><span class="badge-soft badge-soft-warning">BAIXO</span></td>
-                                    <td class="text-end">
-                                        <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i
-                                                class="lni lni-pencil"></i></button>
-                                        <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel"
-                                            title="Excluir"><i class="lni lni-trash-can"></i></button>
-                                    </td>
-                                </tr>
+                                    $badge = ($status === 'INATIVO')
+                                        ? '<span class="badge-soft badge-soft-gray">INATIVO</span>'
+                                        : ($baixo ? '<span class="badge-soft badge-soft-warning">BAIXO</span>' : '<span class="badge-soft badge-soft-success">ATIVO</span>');
 
-                                <tr data-categoria="Bebidas" data-status="INATIVO" data-baixo="0">
-                                    <td><img class="prod-img" alt="Refrigerante" /></td>
-                                    <td class="text-nowrap">P0004</td>
-                                    <td class="text-nowrap">Refrigerante 2L</td>
-                                    <td class="text-nowrap">Bebidas</td>
-                                    <td class="text-nowrap">Unidade</td>
-                                    <td class="text-nowrap">R$ 10,00</td>
-                                    <td class="text-nowrap">0</td>
-                                    <td class="text-nowrap">12</td>
-                                    <td class="text-nowrap"><span class="badge-soft badge-soft-gray">INATIVO</span></td>
-                                    <td class="text-end">
-                                        <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i
-                                                class="lni lni-pencil"></i></button>
-                                        <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel"
-                                            title="Excluir"><i class="lni lni-trash-can"></i></button>
-                                    </td>
-                                </tr>
+                                    $catNome = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
+                                    $forNome = trim((string)($p['fornecedor_nome'] ?? '')) ?: '—';
+
+                                    $imgDb = trim((string)($p['imagem'] ?? '')); // images/xxx.png
+                                    $imgUrl = img_url_from_db($imgDb); // assets/dados/produtos/images/xxx.png
+                                    ?>
+                                    <tr
+                                        data-id="<?= $id ?>"
+                                        data-codigo="<?= e((string)$p['codigo']) ?>"
+                                        data-nome="<?= e((string)$p['nome']) ?>"
+                                        data-status="<?= e($status) ?>"
+                                        data-cat-id="<?= $catId ?>"
+                                        data-for-id="<?= $forId ?>"
+                                        data-unidade="<?= e((string)($p['unidade'] ?? '')) ?>"
+                                        data-preco="<?= e((string)($p['preco'] ?? '0')) ?>"
+                                        data-estoque="<?= $estoque ?>"
+                                        data-minimo="<?= $minimo ?>"
+                                        data-obs="<?= e((string)($p['obs'] ?? '')) ?>"
+                                        data-categoria="<?= $catId ?>"
+                                        data-baixo="<?= $baixo ? 1 : 0 ?>"
+                                        data-img="<?= e($imgUrl) ?>">
+                                        <td><img class="prod-img" alt="<?= e((string)$p['nome']) ?>" src="<?= e($imgUrl) ?>" /></td>
+                                        <td><?= e((string)$p['codigo']) ?></td>
+                                        <td>
+                                            <div style="font-weight:800;color:#0f172a;line-height:1.1;"><?= e((string)$p['nome']) ?></div>
+                                            <div class="muted">Fornecedor: <?= e($forNome) ?></div>
+                                        </td>
+                                        <td><?= e($catNome) ?></td>
+                                        <td><?= e((string)($p['unidade'] ?? '')) ?></td>
+                                        <td><?= e(fmtMoney((string)($p['preco'] ?? '0'))) ?></td>
+                                        <td><?= $estoque ?></td>
+                                        <td><?= $minimo ?></td>
+                                        <td><?= $badge ?></td>
+                                        <td class="text-end">
+                                            <button class="main-btn light-btn btn-hover icon-btn btnEdit" type="button" title="Editar"><i class="lni lni-pencil"></i></button>
+                                            <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" type="button" title="Excluir"><i class="lni lni-trash-can"></i></button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
@@ -548,6 +586,12 @@
         </footer>
     </main>
 
+    <!-- DELETE FORM -->
+    <form id="frmDelete" action="assets/dados/produtos/excluirProdutos.php" method="post" style="display:none;">
+        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+        <input type="hidden" name="id" id="delId" value="">
+    </form>
+
     <!-- Modal Produto -->
     <div class="modal fade" id="modalProduto" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -558,9 +602,10 @@
                 </div>
 
                 <div class="modal-body">
-                    <form id="formProduto">
-                        <input type="hidden" id="editIndex" value="" />
-                        <input type="hidden" id="imgData" value="" />
+                    <form id="formProduto" action="assets/dados/produtos/adicionarProdutos.php" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+                        <input type="hidden" name="id" id="pId" value="">
+                        <input type="hidden" name="img_remove" id="imgRemove" value="0">
 
                         <div class="row g-3">
                             <!-- IMAGEM CENTRAL -->
@@ -570,9 +615,8 @@
                                         <label class="form-label">Imagem</label>
                                         <div class="d-flex flex-column gap-2 align-items-center">
                                             <img id="previewImg" class="img-preview" alt="Prévia" />
-                                            <input type="file" class="form-control" id="pImagem" accept="image/*" />
-                                            <button type="button" class="main-btn light-btn btn-hover btn-compact w-100"
-                                                id="btnRemoverImagem">Remover</button>
+                                            <input type="file" class="form-control" id="pImagem" name="imagem" accept="image/*" />
+                                            <button type="button" class="main-btn light-btn btn-hover btn-compact w-100" id="btnRemoverImagem">Remover</button>
                                         </div>
                                     </div>
                                 </div>
@@ -584,18 +628,17 @@
 
                             <div class="col-md-3">
                                 <label class="form-label">Código</label>
-                                <input type="text" class="form-control" id="pCodigo" placeholder="Ex: P0005" required />
+                                <input type="text" class="form-control" id="pCodigo" name="codigo" placeholder="Ex: P0005" required />
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Produto</label>
-                                <input type="text" class="form-control" id="pNome" placeholder="Nome do produto"
-                                    required />
+                                <input type="text" class="form-control" id="pNome" name="nome" placeholder="Nome do produto" required />
                             </div>
 
                             <div class="col-md-3">
                                 <label class="form-label">Status</label>
-                                <select class="form-select" id="pStatus" required>
+                                <select class="form-select" id="pStatus" name="status" required>
                                     <option value="ATIVO">Ativo</option>
                                     <option value="INATIVO">Inativo</option>
                                 </select>
@@ -603,18 +646,27 @@
 
                             <div class="col-md-4">
                                 <label class="form-label">Categoria</label>
-                                <select class="form-select" id="pCategoria" required>
+                                <select class="form-select" id="pCategoria" name="categoria_id" required>
                                     <option value="">Selecione…</option>
-                                    <option>Alimentos</option>
-                                    <option>Bebidas</option>
-                                    <option>Limpeza</option>
-                                    <option>Higiene</option>
+                                    <?php foreach ($categorias as $c): ?>
+                                        <option value="<?= (int)$c['id'] ?>"><?= e((string)$c['nome']) ?><?= (strtoupper((string)$c['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Fornecedor</label>
+                                <select class="form-select" id="pFornecedor" name="fornecedor_id" required>
+                                    <option value="">Selecione…</option>
+                                    <?php foreach ($fornecedores as $f): ?>
+                                        <option value="<?= (int)$f['id'] ?>"><?= e((string)$f['nome']) ?><?= (strtoupper((string)$f['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
 
                             <div class="col-md-4">
                                 <label class="form-label">Unidade</label>
-                                <select class="form-select" id="pUnidade" required>
+                                <select class="form-select" id="pUnidade" name="unidade" required>
                                     <option value="">Selecione…</option>
                                     <option>Unidade</option>
                                     <option>Pacote</option>
@@ -626,31 +678,30 @@
 
                             <div class="col-md-4">
                                 <label class="form-label">Preço</label>
-                                <input type="text" class="form-control" id="pPreco" placeholder="0,00" required />
+                                <input type="text" class="form-control" id="pPreco" name="preco" placeholder="0,00" required />
                             </div>
 
                             <div class="col-md-4">
                                 <label class="form-label">Estoque</label>
-                                <input type="number" class="form-control" id="pEstoque" min="0" value="0" required />
+                                <input type="number" class="form-control" id="pEstoque" name="estoque" min="0" value="0" required />
                             </div>
 
                             <div class="col-md-4">
                                 <label class="form-label">Estoque mínimo</label>
-                                <input type="number" class="form-control" id="pMinimo" min="0" value="0" required />
+                                <input type="number" class="form-control" id="pMinimo" name="minimo" min="0" value="0" required />
                             </div>
 
                             <div class="col-md-4">
                                 <label class="form-label">Observação</label>
-                                <input type="text" class="form-control" id="pObs" placeholder="Opcional" />
+                                <input type="text" class="form-control" id="pObs" name="obs" placeholder="Opcional" />
                             </div>
                         </div>
                     </form>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="main-btn light-btn btn-hover btn-compact"
-                        data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="main-btn primary-btn btn-hover btn-compact" id="btnSalvarProduto">
+                    <button type="button" class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="formProduto" class="main-btn primary-btn btn-hover btn-compact">
                         <i class="lni lni-save me-1"></i> Salvar
                     </button>
                 </div>
@@ -667,6 +718,16 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
     <script>
+        // flash 1.5s
+        (function() {
+            const box = document.getElementById('flashBox');
+            if (!box) return;
+            setTimeout(() => {
+                box.classList.add('hide');
+                setTimeout(() => box.remove(), 400);
+            }, 1500);
+        })();
+
         const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
         <rect width="100%" height="100%" fill="#f1f5f9"/>
@@ -676,7 +737,14 @@
       </svg>
     `);
 
-        document.querySelectorAll("img.prod-img").forEach(img => img.src = DEFAULT_IMG);
+        // fallback imagem (NÃO sobrescreve as válidas)
+        document.querySelectorAll("img.prod-img").forEach(img => {
+            const src = img.getAttribute('src') || '';
+            if (!src) img.src = DEFAULT_IMG;
+            img.addEventListener('error', () => img.src = DEFAULT_IMG, {
+                once: true
+            });
+        });
 
         const tb = document.getElementById('tbProdutos');
         const qProdutos = document.getElementById('qProdutos');
@@ -685,11 +753,13 @@
         const fStatus = document.getElementById('fStatus');
         const infoCount = document.getElementById('infoCount');
 
-        function norm(s) { return String(s ?? '').toLowerCase().trim(); }
+        function norm(s) {
+            return String(s ?? '').toLowerCase().trim();
+        }
 
         function aplicarFiltros() {
             const q = norm(qProdutos.value || qGlobal.value);
-            const cat = norm(fCategoria.value);
+            const cat = String(fCategoria.value || '').trim(); // id
             const st = fStatus.value;
 
             const rows = Array.from(tb.querySelectorAll('tbody tr'));
@@ -697,8 +767,8 @@
 
             rows.forEach(tr => {
                 const text = norm(tr.innerText);
-                const rCat = norm(tr.getAttribute('data-categoria'));
-                const rStatus = tr.getAttribute('data-status');
+                const rCat = String(tr.getAttribute('data-categoria') || '').trim();
+                const rStatus = tr.getAttribute('data-status') || 'ATIVO';
                 const rBaixo = tr.getAttribute('data-baixo') === "1";
 
                 let ok = true;
@@ -721,13 +791,13 @@
         fStatus.addEventListener('change', aplicarFiltros);
         aplicarFiltros();
 
-        // ===== Modal =====
+        // modal
         const modalEl = document.getElementById('modalProduto');
         const modal = new bootstrap.Modal(modalEl);
         const modalTitle = document.getElementById('modalProdutoTitle');
 
-        const editIndex = document.getElementById('editIndex');
-        const imgData = document.getElementById('imgData');
+        const pId = document.getElementById('pId');
+        const imgRemove = document.getElementById('imgRemove');
         const previewImg = document.getElementById('previewImg');
         const pImagem = document.getElementById('pImagem');
 
@@ -735,21 +805,28 @@
         const pNome = document.getElementById('pNome');
         const pStatus = document.getElementById('pStatus');
         const pCategoria = document.getElementById('pCategoria');
+        const pFornecedor = document.getElementById('pFornecedor');
         const pUnidade = document.getElementById('pUnidade');
         const pPreco = document.getElementById('pPreco');
         const pEstoque = document.getElementById('pEstoque');
         const pMinimo = document.getElementById('pMinimo');
         const pObs = document.getElementById('pObs');
 
+        function setPreview(src) {
+            previewImg.src = src || DEFAULT_IMG;
+        }
+
         function limparForm() {
-            editIndex.value = '';
-            imgData.value = DEFAULT_IMG;
-            previewImg.src = DEFAULT_IMG;
+            pId.value = '';
+            imgRemove.value = '0';
             pImagem.value = '';
+            setPreview(DEFAULT_IMG);
+
             pCodigo.value = '';
             pNome.value = '';
             pStatus.value = 'ATIVO';
             pCategoria.value = '';
+            pFornecedor.value = '';
             pUnidade.value = '';
             pPreco.value = '';
             pEstoque.value = 0;
@@ -762,19 +839,28 @@
             limparForm();
         });
 
+        // preview ao escolher arquivo
         pImagem.addEventListener('change', () => {
             const file = pImagem.files && pImagem.files[0];
             if (!file) return;
-            if (!file.type.startsWith('image/')) { alert('Selecione uma imagem válida.'); pImagem.value = ''; return; }
+            if (!file.type.startsWith('image/')) {
+                alert('Selecione uma imagem válida.');
+                pImagem.value = '';
+                return;
+            }
+            imgRemove.value = '0';
             const reader = new FileReader();
-            reader.onload = () => { imgData.value = String(reader.result || DEFAULT_IMG); previewImg.src = imgData.value; };
+            reader.onload = () => setPreview(String(reader.result || DEFAULT_IMG));
             reader.readAsDataURL(file);
         });
 
         document.getElementById('btnRemoverImagem').addEventListener('click', () => {
-            imgData.value = DEFAULT_IMG; previewImg.src = DEFAULT_IMG; pImagem.value = '';
+            imgRemove.value = '1';
+            pImagem.value = '';
+            setPreview(DEFAULT_IMG);
         });
 
+        // editar/excluir
         tb.addEventListener('click', (e) => {
             const btnEdit = e.target.closest('.btnEdit');
             const btnDel = e.target.closest('.btnDel');
@@ -782,111 +868,61 @@
             if (!tr) return;
 
             if (btnDel) {
-                const nome = tr.children[2].innerText;
-                if (confirm(`Deseja remover o produto: "${nome}"?`)) { tr.remove(); aplicarFiltros(); }
+                const id = tr.getAttribute('data-id');
+                const nome = tr.getAttribute('data-nome') || '';
+                if (confirm(`Deseja remover o produto: "${nome}"?`)) {
+                    document.getElementById('delId').value = id || '';
+                    document.getElementById('frmDelete').submit();
+                }
                 return;
             }
 
             if (btnEdit) {
-                const rows = Array.from(tb.querySelectorAll('tbody tr'));
-                editIndex.value = rows.indexOf(tr);
                 modalTitle.textContent = 'Editar Produto';
+                pId.value = tr.getAttribute('data-id') || '';
 
-                const img = tr.querySelector('img.prod-img');
-                imgData.value = img?.src || DEFAULT_IMG;
-                previewImg.src = imgData.value;
-                pImagem.value = '';
-
-                pCodigo.value = tr.children[1].innerText.trim();
-                pNome.value = tr.children[2].innerText.trim();
-                pCategoria.value = tr.children[3].innerText.trim();
-                pUnidade.value = tr.children[4].innerText.trim();
-                pPreco.value = tr.children[5].innerText.replace('R$', '').trim();
-                pEstoque.value = parseInt(tr.children[6].innerText.trim() || '0', 10);
-                pMinimo.value = parseInt(tr.children[7].innerText.trim() || '0', 10);
+                pCodigo.value = tr.getAttribute('data-codigo') || '';
+                pNome.value = tr.getAttribute('data-nome') || '';
                 pStatus.value = tr.getAttribute('data-status') || 'ATIVO';
-                pObs.value = '';
+                pCategoria.value = tr.getAttribute('data-cat-id') || '';
+                pFornecedor.value = tr.getAttribute('data-for-id') || '';
+                pUnidade.value = tr.getAttribute('data-unidade') || '';
+                pPreco.value = (tr.getAttribute('data-preco') || '0').replace('.', ',');
+                pEstoque.value = tr.getAttribute('data-estoque') || 0;
+                pMinimo.value = tr.getAttribute('data-minimo') || 0;
+                pObs.value = tr.getAttribute('data-obs') || '';
+
+                const imgUrl = tr.getAttribute('data-img') || '';
+                imgRemove.value = '0';
+                pImagem.value = '';
+                setPreview(imgUrl || DEFAULT_IMG);
+
                 modal.show();
             }
         });
 
-        document.getElementById('btnSalvarProduto').addEventListener('click', () => {
-            if (!pCodigo.value.trim() || !pNome.value.trim() || !pCategoria.value || !pUnidade.value || !pPreco.value.trim()) {
-                alert('Preencha os campos obrigatórios.');
-                return;
-            }
-
-            const estoque = Number(pEstoque.value || 0);
-            const minimo = Number(pMinimo.value || 0);
-            const status = pStatus.value;
-            const baixo = (status !== 'INATIVO') && (estoque < minimo);
-
-            const badge = (status === 'INATIVO')
-                ? `<span class="badge-soft badge-soft-gray">INATIVO</span>`
-                : (baixo ? `<span class="badge-soft badge-soft-warning">BAIXO</span>` : `<span class="badge-soft badge-soft-success">ATIVO</span>`);
-
-            const precoFmt = (() => {
-                let s = pPreco.value.replace(/\./g, '').replace(',', '.');
-                const n = Number(s);
-                if (isNaN(n)) return `R$ ${pPreco.value}`;
-                return 'R$ ' + n.toFixed(2).replace('.', ',');
-            })();
-
-            const imgSrc = imgData.value || DEFAULT_IMG;
-
-            const htmlRow = `
-                <tr data-categoria="${pCategoria.value}" data-status="${status}" data-baixo="${baixo ? 1 : 0}">
-                <td><img class="prod-img" src="${imgSrc}" alt="${pNome.value.trim().replaceAll('"', '')}" /></td>
-                <td>${pCodigo.value.trim()}</td>
-                <td>${pNome.value.trim()}</td>
-                <td>${pCategoria.value}</td>
-                <td>${pUnidade.value}</td>
-                <td>${precoFmt}</td>
-                <td>${estoque}</td>
-                <td>${minimo}</td>
-                <td>${badge}</td>
-                <td class="text-end">
-                    <button class="main-btn light-btn btn-hover icon-btn btnEdit" title="Editar"><i class="lni lni-pencil"></i></button>
-                    <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" title="Excluir"><i class="lni lni-trash-can"></i></button>
-                </td>
-                </tr>
-            `;
-
-            const tbody = tb.querySelector('tbody');
-            if (editIndex.value !== '') {
-                const idx = Number(editIndex.value);
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-                if (rows[idx]) rows[idx].outerHTML = htmlRow;
-            } else {
-                tbody.insertAdjacentHTML('afterbegin', htmlRow);
-            }
-
-            modal.hide();
-            aplicarFiltros();
-        });
-
-        // ✅ Excel (mantido do seu)
+        // ✅ Excel (igual ao seu antigo)
         function exportExcel() {
             const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
 
             const now = new Date();
             const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
 
-            const cat = fCategoria.value || 'Todas';
+            const cat = fCategoria.value ? (fCategoria.options[fCategoria.selectedIndex].text) : 'Todas';
             const st = (fStatus.value || 'Todos');
 
             const header = ['Código', 'Produto', 'Categoria', 'Unidade', 'Preço', 'Estoque', 'Mínimo', 'Status'];
 
             const body = rows.map(tr => {
                 return [
-                    tr.children[1].innerText.trim(),
-                    tr.children[2].innerText.trim(),
-                    tr.children[3].innerText.trim(),
-                    tr.children[4].innerText.trim(),
-                    tr.children[5].innerText.trim(),
-                    tr.children[6].innerText.trim(),
-                    tr.children[7].innerText.trim(),
-                    tr.children[8].innerText.trim()
+                    tr.children[1].innerText.trim(), // Código
+                    (tr.getAttribute('data-nome') || tr.children[2].innerText.trim()), // Produto (sem "Fornecedor:")
+                    tr.children[3].innerText.trim(), // Categoria (nome)
+                    tr.children[4].innerText.trim(), // Unidade
+                    tr.children[5].innerText.trim(), // Preço
+                    tr.children[6].innerText.trim(), // Estoque
+                    tr.children[7].innerText.trim(), // Mínimo
+                    tr.children[8].innerText.trim() // Status (ATIVO/BAIXO/INATIVO)
                 ];
             });
 
@@ -903,7 +939,6 @@
               .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
               .muted { color: #555; font-weight: 700; }
               .center { text-align: center; }
-              .spacer td { border: none; padding: 4px; }
             </style>
           </head>
           <body>
@@ -913,20 +948,21 @@
             html += `<tr><td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - PRODUTOS</td></tr>`;
             html += `<tr><td class="muted">Gerado em:</td><td colspan="7">${dt}</td></tr>`;
             html += `<tr><td class="muted">Categoria:</td><td>${cat}</td><td class="muted">Status:</td><td>${st}</td><td colspan="4"></td></tr>`;
-            html += `<tr class="spacer"><td colspan="8">&nbsp;</td></tr>`;
 
             html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
             body.forEach(r => {
                 html += `<tr>${r.map((c, idx) => {
-                    const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-                    const cls = isCenterCol(idx) ? 'center' : '';
-                    return `<td class="${cls}">${safe}</td>`;
-                }).join('')}</tr>`;
+          const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+          const cls = isCenterCol(idx) ? 'center' : '';
+          return `<td class="${cls}">${safe}</td>`;
+        }).join('')}</tr>`;
             });
 
             html += `</table></body></html>`;
 
-            const blob = new Blob(["\ufeff" + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const blob = new Blob(["\ufeff" + html], {
+                type: 'application/vnd.ms-excel;charset=utf-8;'
+            });
             const url = URL.createObjectURL(blob);
 
             const a = document.createElement('a');
@@ -939,7 +975,7 @@
         }
         document.getElementById('btnExcel').addEventListener('click', exportExcel);
 
-        // ✅✅ PDF (AGORA IGUAL AO PRINT)
+        // ✅ PDF (igual ao seu antigo)
         function exportPDF() {
             if (!window.jspdf || !window.jspdf.jsPDF) {
                 alert('Biblioteca do PDF não carregou.');
@@ -950,32 +986,37 @@
             const now = new Date();
             const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
 
-            const cat = fCategoria.value || 'Todas';
+            const cat = fCategoria.value ? (fCategoria.options[fCategoria.selectedIndex].text) : 'Todas';
             const st = (fStatus.value || 'Todos');
 
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const {
+                jsPDF
+            } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'pt',
+                format: 'a4'
+            });
 
-            // margens iguais ao print
             const M = 70;
 
-            // Título
             doc.setTextColor(0, 0, 0);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(14);
             doc.text('PAINEL DA DISTRIBUIDORA - PRODUTOS', M, 55);
 
-            // Infos
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             doc.text(`Gerado em:  ${dt}`, M, 75);
             doc.text(`Categoria:  ${cat} | Status:  ${st}`, M, 92);
 
-            const head = [['Código', 'Produto', 'Categoria', 'Unidade', 'Preço', 'Estoque', 'Mínimo', 'Status']];
+            const head = [
+                ['Código', 'Produto', 'Categoria', 'Unidade', 'Preço', 'Estoque', 'Mínimo', 'Status']
+            ];
 
             const body = rows.map(tr => ([
                 tr.children[1].innerText.trim(),
-                tr.children[2].innerText.trim(),
+                (tr.getAttribute('data-nome') || tr.children[2].innerText.trim()),
                 tr.children[3].innerText.trim(),
                 tr.children[4].innerText.trim(),
                 tr.children[5].innerText.trim(),
@@ -988,15 +1029,21 @@
                 head,
                 body,
                 startY: 115,
-                margin: { left: M, right: M },
-
-                // visual limpo igual ao print
+                margin: {
+                    left: M,
+                    right: M
+                },
                 theme: 'plain',
                 styles: {
                     font: 'helvetica',
                     fontSize: 9,
                     textColor: [17, 24, 39],
-                    cellPadding: { top: 6, right: 6, bottom: 6, left: 6 },
+                    cellPadding: {
+                        top: 6,
+                        right: 6,
+                        bottom: 6,
+                        left: 6
+                    },
                     lineWidth: 0
                 },
                 headStyles: {
@@ -1008,18 +1055,21 @@
                 alternateRowStyles: {
                     fillColor: [248, 250, 252]
                 },
-
-                // centralizar colunas numéricas e status
                 columnStyles: {
-                    4: { halign: 'center' }, // Preço
-                    5: { halign: 'center' }, // Estoque
-                    6: { halign: 'center' }, // Mínimo
-                    7: { halign: 'center' }  // Status
+                    4: {
+                        halign: 'center'
+                    },
+                    5: {
+                        halign: 'center'
+                    },
+                    6: {
+                        halign: 'center'
+                    },
+                    7: {
+                        halign: 'center'
+                    }
                 },
-
-                // Ajuste de largura parecido com o print
-                didParseCell: function (data) {
-                    // remove qualquer borda
+                didParseCell: function(data) {
                     data.cell.styles.lineWidth = 0;
                 }
             });
