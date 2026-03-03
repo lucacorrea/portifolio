@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-
 @date_default_timezone_set('America/Manaus');
 
 /* =========================
@@ -11,7 +10,7 @@ declare(strict_types=1);
 $possibleConn = [
   __DIR__ . '/assets/conexao.php',
   __DIR__ . '/assets/php/conexao.php',
-  __DIR__ . '/assets/dados/_helpers.php', // se existir (não obrigatório)
+  __DIR__ . '/assets/dados/_helpers.php', // pode existir no seu projeto (não obrigatório)
 ];
 foreach ($possibleConn as $f) {
   if (is_file($f)) require_once $f;
@@ -28,65 +27,91 @@ $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
 /* =========================
-   HELPERS
+   HELPERS (com guard)
 ========================= */
-function e(string $s): string
-{
-  return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-}
-
-function brl($v): string
-{
-  $n = (float)$v;
-  return 'R$ ' . number_format($n, 2, ',', '.');
-}
-function nint($v): string
-{
-  return number_format((float)$v, 0, ',', '.');
-}
-function pct(float $cur, float $prev): float
-{
-  if ($prev <= 0) return $cur > 0 ? 100.0 : 0.0;
-  return (($cur - $prev) / $prev) * 100.0;
-}
-function dt(string $ymd): string
-{
-  // y-m-d -> d/m
-  $ts = strtotime($ymd);
-  return $ts ? date('d/m', $ts) : $ymd;
-}
-function monthPtShort(int $m): string
-{
-  static $map = [1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Abr', 5 => 'Mai', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago', 9 => 'Set', 10 => 'Out', 11 => 'Nov', 12 => 'Dez'];
-  return $map[$m] ?? (string)$m;
-}
-function buildMonthKeys(DateTimeImmutable $start, int $months): array
-{
-  $keys = [];
-  for ($i = 0; $i < $months; $i++) {
-    $d = $start->modify("+{$i} months");
-    $keys[] = $d->format('Y-m');
+if (!function_exists('e')) {
+  function e(string $s): string
+  {
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
   }
-  return $keys;
 }
-function buildMonthLabels(array $keys): array
-{
-  $labels = [];
-  foreach ($keys as $ym) {
-    [$y, $m] = array_map('intval', explode('-', $ym));
-    $labels[] = monthPtShort($m) . '/' . substr((string)$y, -2);
+if (!function_exists('brl')) {
+  function brl($v): string
+  {
+    $n = (float)$v;
+    return 'R$ ' . number_format($n, 2, ',', '.');
   }
-  return $labels;
 }
-function fetchKeyVal(PDO $pdo, string $sql, array $params, string $keyCol, string $valCol): array
-{
-  $st = $pdo->prepare($sql);
-  $st->execute($params);
-  $out = [];
-  while ($r = $st->fetch()) {
-    $out[(string)$r[$keyCol]] = $r[$valCol];
+if (!function_exists('nint')) {
+  function nint($v): string
+  {
+    return number_format((float)$v, 0, ',', '.');
   }
-  return $out;
+}
+if (!function_exists('pct')) {
+  function pct(float $cur, float $prev): float
+  {
+    if ($prev <= 0) return $cur > 0 ? 100.0 : 0.0;
+    return (($cur - $prev) / $prev) * 100.0;
+  }
+}
+if (!function_exists('dt')) {
+  function dt(string $ymd): string
+  {
+    $ts = strtotime($ymd);
+    return $ts ? date('d/m', $ts) : $ymd;
+  }
+}
+if (!function_exists('monthPtShort')) {
+  function monthPtShort(int $m): string
+  {
+    static $map = [1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Abr', 5 => 'Mai', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago', 9 => 'Set', 10 => 'Out', 11 => 'Nov', 12 => 'Dez'];
+    return $map[$m] ?? (string)$m;
+  }
+}
+if (!function_exists('buildMonthKeys')) {
+  function buildMonthKeys(DateTimeImmutable $start, int $months): array
+  {
+    $keys = [];
+    for ($i = 0; $i < $months; $i++) {
+      $d = $start->modify("+{$i} months");
+      $keys[] = $d->format('Y-m');
+    }
+    return $keys;
+  }
+}
+if (!function_exists('buildMonthLabels')) {
+  function buildMonthLabels(array $keys): array
+  {
+    $labels = [];
+    foreach ($keys as $ym) {
+      [$y, $m] = array_map('intval', explode('-', $ym));
+      $labels[] = monthPtShort($m) . '/' . substr((string)$y, -2);
+    }
+    return $labels;
+  }
+}
+if (!function_exists('fetchKeyVal')) {
+  function fetchKeyVal(PDO $pdo, string $sql, array $params, string $keyCol, string $valCol): array
+  {
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+    $out = [];
+    while ($r = $st->fetch()) {
+      $out[(string)$r[$keyCol]] = $r[$valCol];
+    }
+    return $out;
+  }
+}
+function table_exists(PDO $pdo, string $table): bool
+{
+  try {
+    $st = $pdo->prepare("SHOW TABLES LIKE :t");
+    $st->execute([':t' => $table]);
+    return (bool)$st->fetchColumn();
+  } catch (Throwable $e) {
+    return false;
+  }
 }
 
 /* =========================
@@ -116,18 +141,58 @@ if ($action !== '') {
       $v = $st->fetch();
       if (!$v) throw new RuntimeException('Venda não encontrada.');
 
-      // devoluções vinculadas (se usar venda_no)
-      $st2 = $pdo->prepare("
-        SELECT id, data, hora, tipo, produto, qtd, valor, motivo, obs, status
-        FROM devolucoes
-        WHERE venda_no = :id
-        ORDER BY id DESC
-        LIMIT 50
-      ");
-      $st2->execute([':id' => $id]);
-      $devols = $st2->fetchAll();
+      // ✅ ITENS DA VENDA (venda_itens)
+      $itens = [];
+      $itensTotal = 0.0;
+      $itensQtd = 0.0;
 
-      echo json_encode(['ok' => true, 'venda' => $v, 'devolucoes' => $devols], JSON_UNESCAPED_UNICODE);
+      if (table_exists($pdo, 'venda_itens')) {
+        $stIt = $pdo->prepare("
+          SELECT
+            vi.id,
+            vi.produto_id,
+            vi.codigo,
+            COALESCE(p.nome, vi.nome) AS nome,
+            vi.unidade,
+            vi.preco_unit,
+            vi.qtd,
+            vi.subtotal
+          FROM venda_itens vi
+          LEFT JOIN produtos p ON p.id = vi.produto_id
+          WHERE vi.venda_id = :id
+          ORDER BY vi.id ASC
+        ");
+        $stIt->execute([':id' => $id]);
+        $itens = $stIt->fetchAll() ?: [];
+
+        foreach ($itens as $it) {
+          $itensTotal += (float)($it['subtotal'] ?? 0);
+          $itensQtd += (float)($it['qtd'] ?? 0);
+        }
+      }
+
+      // devoluções vinculadas (se usar venda_no)
+      $devols = [];
+      if (table_exists($pdo, 'devolucoes')) {
+        $st2 = $pdo->prepare("
+          SELECT id, data, hora, tipo, produto, qtd, valor, motivo, obs, status
+          FROM devolucoes
+          WHERE venda_no = :id
+          ORDER BY id DESC
+          LIMIT 50
+        ");
+        $st2->execute([':id' => $id]);
+        $devols = $st2->fetchAll() ?: [];
+      }
+
+      echo json_encode([
+        'ok' => true,
+        'venda' => $v,
+        'itens' => $itens,
+        'itens_total' => $itensTotal,
+        'itens_qtd' => $itensQtd,
+        'devolucoes' => $devols
+      ], JSON_UNESCAPED_UNICODE);
       exit;
     }
 
@@ -209,8 +274,11 @@ $faturMesPrev = (float)($st->fetch()['s'] ?? 0);
 $faturMesPct = pct($faturMes, $faturMesPrev);
 
 // Itens em estoque (snapshot)
-$st = $pdo->query("SELECT COALESCE(SUM(estoque),0) s FROM produtos WHERE status = 'ATIVO'");
-$itensEstoque = (int)($st->fetch()['s'] ?? 0);
+$itensEstoque = 0;
+if (table_exists($pdo, 'produtos')) {
+  $st = $pdo->query("SELECT COALESCE(SUM(estoque),0) s FROM produtos WHERE status = 'ATIVO'");
+  $itensEstoque = (int)($st->fetch()['s'] ?? 0);
+}
 
 // “Saídas” (movimento) - compara últimos 30 dias vs 30 dias anteriores
 $movDays = 30;
@@ -219,12 +287,16 @@ $movStart = $today->modify("-" . ($movDays - 1) . " days")->format('Y-m-d');
 $movPrevEnd = $today->modify("-{$movDays} days")->format('Y-m-d');
 $movPrevStart = $today->modify("-" . (($movDays * 2) - 1) . " days")->format('Y-m-d');
 
-$st = $pdo->prepare("SELECT COALESCE(SUM(qtd),0) s FROM saidas WHERE data BETWEEN :ini AND :fim");
-$st->execute([':ini' => $movStart, ':fim' => $movEnd]);
-$saidas30 = (float)($st->fetch()['s'] ?? 0);
+$saidas30 = 0.0;
+$saidas30Prev = 0.0;
+if (table_exists($pdo, 'saidas')) {
+  $st = $pdo->prepare("SELECT COALESCE(SUM(qtd),0) s FROM saidas WHERE data BETWEEN :ini AND :fim");
+  $st->execute([':ini' => $movStart, ':fim' => $movEnd]);
+  $saidas30 = (float)($st->fetch()['s'] ?? 0);
 
-$st->execute([':ini' => $movPrevStart, ':fim' => $movPrevEnd]);
-$saidas30Prev = (float)($st->fetch()['s'] ?? 0);
+  $st->execute([':ini' => $movPrevStart, ':fim' => $movPrevEnd]);
+  $saidas30Prev = (float)($st->fetch()['s'] ?? 0);
+}
 $saidasPct = pct($saidas30, $saidas30Prev);
 
 // Ticket médio hoje / ontem
@@ -234,7 +306,6 @@ $tickHoje = (float)($st->fetch()['a'] ?? 0);
 
 $st->execute([':d' => $yesterday]);
 $tickOntem = (float)($st->fetch()['a'] ?? 0);
-
 $tickPct = pct($tickHoje, $tickOntem);
 
 /* =========================
@@ -280,38 +351,41 @@ foreach ($keys12 as $k) $chart2[] = (int)($cntMap[$k] ?? 0);
 // Chart3: Mix (usa saidas.canal top2 + devolucoes)
 $topCanals = [];
 try {
-  $st = $pdo->prepare("
-    SELECT canal, COUNT(DISTINCT pedido) c
-    FROM saidas
-    WHERE data >= :ini AND data < :fim
-    GROUP BY canal
-    ORDER BY c DESC
-    LIMIT 2
-  ");
-  $st->execute([':ini' => $start12Str, ':fim' => $end12Str]);
-  $topCanals = array_values(array_filter(array_map(fn($r) => (string)$r['canal'], $st->fetchAll())));
+  if (table_exists($pdo, 'saidas')) {
+    $st = $pdo->prepare("
+      SELECT canal, COUNT(DISTINCT pedido) c
+      FROM saidas
+      WHERE data >= :ini AND data < :fim
+      GROUP BY canal
+      ORDER BY c DESC
+      LIMIT 2
+    ");
+    $st->execute([':ini' => $start12Str, ':fim' => $end12Str]);
+    $topCanals = array_values(array_filter(array_map(fn($r) => (string)$r['canal'], $st->fetchAll())));
+  }
 } catch (Throwable $ex) {
   $topCanals = [];
 }
 
 if (count($topCanals) < 2) {
-  // fallback para canais da tabela vendas
   $topCanals = ['PRESENCIAL', 'DELIVERY'];
 }
 $mixA = $topCanals[0] ?? 'PRESENCIAL';
 $mixB = $topCanals[1] ?? 'DELIVERY';
 
 $mixMap = [];
-$st = $pdo->prepare("
-  SELECT DATE_FORMAT(data,'%Y-%m') ym, canal, COUNT(DISTINCT pedido) c
-  FROM saidas
-  WHERE data >= :ini AND data < :fim
-  GROUP BY ym, canal
-  ORDER BY ym
-");
-$st->execute([':ini' => $start12Str, ':fim' => $end12Str]);
-while ($r = $st->fetch()) {
-  $mixMap[(string)$r['ym']][(string)$r['canal']] = (int)$r['c'];
+if (table_exists($pdo, 'saidas')) {
+  $st = $pdo->prepare("
+    SELECT DATE_FORMAT(data,'%Y-%m') ym, canal, COUNT(DISTINCT pedido) c
+    FROM saidas
+    WHERE data >= :ini AND data < :fim
+    GROUP BY ym, canal
+    ORDER BY ym
+  ");
+  $st->execute([':ini' => $start12Str, ':fim' => $end12Str]);
+  while ($r = $st->fetch()) {
+    $mixMap[(string)$r['ym']][(string)$r['canal']] = (int)$r['c'];
+  }
 }
 $chart3A = [];
 $chart3B = [];
@@ -320,18 +394,21 @@ foreach ($keys12 as $k) {
   $chart3B[] = (int)($mixMap[$k][$mixB] ?? 0);
 }
 
-$devMap = fetchKeyVal(
-  $pdo,
-  "SELECT DATE_FORMAT(data,'%Y-%m') ym, COUNT(*) c
-   FROM devolucoes
-   WHERE data >= :ini AND data < :fim
-   GROUP BY ym
-   ORDER BY ym",
-  [':ini' => $start12Str, ':fim' => $end12Str],
-  'ym',
-  'c'
-);
+$devMap = [];
 $chart3C = [];
+if (table_exists($pdo, 'devolucoes')) {
+  $devMap = fetchKeyVal(
+    $pdo,
+    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COUNT(*) c
+     FROM devolucoes
+     WHERE data >= :ini AND data < :fim
+     GROUP BY ym
+     ORDER BY ym",
+    [':ini' => $start12Str, ':fim' => $end12Str],
+    'ym',
+    'c'
+  );
+}
 foreach ($keys12 as $k) $chart3C[] = (int)($devMap[$k] ?? 0);
 
 // Chart4: Entradas x Saídas (6 meses)
@@ -341,29 +418,34 @@ $labels6 = buildMonthLabels($keys6);
 $start6Str = $start6->format('Y-m-d');
 $end6Str = $today->modify('first day of next month')->format('Y-m-d');
 
-$entMap = fetchKeyVal(
-  $pdo,
-  "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(qtd),0) s
-   FROM entradas
-   WHERE data >= :ini AND data < :fim
-   GROUP BY ym
-   ORDER BY ym",
-  [':ini' => $start6Str, ':fim' => $end6Str],
-  'ym',
-  's'
-);
-
-$saiMap = fetchKeyVal(
-  $pdo,
-  "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(qtd),0) s
-   FROM saidas
-   WHERE data >= :ini AND data < :fim
-   GROUP BY ym
-   ORDER BY ym",
-  [':ini' => $start6Str, ':fim' => $end6Str],
-  'ym',
-  's'
-);
+$entMap = [];
+$saiMap = [];
+if (table_exists($pdo, 'entradas')) {
+  $entMap = fetchKeyVal(
+    $pdo,
+    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(qtd),0) s
+     FROM entradas
+     WHERE data >= :ini AND data < :fim
+     GROUP BY ym
+     ORDER BY ym",
+    [':ini' => $start6Str, ':fim' => $end6Str],
+    'ym',
+    's'
+  );
+}
+if (table_exists($pdo, 'saidas')) {
+  $saiMap = fetchKeyVal(
+    $pdo,
+    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(qtd),0) s
+     FROM saidas
+     WHERE data >= :ini AND data < :fim
+     GROUP BY ym
+     ORDER BY ym",
+    [':ini' => $start6Str, ':fim' => $end6Str],
+    'ym',
+    's'
+  );
+}
 
 $chart4Ent = [];
 $chart4Sai = [];
@@ -410,28 +492,55 @@ if (!$payLabels) {
   $payData = [0, 0, 0];
 }
 
-// Chart7: top produtos vendidos (semana = padrão 7 dias)
+/* =========================
+   ✅ Chart7: top produtos vendidos (AGORA via venda_itens + vendas)
+========================= */
 $topDays = (int)($_GET['top'] ?? 7);
 if (!in_array($topDays, [7, 30, 90], true)) $topDays = 7;
 $topStart = $today->modify("-" . ($topDays - 1) . " days")->format('Y-m-d');
 $topEnd = $today->format('Y-m-d');
 
-$st = $pdo->prepare("
-  SELECT p.nome, COALESCE(SUM(s.qtd),0) qtd
-  FROM saidas s
-  JOIN produtos p ON p.id = s.produto_id
-  WHERE s.data BETWEEN :ini AND :fim
-  GROUP BY p.id, p.nome
-  ORDER BY qtd DESC
-  LIMIT 10
-");
-$st->execute([':ini' => $topStart, ':fim' => $topEnd]);
 $topProdLabels = [];
 $topProdData = [];
-while ($r = $st->fetch()) {
-  $topProdLabels[] = (string)$r['nome'];
-  $topProdData[] = (float)$r['qtd'];
+
+if (table_exists($pdo, 'venda_itens')) {
+  $st = $pdo->prepare("
+    SELECT
+      COALESCE(p.nome, vi.nome) AS nome,
+      COALESCE(SUM(vi.qtd),0) AS qtd
+    FROM venda_itens vi
+    JOIN vendas v ON v.id = vi.venda_id
+    LEFT JOIN produtos p ON p.id = vi.produto_id
+    WHERE v.data BETWEEN :ini AND :fim
+    GROUP BY COALESCE(p.id, vi.produto_id), COALESCE(p.nome, vi.nome)
+    ORDER BY qtd DESC
+    LIMIT 10
+  ");
+  $st->execute([':ini' => $topStart, ':fim' => $topEnd]);
+
+  while ($r = $st->fetch()) {
+    $topProdLabels[] = (string)$r['nome'];
+    $topProdData[] = (float)$r['qtd'];
+  }
+} elseif (table_exists($pdo, 'saidas')) {
+  // fallback antigo
+  $st = $pdo->prepare("
+    SELECT p.nome, COALESCE(SUM(s.qtd),0) qtd
+    FROM saidas s
+    JOIN produtos p ON p.id = s.produto_id
+    WHERE s.data BETWEEN :ini AND :fim
+    GROUP BY p.id, p.nome
+    ORDER BY qtd DESC
+    LIMIT 10
+  ");
+  $st->execute([':ini' => $topStart, ':fim' => $topEnd]);
+
+  while ($r = $st->fetch()) {
+    $topProdLabels[] = (string)$r['nome'];
+    $topProdData[] = (float)$r['qtd'];
+  }
 }
+
 if (!$topProdLabels) {
   $topProdLabels = ['(sem dados)'];
   $topProdData = [0];
@@ -452,17 +561,20 @@ $st->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
 $vendasRecentes = $st->fetchAll();
 
 // Estoque baixo
-$st = $pdo->query("
-  SELECT
-    p.id, p.nome, p.estoque, p.minimo,
-    COALESCE(c.nome,'-') AS categoria
-  FROM produtos p
-  LEFT JOIN categorias c ON c.id = p.categoria_id
-  WHERE p.status = 'ATIVO' AND p.estoque <= p.minimo
-  ORDER BY (p.minimo - p.estoque) DESC, p.nome ASC
-  LIMIT 12
-");
-$estoqueBaixo = $st->fetchAll();
+$estoqueBaixo = [];
+if (table_exists($pdo, 'produtos')) {
+  $st = $pdo->query("
+    SELECT
+      p.id, p.nome, p.estoque, p.minimo,
+      COALESCE(c.nome,'-') AS categoria
+    FROM produtos p
+    LEFT JOIN categorias c ON c.id = p.categoria_id
+    WHERE p.status = 'ATIVO' AND p.estoque <= p.minimo
+    ORDER BY (p.minimo - p.estoque) DESC, p.nome ASC
+    LIMIT 12
+  ");
+  $estoqueBaixo = $st->fetchAll();
+}
 
 // Total 12m (para header do Chart1)
 $total12m = array_sum($chart1);
@@ -688,8 +800,7 @@ $total12m = array_sum($chart1);
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
               </div>
-              <div class="header-search d-none d-md-flex">
-              </div>
+              <div class="header-search d-none d-md-flex"></div>
             </div>
           </div>
 
@@ -1304,6 +1415,34 @@ $total12m = array_sum($chart1);
 
             <hr class="my-3" />
 
+            <!-- ✅ ITENS VENDIDOS -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="text-medium mb-0">Itens da venda</h6>
+              <div class="text-sm text-gray">
+                <span id="vItensInfo">0 item(ns)</span>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Produto</th>
+                    <th class="text-end">Qtd</th>
+                    <th class="text-end">V. Unit</th>
+                    <th class="text-end">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody id="vItensBody">
+                  <tr>
+                    <td colspan="5" class="text-sm text-gray">Sem itens.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <hr class="my-3" />
+
             <h6 class="text-medium mb-2">Devoluções vinculadas</h6>
             <div class="table-responsive">
               <table class="table">
@@ -1843,7 +1982,7 @@ $total12m = array_sum($chart1);
       });
     }
 
-    // Chart 7 (Top produtos)
+    // ✅ Chart 7 (Top produtos) - agora já vem do PHP usando venda_itens
     const ctx7 = document.getElementById("Chart7")?.getContext("2d");
     if (ctx7) {
       new Chart(ctx7, {
@@ -1937,6 +2076,7 @@ $total12m = array_sum($chart1);
         document.getElementById('vCliente').textContent = safe(v.cliente);
         document.getElementById('vPagamento').textContent = safe(v.pagamento);
         document.getElementById('vSubtotal').textContent = fmtBRL2(v.subtotal);
+
         const desc = (v.desconto_tipo === 'VALOR') ?
           fmtBRL2(v.desconto_valor) :
           `${Number(v.desconto_valor||0).toFixed(2).replace('.',',')}%`;
@@ -1950,6 +2090,29 @@ $total12m = array_sum($chart1);
         ].filter(Boolean).join(' • ');
         document.getElementById('vObs').textContent = obs || '—';
 
+        // ✅ itens vendidos
+        const itens = Array.isArray(j.itens) ? j.itens : [];
+        document.getElementById('vItensInfo').textContent = `${itens.length} item(ns) • Total itens: ${fmtBRL2(j.itens_total || 0)}`;
+
+        const itBody = document.getElementById('vItensBody');
+        if (!itens.length) {
+          itBody.innerHTML = `<tr><td colspan="5" class="text-sm text-gray">Sem itens cadastrados (venda_itens).</td></tr>`;
+        } else {
+          itBody.innerHTML = itens.map((it, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td>
+                <div class="fw-600">${safe(it.nome)}</div>
+                <div class="text-xs text-gray">${safe(it.codigo)} • ${safe(it.unidade || it.unidade === 0 ? it.unidade : '')}</div>
+              </td>
+              <td class="text-end">${safe(it.qtd)}</td>
+              <td class="text-end">${fmtBRL2(it.preco_unit)}</td>
+              <td class="text-end fw-600">${fmtBRL2(it.subtotal)}</td>
+            </tr>
+          `).join('');
+        }
+
+        // devoluções
         const tbody = document.getElementById('vDevolBody');
         const devols = Array.isArray(j.devolucoes) ? j.devolucoes : [];
         if (!devols.length) {
@@ -1957,7 +2120,7 @@ $total12m = array_sum($chart1);
         } else {
           tbody.innerHTML = devols.map(d => `
             <tr>
-              <td>${d.id}</td>
+              <td>${safe(d.id)}</td>
               <td>${safe(d.data)}</td>
               <td>${safe(d.hora)}</td>
               <td>${safe(d.tipo)}</td>
