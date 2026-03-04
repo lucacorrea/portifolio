@@ -53,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 if ($acao === 'toggle') {
-                    // Regra: alterna todos com esse nome
                     // se existir algum ativo => desativa todos; senão ativa todos
                     $stAny = $pdo->prepare("SELECT SUM(ativo=1) FROM {$TABELA} WHERE nome = :nome");
                     $stAny->execute([':nome' => $nomeAcao]);
@@ -69,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $msgSucesso = 'Status atualizado (todas as feiras) com sucesso.';
                 } elseif ($acao === 'excluir') {
-                    // Exclui todos com esse nome
                     $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE nome = :nome");
                     $st->execute([':nome' => $nomeAcao]);
 
@@ -96,10 +94,10 @@ $totalRegistros = 0;
 $totalPaginas = 1;
 
 /* =========================
-   LISTAR (1 por NOME + LIMIT)
+   LISTAR (1 por NOME + CONTAGEM)
 ========================= */
 try {
-    // Total de nomes distintos para paginação
+    // Total de "nomes" distintos (para paginação)
     $totalRegistros = (int)$pdo->query("SELECT COUNT(DISTINCT nome) FROM {$TABELA}")->fetchColumn();
     $totalPaginas = max(1, (int)ceil($totalRegistros / $porPagina));
 
@@ -110,8 +108,8 @@ try {
 
     $sql = "
         SELECT
-            MAX(c.id) AS id,
             c.nome,
+            COUNT(*) AS qtd,
             CASE WHEN SUM(c.ativo = 1) > 0 THEN 1 ELSE 0 END AS ativo,
             SUBSTRING_INDEX(
                 GROUP_CONCAT(COALESCE(c.observacao,'') ORDER BY c.id DESC SEPARATOR '||'),
@@ -122,7 +120,7 @@ try {
             GROUP_CONCAT(DISTINCT c.feira_id ORDER BY c.feira_id SEPARATOR ',') AS feiras_ids
         FROM {$TABELA} c
         GROUP BY c.nome
-        ORDER BY id DESC
+        ORDER BY MAX(c.criado_em) DESC, c.nome ASC
         LIMIT :lim OFFSET :off
     ";
 
@@ -138,7 +136,6 @@ try {
     $comunidades = [];
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-br">
 
