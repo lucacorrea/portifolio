@@ -147,9 +147,10 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
   $st->execute($params);
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  $head = ["Nº Venda", "Data/Hora", "Cliente", "Entrega", "Pagamento", "Total"];
+  $head = ["Nº Venda", "Data/Hora", "Cliente", "Entrega", "Pagamento", "Total", "Recebido"];
   $body = [];
   $sum = 0.0;
+  $sumRec = 0.0;
 
   foreach ($rows as $r) {
     $id = (int)($r['id'] ?? 0);
@@ -159,6 +160,14 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
     $total = (float)($r['total'] ?? 0);
     $sum += $total;
 
+    $recebido = $total;
+    if (strtoupper((string)($r['pagamento'] ?? '')) === 'FIADO') {
+        $stF = $pdo->prepare("SELECT valor_pago FROM fiados WHERE venda_id = ?");
+        $stF->execute([$id]);
+        $recebido = (float)($stF->fetchColumn() ?: 0);
+    }
+    $sumRec += $recebido;
+
     $body[] = [
       '#' . $id,
       br_datetime((string)($r['created_at'] ?? '')),
@@ -166,6 +175,7 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
       entrega_label((string)($r['canal'] ?? '')),
       pagamento_label((string)($r['pagamento_mode'] ?? ''), (string)($r['pagamento'] ?? '')),
       br_money($total),
+      br_money($recebido),
     ];
   }
 
@@ -176,7 +186,10 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
     'sum' => $sum,
     'sum_text' => br_money($sum),
     'sum_label' => 'Total vendido',
-    'rightCols' => [5],
+    'sum_rec' => $sumRec,
+    'sum_rec_text' => br_money($sumRec),
+    'sum_rec_label' => 'Total recebido (Caixa)',
+    'rightCols' => [5, 6],
     'centerCols' => [0, 3, 4],
   ];
 }

@@ -294,6 +294,18 @@ if ($action === 'fetch') {
     $totalCount = (int)($tot['qtd'] ?? 0);
     $pages = (int)max(1, ceil($totalCount / $per));
 
+    // Além do total vendido, precisamos do total recebido de outras fontes (pagamentos de fiados no período)
+    $recFiadoExtra = 0.0;
+    // Aqui precisaríamos saber o período filtrado. 
+    // Vamos ajustar o build_where para retornar também as datas se possível ou recalcular.
+    // Como o vendidos.php carrega tudo do dia ou período, vamos calcular aqui.
+    $dtI = $_GET['data_inicio'] ?? date('Y-m-d');
+    $dtF = $_GET['data_fim'] ?? date('Y-m-d');
+
+    $stPag = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE DATE(created_at) BETWEEN ? AND ?");
+    $stPag->execute([$dtI, $dtF]);
+    $recFiadoExtra = (float)$stPag->fetchColumn();
+
     json_out([
         'ok' => true,
         'meta' => [
@@ -308,6 +320,9 @@ if ($action === 'fetch') {
             'desconto' => (float)($tot['desconto'] ?? 0),
             'taxa' => (float)($tot['taxa'] ?? 0),
             'total' => (float)($tot['total'] ?? 0),
+            'total_recebido_vendas' => array_sum(array_column($outRows, 'recebido')), // Adicionado total recebido de vendas
+            'total_recebido_fiados_extra' => $recFiadoExtra, // Adicionado total recebido de fiados extra
+            'caixa_real' => array_sum(array_column($outRows, 'recebido')) + $recFiadoExtra // Adicionado caixa real
         ],
         'rows' => $outRows,
     ]);
@@ -1315,21 +1330,14 @@ $csrf = csrf_token();
                                                 <th class="col-id">ID</th>
                                                 <th class="col-data">Data</th>
                                                 <th class="col-cliente">Cliente</th>
-                                                <th class="col-canal">Canal</th>
+                                                <th class="col-canal text-center">Canal</th>
                                                 <th class="col-pag">Pagamento</th>
-                                                <th class="col-itens">Itens</th>
-                                                <th class="col-num text-end">Subtotal</th>
-                                                <th class="col-num text-end">Desconto</th>
-                                                <th class="col-num text-end">Entrega</th>
-                                                <th class="col-num text-end">Total</th>
-                                                <th class="col-acoes">Ações</th>
+                                                <th class="col-id text-end">Total</th>
+                                                <th class="col-id text-end">Recebido</th>
+                                                <th class="col-acoes text-end">Ações</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="tbody">
-                                            <tr>
-                                                <td colspan="11" class="muted">Carregando…</td>
-                                            </tr>
-                                        </tbody>
+                                        <tbody id="tbodyVendidos"></tbody>
                                     </table>
                                 </div>
 
