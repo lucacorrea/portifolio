@@ -189,12 +189,6 @@
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-light border-0 d-flex justify-content-between align-items-center">
                 <h5 class="modal-title fw-bold"><i class="fas fa-file-import me-2"></i>Pré-Vendas Pendentes</h5>
-                <div class="ms-auto me-3" style="width: 250px;">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search"></i></span>
-                        <input type="text" id="searchPVTerm" class="form-control border-start-0" placeholder="Buscar por Nome ou Código..." onkeyup="loadPendingPreSales()">
-                    </div>
-                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
@@ -583,7 +577,7 @@ async function salvarQuickClient() {
 // Pre-sale flow
 async function loadPendingPreSales() {
     console.log("PDV: Carregando pré-vendas pendentes...");
-    const term = document.getElementById('searchPVTerm')?.value || '';
+    const term = '';
     
     try {
         const res = await fetch(`pre_vendas.php?action=list_pending&term=${encodeURIComponent(term)}`);
