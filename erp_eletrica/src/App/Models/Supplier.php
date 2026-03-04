@@ -12,10 +12,10 @@ class Supplier extends BaseModel {
         $offset = ($page - 1) * $perPage;
         
         // Query to get suppliers and count of pending NFe from nfe_importadas
-        // We match by CNPJ (cleaned)
+        // We match by CNPJ (cleaned) with COLLATE to avoid collation mismatch errors
         $sql = "SELECT s.*, 
                 (SELECT COUNT(*) FROM nfe_importadas n 
-                 WHERE n.fornecedor_cnpj = s.cnpj AND n.status = 'pendente') as pending_nfe_count
+                 WHERE n.fornecedor_cnpj COLLATE utf8mb4_general_ci = s.cnpj COLLATE utf8mb4_general_ci AND n.status = 'pendente') as pending_nfe_count
                 FROM {$this->table} s
                 ORDER BY pending_nfe_count DESC, s.nome_fantasia ASC
                 LIMIT $perPage OFFSET $offset";
