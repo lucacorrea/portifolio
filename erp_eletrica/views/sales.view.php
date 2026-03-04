@@ -629,14 +629,36 @@ async function importPreSale(code) {
             qty: parseFloat(i.quantidade),
             imagens: i.imagens
         }));
+        
         currentPvId = pv.id;
+        
+        // Auto-select customer if present in pre-sale
         if (pv.cliente_id) {
-            selectCustomer(pv.cliente_id, pv.cliente_nome, pv.cliente_doc);
+            selectCustomer(pv.cliente_id, pv.cliente_nome, pv.cliente_doc || '');
+        } else if (pv.nome_cliente_avulso) {
+            // If it's a walk-in name, we can just set the name for the record but not a DB ID
+            selectedCustomerId = null;
+            selectedCustomerName = pv.nome_cliente_avulso;
+            // UI Update for walk-in
+            const customerInfo = document.getElementById('selectedCustomerInfo');
+            const customerNameDisplay = document.getElementById('selectedCustomerName');
+            const customerDocDisplay = document.getElementById('selectedCustomerDoc');
+            if (customerInfo && customerNameDisplay) {
+                customerNameDisplay.innerText = pv.nome_cliente_avulso;
+                customerDocDisplay.innerText = 'Consumidor Avulso';
+                customerInfo.classList.remove('d-none');
+                customerSearch.closest('.input-group').classList.add('d-none');
+                customerSearch.closest('div.mb-4').querySelector('label').classList.add('d-none');
+            }
         } else {
             clearCustomer();
         }
+        
         renderCart();
-        bootstrap.Modal.getInstance(document.getElementById('modalPendingPV')).hide();
+        
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalPendingPV'));
+        if (modalInstance) modalInstance.hide();
+        
         pdvSearch.focus();
     }
 }
