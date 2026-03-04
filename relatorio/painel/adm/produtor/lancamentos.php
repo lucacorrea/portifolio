@@ -1,20 +1,30 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
-/**
- * ✅ SEGURANÇA: evita qualquer “texto solto” antes do HTML
- * (se algum include soltar espaço/notice, o output buffer segura)
- */
-if (!ob_get_level()) ob_start();
+/* Timezone (Amazonas) */
+date_default_timezone_set('America/Manaus');
 
-/* Obrigatório estar logado */
+/*
+  lancamentos.php (somente CADASTRO, sem lista)
+  - Lança item no romaneio do dia usando CPF do produtor
+  - Se romaneio_dia não existir para a data, cria automaticamente
+  - Faz upload opcional de até 3 fotos (base64) para romaneio_item_fotos
+
+  Requisitos:
+  - produtores deve ter coluna documento (CPF) com apenas dígitos (como você já faz no cadastro)
+  - produtos (id, feira_id, nome, ativo)
+
+  Pasta upload:
+  /uploads/romaneio/<YYYY-MM-DD>/
+*/
+
 if (empty($_SESSION['usuario_logado'])) {
   header('Location: ../../../index.php');
   exit;
 }
 
-/* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
 if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
@@ -22,78 +32,60 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-/* Helpers */
+require '../../../assets/php/conexao.php';
+$pdo = db();
+
+/* Força timezone do MySQL (Amazonas = -04:00) */
+try {
+  $pdo->exec("SET time_zone = '-04:00'");
+} catch (Throwable $e) {
+}
+
 function h($s): string
 {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
-function to_decimal($v): float
+function trunc255(string $s): string
+{
+  $s = trim($s);
+  if ($s === '') return '';
+  if (function_exists('mb_substr')) return mb_substr($s, 0, 255, 'UTF-8');
+  return substr($s, 0, 255);
+}
+
+function only_digits(string $s): string
+{
+  $out = preg_replace('/\D+/', '', $s);
+  return $out !== null ? $out : '';
+}
+
+function ensure_dir(string $absDir): bool
+{
+  if (is_dir($absDir)) return true;
+  return @mkdir($absDir, 0755, true);
+}
+
+function to_decimal_str($v, int $scale): string
 {
   $s = trim((string)$v);
-  if ($s === '') return 0.0;
-  $s = str_replace(['R$', ' '], '', $s);
-  $s = str_replace('.', '', $s);
+  $s = str_replace(' ', '', $s);
   $s = str_replace(',', '.', $s);
-  $s = preg_replace('/[^0-9\.\-]/', '', $s) ?? '0';
-  if ($s === '' || $s === '-' || $s === '.') return 0.0;
-  return (float)$s;
+  if ($s === '' || !preg_match('/^-?\d+(\.\d+)?$/', $s)) return number_format(0, $scale, '.', '');
+  $f = (float)$s;
+  return number_format($f, $scale, '.', '');
 }
 
-function fmt_date(string $s): string
-{
-  try {
-    return (new DateTime($s))->format('d/m/Y');
-  } catch (Throwable $e) {
-    return $s;
-  }
-}
-
-function ensure_dir(string $dir): bool
-{
-  if (is_dir($dir)) return true;
-  return @mkdir($dir, 0755, true);
-}
-
-/**
- * Salva imagem base64 com validação simples.
- * - Aceita jpeg/jpg/png/webp
- * - Limite de bytes
- * - Salva com extensão coerente ao mime
- * Retorna o nome do arquivo salvo (basename) ou null.
- */
-function save_base64_image(?string $dataUrl, string $destDirAbs, string $baseNameNoExt, int $maxBytes): ?string
-{
-  if (!$dataUrl) return null;
-  $dataUrl = trim($dataUrl);
-  if ($dataUrl === '') return null;
-
-  if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl, $m) !== 1) return null;
-
-  $ext = ($m[1] === 'jpeg') ? 'jpg' : $m[1];
-  $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
-
-  $bin = base64_decode($base64, true);
-  if ($bin === false) return null;
-  if (strlen($bin) > $maxBytes) return null;
-
-  if (!ensure_dir($destDirAbs)) return null;
-
-  $fileName = $baseNameNoExt . '.' . $ext;
-  $absPath = rtrim($destDirAbs, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
-
-  if (@file_put_contents($absPath, $bin) === false) return null;
-
-  return $fileName;
-}
+/* Feira padrão desta página */
+$FEIRA_ID = 1;
+$dirLower = strtolower((string)__DIR__);
+if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
+if (strpos($dirLower, 'produtor') !== false) $FEIRA_ID = 1;
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
-
-/* Nome topo (evita warning) */
-$nomeTopo = (string)($_SESSION['nome'] ?? $_SESSION['usuario_nome'] ?? $_SESSION['usuario_logado'] ?? 'Usuário');
 
 /* CSRF */
 if (empty($_SESSION['csrf_token'])) {
@@ -101,274 +93,266 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = (string)$_SESSION['csrf_token'];
 
-/* ===== Conexão (usa sua db() do conexao.php) ===== */
-require '../../../assets/php/conexao.php';
 $pdo = db();
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-/* Feira */
-$feiraId = 1;
-
-/* Dia */
-$dia = trim((string)($_GET['dia'] ?? date('Y-m-d')));
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dia)) $dia = date('Y-m-d');
-
-/* ===== garante romaneio do dia ===== */
-$romaneioId = 0;
-try {
-  $st = $pdo->prepare("SELECT id FROM romaneio_dia WHERE feira_id = :f AND data_ref = :d LIMIT 1");
-  $st->execute([':f' => $feiraId, ':d' => $dia]);
-  $romaneioId = (int)($st->fetchColumn() ?: 0);
-
-  if ($romaneioId <= 0) {
-    $ins = $pdo->prepare("
-      INSERT INTO romaneio_dia (feira_id, data_ref, status, criado_em)
-      VALUES (:f, :d, 'ABERTO', NOW())
-    ");
-    $ins->execute([':f' => $feiraId, ':d' => $dia]);
-    $romaneioId = (int)$pdo->lastInsertId();
+/* AJAX: Busca Produtor por CPF (Mantido para compatibilidade, se necessário) */
+if (isset($_GET['ajax_busca_produtor'])) {
+  header('Content-Type: application/json');
+  $cpfVal = only_digits($_GET['cpf'] ?? '');
+  if (strlen($cpfVal) === 11) {
+    try {
+      $st = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :f AND documento = :doc AND ativo = 1 LIMIT 1");
+      $st->execute([':f' => $FEIRA_ID, ':doc' => $cpfVal]);
+      $prod = $st->fetch(PDO::FETCH_ASSOC);
+      if ($prod) {
+        echo json_encode(['sucesso' => true, 'id' => $prod['id'], 'nome' => $prod['nome']]);
+      } else {
+        echo json_encode(['sucesso' => false, 'msg' => 'Produtor não encontrado ou inativo.']);
+      }
+    } catch (Throwable $e) {
+      echo json_encode(['sucesso' => false, 'msg' => 'Erro ao buscar.']);
+    }
+  } else {
+    echo json_encode(['sucesso' => false, 'msg' => 'CPF inválido.']);
   }
-} catch (Throwable $e) {
-  $_SESSION['flash_err'] = 'Não foi possível abrir o romaneio do dia.';
-  header('Location: ./lancamentos.php?dia=' . urlencode($dia));
   exit;
 }
 
-/* ===== Combos ===== */
-$produtoresAtivos = [];
-$produtosAtivos   = [];
-
-try {
-  // ✅ agora traz documento (CPF) também
-  $stP = $pdo->prepare("
-    SELECT id, nome, COALESCE(documento,'') AS documento
-    FROM produtores
-    WHERE feira_id = :f AND ativo = 1
-    ORDER BY nome ASC
-  ");
-  $stP->execute([':f' => $feiraId]);
-  $produtoresAtivos = $stP->fetchAll(PDO::FETCH_ASSOC);
-
-  $stPr = $pdo->prepare("
-    SELECT
-      p.id, p.nome,
-      COALESCE(c.nome,'')  AS categoria_nome,
-      COALESCE(u.sigla,'') AS unidade_sigla,
-      p.preco_referencia
-    FROM produtos p
-    LEFT JOIN categorias c ON c.id = p.categoria_id AND c.feira_id = p.feira_id
-    LEFT JOIN unidades   u ON u.id = p.unidade_id   AND u.feira_id = p.feira_id
-    WHERE p.feira_id = :f AND p.ativo = 1
-    ORDER BY p.nome ASC
-  ");
-  $stPr->execute([':f' => $feiraId]);
-  $produtosAtivos = $stPr->fetchAll(PDO::FETCH_ASSOC);
-} catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar produtores/produtos.';
+/* AJAX: Busca Produtor por NOME (Novo) */
+if (isset($_GET['ajax_busca_produtor_nome'])) {
+  header('Content-Type: application/json');
+  $nome = trim((string)($_GET['nome'] ?? ''));
+  if (strlen($nome) >= 2) {
+    try {
+      $st = $pdo->prepare("SELECT id, nome, documento FROM produtores WHERE feira_id = :f AND nome LIKE :nome AND ativo = 1 ORDER BY nome ASC LIMIT 10");
+      $st->execute([':f' => $FEIRA_ID, ':nome' => '%' . $nome . '%']);
+      $prods = $st->fetchAll(PDO::FETCH_ASSOC);
+      echo json_encode(['sucesso' => true, 'resultados' => $prods]);
+    } catch (Throwable $e) {
+      echo json_encode(['sucesso' => false, 'msg' => 'Erro ao buscar.']);
+    }
+  } else {
+    echo json_encode(['sucesso' => true, 'resultados' => []]);
+  }
+  exit;
 }
 
-/* ===== Upload config ===== */
+/* Data do romaneio */
+date_default_timezone_set('America/Manaus'); // ajuste se quiser
+$dataRef = (string)($_GET['data'] ?? date('Y-m-d'));
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) {
+  $dataRef = date('Y-m-d');
+}
+
+/* Upload fotos (base64) */
 $BASE_DIR = realpath(__DIR__ . '/../../../');
-$UPLOAD_REL = 'uploads/romaneio';
-$UPLOAD_ABS = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL) : null;
-$MAX_IMG_BYTES = 3 * 1024 * 1024;
+$UPLOAD_REL_DIR = 'uploads/romaneio';
+$UPLOAD_ABS_DIR = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR) : null;
+$MAX_BASE64_BYTES = 3 * 1024 * 1024;
+$MAX_FOTOS = 3;
 
-/* ===== POST: salvar entrada ===== */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $postedCsrf = (string)($_POST['csrf_token'] ?? '');
-  if (!hash_equals($csrf, $postedCsrf)) {
-    $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-    exit;
+/* Romaneio do dia (cria se não existir) */
+$romaneioId = null;
+$romaneioStatus = 'ABERTO';
+
+try {
+  $st = $pdo->prepare("SELECT id, status
+                       FROM romaneio_dia
+                       WHERE feira_id = :feira AND data_ref = :data
+                       LIMIT 1");
+  $st->execute([':feira' => $FEIRA_ID, ':data' => $dataRef]);
+  $row = $st->fetch(PDO::FETCH_ASSOC);
+
+  if ($row) {
+    $romaneioId = (int)$row['id'];
+    $romaneioStatus = (string)$row['status'];
+  } else {
+    $ins = $pdo->prepare("INSERT INTO romaneio_dia (feira_id, data_ref, status, observacao)
+                          VALUES (:feira, :data, 'ABERTO', NULL)");
+    $ins->execute([':feira' => $FEIRA_ID, ':data' => $dataRef]);
+    $romaneioId = (int)$pdo->lastInsertId();
+    $romaneioStatus = 'ABERTO';
   }
+} catch (Throwable $e) {
+  $err = 'Erro ao preparar romaneio do dia: ' . $e->getMessage();
+}
 
-  $acao = (string)($_POST['acao'] ?? '');
-  if ($acao !== 'salvar') {
-    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-    exit;
-  }
-
-  $dataRef = trim((string)($_POST['data_ref'] ?? $dia));
-  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataRef)) $dataRef = $dia;
-
-  if ($dataRef !== $dia) {
-    header('Location: ./lancamentos.php?dia=' . urlencode($dataRef));
-    exit;
-  }
-
-  $prodIds    = $_POST['produtor_id'] ?? [];
-  $produtoIds = $_POST['produto_id'] ?? [];
-  $qtds       = $_POST['quantidade_entrada'] ?? [];
-  $precos     = $_POST['preco_unitario_dia'] ?? [];
-  $obsArr     = $_POST['observacao_item'] ?? [];
-  $fotosArr   = $_POST['foto_base64'] ?? [];
-
-  /**
-   * ✅ Validação por linha (robusta)
-   * Regra:
-   * - A linha só “conta” se houver intenção real.
-   * - Quantidade default (ex: 1) NÃO força validação se usuário não mexeu em mais nada.
-   */
-  $itens = [];
-  $n = max(
-    count((array)$prodIds),
-    count((array)$produtoIds),
-    count((array)$qtds),
-    count((array)$precos),
-    count((array)$obsArr),
-    count((array)$fotosArr)
-  );
-
-  for ($i = 0; $i < $n; $i++) {
-    $linha = $i + 1;
-
-    $produtorRaw = trim((string)($prodIds[$i] ?? ''));
-    $produtoRaw  = trim((string)($produtoIds[$i] ?? ''));
-    $qtdRaw      = trim((string)($qtds[$i] ?? ''));
-    $precoRaw    = trim((string)($precos[$i] ?? ''));
-    $foto        = trim((string)($fotosArr[$i] ?? ''));
-    $obs         = trim((string)($obsArr[$i] ?? ''));
-
-    $produtorId = (int)$produtorRaw;
-    $produtoId  = (int)$produtoRaw;
-
-    $q = round(to_decimal($qtdRaw), 3);
-    $p = round(to_decimal($precoRaw), 2);
-
-    $qtdFoiDigitada   = ($qtdRaw !== '');
-    $precoFoiDigitado = ($precoRaw !== '');
-
-    $temIntencao =
-      ($produtorId > 0) ||
-      ($produtoId > 0) ||
-      ($precoFoiDigitado && $p > 0) ||
-      ($qtdFoiDigitada && $q > 0) ||
-      ($foto !== '') ||
-      ($obs !== '');
-
-    if (!$temIntencao) {
-      continue;
-    }
-
-    if ($produtorId <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produtor.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-
-    if ($produtoId <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: selecione o Produto.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-
-    if ($q <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: informe a Quantidade.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-
-    if ($p <= 0) {
-      $_SESSION['flash_err'] = "Linha {$linha}: informe o Preço.";
-      header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-      exit;
-    }
-
-    if ($obs !== '') $obs = mb_substr($obs, 0, 255, 'UTF-8');
-
-    $itens[] = [
-      'produtor_id' => $produtorId,
-      'produto_id'  => $produtoId,
-      'qtd'         => $q,
-      'preco'       => $p,
-      'obs'         => $obs,
-      'foto'        => $foto,
-    ];
-  }
-
-  if (empty($itens)) {
-    $_SESSION['flash_err'] = 'Adicione pelo menos 1 item válido (produtor + produto + quantidade + preço).';
-    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-    exit;
-  }
-
-  if (!$UPLOAD_ABS) {
-    $_SESSION['flash_err'] = 'Diretório base não encontrado para upload.';
-    header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-    exit;
-  }
-
+/* Produtos para select */
+$produtos = [];
+if (!$err) {
   try {
-    $pdo->beginTransaction();
+    $stPr = $pdo->prepare("SELECT id, nome
+                           FROM produtos
+                           WHERE feira_id = :feira AND (ativo = 1 OR ativo IS NULL)
+                           ORDER BY nome ASC");
+    $stPr->execute([':feira' => $FEIRA_ID]);
+    $produtos = $stPr->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    $produtos = [];
+  }
+}
 
-    $dayAbs = $UPLOAD_ABS . DIRECTORY_SEPARATOR . (string)$romaneioId;
-    $dayRel = $UPLOAD_REL . '/' . (string)$romaneioId;
+/* Valores antigos */
+$old = [
+  'cpf' => '',
+  'produtor_nome' => '',
+  'produto_id' => '',
+  'quantidade_entrada' => '',
+  'preco_unitario_dia' => '',
+  'observacao' => '',
+];
 
-    if (!ensure_dir($dayAbs)) throw new RuntimeException('Falha ao criar pasta de upload.');
+/* POST (salvar lançamento ou excluir) */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$err) {
+  $tokenPost = (string)($_POST['csrf_token'] ?? '');
+  if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
+    $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
+    header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
+    exit;
+  }
 
-    $insItem = $pdo->prepare("
-      INSERT INTO romaneio_itens
-        (feira_id, romaneio_id, produtor_id, produto_id, quantidade_entrada, preco_unitario_dia, observacao, criado_em)
-      VALUES
-        (:f, :r, :pr, :pd, :q, :p, :obs, NOW())
-    ");
+  $acao = (string)($_POST['acao'] ?? 'salvar');
 
-    $insFoto = $pdo->prepare("
-      INSERT INTO romaneio_item_fotos
-        (romaneio_item_id, caminho, criado_em)
-      VALUES
-        (:i, :c, NOW())
-    ");
+  if ($acao === 'excluir') {
+    $delId = (int)($_POST['id'] ?? 0);
+    if ($delId > 0 && $romaneioStatus === 'ABERTO') {
+      try {
+        $pdo->beginTransaction();
 
-    foreach ($itens as $it) {
-      $insItem->execute([
-        ':f'   => $feiraId,
-        ':r'   => $romaneioId,
-        ':pr'  => $it['produtor_id'],
-        ':pd'  => $it['produto_id'],
-        ':q'   => $it['qtd'],
-        ':p'   => $it['preco'],
-        ':obs' => ($it['obs'] !== '' ? $it['obs'] : null),
-      ]);
-
-      $itemId = (int)$pdo->lastInsertId();
-
-      if ($it['foto'] !== '') {
-        $fileBase = 'item_' . $itemId . '_1';
-        $savedFileName = save_base64_image($it['foto'], $dayAbs, $fileBase, $MAX_IMG_BYTES);
-
-        if ($savedFileName) {
-          $relPath = $dayRel . '/' . $savedFileName;
-          $insFoto->execute([
-            ':i' => $itemId,
-            ':c' => $relPath,
-          ]);
+        // Remove fotos físicas primeiro
+        $stF = $pdo->prepare("SELECT caminho FROM romaneio_item_fotos WHERE romaneio_item_id = :id");
+        $stF->execute([':id' => $delId]);
+        foreach ($stF->fetchAll() as $rowF) {
+          $absF = $BASE_DIR . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rowF['caminho']);
+          if (file_exists($absF)) @unlink($absF);
         }
+
+        $pdo->prepare("DELETE FROM romaneio_item_fotos WHERE romaneio_item_id = :id")->execute([':id' => $delId]);
+        $pdo->prepare("DELETE FROM romaneio_itens WHERE id = :id AND feira_id = :feira")->execute([':id' => $delId, ':feira' => $FEIRA_ID]);
+
+        $pdo->commit();
+        $_SESSION['flash_ok'] = 'Lançamento excluído com sucesso.';
+      } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $_SESSION['flash_err'] = 'Erro ao excluir: ' . $e->getMessage();
       }
     }
-
-    $pdo->commit();
-    $_SESSION['flash_ok'] = 'Entrada lançada com sucesso.';
-  } catch (PDOException $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
-    $mysqlCode = (int)($e->errorInfo[1] ?? 0);
-    if ($mysqlCode === 1062) $_SESSION['flash_err'] = 'Já existe lançamento para o mesmo produtor + produto neste dia.';
-    else $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
-  } catch (Throwable $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
-    $_SESSION['flash_err'] = 'Não foi possível salvar o lançamento agora.';
+    header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
+    exit;
   }
 
-  header('Location: ./lancamentos.php?dia=' . urlencode($dia));
-  exit;
+  $old['cpf'] = trim((string)($_POST['cpf'] ?? ''));
+  $old['produto_id'] = trim((string)($_POST['produto_id'] ?? ''));
+  $old['quantidade_entrada'] = trim((string)($_POST['quantidade_entrada'] ?? ''));
+  $old['preco_unitario_dia'] = trim((string)($_POST['preco_unitario_dia'] ?? ''));
+  $old['observacao'] = trim((string)($_POST['observacao'] ?? ''));
+
+  if ($romaneioStatus !== 'ABERTO') {
+    $err = 'Romaneio do dia está FECHADO. Não é possível lançar itens.';
+  } else {
+    $cpfDigits = only_digits($old['cpf']);
+
+    if ($cpfDigits === '' || strlen($cpfDigits) < 11) {
+      $err = 'Informe um CPF válido (somente números).';
+    } else {
+      try {
+        // localiza produtor pelo CPF na feira e ativo
+        $stProd = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :feira AND ativo = 1 AND documento = :cpf LIMIT 1");
+        $stProd->execute([':feira' => $FEIRA_ID, ':cpf' => $cpfDigits]);
+        $prod = $stProd->fetch(PDO::FETCH_ASSOC);
+
+        if (!$prod) {
+          $err = 'Produtor não encontrado para este CPF (ou está inativo / fora da feira).';
+        } else {
+          $produtorId = (int)$prod['id'];
+          $old['produtor_nome'] = (string)$prod['nome'];
+
+          $items = $_POST['items'] ?? [];
+          if (empty($items)) {
+            $err = 'Adicione pelo menos um produto.';
+          } else {
+            $pdo->beginTransaction();
+
+            foreach ($items as $idx => $itemData) {
+              $produtoId = (int)($itemData['produto_id'] ?? 0);
+              $qtdEntrada = to_decimal_str($itemData['quantidade_entrada'] ?? 0, 3);
+              $precoDia   = to_decimal_str($itemData['preco_unitario_dia'] ?? 0, 2);
+              $obs        = trunc255($itemData['observacao'] ?? '');
+              $fotos      = $itemData['fotos_base64'] ?? [];
+
+              // Validações básicas por item
+              if ($produtoId <= 0) throw new Exception("Selecione o produto no item #" . ($idx + 1));
+              if ((float)$qtdEntrada <= 0) throw new Exception("Quantidade inválida no item #" . ($idx + 1));
+              if ((float)$precoDia < 0) throw new Exception("Preço inválido no item #" . ($idx + 1));
+
+              // Valida produto no DB
+              $chkPr = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE id = :id AND feira_id = :feira AND (ativo = 1 OR ativo IS NULL)");
+              $chkPr->execute([':id' => $produtoId, ':feira' => $FEIRA_ID]);
+              if ((int)$chkPr->fetchColumn() <= 0) throw new Exception("Produto inválido no item #" . ($idx + 1));
+
+              // Insere item
+              $ins = $pdo->prepare("INSERT INTO romaneio_itens (feira_id, romaneio_id, produtor_id, produto_id, quantidade_entrada, preco_unitario_dia, observacao) VALUES (:feira, :rom, :produtor, :produto, :qtd, :preco, :obs)");
+              $ins->execute([
+                ':feira'    => $FEIRA_ID,
+                ':rom'      => (int)$romaneioId,
+                ':produtor' => $produtorId,
+                ':produto'  => $produtoId,
+                ':qtd'      => $qtdEntrada,
+                ':preco'    => $precoDia,
+                ':obs'      => ($obs !== '' ? $obs : null),
+              ]);
+
+              $itemIdNew = (int)$pdo->lastInsertId();
+
+              // Processa fotos do item
+              if (!empty($fotos)) {
+                if (!$UPLOAD_ABS_DIR || !$BASE_DIR) throw new RuntimeException('Diretório base não encontrado para upload.');
+                $subAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $dataRef;
+                ensure_dir($subAbs);
+
+                $countF = 0;
+                foreach ($fotos as $dataUrl) {
+                  if ($countF >= $MAX_FOTOS) break;
+                  $dataUrl = (string)$dataUrl;
+                  if ($dataUrl === '' || preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl) !== 1) continue;
+
+                  $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
+                  $bin = base64_decode($base64, true);
+                  if ($bin === false || strlen($bin) > $MAX_BASE64_BYTES) continue;
+
+                  $fileName = 'rom_' . $romaneioId . '_item_' . $itemIdNew . '_' . bin2hex(random_bytes(4)) . '.jpg';
+                  if (@file_put_contents($subAbs . DIRECTORY_SEPARATOR . $fileName, $bin) !== false) {
+                    $rel = $UPLOAD_REL_DIR . '/' . $dataRef . '/' . $fileName;
+                    $pdo->prepare("INSERT INTO romaneio_item_fotos (romaneio_item_id, caminho) VALUES (:item, :caminho)")
+                      ->execute([':item' => $itemIdNew, ':caminho' => $rel]);
+                    $countF++;
+                  }
+                }
+              }
+            }
+
+            $pdo->commit();
+            $_SESSION['flash_ok'] = 'Lançamento(s) salvo(s)! Produtor: ' . $old['produtor_nome'];
+            header('Location: ./lancamentos.php?data=' . urlencode($dataRef));
+            exit;
+          }
+        }
+      } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $err = 'Erro ao salvar: ' . $e->getMessage();
+      }
+    }
+  }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios — Romaneio (Entrada)</title>
+  <title>SIGRelatórios — Lançamentos (Cadastro)</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -377,110 +361,233 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    .form-control { height: 42px }
-    .btn { height: 42px }
-    .helper { font-size: 12px }
-    .card { border-radius: 14px }
-
-    .card-header-lite {
-      display:flex; align-items:flex-start; justify-content:space-between;
-      gap:12px; flex-wrap:wrap;
-      border-bottom:1px solid rgba(0,0,0,.06);
-      padding-bottom:12px; margin-bottom:12px
+    ul .nav-link:hover {
+      color: blue !important;
     }
 
-    .pill{
-      display:inline-flex; align-items:center; gap:6px;
-      padding:6px 10px; border-radius:999px;
-      font-size:12px; font-weight:700;
-      background:#eef2ff; color:#1f2a6b
+    .nav-link {
+      color: black !important;
     }
 
-    .totbox{
-      border:1px solid rgba(0,0,0,.08);
-      background:#fff; border-radius:12px;
-      padding:10px 12px; min-width:170px
-    }
-    .totlabel{font-size:12px;color:#6c757d;margin:0}
-    .totvalue{font-size:20px;font-weight:900;margin:0}
-
-    .line-card{
-      border:1px solid rgba(0,0,0,.08);
-      background:#fff; border-radius:14px;
-      padding:12px; margin-bottom:10px
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
     }
 
-    .mini{height:38px!important}
-    .muted{color:#6c757d}
-
-    .photo-thumb{
-      width:76px; height:52px; object-fit:cover;
-      border-radius:10px; border:1px solid rgba(0,0,0,.12);
-      display:none
+    .sidebar .sub-menu li {
+      list-style: none !important;
     }
 
-    .sticky-actions{
-      position:sticky; bottom:10px; z-index:3;
-      background:rgba(255,255,255,.92);
-      border:1px solid rgba(0,0,0,.08);
-      border-radius:14px; padding:10px;
-      backdrop-filter:blur(6px);
-      display:flex; flex-wrap:wrap; gap:10px;
-      justify-content:space-between; align-items:center;
-      margin-top:12px
+    .form-control {
+      min-height: 42px;
+      height: auto;
     }
 
-    .sig-flash-wrap{
-      position:fixed; top:78px; right:18px;
-      width:min(420px, calc(100vw - 36px));
-      z-index:9999; pointer-events:none
+    .btn {
+      min-height: 42px;
     }
 
-    .sig-toast.alert{
-      pointer-events:auto;
-      border:0!important; border-left:6px solid!important;
-      border-radius:14px!important;
-      padding:10px 12px!important;
-      box-shadow:0 10px 28px rgba(0,0,0,.10)!important;
-      font-size:13px!important;
-      margin-bottom:10px!important;
-      opacity:0; transform:translateX(10px);
-      animation:sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s
+    .help-hint {
+      font-size: 12px;
     }
 
-    .sig-toast--success{background:#f1fff6!important;border-left-color:#22c55e!important}
-    .sig-toast--danger{background:#fff1f2!important;border-left-color:#ef4444!important}
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
-    .sig-toast__row{display:flex;align-items:flex-start;gap:10px}
-    .sig-toast__icon i{font-size:16px;margin-top:2px}
-    .sig-toast__title{font-weight:900;margin-bottom:1px;line-height:1.1}
-    .sig-toast__text{margin:0;line-height:1.25}
+    .req-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #1f2a6b;
+      font-weight: 700;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
 
-    @keyframes sigToastIn{to{opacity:1;transform:translateX(0)}}
-    @keyframes sigToastOut{to{opacity:0;transform:translateX(12px);visibility:hidden}}
+    .form-section {
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, .06);
+      border-radius: 12px;
+      padding: 14px 14px 6px;
+      margin-bottom: 12px;
+    }
 
-    .line-actions-simple{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    .btn-foto-big{height:46px;font-size:14px;font-weight:800;border-radius:12px;padding:10px 14px}
+    .form-section .section-title {
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 10px;
+      color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-    .cam-box{border:1px solid rgba(0,0,0,.08);background:#fff;border-radius:14px;padding:10px}
-    #camVideo,#camPreview{width:100%;border-radius:12px;background:#111;max-height:60vh;object-fit:cover}
-    #camPreview{display:none}
-    #camCanvas{display:none}
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-start;
+    }
 
-    @media (max-width:576px){
-      .card-header-lite{flex-direction:column;align-items:stretch!important;gap:10px!important}
-      .totbox{width:100%}
-      .totvalue{font-size:22px}
-      .line-card{padding:14px}
-      .line-card label{font-weight:700}
-      .photo-thumb{width:100%!important;height:160px!important;border-radius:12px!important}
-      .helper{font-size:13px}
-      .sticky-actions{flex-direction:column;align-items:stretch}
-      .sticky-actions>div{width:100%;justify-content:stretch!important}
-      .sticky-actions .btn{width:100%}
-      .line-actions-simple{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-      .line-actions-simple .btn{height:52px!important;font-size:16px!important;font-weight:800!important;border-radius:12px!important}
-      .line-actions-simple .btn i{font-size:18px;margin-right:6px}
+    .cam-box {
+      border: 1px solid rgba(0, 0, 0, .08);
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8f9fa;
+    }
+
+    #cameraVideo,
+    .fotoPreview {
+      width: 100%;
+      border-radius: 10px;
+      background: #111;
+    }
+
+    #cameraVideo {
+      display: none;
+    }
+
+    .fotoPreview {
+      display: none;
+      margin-top: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .status-aberto {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    .status-fechado {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    .name-box {
+      border: 1px dashed rgba(0, 0, 0, .15);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fafafa;
+    }
+
+    .item-block {
+      position: relative;
+      border-left: 4px solid #231475;
+    }
+
+    .btn-remove-item {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .photo-previews img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .cam-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .cam-modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 100%;
+      position: relative;
+    }
+
+    #cameraVideo {
+      width: 100%;
+      border-radius: 8px;
+      transform: scaleX(-1);
+    }
+
+    /* Autocomplete styles */
+    .autocomplete-wrap {
+      position: relative;
+    }
+
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 0 0 8px 8px;
+      z-index: 1000;
+      max-height: 200px;
+      overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+
+    .autocomplete-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f1f1;
+    }
+
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+
+    .autocomplete-item:hover {
+      background: #f8f9fa;
+      color: #231475;
+    }
+
+    .autocomplete-item .cpf-hint {
+      font-size: 11px;
+      color: #888;
+      display: block;
+    }
+
+    @media (max-width: 576px) {
+      .content-wrapper {
+        padding: 1rem !important;
+      }
+
+      .form-actions .btn {
+        width: 100%;
+      }
+
+      .card-title-row a.btn {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -488,10 +595,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
   <div class="container-scroller">
 
+    <!-- NAVBAR -->
+    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
+      </div>
+      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+          <span class="icon-menu"></span>
+        </button>
+        <ul class="navbar-nav mr-lg-2">
+          <li class="nav-item nav-search d-none d-lg-block"></li>
+        </ul>
+        <ul class="navbar-nav navbar-nav-right"></ul>
+        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+          <span class="icon-menu"></span>
+        </button>
+      </div>
+    </nav>
+
     <?php if ($msg || $err): ?>
       <div class="sig-flash-wrap">
         <?php if ($msg): ?>
-          <div class="alert sig-toast sig-toast--success" role="alert">
+          <div class="alert sig-toast sig-toast--success alert-dismissible" role="alert">
             <div class="sig-toast__row">
               <div class="sig-toast__icon"><i class="ti-check"></i></div>
               <div>
@@ -499,11 +626,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="sig-toast__text"><?= h($msg) ?></p>
               </div>
             </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
         <?php endif; ?>
 
         <?php if ($err): ?>
-          <div class="alert sig-toast sig-toast--danger" role="alert">
+          <div class="alert sig-toast sig-toast--danger alert-dismissible" role="alert">
             <div class="sig-toast__row">
               <div class="sig-toast__icon"><i class="ti-alert"></i></div>
               <div>
@@ -511,189 +641,339 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="sig-toast__text"><?= h($err) ?></p>
               </div>
             </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
         <?php endif; ?>
       </div>
     <?php endif; ?>
 
-    <!-- NAVBAR -->
-    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../../images/3.png" alt="logo" /></a>
-      </div>
-
-      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-          <span class="icon-menu"></span>
-        </button>
-
-        <ul class="navbar-nav navbar-nav-right">
-          <li class="nav-item nav-profile dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
-              <i class="ti-user"></i>
-              <span class="ml-1"><?= h($nomeTopo) ?></span>
-            </a>
-            <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
-              <a class="dropdown-item" href="../../../controle/auth/logout.php">
-                <i class="ti-power-off text-primary"></i> Sair
-              </a>
-            </div>
-          </li>
-        </ul>
-
-        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-          <span class="icon-menu"></span>
-        </button>
-      </div>
-    </nav>
-
     <div class="container-fluid page-body-wrapper">
 
-      <!-- SIDEBAR -->
+      <div id="right-sidebar" class="settings-panel">
+        <i class="settings-close ti-close"></i>
+        <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
+          <li class="nav-item"><a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab">TO DO LIST</a></li>
+          <li class="nav-item"><a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab">CHATS</a></li>
+        </ul>
+      </div>
+
+      <!-- SIDEBAR (mantida no padrão) -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
-        <!-- ... seu menu ... -->
+        <ul class="nav">
+
+          <li class="nav-item">
+            <a class="nav-link" href="index.php">
+              <i class="icon-grid menu-icon"></i>
+              <span class="menu-title">Dashboard</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraCadastros" aria-expanded="false" aria-controls="feiraCadastros">
+              <i class="ti-id-badge menu-icon"></i>
+              <span class="menu-title">Cadastros</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse" id="feiraCadastros">
+              <style>
+                .sub-menu .nav-item .nav-link {
+                  color: black !important;
+                }
+
+                .sub-menu .nav-item .nav-link:hover {
+                  color: blue !important;
+                }
+              </style>
+
+              <ul class="nav flex-column sub-menu" style="background: white !important;">
+                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaProdutor.php"><i class="ti-user mr-2"></i> Produtores</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- MOVIMENTO (ATIVO) -->
+          <li class="nav-item active">
+            <a class="nav-link open" data-toggle="collapse" href="#feiraMovimento" aria-expanded="true" aria-controls="feiraMovimento">
+              <i class="ti-exchange-vertical menu-icon"></i>
+              <span class="menu-title">Movimento</span>
+              <i class="menu-arrow"></i>
+            </a>
+
+            <div class="collapse show" id="feiraMovimento">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item active">
+                  <a class="nav-link" href="./lancamentos.php" style="color:white !important; background: #231475C5 !important;">
+                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
+                  </a>
+                </li>
+                <li class="nav-item ">
+                  <a class="nav-link" href="./fechamentoDia.php">
+                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
+              <i class="ti-clipboard menu-icon"></i>
+              <span class="menu-title">Relatórios</span>
+              <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse text-black" id="feiraRelatorios">
+              <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
+                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- Título DIVERSOS -->
+          <li class="nav-item" style="pointer-events:none;">
+            <span style="
+                  display:block;
+                  padding: 5px 15px 5px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  color: #6c757d;
+                  text-transform: uppercase;
+                ">
+              Links Diversos
+            </span>
+          </li>
+
+          <!-- Linha abaixo do título -->
+          <li class="nav-item">
+            <a class="nav-link" href="../index.php">
+              <i class="ti-home menu-icon"></i>
+              <span class="menu-title"> Painel Principal</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../alternativa/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Feira do Alternativa</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="../mercado/" class="nav-link">
+              <i class="ti-shopping-cart menu-icon"></i>
+              <span class="menu-title">Mercado Municipal</span>
+
+            </a>
+          </li>
+          <li class="nav-item">
+
+            <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+              <i class="ti-headphone-alt menu-icon"></i>
+              <span class="menu-title">Suporte</span>
+            </a>
+          </li>
+
+        </ul>
       </nav>
 
+      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
 
           <div class="row">
             <div class="col-12 mb-3">
-              <h3 class="font-weight-bold mb-1">Entrada do Dia</h3>
-              <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
-                <span class="pill"><i class="ti-calendar"></i> <?= h(fmt_date($dia)) ?></span>
-                <span class="pill"><i class="ti-agenda"></i> Romaneio #<?= (int)$romaneioId ?></span>
+              <h3 class="font-weight-bold">Cadastro de Lançamento do Dia</h3>
+              <h6 class="font-weight-normal mb-0">
+                Informe o <b>CPF</b> do produtor e registre o item.
+              </h6>
+
+              <div class="mt-2" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <span class="pill <?= ($romaneioStatus === 'ABERTO' ? 'status-aberto' : 'status-fechado') ?>">
+                  <i class="ti-flag"></i> Status: <?= h($romaneioStatus) ?>
+                </span>
+                <span class="pill">
+                  <i class="ti-calendar"></i> Data: <?= h($dataRef) ?>
+                </span>
+                <span class="pill">
+                  <i class="ti-receipt"></i> Romaneio: <?= (int)$romaneioId ?>
+                </span>
+
+
               </div>
             </div>
           </div>
+
+          <?php if (!empty($msg)): ?>
+            <div class="alert alert-success"><?= h($msg) ?></div>
+          <?php endif; ?>
+          <?php if (!empty($err)): ?>
+            <div class="alert alert-danger"><?= h($err) ?></div>
+          <?php endif; ?>
 
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
                 <div class="card-body">
 
-                  <div class="card-header-lite">
+                  <div class="card-title-row">
                     <div>
-                      <h4 class="card-title mb-0">Lançar Remessas</h4>
-                      <p class="card-description mb-0">Preencha as linhas. Foto é opcional (1 por linha).</p>
-                    </div>
-
-                    <div class="d-flex align-items-center" style="gap:10px;">
-                      <div>
-                        <label class="mb-1 muted" style="font-size:12px;">Data</label>
-                        <input type="date" class="form-control mini" value="<?= h($dia) ?>"
-                          onchange="location.href='?dia='+this.value;">
-                      </div>
-
-                      <div class="totbox">
-                        <p class="totlabel">Total estimado</p>
-                        <p class="totvalue" id="jsTotal">R$ 0,00</p>
-                      </div>
+                      <h4 class="card-title mb-0">Novo Lançamento</h4>
+                      <p class="card-description mb-0">
+                        CPF do produtor + produto + quantidade + preço.
+                        <span class="req-badge">Obrigatório</span>
+                      </p>
                     </div>
                   </div>
 
-                  <form method="post" action="./lancamentos.php?dia=<?= h($dia) ?>" autocomplete="off" id="formEntrada">
+                  <?php if (empty($produtos)): ?>
+                    <div class="alert alert-warning mt-3">
+                      Nenhum produto ativo encontrado para esta feira.
+                      <div class="mt-2"><small>Cadastre/ative produtos para poder lançar.</small></div>
+                    </div>
+                  <?php endif; ?>
+
+                  <form class="pt-4" method="post" action="" id="formLancamento">
                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                    <input type="hidden" name="acao" value="salvar">
-                    <input type="hidden" name="data_ref" value="<?= h($dia) ?>">
 
-                    <div id="linesWrap">
-                      <div class="line-card js-line">
-                        <div class="row">
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Produtor</label>
-                            <select class="form-control js-produtor" name="produtor_id[]">
-                              <option value="0">Selecione</option>
-                              <?php foreach ($produtoresAtivos as $p): ?>
-                                <?php
-                                  $doc = preg_replace('/\D+/', '', (string)($p['documento'] ?? ''));
-                                  $docLabel = $doc !== '' ? $doc : '—';
-                                ?>
-                                <option value="<?= (int)$p['id'] ?>">
-                                  <?= h(($p['nome'] ?? '') . ' — CPF: ' . $docLabel) ?>
-                                </option>
-                              <?php endforeach; ?>
-                            </select>
+                    <div class="form-section">
+                      <div class="section-title"><i class="ti-user"></i> Produtor</div>
+                      <div class="row">
+                        <div class="col-12 col-lg-6 mb-3">
+                          <label>Nome do produtor <span class="text-danger">*</span></label>
+                          <div class="autocomplete-wrap">
+                            <input
+                              id="produtor_busca"
+                              type="text"
+                              class="form-control"
+                              placeholder="Digite o nome para buscar..."
+                              required
+                              <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>
+                              value="<?= h($old['produtor_nome']) ?>">
+                            <div id="autocomplete_resultados" class="autocomplete-list"></div>
                           </div>
-
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Produto</label>
-                            <select class="form-control js-produto" name="produto_id[]">
-                              <option value="0">Selecione</option>
-                              <?php foreach ($produtosAtivos as $pr): ?>
-                                <option value="<?= (int)$pr['id'] ?>"
-                                  data-un="<?= h($pr['unidade_sigla'] ?? '') ?>"
-                                  data-cat="<?= h($pr['categoria_nome'] ?? '') ?>"
-                                  data-preco="<?= h((string)($pr['preco_referencia'] ?? '')) ?>">
-                                  <?= h($pr['nome'] ?? '') ?>
-                                </option>
-                              <?php endforeach; ?>
-                            </select>
-                            <small class="helper text-muted">Unid/Categoria preenche automático.</small>
-                          </div>
-
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Qtd</label>
-                            <input type="text" class="form-control js-qtd" name="quantidade_entrada[]" value="1">
-                          </div>
-
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Preço</label>
-                            <input type="text" class="form-control js-preco" name="preco_unitario_dia[]" placeholder="0,00">
-                          </div>
-
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Unid</label>
-                            <input type="text" class="form-control js-un" value="" readonly>
-                          </div>
-
-                          <div class="col-lg-4 col-md-6 mb-3">
-                            <label class="mb-1">Categoria</label>
-                            <input type="text" class="form-control js-cat" value="" readonly>
-                          </div>
-
-                          <div class="col-12">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:10px;">
-                              <div class="d-flex align-items-center" style="gap:10px; min-width: 220px;">
-                                <img class="photo-thumb js-thumb" src="" alt="">
-                                <small class="text-muted helper mb-0">Foto opcional.</small>
-                              </div>
-
-                              <div class="line-actions-simple">
-                                <button type="button" class="btn btn-primary btn-foto-big js-foto">
-                                  <i class="ti-camera"></i> Tirar foto
-                                </button>
-
-                                <button type="button" class="btn btn-light js-remove" disabled>
-                                  <i class="ti-trash"></i> Remover linha
-                                </button>
-                              </div>
-                            </div>
-
-                            <input type="hidden" class="js-foto-base64" name="foto_base64[]" value="">
-                            <input type="hidden" name="observacao_item[]" value="">
+                          <!-- Campo oculto para enviar o CPF original -->
+                          <input type="hidden" name="cpf" id="cpf" value="<?= h($old['cpf']) ?>">
+                        </div>
+                        <div class="col-12 col-lg-6 mb-3">
+                          <label>CPF do permissionário</label>
+                          <div class="name-box">
+                            <span id="produtorDocumento" style="font-weight:800; color: #22c55e;">—</span>
+                            <div class="text-muted" style="font-size:12px;">O CPF aparecerá aqui ao selecionar o nome.</div>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div class="sticky-actions">
-                      <div class="d-flex flex-wrap" style="gap:8px;">
-                        <button type="button" class="btn btn-light" id="btnAdd"><i class="ti-plus mr-1"></i> Nova linha</button>
-                        <button type="button" class="btn btn-light" id="btnRef"><i class="ti-tag mr-1"></i> Preço ref.</button>
-                        <button type="button" class="btn btn-light" id="btnLimparFotos"><i class="ti-close mr-1"></i> Limpar fotos</button>
-                      </div>
-                      <div class="d-flex flex-wrap" style="gap:8px;">
-                        <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar entradas</button>
-                        <a class="btn btn-light" href="./lancamentos.php?dia=<?= h($dia) ?>"><i class="ti-reload mr-1"></i> Recarregar</a>
+                    <div id="itemsContainer">
+                      <!-- Renderiza o primeiro item por padrão -->
+                      <div class="form-section item-block" data-index="0">
+                        <div class="section-title d-flex justify-content-between align-items-center">
+                          <span><i class="ti-package"></i> Item #1</span>
+                        </div>
+
+                        <div class="row">
+                          <div class="col-12 col-lg-6 mb-3">
+                            <label>Produto <span class="text-danger">*</span></label>
+                            <select
+                              name="items[0][produto_id]"
+                              class="form-control"
+                              required
+                              <?= (empty($produtos) || $romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                              <option value="">Selecione</option>
+                              <?php foreach ($produtos as $pr): ?>
+                                <option value="<?= (int)$pr['id'] ?>">
+                                  <?= h($pr['nome']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
+
+                          <div class="col-12 col-md-6 col-lg-3 mb-3">
+                            <label>Qtd. entrada <span class="text-danger">*</span></label>
+                            <input
+                              name="items[0][quantidade_entrada]"
+                              type="text"
+                              class="form-control"
+                              placeholder="Ex.: 10,500"
+                              required
+                              <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                          </div>
+
+                          <div class="col-12 col-md-6 col-lg-3 mb-3">
+                            <label>Preço unitário <span class="text-danger">*</span></label>
+                            <input
+                              name="items[0][preco_unitario_dia]"
+                              type="text"
+                              class="form-control"
+                              placeholder="Ex.: 7,50"
+                              required
+                              <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                          </div>
+
+                          <div class="col-12 mb-3">
+                            <label>Observação</label>
+                            <input
+                              name="items[0][observacao]"
+                              type="text"
+                              class="form-control"
+                              placeholder="Opcional"
+                              <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                          </div>
+
+                          <div class="col-12">
+                            <label>Fotos do produto (máx 3)</label>
+                            <div class="d-flex flex-wrap gap-2 mb-2 photo-previews">
+                              <!-- Previews das fotos aqui -->
+                            </div>
+                            <div class="fotos-inputs">
+                              <input type="hidden" name="items[0][fotos_base64][]" value="">
+                              <input type="hidden" name="items[0][fotos_base64][]" value="">
+                              <input type="hidden" name="items[0][fotos_base64][]" value="">
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm btn-action-cam" onclick="openCamForItem(0)">
+                              <i class="ti-camera mb-1"></i> Capturar Foto
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearPhotosForItem(0)">
+                              <i class="ti-trash mb-1"></i> Limpar Fotos
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
+
+                    <div class="mb-4">
+                      <button type="button" class="btn btn-outline-info w-100" id="btnAddItem" <?= ($romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                        <i class="ti-plus mr-1"></i> Adicionar outro produto para este produtor
+                      </button>
+                    </div>
+
+                    <hr>
+
+                    <div class="form-actions">
+                      <button type="submit" class="btn btn-primary"
+                        <?= (empty($produtos) || $romaneioStatus !== 'ABERTO') ? 'disabled' : '' ?>>
+                        <i class="ti-save mr-1"></i> Salvar Lançamento
+                      </button>
+                      <button type="reset" class="btn btn-light" id="btnReset">
+                        <i class="ti-close mr-1"></i> Limpar
+                      </button>
+                    </div>
+
+                    <?php if ($romaneioStatus !== 'ABERTO'): ?>
+                      <div class="alert alert-warning mt-3">
+                        Romaneio está <b>FECHADO</b>. Para lançar novamente, reabra no fechamento.
+                      </div>
+                    <?php endif; ?>
                   </form>
 
-                  <small class="text-muted d-block mt-3 helper">
-                    * Dica: no celular, a câmera só funciona em HTTPS (ou localhost).
-                  </small>
 
                 </div>
               </div>
@@ -707,6 +987,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
               © <?= date('Y') ?> SIGRelatórios —
               <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
+              Todos os direitos reservados.
             </span>
           </div>
         </footer>
@@ -715,44 +996,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <!-- MODAL CÂMERA -->
-  <div class="modal fade" id="modalCamera" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-      <div class="modal-content" style="border-radius:14px;">
-        <div class="modal-header">
-          <h5 class="modal-title">Tirar foto</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
+  <!-- Modal de Câmera Genérico -->
+  <div id="camModal" class="cam-modal">
+    <div class="cam-modal-content">
+      <h5 class="mb-3">Capturar Foto</h5>
+      <video id="cameraVideo" autoplay playsinline></video>
+      <canvas id="cameraCanvas" style="display:none;"></canvas>
 
-        <div class="modal-body">
-          <div class="cam-box">
-            <video id="camVideo" autoplay playsinline></video>
-            <canvas id="camCanvas"></canvas>
-            <img id="camPreview" alt="Prévia">
-          </div>
-
-          <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
-            <button type="button" class="btn btn-primary" id="btnTirarFoto" disabled>
-              <i class="ti-image mr-1"></i> Tirar
-            </button>
-            <button type="button" class="btn btn-light" id="btnRefazer" disabled>
-              <i class="ti-reload mr-1"></i> Refazer
-            </button>
-            <button type="button" class="btn btn-success" id="btnUsarFoto" disabled>
-              <i class="ti-check mr-1"></i> Usar foto
-            </button>
-          </div>
-
-          <small class="text-muted helper d-block mt-2">
-            Ao abrir, a câmera já inicia. Se não pedir permissão, use HTTPS (ou localhost).
-          </small>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-dismiss="modal">Fechar</button>
-        </div>
+      <div class="mt-3 d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary" onclick="closeCam()">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnTirarFoto">Tirar Foto</button>
       </div>
     </div>
   </div>
@@ -766,270 +1019,205 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <script>
     (function() {
-      const wrap = document.getElementById('linesWrap');
-      const btnAdd = document.getElementById('btnAdd');
-      const btnRef = document.getElementById('btnRef');
-      const btnLimparFotos = document.getElementById('btnLimparFotos');
-      const totalEl = document.getElementById('jsTotal');
-      const form = document.getElementById('formEntrada');
+      const cpf = document.getElementById('cpf');
+      const produtorNome = document.getElementById('produtorNome');
+      const itemsContainer = document.getElementById('itemsContainer');
+      const btnAddItem = document.getElementById('btnAddItem');
 
-      function brMoney(n) {
-        try {
-          return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        } catch (e) {
-          const x = Math.round(n * 100) / 100;
-          return String(x).replace('.', ',');
-        }
-      }
-
-      function toNum(s) {
-        s = String(s || '').trim();
-        if (!s) return 0;
-        s = s.replace(/R\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
-        s = s.replace(/[^0-9.\-]/g, '');
-        const v = parseFloat(s);
-        return isNaN(v) ? 0 : v;
-      }
-
-      function syncInfo(line) {
-        const sel = line.querySelector('.js-produto');
-        const opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
-        const un = opt && opt.dataset ? (opt.dataset.un || '') : '';
-        const cat = opt && opt.dataset ? (opt.dataset.cat || '') : '';
-        const unEl = line.querySelector('.js-un');
-        const catEl = line.querySelector('.js-cat');
-        if (unEl) unEl.value = un;
-        if (catEl) catEl.value = cat;
-      }
-
-      function calcTotal() {
-        let tot = 0;
-        document.querySelectorAll('.js-line').forEach(line => {
-          const produtor = parseInt((line.querySelector('.js-produtor') || {}).value || '0', 10);
-          const produto = parseInt((line.querySelector('.js-produto') || {}).value || '0', 10);
-          if (!produtor || !produto) return;
-          const qtd = toNum((line.querySelector('.js-qtd') || {}).value || '0');
-          const preco = toNum((line.querySelector('.js-preco') || {}).value || '0');
-          if (qtd > 0 && preco > 0) tot += (qtd * preco);
-        });
-        totalEl.textContent = 'R$ ' + brMoney(tot);
-      }
-
-      function updateRemoveButtons() {
-        const lines = document.querySelectorAll('.js-line');
-        lines.forEach(line => {
-          const btn = line.querySelector('.js-remove');
-          if (!btn) return;
-          btn.disabled = (lines.length <= 1);
-          btn.onclick = () => {
-            if (lines.length <= 1) return;
-            line.remove();
-            updateRemoveButtons();
-            calcTotal();
-          };
-        });
-      }
-
-      function wire(line) {
-        const prod = line.querySelector('.js-produto');
-        const qtd = line.querySelector('.js-qtd');
-        const preco = line.querySelector('.js-preco');
-
-        prod && prod.addEventListener('change', () => {
-          syncInfo(line);
-          calcTotal();
-        });
-        qtd && qtd.addEventListener('input', calcTotal);
-        preco && preco.addEventListener('input', calcTotal);
-
-        syncInfo(line);
-      }
-
-      btnAdd && btnAdd.addEventListener('click', () => {
-        const base = document.querySelector('.js-line');
-        if (!base) return;
-        const clone = base.cloneNode(true);
-
-        const sProdutor = clone.querySelector('.js-produtor');
-        const sProduto  = clone.querySelector('.js-produto');
-        const inQtd     = clone.querySelector('.js-qtd');
-        const inPreco   = clone.querySelector('.js-preco');
-        const inUn      = clone.querySelector('.js-un');
-        const inCat     = clone.querySelector('.js-cat');
-        const inFoto    = clone.querySelector('.js-foto-base64');
-
-        if (sProdutor) sProdutor.value = '0';
-        if (sProduto)  sProduto.value = '0';
-        if (inQtd)     inQtd.value = '1';
-        if (inPreco)   inPreco.value = '';
-        if (inUn)      inUn.value = '';
-        if (inCat)     inCat.value = '';
-        if (inFoto)    inFoto.value = '';
-
-        const thumb = clone.querySelector('.js-thumb');
-        if (thumb) {
-          thumb.src = '';
-          thumb.style.display = 'none';
-        }
-
-        wrap.appendChild(clone);
-        wire(clone);
-        updateRemoveButtons();
-        calcTotal();
-      });
-
-      btnRef && btnRef.addEventListener('click', () => {
-        document.querySelectorAll('.js-line').forEach(line => {
-          const sel = line.querySelector('.js-produto');
-          const precoIn = line.querySelector('.js-preco');
-          if (!sel || !precoIn) return;
-          const pid = parseInt(sel.value || '0', 10);
-          if (!pid) return;
-          const opt = sel.options[sel.selectedIndex];
-          const ref = opt && opt.dataset ? (opt.dataset.preco || '') : '';
-          if (!precoIn.value && ref) {
-            const n = toNum(ref);
-            if (n > 0) precoIn.value = brMoney(n);
-          }
-        });
-        calcTotal();
-      });
-
-      btnLimparFotos && btnLimparFotos.addEventListener('click', () => {
-        document.querySelectorAll('.js-line').forEach(line => {
-          const foto = line.querySelector('.js-foto-base64');
-          if (foto) foto.value = '';
-          const thumb = line.querySelector('.js-thumb');
-          if (thumb) {
-            thumb.src = '';
-            thumb.style.display = 'none';
-          }
-        });
-      });
-
-      document.querySelectorAll('.js-line').forEach(wire);
-      updateRemoveButtons();
-      calcTotal();
-
-      // ===== CAMERA =====
-      let currentLine = null;
+      let itemCount = 1;
+      let currentTargetIndex = null;
       let stream = null;
-      let capturedDataUrl = '';
 
-      const camVideo = document.getElementById('camVideo');
-      const camCanvas = document.getElementById('camCanvas');
-      const camPreview = document.getElementById('camPreview');
+      // ===== PRODUTOR AUTOCOMPLETE =====
+      const buscaIn = document.getElementById('produtor_busca');
+      const resultadosDiv = document.getElementById('autocomplete_resultados');
+      const cpfHidden = document.getElementById('cpf');
+      const docDisplay = document.getElementById('produtorDocumento');
 
-      const btnTirarFoto = document.getElementById('btnTirarFoto');
-      const btnRefazer = document.getElementById('btnRefazer');
-      const btnUsarFoto = document.getElementById('btnUsarFoto');
-
-      function setCamUI({ on, has }) {
-        if (btnTirarFoto) btnTirarFoto.disabled = !on;
-        if (btnRefazer) btnRefazer.disabled = !has;
-        if (btnUsarFoto) btnUsarFoto.disabled = !has;
-        if (camPreview) camPreview.style.display = has ? 'block' : 'none';
+      function fomatCPF(v) {
+        v = v.replace(/\D/g, "");
+        if (v.length !== 11) return v;
+        return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
       }
 
-      function closeCam() {
+      if (buscaIn) {
+        buscaIn.addEventListener('input', async function() {
+          const val = this.value;
+          if (val.length < 2) {
+            resultadosDiv.style.display = 'none';
+            return;
+          }
+
+          try {
+            const resp = await fetch(`?ajax_busca_produtor_nome=1&nome=${encodeURIComponent(val)}`);
+            const data = await resp.json();
+
+            if (data.sucesso && data.resultados.length > 0) {
+              resultadosDiv.innerHTML = '';
+              data.resultados.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.innerHTML = `<strong>${p.nome}</strong><span class="cpf-hint">CPF: ${fomatCPF(p.documento)}</span>`;
+                item.onclick = function() {
+                  buscaIn.value = p.nome;
+                  cpfHidden.value = p.documento;
+                  docDisplay.textContent = fomatCPF(p.documento);
+                  resultadosDiv.style.display = 'none';
+                };
+                resultadosDiv.appendChild(item);
+              });
+              resultadosDiv.style.display = 'block';
+            } else {
+              resultadosDiv.style.display = 'none';
+            }
+          } catch (e) {
+            console.error('Erro na busca:', e);
+          }
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!buscaIn.contains(e.target) && !resultadosDiv.contains(e.target)) {
+            resultadosDiv.style.display = 'none';
+          }
+        });
+      }
+
+      // ===== Dynamic Items =====
+      const productsOptions = `<?php foreach ($produtos as $p): ?><option value="<?= $p['id'] ?>"><?= addslashes(h($p['nome'])) ?></option><?php endforeach; ?>`;
+
+      if (btnAddItem) {
+        btnAddItem.addEventListener('click', () => {
+          const idx = itemCount++;
+          const html = `
+        <div class="form-section item-block" data-index="${idx}">
+          <div class="section-title d-flex justify-content-between align-items-center">
+            <span><i class="ti-package"></i> Item #${idx + 1}</span>
+            <button type="button" class="btn btn-danger btn-xs btn-remove-item" onclick="removeItem(${idx})"><i class="ti-close"></i></button>
+          </div>
+          <div class="row">
+            <div class="col-12 col-lg-6 mb-3">
+              <label>Produto <span class="text-danger">*</span></label>
+              <select name="items[${idx}][produto_id]" class="form-control" required>
+                <option value="">Selecione</option>
+                ${productsOptions}
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 mb-3">
+              <label>Qtd. entrada <span class="text-danger">*</span></label>
+              <input name="items[${idx}][quantidade_entrada]" type="text" class="form-control" required placeholder="Ex.: 5,000">
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 mb-3">
+              <label>Preço unitário <span class="text-danger">*</span></label>
+              <input name="items[${idx}][preco_unitario_dia]" type="text" class="form-control" required placeholder="Ex.: 8,00">
+            </div>
+            <div class="col-12 mb-3">
+              <label>Observação</label>
+              <input name="items[${idx}][observacao]" type="text" class="form-control" placeholder="Opcional">
+            </div>
+            <div class="col-12">
+              <label>Fotos (máx 3)</label>
+              <div class="d-flex flex-wrap gap-2 mb-2 photo-previews"></div>
+              <div class="fotos-inputs">
+                <input type="hidden" name="items[${idx}][fotos_base64][]" value="">
+                <input type="hidden" name="items[${idx}][fotos_base64][]" value="">
+                <input type="hidden" name="items[${idx}][fotos_base64][]" value="">
+              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="openCamForItem(${idx})"><i class="ti-camera mb-1"></i> Capturar Foto</button>
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearPhotosForItem(${idx})"><i class="ti-trash mb-1"></i> Limpar Fotos</button>
+            </div>
+          </div>
+        </div>`;
+          itemsContainer.insertAdjacentHTML('beforeend', html);
+        });
+      }
+
+      window.removeItem = (idx) => {
+        const block = document.querySelector(`.item-block[data-index="${idx}"]`);
+        if (block) block.remove();
+      };
+
+      // ===== Camera Management =====
+      const modal = document.getElementById('camModal');
+      const video = document.getElementById('cameraVideo');
+      const canvas = document.getElementById('cameraCanvas');
+      const btnTirar = document.getElementById('btnTirarFoto');
+
+      window.openCamForItem = async (idx) => {
+        currentTargetIndex = idx;
+        const block = document.querySelector(`.item-block[data-index="${idx}"]`);
+        const inputs = block.querySelectorAll('.fotos-inputs input');
+
+        let filled = 0;
+        inputs.forEach(i => {
+          if (i.value) filled++;
+        });
+        if (filled >= 3) {
+          alert('Máximo de 3 fotos atingido para este item.');
+          return;
+        }
+
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'environment'
+            }
+          });
+          video.srcObject = stream;
+          modal.style.display = 'flex';
+        } catch (e) {
+          alert('Erro ao acessar câmera.');
+        }
+      };
+
+      window.closeCam = () => {
         if (stream) {
           stream.getTracks().forEach(t => t.stop());
           stream = null;
         }
-        if (camVideo) camVideo.srcObject = null;
-      }
+        modal.style.display = 'none';
+      };
 
-      async function openCam() {
-        try {
+      if (btnTirar) {
+        btnTirar.addEventListener('click', () => {
+          const block = document.querySelector(`.item-block[data-index="${currentTargetIndex}"]`);
+          const inputs = block.querySelectorAll('.fotos-inputs input');
+          const previews = block.querySelector('.photo-previews');
+
+          let targetInput = null;
+          for (let i of inputs) {
+            if (!i.value) {
+              targetInput = i;
+              break;
+            }
+          }
+
+          if (targetInput) {
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, -640, 0, 640, 480);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            targetInput.value = dataUrl;
+
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            previews.appendChild(img);
+          }
           closeCam();
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } },
-            audio: false
-          });
-          camVideo.srcObject = stream;
-          await camVideo.play();
-          capturedDataUrl = '';
-          if (camPreview) camPreview.src = '';
-          setCamUI({ on: true, has: false });
-        } catch (e) {
-          alert('Não foi possível acessar a câmera. Verifique permissão e HTTPS (ou localhost).');
-          setCamUI({ on: false, has: false });
-        }
-      }
-
-      function snap() {
-        if (!camVideo || !camVideo.videoWidth || !camVideo.videoHeight) return;
-        const targetW = 720;
-        const ratio = camVideo.videoHeight / camVideo.videoWidth;
-        const targetH = Math.round(targetW * ratio);
-
-        camCanvas.width = targetW;
-        camCanvas.height = targetH;
-        const ctx = camCanvas.getContext('2d', { alpha: false });
-        ctx.drawImage(camVideo, 0, 0, targetW, targetH);
-
-        capturedDataUrl = camCanvas.toDataURL('image/jpeg', 0.65);
-        if (camPreview) camPreview.src = capturedDataUrl;
-
-        closeCam();
-        setCamUI({ on: false, has: true });
-      }
-
-      function redo() {
-        capturedDataUrl = '';
-        if (camPreview) {
-          camPreview.src = '';
-          camPreview.style.display = 'none';
-        }
-        openCam();
-      }
-
-      document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.js-foto');
-        if (!btn) return;
-
-        currentLine = btn.closest('.js-line');
-        capturedDataUrl = '';
-        if (camPreview) camPreview.src = '';
-        setCamUI({ on: false, has: false });
-
-        if (window.jQuery && jQuery.fn.modal) {
-          jQuery('#modalCamera').modal('show');
-          jQuery('#modalCamera').one('shown.bs.modal', function() {
-            openCam();
-          });
-        } else {
-          openCam();
-        }
-      });
-
-      btnTirarFoto && btnTirarFoto.addEventListener('click', snap);
-      btnRefazer && btnRefazer.addEventListener('click', redo);
-
-      btnUsarFoto && btnUsarFoto.addEventListener('click', function() {
-        if (!currentLine || !capturedDataUrl) return;
-
-        const hid = currentLine.querySelector('.js-foto-base64');
-        if (hid) hid.value = capturedDataUrl;
-
-        const thumb = currentLine.querySelector('.js-thumb');
-        if (thumb) {
-          thumb.src = capturedDataUrl;
-          thumb.style.display = 'block';
-        }
-
-        if (window.jQuery && jQuery.fn.modal) jQuery('#modalCamera').modal('hide');
-      });
-
-      if (window.jQuery) {
-        jQuery('#modalCamera').on('hidden.bs.modal', function() {
-          closeCam();
-          capturedDataUrl = '';
-          if (camPreview) camPreview.src = '';
-          setCamUI({ on: false, has: false });
         });
       }
+
+      window.clearPhotosForItem = (idx) => {
+        const block = document.querySelector(`.item-block[data-index="${idx}"]`);
+        block.querySelectorAll('.fotos-inputs input').forEach(i => i.value = '');
+        block.querySelector('.photo-previews').innerHTML = '';
+      };
+
     })();
   </script>
+
 </body>
+
 </html>

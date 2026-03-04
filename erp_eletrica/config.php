@@ -1,94 +1,89 @@
 <?php
-session_start();
+// ERP Elétrica - Core Configuration
+define('DEBUG', true);
+require_once 'autoloader.php';
+require_once __DIR__ . '/src/App/Config/Helpers.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// DEPOIS (para funcionar na hospedagem)
-define('DB_HOST', 'localhost'); // ou 'localhost' (teste primeiro)
-define('DB_USER', 'u784961086_pdv');        // usuário que você criar no painel
-define('DB_PASS', 'X9#ZC#n^');          // senha que você definir
-define('DB_NAME', 'u784961086_pdv');           // nome que você der ao banco
+// Database Credentials
+define('DB_HOST', 'localhost');
+define('DB_USER', 'u784961086_pdv');
+define('DB_PASS', 'Uv$1NhLlkRub');
+define('DB_NAME', 'u784961086_pdv');
 
-// Conexão com o banco de dados
+// Technical Constants
+define('APP_NAME', 'ERP Elétrica');
+define('APP_VERSION', '2.0.0');
+define('SESSION_TIMEOUT', 3600); // 1 hour
+
+// Database Connection via Singleton
 try {
-    $pdo = new PDO("mysql:host=".DB_HOST.";dbname=".DB_NAME, DB_USER, DB_PASS);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    die("Erro de conexão: " . $e->getMessage());
+    $database = \App\Config\Database::getInstance();
+    $pdo = $database->getConnection();
+} catch(Exception $e) {
+    die("Erro crítico de conexão: " . $e->getMessage());
 }
 
-// Funções úteis
-function formatarMoeda($valor) {
-    return 'R$ ' . number_format($valor, 2, ',', '.');
+// Security Headers (Enhanced)
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: SAMEORIGIN");
+header("X-XSS-Protection: 1; mode=block");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+header("Content-Security-Policy: default-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data:;");
+header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+
+// CSRF Prevention
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-function formatarData($data) {
-    return date('d/m/Y', strtotime($data));
+// Global Sanitization Helper
+function sanitizeInput($data) {
+    if (is_array($data)) {
+        return array_map('sanitizeInput', $data);
+    }
+    return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }
 
-// Criar tabelas se não existirem
-$sql = "
-CREATE TABLE IF NOT EXISTS clientes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    cpf_cnpj VARCHAR(20),
-    telefone VARCHAR(20),
-    email VARCHAR(100),
-    endereco TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+function validateCsrf($token) {
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], (string)$token);
+}
 
-CREATE TABLE IF NOT EXISTS produtos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    codigo VARCHAR(50) UNIQUE,
-    nome VARCHAR(100) NOT NULL,
-    descricao TEXT,
-    categoria VARCHAR(50),
-    preco_custo DECIMAL(10,2),
-    preco_venda DECIMAL(10,2),
-    quantidade INT DEFAULT 0,
-    estoque_minimo INT DEFAULT 5,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+// ... rest of the file logic ...
+// Note: runMigrations is already called below.
 
-CREATE TABLE IF NOT EXISTS os (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    numero_os VARCHAR(20) UNIQUE,
-    cliente_id INT,
-    data_abertura DATE,
-    data_conclusao DATE,
-    status ENUM('aberta', 'em_andamento', 'concluida', 'cancelada') DEFAULT 'aberta',
-    descricao TEXT,
-    valor_total DECIMAL(10,2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (cliente_id) REFERENCES clientes(id)
-);
-
-CREATE TABLE IF NOT EXISTS itens_os (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    os_id INT,
-    produto_id INT,
-    quantidade INT,
-    valor_unitario DECIMAL(10,2),
-    subtotal DECIMAL(10,2),
-    FOREIGN KEY (os_id) REFERENCES os(id),
-    FOREIGN KEY (produto_id) REFERENCES produtos(id)
-);
-
-CREATE TABLE IF NOT EXISTS contas_receber (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    os_id INT,
-    descricao VARCHAR(255),
-    valor DECIMAL(10,2),
-    data_vencimento DATE,
-    data_pagamento DATE,
-    status ENUM('pendente', 'pago', 'atrasado') DEFAULT 'pendente',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (os_id) REFERENCES os(id)
-);
-";
-
+// Migration Runner
 try {
-    $pdo->exec($sql);
-} catch(PDOException $e) {
-    // Tabelas já existem
+    $migrationService = new \App\Services\MigrationService();
+    $migrationService->run();
+} catch (Exception $e) {
+    error_log("Erro de migração: " . $e->getMessage());
+}
+
+// Global Exception Handler
+set_exception_handler(function($e) {
+    error_log("Uncaught Exception: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    if (defined('DEBUG') && DEBUG) {
+        echo "<h1>Erro Crítico</h1><pre>" . $e->getMessage() . "\n" . $e->getTraceAsString() . "</pre>";
+    } else {
+        echo "<h1>Desculpe, ocorreu um erro interno.</h1><p>Por favor, tente novamente mais tarde.</p>";
+    }
+});
+
+// Session Timeout Logic
+if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > SESSION_TIMEOUT)) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php?msg=Sessão expirada por inatividade");
+    exit;
+}
+$_SESSION['LAST_ACTIVITY'] = time();
+
+// Auth Helpers
+function checkAuth($niveis_permitidos = []) {
+    \App\Services\AuthService::check($niveis_permitidos);
 }
 ?>
+
