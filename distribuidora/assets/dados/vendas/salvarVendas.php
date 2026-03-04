@@ -127,7 +127,7 @@ $pagamentoJson = null;
 
 if ($pagMode === 'UNICO') {
   $method = strtoupper(trim((string)($pay['method'] ?? 'DINHEIRO')));
-  if (!in_array($method, ['DINHEIRO', 'PIX', 'CARTAO', 'BOLETO'], true)) $method = 'DINHEIRO';
+  if (!in_array($method, ['DINHEIRO', 'PIX', 'CARTAO', 'FIADO'], true)) $method = 'DINHEIRO';
   $paid = (float)to_float($pay['paid'] ?? 0);
 
   $ok = false;
@@ -136,6 +136,9 @@ if ($pagMode === 'UNICO') {
   if ($method === 'DINHEIRO') {
     $ok = ($paid + 0.009) >= $total;
     $troco = $ok ? max(0.0, $paid - $total) : 0.0;
+  } else if ($method === 'FIADO') {
+    $ok = true; // For Fiado, paid value is the entry (entrada), which can be < total
+    $troco = 0.0;
   } else {
     $ok = abs($paid - $total) < 0.01;
     $troco = 0.0;
@@ -143,7 +146,7 @@ if ($pagMode === 'UNICO') {
 
   if (!$ok) {
     if ($method === 'DINHEIRO') fail('No dinheiro, o valor pago deve ser maior/igual ao total.');
-    fail('Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total.');
+    fail('Para Pix/Cartão/Fiado, o valor pago deve ser igual ao total.');
   }
 
   $pagamento = $method;
