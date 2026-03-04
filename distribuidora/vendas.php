@@ -754,7 +754,7 @@ function fmtMoney($v): string
           </a>
         </li>
 
-        <li class="nav-item nav-item-has-children active">
+        <li class="nav-item nav-item-has-children">
           <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
             aria-controls="ddmenu_operacoes" aria-expanded="true">
             <span class="icon">
