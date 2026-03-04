@@ -339,7 +339,7 @@ pdvSearch.addEventListener('input', async (e) => {
         return;
     }
 
-    const response = await fetch(`vendas.php?action=search&term=${term}`);
+    const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
     const products = await response.json();
     renderSearchResults(products);
 });
@@ -466,7 +466,7 @@ if (customerSearch) {
         }
 
         try {
-            const response = await fetch(`vendas.php?action=search_clients&term=${term}`);
+            const response = await fetch(`vendas.php?action=search_clients&term=${encodeURIComponent(term)}`);
             const clients = await response.json();
             renderCustomerSearchResults(clients);
         } catch (err) {
@@ -566,7 +566,7 @@ async function loadPendingPreSales() {
     const term = document.getElementById('searchPVTerm')?.value || '';
     
     try {
-        const res = await fetch(`pre_vendas.php?action=list_pending&term=${term}`);
+        const res = await fetch(`pre_vendas.php?action=list_pending&term=${encodeURIComponent(term)}`);
         if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
         const pvs = await res.json();
         const list = document.getElementById('listPendingPVs');
@@ -963,7 +963,7 @@ document.addEventListener('keydown', (e) => {
 // Barcode optimization: If search returns exactly 1 result and looks like a barcode, add to cart automatically
 async function handleBarcode(val) {
     if (val.length >= 8 && !isNaN(val)) {
-        const response = await fetch(`vendas.php?action=search&term=${val}`);
+        const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(val)}`);
         const products = await response.json();
         if (products.length === 1) {
             addToCart(products[0]);

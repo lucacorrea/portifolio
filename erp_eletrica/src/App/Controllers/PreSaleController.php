@@ -45,39 +45,71 @@ class PreSaleController extends BaseController {
 
     public function list_pending() {
         $db = \App\Config\Database::getInstance()->getConnection();
-        $term = $_GET['term'] ?? '';
+        $term = trim($_GET['term'] ?? '');
         $model = new PreSale();
-        $nameField = $model->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : 'NULL';
+        
+        $filialId = $_SESSION['filial_id'] ?? 1;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        
+        $avulsoCol = $model->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
 
         $sql = "
-            SELECT DISTINCT pv.id, pv.codigo, pv.valor_total, 
-                   IFNULL(c.nome, $nameField) as cliente_nome, 
-                   u.nome as vendedor_nome,
-                   pv.created_at
+            SELECT pv.id, pv.codigo, pv.valor_total, pv.status, pv.created_at,
+                   COALESCE(c.nome, $avulsoCol, 'Consumidor') as cliente_nome, 
+                   u.nome as vendedor_nome 
             FROM pre_vendas pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
             LEFT JOIN usuarios u ON pv.usuario_id = u.id
-            LEFT JOIN pre_venda_itens pvi ON pv.id = pvi.pre_venda_id
-            LEFT JOIN produtos p ON pvi.produto_id = p.id
-            WHERE pv.status = 'pendente' 
-            AND pv.filial_id = ? ";
+            WHERE 1=1 ";
         
-        $params = [$_SESSION['filial_id'] ?? 1];
-        if ($term) {
-            $sql .= " AND (c.nome LIKE ? OR $nameField LIKE ? OR pv.codigo LIKE ? OR p.nome LIKE ? OR p.codigo LIKE ?)";
-            $termLike = "%$term%";
-            $params[] = $termLike;
-            $params[] = $termLike;
-            $params[] = $termLike;
-            $params[] = $termLike;
-            $params[] = $termLike;
+        $params = [];
+        
+        if (!$isMatriz) {
+            $sql .= " AND pv.filial_id = ? ";
+            $params[] = $filialId;
         }
 
-        $sql .= " ORDER BY pv.created_at DESC LIMIT 20";
+        if ($term) {
+            $termLike = "%" . strtolower($term) . "%";
+            $termInt = (int)$term;
+            
+            $sql .= " AND (
+                LOWER(c.nome) LIKE ? 
+                OR LOWER(c.cpf_cnpj) LIKE ? 
+                OR LOWER($avulsoCol) LIKE ? 
+                OR LOWER(u.nome) LIKE ?
+                OR LOWER(pv.codigo) LIKE ? 
+                OR pv.id = ? 
+                OR EXISTS (
+                    SELECT 1 FROM pre_venda_itens pvi 
+                    INNER JOIN produtos p ON pvi.produto_id = p.id 
+                    WHERE pvi.pre_venda_id = pv.id 
+                    AND (LOWER(p.nome) LIKE ? OR LOWER(p.codigo) LIKE ? OR p.id = ? OR LOWER(p.codigo_barras) LIKE ?)
+                )
+            )";
+            $params[] = $termLike; // c.nome
+            $params[] = $termLike; // c.cpf_cnpj
+            $params[] = $termLike; // avulso
+            $params[] = $termLike; // u.nome
+            $params[] = $termLike; // pv.codigo
+            $params[] = $termInt;  // pv.id
+            $params[] = $termLike; // p.nome
+            $params[] = $termLike; // p.codigo
+            $params[] = $termInt;  // p.id
+            $params[] = $termLike; // p.codigo_barras
+        } else {
+            $sql .= " AND pv.status = 'pendente' ";
+        }
+
+        $sql .= " ORDER BY pv.created_at DESC LIMIT 30";
         
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        try {
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            echo json_encode(['error' => $e->getMessage(), 'sql' => $sql]);
+        }
         exit;
     }
 }
