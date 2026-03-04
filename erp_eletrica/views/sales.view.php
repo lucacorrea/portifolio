@@ -354,17 +354,37 @@ function renderSearchResults(products) {
     products.forEach(p => {
         const item = document.createElement('button');
         item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3';
+        
+        const isPV = p.type === 'pre_sale';
+        const icon = isPV ? 'fa-file-invoice-dollar text-warning' : 'fa-box text-primary';
+        const badge = isPV ? '<span class="badge bg-warning text-dark extra-small ms-2">PRÉ-VENDA</span>' : '';
+
         item.innerHTML = `
-            <div>
-                <div class="fw-bold text-primary">${p.nome}</div>
-                <small class="text-muted">Cód: ${p.id} | Un: ${p.unidade}</small>
+            <div class="d-flex align-items-center">
+                <i class="fas ${icon} fs-4 me-3 opacity-75"></i>
+                <div>
+                    <div class="fw-bold ${isPV ? 'text-warning' : 'text-primary'}">${p.nome} ${badge}</div>
+                    <small class="text-muted">Cód: ${p.codigo || p.id} | Un: ${p.unidade}</small>
+                </div>
             </div>
             <div class="text-end">
                 <div class="fw-bold">R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</div>
+                ${isPV ? '<small class="text-success extra-small fw-bold">CLIQUE PARA IMPORTAR</small>' : ''}
             </div>
         `;
-        item.onmouseover = () => showPreview(p);
-        item.onclick = () => addToCart(p);
+        
+        if (isPV) {
+            item.onclick = (e) => {
+                e.preventDefault();
+                importPreSale(p.codigo);
+                pdvSearch.value = '';
+                searchResults.classList.add('d-none');
+            };
+        } else {
+            item.onmouseover = () => showPreview(p);
+            item.onclick = () => addToCart(p);
+        }
+        
         searchResults.appendChild(item);
     });
     searchResults.classList.remove('d-none');
