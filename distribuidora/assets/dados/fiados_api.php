@@ -4,6 +4,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/vendas/_helpers.php';
 
+if (!function_exists('db')) {
+    function db() {
+        global $pdo;
+        return $pdo;
+    }
+}
+
 $pdo = db();
 
 // Auto-patch: Create fiados_pagamentos table
