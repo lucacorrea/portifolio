@@ -9,6 +9,32 @@ require_once __DIR__ . '/_helpers.php';
 
 $pdo = db();
 
+// Auto-patch: Create tables if not exists (Outside transaction to avoid implicit commit)
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS clientes (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nome VARCHAR(255) NOT NULL,
+      cpf VARCHAR(20),
+      telefone VARCHAR(20),
+      endereco TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS fiados (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      venda_id INT NOT NULL,
+      cliente_id INT NOT NULL,
+      valor_total DECIMAL(10,2) NOT NULL,
+      valor_pago DECIMAL(10,2) DEFAULT 0.00,
+      valor_restante DECIMAL(10,2) NOT NULL,
+      status VARCHAR(20) DEFAULT 'ABERTO',
+      data_vencimento DATE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )");
+} catch (Throwable $e) {}
+
 function fail(string $msg, int $code = 400): void {
   json_response(['ok' => false, 'msg' => $msg], $code);
 }
@@ -296,20 +322,6 @@ try {
           }
       }
 
-      // Auto-patch: Create fiados table if not exists
-      $pdo->exec("CREATE TABLE IF NOT EXISTS fiados (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        venda_id INT NOT NULL,
-        cliente_id INT NOT NULL,
-        valor_total DECIMAL(10,2) NOT NULL,
-        valor_pago DECIMAL(10,2) DEFAULT 0.00,
-        valor_restante DECIMAL(10,2) NOT NULL,
-        status VARCHAR(20) DEFAULT 'ABERTO',
-        data_vencimento DATE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )");
-
       $stFiado = $pdo->prepare("
         INSERT INTO fiados (venda_id, cliente_id, valor_total, valor_pago, valor_restante, status)
         VALUES (?, ?, ?, ?, ?, 'ABERTO')
@@ -318,7 +330,7 @@ try {
   }
   // -------------------------
 
-  $pdo->commit();
+  if ($pdo->inTransaction()) $pdo->commit();
 
   // próximo número
   $next = (int)$pdo->query("SELECT COALESCE(MAX(id),0)+1 FROM vendas")->fetchColumn();
