@@ -1325,11 +1325,41 @@ $csrf = csrf_token();
                             <div class="head">
                                 <div class="muted"><b>Vendidos</b> • clique em <b>Detalhes</b> para ver itens/infos</div>
                                 <div class="toolbar">
-                                    <span class="pill" id="pillLoading" style="display:none;">Carregando…</span>
+                                    <div class="pill ok" id="pillCount">0 vendas</div>
+                                    <div class="pill" id="pillLoading" style="display:none;">
+                                        <i class="lni lni-spinner-arrow lni-spin"></i> Carregando…
+                                    </div>
                                 </div>
                             </div>
-
                             <div class="body">
+                                <!-- RESUMO FINANCEIRO (NOVO) -->
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-3">
+                                        <div class="card p-3 border-0 shadow-sm bg-light">
+                                            <div class="muted mb-1" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b;">Total Vendido (Bruto)</div>
+                                            <div class="h4 mb-0 fw-bold" id="txtTotalBruto">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card p-3 border-0 shadow-sm" style="background-color: #f0fdf4;">
+                                            <div class="muted mb-1" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #166534;">Recebido em Vendas</div>
+                                            <div class="h4 mb-0 fw-bold text-success" id="txtRecVendas">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card p-3 border-0 shadow-sm" style="background-color: #f0f9ff;">
+                                            <div class="muted mb-1" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #0369a1;">Receb. À Prazo (Dívidas)</div>
+                                            <div class="h4 mb-0 fw-bold text-primary" id="txtRecFiado">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card p-3 border-0 shadow-sm" style="background-color: #eef2ff; border-left: 4px solid #4338ca !important;">
+                                            <div class="muted mb-1" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #4338ca;">Caixa Real (Total)</div>
+                                            <div class="h3 mb-0 fw-bold" style="color: #4338ca;" id="txtCaixaReal">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="table-wrap">
                                     <table class="table table-hover mb-0" id="tbDev">
                                         <thead>
@@ -1337,14 +1367,19 @@ $csrf = csrf_token();
                                                 <th class="col-id">ID</th>
                                                 <th class="col-data">Data</th>
                                                 <th class="col-cliente">Cliente</th>
-                                                <th class="col-canal text-center">Canal</th>
+                                                <th class="col-canal">Canal</th>
                                                 <th class="col-pag">Pagamento</th>
-                                                <th class="col-id text-end">Total</th>
-                                                <th class="col-id text-end">Recebido</th>
-                                                <th class="col-acoes text-end">Ações</th>
+                                                <th class="col-itens">Itens</th>
+                                                <th class="col-num text-end">Total</th>
+                                                <th class="col-num text-end">Recebido</th>
+                                                <th class="col-acoes">Ações</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="tbodyVendidos"></tbody>
+                                        <tbody id="tbody">
+                                            <tr>
+                                                <td colspan="9" class="muted">Carregando…</td>
+                                            </tr>
+                                        </tbody>
                                     </table>
                                 </div>
 
@@ -1577,6 +1612,12 @@ $csrf = csrf_token();
                 el('tTaxa').textContent = brl(js.totais.taxa);
                 el('tTotal').textContent = brl(js.totais.total);
 
+                // Novos Totais de Reconciliação
+                document.getElementById('txtTotalBruto').textContent = brl(js.totais.total);
+                document.getElementById('txtRecVendas').textContent = brl(js.totais.recebido_vendas);
+                document.getElementById('txtRecFiado').textContent = brl(js.totais.recebido_fiados);
+                document.getElementById('txtCaixaReal').textContent = brl(js.totais.caixa_real);
+
                 el('pillCount').textContent = `${js.totais.qtd} vendas`;
                 el('pageInfo').textContent = `Página ${state.page} / ${state.pages}`;
                 el('btnPrev').disabled = state.page <= 1;
@@ -1633,10 +1674,8 @@ $csrf = csrf_token();
               <td class="td-nowrap">${canalBadge}</td>
               <td class="td-nowrap">${pagBadge}</td>
               <td>${itensHtml}</td>
-              <td class="td-money">${brl(r.subtotal)}</td>
-              <td class="td-right">${brl(r.desconto)}</td>
-              <td class="td-right">${brl(r.taxa)}</td>
               <td class="td-money">${brl(r.total)}</td>
+              <td class="td-money text-success">${brl(r.recebido)}</td>
               <td>
                 <div class="actions-wrap">
                   <button class="main-btn light-btn btn-hover btn-action" onclick="openDetails(${r.id})">Detalhes</button>
