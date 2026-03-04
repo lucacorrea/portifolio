@@ -56,12 +56,15 @@ class PreSaleController extends BaseController {
             FROM pre_vendas pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
             LEFT JOIN usuarios u ON pv.usuario_id = u.id
-            WHERE pv.status = 'pendente' ";
+            WHERE pv.status = 'pendente' 
+            AND pv.filial_id = ? ";
         
-        $params = [];
+        $params = [$_SESSION['filial_id'] ?? 1];
         if ($term) {
             $sql .= " AND (c.nome LIKE ? OR $nameField LIKE ? OR pv.codigo LIKE ?)";
-            $params = ["%$term%", "%$term%", "%$term%"];
+            $params[] = "%$term%";
+            $params[] = "%$term%";
+            $params[] = "%$term%";
         }
 
         $sql .= " ORDER BY pv.created_at DESC LIMIT 20";

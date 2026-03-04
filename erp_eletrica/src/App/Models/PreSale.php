@@ -47,7 +47,13 @@ class PreSale extends BaseModel {
     }
 
     public function findByCode($code) {
-        $pv = $this->query("SELECT * FROM {$this->table} WHERE codigo = ? AND status = 'pendente'", [$code])->fetch();
+        $nameField = $this->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : 'NULL';
+        $sql = "SELECT pv.*, IFNULL(c.nome, $nameField) as cliente_nome 
+                FROM {$this->table} pv 
+                LEFT JOIN clientes c ON pv.cliente_id = c.id
+                WHERE pv.codigo = ? AND pv.status = 'pendente'";
+        $pv = $this->query($sql, [$code])->fetch();
+        
         if ($pv) {
             $pv['itens'] = $this->query("
                 SELECT i.*, p.nome as produto_nome, p.unidade, p.imagens 

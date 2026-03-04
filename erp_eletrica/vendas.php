@@ -8,6 +8,7 @@ $action = $_GET['action'] ?? 'index';
 
 switch ($action) {
     case 'search':
+    case 'search_clients':
     case 'list_recent':
     case 'get_sale':
     case 'list_admins':

@@ -409,33 +409,50 @@ let selectedCustomerName = null;
 const customerSearch = document.getElementById('customerSearch');
 const customerDisplay = document.getElementById('customerDisplay');
 
-// Create search results container for customer if it doesn't exist
-const customerSearchResults = document.createElement('div');
-customerSearchResults.id = 'customerSearchResults';
-customerSearchResults.className = 'list-group shadow-lg d-none';
-customerSearchResults.style = 'position: absolute; width: 100%; z-index: 1000; background: white; border: 1px solid #ddd;';
-customerSearch.parentNode.style.position = 'relative';
-customerSearch.parentNode.appendChild(customerSearchResults);
-
-customerSearch.addEventListener('input', async (e) => {
-    const term = e.target.value;
-    selectedCustomerName = term; // Manual name fallback
-    if (term.length < 2) {
-        customerSearchResults.classList.add('d-none');
-        selectedCustomerId = null;
-        customerDisplay.innerText = term || 'Consumidor Final';
-        return;
+if (customerSearch) {
+    console.log("PDV: Sistema de busca de clientes inicializado.");
+    
+    // Create search results container
+    const customerSearchResults = document.createElement('div');
+    customerSearchResults.id = 'customerSearchResults';
+    customerSearchResults.className = 'list-group shadow-lg d-none';
+    customerSearchResults.style = 'position: absolute; width: 100%; z-index: 9999; background: white; border: 1px solid #ddd; top: 100%; left: 0;';
+    
+    if (customerSearch.parentNode) {
+        customerSearch.parentNode.style.position = 'relative';
+        customerSearch.parentNode.appendChild(customerSearchResults);
     }
 
-    const response = await fetch(`vendas.php?action=search_clients&term=${term}`);
-    const clients = await response.json();
-    renderCustomerSearchResults(clients);
-});
+    customerSearch.addEventListener('input', async (e) => {
+        const term = e.target.value;
+        selectedCustomerName = term; // Manual name fallback
+        console.log("PDV: Digitando nome do cliente: " + term);
+        
+        if (term.length < 2) {
+            customerSearchResults.classList.add('d-none');
+            selectedCustomerId = null;
+            if (customerDisplay) customerDisplay.innerText = term || 'Consumidor Final';
+            return;
+        }
 
-function renderCustomerSearchResults(clients) {
-    customerSearchResults.innerHTML = '';
+        try {
+            const response = await fetch(`vendas.php?action=search_clients&term=${term}`);
+            if (!response.ok) throw new Error("Erro na busca de clientes");
+            const clients = await response.json();
+            renderCustomerSearchResults(clients, customerSearchResults);
+        } catch (err) {
+            console.error("PDV: Erro ao buscar clientes:", err);
+        }
+    });
+} else {
+    console.warn("PDV: Campo 'customerSearch' não encontrado na página.");
+}
+
+function renderCustomerSearchResults(clients, container) {
+    if (!container) return;
+    container.innerHTML = '';
     if (clients.length === 0) {
-        customerSearchResults.classList.add('d-none');
+        container.classList.add('d-none');
         return;
     }
 
@@ -443,41 +460,61 @@ function renderCustomerSearchResults(clients) {
         const item = document.createElement('button');
         item.className = 'list-group-item list-group-item-action py-2';
         item.innerHTML = `<strong>${c.nome}</strong> <br> <small class="text-muted">${c.doc}</small>`;
-        item.onclick = () => {
+        item.onclick = (e) => {
+            e.preventDefault();
             selectedCustomerId = c.id;
             selectedCustomerName = c.nome;
             customerSearch.value = c.nome;
-            customerDisplay.innerText = c.nome;
-            customerSearchResults.classList.add('d-none');
+            if (customerDisplay) customerDisplay.innerText = c.nome;
+            container.classList.add('d-none');
+            console.log("PDV: Cliente selecionado ID: " + c.id);
         };
-        customerSearchResults.appendChild(item);
+        container.appendChild(item);
     });
-    customerSearchResults.classList.remove('d-none');
+    container.classList.remove('d-none');
 }
 
 // Pre-sale flow
 async function loadPendingPreSales() {
+    console.log("PDV: Carregando pré-vendas pendentes...");
     const term = document.getElementById('searchPVTerm')?.value || '';
-    const res = await fetch(`pre_vendas.php?action=list_pending&term=${term}`);
-    const pvs = await res.json();
-    const list = document.getElementById('listPendingPVs');
-    list.innerHTML = '';
     
-    pvs.forEach(pv => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="ps-4 fw-bold text-primary">${pv.codigo}</td>
-            <td>${pv.cliente_nome || 'Consumidor Final'}</td>
-            <td class="fw-bold">R$ ${parseFloat(pv.valor_total).toFixed(2).replace('.', ',')}</td>
-            <td class="small text-muted">${pv.vendedor_nome}</td>
-            <td class="text-end pe-4">
-                <button class="btn btn-sm btn-primary fw-bold" onclick="importPreSale('${pv.codigo}')">CARREGAR</button>
-            </td>
-        `;
-        list.appendChild(row);
-    });
-    
-    new bootstrap.Modal(document.getElementById('modalPendingPV')).show();
+    try {
+        const res = await fetch(`pre_vendas.php?action=list_pending&term=${term}`);
+        if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
+        const pvs = await res.json();
+        const list = document.getElementById('listPendingPVs');
+        if (!list) return;
+        
+        list.innerHTML = '';
+        
+        if (pvs.length === 0) {
+            list.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhuma pré-venda encontrada.</td></tr>';
+        }
+
+        pvs.forEach(pv => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="ps-4 fw-bold text-primary">${pv.codigo}</td>
+                <td>${pv.cliente_nome || 'Consumidor Final'}</td>
+                <td class="fw-bold">R$ ${parseFloat(pv.valor_total).toFixed(2).replace('.', ',')}</td>
+                <td class="small text-muted">${pv.vendedor_nome}</td>
+                <td class="text-end pe-4">
+                    <button class="btn btn-sm btn-primary fw-bold" onclick="importPreSale('${pv.codigo}')">CARREGAR</button>
+                </td>
+            `;
+            list.appendChild(row);
+        });
+        
+        const modalEl = document.getElementById('modalPendingPV');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    } catch (err) {
+        console.error("PDV: Erro ao carregar pré-vendas:", err);
+        alert("Erro ao carregar pré-vendas. Verifique o console.");
+    }
 }
 
 async function importPreSale(code) {
