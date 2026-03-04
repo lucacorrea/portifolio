@@ -45,9 +45,12 @@ class PreSaleController extends BaseController {
 
     public function list_pending() {
         $db = \App\Config\Database::getInstance()->getConnection();
+        $model = new PreSale();
+        $nameField = $model->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : 'NULL';
+
         $recent = $db->query("
             SELECT pv.id, pv.codigo, pv.valor_total, 
-                   IFNULL(c.nome, pv.nome_cliente_avulso) as cliente_nome, 
+                   IFNULL(c.nome, $nameField) as cliente_nome, 
                    u.nome as vendedor_nome 
             FROM pre_vendas pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
