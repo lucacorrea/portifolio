@@ -37,32 +37,6 @@ function json_out(array $data, int $code = 200): void
 }
 
 /* =========================
-   Monta URL da imagem
-   - banco salva: images/xxx.png
-   - precisa virar: assets/dados/produtos/images/xxx.png
-========================= */
-function img_url(string $raw): string
-{
-  $raw = trim($raw);
-  if ($raw === '') return '';
-
-  // normaliza \ do windows
-  $raw = str_replace('\\', '/', $raw);
-
-  if (preg_match('~^https?://~i', $raw)) return $raw;
-
-  $raw = ltrim($raw, '/');
-
-  // se já veio com assets..., não duplica
-  if (strpos($raw, 'assets/') === 0) return $raw;
-
-  // base onde ficam as imagens
-  $base = 'assets/dados/produtos/';
-
-  return rtrim($base, '/') . '/' . $raw; // images/xxx -> assets/dados/produtos/images/xxx
-}
-
-/* =========================
    ENDPOINT INTERNO (AJAX)
    - só pra "ultimasVendas"
 ========================= */
@@ -120,14 +94,6 @@ try {
   $rowsP = $stP->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
   $PRODUTOS_CACHE = array_map(static function (array $r): array {
-    $img = trim((string)($r['imagem'] ?? ''));
-
-    // fallback: se imagem estiver vazia e você salvou o caminho no OBS
-    if ($img === '') {
-      $obs = trim((string)($r['obs'] ?? ''));
-      if (preg_match('~^(images/|uploads/|img/|prod_).+~i', $obs)) $img = $obs;
-    }
-
     return [
       'id'    => (int)($r['id'] ?? 0),
       'code'  => (string)($r['codigo'] ?? ''),
@@ -135,7 +101,6 @@ try {
       'unit'  => (string)($r['unidade'] ?? ''),
       'price' => (float)($r['preco'] ?? 0),
       'stock' => (int)($r['estoque'] ?? 0),
-      'img'   => img_url($img),
     ];
   }, $rowsP);
 } catch (Throwable $e) {
@@ -344,15 +309,7 @@ function fmtMoney($v): string
       background: rgba(241, 245, 249, .9);
     }
 
-    .pimg {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      object-fit: cover;
-      border: 1px solid rgba(148, 163, 184, .30);
-      background: #fff;
-      flex: 0 0 auto;
-    }
+
 
     .it .meta {
       min-width: 0;
@@ -384,38 +341,9 @@ function fmtMoney($v): string
       white-space: nowrap;
     }
 
-    .preview-box {
-      width: 100%;
-      height: 130px;
-      border-radius: 16px;
-      border: 1px dashed rgba(148, 163, 184, .55);
-      background: rgba(248, 250, 252, .7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-      text-align: center;
-    }
 
-    .preview-box img {
-      width: 86px;
-      height: 86px;
-      border-radius: 16px;
-      object-fit: cover;
-      border: 1px solid rgba(148, 163, 184, .30);
-      background: #fff;
-      margin-bottom: 6px;
-    }
 
-    .preview-name {
-      font-weight: 900;
-      font-size: 12px;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 220px;
-    }
+
 
     .table td,
     .table th {
@@ -976,23 +904,13 @@ function fmtMoney($v): string
               <div class="pdv-card pdv-search mb-3">
                 <div class="pdv-body">
                   <div class="row g-3 align-items-stretch">
-                    <div class="col-12 col-md-8">
+                    <div class="col-12">
                       <label class="form-label">Pesquisar Produto (F4)</label>
                       <div class="search-wrap">
                         <input class="form-control compact" id="qProd" placeholder="Nome ou código..." autocomplete="off" />
                         <div class="suggest" id="suggest"></div>
                       </div>
                       <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar o 1º resultado.</div>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                      <label class="form-label">Imagem</label>
-                      <div class="preview-box">
-                        <div>
-                          <img id="previewImg" alt="Prévia" />
-                          <div class="preview-name" id="previewName">AGUARDANDO...</div>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
@@ -1238,14 +1156,7 @@ function fmtMoney($v): string
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const AJAX_URL = "vendas.php";
 
-    const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
-  <rect width="100%" height="100%" fill="#f1f5f9"/>
-  <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
-  <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
-</svg>
-`);
+
 
     function safeText(s) {
       return String(s ?? "")
@@ -1278,13 +1189,7 @@ function fmtMoney($v): string
     }
 
     function bindImgFallback(scope = document) {
-      scope.querySelectorAll("img").forEach(img => {
-        img.addEventListener("error", () => {
-          img.src = DEFAULT_IMG;
-        }, {
-          once: true
-        });
-      });
+      // images removed
     }
 
     /* ==============================
@@ -1303,8 +1208,6 @@ function fmtMoney($v): string
     const qProd = document.getElementById("qProd");
     const suggest = document.getElementById("suggest");
     const qGlobal = document.getElementById("qGlobal");
-
-    const previewImg = document.getElementById("previewImg");
     const previewName = document.getElementById("previewName");
 
     const tbodyItens = document.getElementById("tbodyItens");
@@ -1357,10 +1260,7 @@ function fmtMoney($v): string
        UI
     ============================== */
     function setPreview(prod) {
-      const img = (prod && prod.img) ? prod.img : DEFAULT_IMG;
-      previewImg.src = img || DEFAULT_IMG;
       previewName.textContent = prod ? prod.name : "AGUARDANDO...";
-      bindImgFallback(document);
     }
 
     function showSuggest(list) {
@@ -1371,7 +1271,6 @@ function fmtMoney($v): string
       }
       suggest.innerHTML = list.map(p => `
         <div class="it" data-id="${Number(p.id)}">
-          <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
           <div class="meta">
             <div class="t">${safeText(p.name)}</div>
             <div class="s">${safeText(p.code)} • Estoque: ${Number(p.stock ?? 0)}</div>
@@ -1534,7 +1433,6 @@ function fmtMoney($v): string
         code: prod.code,
         name: prod.name,
         price: Number(prod.price || 0),
-        img: (prod.img && String(prod.img).trim() !== "") ? prod.img : DEFAULT_IMG,
         unit: prod.unit || "",
         qty: 1
       });
@@ -1705,7 +1603,6 @@ function fmtMoney($v): string
             <td>${i + 1}</td>
             <td>
               <div class="d-flex align-items-center gap-2">
-                <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
                 <div style="min-width:0;">
                   <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">
                     ${safeText(it.name)}
@@ -1730,7 +1627,7 @@ function fmtMoney($v): string
         `);
       });
 
-      bindImgFallback(tbodyItens);
+
     }
 
     function recalcAll() {
