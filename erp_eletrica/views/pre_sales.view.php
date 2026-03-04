@@ -77,8 +77,9 @@
                             <!-- Searchable list could be here -->
                         </select>
                     </div>
-                    <div id="manual_name_container" class="mt-2">
-                        <input type="text" id="pv_nome_cliente_avulso" class="form-control" placeholder="Digite o nome do cliente avulso...">
+                    <div id="manual_name_container" class="mt-2 position-relative">
+                        <input type="text" id="pv_nome_cliente_avulso" class="form-control" placeholder="Digite o nome do cliente avulso..." autocomplete="off">
+                        <div id="pv_client_results" class="list-group shadow d-none" style="position: absolute; top: 100%; left: 0; z-index: 1050; width: 100%; max-height: 200px; overflow-y: auto;"></div>
                     </div>
                 </div>
 
@@ -305,4 +306,68 @@ function toggleManualName(val) {
         input.value = "";
     }
 }
+
+// Client search in Pre-Sale (Manual field)
+const pvClientSearch = document.getElementById('pv_nome_cliente_avulso');
+const pvClientResults = document.getElementById('pv_client_results');
+const pvClientSelect = document.getElementById('pv_cliente_id');
+
+pvClientSearch.addEventListener('input', async (e) => {
+    const term = e.target.value;
+    if (term.length < 2) {
+        pvClientResults.classList.add('d-none');
+        return;
+    }
+
+    try {
+        const res = await fetch(`vendas.php?action=search_clients&term=${encodeURIComponent(term)}`);
+        const clients = await res.json();
+        renderPVClientResults(clients);
+    } catch (err) {
+        console.error("Erro busca cliente:", err);
+    }
+});
+
+function renderPVClientResults(clients) {
+    pvClientResults.innerHTML = '';
+    if (clients.length === 0) {
+        pvClientResults.classList.add('d-none');
+        return;
+    }
+
+    clients.forEach(c => {
+        const item = document.createElement('button');
+        item.className = 'list-group-item list-group-item-action py-2 small';
+        item.innerHTML = `<strong>${c.nome}</strong><br><span class="text-muted extra-small">${c.doc || ''}</span>`;
+        item.onclick = (e) => {
+            e.preventDefault();
+            selectClientInPV(c);
+        };
+        pvClientResults.appendChild(item);
+    });
+    pvClientResults.classList.remove('d-none');
+}
+
+function selectClientInPV(client) {
+    // 1. Check if client exists in select, if not add it temporarily
+    let option = Array.from(pvClientSelect.options).find(o => o.value == client.id);
+    if (!option) {
+        option = new Option(client.nome, client.id);
+        pvClientSelect.add(option);
+    }
+    
+    // 2. Select it
+    pvClientSelect.value = client.id;
+    
+    // 3. UI Update (hide manual field)
+    toggleManualName(client.id);
+    pvClientResults.classList.add('d-none');
+}
+
+// Close dropdown on click outside
+document.addEventListener('click', (e) => {
+    if (!pvClientSearch.contains(e.target) && !pvClientResults.contains(e.target)) {
+        pvClientResults.classList.add('d-none');
+    }
+});
 </script>
