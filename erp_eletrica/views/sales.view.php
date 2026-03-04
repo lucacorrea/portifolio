@@ -451,75 +451,78 @@ function removeFromCart(index) {
     renderCart();
 }
 
-// Customer Search functionality
-let selectedCustomerId = null;
-let selectedCustomerName = null;
 const customerSearch = document.getElementById('customerSearch');
-const customerDisplay = document.getElementById('customerDisplay');
+const customerResults = document.getElementById('customerResults');
+const selectedCustomerInfo = document.getElementById('selectedCustomerInfo');
 
 if (customerSearch) {
-    console.log("PDV: Sistema de busca de clientes inicializado.");
-    
-    // Create search results container
-    const customerSearchResults = document.createElement('div');
-    customerSearchResults.id = 'customerSearchResults';
-    customerSearchResults.className = 'list-group shadow-lg d-none';
-    customerSearchResults.style = 'position: absolute; width: 100%; z-index: 9999; background: white; border: 1px solid #ddd; top: 100%; left: 0;';
-    
-    if (customerSearch.parentNode) {
-        customerSearch.parentNode.style.position = 'relative';
-        customerSearch.parentNode.appendChild(customerSearchResults);
-    }
-
     customerSearch.addEventListener('input', async (e) => {
         const term = e.target.value;
-        selectedCustomerName = term; // Manual name fallback
-        console.log("PDV: Digitando nome do cliente: " + term);
-        
         if (term.length < 2) {
-            customerSearchResults.classList.add('d-none');
-            selectedCustomerId = null;
-            if (customerDisplay) customerDisplay.innerText = term || 'Consumidor Final';
+            customerResults.style.display = 'none';
             return;
         }
 
         try {
             const response = await fetch(`vendas.php?action=search_clients&term=${term}`);
-            if (!response.ok) throw new Error("Erro na busca de clientes");
             const clients = await response.json();
-            renderCustomerSearchResults(clients, customerSearchResults);
+            renderCustomerSearchResults(clients);
         } catch (err) {
             console.error("PDV: Erro ao buscar clientes:", err);
         }
     });
-} else {
-    console.warn("PDV: Campo 'customerSearch' não encontrado na página.");
 }
 
-function renderCustomerSearchResults(clients, container) {
-    if (!container) return;
-    container.innerHTML = '';
+function renderCustomerSearchResults(clients) {
+    customerResults.innerHTML = '';
     if (clients.length === 0) {
-        container.classList.add('d-none');
+        customerResults.style.display = 'none';
         return;
     }
 
     clients.forEach(c => {
         const item = document.createElement('button');
-        item.className = 'list-group-item list-group-item-action py-2';
-        item.innerHTML = `<strong>${c.nome}</strong> <br> <small class="text-muted">${c.doc}</small>`;
-        item.onclick = (e) => {
-            e.preventDefault();
-            selectedCustomerId = c.id;
-            selectedCustomerName = c.nome;
-            customerSearch.value = c.nome;
-            if (customerDisplay) customerDisplay.innerText = c.nome;
-            container.classList.add('d-none');
-            console.log("PDV: Cliente selecionado ID: " + c.id);
+        item.className = 'list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center';
+        item.innerHTML = `
+            <div>
+                <div class="fw-bold">${c.nome}</div>
+                <small class="text-muted">${c.doc || 'Sem CPF/CNPJ'}</small>
+            </div>
+            <i class="fas fa-chevron-right text-muted small"></i>
+        `;
+        item.onclick = () => {
+            selectCustomer(c.id, c.nome, c.doc);
         };
-        container.appendChild(item);
+        customerResults.appendChild(item);
     });
-    container.classList.remove('d-none');
+    customerResults.style.display = 'block';
+}
+
+function selectCustomer(id, nome, doc) {
+    selectedCustomerId = id;
+    selectedCustomerName = nome;
+    
+    document.getElementById('customerNameDisplay').innerText = nome;
+    document.getElementById('customerDocDisplay').innerText = doc || 'Sem documento';
+    
+    selectedCustomerInfo.classList.remove('d-none');
+    customerResults.style.display = 'none';
+    customerSearch.value = '';
+    
+    // Hide search group
+    customerSearch.closest('.input-group').classList.add('d-none');
+    customerSearch.closest('div.mb-4').querySelector('label').classList.add('d-none');
+}
+
+function clearCustomer() {
+    selectedCustomerId = null;
+    selectedCustomerName = null;
+    
+    selectedCustomerInfo.classList.add('d-none');
+    customerSearch.closest('.input-group').classList.remove('d-none');
+    customerSearch.closest('div.mb-4').querySelector('label').classList.remove('d-none');
+    customerSearch.value = '';
+    customerSearch.focus();
 }
 
 // Pre-sale flow
