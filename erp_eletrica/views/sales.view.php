@@ -284,7 +284,31 @@
     </div>
 </div>
 
-<!-- Scripts for PDV Logic -->
+<!-- Modal: Entrada Fiado -->
+<div class="modal fade" id="modalEntrada" data-bs-backdrop="static" tabindex="-1" style="z-index: 1060;">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Entrada / Sinal</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada em dinheiro</strong> para esta venda fiado?</p>
+                <div class="mb-3 text-start">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor da Entrada (R$)</label>
+                    <input type="number" id="entradaValor" class="form-control form-control-lg text-center fw-bold text-success" placeholder="0,00" step="0.01" min="0">
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-warning fw-bold py-2 shadow-sm" onclick="confirmarCheckoutFiado()">
+                        FINALIZAR VENDA
+                    </button>
+                </div>
+                <button class="btn btn-link btn-sm text-muted mt-2 text-decoration-none" onclick="document.getElementById('entradaValor').value=0; confirmarCheckoutFiado()">Continuar sem entrada</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let cart = [];
 let currentPvId = null;
@@ -951,29 +975,4 @@ async function handleBarcode(val) {
 pdvSearch.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
-
-<!-- Modal: Entrada Fiado -->
-<div class="modal fade" id="modalEntrada" data-bs-backdrop="static" tabindex="-1" style="z-index: 1060;">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-warning text-dark border-0">
-                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Entrada / Sinal</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-4 text-center">
-                <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada em dinheiro</strong> para esta venda fiado?</p>
-                <div class="mb-3 text-start">
-                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor da Entrada (R$)</label>
-                    <input type="number" id="entradaValor" class="form-control form-control-lg text-center fw-bold text-success" placeholder="0,00" step="0.01" min="0">
-                </div>
-                <div class="d-grid">
-                    <button class="btn btn-warning fw-bold py-2 shadow-sm" onclick="confirmarCheckoutFiado()">
-                        FINALIZAR VENDA
-                    </button>
-                </div>
-                <button class="btn btn-link btn-sm text-muted mt-2 text-decoration-none" onclick="document.getElementById('entradaValor').value=0; confirmarCheckoutFiado()">Continuar sem entrada</button>
-            </div>
-        </div>
-    </div>
-</div>
 </script>

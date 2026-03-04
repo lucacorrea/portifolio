@@ -50,21 +50,27 @@ class PreSaleController extends BaseController {
         $nameField = $model->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : 'NULL';
 
         $sql = "
-            SELECT pv.id, pv.codigo, pv.valor_total, 
+            SELECT DISTINCT pv.id, pv.codigo, pv.valor_total, 
                    IFNULL(c.nome, $nameField) as cliente_nome, 
-                   u.nome as vendedor_nome 
+                   u.nome as vendedor_nome,
+                   pv.created_at
             FROM pre_vendas pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
             LEFT JOIN usuarios u ON pv.usuario_id = u.id
+            LEFT JOIN pre_vendas_itens pvi ON pv.id = pvi.pre_venda_id
+            LEFT JOIN produtos p ON pvi.produto_id = p.id
             WHERE pv.status = 'pendente' 
             AND pv.filial_id = ? ";
         
         $params = [$_SESSION['filial_id'] ?? 1];
         if ($term) {
-            $sql .= " AND (c.nome LIKE ? OR $nameField LIKE ? OR pv.codigo LIKE ?)";
-            $params[] = "%$term%";
-            $params[] = "%$term%";
-            $params[] = "%$term%";
+            $sql .= " AND (c.nome LIKE ? OR $nameField LIKE ? OR pv.codigo LIKE ? OR p.nome LIKE ? OR p.codigo LIKE ?)";
+            $termLike = "%$term%";
+            $params[] = $termLike;
+            $params[] = $termLike;
+            $params[] = $termLike;
+            $params[] = $termLike;
+            $params[] = $termLike;
         }
 
         $sql .= " ORDER BY pv.created_at DESC LIMIT 20";
