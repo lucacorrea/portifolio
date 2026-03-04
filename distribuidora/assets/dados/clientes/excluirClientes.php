@@ -5,31 +5,39 @@ declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 require_once __DIR__ . '/../../conexao.php';
-require_once __DIR__ . '/./_helpers.php';
+require_once __DIR__ . '/_helpers.php';
 
 require_db_or_die();
 $pdo = db();
 
-$data = $_POST ?: read_json_body();
+if (!is_post()) redirect('/../../../clientes.php');
 
-$csrf = (string)($data['_csrf'] ?? '');
-csrf_validate_or_die($csrf);
+csrf_validate_or_die();
 
-$id = (int)($data['id'] ?? 0);
-if ($id <= 0) json_out(['ok' => false, 'msg' => 'ID inválido.'], 422);
+$return = safe_return_to(post_str('return_to', '/../../../clientes.php'));
+
+$id = post_int('id', 0);
+if ($id <= 0) {
+  flash_set('flash_err', 'ID inválido.');
+  redirect($return);
+}
 
 try {
   $st = $pdo->prepare("SELECT id FROM clientes WHERE id = :id LIMIT 1");
   $st->execute(['id' => $id]);
-  if (!$st->fetchColumn()) json_out(['ok' => false, 'msg' => 'Cliente não encontrado.'], 404);
+  if (!$st->fetchColumn()) {
+    flash_set('flash_err', 'Cliente não encontrado.');
+    redirect($return);
+  }
 
-  // DELETE direto (se preferir “soft delete”, eu ajusto)
   $del = $pdo->prepare("DELETE FROM clientes WHERE id = :id LIMIT 1");
   $del->execute(['id' => $id]);
 
-  json_out(['ok' => true, 'msg' => 'Cliente excluído com sucesso.']);
+  flash_set('flash_ok', 'Cliente excluído com sucesso.');
+  redirect($return);
 } catch (Throwable $e) {
-  json_out(['ok' => false, 'msg' => 'Erro ao excluir cliente.', 'detail' => $e->getMessage()], 500);
+  flash_set('flash_err', 'Erro ao excluir cliente: ' . $e->getMessage());
+  redirect($return);
 }
 
 ?>

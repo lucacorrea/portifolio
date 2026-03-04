@@ -11,181 +11,86 @@ require_once __DIR__ . '/assets/dados/clientes/_helpers.php';
 require_db_or_die();
 $pdo = db();
 
+$csrf = csrf_token();
+$return_to = (string)($_SERVER['REQUEST_URI'] ?? '/clientes.php');
+
+$flashOk = flash_pop('flash_ok');
+$flashErr = flash_pop('flash_err');
+
 /* =========================
-   ENDPOINTS JSON (no mesmo arquivo)
+   FILTROS / PAGINAÇÃO
 ========================= */
-$action = strtolower(get_str('action'));
+$status = strtoupper(get_str('status', 'TODOS'));
+$q = get_str('q', '');
+$page = max(1, get_int('page', 1));
+$per = get_int('per', 25);
+$per = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
+$off = ($page - 1) * $per;
 
-function build_where_clientes(array &$params): string
-{
-    $where = " WHERE 1=1 ";
-    $status = strtoupper(get_str('status', 'TODOS'));
-    $q = get_str('q', '');
+$params = [];
+$where = " WHERE 1=1 ";
 
-    if ($status !== '' && $status !== 'TODOS') {
-        $where .= " AND c.status = :status ";
-        $params['status'] = $status;
-    }
-
-    if ($q !== '') {
-        $qd = only_digits($q);
-
-        // se for número e curto: pode ser ID
-        if (ctype_digit($q) && strlen($q) <= 9) {
-            $where .= " AND c.id = :id ";
-            $params['id'] = (int)$q;
-            return $where;
-        }
-
-        // se digitou CPF/telefone (números)
-        if ($qd !== '') {
-            $where .= " AND (c.cpf LIKE :qd OR c.telefone LIKE :qd) ";
-            $params['qd'] = '%' . $qd . '%';
-        } else {
-            $where .= " AND (c.nome LIKE :q OR c.obs LIKE :q) ";
-            $params['q'] = '%' . $q . '%';
-        }
-    }
-
-    return $where;
+if ($status !== 'TODOS' && $status !== '') {
+    $where .= " AND c.status = :status ";
+    $params['status'] = $status;
 }
 
-if ($action === 'fetch') {
-    $page = max(1, get_int('page', 1));
-    $per  = get_int('per', 25);
-    $per  = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
-    $off  = ($page - 1) * $per;
-
-    $params = [];
-    $where = build_where_clientes($params);
-
-    // totais
-    $sqlTot = "SELECT
-              COUNT(*) AS total,
-              SUM(CASE WHEN c.status='ATIVO' THEN 1 ELSE 0 END) AS ativos,
-              SUM(CASE WHEN c.status='INATIVO' THEN 1 ELSE 0 END) AS inativos
-            FROM clientes c $where";
-    $stTot = $pdo->prepare($sqlTot);
-    $stTot->execute($params);
-    $tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'ativos' => 0, 'inativos' => 0];
-
-    // lista
-    $sql = "SELECT
-            c.id, c.nome, c.cpf, c.telefone, c.status, c.obs,
-            c.created_at, c.updated_at
-          FROM clientes c
-          $where
-          ORDER BY c.id DESC
-          LIMIT $per OFFSET $off";
-    $st = $pdo->prepare($sql);
-    $st->execute($params);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-    // formatações para UI
-    $out = [];
-    foreach ($rows as $r) {
-        $out[] = [
-            'id' => (int)$r['id'],
-            'nome' => (string)$r['nome'],
-            'cpf' => (string)$r['cpf'],
-            'cpf_fmt' => cpf_fmt((string)$r['cpf']),
-            'telefone' => (string)$r['telefone'],
-            'telefone_fmt' => tel_fmt((string)$r['telefone']),
-            'status' => (string)$r['status'],
-            'obs' => (string)($r['obs'] ?? ''),
-            'created_at' => (string)($r['created_at'] ?? ''),
-            'updated_at' => (string)($r['updated_at'] ?? ''),
-        ];
-    }
-
-    $totalCount = (int)($tot['total'] ?? 0);
-    $pages = (int)max(1, ceil($totalCount / $per));
-
-    json_out([
-        'ok' => true,
-        'meta' => [
-            'page' => $page,
-            'per' => $per,
-            'pages' => $pages,
-            'total' => $totalCount,
-        ],
-        'totais' => [
-            'total' => $totalCount,
-            'ativos' => (int)($tot['ativos'] ?? 0),
-            'inativos' => (int)($tot['inativos'] ?? 0),
-        ],
-        'rows' => $out
-    ]);
-}
-
-if ($action === 'one') {
-    $id = get_int('id', 0);
-    if ($id <= 0) json_out(['ok' => false, 'msg' => 'ID inválido'], 400);
-
-    $st = $pdo->prepare("SELECT * FROM clientes WHERE id = :id LIMIT 1");
-    $st->execute(['id' => $id]);
-    $r = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$r) json_out(['ok' => false, 'msg' => 'Cliente não encontrado'], 404);
-
-    json_out([
-        'ok' => true,
-        'data' => [
-            'id' => (int)$r['id'],
-            'nome' => (string)$r['nome'],
-            'cpf' => (string)$r['cpf'],
-            'cpf_fmt' => cpf_fmt((string)$r['cpf']),
-            'telefone' => (string)$r['telefone'],
-            'telefone_fmt' => tel_fmt((string)$r['telefone']),
-            'status' => (string)$r['status'],
-            'obs' => (string)($r['obs'] ?? ''),
-            'created_at' => (string)($r['created_at'] ?? ''),
-            'updated_at' => (string)($r['updated_at'] ?? ''),
-        ]
-    ]);
-}
-
-if ($action === 'suggest') {
-    $q = get_str('q', '');
-    if (mb_strlen($q) < 2) json_out(['ok' => true, 'items' => []]);
-
+if ($q !== '') {
     $qd = only_digits($q);
 
-    if ($qd !== '') {
-        $st = $pdo->prepare("
-      SELECT id, nome, cpf, telefone
-      FROM clientes
-      WHERE cpf LIKE :q OR telefone LIKE :q
-      ORDER BY nome
-      LIMIT 10
-    ");
-        $st->execute(['q' => $qd . '%']);
+    if (ctype_digit($q) && strlen($q) <= 9) {
+        $where .= " AND c.id = :id ";
+        $params['id'] = (int)$q;
+    } elseif ($qd !== '') {
+        $where .= " AND (c.cpf LIKE :qd OR c.telefone LIKE :qd) ";
+        $params['qd'] = '%' . $qd . '%';
     } else {
-        $st = $pdo->prepare("
-      SELECT id, nome, cpf, telefone
-      FROM clientes
-      WHERE nome LIKE :q
-      ORDER BY nome
-      LIMIT 10
-    ");
-        $st->execute(['q' => $q . '%']);
+        $where .= " AND (c.nome LIKE :q OR c.obs LIKE :q) ";
+        $params['q'] = '%' . $q . '%';
     }
-
-    $items = [];
-    while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
-        $items[] = [
-            'id' => (int)$r['id'],
-            'nome' => (string)$r['nome'],
-            'cpf_fmt' => cpf_fmt((string)$r['cpf']),
-            'telefone_fmt' => tel_fmt((string)$r['telefone']),
-        ];
-    }
-    json_out(['ok' => true, 'items' => $items]);
 }
 
-/* =========================
-   HTML
-========================= */
-$csrf = csrf_token();
+/* totais */
+$sqlTot = "SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN c.status='ATIVO' THEN 1 ELSE 0 END) AS ativos,
+            SUM(CASE WHEN c.status='INATIVO' THEN 1 ELSE 0 END) AS inativos
+          FROM clientes c $where";
+$stTot = $pdo->prepare($sqlTot);
+$stTot->execute($params);
+$tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'ativos' => 0, 'inativos' => 0];
+
+$totalCount = (int)($tot['total'] ?? 0);
+$pages = (int)max(1, (int)ceil($totalCount / $per));
+if ($page > $pages) $page = $pages;
+$off = ($page - 1) * $per;
+
+/* lista */
+$sql = "SELECT c.id, c.nome, c.cpf, c.telefone, c.status, c.obs, c.created_at
+        FROM clientes c
+        $where
+        ORDER BY c.id DESC
+        LIMIT $per OFFSET $off";
+$st = $pdo->prepare($sql);
+$st->execute($params);
+$rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+/* helper url */
+function url_with(array $over): string
+{
+    $cur = $_GET;
+    foreach ($over as $k => $v) {
+        if ($v === null) unset($cur[$k]);
+        else $cur[$k] = (string)$v;
+    }
+    $qs = http_build_query($cur);
+    return '/clientes.php' . ($qs ? ('?' . $qs) : '');
+}
+
+$lblParts = [];
+if ($status !== 'TODOS') $lblParts[] = "Status: {$status}";
+if (trim($q) !== '') $lblParts[] = "Busca: " . $q;
+$lblRange = $lblParts ? implode(' • ', $lblParts) : '—';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -272,12 +177,6 @@ $csrf = csrf_token();
             color: #166534
         }
 
-        .pill.warn {
-            border-color: rgba(245, 158, 11, .25);
-            background: rgba(255, 251, 235, .95);
-            color: #92400e
-        }
-
         .toolbar {
             display: flex;
             gap: 10px;
@@ -335,12 +234,14 @@ $csrf = csrf_token();
             padding: 8px 10px;
             font-weight: 900;
             font-size: 12px;
-            cursor: pointer
+            cursor: pointer;
+            text-decoration: none;
+            color: #0f172a
         }
 
-        .page-btn[disabled] {
+        .page-btn.disabled {
             opacity: .55;
-            cursor: not-allowed
+            pointer-events: none
         }
 
         .page-info {
@@ -389,12 +290,6 @@ $csrf = csrf_token();
             max-width: 100%
         }
 
-        .mini {
-            font-size: 12px;
-            color: #475569;
-            font-weight: 800
-        }
-
         .badge-soft {
             font-weight: 1000;
             border-radius: 999px;
@@ -422,8 +317,7 @@ $csrf = csrf_token();
         .actions-wrap {
             display: flex;
             gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-start
+            flex-wrap: wrap
         }
 
         .btn-action {
@@ -433,63 +327,6 @@ $csrf = csrf_token();
             border-radius: 10px !important;
             white-space: nowrap
         }
-
-        .search-wrap {
-            position: relative
-        }
-
-        .suggest {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
-            right: 0;
-            background: #fff;
-            border: 1px solid rgba(148, 163, 184, .25);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 18px 40px rgba(2, 6, 23, .10);
-            display: none;
-            z-index: 15;
-            max-height: 240px;
-            overflow: auto
-        }
-
-        .suggest .it {
-            padding: 10px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid rgba(148, 163, 184, .14);
-            font-size: 13px;
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            align-items: center
-        }
-
-        .suggest .it:hover {
-            background: rgba(241, 245, 249, .8)
-        }
-
-        .suggest .it:last-child {
-            border-bottom: none
-        }
-
-        .suggest .nm {
-            font-weight: 900;
-            color: #0f172a;
-            min-width: 0
-        }
-
-        .suggest .meta {
-            font-size: 12px;
-            color: #64748b;
-            white-space: nowrap
-        }
-
-        @media(max-width:991.98px) {
-            #tbClientes {
-                min-width: 940px
-            }
-        }
     </style>
 </head>
 
@@ -498,7 +335,7 @@ $csrf = csrf_token();
         <div class="spinner"></div>
     </div>
 
-    <!-- SIDEBAR (mantido como seu template; você pode colar o seu inteiro aqui) -->
+    <!-- ======== sidebar-nav start (mantido) =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -509,6 +346,7 @@ $csrf = csrf_token();
         <nav class="sidebar-nav">
             <ul>
                 <li class="nav-item"><a href="dashboard.php"><span class="text">Dashboard</span></a></li>
+
                 <li class="nav-item nav-item-has-children active">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="true">
                         <span class="text">Cadastros</span>
@@ -519,6 +357,7 @@ $csrf = csrf_token();
                         <li><a href="categorias.php">Categorias</a></li>
                     </ul>
                 </li>
+
                 <li class="nav-item"><a href="suporte.php"><span class="text">Suporte</span></a></li>
             </ul>
         </nav>
@@ -539,9 +378,7 @@ $csrf = csrf_token();
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 text-end">
-                        <span class="muted">Clientes</span>
-                    </div>
+                    <div class="col-6 text-end"><span class="muted">Clientes</span></div>
                 </div>
             </div>
         </header>
@@ -549,28 +386,34 @@ $csrf = csrf_token();
         <section class="section">
             <div class="container-fluid page-pad">
 
+                <?php if ($flashOk): ?>
+                    <div class="alert alert-success" style="border-radius:14px;"><?= e($flashOk) ?></div>
+                <?php endif; ?>
+                <?php if ($flashErr): ?>
+                    <div class="alert alert-danger" style="border-radius:14px;"><?= e($flashErr) ?></div>
+                <?php endif; ?>
+
                 <!-- FILTROS -->
-                <div class="cardx mb-3">
+                <form method="get" class="cardx mb-3">
                     <div class="head">
                         <div>
                             <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="pill ok" id="pillCount">0 clientes</span>
-                                <span class="muted" id="lblRange">—</span>
+                                <span class="pill ok"><?= (int)$totalCount ?> clientes</span>
+                                <span class="muted"><?= e($lblRange) ?></span>
                             </div>
-                            <div class="muted mt-1">
-                                Nome/CPF/Telefone obrigatórios • CPF único • (dados do banco)
-                            </div>
+                            <div class="muted mt-1">Nome/CPF/Telefone obrigatórios • CPF único • (dados do banco)</div>
                         </div>
 
                         <div class="toolbar">
-                            <button class="main-btn primary-btn btn-hover btn-compact" id="btnNovo">
+                            <button type="button" class="main-btn primary-btn btn-hover btn-compact" id="btnNovo">
                                 <i class="lni lni-plus me-1"></i> Novo
                             </button>
-                            <select id="per" class="form-select compact" style="min-width:190px;">
-                                <option value="10">10 por página</option>
-                                <option value="25" selected>25 por página</option>
-                                <option value="50">50 por página</option>
-                                <option value="100">100 por página</option>
+
+                            <select name="per" id="per" class="form-select compact" style="min-width:190px;">
+                                <option value="10" <?= $per === 10 ? 'selected' : '' ?>>10 por página</option>
+                                <option value="25" <?= $per === 25 ? 'selected' : '' ?>>25 por página</option>
+                                <option value="50" <?= $per === 50 ? 'selected' : '' ?>>50 por página</option>
+                                <option value="100" <?= $per === 100 ? 'selected' : '' ?>>100 por página</option>
                             </select>
                         </div>
                     </div>
@@ -579,40 +422,37 @@ $csrf = csrf_token();
                         <div class="row g-2 align-items-end">
                             <div class="col-md-3">
                                 <label class="form-label mini">Status</label>
-                                <select class="form-select compact" id="status">
-                                    <option value="TODOS" selected>Todos</option>
-                                    <option value="ATIVO">Ativo</option>
-                                    <option value="INATIVO">Inativo</option>
+                                <select class="form-select compact" name="status" id="status">
+                                    <option value="TODOS" <?= $status === 'TODOS' ? 'selected' : '' ?>>Todos</option>
+                                    <option value="ATIVO" <?= $status === 'ATIVO' ? 'selected' : '' ?>>Ativo</option>
+                                    <option value="INATIVO" <?= $status === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
                                 </select>
                             </div>
 
                             <div class="col-md-7">
                                 <label class="form-label mini">Buscar (Nome / CPF / Telefone / ID)</label>
-                                <div class="search-wrap">
-                                    <input type="text" class="form-control compact" id="q" placeholder="Ex.: Maria / 123.456.789-00 / (92)..." autocomplete="off">
-                                    <div class="suggest" id="suggest"></div>
-                                </div>
+                                <input type="text" class="form-control compact" name="q" id="q"
+                                    value="<?= e($q) ?>"
+                                    placeholder="Ex.: Maria / 123.456.789-00 / (92)..." />
                             </div>
 
                             <div class="col-md-2 d-flex gap-2 flex-wrap">
-                                <button class="main-btn primary-btn btn-hover btn-compact w-100" id="btnFiltrar">
+                                <button class="main-btn primary-btn btn-hover btn-compact w-100" type="submit">
                                     <i class="lni lni-funnel me-1"></i> Filtrar
                                 </button>
-                                <button class="main-btn light-btn btn-hover btn-compact w-100" id="btnLimpar">
+                                <a class="main-btn light-btn btn-hover btn-compact w-100" href="/clientes.php">
                                     <i class="lni lni-close me-1"></i> Limpar
-                                </button>
+                                </a>
                             </div>
                         </div>
                     </div>
-                </div>
+                </form>
 
-                <!-- TABELA (SÓ UMA) -->
+                <!-- TABELA -->
                 <div class="cardx">
                     <div class="head">
                         <div class="muted"><b>Clientes</b> • ações: Detalhes / Editar / Excluir</div>
-                        <div class="toolbar">
-                            <span class="pill warn" id="pillLoading" style="display:none;">Carregando…</span>
-                        </div>
+                        <div class="muted">Página <?= (int)$page ?> de <?= (int)$pages ?></div>
                     </div>
 
                     <div class="body">
@@ -629,18 +469,83 @@ $csrf = csrf_token();
                                         <th class="col-acoes">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tbody">
-                                    <tr>
-                                        <td colspan="7" class="muted">Carregando…</td>
-                                    </tr>
+                                <tbody>
+                                    <?php if (!$rows): ?>
+                                        <tr>
+                                            <td colspan="7" class="muted">Nenhum cliente encontrado.</td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($rows as $r):
+                                            $id = (int)$r['id'];
+                                            $nome = (string)$r['nome'];
+                                            $cpfRaw = (string)$r['cpf'];
+                                            $telRaw = (string)$r['telefone'];
+                                            $cpfF = cpf_fmt($cpfRaw);
+                                            $telF = tel_fmt($telRaw);
+                                            $st = (string)$r['status'];
+                                            $obs = (string)($r['obs'] ?? '');
+                                            $created = (string)($r['created_at'] ?? '');
+                                            $badge = ($st === 'ATIVO')
+                                                ? '<span class="badge-soft b-ativo">ATIVO</span>'
+                                                : '<span class="badge-soft b-inativo">INATIVO</span>';
+                                        ?>
+                                            <tr>
+                                                <td class="td-nowrap fw-1000"><?= $id ?></td>
+                                                <td><span class="td-clip" title="<?= e($nome) ?>"><?= e($nome) ?></span></td>
+                                                <td class="td-nowrap"><?= e($cpfF) ?></td>
+                                                <td class="td-nowrap"><?= e($telF) ?></td>
+                                                <td><?= $badge ?></td>
+                                                <td class="td-nowrap"><?= e($created ?: '—') ?></td>
+                                                <td>
+                                                    <div class="actions-wrap">
+                                                        <button type="button"
+                                                            class="main-btn light-btn btn-hover btn-action btnDetalhes"
+                                                            data-id="<?= $id ?>"
+                                                            data-nome="<?= e($nome) ?>"
+                                                            data-cpf="<?= e($cpfF) ?>"
+                                                            data-tel="<?= e($telF) ?>"
+                                                            data-status="<?= e($st) ?>"
+                                                            data-obs="<?= e($obs) ?>"
+                                                            data-created="<?= e($created) ?>">
+                                                            <i class="lni lni-eye me-1"></i> Detalhes
+                                                        </button>
+
+                                                        <button type="button"
+                                                            class="main-btn primary-btn btn-hover btn-action btnEditar"
+                                                            data-id="<?= $id ?>"
+                                                            data-nome="<?= e($nome) ?>"
+                                                            data-cpfraw="<?= e($cpfRaw) ?>"
+                                                            data-telraw="<?= e($telRaw) ?>"
+                                                            data-status="<?= e($st) ?>"
+                                                            data-obs="<?= e($obs) ?>">
+                                                            <i class="lni lni-pencil me-1"></i> Editar
+                                                        </button>
+
+                                                        <button type="button"
+                                                            class="main-btn light-btn btn-hover btn-action btnExcluir"
+                                                            data-id="<?= $id ?>"
+                                                            data-nome="<?= e($nome) ?>"
+                                                            data-cpf="<?= e($cpfF) ?>"
+                                                            data-tel="<?= e($telF) ?>">
+                                                            <i class="lni lni-trash-can me-1"></i> Excluir
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
 
                         <div class="page-nav">
-                            <button class="page-btn" id="btnPrev">←</button>
-                            <span class="page-info" id="pageInfo">Página 1</span>
-                            <button class="page-btn" id="btnNext">→</button>
+                            <?php
+                            $prevUrl = url_with(['page' => max(1, $page - 1)]);
+                            $nextUrl = url_with(['page' => min($pages, $page + 1)]);
+                            ?>
+                            <a class="page-btn <?= $page <= 1 ? 'disabled' : '' ?>" href="<?= e($prevUrl) ?>">←</a>
+                            <span class="page-info">Página <?= (int)$page ?> de <?= (int)$pages ?></span>
+                            <a class="page-btn <?= $page >= $pages ? 'disabled' : '' ?>" href="<?= e($nextUrl) ?>">→</a>
                         </div>
                     </div>
                 </div>
@@ -650,85 +555,70 @@ $csrf = csrf_token();
 
         <footer class="footer">
             <div class="container-fluid">
-                <div class="row">
-                    <div class="col-12">
-                        <p class="text-sm muted mb-0">© Painel da Distribuidora • Clientes</p>
-                    </div>
-                </div>
+                <p class="text-sm muted mb-0">© Painel da Distribuidora • Clientes</p>
             </div>
         </footer>
     </main>
 
-    <!-- MODAL: FORM -->
+    <!-- =========================
+  MODAL: NOVO/EDITAR (FORM POST)
+========================= -->
     <div class="modal fade" id="mdForm" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content" style="border-radius:16px;">
-                <div class="modal-header">
-                    <div>
-                        <h5 class="modal-title" id="fmTitulo">Novo cliente</h5>
-                        <div class="muted" id="fmSub">Preencha Nome, CPF e Telefone</div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-
-                <div class="modal-body">
-                    <div class="cardx">
-                        <div class="head">
-                            <div class="fw-1000">Dados do cliente</div>
-                            <span class="pill">Obrigatório *</span>
+                <form method="post" id="formCliente" action="/assets/dados/clientes/salvarClientes.php">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="fmTitulo">Novo cliente</h5>
+                            <div class="muted" id="fmSub">Preencha Nome, CPF e Telefone</div>
                         </div>
-                        <div class="body">
-                            <input type="hidden" id="fmId" value="">
-                            <input type="hidden" id="fmCsrf" value="<?= e($csrf) ?>">
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
 
-                            <div class="row g-2">
-                                <div class="col-md-7">
-                                    <label class="form-label mini">Nome *</label>
-                                    <input type="text" class="form-control compact" id="fmNome" placeholder="Ex.: Maria do Carmo">
-                                </div>
-                                <div class="col-md-5">
-                                    <label class="form-label mini">Status</label>
-                                    <select class="form-select compact" id="fmStatus">
-                                        <option value="ATIVO" selected>ATIVO</option>
-                                        <option value="INATIVO">INATIVO</option>
-                                    </select>
-                                </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                        <input type="hidden" name="return_to" value="<?= e($return_to) ?>">
+                        <input type="hidden" name="id" id="fmId" value="">
 
-                                <div class="col-md-6">
-                                    <label class="form-label mini">CPF *</label>
-                                    <input type="text" class="form-control compact" id="fmCpf" placeholder="000.000.000-00" inputmode="numeric" maxlength="14">
-                                </div>
-
-                                <div class="col-md-6">
-                                    <label class="form-label mini">Telefone *</label>
-                                    <input type="text" class="form-control compact" id="fmTel" placeholder="(00) 00000-0000" inputmode="tel" maxlength="16">
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label mini">Observações</label>
-                                    <input type="text" class="form-control compact" id="fmObs" placeholder="Opcional">
-                                </div>
-
-                                <div class="col-12 mt-2">
-                                    <div class="muted" id="fmMsg">—</div>
-                                </div>
+                        <div class="row g-2">
+                            <div class="col-md-7">
+                                <label class="form-label mini">Nome *</label>
+                                <input type="text" class="form-control compact" name="nome" id="fmNome" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label mini">Status</label>
+                                <select class="form-select compact" name="status" id="fmStatus">
+                                    <option value="ATIVO">ATIVO</option>
+                                    <option value="INATIVO">INATIVO</option>
+                                </select>
                             </div>
 
+                            <div class="col-md-6">
+                                <label class="form-label mini">CPF *</label>
+                                <input type="text" class="form-control compact" name="cpf" id="fmCpf" required maxlength="14">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label mini">Telefone *</label>
+                                <input type="text" class="form-control compact" name="telefone" id="fmTel" required maxlength="16">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label mini">Observações</label>
+                                <input type="text" class="form-control compact" name="obs" id="fmObs">
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="modal-footer d-flex justify-content-between">
-                    <div class="muted">Campos com * são obrigatórios.</div>
-                    <div class="d-flex gap-2">
-                        <button class="main-btn primary-btn btn-hover btn-compact" id="fmSalvar">
+                    <div class="modal-footer">
+                        <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
                             <i class="lni lni-save me-1"></i> Salvar
                         </button>
-                        <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">
+                        <button class="main-btn light-btn btn-hover btn-compact" type="button" data-bs-dismiss="modal">
                             <i class="lni lni-close me-1"></i> Cancelar
                         </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     </div>
@@ -739,65 +629,48 @@ $csrf = csrf_token();
             <div class="modal-content" style="border-radius:16px;">
                 <div class="modal-header">
                     <div>
-                        <h5 class="modal-title" id="dtTitulo">Detalhes do cliente</h5>
+                        <h5 class="modal-title" id="dtTitulo">Detalhes</h5>
                         <div class="muted" id="dtSub">—</div>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body">
-                    <div class="cardx">
-                        <div class="head">
-                            <div class="fw-1000">Informações</div>
-                            <span class="pill" id="dtStatusPill">—</span>
+                    <div class="row g-2">
+                        <div class="col-sm-7">
+                            <div class="mini">Nome</div>
+                            <div class="fw-1000" id="dtNome">—</div>
                         </div>
-                        <div class="body">
-                            <div class="row g-2">
-                                <div class="col-sm-7">
-                                    <div class="mini">Nome</div>
-                                    <div class="fw-1000" id="dtNome">—</div>
-                                </div>
-                                <div class="col-sm-5">
-                                    <div class="mini">ID</div>
-                                    <div class="fw-1000" id="dtId">—</div>
-                                </div>
+                        <div class="col-sm-5">
+                            <div class="mini">Status</div>
+                            <div class="fw-1000" id="dtStatus">—</div>
+                        </div>
 
-                                <div class="col-sm-6">
-                                    <div class="mini">CPF</div>
-                                    <div class="fw-1000" id="dtCpf">—</div>
-                                </div>
+                        <div class="col-sm-6">
+                            <div class="mini">CPF</div>
+                            <div class="fw-1000" id="dtCpf">—</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="mini">Telefone</div>
+                            <div class="fw-1000" id="dtTel">—</div>
+                        </div>
 
-                                <div class="col-sm-6">
-                                    <div class="mini">Telefone</div>
-                                    <div class="fw-1000" id="dtTel">—</div>
-                                </div>
+                        <div class="col-12">
+                            <div class="mini">Observações</div>
+                            <div class="fw-1000" id="dtObs">—</div>
+                        </div>
 
-                                <div class="col-12">
-                                    <div class="mini">Observações</div>
-                                    <div class="fw-1000" id="dtObs">—</div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div class="mini">Criado em</div>
-                                    <div class="fw-1000" id="dtCreated">—</div>
-                                </div>
-                            </div>
-
-                            <div class="mt-3 d-flex gap-2 flex-wrap">
-                                <button class="main-btn primary-btn btn-hover btn-compact" id="dtEditar">
-                                    <i class="lni lni-pencil me-1"></i> Editar
-                                </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">
-                                    <i class="lni lni-close me-1"></i> Fechar
-                                </button>
-                            </div>
-
+                        <div class="col-12">
+                            <div class="mini">Criado em</div>
+                            <div class="fw-1000" id="dtCreated">—</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <div class="muted">Ações registradas no banco.</div>
+                    <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">
+                        <i class="lni lni-close me-1"></i> Fechar
+                    </button>
                 </div>
             </div>
         </div>
@@ -807,25 +680,30 @@ $csrf = csrf_token();
     <div class="modal fade" id="mdExcluir" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content" style="border-radius:16px;">
-                <div class="modal-header">
-                    <h5 class="modal-title">Excluir cliente</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
+                <form method="post" action="/assets/dados/clientes/excluirClientes.php">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Excluir cliente</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
 
-                <div class="modal-body">
-                    <div class="muted">Tem certeza que deseja excluir este cliente?</div>
-                    <div class="fw-1000 mt-2" id="exNome">—</div>
-                    <div class="muted" id="exMeta">—</div>
-                </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                        <input type="hidden" name="return_to" value="<?= e($return_to) ?>">
+                        <input type="hidden" name="id" id="exId" value="">
+                        <div class="muted">Tem certeza que deseja excluir?</div>
+                        <div class="fw-1000 mt-2" id="exNome">—</div>
+                        <div class="muted" id="exMeta">—</div>
+                    </div>
 
-                <div class="modal-footer">
-                    <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">
-                        <i class="lni lni-close me-1"></i> Cancelar
-                    </button>
-                    <button class="main-btn primary-btn btn-hover btn-compact" id="exConfirmar">
-                        <i class="lni lni-trash-can me-1"></i> Excluir
-                    </button>
-                </div>
+                    <div class="modal-footer">
+                        <button class="main-btn light-btn btn-hover btn-compact" type="button" data-bs-dismiss="modal">
+                            <i class="lni lni-close me-1"></i> Cancelar
+                        </button>
+                        <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
+                            <i class="lni lni-trash-can me-1"></i> Excluir
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -834,28 +712,20 @@ $csrf = csrf_token();
     <script src="assets/js/main.js"></script>
 
     <script>
-        /* =========================
-       CLIENTES (AJAX)
-    ========================== */
-        const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        const state = {
-            page: 1,
-            per: 25,
-            pages: 1,
-            total: 0,
-            currentId: null
-        };
-
         const mdForm = new bootstrap.Modal(document.getElementById('mdForm'));
         const mdDetalhes = new bootstrap.Modal(document.getElementById('mdDetalhes'));
         const mdExcluir = new bootstrap.Modal(document.getElementById('mdExcluir'));
 
-        const $ = (id) => document.getElementById(id);
+        const formCliente = document.getElementById('formCliente');
 
-        function badgeStatus(st) {
-            if (st === 'ATIVO') return `<span class="badge-soft b-ativo">ATIVO</span>`;
-            return `<span class="badge-soft b-inativo">INATIVO</span>`;
-        }
+        const fmTitulo = document.getElementById('fmTitulo');
+        const fmSub = document.getElementById('fmSub');
+        const fmId = document.getElementById('fmId');
+        const fmNome = document.getElementById('fmNome');
+        const fmCpf = document.getElementById('fmCpf');
+        const fmTel = document.getElementById('fmTel');
+        const fmStatus = document.getElementById('fmStatus');
+        const fmObs = document.getElementById('fmObs');
 
         function onlyDigits(s) {
             return String(s || '').replace(/\D+/g, '');
@@ -871,378 +741,76 @@ $csrf = csrf_token();
 
         function maskTel(v) {
             const d = onlyDigits(v).slice(0, 11);
-            if (d.length <= 2) return d ? `(${d}` : '';
-            const dd = d.slice(0, 2);
-            const rest = d.slice(2);
+            if (!d) return '';
+            if (d.length <= 2) return `(${d}`;
+            const dd = d.slice(0, 2),
+                rest = d.slice(2);
             if (rest.length <= 4) return `(${dd}) ${rest}`;
             if (rest.length <= 8) return `(${dd}) ${rest.slice(0,4)}-${rest.slice(4)}`;
             return `(${dd}) ${rest.slice(0,5)}-${rest.slice(5)}`;
         }
 
-        async function apiFetch(params) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('action', params.action);
-            Object.entries(params).forEach(([k, v]) => {
-                if (k === 'action') return;
-                url.searchParams.set(k, String(v ?? ''));
-            });
+        fmCpf.addEventListener('input', e => e.target.value = maskCpf(e.target.value));
+        fmTel.addEventListener('input', e => e.target.value = maskTel(e.target.value));
 
-            const res = await fetch(url.toString(), {
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            return res.json();
-        }
-
-        function setLoading(on) {
-            const pill = $('pillLoading');
-            if (!pill) return;
-            pill.style.display = on ? 'inline-flex' : 'none';
-        }
-
-        function renderMeta(meta) {
-            $('pillCount').textContent = `${meta.total} clientes`;
-            $('pageInfo').textContent = `Página ${meta.page} de ${meta.pages}`;
-            $('btnPrev').disabled = meta.page <= 1;
-            $('btnNext').disabled = meta.page >= meta.pages;
-
-            const st = $('status').value;
-            const q = $('q').value.trim();
-            const parts = [];
-            if (st !== 'TODOS') parts.push(`Status: ${st}`);
-            if (q) parts.push(`Busca: ${q}`);
-            $('lblRange').textContent = parts.length ? parts.join(' • ') : '—';
-        }
-
-        function renderRows(rows) {
-            const tb = $('tbody');
-            if (!rows.length) {
-                tb.innerHTML = `<tr><td colspan="7" class="muted">Nenhum cliente encontrado.</td></tr>`;
-                return;
-            }
-
-            tb.innerHTML = rows.map(r => `
-        <tr>
-          <td class="td-nowrap fw-1000">${r.id}</td>
-          <td><span class="td-clip" title="${r.nome}">${r.nome}</span></td>
-          <td class="td-nowrap">${r.cpf_fmt}</td>
-          <td class="td-nowrap">${r.telefone_fmt}</td>
-          <td>${badgeStatus(r.status)}</td>
-          <td class="td-nowrap">${r.created_at || '—'}</td>
-          <td>
-            <div class="actions-wrap">
-              <button class="main-btn light-btn btn-hover btn-action" data-act="detalhes" data-id="${r.id}">
-                <i class="lni lni-eye me-1"></i> Detalhes
-              </button>
-              <button class="main-btn primary-btn btn-hover btn-action" data-act="editar" data-id="${r.id}">
-                <i class="lni lni-pencil me-1"></i> Editar
-              </button>
-              <button class="main-btn light-btn btn-hover btn-action" data-act="excluir" data-id="${r.id}">
-                <i class="lni lni-trash-can me-1"></i> Excluir
-              </button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-
-            tb.querySelectorAll('[data-act]').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const id = Number(btn.getAttribute('data-id'));
-                    const act = btn.getAttribute('data-act');
-                    if (act === 'detalhes') openDetalhes(id);
-                    if (act === 'editar') openEditar(id);
-                    if (act === 'excluir') openExcluir(id);
-                });
-            });
-        }
-
-        async function loadList() {
-            setLoading(true);
-            const status = $('status').value;
-            const q = $('q').value.trim();
-            const per = Number($('per').value) || 25;
-
-            const data = await apiFetch({
-                action: 'fetch',
-                page: state.page,
-                per,
-                status,
-                q
-            });
-
-            setLoading(false);
-
-            if (!data.ok) {
-                alert(data.msg || 'Erro ao carregar clientes.');
-                return;
-            }
-
-            state.per = data.meta.per;
-            state.page = data.meta.page;
-            state.pages = data.meta.pages;
-            state.total = data.meta.total;
-
-            renderMeta(data.meta);
-            renderRows(data.rows || []);
-        }
-
-        async function openDetalhes(id) {
-            const data = await apiFetch({
-                action: 'one',
-                id
-            });
-            if (!data.ok) return alert(data.msg || 'Erro ao abrir detalhes.');
-
-            const c = data.data;
-
-            $('dtTitulo').textContent = `Detalhes do cliente #${c.id}`;
-            $('dtSub').textContent = 'Cadastro de clientes';
-
-            const pill = $('dtStatusPill');
-            pill.className = 'pill ' + (c.status === 'ATIVO' ? 'ok' : 'warn');
-            pill.textContent = c.status;
-
-            $('dtId').textContent = c.id;
-            $('dtNome').textContent = c.nome;
-            $('dtCpf').textContent = c.cpf_fmt;
-            $('dtTel').textContent = c.telefone_fmt;
-            $('dtObs').textContent = c.obs ? c.obs : '—';
-            $('dtCreated').textContent = c.created_at || '—';
-
-            $('dtEditar').onclick = () => {
-                mdDetalhes.hide();
-                openEditar(c.id);
-            };
-
-            mdDetalhes.show();
-        }
-
-        function openNovo() {
-            state.currentId = null;
-            $('fmTitulo').textContent = 'Novo cliente';
-            $('fmSub').textContent = 'Preencha Nome, CPF e Telefone';
-            $('fmId').value = '';
-            $('fmNome').value = '';
-            $('fmCpf').value = '';
-            $('fmTel').value = '';
-            $('fmStatus').value = 'ATIVO';
-            $('fmObs').value = '';
-            $('fmMsg').textContent = '—';
+        // Novo
+        document.getElementById('btnNovo').addEventListener('click', () => {
+            formCliente.action = '/assets/dados/clientes/salvarClientes.php';
+            fmTitulo.textContent = 'Novo cliente';
+            fmSub.textContent = 'Preencha Nome, CPF e Telefone';
+            fmId.value = '';
+            fmNome.value = '';
+            fmCpf.value = '';
+            fmTel.value = '';
+            fmStatus.value = 'ATIVO';
+            fmObs.value = '';
             mdForm.show();
-            setTimeout(() => $('fmNome').focus(), 200);
-        }
+            setTimeout(() => fmNome.focus(), 150);
+        });
 
-        async function openEditar(id) {
-            const data = await apiFetch({
-                action: 'one',
-                id
+        // Detalhes
+        document.querySelectorAll('.btnDetalhes').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('dtTitulo').textContent = `Detalhes do cliente #${btn.dataset.id}`;
+                document.getElementById('dtSub').textContent = 'Cadastro de clientes';
+                document.getElementById('dtNome').textContent = btn.dataset.nome || '—';
+                document.getElementById('dtStatus').textContent = btn.dataset.status || '—';
+                document.getElementById('dtCpf').textContent = btn.dataset.cpf || '—';
+                document.getElementById('dtTel').textContent = btn.dataset.tel || '—';
+                document.getElementById('dtObs').textContent = btn.dataset.obs || '—';
+                document.getElementById('dtCreated').textContent = btn.dataset.created || '—';
+                mdDetalhes.show();
             });
-            if (!data.ok) return alert(data.msg || 'Erro ao abrir edição.');
+        });
 
-            const c = data.data;
-            state.currentId = c.id;
-
-            $('fmTitulo').textContent = `Editar cliente #${c.id}`;
-            $('fmSub').textContent = 'Altere e salve';
-            $('fmId').value = c.id;
-            $('fmNome').value = c.nome;
-            $('fmCpf').value = c.cpf_fmt;
-            $('fmTel').value = c.telefone_fmt;
-            $('fmStatus').value = c.status;
-            $('fmObs').value = c.obs || '';
-            $('fmMsg').textContent = '—';
-            mdForm.show();
-        }
-
-        function openExcluir(id) {
-            state.currentId = id;
-
-            const tr = document.querySelector(`[data-act="excluir"][data-id="${id}"]`)?.closest('tr');
-            const nome = tr?.children?.[1]?.innerText?.trim() || `Cliente #${id}`;
-            const cpf = tr?.children?.[2]?.innerText?.trim() || '';
-            const tel = tr?.children?.[3]?.innerText?.trim() || '';
-
-            $('exNome').textContent = nome;
-            $('exMeta').textContent = `${cpf} • ${tel}`;
-            mdExcluir.show();
-        }
-
-        async function salvarForm() {
-            const id = Number($('fmId').value || 0);
-            const payload = {
-                _csrf: CSRF,
-                id: id || undefined,
-                nome: $('fmNome').value.trim(),
-                cpf: $('fmCpf').value.trim(),
-                telefone: $('fmTel').value.trim(),
-                status: $('fmStatus').value,
-                obs: $('fmObs').value.trim()
-            };
-
-            $('fmMsg').textContent = 'Salvando...';
-
-            const url = id ? 'assets/dados/clientes/editarClientes.php' : 'assets/dados/clientes/salvarClientes.php';
-
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(payload)
+        // Editar
+        document.querySelectorAll('.btnEditar').forEach(btn => {
+            btn.addEventListener('click', () => {
+                formCliente.action = '/assets/dados/clientes/editarClientes.php';
+                fmTitulo.textContent = `Editar cliente #${btn.dataset.id}`;
+                fmSub.textContent = 'Altere e salve';
+                fmId.value = btn.dataset.id || '';
+                fmNome.value = btn.dataset.nome || '';
+                fmCpf.value = maskCpf(btn.dataset.cpfraw || '');
+                fmTel.value = maskTel(btn.dataset.telraw || '');
+                fmStatus.value = (btn.dataset.status || 'ATIVO');
+                fmObs.value = btn.dataset.obs || '';
+                mdForm.show();
+                setTimeout(() => fmNome.focus(), 150);
             });
+        });
 
-            const data = await res.json().catch(() => ({
-                ok: false,
-                msg: 'Resposta inválida do servidor.'
-            }));
-
-            if (!data.ok) {
-                $('fmMsg').textContent = '⚠ ' + (data.msg || 'Erro ao salvar.');
-                return;
-            }
-
-            mdForm.hide();
-            await loadList();
-            alert(data.msg || 'Salvo!');
-        }
-
-        async function confirmarExcluir() {
-            const id = Number(state.currentId || 0);
-            if (!id) return;
-
-            const res = await fetch('assets/dados/clientes/excluirClientes.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    _csrf: CSRF,
-                    id
-                })
+        // Excluir
+        document.querySelectorAll('.btnExcluir').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('exId').value = btn.dataset.id || '';
+                document.getElementById('exNome').textContent = btn.dataset.nome || '—';
+                document.getElementById('exMeta').textContent = `${btn.dataset.cpf || ''} • ${btn.dataset.tel || ''}`;
+                mdExcluir.show();
             });
-
-            const data = await res.json().catch(() => ({
-                ok: false,
-                msg: 'Resposta inválida do servidor.'
-            }));
-            if (!data.ok) return alert(data.msg || 'Erro ao excluir.');
-
-            mdExcluir.hide();
-            await loadList();
-            alert(data.msg || 'Excluído!');
-        }
-
-        function buildSuggestUI(items) {
-            const sug = $('suggest');
-            if (!items.length) {
-                sug.style.display = 'none';
-                sug.innerHTML = '';
-                return;
-            }
-
-            sug.innerHTML = items.map(it => `
-        <div class="it" data-nome="${it.nome}">
-          <div class="nm td-clip" title="${it.nome}">${it.nome}</div>
-          <div class="meta">${it.cpf_fmt} • ${it.telefone_fmt}</div>
-        </div>
-      `).join('');
-
-            sug.style.display = 'block';
-
-            sug.querySelectorAll('.it').forEach(el => {
-                el.addEventListener('click', () => {
-                    $('q').value = el.getAttribute('data-nome') || '';
-                    sug.style.display = 'none';
-                    state.page = 1;
-                    loadList();
-                });
-            });
-        }
-
-        let sugTimer = null;
-
-        function scheduleSuggest() {
-            clearTimeout(sugTimer);
-            const v = $('q').value.trim();
-            if (v.length < 2) {
-                $('suggest').style.display = 'none';
-                return;
-            }
-            sugTimer = setTimeout(async () => {
-                const data = await apiFetch({
-                    action: 'suggest',
-                    q: v
-                });
-                if (!data.ok) return;
-                buildSuggestUI(data.items || []);
-            }, 120);
-        }
-
-        /* =========================
-           EVENTOS + INIT (CORRIGIDO)
-           - o erro que você mostrou acontece quando o comentário fica quebrado.
-           Aqui está certinho, em múltiplas linhas e com DOMContentLoaded correto.
-        ========================== */
-        document.addEventListener('DOMContentLoaded', () => {
-            $('fmCpf').addEventListener('input', (e) => e.target.value = maskCpf(e.target.value));
-            $('fmTel').addEventListener('input', (e) => e.target.value = maskTel(e.target.value));
-
-            $('btnNovo').addEventListener('click', () => openNovo());
-            $('fmSalvar').addEventListener('click', () => salvarForm());
-            $('exConfirmar').addEventListener('click', () => confirmarExcluir());
-
-            $('per').addEventListener('change', () => {
-                state.page = 1;
-                loadList();
-            });
-
-            $('btnPrev').addEventListener('click', () => {
-                state.page = Math.max(1, state.page - 1);
-                loadList();
-            });
-
-            $('btnNext').addEventListener('click', () => {
-                state.page = Math.min(state.pages || 1, state.page + 1);
-                loadList();
-            });
-
-            $('btnFiltrar').addEventListener('click', () => {
-                state.page = 1;
-                loadList();
-            });
-
-            $('btnLimpar').addEventListener('click', () => {
-                $('status').value = 'TODOS';
-                $('q').value = '';
-                $('suggest').style.display = 'none';
-                state.page = 1;
-                loadList();
-            });
-
-            $('q').addEventListener('input', scheduleSuggest);
-            $('q').addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    $('suggest').style.display = 'none';
-                    state.page = 1;
-                    loadList();
-                }
-            });
-
-            document.addEventListener('click', (e) => {
-                const sug = $('suggest');
-                const wrap = document.querySelector('.search-wrap');
-                if (!sug || !wrap) return;
-                if (!wrap.contains(e.target)) sug.style.display = 'none';
-            });
-
-            // INIT
-            loadList();
         });
     </script>
+
 </body>
 
 </html>

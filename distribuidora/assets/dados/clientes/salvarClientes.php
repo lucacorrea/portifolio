@@ -4,58 +4,63 @@ declare(strict_types=1);
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
-require_once __DIR__ . '/../../../conexao.php';
-require_once __DIR__ . '/./_helpers.php';
+require_once __DIR__ . '/../../conexao.php';
+require_once __DIR__ . '/_helpers.php';
 
 require_db_or_die();
 $pdo = db();
 
-$data = $_POST ?: read_json_body();
+if (!is_post()) redirect('/../../../clientes.php');
 
-$csrf = (string)($data['_csrf'] ?? '');
-csrf_validate_or_die($csrf);
+csrf_validate_or_die();
 
-$nome = trim((string)($data['nome'] ?? ''));
-$cpf  = only_digits((string)($data['cpf'] ?? ''));
-$tel  = only_digits((string)($data['telefone'] ?? ''));
-$status = strtoupper(trim((string)($data['status'] ?? 'ATIVO')));
-$obs = trim((string)($data['obs'] ?? ''));
+$return = safe_return_to(post_str('return_to', '/../../../clientes.php'));
 
-if ($nome === '' || mb_strlen($nome) < 2) json_out(['ok' => false, 'msg' => 'Informe um nome válido.'], 422);
-if (!cpf_is_valid($cpf)) json_out(['ok' => false, 'msg' => 'CPF inválido.'], 422);
-if (!tel_min_ok($tel)) json_out(['ok' => false, 'msg' => 'Telefone inválido.'], 422);
-if (!in_array($status, ['ATIVO','INATIVO'], true)) $status = 'ATIVO';
+$nome = trim(post_str('nome'));
+$cpf  = only_digits(post_str('cpf'));
+$tel  = only_digits(post_str('telefone'));
+$status = strtoupper(trim(post_str('status', 'ATIVO')));
+$obs = trim(post_str('obs', ''));
+
+if ($nome === '' || mb_strlen($nome) < 2) {
+  flash_set('flash_err', 'Informe um nome válido.');
+  redirect($return);
+}
+if (!cpf_is_valid($cpf)) {
+  flash_set('flash_err', 'CPF inválido.');
+  redirect($return);
+}
+if (!tel_min_ok($tel)) {
+  flash_set('flash_err', 'Telefone inválido.');
+  redirect($return);
+}
+if (!in_array($status, ['ATIVO', 'INATIVO'], true)) $status = 'ATIVO';
 
 try {
   // CPF único
   $st = $pdo->prepare("SELECT id FROM clientes WHERE cpf = :cpf LIMIT 1");
   $st->execute(['cpf' => $cpf]);
   if ($st->fetchColumn()) {
-    json_out(['ok' => false, 'msg' => 'CPF já cadastrado.'], 409);
+    flash_set('flash_err', 'CPF já cadastrado.');
+    redirect($return);
   }
 
   $sql = "INSERT INTO clientes (nome, cpf, telefone, status, obs, created_at, updated_at)
-          VALUES (:nome, :cpf, :telefone, :status, :obs, :ca, :ua)";
+          VALUES (:nome, :cpf, :telefone, :status, :obs, NOW(), NOW())";
   $stmt = $pdo->prepare($sql);
   $stmt->execute([
     'nome' => $nome,
     'cpf' => $cpf,
     'telefone' => $tel,
     'status' => $status,
-    'obs' => $obs !== '' ? $obs : null,
-    'ca' => now_sql(),
-    'ua' => now_sql(),
+    'obs' => ($obs !== '' ? $obs : null),
   ]);
 
-  $id = (int)$pdo->lastInsertId();
-
-  json_out([
-    'ok' => true,
-    'msg' => 'Cliente salvo com sucesso.',
-    'id' => $id
-  ]);
+  flash_set('flash_ok', 'Cliente cadastrado com sucesso.');
+  redirect($return);
 } catch (Throwable $e) {
-  json_out(['ok' => false, 'msg' => 'Erro ao salvar cliente.', 'detail' => $e->getMessage()], 500);
+  flash_set('flash_err', 'Erro ao salvar cliente: ' . $e->getMessage());
+  redirect($return);
 }
 
 ?>

@@ -1,12 +1,14 @@
 <?php
 declare(strict_types=1);
 
+@date_default_timezone_set('America/Manaus');
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
   session_start();
 }
 
 /* =========================
-   HELPERS BÁSICOS
+   BASICS
 ========================= */
 if (!function_exists('e')) {
   function e(string $v): string {
@@ -14,14 +16,21 @@ if (!function_exists('e')) {
   }
 }
 
-function json_out(array $payload, int $code = 200): void {
-  http_response_code($code);
-  header('Content-Type: application/json; charset=UTF-8');
-  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-  echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-  exit;
+function require_db_or_die(): void {
+  if (!function_exists('db')) {
+    http_response_code(500);
+    echo "ERRO: função db():PDO não encontrada. Verifique assets/conexao.php";
+    exit;
+  }
 }
 
+function only_digits(string $s): string {
+  return preg_replace('/\D+/', '', $s) ?? '';
+}
+
+/* =========================
+   REQUEST
+========================= */
 function is_post(): bool {
   return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
 }
@@ -29,6 +38,7 @@ function is_post(): bool {
 function get_str(string $k, string $def = ''): string {
   return isset($_GET[$k]) ? trim((string)$_GET[$k]) : $def;
 }
+
 function get_int(string $k, int $def = 0): int {
   $v = isset($_GET[$k]) ? (int)$_GET[$k] : $def;
   return $v > 0 ? $v : $def;
@@ -37,65 +47,69 @@ function get_int(string $k, int $def = 0): int {
 function post_str(string $k, string $def = ''): string {
   return isset($_POST[$k]) ? trim((string)$_POST[$k]) : $def;
 }
+
 function post_int(string $k, int $def = 0): int {
   $v = isset($_POST[$k]) ? (int)$_POST[$k] : $def;
   return $v > 0 ? $v : $def;
 }
 
-function read_json_body(): array {
-  $raw = file_get_contents('php://input');
-  if (!$raw) return [];
-  $data = json_decode($raw, true);
-  return is_array($data) ? $data : [];
+/* =========================
+   REDIRECT + FLASH
+========================= */
+function redirect(string $to): void {
+  header('Location: ' . $to);
+  exit;
+}
+
+function flash_set(string $key, string $msg): void {
+  $_SESSION[$key] = $msg;
+}
+
+function flash_pop(string $key): string {
+  $v = (string)($_SESSION[$key] ?? '');
+  unset($_SESSION[$key]);
+  return $v;
 }
 
 /* =========================
    CSRF
 ========================= */
 function csrf_token(): string {
-  if (session_status() !== PHP_SESSION_ACTIVE) session_start();
   if (empty($_SESSION['_csrf'])) {
     $_SESSION['_csrf'] = bin2hex(random_bytes(16));
   }
   return (string)$_SESSION['_csrf'];
 }
 
-function csrf_validate(string $token): bool {
+function csrf_validate_or_die(): void {
+  $t = (string)($_POST['_csrf'] ?? '');
   $sess = (string)($_SESSION['_csrf'] ?? '');
-  return $sess !== '' && hash_equals($sess, $token);
-}
-
-function csrf_validate_or_die(?string $token = null): void {
-  $t = $token ?? (string)($_POST['_csrf'] ?? '');
-  if ($t === '' || !csrf_validate($t)) {
-    json_out(['ok' => false, 'msg' => 'CSRF inválido. Atualize a página e tente novamente.'], 419);
+  if ($t === '' || $sess === '' || !hash_equals($sess, $t)) {
+    flash_set('flash_err', 'CSRF inválido. Atualize a página e tente novamente.');
+    $ret = post_str('return_to', '/clientes.php');
+    redirect(safe_return_to($ret));
   }
 }
 
 /* =========================
-   FORMATAÇÕES / VALIDADORES
+   VALIDADORES
 ========================= */
-function only_digits(string $s): string {
-  return preg_replace('/\D+/', '', $s) ?? '';
-}
-
 function cpf_is_valid(string $cpfDigits): bool {
   $cpf = only_digits($cpfDigits);
   if (strlen($cpf) !== 11) return false;
   if (preg_match('/^(\d)\1{10}$/', $cpf)) return false;
 
-  // dígito 1
   $sum = 0;
   for ($i = 0, $w = 10; $i < 9; $i++, $w--) $sum += ((int)$cpf[$i]) * $w;
   $d1 = 11 - ($sum % 11);
   $d1 = ($d1 >= 10) ? 0 : $d1;
   if ($d1 !== (int)$cpf[9]) return false;
 
-  // dígito 2
   $sum = 0;
   for ($i = 0, $w = 11; $i < 10; $i++, $w--) $sum += ((int)$cpf[$i]) * $w;
   $d2 = 11 - ($sum % 11);
   $d2 = ($d2 >= 10) ? 0 : $d2;
+
   return $d2 === (int)$cpf[10];
 }
 
@@ -105,16 +119,16 @@ function tel_min_ok(string $telDigits): bool {
 }
 
 function cpf_fmt(string $cpfDigits): string {
-  $d = only_digits($cpfDigits);
-  $d = substr($d, 0, 11);
-  if (strlen($d) < 11) return $d;
+  $d = substr(only_digits($cpfDigits), 0, 11);
+  if (strlen($d) !== 11) return $d;
   return preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $d) ?? $d;
 }
 
 function tel_fmt(string $telDigits): string {
-  $d = only_digits($telDigits);
-  $d = substr($d, 0, 11);
-  if (strlen($d) <= 2) return $d ? "($d" : "";
+  $d = substr(only_digits($telDigits), 0, 11);
+  if ($d === '') return '';
+  if (strlen($d) <= 2) return '(' . $d;
+
   $dd = substr($d, 0, 2);
   $rest = substr($d, 2);
 
@@ -123,18 +137,16 @@ function tel_fmt(string $telDigits): string {
   return "($dd) " . substr($rest, 0, 5) . "-" . substr($rest, 5);
 }
 
-function now_sql(): string {
-  return date('Y-m-d H:i:s');
-}
-
 /* =========================
-   DB CHECK
+   RETURN_TO SAFE
 ========================= */
-function require_db_or_die(): void {
-  if (!function_exists('db')) {
-    http_response_code(500);
-    echo "ERRO: função db():PDO não encontrada. Verifique assets/conexao.php";
-    exit;
-  }
+function safe_return_to(string $uri): string {
+  // Aceita somente paths locais (ex.: /clientes.php?...), sem scheme/host
+  $u = trim($uri);
+  if ($u === '') return '/../../../clientes.php';
+  if (str_contains($u, "\n") || str_contains($u, "\r")) return '/../../../clientes.php';
+  if (!str_starts_with($u, '/')) return '/../../../clientes.php';
+  // opcional: restringe para clientes.php
+  if (!str_contains($u, '../../../clientes.php')) return '/../../../clientes.php';
+  return $u;
 }
-?>
