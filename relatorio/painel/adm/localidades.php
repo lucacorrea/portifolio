@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 session_start();
 
@@ -315,86 +316,88 @@ try {
                                     <?php endif; ?>
 
                                     <div class="table-responsive pt-3">
-                                        <table class="table table-striped table-hover">
-                                            <thead>
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 90px;">Qtd</th>
+                                                <th>Nome</th>
+                                                <th style="width: 150px;">Tipo</th>
+                                                <th style="width: 220px;">Feiras</th>
+                                                <th style="width: 160px;">Status</th>
+                                                <th style="min-width: 260px;">Ações</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            <?php if (empty($comunidades)): ?>
                                                 <tr>
-                                                    <th style="width: 90px;">ID</th>
-                                                    <th>Nome</th>
-                                                    <th style="width: 150px;">Tipo</th>
-                                                    <th style="width: 220px;">Feira</th>
-                                                    <th style="width: 160px;">Status</th>
-                                                    <th style="min-width: 260px;">Ações</th>
+                                                    <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
                                                 </tr>
-                                            </thead>
+                                            <?php else: ?>
+                                                <?php foreach ($comunidades as $l): ?>
+                                                    <?php
+                                                    $nome = (string)($l['nome'] ?? '');
+                                                    $qtd  = (int)($l['qtd'] ?? 0);
 
-                                            <tbody>
-                                                <?php if (empty($comunidades)): ?>
+                                                    $ativoBool  = (int)($l['ativo'] ?? 0) === 1;
+                                                    $badgeClass = $ativoBool ? 'badge-success' : 'badge-danger';
+                                                    $badgeText  = $ativoBool ? 'Ativo' : 'Inativo';
+
+                                                    $obs = trim((string)($l['observacao'] ?? ''));
+
+                                                    $feirasIdsStr = (string)($l['feiras_ids'] ?? '');
+                                                    $feirasIds = array_filter(array_map('intval', explode(',', $feirasIdsStr)));
+
+                                                    // Tipo: se tiver feira 3, é Bairro; senão, Comunidade
+                                                    $tipoLabel = in_array(3, $feirasIds, true) ? 'Bairro' : 'Comunidade';
+
+                                                    $feirasLabel = ($feirasIdsStr !== '') ? ('Feiras: ' . $feirasIdsStr) : '-';
+                                                    ?>
                                                     <tr>
-                                                        <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
+                                                        <td><?= $qtd ?></td>
+
+                                                        <td>
+                                                            <div class="font-weight-bold"><?= h($nome) ?></div>
+                                                            <?php if ($obs !== ''): ?>
+                                                                <small class="text-muted"><?= h($obs) ?></small>
+                                                            <?php endif; ?>
+                                                        </td>
+
+                                                        <td><?= h($tipoLabel) ?></td>
+                                                        <td><?= h($feirasLabel) ?></td>
+
+                                                        <td>
+                                                            <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label>
+                                                        </td>
+
+                                                        <td>
+                                                            <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
+
+                                                                <form method="post" class="m-0">
+                                                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                                    <input type="hidden" name="acao" value="toggle">
+                                                                    <input type="hidden" name="nome" value="<?= h($nome) ?>">
+                                                                    <button type="submit" class="btn btn-outline-warning btn-xs"
+                                                                        onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> TODAS as feiras deste nome?');">
+                                                                        <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
+                                                                    </button>
+                                                                </form>
+
+                                                                <form method="post" class="m-0">
+                                                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                                    <input type="hidden" name="acao" value="excluir">
+                                                                    <input type="hidden" name="nome" value="<?= h($nome) ?>">
+                                                                    <button type="submit" class="btn btn-outline-danger btn-xs"
+                                                                        onclick="return confirm('Tem certeza que deseja EXCLUIR TODAS as feiras deste nome?');">
+                                                                        <i class="ti-trash"></i> Excluir
+                                                                    </button>
+                                                                </form>
+
+                                                            </div>
+                                                        </td>
                                                     </tr>
-                                                <?php else: ?>
-                                                    <?php foreach ($comunidades as $l): ?>
-                                                        <?php
-                                                        $id = (int)($l['id'] ?? 0);
-                                                        $f  = (int)($l['feira_id'] ?? 0);
-
-                                                        $ativoBool  = (int)($l['ativo'] ?? 0) === 1;
-                                                        $badgeClass = $ativoBool ? 'badge-success' : 'badge-danger';
-                                                        $badgeText  = $ativoBool ? 'Ativo' : 'Inativo';
-
-                                                        $tipoLabel = ($f === 3) ? 'Bairro' : 'Comunidade';
-                                                        $obs = trim((string)($l['observacao'] ?? ''));
-
-                                                        $feiraNome = (string)($l['feira_nome'] ?? '');
-                                                        if ($feiraNome === '') $feiraNome = 'Feira ' . $f;
-                                                        ?>
-
-                                                        <tr>
-                                                            <td><?= $id ?></td>
-
-                                                            <td>
-                                                                <div class="font-weight-bold"><?= h($l['nome'] ?? '') ?></div>
-                                                                <?php if ($obs !== ''): ?>
-                                                                    <small class="text-muted"><?= h($obs) ?></small>
-                                                                <?php endif; ?>
-                                                            </td>
-
-                                                            <td><?= h($tipoLabel) ?></td>
-                                                            <td><?= h($feiraNome) ?></td>
-
-                                                            <td>
-                                                                <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
-
-                                                                    <form method="post" class="m-0">
-                                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                                                        <input type="hidden" name="acao" value="toggle">
-                                                                        <input type="hidden" name="id" value="<?= $id ?>">
-                                                                        <button type="submit" class="btn btn-outline-warning btn-xs"
-                                                                            onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> este registro?');">
-                                                                            <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
-                                                                        </button>
-                                                                    </form>
-
-                                                                    <form method="post" class="m-0">
-                                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                                                        <input type="hidden" name="acao" value="excluir">
-                                                                        <input type="hidden" name="id" value="<?= $id ?>">
-                                                                        <button type="submit" class="btn btn-outline-danger btn-xs"
-                                                                            onclick="return confirm('Tem certeza que deseja EXCLUIR este registro?');">
-                                                                            <i class="ti-trash"></i> Excluir
-                                                                        </button>
-                                                                    </form>
-
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                <?php endif; ?>
-                                            </tbody>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </tbody>
                                         </table>
                                     </div>
 
