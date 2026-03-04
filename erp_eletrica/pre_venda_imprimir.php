@@ -36,6 +36,7 @@ if (!$pv) {
         <h2>ERP ELÉTRICA</h2>
         <p>FICHA DE PRÉ-VENDA / ORÇAMENTO</p>
         <p>Data: <?= date('d/m/Y H:i', strtotime($pv['created_at'])) ?></p>
+        <p><strong>Cliente: <?= !empty($pv['cliente_id']) ? $pv['cliente_nome'] : ($pv['nome_cliente_avulso'] ?? 'CONSUMIDOR') ?></strong></p>
     </div>
 
     <div class="text-center">

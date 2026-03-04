@@ -68,6 +68,22 @@ class CaixaController extends BaseController {
             $valor = $_POST['valor'];
             $motivo = $_POST['motivo'];
             $caixaId = $_POST['caixa_id'];
+            $authCode = $_POST['auth_code'] ?? null;
+
+            if ($tipo === 'sangria' && $_SESSION['usuario_nivel'] !== 'admin') {
+                $authService = new \App\Services\AuthorizationService();
+                if (!$authService->validateAndUse($authCode, 'sangria', $_SESSION['filial_id'] ?? 1)) {
+                    header('Location: caixa.php?error=Código de autorização inválido ou expirado para sangria.');
+                    exit;
+                }
+                $audit = new \App\Services\AuditLogService();
+                $audit->record('Uso de código sangria', 'caixa_movimentacoes', null, null, [
+                    'valor' => $valor,
+                    'codigo' => $authCode,
+                    'operador' => $_SESSION['usuario_id'],
+                    'ip' => $_SERVER['REMOTE_ADDR']
+                ]);
+            }
 
             $movementModel = new CashierMovement();
             $movementModel->create([
@@ -78,7 +94,12 @@ class CaixaController extends BaseController {
                 'operador_id' => $_SESSION['usuario_id']
             ]);
 
-            $this->logAction($tipo, 'caixa_movimentacoes', null, null, ['valor' => $valor, 'motivo' => $motivo]);
+            $this->logAction($tipo, 'caixa_movimentacoes', null, null, [
+                'valor' => $valor, 
+                'motivo' => $motivo,
+                'ip' => $_SERVER['REMOTE_ADDR'],
+                'horario' => date('H:i:s')
+            ]);
             header('Location: caixa.php?success=Movimentação registrada.');
             exit;
         }

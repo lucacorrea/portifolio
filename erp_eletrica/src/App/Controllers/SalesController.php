@@ -74,39 +74,71 @@ class SalesController extends BaseController {
                 
                 $requestedDiscount = $data['discount_percent'] ?? 0;
                 $supervisorId = null;
+                $authCode = $data['auth_code'] ?? null;
 
                 // Re-validation for Non-Admins with Discount
                 if ($requestedDiscount > 0 && $_SESSION['usuario_nivel'] !== 'admin') {
-                    $supervisorId = $data['supervisor_id'] ?? null;
-                    $supervisorCredential = $data['supervisor_credential'] ?? null;
+                    $isValid = false;
 
-                    if (!$supervisorId || !$supervisorCredential) {
-                        throw new \Exception("Esta venda com desconto requer autorização de um administrador.");
+                    // Option 1: Temporary Code
+                    if ($authCode) {
+                        $authService = new \App\Services\AuthorizationService();
+                        if ($authService->validateAndUse($authCode, 'desconto', $_SESSION['filial_id'] ?? 1)) {
+                            $isValid = true;
+                            $supervisorId = 0; // System flagged
+                            $audit = new \App\Services\AuditLogService();
+                            $audit->record('Uso de código de desconto', 'vendas', null, null, $authCode);
+                        }
                     }
 
-                    $userModel = new \App\Models\User();
-                    // Re-verify credentials
-                    if (!$userModel->validateAuth($supervisorId, $supervisorCredential)) {
-                        throw new \Exception("Credenciais de autorização inválidas.");
+                    // Option 2: Direct Supervisor Credentials (legacy/fallback)
+                    if (!$isValid) {
+                        $supervisorId = $data['supervisor_id'] ?? null;
+                        $supervisorCredential = $data['supervisor_credential'] ?? null;
+
+                        if (!$supervisorId || !$supervisorCredential) {
+                            throw new \Exception("Esta venda com desconto requer autorização ou um código válido.");
+                        }
+
+                        $userModel = new \App\Models\User();
+                        if (!$userModel->validateAuth($supervisorId, $supervisorCredential)) {
+                            throw new \Exception("Credenciais ou código de autorização inválidos.");
+                        }
+
+                        $supervisor = $db->query("SELECT nivel FROM usuarios WHERE id = " . (int)$supervisorId)->fetch();
+                        if (!$supervisor || $supervisor['nivel'] !== 'admin') {
+                            throw new \Exception("Apenas administradores podem autorizar descontos.");
+                        }
+                        $isValid = true;
                     }
 
-                    // Ensure the supervisor is actually an admin
-                    $supervisor = $db->query("SELECT nivel FROM usuarios WHERE id = " . (int)$supervisorId)->fetch();
-                    if (!$supervisor || $supervisor['nivel'] !== 'admin') {
-                        throw new \Exception("Apenas administradores podem autorizar descontos.");
+                    if (!$isValid) {
+                        throw new \Exception("Autorização de desconto falhou.");
                     }
                 }
 
-                $saleData = [
-                    'cliente_id' => $data['cliente_id'] ?? null,
-                    'usuario_id' => $_SESSION['usuario_id'],
-                    'filial_id' => $_SESSION['filial_id'] ?? 1,
-                    'valor_total' => $data['total'],
-                    'desconto_total' => $data['subtotal'] * ($requestedDiscount / 100),
-                    'autorizado_por' => $supervisorId,
-                    'forma_pagamento' => $data['pagamento']
-                ];
                 $saleId = $saleModel->create($saleData);
+                
+                // Automatic accounts receivable for 'fiado'
+                if ($data['pagamento'] === 'fiado') {
+                    if (empty($data['cliente_id'])) {
+                        throw new \Exception("Vendas a prazo (fiado) exigem um cliente cadastrado.");
+                    }
+                    $receivableModel = new \App\Models\AccountReceivable();
+                    $receivableModel->create([
+                        'venda_id' => $saleId,
+                        'cliente_id' => $data['cliente_id'],
+                        'valor' => $data['total'],
+                        'valor_pago' => 0,
+                        'saldo' => $data['total'],
+                        'status' => 'pendente',
+                        'data_vencimento' => date('Y-m-d', strtotime('+30 days')), // Default 30 days
+                        'filial_id' => $_SESSION['filial_id'] ?? 1
+                    ]);
+                    
+                    $audit = new \App\Services\AuditLogService();
+                    $audit->record('Venda fiado criada', 'vendas', $saleId, null, json_encode($saleData));
+                }
 
                 // Se houver ID de pré-venda, marca como finalizado
                 if (!empty($data['pv_id'])) {
