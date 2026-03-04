@@ -37,32 +37,6 @@ function json_out(array $data, int $code = 200): void
 }
 
 /* =========================
-   Monta URL da imagem
-   - banco salva: images/xxx.png
-   - precisa virar: assets/dados/produtos/images/xxx.png
-========================= */
-function img_url(string $raw): string
-{
-  $raw = trim($raw);
-  if ($raw === '') return '';
-
-  // normaliza \ do windows
-  $raw = str_replace('\\', '/', $raw);
-
-  if (preg_match('~^https?://~i', $raw)) return $raw;
-
-  $raw = ltrim($raw, '/');
-
-  // se já veio com assets..., não duplica
-  if (strpos($raw, 'assets/') === 0) return $raw;
-
-  // base onde ficam as imagens
-  $base = 'assets/dados/produtos/';
-
-  return rtrim($base, '/') . '/' . $raw; // images/xxx -> assets/dados/produtos/images/xxx
-}
-
-/* =========================
    ENDPOINT INTERNO (AJAX)
    - só pra "ultimasVendas"
 ========================= */
@@ -120,14 +94,6 @@ try {
   $rowsP = $stP->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
   $PRODUTOS_CACHE = array_map(static function (array $r): array {
-    $img = trim((string)($r['imagem'] ?? ''));
-
-    // fallback: se imagem estiver vazia e você salvou o caminho no OBS
-    if ($img === '') {
-      $obs = trim((string)($r['obs'] ?? ''));
-      if (preg_match('~^(images/|uploads/|img/|prod_).+~i', $obs)) $img = $obs;
-    }
-
     return [
       'id'    => (int)($r['id'] ?? 0),
       'code'  => (string)($r['codigo'] ?? ''),
@@ -135,7 +101,6 @@ try {
       'unit'  => (string)($r['unidade'] ?? ''),
       'price' => (float)($r['preco'] ?? 0),
       'stock' => (int)($r['estoque'] ?? 0),
-      'img'   => img_url($img),
     ];
   }, $rowsP);
 } catch (Throwable $e) {
@@ -344,15 +309,7 @@ function fmtMoney($v): string
       background: rgba(241, 245, 249, .9);
     }
 
-    .pimg {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      object-fit: cover;
-      border: 1px solid rgba(148, 163, 184, .30);
-      background: #fff;
-      flex: 0 0 auto;
-    }
+
 
     .it .meta {
       min-width: 0;
@@ -1511,7 +1468,6 @@ function fmtMoney($v): string
         code: prod.code,
         name: prod.name,
         price: Number(prod.price || 0),
-        img: (prod.img && String(prod.img).trim() !== "") ? prod.img : DEFAULT_IMG,
         unit: prod.unit || "",
         qty: 1
       });
@@ -1682,7 +1638,6 @@ function fmtMoney($v): string
             <td>${i + 1}</td>
             <td>
               <div class="d-flex align-items-center gap-2">
-                <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
                 <div style="min-width:0;">
                   <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">
                     ${safeText(it.name)}
@@ -1707,7 +1662,7 @@ function fmtMoney($v): string
         `);
       });
 
-      bindImgFallback(tbodyItens);
+
     }
 
     function recalcAll() {
