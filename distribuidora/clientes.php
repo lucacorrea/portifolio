@@ -5,11 +5,17 @@ declare(strict_types=1);
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
+
+
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/clientes/_helpers.php';
 
 require_db_or_die();
 $pdo = db();
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 $csrf = csrf_token();
 $return_to = (string)($_SERVER['REQUEST_URI'] ?? '/clientes.php');
