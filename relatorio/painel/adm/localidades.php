@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 session_start();
 
@@ -10,7 +9,9 @@ if (empty($_SESSION['usuario_logado'])) {
 }
 
 /* ADMIN */
-if (!in_array('ADMIN', $_SESSION['perfis'] ?? [], true)) {
+$perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
+if (!in_array('ADMIN', $perfis, true)) {
     header('Location: ../operador/index.php');
     exit;
 }
@@ -38,27 +39,41 @@ $msgSucesso = '';
 $comunidades = [];
 
 /* =========================
-   AÇÕES (toggle / excluir)
+   AÇÕES (toggle / excluir) - por NOME (grupo)
 ========================= */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
         $msgErro = 'Token de segurança inválido.';
     } else {
-        $acao = $_POST['acao'] ?? '';
-        $id = (int)($_POST['id'] ?? 0);
+        $acao = (string)($_POST['acao'] ?? '');
+        $nomeAcao = trim((string)($_POST['nome'] ?? ''));
 
-        if ($id <= 0) {
-            $msgErro = 'ID inválido.';
+        if ($nomeAcao === '') {
+            $msgErro = 'Nome inválido.';
         } else {
             try {
                 if ($acao === 'toggle') {
-                    $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = IF(ativo=1,0,1) WHERE id = :id");
-                    $st->execute([':id' => $id]);
-                    $msgSucesso = 'Status atualizado com sucesso.';
+                    // Regra: alterna todos com esse nome
+                    // se existir algum ativo => desativa todos; senão ativa todos
+                    $stAny = $pdo->prepare("SELECT SUM(ativo=1) FROM {$TABELA} WHERE nome = :nome");
+                    $stAny->execute([':nome' => $nomeAcao]);
+                    $temAtivo = ((int)$stAny->fetchColumn()) > 0;
+
+                    $novo = $temAtivo ? 0 : 1;
+
+                    $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = :novo WHERE nome = :nome");
+                    $st->execute([
+                        ':novo' => $novo,
+                        ':nome' => $nomeAcao
+                    ]);
+
+                    $msgSucesso = 'Status atualizado (todas as feiras) com sucesso.';
                 } elseif ($acao === 'excluir') {
-                    $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE id = :id");
-                    $st->execute([':id' => $id]);
-                    $msgSucesso = 'Registro excluído com sucesso.';
+                    // Exclui todos com esse nome
+                    $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE nome = :nome");
+                    $st->execute([':nome' => $nomeAcao]);
+
+                    $msgSucesso = 'Registros excluídos (todas as feiras) com sucesso.';
                 } else {
                     $msgErro = 'Ação inválida.';
                 }
@@ -81,10 +96,11 @@ $totalRegistros = 0;
 $totalPaginas = 1;
 
 /* =========================
-   LISTAR (JOIN feiras + LIMIT)
+   LISTAR (1 por NOME + LIMIT)
 ========================= */
 try {
-    $totalRegistros = (int)$pdo->query("SELECT COUNT(*) FROM {$TABELA}")->fetchColumn();
+    // Total de nomes distintos para paginação
+    $totalRegistros = (int)$pdo->query("SELECT COUNT(DISTINCT nome) FROM {$TABELA}")->fetchColumn();
     $totalPaginas = max(1, (int)ceil($totalRegistros / $porPagina));
 
     if ($pagina > $totalPaginas) {
@@ -93,28 +109,31 @@ try {
     }
 
     $sql = "
-    SELECT
-      c.id,
-      c.feira_id,
-      c.nome,
-      c.ativo,
-      c.observacao,
-      c.criado_em,
-      c.atualizado_em,
-      f.nome AS feira_nome
-    FROM {$TABELA} c
-    LEFT JOIN feiras f ON f.id = c.feira_id
-    ORDER BY c.id DESC
-    LIMIT :lim OFFSET :off
-  ";
+        SELECT
+            MAX(c.id) AS id,
+            c.nome,
+            CASE WHEN SUM(c.ativo = 1) > 0 THEN 1 ELSE 0 END AS ativo,
+            SUBSTRING_INDEX(
+                GROUP_CONCAT(COALESCE(c.observacao,'') ORDER BY c.id DESC SEPARATOR '||'),
+                '||', 1
+            ) AS observacao,
+            MAX(c.criado_em) AS criado_em,
+            MAX(c.atualizado_em) AS atualizado_em,
+            GROUP_CONCAT(DISTINCT c.feira_id ORDER BY c.feira_id SEPARATOR ',') AS feiras_ids
+        FROM {$TABELA} c
+        GROUP BY c.nome
+        ORDER BY id DESC
+        LIMIT :lim OFFSET :off
+    ";
+
     $st = $pdo->prepare($sql);
     $st->bindValue(':lim', $porPagina, PDO::PARAM_INT);
     $st->bindValue(':off', $offset, PDO::PARAM_INT);
     $st->execute();
 
-    $comunidades = $st->fetchAll();
+    $comunidades = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-    error_log("Erro ao listar comunidades: " . $e->getMessage());
+    error_log("Erro ao listar comunidades (distinct nome): " . $e->getMessage());
     $msgErro = 'Erro ao carregar a lista.';
     $comunidades = [];
 }
