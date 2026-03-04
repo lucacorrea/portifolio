@@ -7,7 +7,7 @@ class SupplierController extends BaseController {
     public function index() {
         $model = new Supplier();
         $page = (int)($_GET['page'] ?? 1);
-        $pagination = $model->paginate(6, $page);
+        $pagination = $model->paginateWithNfe(6, $page);
         $suppliers = $pagination['data'];
 
         $this->render('suppliers', [

@@ -67,6 +67,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="fornecedores.php" class="nav-link <?= $current_page == 'fornecedores.php' ? 'active' : '' ?>">
             <i class="fas fa-truck-fast"></i> <span>Fornecedores</span>
         </a>
+        <a href="importar_automatico.php" class="nav-link <?= $current_page == 'importar_automatico.php' ? 'active' : '' ?>">
+            <i class="fas fa-cloud-download-alt"></i> <span>Importação Automática</span>
+        </a>
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Financeiro</div>
         
@@ -117,6 +120,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <a href="fiscal.php?action=settings" class="nav-link <?= ($current_page == 'fiscal.php' && ($_GET['action'] ?? '') == 'settings') ? 'active' : '' ?>">
             <i class="fas fa-server"></i> <span>Conectividade SEFAZ</span>
+        </a>
+        <a href="importar_automatico.php?action=config" class="nav-link <?= ($current_page == 'importar_automatico.php' && ($_GET['action'] ?? '') == 'config') ? 'active' : '' ?>">
+            <i class="fas fa-shield-halved"></i> <span>Certificado Global A1</span>
         </a>
         <?php endif; ?>
         
