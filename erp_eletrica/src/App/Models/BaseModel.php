@@ -99,6 +99,7 @@ abstract class BaseModel {
     }
 
     public function create($data) {
+        $data = $this->filterData($data);
         $filialId = $this->getFilialContext() ?: ($_SESSION['filial_id'] ?? null);
         $col = $this->getTenantColumn();
 
@@ -115,6 +116,7 @@ abstract class BaseModel {
     }
 
     public function update($id, $data) {
+        $data = $this->filterData($data);
         $filialId = $this->getFilialContext();
         $col = $this->getTenantColumn();
         $fields = array_map(fn($field) => "$field = ?", array_keys($data));
@@ -140,6 +142,15 @@ abstract class BaseModel {
         }
         unset($data['id']);
         return $this->create($data);
+    }
+
+    protected function filterData($data) {
+        $stmt = $this->db->query("DESCRIBE {$this->table}");
+        $columns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        
+        return array_filter($data, function($key) use ($columns) {
+            return in_array($key, $columns);
+        }, ARRAY_FILTER_USE_KEY);
     }
 
     protected function query($sql, $params = []) {
