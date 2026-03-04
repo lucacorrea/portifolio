@@ -132,6 +132,16 @@ abstract class BaseModel {
         return $stmt->execute($params);
     }
 
+    public function save($data) {
+        if (isset($data['id']) && !empty($data['id'])) {
+            $id = $data['id'];
+            unset($data['id']);
+            return $this->update($id, $data);
+        }
+        unset($data['id']);
+        return $this->create($data);
+    }
+
     protected function query($sql, $params = []) {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
