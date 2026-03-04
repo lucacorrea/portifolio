@@ -153,6 +153,7 @@ if ($pagMode === 'UNICO') {
     'paid' => $paid,
     'total' => $total,
     'troco' => $troco,
+    'fiado' => $payload['pay']['fiado'] ?? null
   ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 } else { // MULTI
@@ -163,7 +164,7 @@ if ($pagMode === 'UNICO') {
   foreach ($parts as $pt) {
     if (!is_array($pt)) continue;
     $m = strtoupper(trim((string)($pt['method'] ?? 'PIX')));
-    if (!in_array($m, ['DINHEIRO', 'PIX', 'CARTAO', 'BOLETO'], true)) $m = 'PIX';
+    if (!in_array($m, ['DINHEIRO', 'PIX', 'CARTAO', 'FIADO'], true)) $m = 'PIX';
     $v = (float)to_float($pt['value'] ?? 0);
     if ($v > 0) $rows[] = ['method' => $m, 'value' => $v];
   }
@@ -183,6 +184,13 @@ if ($pagMode === 'UNICO') {
 
   if (abs($diff) < 0.01) $ok = true;
   else if ($diff > 0.01 && $hasCash) { $ok = true; $troco = $diff; }
+  else if ($diff < -0.01 && in_array('FIADO', array_column($rows, 'method'))) {
+      // In multi-pay, if there is a 'FIADO' part, the sum might be less than total 
+      // but we treat the difference as the debt? 
+      // Actually, my current multi-pay logic in JS expects sum == total.
+      // So let's keep it simple for now as per JS implementation.
+      $ok = abs($diff) < 0.01; 
+  }
 
   if (!$ok) fail('Pagamento múltiplo inválido. Ajuste os valores.');
 
@@ -195,6 +203,13 @@ if ($pagMode === 'UNICO') {
     'diff' => $diff,
     'troco' => $troco
   ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+// Validation for Fiado client
+if ($pagamento === 'FIADO' || ($pagMode === 'MULTI' && in_array('FIADO', array_column(json_decode($pagamentoJson, true)['parts'] ?? [], 'method')))) {
+    if (!isset($payload['client_id']) || (int)$payload['client_id'] <= 0) {
+        fail('Venda fiado exige um cliente cadastrado.');
+    }
 }
 
 // salva no banco
@@ -258,6 +273,47 @@ try {
       ':id' => (int)$it['produto_id'],
     ]);
   }
+
+  // --- REGISTRO DE FIADO ---
+  if ($pagamento === 'FIADO' || ($pagMode === 'MULTI' && in_array('FIADO', array_column(json_decode($pagamentoJson, true)['parts'] ?? [], 'method')))) {
+      $clientId = (int)($payload['client_id'] ?? 0);
+      $debtValue = $total;
+      $paidValue = 0.0;
+
+      if ($pagMode === 'UNICO' && isset($payload['pay']['fiado'])) {
+          $debtValue = (float)($payload['pay']['fiado']['debt_value'] ?? $total);
+          $paidValue = (float)($payload['pay']['fiado']['entry_value'] ?? 0);
+      } else if ($pagMode === 'MULTI') {
+          $pts = json_decode($pagamentoJson, true)['parts'] ?? [];
+          $debtValue = 0.0;
+          $paidValue = 0.0;
+          foreach($pts as $p) {
+              if ($p['method'] === 'FIADO') $debtValue += (float)$p['value'];
+              else $paidValue += (float)$p['value'];
+          }
+      }
+
+      // Auto-patch: Create fiados table if not exists
+      $pdo->exec("CREATE TABLE IF NOT EXISTS fiados (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        venda_id INT NOT NULL,
+        cliente_id INT NOT NULL,
+        valor_total DECIMAL(10,2) NOT NULL,
+        valor_pago DECIMAL(10,2) DEFAULT 0.00,
+        valor_restante DECIMAL(10,2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'ABERTO',
+        data_vencimento DATE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )");
+
+      $stFiado = $pdo->prepare("
+        INSERT INTO fiados (venda_id, cliente_id, valor_total, valor_pago, valor_restante, status)
+        VALUES (?, ?, ?, ?, ?, 'ABERTO')
+      ");
+      $stFiado->execute([$saleId, $clientId, $debtValue + $paidValue, $paidValue, $debtValue]);
+  }
+  // -------------------------
 
   $pdo->commit();
 
