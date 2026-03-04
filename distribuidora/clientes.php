@@ -558,7 +558,7 @@
                         </span>
                         <span class="text">Estoque</span>
                     </a>
-                    <ul id="ddmenu_estoque" class="collapse dropdown-nav">
+                    <ul id="ddmenu_estoque" class="collapse dropdown-nav show">
                         <li><a href="produtos.php">Produtos</a></li>
                         <li><a href="inventario.php">Inventário</a></li>
                         <li><a href="entradas.php">Entradas</a></li>
