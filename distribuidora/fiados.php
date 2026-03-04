@@ -5,14 +5,6 @@ declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 /* ======================
-   SEGURANÇA (ajuste se quiser)
-====================== */
-if (empty($_SESSION['usuario_logado'])) {
-  header('Location: index.php');
-  exit;
-}
-
-/* ======================
    INCLUDES (helpers + conexão db():PDO)
 ====================== */
 $possibleHelpers = [
