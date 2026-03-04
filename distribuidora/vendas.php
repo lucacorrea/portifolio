@@ -626,6 +626,24 @@ function fmtMoney($v): string
       font-size: 12px;
     }
 
+    .fiado-alert {
+      color: #ef4444;
+      font-size: 12px;
+      font-weight: 800;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .client-verified {
+      border-color: #22c55e !important;
+      background-color: #f0fdf4 !important;
+    }
+
+    .client-unverified {
+      border-color: #ef4444 !important;
+      background-color: #fef2f2 !important;
+    }
+
     .last-box {
       border: 1px solid rgba(148, 163, 184, .25);
       border-radius: 14px;
@@ -1031,7 +1049,8 @@ function fmtMoney($v): string
                 <div class="checkout-body">
                   <div class="mb-3">
                     <label class="form-label">Cliente</label>
-                    <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" />
+                    <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" autocomplete="off" />
+                    <div id="fiadoFeedback" class="fiado-alert">Cliente não localizado. Pressione F6 para cadastrar.</div>
                     <div class="muted mt-1">Consumidor final (se vazio).</div>
                   </div>
 
@@ -1088,7 +1107,7 @@ function fmtMoney($v): string
                         <div class="pay-btn active" data-pay="DINHEIRO"><i class="lni lni-coin"></i> Dinheiro</div>
                         <div class="pay-btn" data-pay="PIX"><i class="lni lni-telegram-original"></i> Pix</div>
                         <div class="pay-btn" data-pay="CARTAO"><i class="lni lni-credit-cards"></i> Cartão</div>
-                        <div class="pay-btn" data-pay="BOLETO"><i class="lni lni-ticket-alt"></i> Boleto</div>
+                        <div class="pay-btn" data-pay="FIADO"><i class="lni lni-handshake"></i> Fiado</div>
                       </div>
 
                       <div class="row g-2">
@@ -1584,7 +1603,7 @@ function fmtMoney($v): string
                 <option value="DINHEIRO" ${method==="DINHEIRO"?"selected":""}>Dinheiro</option>
                 <option value="PIX" ${method==="PIX"?"selected":""}>Pix</option>
                 <option value="CARTAO" ${method==="CARTAO"?"selected":""}>Cartão</option>
-                <option value="BOLETO" ${method==="BOLETO"?"selected":""}>Boleto</option>
+                <option value="FIADO" ${method==="FIADO"?"selected":""}>Fiado</option>
               </select>
             </div>
             <div class="col-4">
@@ -1659,6 +1678,7 @@ function fmtMoney($v): string
       } else {
         hintTroco.style.display = "none";
         ok = (Math.abs(paid - total) < 0.009) && total > 0;
+        if (method === "FIADO") ok = total > 0; // Fiado doesnt need 'paid' to match 'total' in simplified check here
         troco = 0;
       }
       pTroco.value = troco.toFixed(2).replace(".", ",");
@@ -1902,16 +1922,251 @@ function fmtMoney($v): string
       };
     }
 
-    async function confirmSale() {
+    /* ==============================
+       Fiado / Clientes
+    ============================== */
+    let SELECTED_CLIENT = null;
+
+    async function checkClientFiado() {
+      const q = cCliente.value.trim();
+      const feedback = document.getElementById("fiadoFeedback");
+      
+      if (!q) {
+        SELECTED_CLIENT = null;
+        cCliente.classList.remove("client-verified", "client-unverified");
+        feedback.style.display = "none";
+        return;
+      }
+
+      try {
+        const r = await fetchJSON(`assets/dados/clientes_api.php?action=search&q=${encodeURIComponent(q)}`);
+        const found = r.items && r.items.length > 0;
+        
+        if (found) {
+          // Se houver mais de um, por enquanto pegamos o primeiro ou o exato
+          const exact = r.items.find(it => it.nome.toLowerCase() === q.toLowerCase() || it.cpf === q);
+          SELECTED_CLIENT = exact || r.items[0];
+          cCliente.value = SELECTED_CLIENT.nome; // Auto-completa com o nome correto
+          cCliente.classList.add("client-verified");
+          cCliente.classList.remove("client-unverified");
+          feedback.style.display = "none";
+        } else {
+          SELECTED_CLIENT = null;
+          if (PAY_SELECTED === "FIADO") {
+            cCliente.classList.add("client-unverified");
+            cCliente.classList.remove("client-verified");
+            feedback.style.display = "block";
+          } else {
+            cCliente.classList.remove("client-verified", "client-unverified");
+            feedback.style.display = "none";
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao buscar cliente:", e);
+      }
+    }
+
+    cCliente.addEventListener("blur", checkClientFiado);
+
+    // Modal de Cadastro de Cliente
+    const modalClienteHTML = `
+    <div class="modal fade" id="modalNovoCliente" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Novo Cliente</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="formNovoCliente">
+              <div class="mb-3">
+                <label class="form-label">Nome Completo</label>
+                <input type="text" class="form-control" id="mClienteNome" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">CPF</label>
+                <input type="text" class="form-control" id="mClienteCPF">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Telefone</label>
+                <input type="text" class="form-control" id="mClienteTelefone">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Endereço</label>
+                <textarea class="form-control" id="mClienteEndereco" rows="2"></textarea>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btnSalvarCliente">Salvar Cliente</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalClienteHTML);
+    const modalNovoCliente = new bootstrap.Modal(document.getElementById('modalNovoCliente'));
+
+    function openModalCliente() {
+      document.getElementById("mClienteNome").value = cCliente.value.trim();
+      modalNovoCliente.show();
+      setTimeout(() => document.getElementById("mClienteNome").focus(), 500);
+    }
+
+    document.getElementById("btnSalvarCliente").addEventListener("click", async () => {
+      const payload = {
+        nome: document.getElementById("mClienteNome").value.trim(),
+        cpf: document.getElementById("mClienteCPF").value.trim(),
+        telefone: document.getElementById("mClienteTelefone").value.trim(),
+        endereco: document.getElementById("mClienteEndereco").value.trim()
+      };
+
+      if (!payload.nome) return alert("O nome é obrigatório.");
+
+      try {
+        const r = await fetchJSON("assets/dados/clientes_api.php?action=register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        alert(r.msg);
+        cCliente.value = payload.nome;
+        modalNovoCliente.hide();
+        checkClientFiado();
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+
+    // Modal de Entrada (Fiado)
+    const modalEntradaHTML = `
+    <div class="modal fade" id="modalEntradaFiado" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">Venda Fiado - Entrada</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Deseja registrar uma entrada para esta venda?</p>
+            <div class="mb-3">
+              <label class="form-label">Valor da Entrada (R$)</label>
+              <input type="text" class="form-control" id="vEntrada" value="0,00">
+            </div>
+            <div id="entradaMethod" class="mb-3" style="display:none;">
+              <label class="form-label">Método da Entrada</label>
+              <select class="form-select" id="mEntradaMethod">
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="PIX">Pix</option>
+                <option value="CARTAO">Cartão</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between">
+            <button type="button" class="btn btn-outline-secondary" id="btnSemEntrada">Finalizar Sem Entrada</button>
+            <button type="button" class="btn btn-primary" id="btnComEntrada">Finalizar Com Entrada</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalEntradaHTML);
+    const modalEntradaFiado = new bootstrap.Modal(document.getElementById('modalEntradaFiado'));
+
+    document.getElementById("vEntrada").addEventListener("input", function() {
+      const val = moneyToNumber(this.value);
+      document.getElementById("entradaMethod").style.display = val > 0 ? "block" : "none";
+    });
+
+    let fiadoCallback = null;
+
+    function handleFiadoSale(callback) {
+      fiadoCallback = callback;
+      const total = calcTotal();
+      document.getElementById("vEntrada").value = "0,00";
+      document.getElementById("entradaMethod").style.display = "none";
+      modalEntradaFiado.show();
+    }
+
+    document.getElementById("btnSemEntrada").addEventListener("click", () => {
+      modalEntradaFiado.hide();
+      if (fiadoCallback) fiadoCallback({ entry: 0, method: null });
+    });
+
+    document.getElementById("btnComEntrada").addEventListener("click", () => {
+      const entry = moneyToNumber(document.getElementById("vEntrada").value);
+      const method = document.getElementById("mEntradaMethod").value;
+      const total = calcTotal();
+      if (entry >= total) return alert("O valor da entrada não pode ser maior ou igual ao total da venda.");
+      modalEntradaFiado.hide();
+      if (fiadoCallback) fiadoCallback({ entry, method });
+    });
+
+    /* ==============================
+       Confirmar venda (server)
+       (continua usando salvarVendas.php)
+    ============================== */
+    function validateSaleClient() {
+      if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
+      
+      if (PAY_SELECTED === "FIADO" || (PAY_MODE === "MULTI" && Array.from(paysWrap.querySelectorAll(".mMethod")).some(s => s.value === "FIADO"))) {
+        if (!SELECTED_CLIENT) return { ok: false, msg: "Venda fiado exige um cliente cadastrado selecionado." };
+      }
+
+      if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return {
+        ok: false,
+        msg: "Informe o endereço do Delivery."
+      };
+      const total = calcTotal();
+      if (total <= 0) return {
+        ok: false,
+        msg: "Total inválido."
+      };
+
+      if (PAY_MODE === "UNICO") {
+        const r = computeSinglePay();
+        if (!r.ok) {
+          if (r.method === "DINHEIRO") return {
+            ok: false,
+            msg: "No dinheiro, o valor pago deve ser >= total."
+          };
+          if (r.method === "FIADO") return { ok: true }; // Custom check already passed
+          return {
+            ok: false,
+            msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total."
+          };
+        }
+        return {
+          ok: true
+        };
+      }
+
+      const m = computeMultiPay();
+      if (!m.ok) return {
+        ok: false,
+        msg: "Pagamento múltiplo inválido. Ajuste os valores."
+      };
+      return {
+        ok: true
+      };
+    }
+
+    async function confirmSale(fiadoData = null) {
       const v = validateSaleClient();
       if (!v.ok) {
         alert(v.msg);
         return;
       }
 
+      // Se for fiado ÚNICO e ainda não temos os dados da entrada, abre o modal
+      if (PAY_MODE === "UNICO" && PAY_SELECTED === "FIADO" && !fiadoData) {
+        handleFiadoSale((data) => confirmSale(data));
+        return;
+      }
+
       const payload = {
         csrf_token: CSRF,
         customer: String(cCliente.value || "").trim(),
+        client_id: SELECTED_CLIENT ? SELECTED_CLIENT.id : null,
         delivery: {
           mode: DELIVERY_MODE,
           address: DELIVERY_MODE === "DELIVERY" ? String(cEndereco.value || "").trim() : "",
@@ -1925,7 +2180,13 @@ function fmtMoney($v): string
         pay: (PAY_MODE === "UNICO") ? {
           mode: "UNICO",
           method: PAY_SELECTED,
-          paid: moneyToNumber(pValor.value)
+          paid: (PAY_SELECTED === "FIADO" && fiadoData) ? fiadoData.entry : moneyToNumber(pValor.value),
+          fiado: (PAY_SELECTED === "FIADO") ? {
+            has_entry: fiadoData ? fiadoData.entry > 0 : false,
+            entry_value: fiadoData ? fiadoData.entry : 0,
+            entry_method: fiadoData ? fiadoData.method : null,
+            debt_value: calcTotal() - (fiadoData ? fiadoData.entry : 0)
+          } : null
         } : {
           mode: "MULTI",
           parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
@@ -1962,6 +2223,10 @@ function fmtMoney($v): string
         setPreview(null);
 
         cCliente.value = "";
+        SELECTED_CLIENT = null;
+        cCliente.classList.remove("client-verified", "client-unverified");
+        document.getElementById("fiadoFeedback").style.display = "none";
+
         setDeliveryMode("PRESENCIAL");
 
         dTipo.value = "PERC";
@@ -1989,7 +2254,7 @@ function fmtMoney($v): string
         btnConfirmar.disabled = false;
       }
     }
-    btnConfirmar.addEventListener("click", confirmSale);
+    btnConfirmar.addEventListener("click", () => confirmSale());
 
     /* ==============================
        Atalhos teclado
@@ -2003,6 +2268,11 @@ function fmtMoney($v): string
       if (e.key === "F2") {
         e.preventDefault();
         confirmSale();
+        return;
+      }
+      if (e.key === "F6") {
+        e.preventDefault();
+        openModalCliente();
         return;
       }
       if (e.key === "Escape") hideSuggest();
@@ -2043,5 +2313,4 @@ function fmtMoney($v): string
     init();
   </script>
 </body>
-
 </html>
