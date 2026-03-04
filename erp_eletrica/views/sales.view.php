@@ -74,12 +74,29 @@
             </div>
             <div class="card-body flex-grow-1">
                 <div class="mb-4">
-                    <label class="form-label small fw-bold text-uppercase text-muted">Cliente</label>
-                    <div class="input-group mb-2">
-                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-muted"></i></span>
-                        <input type="text" class="form-control bg-light border-start-0" id="customerSearch" placeholder="C.P.F. ou Nome (Opcional)">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Identificar Cliente (Obrigatório para Fiado)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="fas fa-user-tag"></i>
+                        </span>
+                        <input type="text" id="customerSearch" class="form-control border-start-0 ps-0" placeholder="Nome, CPF ou Telefone...">
+                        <button class="btn btn-outline-primary" type="button" onclick="abrirModalQuickClient()" title="Novo Cliente">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
-                    <small class="text-muted" id="customerDisplay">Consumidor Final</small>
+                    <div id="customerResults" class="list-group mt-2 shadow-sm position-absolute w-100" style="z-index: 1050; display: none; left:0; right:0;"></div>
+                    
+                    <div id="selectedCustomerInfo" class="mt-3 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-10 rounded d-none">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="mb-0 fw-bold text-primary" id="customerNameDisplay"></p>
+                                <p class="mb-0 small text-muted" id="customerDocDisplay"></p>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="clearCustomer()">
+                                <i class="fas fa-times me-1"></i>Remover
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-4">

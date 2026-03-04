@@ -24,6 +24,10 @@ switch ($action) {
         \App\Services\AuthService::checkPermission('vendas', 'excluir');
         $controller->cancel_sale();
         break;
+    case 'quick_register_client':
+        $clientController = new \App\Controllers\ClientController();
+        $clientController->quickSave();
+        break;
     default:
         \App\Services\AuthService::checkPermission('vendas', 'visualizar');
         $controller->index();
