@@ -341,35 +341,9 @@ function fmtMoney($v): string
       white-space: nowrap;
     }
 
-    .preview-box {
-      width: 100%;
-      height: 130px;
-      border-radius: 16px;
-      border: 1px dashed rgba(148, 163, 184, .55);
-      background: rgba(248, 250, 252, .7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-      text-align: center;
-    }
 
-    .preview-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
 
-    .preview-name {
-      font-weight: 900;
-      font-size: 12px;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 220px;
-    }
+
 
     .table td,
     .table th {
@@ -930,22 +904,13 @@ function fmtMoney($v): string
               <div class="pdv-card pdv-search mb-3">
                 <div class="pdv-body">
                   <div class="row g-3 align-items-stretch">
-                    <div class="col-12 col-md-8">
+                    <div class="col-12">
                       <label class="form-label">Pesquisar Produto (F4)</label>
                       <div class="search-wrap">
                         <input class="form-control compact" id="qProd" placeholder="Nome ou código..." autocomplete="off" />
                         <div class="suggest" id="suggest"></div>
                       </div>
                       <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar o 1º resultado.</div>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                      <label class="form-label">Imagem</label>
-                      <div class="preview-box">
-                        <div>
-                          <div class="preview-name" id="previewName">AGUARDANDO...</div>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
