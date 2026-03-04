@@ -74,17 +74,17 @@ class PreSaleController extends BaseController {
             $termInt = (int)$term;
             
             $sql .= " AND (
-                LOWER(c.nome) LIKE ? 
-                OR LOWER(c.cpf_cnpj) LIKE ? 
-                OR LOWER($avulsoCol) LIKE ? 
-                OR LOWER(u.nome) LIKE ?
-                OR LOWER(pv.codigo) LIKE ? 
+                LOWER(TRIM(COALESCE(c.nome, ''))) LIKE ? 
+                OR LOWER(TRIM(COALESCE(c.cpf_cnpj, ''))) LIKE ? 
+                OR LOWER(TRIM(COALESCE($avulsoCol, ''))) LIKE ? 
+                OR LOWER(TRIM(COALESCE(u.nome, ''))) LIKE ?
+                OR LOWER(TRIM(pv.codigo)) LIKE ? 
                 OR pv.id = ? 
                 OR EXISTS (
                     SELECT 1 FROM pre_venda_itens pvi 
                     INNER JOIN produtos p ON pvi.produto_id = p.id 
                     WHERE pvi.pre_venda_id = pv.id 
-                    AND (LOWER(p.nome) LIKE ? OR LOWER(p.codigo) LIKE ? OR p.id = ? OR LOWER(p.codigo_barras) LIKE ?)
+                    AND (LOWER(TRIM(p.nome)) LIKE ? OR LOWER(TRIM(p.codigo)) LIKE ? OR p.id = ? OR LOWER(TRIM(p.codigo_barras)) LIKE ?)
                 )
             )";
             $params[] = $termLike; // c.nome
