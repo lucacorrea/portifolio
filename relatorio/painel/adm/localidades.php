@@ -1,4 +1,52 @@
-        ?? '');
+<?php
+
+declare(strict_types=1);
+session_start();
+
+/* Login */
+if (empty($_SESSION['usuario_logado'])) {
+    header('Location: ../../index.php');
+    exit;
+}
+
+/* ADMIN */
+$perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
+if (!in_array('ADMIN', $perfis, true)) {
+    header('Location: ../operador/index.php');
+    exit;
+}
+
+$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
+
+require_once '../../assets/php/conexao.php';
+$pdo = db();
+
+function h($v): string
+{
+    return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+}
+
+/* CSRF */
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION['csrf_token'];
+
+$TABELA = 'comunidades';
+
+$msgErro = '';
+$msgSucesso = '';
+$comunidades = [];
+
+/* =========================
+   AÇÕES (toggle / excluir) - por NOME (grupo)
+========================= */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+        $msgErro = 'Token de segurança inválido.';
+    } else {
+        $acao = (string)($_POST['acao'] ?? '');
         $nomeAcao = trim((string)($_POST['nome'] ?? ''));
 
         if ($nomeAcao === '') {
@@ -47,12 +95,10 @@ $totalRegistros = 0;
 $totalPaginas = 1;
 
 /* =========================
-   LISTAR (1 por NOME + CONTAGEM) - SEM MUDAR LAYOUT
-   - Coluna "ID" vai mostrar QTD
-   - Coluna "Feira" vai mostrar "Feiras: 1,2,3"
+   LISTAR (1 por NOME + CONTAGEM)
 ========================= */
 try {
-    // Total de nomes distintos (para paginação)
+    // Total de "nomes" distintos (para paginação)
     $totalRegistros = (int)$pdo->query("SELECT COUNT(DISTINCT nome) FROM {$TABELA}")->fetchColumn();
     $totalPaginas = max(1, (int)ceil($totalRegistros / $porPagina));
 
@@ -110,12 +156,29 @@ try {
     <link rel="shortcut icon" href="../../images/3.png" />
 
     <style>
-        ul .nav-link:hover { color: blue !important; }
-        .nav-link { color: black !important; }
-        .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-        .sidebar .sub-menu li { list-style: none !important; }
-        .form-control { height: 42px; }
-        .form-group label { font-weight: 600; }
+        ul .nav-link:hover {
+            color: blue !important;
+        }
+
+        .nav-link {
+            color: black !important;
+        }
+
+        .sidebar .sub-menu .nav-item .nav-link {
+            margin-left: -35px !important;
+        }
+
+        .sidebar .sub-menu li {
+            list-style: none !important;
+        }
+
+        .form-control {
+            height: 42px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -158,7 +221,7 @@ try {
 
             <nav class="sidebar sidebar-offcanvas" id="sidebar">
                 <ul class="nav">
-                    <li class="nav-item">
+                    <li class="nav-item ">
                         <a class="nav-link" href="./index.php">
                             <i class="icon-grid menu-icon"></i>
                             <span class="menu-title">Dashboard</span>
@@ -184,6 +247,7 @@ try {
                             <span class="menu-title">Mercado Municipal</span>
                         </a>
                     </li>
+
 
                     <li class="nav-item active">
                         <a class="nav-link" href="./localidades.php">
@@ -252,173 +316,87 @@ try {
                                     <?php endif; ?>
 
                                     <div class="table-responsive pt-3">
-                                        <table class="table table-striped table-hover">
-                                            <thead>
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 90px;">Qtd</th>
+                                                <th>Nome</th>
+                                                <th style="width: 150px;">Tipo</th>
+                                                <th style="width: 220px;">Feiras</th>
+                                                <th style="width: 160px;">Status</th>
+                                                <th style="min-width: 260px;">Ações</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            <?php if (empty($comunidades)): ?>
                                                 <tr>
-                                                    <th style="width: 90px;">ID</th>
-                                                    <th>Nome</th>
-                                                    <th style="width: 150px;">Tipo</th>
-                                                    <th style="width: 220px;">Feira</th>
-                                                    <th style="width: 160px;">Status</th>
-                                                    <th style="min-width: 260px;">Ações</th>
+                                                    <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
                                                 </tr>
-                                            </thead>
+                                            <?php else: ?>
+                                                <?php foreach ($comunidades as $l): ?>
+                                                    <?php
+                                                    $id = (int)($l['id'] ?? 0);
+                                                    $f  = (int)($l['feira_id'] ?? 0);
 
-                                            <tbody>
-                                                <?php if (empty($comunidades)): ?>
+                                                    $ativoBool  = (int)($l['ativo'] ?? 0) === 1;
+                                                    $badgeClass = $ativoBool ? 'badge-success' : 'badge-danger';
+                                                    $badgeText  = $ativoBool ? 'Ativo' : 'Inativo';
+
+                                                    $tipoLabel = ($f === 3) ? 'Bairro' : 'Comunidade';
+                                                    $obs = trim((string)($l['observacao'] ?? ''));
+
+                                                    $feiraNome = (string)($l['feira_nome'] ?? '');
+                                                    if ($feiraNome === '') $feiraNome = 'Feira ' . $f;
+                                                    ?>
+
                                                     <tr>
-                                                        <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
+                                                        <td><?= $id ?></td>
+
+                                                        <td>
+                                                            <div class="font-weight-bold"><?= h($l['nome'] ?? '') ?></div>
+                                                            <?php if ($obs !== ''): ?>
+                                                                <small class="text-muted"><?= h($obs) ?></small>
+                                                            <?php endif; ?>
+                                                        </td>
+
+                                                        <td><?= h($tipoLabel) ?></td>
+                                                        <td><?= h($feiraNome) ?></td>
+
+                                                        <td>
+                                                            <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label>
+                                                        </td>
+
+                                                        <td>
+                                                            <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
+
+                                                                <form method="post" class="m-0">
+                                                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                                    <input type="hidden" name="acao" value="toggle">
+                                                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                                                    <button type="submit" class="btn btn-outline-warning btn-xs"
+                                                                        onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> este registro?');">
+                                                                        <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
+                                                                    </button>
+                                                                </form>
+
+                                                                <form method="post" class="m-0">
+                                                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                                    <input type="hidden" name="acao" value="excluir">
+                                                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                                                    <button type="submit" class="btn btn-outline-danger btn-xs"
+                                                                        onclick="return confirm('Tem certeza que deseja EXCLUIR este registro?');">
+                                                                        <i class="ti-trash"></i> Excluir
+                                                                    </button>
+                                                                </form>
+
+                                                            </div>
+                                                        </td>
                                                     </tr>
-                                                <?php else: ?>
-                                                    <?php foreach ($comunidades as $l): ?>
-                                                        <?php
-                                                        $nome = (string)($l['nome'] ?? '');
-                                                        $qtd  = (int)($l['qtd'] ?? 0);
-
-                                                        $ativoBool  = (int)($l['ativo'] ?? 0) === 1;
-                                                        $badgeClass = $ativoBool ? 'badge-success' : 'badge-danger';
-                                                        $badgeText  = $ativoBool ? 'Ativo' : 'Inativo';
-
-                                                        $obs = trim((string)($l['observacao'] ?? ''));
-
-                                                        $feirasIdsStr = (string)($l['feiras_ids'] ?? '');
-                                                        $feirasIds = array_filter(array_map('intval', explode(',', $feirasIdsStr)));
-
-                                                        $tipoLabel = in_array(3, $feirasIds, true) ? 'Bairro' : 'Comunidade';
-
-                                                        // Mantém coluna "Feira" (sem mudar layout): mostra Feiras: 1,2,3
-                                                        $feiraNome = ($feirasIdsStr !== '') ? ('Feiras: ' . $feirasIdsStr) : '-';
-                                                        ?>
-
-                                                        <tr>
-                                                            <!-- SEM MUDAR LAYOUT: Coluna "ID" recebe a QTD -->
-                                                            <td><?= $qtd ?></td>
-
-                                                            <td>
-                                                                <div class="font-weight-bold"><?= h($nome) ?></div>
-                                                                <?php if ($obs !== ''): ?>
-                                                                    <small class="text-muted"><?= h($obs) ?></small>
-                                                                <?php endif; ?>
-                                                            </td>
-
-                                                            <td><?= h($tipoLabel) ?></td>
-                                                            <td><?= h($feiraNome) ?></td>
-
-                                                            <td>
-                                                                <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
-
-                                                                    <form method="post" class="m-0">
-                                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                                                        <input type="hidden" name="acao" value="toggle">
-                                                                        <!-- AÇÃO POR GRUPO: envia NOME -->
-                                                                        <input type="hidden" name="nome" value="<?= h($nome) ?>">
-                                                                        <button type="submit" class="btn btn-outline-warning btn-xs"
-                                                                            onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> TODAS as feiras deste nome?');">
-                                                                            <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
-                                                                        </button>
-                                                                    </form>
-
-                                                                    <form method="post" class="m-0">
-                                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                                                        <input type="hidden" name="acao" value="excluir">
-                                                                        <!-- AÇÃO POR GRUPO: envia NOME -->
-                                                                        <input type="hidden" name="nome" value="<?= h($nome) ?>">
-                                                                        <button type="submit" class="btn btn-outline-danger btn-xs"
-                                                                            onclick="return confirm('Tem certeza que deseja EXCLUIR TODAS as feiras deste nome?');">
-                                                                            <i class="ti-trash"></i> Excluir
-                                                                        </button>
-                                                                    </form>
-
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                <?php endif; ?>
-                                            </tbody>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </tbody>
                                         </table>
                                     </div>
-
-                                    <!-- PAGINAÇÃO -->
-                                    <?php if ($totalPaginas > 1): ?>
-                                        <?php
-                                        $qs = $_GET;
-                                        unset($qs['p']);
-                                        $base = '?' . http_build_query($qs);
-                                        $base = ($base === '?') ? '?' : ($base . '&');
-
-                                        $janela = 2;
-                                        $inicio = max(1, $pagina - $janela);
-                                        $fim = min($totalPaginas, $pagina + $janela);
-                                        ?>
-
-                                        <div class="d-flex justify-content-between align-items-center flex-wrap mt-3" style="gap:10px;">
-                                            <div class="text-muted">
-                                                Mostrando <?= count($comunidades) ?> nesta página (<?= (int)$porPagina ?> por página).
-                                            </div>
-
-                                            <nav aria-label="Paginação">
-                                                <ul class="pagination mb-0">
-
-                                                    <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
-                                                        <a class="page-link" href="<?= $base ?>p=1">«</a>
-                                                    </li>
-
-                                                    <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
-                                                        <a class="page-link" href="<?= $base ?>p=<?= max(1, $pagina - 1) ?>">Anterior</a>
-                                                    </li>
-
-                                                    <?php for ($i = $inicio; $i <= $fim; $i++): ?>
-                                                        <li class="page-item <?= $i === $pagina ? 'active' : '' ?>">
-                                                            <a class="page-link" href="<?= $base ?>p=<?= $i ?>"><?= $i ?></a>
-                                                        </li>
-                                                    <?php endfor; ?>
-
-                                                    <li class="page-item <?= $pagina >= $totalPaginas ? 'disabled' : '' ?>">
-                                                        <a class="page-link" href="<?= $base ?>p=<?= min($totalPaginas, $pagina + 1) ?>">Próxima</a>
-                                                    </li>
-
-                                                    <li class="page-item <?= $pagina >= $totalPaginas ? 'disabled' : '' ?>">
-                                                        <a class="page-link" href="<?= $base ?>p=<?= $totalPaginas ?>">»</a>
-                                                    </li>
-
-                                                </ul>
-                                            </nav>
-                                        </div>
-                                    <?php endif; ?>
-
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <footer class="footer">
-                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
-                        <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
-                            © <?= date('Y') ?> SIGRelatórios —
-                            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
-                            Todos os direitos reservados.
-                        </span>
-                    </div>
-                </footer>
-
-            </div>
-        </div>
-    </div>
-
-    <script src="../../vendors/js/vendor.bundle.base.js"></script>
-    <script src="../../js/off-canvas.js"></script>
-    <script src="../../js/hoverable-collapse.js"></script>
-    <script src="../../js/template.js"></script>
-    <script src="../../js/settings.js"></script>
-    <script src="../../js/todolist.js"></script>
-</body>
-</html>
 
                                     <!-- PAGINAÇÃO -->
                                     <?php if ($totalPaginas > 1): ?>
