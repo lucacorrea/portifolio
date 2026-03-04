@@ -397,14 +397,11 @@ function fmtMoney($v): string
       text-align: center;
     }
 
-    .preview-box img {
-      width: 86px;
-      height: 86px;
-      border-radius: 16px;
-      object-fit: cover;
-      border: 1px solid rgba(148, 163, 184, .30);
-      background: #fff;
-      margin-bottom: 6px;
+    .preview-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
     }
 
     .preview-name {
@@ -989,7 +986,6 @@ function fmtMoney($v): string
                       <label class="form-label">Imagem</label>
                       <div class="preview-box">
                         <div>
-                          <img id="previewImg" alt="Prévia" />
                           <div class="preview-name" id="previewName">AGUARDANDO...</div>
                         </div>
                       </div>
@@ -1238,14 +1234,7 @@ function fmtMoney($v): string
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const AJAX_URL = "vendas.php";
 
-    const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
-  <rect width="100%" height="100%" fill="#f1f5f9"/>
-  <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
-  <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
-</svg>
-`);
+
 
     function safeText(s) {
       return String(s ?? "")
@@ -1278,13 +1267,7 @@ function fmtMoney($v): string
     }
 
     function bindImgFallback(scope = document) {
-      scope.querySelectorAll("img").forEach(img => {
-        img.addEventListener("error", () => {
-          img.src = DEFAULT_IMG;
-        }, {
-          once: true
-        });
-      });
+      // images removed
     }
 
     /* ==============================
@@ -1303,8 +1286,6 @@ function fmtMoney($v): string
     const qProd = document.getElementById("qProd");
     const suggest = document.getElementById("suggest");
     const qGlobal = document.getElementById("qGlobal");
-
-    const previewImg = document.getElementById("previewImg");
     const previewName = document.getElementById("previewName");
 
     const tbodyItens = document.getElementById("tbodyItens");
@@ -1357,10 +1338,7 @@ function fmtMoney($v): string
        UI
     ============================== */
     function setPreview(prod) {
-      const img = (prod && prod.img) ? prod.img : DEFAULT_IMG;
-      previewImg.src = img || DEFAULT_IMG;
       previewName.textContent = prod ? prod.name : "AGUARDANDO...";
-      bindImgFallback(document);
     }
 
     function showSuggest(list) {
@@ -1371,7 +1349,6 @@ function fmtMoney($v): string
       }
       suggest.innerHTML = list.map(p => `
         <div class="it" data-id="${Number(p.id)}">
-          <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
           <div class="meta">
             <div class="t">${safeText(p.name)}</div>
             <div class="s">${safeText(p.code)} • Estoque: ${Number(p.stock ?? 0)}</div>
