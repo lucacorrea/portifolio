@@ -57,7 +57,7 @@ class PreSaleController extends BaseController {
             FROM pre_vendas pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
             LEFT JOIN usuarios u ON pv.usuario_id = u.id
-            LEFT JOIN pre_vendas_itens pvi ON pv.id = pvi.pre_venda_id
+            LEFT JOIN pre_venda_itens pvi ON pv.id = pvi.pre_venda_id
             LEFT JOIN produtos p ON pvi.produto_id = p.id
             WHERE pv.status = 'pendente' 
             AND pv.filial_id = ? ";
