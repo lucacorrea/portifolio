@@ -21,9 +21,30 @@ class PreSaleController extends BaseController {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents('php://input'), true);
             $model = new PreSale();
+            $clientModel = new Client();
             
             $data['usuario_id'] = $_SESSION['usuario_id'];
             $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
+
+            // Automated Client Registration/Selection
+            if (empty($data['cliente_id']) && !empty($data['nome_cliente_avulso'])) {
+                $nome = trim($data['nome_cliente_avulso']);
+                // Check if client with this EXACT name exists to avoid duplicates
+                $stmt = \App\Config\Database::getInstance()->getConnection()->prepare("SELECT id FROM clientes WHERE nome = ? AND filial_id = ? LIMIT 1");
+                $stmt->execute([$nome, $data['filial_id']]);
+                $existingId = $stmt->fetchColumn();
+
+                if ($existingId) {
+                    $data['cliente_id'] = $existingId;
+                } else {
+                    // Create new quick client
+                    $newClientId = $clientModel->create([
+                        'nome' => $nome,
+                        'filial_id' => $data['filial_id']
+                    ]);
+                    $data['cliente_id'] = $newClientId;
+                }
+            }
 
             try {
                 $result = $model->create($data);

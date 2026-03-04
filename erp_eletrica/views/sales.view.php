@@ -303,6 +303,48 @@
     </div>
 </div>
 
+<!-- Modal: Complemento de Cadastro (Fiado) -->
+<div class="modal fade" id="modalCompleteClient" data-bs-backdrop="static" tabindex="-1" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-user-edit me-2"></i>Completar Cadastro para Fiado</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-4">Para realizar vendas a prazo (Fiado), é obrigatório que o cliente possua os dados abaixo preenchidos:</p>
+                
+                <input type="hidden" id="edit_client_id">
+                
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">CPF ou CNPJ</label>
+                    <input type="text" id="edit_client_doc" class="form-control" placeholder="000.000.000-00">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Telefone / WhatsApp</label>
+                    <input type="text" id="edit_client_phone" class="form-control" placeholder="(00) 00000-0000">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço Completo</label>
+                    <textarea id="edit_client_address" class="form-control" rows="2" placeholder="Rua, Número, Bairro, Cidade..."></textarea>
+                </div>
+
+                <div class="d-grid">
+                    <button class="btn btn-primary fw-bold py-3 shadow-sm" onclick="updateClientAndContinue()">
+                        SALVAR E CONTINUAR VENDA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let cart = [];
 let currentPvId = null;
@@ -828,7 +870,6 @@ btnCheckout.onclick = async () => {
     
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     
-    // Safety check: blockage if discount exists but not authorized
     if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
         alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
         await loadAdmins();
@@ -844,7 +885,27 @@ btnCheckout.onclick = async () => {
             customerSearch.focus();
             return;
         }
-        // Show entry modal
+
+        // Validation: Completeness for Fiado
+        try {
+            const res = await fetch(`vendas.php?action=check_client_completeness&id=${selectedCustomerId}`);
+            const data = await res.json();
+            
+            if (!data.is_complete) {
+                // Show completion modal
+                document.getElementById('edit_client_id').value = selectedCustomerId;
+                document.getElementById('edit_client_doc').value = data.client.cpf_cnpj || '';
+                document.getElementById('edit_client_phone').value = data.client.telefone || '';
+                document.getElementById('edit_client_address').value = data.client.endereco || '';
+                
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompleteClient')).show();
+                return;
+            }
+        } catch (err) {
+            console.error("Erro validando cliente:", err);
+        }
+
+        // Proceed to entry modal if complete
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
         document.getElementById('entradaValor').value = '';
         modal.show();
@@ -853,6 +914,40 @@ btnCheckout.onclick = async () => {
         processarCheckout();
     }
 };
+
+async function updateClientAndContinue() {
+    const id = document.getElementById('edit_client_id').value;
+    const doc = document.getElementById('edit_client_doc').value;
+    const phone = document.getElementById('edit_client_phone').value;
+    const address = document.getElementById('edit_client_address').value;
+
+    if (!doc || !phone || !address) {
+        alert('Por favor, preencha todos os campos obrigatórios para o Fiado.');
+        return;
+    }
+
+    try {
+        const res = await fetch('vendas.php?action=update_client_quick', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, cpf_cnpj: doc, telefone: phone, endereco: address })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCompleteClient')).hide();
+            // Now show the entry modal
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
+            document.getElementById('entradaValor').value = '';
+            modal.show();
+            setTimeout(() => document.getElementById('entradaValor').focus(), 500);
+        } else {
+            alert('Erro ao atualizar cliente: ' + result.error);
+        }
+    } catch (err) {
+        alert('Erro de conexão: ' + err.message);
+    }
+}
 
 async function confirmarCheckoutFiado() {
     processarCheckout();

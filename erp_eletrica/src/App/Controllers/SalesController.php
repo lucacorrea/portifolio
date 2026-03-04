@@ -340,4 +340,52 @@ class SalesController extends BaseController {
         echo json_encode($userModel->findAdmins());
         exit;
     }
+
+    public function check_client_completeness() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            echo json_encode(['is_complete' => false, 'missing' => ['id']]);
+            exit;
+        }
+
+        $model = new Client();
+        $client = $model->find($id);
+        
+        if (!$client) {
+            echo json_encode(['is_complete' => false, 'error' => 'Cliente não encontrado']);
+            exit;
+        }
+
+        $missing = [];
+        if (empty($client['cpf_cnpj'])) $missing[] = 'cpf_cnpj';
+        if (empty($client['endereco'])) $missing[] = 'endereco';
+        if (empty($client['telefone'])) $missing[] = 'telefone';
+
+        echo json_encode([
+            'is_complete' => empty($missing),
+            'missing' => $missing,
+            'client' => $client
+        ]);
+        exit;
+    }
+
+    public function update_client_quick() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? null;
+            if (!$id) {
+                echo json_encode(['success' => false, 'error' => 'ID ausente']);
+                exit;
+            }
+
+            try {
+                $model = new Client();
+                $model->save($data);
+                echo json_encode(['success' => true]);
+            } catch (\Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+            exit;
+        }
+    }
 }
