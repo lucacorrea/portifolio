@@ -149,20 +149,41 @@ class SalesController extends BaseController {
                     if (empty($data['cliente_id'])) {
                         throw new \Exception("Vendas a prazo (fiado) exigem um cliente cadastrado.");
                     }
+
+                    $entrada = (float)($data['entrada_valor'] ?? 0);
+                    $valorDivida = (float)$data['total'] - $entrada;
+
+                    // 1. If there's a down payment, record it in cashier
+                    if ($entrada > 0) {
+                        $cashierModel->recordMovement([
+                            'caixa_id' => $caixaAberto['id'],
+                            'tipo' => 'entrada',
+                            'descricao' => "Entrada Venda #$saleId (Fiado)",
+                            'valor' => $entrada,
+                            'forma_pagamento' => 'dinheiro',
+                            'usuario_id' => $_SESSION['usuario_id']
+                        ]);
+                    }
+
+                    // 2. Create the receivable for the remaining balance
                     $receivableModel = new \App\Models\AccountReceivable();
                     $receivableModel->create([
                         'venda_id' => $saleId,
                         'cliente_id' => $data['cliente_id'],
                         'valor' => $data['total'],
-                        'valor_pago' => 0,
-                        'saldo' => $data['total'],
+                        'valor_pago' => $entrada,
+                        'saldo' => $valorDivida,
                         'status' => 'pendente',
-                        'data_vencimento' => date('Y-m-d', strtotime('+30 days')), // Default 30 days
+                        'data_vencimento' => date('Y-m-d', strtotime('+30 days')),
                         'filial_id' => $_SESSION['filial_id'] ?? 1
                     ]);
                     
                     $audit = new \App\Services\AuditLogService();
-                    $audit->record('Venda fiado criada', 'vendas', $saleId, null, json_encode($saleData));
+                    $audit->record('Venda fiado criada', 'vendas', $saleId, null, json_encode([
+                        'total' => $data['total'],
+                        'entrada' => $entrada,
+                        'saldo_devedor' => $valorDivida
+                    ]));
                 }
 
                 // Se houver ID de pré-venda, marca como finalizado

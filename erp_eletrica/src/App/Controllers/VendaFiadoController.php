@@ -88,5 +88,19 @@ class VendaFiadoController extends BaseController {
             }
             exit;
         }
+    public function get_items() {
+        $vendaId = $_GET['venda_id'] ?? null;
+        if (!$vendaId) exit;
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("
+            SELECT vi.*, p.nome as produto_nome 
+            FROM vendas_itens vi 
+            JOIN produtos p ON vi.produto_id = p.id 
+            WHERE vi.venda_id = ?
+        ");
+        $stmt->execute([$vendaId]);
+        echo json_encode($stmt->fetchAll());
+        exit;
     }
 }

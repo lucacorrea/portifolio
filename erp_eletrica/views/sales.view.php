@@ -109,6 +109,37 @@
                                 <i class="fas fa-barcode me-2 text-secondary"></i> Boleto
                             </label>
                         </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
+                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_fiado">
+                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: Entrada Fiado -->
+                <div class="modal fade" id="modalEntrada" data-bs-backdrop="static" tabindex="-1">
+                    <div class="modal-dialog modal-sm">
+                        <div class="modal-content border-0 shadow-lg">
+                            <div class="modal-header bg-warning text-dark border-0">
+                                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Entrada / Sinal</h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4 text-center">
+                                <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada em dinheiro</strong> para esta venda fiado?</p>
+                                <div class="mb-3 text-start">
+                                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor da Entrada (R$)</label>
+                                    <input type="number" id="entradaValor" class="form-control form-control-lg text-center fw-bold text-success" placeholder="0,00" step="0.01" min="0">
+                                </div>
+                                <div class="d-grid">
+                                    <button class="btn btn-warning fw-bold py-2 shadow-sm" onclick="confirmarCheckoutFiado()">
+                                        FINALIZAR VENDA
+                                    </button>
+                                </div>
+                                <button class="btn btn-link btn-sm text-muted mt-2 text-decoration-none" onclick="document.getElementById('entradaValor').value=0; confirmarCheckoutFiado()">Continuar sem entrada</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -713,16 +744,47 @@ btnCheckout.onclick = async () => {
         return;
     }
 
+    const payment = document.querySelector('input[name="payment"]:checked').value;
+    
+    if (payment === 'fiado') {
+        if (!selectedCustomerId) {
+            alert('Vendas a prazo (Fiado) exigem a seleção de um cliente cadastrado.');
+            customerSearch.focus();
+            return;
+        }
+        // Show entry modal
+        const modal = new bootstrap.Modal(document.getElementById('modalEntrada'));
+        document.getElementById('entradaValor').value = '';
+        modal.show();
+        setTimeout(() => document.getElementById('entradaValor').focus(), 500);
+    } else {
+        processarCheckout();
+    }
+};
+
+async function confirmarCheckoutFiado() {
+    processarCheckout();
+}
+
+async function processarCheckout() {
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const total = subtotal * (1 - (discountPercent / 100));
-
     const payment = document.querySelector('input[name="payment"]:checked').value;
+    const entrada = parseFloat(document.getElementById('entradaValor')?.value) || 0;
+
+    if (payment === 'fiado' && entrada >= total) {
+        alert('O valor da entrada não pode ser maior ou igual ao total da venda a prazo. Se o cliente vai pagar tudo agora, selecione outro método de pagamento.');
+        return;
+    }
+
     const data = {
         subtotal: subtotal,
         discount_percent: discountPercent,
         total: total,
         items: cart,
         pagamento: payment,
+        entrada_valor: entrada,
         cliente_id: selectedCustomerId,
         nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
         pv_id: currentPvId,
@@ -738,6 +800,10 @@ btnCheckout.onclick = async () => {
 
     const result = await res.json();
     if (result.success) {
+        // Close modals if open
+        const modalEntrada = bootstrap.Modal.getInstance(document.getElementById('modalEntrada'));
+        if (modalEntrada) modalEntrada.hide();
+
         showSuccessModal(result.sale_id, data.total);
         cart = [];
         currentPvId = null;
@@ -745,12 +811,13 @@ btnCheckout.onclick = async () => {
         authSupervisorId = null;
         authSupervisorCredential = null;
         document.getElementById('discountPercent').value = 0;
+        if (document.getElementById('entradaValor')) document.getElementById('entradaValor').value = 0;
         renderCart();
         loadRecentSales();
     } else {
         alert('Erro ao finalizar: ' + result.error);
     }
-};
+}
 
 function showSuccessModal(saleId, total) {
     const modalHtml = `

@@ -10,6 +10,9 @@ switch($action) {
     case 'pagar':
         $controller->pagar();
         break;
+    case 'get_items':
+        $controller->get_items();
+        break;
     default:
         $controller->index();
         break;

@@ -32,7 +32,12 @@
                                 <tr>
                                     <td class="ps-4">
                                         <div class="fw-bold"><?= htmlspecialchars($d['cliente_nome']) ?></div>
-                                        <small class="text-muted">Ref. Venda #<?= $d['venda_id'] ?></small>
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <span class="text-muted extra-small">Venda #<?= $d['venda_id'] ?></span>
+                                            <button class="btn btn-link p-0 extra-small fw-bold text-primary text-decoration-none" onclick="verItens(<?= $d['venda_id'] ?>)">
+                                                <i class="fas fa-search me-1"></i>Ver Produtos
+                                            </button>
+                                        </div>
                                     </td>
                                     <td class="text-end">R$ <?= number_format($d['valor'], 2, ',', '.') ?></td>
                                     <td class="text-end text-success">R$ <?= number_format($d['valor_pago'], 2, ',', '.') ?></td>
@@ -46,8 +51,8 @@
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-center">
-                                        <button class="btn btn-sm btn-primary px-3" onclick="abrirPagamento(<?= $d['id'] ?>, '<?= htmlspecialchars($d['cliente_nome']) ?>', <?= $d['saldo'] ?>)">
-                                            <i class="fas fa-cash-register me-1"></i> Baixa
+                                        <button class="btn btn-sm btn-primary px-3 rounded-pill" onclick="abrirPagamento(<?= $d['id'] ?>, '<?= htmlspecialchars($d['cliente_nome']) ?>', <?= $d['saldo'] ?>)">
+                                            <i class="fas fa-hand-holding-usd me-1"></i> Receber
                                         </button>
                                     </td>
                                 </tr>
@@ -100,6 +105,22 @@ function abrirPagamento(id, nome, saldo) {
     new bootstrap.Modal(document.getElementById('modalPagamento')).show();
 }
 
+async function verItens(vendaId) {
+    const res = await fetch(`fiado.php?action=get_items&venda_id=${vendaId}`);
+    const items = await res.json();
+    
+    let html = '';
+    items.forEach(i => {
+        html += `<div class="d-flex justify-content-between border-bottom py-2">
+            <div><span class="fw-bold">${i.quantidade}x</span> ${i.produto_nome}</div>
+            <div class="fw-bold text-primary">R$ ${(i.quantidade * i.preco_unitario).toFixed(2).replace('.', ',')}</div>
+        </div>`;
+    });
+    
+    document.getElementById('items_list').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('modalItens')).show();
+}
+
 async function confirmarPagamento() {
     const valor = document.getElementById('valor_pagamento').value;
     if (!valor || valor <= 0) return alert('Informe um valor válido.');
@@ -109,6 +130,21 @@ async function confirmarPagamento() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({id: debitoIdAtual, valor: valor})
     });
+...
+<!-- Modal Itens -->
+<div class="modal fade" id="modalItens" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fas fa-list me-2"></i>Produtos da Venda</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="items_list"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
     const result = await res.json();
     if (result.success) {
