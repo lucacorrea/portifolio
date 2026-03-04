@@ -2,20 +2,41 @@
 declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
+// Temporário para debugar o erro 500
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 @date_default_timezone_set('America/Manaus');
 
-require_once __DIR__ . '/assets/conexao.php';
-require_once __DIR__ . '/assets/dados/_helpers.php';
+// Tenta incluir arquivos de conexão e helpers de forma flexível
+$paths = [
+    __DIR__ . '/assets/conexao.php',
+    __DIR__ . '/assets/dados/vendas/_helpers.php'
+];
+foreach ($paths as $p) {
+    if (is_file($p)) require_once $p;
+}
 
 if (!function_exists('db')) {
-    die("Erro: Conexão não encontrada.");
+    die("Erro Crítico: Função db() não encontrada. Verifique se assets/conexao.php existe.");
 }
 
 $pdo = db();
+
+if (!function_exists('csrf_token')) {
+    function csrf_token() { return $_SESSION['csrf_token'] ?? ''; }
+}
+if (!function_exists('e')) {
+    function e($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+}
+
 $csrf = csrf_token();
 
-function brl($v): string {
-    return 'R$ ' . number_format((float)$v, 2, ',', '.');
+if (!function_exists('brl')) {
+    function brl($v): string {
+        return 'R$ ' . number_format((float)$v, 2, ',', '.');
+    }
 }
 ?>
 <!DOCTYPE html>
