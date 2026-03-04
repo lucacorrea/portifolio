@@ -742,6 +742,18 @@ function fmtMoney($v): string
           </a>
         </li>
 
+        <li class="nav-item">
+          <a href="vendas.php" class="active">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="text">Vendas</span>
+          </a>
+        </li>
+
         <li class="nav-item nav-item-has-children active">
           <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
             aria-controls="ddmenu_operacoes" aria-expanded="true">
@@ -756,7 +768,7 @@ function fmtMoney($v): string
           </a>
           <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
             <li><a href="vendidos.php">Vendidos</a></li>
-            <li><a href="vendas.php" class="active">Vendas</a></li>
+            <li><a href="fiados.php">Fiados</a></li>
             <li><a href="devolucoes.php">Devoluções</a></li>
           </ul>
         </li>
