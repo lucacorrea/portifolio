@@ -1248,10 +1248,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
                 <div class="box-tot mt-3">
                   <div class="tot-row"><span>Linhas</span><span id="tRows">0</span></div>
-                  <div class="tot-row"><span>Somatório</span><span id="tSum" style="font-weight:1000;color:#0b5ed7;">—</span></div>
+                  <div class="tot-row"><span>Vendido</span><span id="tSum" style="font-weight:900;">—</span></div>
+                  <div class="tot-row" id="rowSumRec" style="display:none;"><span>Recebido (Caixa)</span><span id="tSumRec" style="font-weight:1000;color:#0b5ed7;">—</span></div>
                   <div class="tot-hr"></div>
                   <div class="grand">
-                    <span class="lbl">TOTAL</span>
+                    <span class="lbl">TOTAL CAIXA</span>
                     <span class="val" id="tGrand">—</span>
                   </div>
                   <div class="muted mt-2" id="tNote">* O somatório depende do tipo de relatório.</div>
@@ -1413,7 +1414,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
       const sumText = rep.sum_text || numberToMoney(rep.sum || 0);
       tSum.textContent = sumText;
-      tGrand.textContent = sumText;
+      
+      if (rep.sum_rec_text) {
+        document.getElementById('rowSumRec').style.display = 'flex';
+        document.getElementById('tSumRec').textContent = rep.sum_rec_text;
+        tGrand.textContent = rep.sum_rec_text;
+      } else {
+        document.getElementById('rowSumRec').style.display = 'none';
+        tGrand.textContent = sumText;
+      }
 
       tNote.textContent = `* ${rep.sum_label || "Somatório"}.`;
       setInfo(rep.title || "Relatório", true);
@@ -1517,7 +1526,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       html += `<tr><td class="title" colspan="${colN}">PAINEL DA DISTRIBUIDORA - ${safeText(String(rep.title || "RELATÓRIO").toUpperCase())}</td></tr>`;
       html += `<tr><td class="muted">Gerado em:</td><td colspan="${colN - 1}">${safeText(dt)}</td></tr>`;
       html += `<tr><td class="muted">Período:</td><td colspan="${colN - 1}">${safeText(periodo)}</td></tr>`;
-      html += `<tr><td class="muted">Somatório:</td><td colspan="${colN - 1}">${safeText(rep.sum_text || "—")} (${safeText(rep.sum_label || "")})</td></tr>`;
+      html += `<tr><td class="muted">Somatório (Vendido):</td><td colspan="${colN - 1}">${safeText(rep.sum_text || "—")}</td></tr>`;
+      if (rep.sum_rec_text) {
+        html += `<tr><td class="muted">Total Recebido (Caixa):</td><td colspan="${colN - 1}">${safeText(rep.sum_rec_text)}</td></tr>`;
+      }
       html += `<tr class="spacer"><td colspan="${colN}"></td></tr>`;
 
       html += `<tr>${rep.head.map((h, idx) => {
@@ -1570,7 +1582,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       doc.setFontSize(10);
       doc.text(`Gerado em: ${dt}`, M, 75);
       doc.text(`Período: ${periodo}`, M, 92);
-      doc.text(`Somatório: ${rep.sum_text || "—"} (${rep.sum_label || ""})`, M, 108);
+      doc.text(`Somatório (Vendido): ${rep.sum_text || "—"}`, M, 108);
+      if (rep.sum_rec_text) {
+        doc.text(`Total Recebido (Caixa): ${rep.sum_rec_text}`, M, 122);
+      }
 
       doc.autoTable({
         head: [rep.head],
