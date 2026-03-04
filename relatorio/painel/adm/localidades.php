@@ -1,480 +1,439 @@
-<?php
-
-declare(strict_types=1);
-session_start();
-
-/* Login */
-if (empty($_SESSION['usuario_logado'])) {
-    header('Location: ../../index.php');
-    exit;
-}
-
-/* ADMIN */
-$perfis = $_SESSION['perfis'] ?? [];
-if (!is_array($perfis)) $perfis = [$perfis];
-if (!in_array('ADMIN', $perfis, true)) {
-    header('Location: ../operador/index.php');
-    exit;
-}
-
-$nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
-
-require_once '../../assets/php/conexao.php';
-$pdo = db();
-
-function h($v): string
-{
-    return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
-}
-
-/* CSRF */
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-$csrf = $_SESSION['csrf_token'];
-
-$TABELA = 'comunidades';
-
-$msgErro = '';
-$msgSucesso = '';
-$comunidades = [];
-
-/* =========================
-   AÇÕES (toggle / excluir) - por NOME (grupo)
-========================= */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-        $msgErro = 'Token de segurança inválido.';
-    } else {
-        $acao = (string)($_POST['acao'] ?? '');
+        ?? '');
         $nomeAcao = trim((string)($_POST['nome'] ?? ''));
 
         if ($nomeAcao === '') {
-            $msgErro = 'Nome inválido.';
+        $msgErro = 'Nome inválido.';
         } else {
-            try {
-                if ($acao === 'toggle') {
-                    // se existir algum ativo => desativa todos; senão ativa todos
-                    $stAny = $pdo->prepare("SELECT SUM(ativo=1) FROM {$TABELA} WHERE nome = :nome");
-                    $stAny->execute([':nome' => $nomeAcao]);
-                    $temAtivo = ((int)$stAny->fetchColumn()) > 0;
+        try {
+        if ($acao === 'toggle') {
+        // se existir algum ativo => desativa todos; senão ativa todos
+        $stAny = $pdo->prepare("SELECT SUM(ativo=1) FROM {$TABELA} WHERE nome = :nome");
+        $stAny->execute([':nome' => $nomeAcao]);
+        $temAtivo = ((int)$stAny->fetchColumn()) > 0;
 
-                    $novo = $temAtivo ? 0 : 1;
+        $novo = $temAtivo ? 0 : 1;
 
-                    $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = :novo WHERE nome = :nome");
-                    $st->execute([
-                        ':novo' => $novo,
-                        ':nome' => $nomeAcao
-                    ]);
+        $st = $pdo->prepare("UPDATE {$TABELA} SET ativo = :novo WHERE nome = :nome");
+        $st->execute([
+        ':novo' => $novo,
+        ':nome' => $nomeAcao
+        ]);
 
-                    $msgSucesso = 'Status atualizado (todas as feiras) com sucesso.';
-                } elseif ($acao === 'excluir') {
-                    $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE nome = :nome");
-                    $st->execute([':nome' => $nomeAcao]);
+        $msgSucesso = 'Status atualizado (todas as feiras) com sucesso.';
+        } elseif ($acao === 'excluir') {
+        $st = $pdo->prepare("DELETE FROM {$TABELA} WHERE nome = :nome");
+        $st->execute([':nome' => $nomeAcao]);
 
-                    $msgSucesso = 'Registros excluídos (todas as feiras) com sucesso.';
-                } else {
-                    $msgErro = 'Ação inválida.';
-                }
-            } catch (Throwable $e) {
-                error_log("Erro em localidades.php (acao): " . $e->getMessage());
-                $msgErro = 'Erro ao executar ação. Verifique o error_log.';
-            }
+        $msgSucesso = 'Registros excluídos (todas as feiras) com sucesso.';
+        } else {
+        $msgErro = 'Ação inválida.';
         }
-    }
-}
+        } catch (Throwable $e) {
+        error_log("Erro em localidades.php (acao): " . $e->getMessage());
+        $msgErro = 'Erro ao executar ação. Verifique o error_log.';
+        }
+        }
+        }
+        }
 
-/* =========================
-   PAGINAÇÃO (8 por página)
-========================= */
-$porPagina = 8;
-$pagina = isset($_GET['p']) ? max(1, (int)$_GET['p']) : 1;
-$offset = ($pagina - 1) * $porPagina;
+        /* =========================
+        PAGINAÇÃO (8 por página)
+        ========================= */
+        $porPagina = 8;
+        $pagina = isset($_GET['p']) ? max(1, (int)$_GET['p']) : 1;
+        $offset = ($pagina - 1) * $porPagina;
 
-$totalRegistros = 0;
-$totalPaginas = 1;
+        $totalRegistros = 0;
+        $totalPaginas = 1;
 
-/* =========================
-   LISTAR (1 por NOME + CONTAGEM)
-========================= */
-try {
-    // Total de "nomes" distintos (para paginação)
-    $totalRegistros = (int)$pdo->query("SELECT COUNT(DISTINCT nome) FROM {$TABELA}")->fetchColumn();
-    $totalPaginas = max(1, (int)ceil($totalRegistros / $porPagina));
+        /* =========================
+        LISTAR (1 por NOME + CONTAGEM) - SEM MUDAR LAYOUT
+        - Coluna "ID" vai mostrar QTD
+        - Coluna "Feira" vai mostrar "Feiras: 1,2,3"
+        ========================= */
+        try {
+        // Total de nomes distintos (para paginação)
+        $totalRegistros = (int)$pdo->query("SELECT COUNT(DISTINCT nome) FROM {$TABELA}")->fetchColumn();
+        $totalPaginas = max(1, (int)ceil($totalRegistros / $porPagina));
 
-    if ($pagina > $totalPaginas) {
+        if ($pagina > $totalPaginas) {
         $pagina = $totalPaginas;
         $offset = ($pagina - 1) * $porPagina;
-    }
+        }
 
-    $sql = "
+        $sql = "
         SELECT
-            c.nome,
-            COUNT(*) AS qtd,
-            CASE WHEN SUM(c.ativo = 1) > 0 THEN 1 ELSE 0 END AS ativo,
-            SUBSTRING_INDEX(
-                GROUP_CONCAT(COALESCE(c.observacao,'') ORDER BY c.id DESC SEPARATOR '||'),
-                '||', 1
-            ) AS observacao,
-            MAX(c.criado_em) AS criado_em,
-            MAX(c.atualizado_em) AS atualizado_em,
-            GROUP_CONCAT(DISTINCT c.feira_id ORDER BY c.feira_id SEPARATOR ',') AS feiras_ids
+        c.nome,
+        COUNT(*) AS qtd,
+        CASE WHEN SUM(c.ativo = 1) > 0 THEN 1 ELSE 0 END AS ativo,
+        SUBSTRING_INDEX(
+        GROUP_CONCAT(COALESCE(c.observacao,'') ORDER BY c.id DESC SEPARATOR '||'),
+        '||', 1
+        ) AS observacao,
+        MAX(c.criado_em) AS criado_em,
+        MAX(c.atualizado_em) AS atualizado_em,
+        GROUP_CONCAT(DISTINCT c.feira_id ORDER BY c.feira_id SEPARATOR ',') AS feiras_ids
         FROM {$TABELA} c
         GROUP BY c.nome
         ORDER BY MAX(c.criado_em) DESC, c.nome ASC
         LIMIT :lim OFFSET :off
-    ";
+        ";
 
-    $st = $pdo->prepare($sql);
-    $st->bindValue(':lim', $porPagina, PDO::PARAM_INT);
-    $st->bindValue(':off', $offset, PDO::PARAM_INT);
-    $st->execute();
+        $st = $pdo->prepare($sql);
+        $st->bindValue(':lim', $porPagina, PDO::PARAM_INT);
+        $st->bindValue(':off', $offset, PDO::PARAM_INT);
+        $st->execute();
 
-    $comunidades = $st->fetchAll(PDO::FETCH_ASSOC);
-} catch (Throwable $e) {
-    error_log("Erro ao listar comunidades (distinct nome): " . $e->getMessage());
-    $msgErro = 'Erro ao carregar a lista.';
-    $comunidades = [];
-}
-?>
-<!DOCTYPE html>
-<html lang="pt-br">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>SIGRelatórios Feira do Produtor — Localidades</title>
-
-    <link rel="stylesheet" href="../../vendors/feather/feather.css">
-    <link rel="stylesheet" href="../../vendors/ti-icons/css/themify-icons.css">
-    <link rel="stylesheet" href="../../vendors/css/vendor.bundle.base.css">
-
-    <link rel="stylesheet" href="../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
-    <link rel="stylesheet" type="text/css" href="../../js/select.dataTables.min.css">
-
-    <link rel="stylesheet" href="../../css/vertical-layout-light/style.css">
-    <link rel="shortcut icon" href="../../images/3.png" />
-
-    <style>
-        ul .nav-link:hover {
-            color: blue !important;
+        $comunidades = $st->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+        error_log("Erro ao listar comunidades (distinct nome): " . $e->getMessage());
+        $msgErro = 'Erro ao carregar a lista.';
+        $comunidades = [];
         }
+        ?>
+        <!DOCTYPE html>
+        <html lang="pt-br">
 
-        .nav-link {
-            color: black !important;
-        }
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+            <title>SIGRelatórios Feira do Produtor — Localidades</title>
 
-        .sidebar .sub-menu .nav-item .nav-link {
-            margin-left: -35px !important;
-        }
+            <link rel="stylesheet" href="../../vendors/feather/feather.css">
+            <link rel="stylesheet" href="../../vendors/ti-icons/css/themify-icons.css">
+            <link rel="stylesheet" href="../../vendors/css/vendor.bundle.base.css">
 
-        .sidebar .sub-menu li {
-            list-style: none !important;
-        }
+            <link rel="stylesheet" href="../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
+            <link rel="stylesheet" type="text/css" href="../../js/select.dataTables.min.css">
 
-        .form-control {
-            height: 42px;
-        }
+            <link rel="stylesheet" href="../../css/vertical-layout-light/style.css">
+            <link rel="shortcut icon" href="../../images/3.png" />
 
-        .form-group label {
-            font-weight: 600;
-        }
-    </style>
-</head>
+            <style>
+                ul .nav-link:hover {
+                    color: blue !important;
+                }
 
-<body>
-    <div class="container-scroller">
+                .nav-link {
+                    color: black !important;
+                }
 
-        <!-- NAVBAR -->
-        <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-            <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-                <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
-                <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../images/3.png" alt="logo" /></a>
-            </div>
+                .sidebar .sub-menu .nav-item .nav-link {
+                    margin-left: -35px !important;
+                }
 
-            <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-                <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-                    <span class="icon-menu"></span>
-                </button>
+                .sidebar .sub-menu li {
+                    list-style: none !important;
+                }
 
-                <ul class="navbar-nav navbar-nav-right">
-                    <li class="nav-item nav-profile dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
-                            <i class="ti-user"></i>
-                            <span class="ml-1"><?= h($nomeTopo) ?></span>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
-                            <a class="dropdown-item" href="../../controle/auth/logout.php">
-                                <i class="ti-power-off text-primary"></i> Sair
-                            </a>
-                        </div>
-                    </li>
-                </ul>
+                .form-control {
+                    height: 42px;
+                }
 
-                <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-                    <span class="icon-menu"></span>
-                </button>
-            </div>
-        </nav>
+                .form-group label {
+                    font-weight: 600;
+                }
+            </style>
+        </head>
 
-        <div class="container-fluid page-body-wrapper">
+        <body>
+            <div class="container-scroller">
 
-            <nav class="sidebar sidebar-offcanvas" id="sidebar">
-                <ul class="nav">
-                    <li class="nav-item ">
-                        <a class="nav-link" href="./index.php">
-                            <i class="icon-grid menu-icon"></i>
-                            <span class="menu-title">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="./produtor/">
-                            <i class="ti-shopping-cart menu-icon"></i>
-                            <span class="menu-title">Feira do Produtor</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="./alternativa/">
-                            <i class="ti-shopping-cart menu-icon"></i>
-                            <span class="menu-title">Feira Alternativa</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="./mercado/">
-                            <i class="ti-home menu-icon"></i>
-                            <span class="menu-title">Mercado Municipal</span>
-                        </a>
-                    </li>
-
-
-                    <li class="nav-item active">
-                        <a class="nav-link" href="./localidades.php">
-                            <i class="ti-map menu-icon"></i>
-                            <span class="menu-title">Localidades</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
-                            <i class="ti-user menu-icon"></i>
-                            <span class="menu-title">Usuários</span>
-                            <i class="menu-arrow"></i>
-                        </a>
-                        <div class="collapse" id="ui-basic">
-                            <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                                <li class="nav-item"><a class="nav-link" href="./users/listaUser.php">Lista de Adicionados</a></li>
-                                <li class="nav-item"><a class="nav-link" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
-                            </ul>
-                        </div>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
-                            <i class="ti-headphone-alt menu-icon"></i>
-                            <span class="menu-title">Suporte</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-
-            <div class="main-panel">
-                <div class="content-wrapper">
-
-                    <div class="row">
-                        <div class="col-12 mb-3">
-                            <h3 class="font-weight-bold">Localidades</h3>
-                            <h6 class="font-weight-normal mb-0">Comunidades (feira 1/2) e Bairros (feira 3).</h6>
-                        </div>
+                <!-- NAVBAR -->
+                <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+                    <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+                        <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
+                        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../images/3.png" alt="logo" /></a>
                     </div>
 
-                    <div class="row">
-                        <div class="col-lg-12 grid-margin stretch-card">
-                            <div class="card">
-                                <div class="card-body">
+                    <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+                        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+                            <span class="icon-menu"></span>
+                        </button>
 
-                                    <div class="d-flex align-items-center justify-content-between flex-wrap">
-                                        <div>
-                                            <h4 class="card-title mb-0">Lista de Localidades</h4>
-                                            <p class="card-description mb-0">
-                                                Total: <?= (int)$totalRegistros ?> registro(s) — Página <?= (int)$pagina ?> de <?= (int)$totalPaginas ?>.
-                                            </p>
-                                        </div>
+                        <ul class="navbar-nav navbar-nav-right">
+                            <li class="nav-item nav-profile dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
+                                    <i class="ti-user"></i>
+                                    <span class="ml-1"><?= h($nomeTopo) ?></span>
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+                                    <a class="dropdown-item" href="../../controle/auth/logout.php">
+                                        <i class="ti-power-off text-primary"></i> Sair
+                                    </a>
+                                </div>
+                            </li>
+                        </ul>
 
-                                        <a href="./adicionarLocalidade.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
-                                            <i class="ti-plus"></i> Adicionar
-                                        </a>
-                                    </div>
+                        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
+                            <span class="icon-menu"></span>
+                        </button>
+                    </div>
+                </nav>
 
-                                    <?php if (!empty($msgErro)): ?>
-                                        <div class="alert alert-danger mt-3 mb-0"><?= h($msgErro) ?></div>
-                                    <?php endif; ?>
+                <div class="container-fluid page-body-wrapper">
 
-                                    <?php if (!empty($msgSucesso)): ?>
-                                        <div class="alert alert-success mt-3 mb-0"><?= h($msgSucesso) ?></div>
-                                    <?php endif; ?>
+                    <nav class="sidebar sidebar-offcanvas" id="sidebar">
+                        <ul class="nav">
+                            <li class="nav-item">
+                                <a class="nav-link" href="./index.php">
+                                    <i class="icon-grid menu-icon"></i>
+                                    <span class="menu-title">Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="./produtor/">
+                                    <i class="ti-shopping-cart menu-icon"></i>
+                                    <span class="menu-title">Feira do Produtor</span>
+                                </a>
+                            </li>
 
-                                    <div class="table-responsive pt-3">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 90px;">Qtd</th>
-                                                <th>Nome</th>
-                                                <th style="width: 150px;">Tipo</th>
-                                                <th style="width: 220px;">Feiras</th>
-                                                <th style="width: 160px;">Status</th>
-                                                <th style="min-width: 260px;">Ações</th>
-                                            </tr>
-                                        </thead>
+                            <li class="nav-item">
+                                <a class="nav-link" href="./alternativa/">
+                                    <i class="ti-shopping-cart menu-icon"></i>
+                                    <span class="menu-title">Feira Alternativa</span>
+                                </a>
+                            </li>
 
-                                        <tbody>
-                                            <?php if (empty($comunidades)): ?>
-                                                <tr>
-                                                    <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
-                                                </tr>
-                                            <?php else: ?>
-                                                <?php foreach ($comunidades as $l): ?>
-                                                    <?php
-                                                    $id = (int)($l['id'] ?? 0);
-                                                    $f  = (int)($l['feira_id'] ?? 0);
+                            <li class="nav-item">
+                                <a class="nav-link" href="./mercado/">
+                                    <i class="ti-home menu-icon"></i>
+                                    <span class="menu-title">Mercado Municipal</span>
+                                </a>
+                            </li>
 
-                                                    $ativoBool  = (int)($l['ativo'] ?? 0) === 1;
-                                                    $badgeClass = $ativoBool ? 'badge-success' : 'badge-danger';
-                                                    $badgeText  = $ativoBool ? 'Ativo' : 'Inativo';
+                            <li class="nav-item active">
+                                <a class="nav-link" href="./localidades.php">
+                                    <i class="ti-map menu-icon"></i>
+                                    <span class="menu-title">Localidades</span>
+                                </a>
+                            </li>
 
-                                                    $tipoLabel = ($f === 3) ? 'Bairro' : 'Comunidade';
-                                                    $obs = trim((string)($l['observacao'] ?? ''));
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+                                    <i class="ti-user menu-icon"></i>
+                                    <span class="menu-title">Usuários</span>
+                                    <i class="menu-arrow"></i>
+                                </a>
+                                <div class="collapse" id="ui-basic">
+                                    <ul class="nav flex-column sub-menu" style="background:#fff !important;">
+                                        <li class="nav-item"><a class="nav-link" href="./users/listaUser.php">Lista de Adicionados</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="./users/adicionarUser.php">Adicionar Usuários</a></li>
+                                    </ul>
+                                </div>
+                            </li>
 
-                                                    $feiraNome = (string)($l['feira_nome'] ?? '');
-                                                    if ($feiraNome === '') $feiraNome = 'Feira ' . $f;
-                                                    ?>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
+                                    <i class="ti-headphone-alt menu-icon"></i>
+                                    <span class="menu-title">Suporte</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
 
-                                                    <tr>
-                                                        <td><?= $id ?></td>
+                    <div class="main-panel">
+                        <div class="content-wrapper">
 
-                                                        <td>
-                                                            <div class="font-weight-bold"><?= h($l['nome'] ?? '') ?></div>
-                                                            <?php if ($obs !== ''): ?>
-                                                                <small class="text-muted"><?= h($obs) ?></small>
-                                                            <?php endif; ?>
-                                                        </td>
-
-                                                        <td><?= h($tipoLabel) ?></td>
-                                                        <td><?= h($feiraNome) ?></td>
-
-                                                        <td>
-                                                            <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
-
-                                                                <form method="post" class="m-0">
-                                                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                                                    <input type="hidden" name="acao" value="toggle">
-                                                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                                                    <button type="submit" class="btn btn-outline-warning btn-xs"
-                                                                        onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> este registro?');">
-                                                                        <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
-                                                                    </button>
-                                                                </form>
-
-                                                                <form method="post" class="m-0">
-                                                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                                                    <input type="hidden" name="acao" value="excluir">
-                                                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                                                    <button type="submit" class="btn btn-outline-danger btn-xs"
-                                                                        onclick="return confirm('Tem certeza que deseja EXCLUIR este registro?');">
-                                                                        <i class="ti-trash"></i> Excluir
-                                                                    </button>
-                                                                </form>
-
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </tbody>
-                                        </table>
-                                    </div>
-
-                                    <!-- PAGINAÇÃO -->
-                                    <?php if ($totalPaginas > 1): ?>
-                                        <?php
-                                        $qs = $_GET;
-                                        unset($qs['p']);
-                                        $base = '?' . http_build_query($qs);
-                                        $base = ($base === '?') ? '?' : ($base . '&');
-
-                                        $janela = 2;
-                                        $inicio = max(1, $pagina - $janela);
-                                        $fim = min($totalPaginas, $pagina + $janela);
-                                        ?>
-
-                                        <div class="d-flex justify-content-between align-items-center flex-wrap mt-3" style="gap:10px;">
-                                            <div class="text-muted">
-                                                Mostrando <?= count($comunidades) ?> nesta página (<?= (int)$porPagina ?> por página).
-                                            </div>
-
-                                            <nav aria-label="Paginação">
-                                                <ul class="pagination mb-0">
-
-                                                    <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
-                                                        <a class="page-link" href="<?= $base ?>p=1">«</a>
-                                                    </li>
-
-                                                    <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
-                                                        <a class="page-link" href="<?= $base ?>p=<?= max(1, $pagina - 1) ?>">Anterior</a>
-                                                    </li>
-
-                                                    <?php for ($i = $inicio; $i <= $fim; $i++): ?>
-                                                        <li class="page-item <?= $i === $pagina ? 'active' : '' ?>">
-                                                            <a class="page-link" href="<?= $base ?>p=<?= $i ?>"><?= $i ?></a>
-                                                        </li>
-                                                    <?php endfor; ?>
-
-                                                    <li class="page-item <?= $pagina >= $totalPaginas ? 'disabled' : '' ?>">
-                                                        <a class="page-link" href="<?= $base ?>p=<?= min($totalPaginas, $pagina + 1) ?>">Próxima</a>
-                                                    </li>
-
-                                                    <li class="page-item <?= $pagina >= $totalPaginas ? 'disabled' : '' ?>">
-                                                        <a class="page-link" href="<?= $base ?>p=<?= $totalPaginas ?>">»</a>
-                                                    </li>
-
-                                                </ul>
-                                            </nav>
-                                        </div>
-                                    <?php endif; ?>
-
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <h3 class="font-weight-bold">Localidades</h3>
+                                    <h6 class="font-weight-normal mb-0">Comunidades (feira 1/2) e Bairros (feira 3).</h6>
                                 </div>
                             </div>
+
+                            <div class="row">
+                                <div class="col-lg-12 grid-margin stretch-card">
+                                    <div class="card">
+                                        <div class="card-body">
+
+                                            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                                <div>
+                                                    <h4 class="card-title mb-0">Lista de Localidades</h4>
+                                                    <p class="card-description mb-0">
+                                                        Total: <?= (int)$totalRegistros ?> registro(s) — Página <?= (int)$pagina ?> de <?= (int)$totalPaginas ?>.
+                                                    </p>
+                                                </div>
+
+                                                <a href="./adicionarLocalidade.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                                                    <i class="ti-plus"></i> Adicionar
+                                                </a>
+                                            </div>
+
+                                            <?php if (!empty($msgErro)): ?>
+                                                <div class="alert alert-danger mt-3 mb-0"><?= h($msgErro) ?></div>
+                                            <?php endif; ?>
+
+                                            <?php if (!empty($msgSucesso)): ?>
+                                                <div class="alert alert-success mt-3 mb-0"><?= h($msgSucesso) ?></div>
+                                            <?php endif; ?>
+
+                                            <div class="table-responsive pt-3">
+                                                <table class="table table-striped table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 90px;">ID</th>
+                                                            <th>Nome</th>
+                                                            <th style="width: 150px;">Tipo</th>
+                                                            <th style="width: 220px;">Feira</th>
+                                                            <th style="width: 160px;">Status</th>
+                                                            <th style="min-width: 260px;">Ações</th>
+                                                        </tr>
+                                                    </thead>
+
+                                                    <tbody>
+                                                        <?php if (empty($comunidades)): ?>
+                                                            <tr>
+                                                                <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
+                                                            </tr>
+                                                        <?php else: ?>
+                                                            <?php foreach ($comunidades as $l): ?>
+                                                                <?php
+                                                                $nome = (string)($l['nome'] ?? '');
+                                                                $qtd  = (int)($l['qtd'] ?? 0);
+
+                                                                $ativoBool  = (int)($l['ativo'] ?? 0) === 1;
+                                                                $badgeClass = $ativoBool ? 'badge-success' : 'badge-danger';
+                                                                $badgeText  = $ativoBool ? 'Ativo' : 'Inativo';
+
+                                                                $obs = trim((string)($l['observacao'] ?? ''));
+
+                                                                $feirasIdsStr = (string)($l['feiras_ids'] ?? '');
+                                                                $feirasIds = array_filter(array_map('intval', explode(',', $feirasIdsStr)));
+
+                                                                $tipoLabel = in_array(3, $feirasIds, true) ? 'Bairro' : 'Comunidade';
+
+                                                                // Mantém coluna "Feira" (sem mudar layout): mostra Feiras: 1,2,3
+                                                                $feiraNome = ($feirasIdsStr !== '') ? ('Feiras: ' . $feirasIdsStr) : '-';
+                                                                ?>
+
+                                                                <tr>
+                                                                    <!-- SEM MUDAR LAYOUT: Coluna "ID" recebe a QTD -->
+                                                                    <td><?= $qtd ?></td>
+
+                                                                    <td>
+                                                                        <div class="font-weight-bold"><?= h($nome) ?></div>
+                                                                        <?php if ($obs !== ''): ?>
+                                                                            <small class="text-muted"><?= h($obs) ?></small>
+                                                                        <?php endif; ?>
+                                                                    </td>
+
+                                                                    <td><?= h($tipoLabel) ?></td>
+                                                                    <td><?= h($feiraNome) ?></td>
+
+                                                                    <td>
+                                                                        <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label>
+                                                                    </td>
+
+                                                                    <td>
+                                                                        <div class="acoes-wrap" style="display:flex; gap:8px; flex-wrap:wrap;">
+
+                                                                            <form method="post" class="m-0">
+                                                                                <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                                                <input type="hidden" name="acao" value="toggle">
+                                                                                <!-- AÇÃO POR GRUPO: envia NOME -->
+                                                                                <input type="hidden" name="nome" value="<?= h($nome) ?>">
+                                                                                <button type="submit" class="btn btn-outline-warning btn-xs"
+                                                                                    onclick="return confirm('Deseja <?= $ativoBool ? 'DESATIVAR' : 'ATIVAR' ?> TODAS as feiras deste nome?');">
+                                                                                    <i class="ti-power-off"></i> <?= $ativoBool ? 'Desativar' : 'Ativar' ?>
+                                                                                </button>
+                                                                            </form>
+
+                                                                            <form method="post" class="m-0">
+                                                                                <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+                                                                                <input type="hidden" name="acao" value="excluir">
+                                                                                <!-- AÇÃO POR GRUPO: envia NOME -->
+                                                                                <input type="hidden" name="nome" value="<?= h($nome) ?>">
+                                                                                <button type="submit" class="btn btn-outline-danger btn-xs"
+                                                                                    onclick="return confirm('Tem certeza que deseja EXCLUIR TODAS as feiras deste nome?');">
+                                                                                    <i class="ti-trash"></i> Excluir
+                                                                                </button>
+                                                                            </form>
+
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            <?php endforeach; ?>
+                                                        <?php endif; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- PAGINAÇÃO -->
+                                            <?php if ($totalPaginas > 1): ?>
+                                                <?php
+                                                $qs = $_GET;
+                                                unset($qs['p']);
+                                                $base = '?' . http_build_query($qs);
+                                                $base = ($base === '?') ? '?' : ($base . '&');
+
+                                                $janela = 2;
+                                                $inicio = max(1, $pagina - $janela);
+                                                $fim = min($totalPaginas, $pagina + $janela);
+                                                ?>
+
+                                                <div class="d-flex justify-content-between align-items-center flex-wrap mt-3" style="gap:10px;">
+                                                    <div class="text-muted">
+                                                        Mostrando <?= count($comunidades) ?> nesta página (<?= (int)$porPagina ?> por página).
+                                                    </div>
+
+                                                    <nav aria-label="Paginação">
+                                                        <ul class="pagination mb-0">
+
+                                                            <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
+                                                                <a class="page-link" href="<?= $base ?>p=1">«</a>
+                                                            </li>
+
+                                                            <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
+                                                                <a class="page-link" href="<?= $base ?>p=<?= max(1, $pagina - 1) ?>">Anterior</a>
+                                                            </li>
+
+                                                            <?php for ($i = $inicio; $i <= $fim; $i++): ?>
+                                                                <li class="page-item <?= $i === $pagina ? 'active' : '' ?>">
+                                                                    <a class="page-link" href="<?= $base ?>p=<?= $i ?>"><?= $i ?></a>
+                                                                </li>
+                                                            <?php endfor; ?>
+
+                                                            <li class="page-item <?= $pagina >= $totalPaginas ? 'disabled' : '' ?>">
+                                                                <a class="page-link" href="<?= $base ?>p=<?= min($totalPaginas, $pagina + 1) ?>">Próxima</a>
+                                                            </li>
+
+                                                            <li class="page-item <?= $pagina >= $totalPaginas ? 'disabled' : '' ?>">
+                                                                <a class="page-link" href="<?= $base ?>p=<?= $totalPaginas ?>">»</a>
+                                                            </li>
+
+                                                        </ul>
+                                                    </nav>
+                                                </div>
+                                            <?php endif; ?>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
-                    </div>
 
+                        <footer class="footer">
+                            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
+                                <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
+                                    © <?= date('Y') ?> SIGRelatórios —
+                                    <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
+                                    Todos os direitos reservados.
+                                </span>
+                            </div>
+                        </footer>
+
+                    </div>
                 </div>
-
-                <footer class="footer">
-                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
-                        <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
-                            © <?= date('Y') ?> SIGRelatórios —
-                            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
-                            Todos os direitos reservados.
-                        </span>
-                    </div>
-                </footer>
-
             </div>
-        </div>
-    </div>
 
-    <script src="../../vendors/js/vendor.bundle.base.js"></script>
-    <script src="../../js/off-canvas.js"></script>
-    <script src="../../js/hoverable-collapse.js"></script>
-    <script src="../../js/template.js"></script>
-    <script src="../../js/hoverable-collapse.js"></script>
-    <script src="../../js/template.js"></script>
-    <script src="../../js/settings.js"></script>
-    <script src="../../js/todolist.js"></script>
-</body>
+            <script src="../../vendors/js/vendor.bundle.base.js"></script>
+            <script src="../../js/off-canvas.js"></script>
+            <script src="../../js/hoverable-collapse.js"></script>
+            <script src="../../js/template.js"></script>
+            <script src="../../js/settings.js"></script>
+            <script src="../../js/todolist.js"></script>
+        </body>
 
-</html>
+        </html>
