@@ -313,6 +313,8 @@
 let cart = [];
 let currentPvId = null;
 let activeManageId = null;
+let selectedCustomerId = null;
+let selectedCustomerName = null;
 const currentUserLevel = '<?= $_SESSION['usuario_nivel'] ?? 'vendedor' ?>';
 
 const pdvSearch = document.getElementById('pdvSearch');
@@ -525,6 +527,39 @@ function clearCustomer() {
     customerSearch.focus();
 }
 
+function abrirModalQuickClient() {
+    document.getElementById('qc_nome').value = '';
+    document.getElementById('qc_cpf_cnpj').value = '';
+    document.getElementById('qc_telefone').value = '';
+    new bootstrap.Modal(document.getElementById('modalQuickClient')).show();
+}
+
+async function salvarQuickClient() {
+    const nome = document.getElementById('qc_nome').value;
+    const cpf_cnpj = document.getElementById('qc_cpf_cnpj').value;
+    const telefone = document.getElementById('qc_telefone').value;
+
+    if (!nome) return alert('O nome é obrigatório.');
+
+    try {
+        const res = await fetch('vendas.php?action=quick_register_client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, cpf_cnpj, telefone })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            selectCustomer(result.client_id, nome, cpf_cnpj);
+            bootstrap.Modal.getInstance(document.getElementById('modalQuickClient')).hide();
+        } else {
+            alert('Erro ao cadastrar: ' + result.error);
+        }
+    } catch (err) {
+        alert('Erro de conexão: ' + err.message);
+    }
+}
+
 // Pre-sale flow
 async function loadPendingPreSales() {
     console.log("PDV: Carregando pré-vendas pendentes...");
@@ -581,10 +616,11 @@ async function importPreSale(code) {
             imagens: i.imagens
         }));
         currentPvId = pv.id;
-        selectedCustomerId = pv.cliente_id;
-        selectedCustomerName = pv.cliente_nome;
-        customerSearch.value = pv.cliente_nome || '';
-        document.getElementById('customerDisplay').innerText = pv.cliente_nome || 'Consumidor Final';
+        if (pv.cliente_id) {
+            selectCustomer(pv.cliente_id, pv.cliente_nome, pv.cliente_doc);
+        } else {
+            clearCustomer();
+        }
         renderCart();
         bootstrap.Modal.getInstance(document.getElementById('modalPendingPV')).hide();
         pdvSearch.focus();
