@@ -152,24 +152,20 @@ CREATE TABLE IF NOT EXISTS venda_itens (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TABLE IF NOT EXISTS clientes (
   id INT AUTO_INCREMENT PRIMARY KEY,
-
-  nome VARCHAR(180) NOT NULL,
-  cpf VARCHAR(14) NOT NULL,         -- 000.000.000-00 (ou só números, se preferir)
-  telefone VARCHAR(20) NOT NULL,    -- (92) 99999-9999
-
-  status VARCHAR(10) NOT NULL DEFAULT 'ATIVO', -- ATIVO | INATIVO
-  obs VARCHAR(255) NULL,
-
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+  nome VARCHAR(255) NOT NULL,
+  cpf VARCHAR(20) DEFAULT NULL,
+  telefone VARCHAR(20) DEFAULT NULL,
+  endereco TEXT DEFAULT NULL,
+  created_at DATETIME DEFAULT current_timestamp(),
+  updated_at DATETIME DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ;
 
 CREATE UNIQUE INDEX ux_clientes_cpf ON clientes (cpf);
 CREATE INDEX idx_clientes_nome ON clientes (nome);
 CREATE INDEX idx_clientes_telefone ON clientes (telefone);
-CREATE INDEX idx_clientes_status ON clientes (status);
 
 
 CREATE TABLE IF NOT EXISTS devolucoes (
