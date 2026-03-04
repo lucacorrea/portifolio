@@ -226,9 +226,32 @@ $yesterday = $today->modify('-1 day')->format('Y-m-d');
 /* =========================
    KPIs (vendas/produtos)
 ========================= */
-$st = $pdo->prepare("SELECT COUNT(*) c, COALESCE(SUM(total),0) s FROM vendas WHERE data = :d");
+$st = $pdo->prepare("
+  SELECT
+    COUNT(*) c,
+    COALESCE(SUM(CASE WHEN pagamento = 'FIADO' THEN 0 ELSE total END), 0) as cash_vendas,
+    COALESCE(SUM(total), 0) as total_vendas
+  FROM vendas
+  WHERE data = :d
+");
 $st->execute([':d' => $today->format('Y-m-d')]);
-$kToday = $st->fetch() ?: ['c' => 0, 's' => 0];
+$resToday = $st->fetch();
+
+// Pegar entradas de fiados de hoje
+$stEntrada = $pdo->prepare("SELECT COALESCE(SUM(valor_pago),0) FROM fiados WHERE venda_id IN (SELECT id FROM vendas WHERE data = :d)");
+$stEntrada->execute([':d' => $today->format('Y-m-d')]);
+$entradasHoje = (float)$stEntrada->fetchColumn();
+
+// Pegar pagamentos de fiados de hoje (tabela fiados_pagamentos)
+$stPagFiado = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE DATE(created_at) = :d");
+$stPagFiado->execute([':d' => $today->format('Y-m-d')]);
+$recFiadoHoje = (float)$stPagFiado->fetchColumn();
+
+$kToday = [
+    'c' => (int)$resToday['c'],
+    's' => (float)$resToday['cash_vendas'] + $entradasHoje + $recFiadoHoje,
+    'total_bruto' => (float)$resToday['total_vendas']
+];
 
 $st->execute([':d' => $yesterday]);
 $kYest = $st->fetch() ?: ['c' => 0, 's' => 0];
@@ -243,12 +266,37 @@ $firstNextMonth = $today->modify('first day of next month')->format('Y-m-d');
 $firstPrevMonth = $today->modify('first day of last month')->format('Y-m-d');
 $firstThisMonth2 = $firstThisMonth;
 
-$st = $pdo->prepare("SELECT COALESCE(SUM(total),0) s FROM vendas WHERE data >= :ini AND data < :fim");
+$st = $pdo->prepare("
+  SELECT
+    COALESCE(SUM(CASE WHEN pagamento = 'FIADO' THEN 0 ELSE total END), 0) as cash_vendas
+  FROM vendas
+  WHERE data >= :ini AND data < :fim
+");
 $st->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
-$faturMes = (float)($st->fetch()['s'] ?? 0);
+$cashVendasMes = (float)($st->fetch()['cash_vendas'] ?? 0);
 
-$st->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth2]);
-$faturMesPrev = (float)($st->fetch()['s'] ?? 0);
+$stEntMes = $pdo->prepare("SELECT COALESCE(SUM(valor_pago),0) FROM fiados WHERE created_at >= :ini AND created_at < :fim");
+$stEntMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
+$entradasMes = (float)$stEntMes->fetchColumn();
+
+$stPagMes = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE created_at >= :ini AND created_at < :fim");
+$stPagMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
+$recFiadoMes = (float)$stPagMes->fetchColumn();
+
+$faturMes = $cashVendasMes + $entradasMes + $recFiadoMes;
+
+// Mês Anterior
+$st->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
+$cashVendasPrev = (float)($st->fetch()['cash_vendas'] ?? 0);
+
+$stEntMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
+$entradasPrev = (float)$stEntMes->fetchColumn();
+
+$stPagMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
+$recFiadoPrev = (float)$stPagMes->fetchColumn();
+
+$faturMesPrev = $cashVendasPrev + $entradasPrev + $recFiadoPrev;
+
 $faturMesPct = pct($faturMes, $faturMesPrev);
 
 // Itens em estoque (snapshot)
@@ -295,20 +343,23 @@ $labels12 = buildMonthLabels($keys12);
 $start12Str = $start12->format('Y-m-d');
 $end12Str = $today->modify('first day of next month')->format('Y-m-d');
 
-// Chart1: faturamento 12m
-$revMap = fetchKeyVal(
-  $pdo,
-  "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(total),0) total
-   FROM vendas
-   WHERE data >= :ini AND data < :fim
-   GROUP BY ym
-   ORDER BY ym",
-  [':ini' => $start12Str, ':fim' => $end12Str],
-  'ym',
-  'total'
-);
+// Chart1: faturamento real 12m (vendas_cash + entradas_fiado + pagamentos_fiados)
+$cashVendasMap = fetchKeyVal($pdo, "
+   SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(CASE WHEN pagamento='FIADO' THEN 0 ELSE total END),0) s
+   FROM vendas WHERE data >= :ini AND data < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
+
+$entFiadoMap = fetchKeyVal($pdo, "
+   SELECT DATE_FORMAT(created_at,'%Y-%m') ym, COALESCE(SUM(valor_pago),0) s
+   FROM fiados WHERE created_at >= :ini AND created_at < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
+
+$pagFiadoMap = fetchKeyVal($pdo, "
+   SELECT DATE_FORMAT(created_at,'%Y-%m') ym, COALESCE(SUM(valor),0) s
+   FROM fiados_pagamentos WHERE created_at >= :ini AND created_at < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
+
 $chart1 = [];
-foreach ($keys12 as $k) $chart1[] = (float)($revMap[$k] ?? 0);
+foreach ($keys12 as $k) {
+    $chart1[] = (float)($cashVendasMap[$k] ?? 0) + (float)($entFiadoMap[$k] ?? 0) + (float)($pagFiadoMap[$k] ?? 0);
+}
 
 // Chart2: vendas por mês
 $cntMap = fetchKeyVal(
