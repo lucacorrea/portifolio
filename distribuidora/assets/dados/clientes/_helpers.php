@@ -54,6 +54,18 @@ function post_int(string $k, int $def = 0): int {
 }
 
 /* =========================
+   URL BASE (importante: /distribuidora/...)
+========================= */
+function base_path(): string {
+  $dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+  return $dir === '' ? '' : $dir; // ex.: /distribuidora
+}
+
+function url_here(string $file): string {
+  return base_path() . '/' . ltrim($file, '/');
+}
+
+/* =========================
    REDIRECT + FLASH
 ========================= */
 function redirect(string $to): void {
@@ -81,13 +93,22 @@ function csrf_token(): string {
   return (string)$_SESSION['_csrf'];
 }
 
+function safe_return_to(string $uri): string {
+  $u = trim($uri);
+  if ($u === '') return url_here('../../../clientes.php');
+  if (str_contains($u, "\n") || str_contains($u, "\r")) return url_here('clientes.php');
+  if (!str_starts_with($u, '/')) return url_here('../../../clientes.php');
+  if (!str_contains($u, 'clientes.php')) return url_here('../../../clientes.php');
+  return $u;
+}
+
 function csrf_validate_or_die(): void {
   $t = (string)($_POST['_csrf'] ?? '');
   $sess = (string)($_SESSION['_csrf'] ?? '');
   if ($t === '' || $sess === '' || !hash_equals($sess, $t)) {
     flash_set('flash_err', 'CSRF inválido. Atualize a página e tente novamente.');
-    $ret = post_str('return_to', '/clientes.php');
-    redirect(safe_return_to($ret));
+    $ret = safe_return_to(post_str('return_to', url_here('clientes.php')));
+    redirect($ret);
   }
 }
 
@@ -137,16 +158,4 @@ function tel_fmt(string $telDigits): string {
   return "($dd) " . substr($rest, 0, 5) . "-" . substr($rest, 5);
 }
 
-/* =========================
-   RETURN_TO SAFE
-========================= */
-function safe_return_to(string $uri): string {
-  // Aceita somente paths locais (ex.: /clientes.php?...), sem scheme/host
-  $u = trim($uri);
-  if ($u === '') return '/../../../clientes.php';
-  if (str_contains($u, "\n") || str_contains($u, "\r")) return '/../../../clientes.php';
-  if (!str_starts_with($u, '/')) return '/../../../clientes.php';
-  // opcional: restringe para clientes.php
-  if (!str_contains($u, '../../../clientes.php')) return '/../../../clientes.php';
-  return $u;
-}
+?>
