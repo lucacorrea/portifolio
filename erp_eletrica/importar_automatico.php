@@ -12,6 +12,14 @@ $controller = new \App\Controllers\ImportacaoAutomaticaController();
 $action = $_GET['action'] ?? 'index';
 
 switch($action) {
+    case 'config':
+        $configController = new \App\Controllers\SefazConfigController();
+        $configController->index();
+        break;
+    case 'config_save':
+        $configController = new \App\Controllers\SefazConfigController();
+        $configController->save();
+        break;
     case 'sincronizar':
         $controller->sincronizar();
         break;

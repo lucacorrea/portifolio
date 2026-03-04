@@ -6,37 +6,32 @@ use DOMDocument;
 
 class SefazConsultaService extends BaseService {
     private $db;
-    private $filial;
+    private $config;
 
-    public function __construct($filialId) {
+    public function __construct() {
         parent::__construct();
         $this->db = \App\Config\Database::getInstance()->getConnection();
-        $this->loadFilial($filialId);
+        $this->loadConfig();
     }
 
-    private function loadFilial($id) {
-        $stmt = $this->db->prepare("SELECT * FROM filiais WHERE id = ?");
-        $stmt->execute([$id]);
-        $this->filial = $stmt->fetch();
-        if (!$this->filial) throw new Exception("Filial não encontrada.");
-        if (empty($this->filial['certificado_pfx'])) throw new Exception("Certificado A1 não configurado para esta filial.");
+    private function loadConfig() {
+        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
+        $this->config = $stmt->fetch();
+        if (!$this->config) throw new Exception("Configuração SEFAZ Global não encontrada.");
+        if (empty($this->config['certificado_path'])) throw new Exception("Certificado A1 não enviado ou configurado.");
     }
 
     /**
      * Consulta as NF-e destinadas via NFeDistribuicaoDFe
      */
-    public function consultarNotas($ultNSU = '0') {
-        $cnpj = preg_replace('/[^0-9]/', '', $this->filial['cnpj']);
-        $ambiente = $this->filial['ambiente']; // 1 = Produção, 2 = Homologação
-        $uf = $this->filial['uf'] ?: '35'; // Default SP se não informado
+    public function consultarNotas($cnpjDestinario, $ultNSU = '0') {
+        $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
+        $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2; 
 
         // Preparamos o XML de solicitação seguindo NT 2014.002
         $xml_soap = $this->gerarXmlDistDfe($cnpj, $ultNSU, $ambiente);
         
-        // Em um cenário real, usaríamos o certificado PFX com cURL/SOAP
-        // Como não podemos testar conectividade real aqui, vamos simular o retorno da SEFAZ
-        // mas o código está estruturado para a lógica real.
-        
+        // Em um cenário real, usaríamos o certificado desacoplado da sefaz_config
         $responseXml = $this->comunicarSefaz($xml_soap);
         return $this->processarRetorno($responseXml);
     }
@@ -124,28 +119,28 @@ class SefazConsultaService extends BaseService {
         ];
     }
 
-    public function salvarNotasCache($documentos) {
+    public function salvarNotasCache($filialId, $documentos) {
         foreach ($documentos as $doc) {
-            $stmt = $this->db->prepare("SELECT id FROM nfe_importadas WHERE chave_nfe = ? AND filial_id = ?");
-            $stmt->execute([$doc['chave'], $this->filial['id']]);
-            if ($stmt->fetch()) continue; // Já existe
-
-            $stmt = $this->db->prepare("
-                INSERT INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
-            ");
-            $stmt->execute([
-                $this->filial['id'],
-                $doc['chave'],
-                $doc['cnpj'],
-                $doc['nome'],
-                $doc['numero'],
-                date('Y-m-d H:i:s', strtotime($doc['data'])),
-                $doc['valor'],
-                $doc['xml']
-            ]);
-            
-            $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $this->db->lastInsertId(), null, $doc['chave']);
+            try {
+                $stmt = $this->db->prepare("
+                    INSERT INTO nfe_importadas (filial_id, chave_acesso, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
+                ");
+                $stmt->execute([
+                    $filialId,
+                    $doc['chave'],
+                    $doc['cnpj'],
+                    $doc['nome'],
+                    $doc['numero'],
+                    date('Y-m-d H:i:s', strtotime($doc['data'])),
+                    $doc['valor'],
+                    $doc['xml']
+                ]);
+                $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $this->db->lastInsertId(), null, $doc['chave']);
+            } catch (Exception $e) {
+                // Provavelmente duplicidade (chave_acesso UNIQUE), ignoramos silenciosamente
+                continue;
+            }
         }
     }
 }

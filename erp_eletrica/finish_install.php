@@ -43,21 +43,37 @@ try {
     $db->exec($sqlAuth);
     echo "<p style='color:green;'>✅ Tabela 'autorizacoes_temporarias' verificada/criada.</p>";
 
-    echo "<h3>4. Verificando tabela 'nfe_importadas'...</h3>";
+    echo "<h3>4. Verificando tabela 'sefaz_config'...</h3>";
+    $sqlConfig = "CREATE TABLE IF NOT EXISTS sefaz_config (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        certificado_path VARCHAR(255) NOT NULL,
+        certificado_senha VARCHAR(255) NOT NULL,
+        ambiente ENUM('producao','homologacao') DEFAULT 'producao',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+    
+    try {
+        $db->exec($sqlConfig);
+        echo "<p style='color:green;'>✅ Tabela 'sefaz_config' verificada/criada.</p>";
+    } catch (Exception $e) {
+        echo "<p style='color:red;'>❌ Erro ao criar tabela 'sefaz_config': " . $e->getMessage() . "</p>";
+    }
+
+    echo "<h3>5. Verificando tabela 'nfe_importadas'...</h3>";
     $sqlNfe = "CREATE TABLE IF NOT EXISTS nfe_importadas (
         id INT AUTO_INCREMENT PRIMARY KEY,
         filial_id INT NOT NULL,
-        chave_nfe VARCHAR(44) NOT NULL,
+        chave_acesso VARCHAR(44) UNIQUE NOT NULL,
         fornecedor_cnpj VARCHAR(14) NOT NULL,
         fornecedor_nome VARCHAR(255) NOT NULL,
         numero_nota VARCHAR(20) NOT NULL,
         data_emissao DATETIME NOT NULL,
         valor_total DECIMAL(15,2) NOT NULL,
-        xml_conteudo LONGTEXT,
+        xml LONGTEXT,
         status ENUM('pendente', 'importada') DEFAULT 'pendente',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_filial (filial_id),
-        INDEX idx_chave (chave_nfe)
+        INDEX idx_chave (chave_acesso)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
     
     try {

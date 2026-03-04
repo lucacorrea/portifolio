@@ -38,14 +38,19 @@ class ImportacaoAutomaticaController extends BaseController {
 
     public function sincronizar() {
         try {
+            $db = \App\Config\Database::getInstance()->getConnection();
             $filialId = $_SESSION['filial_id'] ?? 1;
-            $service = new SefazConsultaService($filialId);
             
-            // Buscar o último NSU consultado para esta filial (opcional, aqui simulamos 0)
-            $resultado = $service->consultarNotas('0');
+            // Buscar CNPJ da filial
+            $stmt = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
+            $stmt->execute([$filialId]);
+            $cnpj = $stmt->fetchColumn();
+
+            $service = new SefazConsultaService();
+            $resultado = $service->consultarNotas($cnpj, '0');
             
             if (!empty($resultado['documentos'])) {
-                $service->salvarNotasCache($resultado['documentos']);
+                $service->salvarNotasCache($filialId, $resultado['documentos']);
                 echo json_encode(['success' => true, 'count' => count($resultado['documentos'])]);
             } else {
                 echo json_encode(['success' => true, 'count' => 0, 'message' => 'Nenhuma nota nova encontrada na SEFAZ.']);
@@ -61,17 +66,17 @@ class ImportacaoAutomaticaController extends BaseController {
         if (!$id) exit;
 
         $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT xml_conteudo FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt = $db->prepare("SELECT xml FROM nfe_importadas WHERE id = ? AND filial_id = ?");
         $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
         $nota = $stmt->fetch();
 
-        if (!$nota || empty($nota['xml_conteudo'])) {
+        if (!$nota || empty($nota['xml'])) {
             echo json_encode(['success' => false, 'error' => 'XML não encontrado.']);
             exit;
         }
 
-        // Tentar ler o XML (pode ser resNFe ou procNFe)
-        $xml = simplexml_load_string($nota['xml_conteudo']);
+        // Tentar ler o XML
+        $xml = simplexml_load_string($nota['xml']);
         if ($xml->getName() == 'resNFe') {
              echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo. (Funcionalidade de Manifestação Pendente)']);
              exit;
