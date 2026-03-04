@@ -47,6 +47,16 @@ class ClientController extends BaseController {
         ]);
     }
 
+    public function save() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $model = new Client();
+            $data = $_POST;
+            $data['id'] = $_POST['id'] ?? null;
+            $model->save($data);
+            $this->redirect('clientes.php?msg=Cliente salvo com sucesso');
+        }
+    }
+
     public function quickSave() {
         header('Content-Type: application/json');
         try {
