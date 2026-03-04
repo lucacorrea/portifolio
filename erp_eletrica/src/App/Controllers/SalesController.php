@@ -18,28 +18,81 @@ class SalesController extends BaseController {
     }
 
     public function search() {
-        $term = $_GET['term'] ?? '';
+        $term = trim($_GET['term'] ?? '');
+        if (empty($term)) {
+            echo json_encode([]);
+            exit;
+        }
+
         $db = \App\Config\Database::getInstance()->getConnection();
-        
-        $filialId = $_SESSION['filial_id'] ?? null;
+        $filialId = $_SESSION['filial_id'] ?? 1;
         $isMatriz = $_SESSION['is_matriz'] ?? false;
         
-        $sql = "SELECT id, nome, preco_venda, unidade, imagens, codigo 
-                FROM produtos 
-                WHERE (nome LIKE ? OR codigo LIKE ? OR codigo = ?) ";
-        $params = ["%$term%", "%$term%", $term];
+        $results = [];
+
+        // 1. Search Products
+        $sqlProd = "SELECT id, nome, preco_venda, unidade, imagens, codigo, 'product' as type 
+                    FROM produtos 
+                    WHERE (nome LIKE ? OR codigo LIKE ? OR codigo = ?) ";
+        $paramsProd = ["%$term%", "%$term%", $term];
         
-        if (!$isMatriz && $filialId) {
-            $sql .= " AND filial_id = ?";
-            $params[] = $filialId;
+        if (!$isMatriz) {
+            $sqlProd .= " AND filial_id = ?";
+            $paramsProd[] = $filialId;
         }
+        $sqlProd .= " ORDER BY (CASE WHEN codigo = ? THEN 1 WHEN codigo LIKE ? THEN 2 ELSE 3 END), nome ASC LIMIT 10";
+        $paramsProd[] = $term;
+        $paramsProd[] = "$term%";
+
+        $stmtProd = $db->prepare($sqlProd);
+        $stmtProd->execute($paramsProd);
+        $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
+        foreach ($products as $p) $results[] = $p;
+
+        // 2. Search Pre-Sales (Pending)
+        $modelPV = new \App\Models\PreSale();
+        $avulsoCol = $modelPV->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
         
-        $sql .= " ORDER BY (CASE WHEN codigo = ? THEN 1 WHEN codigo LIKE ? THEN 2 ELSE 3 END), nome ASC LIMIT 15";
-        $params[] = $term;
-        $params[] = "$term%";
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        $sqlPV = "
+            SELECT pv.id, pv.codigo, pv.valor_total as preco_venda, 
+                   COALESCE(c.nome, $avulsoCol, 'Consumidor') as nome, 
+                   'UN' as unidade, '' as imagens, 'pre_sale' as type
+            FROM pre_vendas pv 
+            LEFT JOIN clientes c ON pv.cliente_id = c.id 
+            WHERE pv.status = 'pendente' ";
+            
+        $paramsPV = [];
+        if (!$isMatriz) {
+            $sqlPV .= " AND pv.filial_id = ? ";
+            $paramsPV[] = $filialId;
+        }
+
+        $termLike = "%$term%";
+        $termInt = (int)$term;
+        $sqlPV .= " AND (LOWER(pv.codigo) LIKE ? OR pv.id = ? OR LOWER(c.nome) LIKE ? OR LOWER($avulsoCol) LIKE ?) ";
+        $paramsPV[] = strtolower($termLike);
+        $paramsPV[] = $termInt;
+        $paramsPV[] = strtolower($termLike);
+        $paramsPV[] = strtolower($termLike);
+        
+        $sqlPV .= " LIMIT 5";
+        
+        $stmtPV = $db->prepare($sqlPV);
+        $stmtPV->execute($paramsPV);
+        $pvs = $stmtPV->fetchAll(\PDO::FETCH_ASSOC);
+        foreach ($pvs as $pv) {
+            $pv['nome'] = "PRÉ-VENDA: " . $pv['codigo'] . " (" . $pv['nome'] . ")";
+            $results[] = $pv;
+        }
+
+        // Sort: PVs first if they match PV code, then products
+        usort($results, function($a, $b) use ($term) {
+            if ($a['type'] === 'pre_sale' && str_contains(strtolower($a['codigo'] ?? ''), strtolower($term))) return -1;
+            if ($b['type'] === 'pre_sale' && str_contains(strtolower($b['codigo'] ?? ''), strtolower($term))) return 1;
+            return 0;
+        });
+
+        echo json_encode(array_slice($results, 0, 15));
         exit;
     }
 
@@ -286,5 +339,53 @@ class SalesController extends BaseController {
         $userModel = new \App\Models\User();
         echo json_encode($userModel->findAdmins());
         exit;
+    }
+
+    public function check_client_completeness() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            echo json_encode(['is_complete' => false, 'missing' => ['id']]);
+            exit;
+        }
+
+        $model = new Client();
+        $client = $model->find($id);
+        
+        if (!$client) {
+            echo json_encode(['is_complete' => false, 'error' => 'Cliente não encontrado']);
+            exit;
+        }
+
+        $missing = [];
+        if (empty($client['cpf_cnpj'])) $missing[] = 'cpf_cnpj';
+        if (empty($client['endereco'])) $missing[] = 'endereco';
+        if (empty($client['telefone'])) $missing[] = 'telefone';
+
+        echo json_encode([
+            'is_complete' => empty($missing),
+            'missing' => $missing,
+            'client' => $client
+        ]);
+        exit;
+    }
+
+    public function update_client_quick() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? null;
+            if (!$id) {
+                echo json_encode(['success' => false, 'error' => 'ID ausente']);
+                exit;
+            }
+
+            try {
+                $model = new Client();
+                $model->save($data);
+                echo json_encode(['success' => true]);
+            } catch (\Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+            exit;
+        }
     }
 }

@@ -12,11 +12,13 @@ switch ($action) {
     case 'list_recent':
     case 'get_sale':
     case 'list_admins':
+    case 'check_client_completeness':
         \App\Services\AuthService::checkPermission('vendas', 'visualizar');
         $controller->$action();
         break;
     case 'checkout':
     case 'authorize_discount':
+    case 'update_client_quick':
         \App\Services\AuthService::checkPermission('vendas', 'criar');
         $controller->$action();
         break;

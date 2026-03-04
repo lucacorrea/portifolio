@@ -189,12 +189,6 @@
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-light border-0 d-flex justify-content-between align-items-center">
                 <h5 class="modal-title fw-bold"><i class="fas fa-file-import me-2"></i>Pré-Vendas Pendentes</h5>
-                <div class="ms-auto me-3" style="width: 250px;">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search"></i></span>
-                        <input type="text" id="searchPVTerm" class="form-control border-start-0" placeholder="Buscar por Nome ou Código..." onkeyup="loadPendingPreSales()">
-                    </div>
-                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
@@ -284,7 +278,73 @@
     </div>
 </div>
 
-<!-- Scripts for PDV Logic -->
+<!-- Modal: Entrada Fiado -->
+<div class="modal fade" id="modalEntrada" data-bs-backdrop="static" tabindex="-1" style="z-index: 1060;">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Entrada / Sinal</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada em dinheiro</strong> para esta venda fiado?</p>
+                <div class="mb-3 text-start">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor da Entrada (R$)</label>
+                    <input type="number" id="entradaValor" class="form-control form-control-lg text-center fw-bold text-success" placeholder="0,00" step="0.01" min="0">
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-warning fw-bold py-2 shadow-sm" onclick="confirmarCheckoutFiado()">
+                        FINALIZAR VENDA
+                    </button>
+                </div>
+                <button class="btn btn-link btn-sm text-muted mt-2 text-decoration-none" onclick="document.getElementById('entradaValor').value=0; confirmarCheckoutFiado()">Continuar sem entrada</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Complemento de Cadastro (Fiado) -->
+<div class="modal fade" id="modalCompleteClient" data-bs-backdrop="static" tabindex="-1" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-user-edit me-2"></i>Completar Cadastro para Fiado</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-4">Para realizar vendas a prazo (Fiado), é obrigatório que o cliente possua os dados abaixo preenchidos:</p>
+                
+                <input type="hidden" id="edit_client_id">
+                
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">CPF ou CNPJ</label>
+                    <input type="text" id="edit_client_doc" class="form-control" placeholder="000.000.000-00">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Telefone / WhatsApp</label>
+                    <input type="text" id="edit_client_phone" class="form-control" placeholder="(00) 00000-0000">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço Completo</label>
+                    <textarea id="edit_client_address" class="form-control" rows="2" placeholder="Rua, Número, Bairro, Cidade..."></textarea>
+                </div>
+
+                <div class="d-grid">
+                    <button class="btn btn-primary fw-bold py-3 shadow-sm" onclick="updateClientAndContinue()">
+                        SALVAR E CONTINUAR VENDA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let cart = [];
 let currentPvId = null;
@@ -315,7 +375,7 @@ pdvSearch.addEventListener('input', async (e) => {
         return;
     }
 
-    const response = await fetch(`vendas.php?action=search&term=${term}`);
+    const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
     const products = await response.json();
     renderSearchResults(products);
 });
@@ -330,17 +390,37 @@ function renderSearchResults(products) {
     products.forEach(p => {
         const item = document.createElement('button');
         item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3';
+        
+        const isPV = p.type === 'pre_sale';
+        const icon = isPV ? 'fa-file-invoice-dollar text-warning' : 'fa-box text-primary';
+        const badge = isPV ? '<span class="badge bg-warning text-dark extra-small ms-2">PRÉ-VENDA</span>' : '';
+
         item.innerHTML = `
-            <div>
-                <div class="fw-bold text-primary">${p.nome}</div>
-                <small class="text-muted">Cód: ${p.id} | Un: ${p.unidade}</small>
+            <div class="d-flex align-items-center">
+                <i class="fas ${icon} fs-4 me-3 opacity-75"></i>
+                <div>
+                    <div class="fw-bold ${isPV ? 'text-warning' : 'text-primary'}">${p.nome} ${badge}</div>
+                    <small class="text-muted">Cód: ${p.codigo || p.id} | Un: ${p.unidade}</small>
+                </div>
             </div>
             <div class="text-end">
                 <div class="fw-bold">R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</div>
+                ${isPV ? '<small class="text-success extra-small fw-bold">CLIQUE PARA IMPORTAR</small>' : ''}
             </div>
         `;
-        item.onmouseover = () => showPreview(p);
-        item.onclick = () => addToCart(p);
+        
+        if (isPV) {
+            item.onclick = (e) => {
+                e.preventDefault();
+                importPreSale(p.codigo);
+                pdvSearch.value = '';
+                searchResults.classList.add('d-none');
+            };
+        } else {
+            item.onmouseover = () => showPreview(p);
+            item.onclick = () => addToCart(p);
+        }
+        
         searchResults.appendChild(item);
     });
     searchResults.classList.remove('d-none');
@@ -442,7 +522,7 @@ if (customerSearch) {
         }
 
         try {
-            const response = await fetch(`vendas.php?action=search_clients&term=${term}`);
+            const response = await fetch(`vendas.php?action=search_clients&term=${encodeURIComponent(term)}`);
             const clients = await response.json();
             renderCustomerSearchResults(clients);
         } catch (err) {
@@ -539,10 +619,10 @@ async function salvarQuickClient() {
 // Pre-sale flow
 async function loadPendingPreSales() {
     console.log("PDV: Carregando pré-vendas pendentes...");
-    const term = document.getElementById('searchPVTerm')?.value || '';
+    const term = '';
     
     try {
-        const res = await fetch(`pre_vendas.php?action=list_pending&term=${term}`);
+        const res = await fetch(`pre_vendas.php?action=list_pending&term=${encodeURIComponent(term)}`);
         if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
         const pvs = await res.json();
         const list = document.getElementById('listPendingPVs');
@@ -591,14 +671,36 @@ async function importPreSale(code) {
             qty: parseFloat(i.quantidade),
             imagens: i.imagens
         }));
+        
         currentPvId = pv.id;
+        
+        // Auto-select customer if present in pre-sale
         if (pv.cliente_id) {
-            selectCustomer(pv.cliente_id, pv.cliente_nome, pv.cliente_doc);
+            selectCustomer(pv.cliente_id, pv.cliente_nome, pv.cliente_doc || '');
+        } else if (pv.nome_cliente_avulso) {
+            // If it's a walk-in name, we can just set the name for the record but not a DB ID
+            selectedCustomerId = null;
+            selectedCustomerName = pv.nome_cliente_avulso;
+            // UI Update for walk-in
+            const customerInfo = document.getElementById('selectedCustomerInfo');
+            const customerNameDisplay = document.getElementById('selectedCustomerName');
+            const customerDocDisplay = document.getElementById('selectedCustomerDoc');
+            if (customerInfo && customerNameDisplay) {
+                customerNameDisplay.innerText = pv.nome_cliente_avulso;
+                customerDocDisplay.innerText = 'Consumidor Avulso';
+                customerInfo.classList.remove('d-none');
+                customerSearch.closest('.input-group').classList.add('d-none');
+                customerSearch.closest('div.mb-4').querySelector('label').classList.add('d-none');
+            }
         } else {
             clearCustomer();
         }
+        
         renderCart();
-        bootstrap.Modal.getInstance(document.getElementById('modalPendingPV')).hide();
+        
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalPendingPV'));
+        if (modalInstance) modalInstance.hide();
+        
         pdvSearch.focus();
     }
 }
@@ -768,7 +870,6 @@ btnCheckout.onclick = async () => {
     
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     
-    // Safety check: blockage if discount exists but not authorized
     if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
         alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
         await loadAdmins();
@@ -784,7 +885,27 @@ btnCheckout.onclick = async () => {
             customerSearch.focus();
             return;
         }
-        // Show entry modal
+
+        // Validation: Completeness for Fiado
+        try {
+            const res = await fetch(`vendas.php?action=check_client_completeness&id=${selectedCustomerId}`);
+            const data = await res.json();
+            
+            if (!data.is_complete) {
+                // Show completion modal
+                document.getElementById('edit_client_id').value = selectedCustomerId;
+                document.getElementById('edit_client_doc').value = data.client.cpf_cnpj || '';
+                document.getElementById('edit_client_phone').value = data.client.telefone || '';
+                document.getElementById('edit_client_address').value = data.client.endereco || '';
+                
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompleteClient')).show();
+                return;
+            }
+        } catch (err) {
+            console.error("Erro validando cliente:", err);
+        }
+
+        // Proceed to entry modal if complete
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
         document.getElementById('entradaValor').value = '';
         modal.show();
@@ -793,6 +914,40 @@ btnCheckout.onclick = async () => {
         processarCheckout();
     }
 };
+
+async function updateClientAndContinue() {
+    const id = document.getElementById('edit_client_id').value;
+    const doc = document.getElementById('edit_client_doc').value;
+    const phone = document.getElementById('edit_client_phone').value;
+    const address = document.getElementById('edit_client_address').value;
+
+    if (!doc || !phone || !address) {
+        alert('Por favor, preencha todos os campos obrigatórios para o Fiado.');
+        return;
+    }
+
+    try {
+        const res = await fetch('vendas.php?action=update_client_quick', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, cpf_cnpj: doc, telefone: phone, endereco: address })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCompleteClient')).hide();
+            // Now show the entry modal
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
+            document.getElementById('entradaValor').value = '';
+            modal.show();
+            setTimeout(() => document.getElementById('entradaValor').focus(), 500);
+        } else {
+            alert('Erro ao atualizar cliente: ' + result.error);
+        }
+    } catch (err) {
+        alert('Erro de conexão: ' + err.message);
+    }
+}
 
 async function confirmarCheckoutFiado() {
     processarCheckout();
@@ -939,7 +1094,7 @@ document.addEventListener('keydown', (e) => {
 // Barcode optimization: If search returns exactly 1 result and looks like a barcode, add to cart automatically
 async function handleBarcode(val) {
     if (val.length >= 8 && !isNaN(val)) {
-        const response = await fetch(`vendas.php?action=search&term=${val}`);
+        const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(val)}`);
         const products = await response.json();
         if (products.length === 1) {
             addToCart(products[0]);
@@ -951,29 +1106,4 @@ async function handleBarcode(val) {
 pdvSearch.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
-
-<!-- Modal: Entrada Fiado -->
-<div class="modal fade" id="modalEntrada" data-bs-backdrop="static" tabindex="-1" style="z-index: 1060;">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-warning text-dark border-0">
-                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Entrada / Sinal</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-4 text-center">
-                <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada em dinheiro</strong> para esta venda fiado?</p>
-                <div class="mb-3 text-start">
-                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor da Entrada (R$)</label>
-                    <input type="number" id="entradaValor" class="form-control form-control-lg text-center fw-bold text-success" placeholder="0,00" step="0.01" min="0">
-                </div>
-                <div class="d-grid">
-                    <button class="btn btn-warning fw-bold py-2 shadow-sm" onclick="confirmarCheckoutFiado()">
-                        FINALIZAR VENDA
-                    </button>
-                </div>
-                <button class="btn btn-link btn-sm text-muted mt-2 text-decoration-none" onclick="document.getElementById('entradaValor').value=0; confirmarCheckoutFiado()">Continuar sem entrada</button>
-            </div>
-        </div>
-    </div>
-</div>
 </script>
