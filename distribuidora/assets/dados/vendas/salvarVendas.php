@@ -237,7 +237,7 @@ if ($pagMode === 'UNICO') {
 // Validation for Fiado client
 if ($pagamento === 'FIADO' || ($pagMode === 'MULTI' && in_array('FIADO', array_column(json_decode($pagamentoJson, true)['parts'] ?? [], 'method')))) {
     if (!isset($payload['client_id']) || (int)$payload['client_id'] <= 0) {
-        fail('Venda fiado exige um cliente cadastrado.');
+        fail('Venda à prazo exige um cliente cadastrado.');
     }
 }
 

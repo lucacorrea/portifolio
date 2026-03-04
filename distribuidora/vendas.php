@@ -1050,7 +1050,7 @@ function fmtMoney($v): string
                   <div class="mb-3">
                     <label class="form-label">Cliente</label>
                     <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" autocomplete="off" />
-                    <div id="fiadoFeedback" class="fiado-alert">Cliente não localizado. Pressione F6 para cadastrar.</div>
+                    <div id="fiadoFeedback" class="fiado-alert">Cliente não localizado. Pressione F6 para cadastrar. (Obrigatório para venda À Prazo)</div>
                     <div class="muted mt-1">Consumidor final (se vazio).</div>
                   </div>
 
@@ -1107,7 +1107,7 @@ function fmtMoney($v): string
                         <div class="pay-btn active" data-pay="DINHEIRO"><i class="lni lni-coin"></i> Dinheiro</div>
                         <div class="pay-btn" data-pay="PIX"><i class="lni lni-telegram-original"></i> Pix</div>
                         <div class="pay-btn" data-pay="CARTAO"><i class="lni lni-credit-cards"></i> Cartão</div>
-                        <div class="pay-btn" data-pay="FIADO"><i class="lni lni-handshake"></i> Fiado</div>
+                        <div class="pay-btn" data-pay="FIADO"><i class="lni lni-handshake"></i> À Prazo</div>
                       </div>
 
                       <div class="row g-2">
@@ -1904,7 +1904,7 @@ function fmtMoney($v): string
           };
           return {
             ok: false,
-            msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total."
+            msg: "Para Pix/Cartão/À Prazo, o valor pago deve ser igual ao total."
           };
         }
         return {
@@ -1929,12 +1929,12 @@ function fmtMoney($v): string
 
     async function checkClientFiado() {
       const q = cCliente.value.trim();
-      const feedback = document.getElementById("fiadoFeedback");
+      const fiadoFeedback = document.getElementById("fiadoFeedback");
       
-      if (!q) {
+      if (q === '') {
+        fiadoFeedback.style.display = 'none';
+        cCliente.classList.remove('client-verified', 'client-unverified');
         SELECTED_CLIENT = null;
-        cCliente.classList.remove("client-verified", "client-unverified");
-        feedback.style.display = "none";
         return;
       }
 
@@ -1949,16 +1949,17 @@ function fmtMoney($v): string
           cCliente.value = SELECTED_CLIENT.nome; // Auto-completa com o nome correto
           cCliente.classList.add("client-verified");
           cCliente.classList.remove("client-unverified");
-          feedback.style.display = "none";
+          fiadoFeedback.style.display = "none";
         } else {
           SELECTED_CLIENT = null;
-          if (PAY_SELECTED === "FIADO") {
+          if (PAY_SELECTED === "FIADO" || isMultiFiado()) { // Keep "FIADO" for internal logic
             cCliente.classList.add("client-unverified");
             cCliente.classList.remove("client-verified");
-            feedback.style.display = "block";
+            fiadoFeedback.style.display = "block";
+            fiadoFeedback.innerText = "Nome não encontrado. Venda À Prazo exige cadastro (F6).";
           } else {
             cCliente.classList.remove("client-verified", "client-unverified");
-            feedback.style.display = "none";
+            fiadoFeedback.style.display = "none";
           }
         }
       } catch (e) {
@@ -1974,7 +1975,7 @@ function fmtMoney($v): string
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Novo Cliente</h5>
+            <h5 class="modal-title" id="modalNovoClienteLabel">Cadastro de Cliente (Obrigatório À Prazo)</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -2044,7 +2045,7 @@ function fmtMoney($v): string
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">Venda Fiado - Entrada</h5>
+            <h5 class="modal-title">Venda À Prazo - Entrada</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -2109,7 +2110,7 @@ function fmtMoney($v): string
       if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
       
       if (PAY_SELECTED === "FIADO" || (PAY_MODE === "MULTI" && Array.from(paysWrap.querySelectorAll(".mMethod")).some(s => s.value === "FIADO"))) {
-        if (!SELECTED_CLIENT) return { ok: false, msg: "Venda fiado exige um cliente cadastrado selecionado." };
+        if (!SELECTED_CLIENT) return { ok: false, msg: "Venda à prazo exige um cliente cadastrado selecionado." };
       }
 
       if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return {
@@ -2132,7 +2133,7 @@ function fmtMoney($v): string
           if (r.method === "FIADO") return { ok: true }; // Custom check already passed
           return {
             ok: false,
-            msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total."
+            msg: "Para Pix/Cartão/À Prazo, o valor pago deve ser igual ao total."
           };
         }
         return {
