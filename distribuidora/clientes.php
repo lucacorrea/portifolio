@@ -558,7 +558,7 @@
                         </span>
                         <span class="text">Estoque</span>
                     </a>
-                    <ul id="ddmenu_estoque" class="collapse dropdown-nav show">
+                    <ul id="ddmenu_estoque" class="collapse dropdown-nav">
                         <li><a href="produtos.php">Produtos</a></li>
                         <li><a href="inventario.php">Inventário</a></li>
                         <li><a href="entradas.php">Entradas</a></li>
@@ -579,7 +579,7 @@
                         </span>
                         <span class="text">Cadastros</span>
                     </a>
-                    <ul id="ddmenu_cadastros" class="collapse dropdown-nav active">
+                    <ul id="ddmenu_cadastros" class="collapse dropdown-nav active show">
                         <li><a href="clientes.php" class="active">Clientes</a></li>
                         <li><a href="fornecedores.php">Fornecedores</a></li>
                         <li><a href="categorias.php">Categorias</a></li>
