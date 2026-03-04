@@ -47,8 +47,10 @@ class PreSale extends BaseModel {
     }
 
     public function findByCode($code) {
-        $nameField = $this->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : 'NULL';
-        $sql = "SELECT pv.*, IFNULL(c.nome, $nameField) as cliente_nome 
+        $nameField = $this->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
+        $sql = "SELECT pv.*, 
+                       COALESCE(c.nome, $nameField, 'Consumidor') as cliente_nome,
+                       c.cpf_cnpj as cliente_doc
                 FROM {$this->table} pv 
                 LEFT JOIN clientes c ON pv.cliente_id = c.id
                 WHERE pv.codigo = ? AND pv.status = 'pendente'";
