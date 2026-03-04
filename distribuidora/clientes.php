@@ -1082,7 +1082,7 @@ $csrf = csrf_token();
 
             $('fmMsg').textContent = 'Salvando...';
 
-            const url = id ? 'editarClientes.php' : 'salvarClientes.php';
+            const url = id ? 'assets/dados/clientes/editarClientes.php' : 'assets/dados/clientes/salvarClientes.php';
 
             const res = await fetch(url, {
                 method: 'POST',
@@ -1112,7 +1112,7 @@ $csrf = csrf_token();
             const id = Number(state.currentId || 0);
             if (!id) return;
 
-            const res = await fetch('excluirClientes.php', {
+            const res = await fetch('assets/dados/clientes/excluirClientes.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
