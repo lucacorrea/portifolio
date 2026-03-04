@@ -1,0 +1,43 @@
+<?php
+require_once 'config.php';
+
+echo "<h1>🛠️ Finalizando Instalação de Novas Funcionalidades</h1>";
+
+try {
+    $db = \App\Config\Database::getInstance()->getConnection();
+    
+    echo "<h3>1. Verificando tabela 'pre_vendas'...</h3>";
+    $stmt = $db->query("SHOW COLUMNS FROM pre_vendas LIKE 'nome_cliente_avulso'");
+    if (!$stmt->fetch()) {
+        echo "<p>Adicionando coluna 'nome_cliente_avulso' em pre_vendas...</p>";
+        $db->exec("ALTER TABLE pre_vendas ADD COLUMN nome_cliente_avulso VARCHAR(255) NULL AFTER cliente_id");
+        echo "<p style='color:green;'>✅ Coluna 'nome_cliente_avulso' adicionada.</p>";
+    } else {
+        echo "<p style='color:blue;'>ℹ️ Coluna 'nome_cliente_avulso' já existe.</p>";
+    }
+
+    echo "<h3>2. Verificando tabela 'autorizacoes_temporarias'...</h3>";
+    $sqlAuth = "CREATE TABLE IF NOT EXISTS autorizacoes_temporarias (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tipo ENUM('desconto', 'sangria') NOT NULL,
+        codigo VARCHAR(10) NOT NULL,
+        usuario_autorizador_id INT NULL,
+        validade DATETIME NOT NULL,
+        utilizado BOOLEAN DEFAULT 0,
+        filial_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_auth_codigo (codigo),
+        INDEX idx_auth_filial (filial_id),
+        INDEX idx_auth_validade (validade)
+    ) ENGINE=InnoDB;";
+    $db->exec($sqlAuth);
+    echo "<p style='color:green;'>✅ Tabela 'autorizacoes_temporarias' verificada/criada.</p>";
+
+    echo "<hr><h2>🎉 Tudo pronto!</h2>";
+    echo "<p>As funcionalidades de Pré-Venda, Fiado, XML e Autorizações estão com o banco de dados configurado.</p>";
+    echo "<p>Por segurança, <b>apague este arquivo (finish_install.php)</b> agora.</p>";
+    echo "<br><a href='index.php' style='padding:10px 20px; background:#198754; color:white; text-decoration:none; border-radius:5px;'>Ir para o Painel</a>";
+
+} catch (Exception $e) {
+    echo "<h2 style='color:red;'>❌ Erro ao atualizar banco:</h2> " . $e->getMessage();
+}

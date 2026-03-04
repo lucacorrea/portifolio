@@ -72,10 +72,13 @@
                     <label class="form-label small fw-bold text-uppercase text-muted">Cliente</label>
                     <div class="input-group mb-2">
                         <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-muted"></i></span>
-                        <select id="pv_cliente_id" class="form-select bg-light border-start-0">
-                            <option value="">CONSUMIDOR FINAL</option>
+                        <select id="pv_cliente_id" class="form-select bg-light border-start-0" onchange="toggleManualName(this.value)">
+                            <option value="">CONSUMIDOR FINAL / NOME MANUAL</option>
                             <!-- Searchable list could be here -->
                         </select>
+                    </div>
+                    <div id="manual_name_container" class="mt-2">
+                        <input type="text" id="pv_nome_cliente_avulso" class="form-control" placeholder="Digite o nome do cliente avulso...">
                     </div>
                 </div>
 
@@ -261,6 +264,7 @@ async function generatePreSale() {
     
     const data = {
         cliente_id: document.getElementById('pv_cliente_id').value || null,
+        nome_cliente_avulso: document.getElementById('pv_nome_cliente_avulso').value || null,
         items: pvCart,
         valor_total: pvCart.reduce((acc, i) => acc + (i.price * i.qty), 0)
     };
@@ -291,4 +295,14 @@ document.addEventListener('keydown', (e) => {
         generatePreSale();
     }
 });
+function toggleManualName(val) {
+    const container = document.getElementById('manual_name_container');
+    const input = document.getElementById('pv_nome_cliente_avulso');
+    if (val === "") {
+        container.classList.remove('d-none');
+    } else {
+        container.classList.add('d-none');
+        input.value = "";
+    }
+}
 </script>

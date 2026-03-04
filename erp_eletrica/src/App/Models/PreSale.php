@@ -6,11 +6,12 @@ class PreSale extends BaseModel {
 
     public function create($data) {
         $codigo = 'PV-' . strtoupper(substr(uniqid(), -6));
-        $sql = "INSERT INTO {$this->table} (codigo, cliente_id, usuario_id, filial_id, valor_total, status) 
-                VALUES (?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO {$this->table} (codigo, cliente_id, nome_cliente_avulso, usuario_id, filial_id, valor_total, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
         $params = [
             $codigo,
             $data['cliente_id'] ?? null,
+            $data['nome_cliente_avulso'] ?? null,
             $data['usuario_id'],
             $data['filial_id'],
             $data['valor_total'],
@@ -44,7 +45,9 @@ class PreSale extends BaseModel {
 
     public function getRecent($limit = 10) {
         return $this->query("
-            SELECT pv.*, c.nome as cliente_nome, u.nome as vendedor_nome 
+            SELECT pv.*, 
+                   IFNULL(c.nome, pv.nome_cliente_avulso) as cliente_nome, 
+                   u.nome as vendedor_nome 
             FROM {$this->table} pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
             LEFT JOIN usuarios u ON pv.usuario_id = u.id 
