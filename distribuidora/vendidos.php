@@ -272,6 +272,14 @@ if ($action === 'fetch') {
             $itCount++;
         }
 
+        // Cálculo do valor recebido no ato
+        $vRecebido = (float)($r['total'] ?? 0);
+        if (strtoupper((string)($r['pagamento'] ?? '')) === 'FIADO') {
+            $stF = $pdo->prepare("SELECT valor_pago FROM fiados WHERE venda_id = ?");
+            $stF->execute([$id]);
+            $vRecebido = (float)($stF->fetchColumn() ?: 0);
+        }
+
         $outRows[] = [
             'id' => $id,
             'data' => (string)$r['data'],
@@ -283,6 +291,7 @@ if ($action === 'fetch') {
             'desconto' => (float)($r['desconto_valor'] ?? 0),
             'taxa' => (float)($r['taxa_entrega'] ?? 0),
             'total' => (float)($r['total'] ?? 0),
+            'recebido' => $vRecebido, // Adicionado aqui
             'endereco' => (string)($r['endereco'] ?? ''),
             'obs' => (string)($r['obs'] ?? ''),
             'itens' => $itens,
@@ -294,17 +303,15 @@ if ($action === 'fetch') {
     $totalCount = (int)($tot['qtd'] ?? 0);
     $pages = (int)max(1, ceil($totalCount / $per));
 
-    // Além do total vendido, precisamos do total recebido de outras fontes (pagamentos de fiados no período)
-    $recFiadoExtra = 0.0;
-    // Aqui precisaríamos saber o período filtrado. 
-    // Vamos ajustar o build_where para retornar também as datas se possível ou recalcular.
-    // Como o vendidos.php carrega tudo do dia ou período, vamos calcular aqui.
-    $dtI = $_GET['data_inicio'] ?? date('Y-m-d');
-    $dtF = $_GET['data_fim'] ?? date('Y-m-d');
+    // Ajuste das datas para o pagamento de fiados (usar di/df que o JS envia)
+    $dtI = get_str('di', date('Y-m-d'));
+    $dtF = get_str('df', date('Y-m-d'));
 
     $stPag = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE DATE(created_at) BETWEEN ? AND ?");
     $stPag->execute([$dtI, $dtF]);
     $recFiadoExtra = (float)$stPag->fetchColumn();
+
+    $sumRecebidoVendas = array_sum(array_column($outRows, 'recebido'));
 
     json_out([
         'ok' => true,
@@ -315,14 +322,14 @@ if ($action === 'fetch') {
             'total' => $totalCount,
         ],
         'totais' => [
-            'qtd' => (int)($tot['qtd'] ?? 0),
+            'qtd' => $totalCount,
             'subtotal' => (float)($tot['subtotal'] ?? 0),
             'desconto' => (float)($tot['desconto'] ?? 0),
             'taxa' => (float)($tot['taxa'] ?? 0),
             'total' => (float)($tot['total'] ?? 0),
-            'total_recebido_vendas' => array_sum(array_column($outRows, 'recebido')), // Adicionado total recebido de vendas
-            'total_recebido_fiados_extra' => $recFiadoExtra, // Adicionado total recebido de fiados extra
-            'caixa_real' => array_sum(array_column($outRows, 'recebido')) + $recFiadoExtra // Adicionado caixa real
+            'recebido_vendas' => $sumRecebidoVendas,
+            'recebido_fiados' => $recFiadoExtra,
+            'caixa_real' => $sumRecebidoVendas + $recFiadoExtra
         ],
         'rows' => $outRows,
     ]);
