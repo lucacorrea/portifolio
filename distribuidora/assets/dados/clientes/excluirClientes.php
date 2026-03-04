@@ -10,17 +10,13 @@ require_once __DIR__ . '/_helpers.php';
 require_db_or_die();
 $pdo = db();
 
-if (!is_post()) redirect('/../../../clientes.php');
+if (!is_post()) redirect(url_here('../../../clientes.php'));
 
 csrf_validate_or_die();
-
-$return = safe_return_to(post_str('return_to', '/../../../clientes.php'));
+$return = safe_return_to(post_str('return_to', url_here('clientes.php')));
 
 $id = post_int('id', 0);
-if ($id <= 0) {
-  flash_set('flash_err', 'ID inválido.');
-  redirect($return);
-}
+if ($id <= 0) { flash_set('flash_err', 'ID inválido.'); redirect($return); }
 
 try {
   $st = $pdo->prepare("SELECT id FROM clientes WHERE id = :id LIMIT 1");

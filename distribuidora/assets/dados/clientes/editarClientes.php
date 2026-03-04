@@ -10,39 +10,23 @@ require_once __DIR__ . '/_helpers.php';
 require_db_or_die();
 $pdo = db();
 
-if (!is_post()) redirect('/../../../clientes.php');
+if (!is_post()) redirect(url_here('../../../clientes.php'));
 
 csrf_validate_or_die();
+$return = safe_return_to(post_str('return_to', url_here('clientes.php')));
 
-$return = safe_return_to(post_str('return_to', '/../../../clientes.php'));
-
-$id = post_int('id', 0);
+$id   = post_int('id', 0);
 $nome = trim(post_str('nome'));
 $cpf  = only_digits(post_str('cpf'));
 $tel  = only_digits(post_str('telefone'));
-$status = strtoupper(trim(post_str('status', 'ATIVO')));
-$obs = trim(post_str('obs', ''));
+$end  = trim(post_str('endereco', ''));
 
-if ($id <= 0) {
-  flash_set('flash_err', 'ID inválido.');
-  redirect($return);
-}
-if ($nome === '' || mb_strlen($nome) < 2) {
-  flash_set('flash_err', 'Informe um nome válido.');
-  redirect($return);
-}
-if (!cpf_is_valid($cpf)) {
-  flash_set('flash_err', 'CPF inválido.');
-  redirect($return);
-}
-if (!tel_min_ok($tel)) {
-  flash_set('flash_err', 'Telefone inválido.');
-  redirect($return);
-}
-if (!in_array($status, ['ATIVO', 'INATIVO'], true)) $status = 'ATIVO';
+if ($id <= 0) { flash_set('flash_err', 'ID inválido.'); redirect($return); }
+if ($nome === '' || mb_strlen($nome) < 2) { flash_set('flash_err', 'Informe um nome válido.'); redirect($return); }
+if (!cpf_is_valid($cpf)) { flash_set('flash_err', 'CPF inválido.'); redirect($return); }
+if (!tel_min_ok($tel)) { flash_set('flash_err', 'Telefone inválido.'); redirect($return); }
 
 try {
-  // existe?
   $st = $pdo->prepare("SELECT id FROM clientes WHERE id = :id LIMIT 1");
   $st->execute(['id' => $id]);
   if (!$st->fetchColumn()) {
@@ -61,9 +45,8 @@ try {
   $sql = "UPDATE clientes
           SET nome = :nome,
               cpf = :cpf,
-              telefone = :telefone,
-              status = :status,
-              obs = :obs,
+              telefone = :tel,
+              endereco = :end,
               updated_at = NOW()
           WHERE id = :id
           LIMIT 1";
@@ -71,9 +54,8 @@ try {
   $stmt->execute([
     'nome' => $nome,
     'cpf' => $cpf,
-    'telefone' => $tel,
-    'status' => $status,
-    'obs' => ($obs !== '' ? $obs : null),
+    'tel' => $tel,
+    'end' => ($end !== '' ? $end : null),
     'id' => $id,
   ]);
 
