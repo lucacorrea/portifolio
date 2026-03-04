@@ -16,7 +16,17 @@ try {
         echo "<p style='color:blue;'>ℹ️ Coluna 'nome_cliente_avulso' já existe.</p>";
     }
 
-    echo "<h3>2. Verificando tabela 'autorizacoes_temporarias'...</h3>";
+    echo "<h3>2. Verificando tabela 'vendas'...</h3>";
+    $stmt = $db->query("SHOW COLUMNS FROM vendas LIKE 'nome_cliente_avulso'");
+    if (!$stmt->fetch()) {
+        echo "<p>Adicionando coluna 'nome_cliente_avulso' em vendas...</p>";
+        $db->exec("ALTER TABLE vendas ADD COLUMN nome_cliente_avulso VARCHAR(255) NULL AFTER cliente_id");
+        echo "<p style='color:green;'>✅ Coluna 'nome_cliente_avulso' adicionada.</p>";
+    } else {
+        echo "<p style='color:blue;'>ℹ️ Coluna 'nome_cliente_avulso' já existe.</p>";
+    }
+
+    echo "<h3>3. Verificando tabela 'autorizacoes_temporarias'...</h3>";
     $sqlAuth = "CREATE TABLE IF NOT EXISTS autorizacoes_temporarias (
         id INT AUTO_INCREMENT PRIMARY KEY,
         tipo ENUM('desconto', 'sangria') NOT NULL,

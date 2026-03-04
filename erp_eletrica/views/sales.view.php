@@ -163,8 +163,14 @@
 <div class="modal fade" id="modalPendingPV" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-light border-0">
+            <div class="modal-header bg-light border-0 d-flex justify-content-between align-items-center">
                 <h5 class="modal-title fw-bold"><i class="fas fa-file-import me-2"></i>Pré-Vendas Pendentes</h5>
+                <div class="ms-auto me-3" style="width: 250px;">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search"></i></span>
+                        <input type="text" id="searchPVTerm" class="form-control border-start-0" placeholder="Buscar por Nome ou Código..." onkeyup="loadPendingPreSales()">
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
@@ -397,9 +403,62 @@ function removeFromCart(index) {
     renderCart();
 }
 
+// Customer Search functionality
+let selectedCustomerId = null;
+let selectedCustomerName = null;
+const customerSearch = document.getElementById('customerSearch');
+const customerDisplay = document.getElementById('customerDisplay');
+
+// Create search results container for customer if it doesn't exist
+const customerSearchResults = document.createElement('div');
+customerSearchResults.id = 'customerSearchResults';
+customerSearchResults.className = 'list-group shadow-lg d-none';
+customerSearchResults.style = 'position: absolute; width: 100%; z-index: 1000; background: white; border: 1px solid #ddd;';
+customerSearch.parentNode.style.position = 'relative';
+customerSearch.parentNode.appendChild(customerSearchResults);
+
+customerSearch.addEventListener('input', async (e) => {
+    const term = e.target.value;
+    selectedCustomerName = term; // Manual name fallback
+    if (term.length < 2) {
+        customerSearchResults.classList.add('d-none');
+        selectedCustomerId = null;
+        customerDisplay.innerText = term || 'Consumidor Final';
+        return;
+    }
+
+    const response = await fetch(`vendas.php?action=search_clients&term=${term}`);
+    const clients = await response.json();
+    renderCustomerSearchResults(clients);
+});
+
+function renderCustomerSearchResults(clients) {
+    customerSearchResults.innerHTML = '';
+    if (clients.length === 0) {
+        customerSearchResults.classList.add('d-none');
+        return;
+    }
+
+    clients.forEach(c => {
+        const item = document.createElement('button');
+        item.className = 'list-group-item list-group-item-action py-2';
+        item.innerHTML = `<strong>${c.nome}</strong> <br> <small class="text-muted">${c.doc}</small>`;
+        item.onclick = () => {
+            selectedCustomerId = c.id;
+            selectedCustomerName = c.nome;
+            customerSearch.value = c.nome;
+            customerDisplay.innerText = c.nome;
+            customerSearchResults.classList.add('d-none');
+        };
+        customerSearchResults.appendChild(item);
+    });
+    customerSearchResults.classList.remove('d-none');
+}
+
 // Pre-sale flow
 async function loadPendingPreSales() {
-    const res = await fetch('pre_vendas.php?action=list_pending');
+    const term = document.getElementById('searchPVTerm')?.value || '';
+    const res = await fetch(`pre_vendas.php?action=list_pending&term=${term}`);
     const pvs = await res.json();
     const list = document.getElementById('listPendingPVs');
     list.innerHTML = '';
@@ -434,6 +493,9 @@ async function importPreSale(code) {
             imagens: i.imagens
         }));
         currentPvId = pv.id;
+        selectedCustomerId = pv.cliente_id;
+        selectedCustomerName = pv.cliente_nome;
+        customerSearch.value = pv.cliente_nome || '';
         document.getElementById('customerDisplay').innerText = pv.cliente_nome || 'Consumidor Final';
         renderCart();
         bootstrap.Modal.getInstance(document.getElementById('modalPendingPV')).hide();
@@ -624,7 +686,8 @@ btnCheckout.onclick = async () => {
         total: total,
         items: cart,
         pagamento: payment,
-        cliente_id: null,
+        cliente_id: selectedCustomerId,
+        nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
         pv_id: currentPvId,
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential

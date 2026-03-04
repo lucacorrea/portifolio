@@ -45,20 +45,30 @@ class PreSaleController extends BaseController {
 
     public function list_pending() {
         $db = \App\Config\Database::getInstance()->getConnection();
+        $term = $_GET['term'] ?? '';
         $model = new PreSale();
         $nameField = $model->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : 'NULL';
 
-        $recent = $db->query("
+        $sql = "
             SELECT pv.id, pv.codigo, pv.valor_total, 
                    IFNULL(c.nome, $nameField) as cliente_nome, 
                    u.nome as vendedor_nome 
             FROM pre_vendas pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
             LEFT JOIN usuarios u ON pv.usuario_id = u.id
-            WHERE pv.status = 'pendente' 
-            ORDER BY pv.created_at DESC LIMIT 20
-        ")->fetchAll(\PDO::FETCH_ASSOC);
-        echo json_encode($recent);
+            WHERE pv.status = 'pendente' ";
+        
+        $params = [];
+        if ($term) {
+            $sql .= " AND (c.nome LIKE ? OR $nameField LIKE ? OR pv.codigo LIKE ?)";
+            $params = ["%$term%", "%$term%", "%$term%"];
+        }
+
+        $sql .= " ORDER BY pv.created_at DESC LIMIT 20";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
         exit;
     }
 }

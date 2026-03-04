@@ -43,6 +43,20 @@ class SalesController extends BaseController {
         exit;
     }
 
+    public function search_clients() {
+        $term = $_GET['term'] ?? '';
+        $db = \App\Config\Database::getInstance()->getConnection();
+        
+        $sql = "SELECT id, nome, cpf_cnpj as doc FROM clientes 
+                WHERE (nome LIKE ? OR cpf_cnpj LIKE ?) 
+                AND filial_id = ? 
+                LIMIT 10";
+        $stmt = $db->prepare($sql);
+        $stmt->execute(["%$term%", "%$term%", $_SESSION['filial_id'] ?? 1]);
+        echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        exit;
+    }
+
     public function checkout() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents('php://input'), true);
@@ -116,6 +130,17 @@ class SalesController extends BaseController {
                         throw new \Exception("Autorização de desconto falhou.");
                     }
                 }
+
+                $saleData = [
+                    'cliente_id' => $data['cliente_id'] ?? null,
+                    'nome_cliente_avulso' => $data['nome_cliente_avulso'] ?? null,
+                    'usuario_id' => $_SESSION['usuario_id'],
+                    'filial_id' => $_SESSION['filial_id'] ?? 1,
+                    'valor_total' => $data['total'],
+                    'desconto_total' => ($data['subtotal'] * ($data['discount_percent'] / 100)),
+                    'forma_pagamento' => $data['pagamento'],
+                    'autorizado_por' => $supervisorId
+                ];
 
                 $saleId = $saleModel->create($saleData);
                 
