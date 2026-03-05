@@ -85,7 +85,7 @@ if (!function_exists('brl')) {
 
     <nav class="sidebar-nav">
       <ul>
-        <li class="nav-item active">
+        <li class="nav-item">
           <a href="dashboard.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
