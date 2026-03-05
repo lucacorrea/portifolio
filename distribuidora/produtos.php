@@ -34,10 +34,7 @@ $produtos = $pdo->query("
   LEFT JOIN categorias c ON c.id = p.categoria_id
   LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
   ORDER BY p.id DESC
-// function img_url_from_db(string $dbValue): string
-// {
-//     return '';
-// }
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -491,7 +488,7 @@ $produtos = $pdo->query("
 
                                     $catNome = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
                                     $forNome = trim((string)($p['fornecedor_nome'] ?? '')) ?: '—';
-
+                                    ?>
                                     <tr data-id="<?= $id ?>" data-nome="<?= e((string)$p['nome']) ?>" data-categoria="<?= $catId ?>" data-status="<?= $status ?>" data-baixo="<?= $baixo ? '1' : '0' ?>">
                                         <td><?= e((string)$p['codigo']) ?></td>
                                         <td>
@@ -993,3 +990,4 @@ $produtos = $pdo->query("
 </body>
 
 </html>
+

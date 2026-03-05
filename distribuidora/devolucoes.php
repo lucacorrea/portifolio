@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-@ini_set('display_errors', '0');
-@error_reporting(0);
+
+
 if (function_exists('ob_start')) {
   @ob_start();
 }
@@ -2105,3 +2105,5 @@ $flash = flash_pop();
 </body>
 
 </html>
+
+

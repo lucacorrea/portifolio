@@ -1,10 +1,10 @@
 <?php
-
 declare(strict_types=1);
-
+ini_set('display_errors', '1'); error_reporting(E_ALL);
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+
 
 /* ========= INCLUDES (ajuste se precisar) ========= */
 $helpers = __DIR__ . '/assets/dados/_helpers.php';
@@ -1250,7 +1250,48 @@ $csrf = csrf_token();
     <div class="overlay"></div>
 
     <main class="main-wrapper">
-        <header class="header"> ... </header>
+        <header class="header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-5 col-md-5 col-6">
+                        <div class="header-left d-flex align-items-center">
+                            <div class="menu-toggle-btn mr-15">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
+                                    <i class="lni lni-chevron-left me-2"></i> Menu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-7 col-md-7 col-6">
+                        <div class="header-right">
+                            <div class="profile-box ml-15">
+                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="profile-info">
+                                        <div class="info">
+                                            <div>
+                                                <h6 class="fw-500">Sair</h6>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+         <section class="section">
+            <div class="container-fluid">
+                <div class="title-wrapper pt-30">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="title">
+                                <h2>Gestão de Vendas</h2>
+                                <p class="text-muted">Listagem e filtros de vendas</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
         <section class="section">
             <div class="container-fluid">
@@ -1903,3 +1944,4 @@ $csrf = csrf_token();
 </body>
 
 </html>
+

@@ -240,9 +240,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     <div class="spinner"></div>
   </div>
 
-   <!-- ======== sidebar-nav start =========== -->
-    <aside class="sidebar-nav-wrapper">
-        <div class="navbar-logo">
+    <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -825,3 +823,4 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 </body>
 
 </html>
+

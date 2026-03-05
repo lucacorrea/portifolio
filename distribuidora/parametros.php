@@ -201,3 +201,5 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
         });
     </script>
 </body></html>
+
+
