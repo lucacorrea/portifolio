@@ -2689,11 +2689,29 @@ h6,
 
 /* ========== header css ========== */
 .header {
-  padding: 22px 0;
-  background: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 99;
+  display: none;
+}
+
+.menu-toggle-standalone {
+  position: fixed;
+  top: 20px;
+  left: 15px;
+  z-index: 1000;
+  transition: all 0.3s ease-out;
+}
+
+.main-wrapper.active .menu-toggle-standalone {
+  left: 15px;
+}
+
+.main-wrapper:not(.active) .menu-toggle-standalone {
+  left: 265px;
+}
+
+@media only screen and (max-width: 1199px) {
+  .main-wrapper .menu-toggle-standalone {
+    left: 15px !important;
+  }
 }
 .header .header-left .menu-toggle-btn .main-btn {
   padding: 10px 16px;

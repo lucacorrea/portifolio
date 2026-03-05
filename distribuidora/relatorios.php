@@ -11,7 +11,7 @@ declare(strict_types=1);
 @date_default_timezone_set('America/Manaus');
 
 // Helpers (csrf/flash/etc)
-$helpers = __DIR__ . '/assets/dados/relatorios/_helpers.php';
+$helpers = __DIR__ . '/assets/dados/relatorios/__helpers.php';
 if (is_file($helpers)) require_once $helpers;
 
 // Conexão PDO (precisa existir db():PDO)
@@ -923,13 +923,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 <body>
   <div id="preloader"><div class="spinner"></div></div>
 
-  <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
-    <div class="navbar-logo">
-      <a href="dashboard.php" class="d-flex align-items-center gap-2">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
-      </a>
-    </div>
+    <!-- ======== sidebar-nav start =========== -->
+    <aside class="sidebar-nav-wrapper">
+        <div class="navbar-logo">
+            <a href="dashboard.php" class="d-flex align-items-center gap-2">
+                <img src="assets/images/logo/logo.svg" alt="logo" />
+            </a>
+        </div>
 
     <nav class="sidebar-nav">
       <ul>
@@ -945,6 +945,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           </a>
         </li>
 
+        <li class="nav-item">
+          <a href="vendas.php">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="text">Vendas</span>
+          </a>
+        </li>
+
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
             <span class="icon">
@@ -955,13 +967,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-            <li><a href="vendidos.php">Vendidos</a></li>
-            <li><a href="vendas.php">Vendas</a></li>
+            <li><a href="vendidos.php"  >Vendidos</a></li>
+            <li><a href="fiados.php">À Prazo</a></li>
             <li><a href="devolucoes.php">Devoluções</a></li>
           </ul>
         </li>
 
-        <li class="nav-item nav-item-has-children">
+        <li class="nav-item nav-item-has-children ">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -973,7 +985,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           </a>
           <ul id="ddmenu_estoque" class="collapse dropdown-nav">
             <li><a href="produtos.php">Produtos</a></li>
-            <li><a href="inventario.php">Inventário</a></li>
+            <li><a href="inventario.php" >Inventário</a></li>
             <li><a href="entradas.php">Entradas</a></li>
             <li><a href="saidas.php">Saídas</a></li>
             <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
@@ -999,18 +1011,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           </ul>
         </li>
 
-        <li class="nav-item active">
+        <li class="nav-item">
           <a href="relatorios.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
               </svg>
             </span>
-            <span class="text">Relatórios</span>
+            <span class="text"  class="active">Relatórios</span>
           </a>
         </li>
 
-        <span class="divider"><hr /></span>
+        <span class="divider">
+          <hr />
+        </span>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">

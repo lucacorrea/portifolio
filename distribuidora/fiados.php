@@ -89,8 +89,20 @@ if (!function_exists('brl')) {
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="vendas.php">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </span>
+                        <span class="text">Vendas</span>
+                    </a>
+                </li>
+
                 <li class="nav-item nav-item-has-children active">
-                    <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="true">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
@@ -99,8 +111,8 @@ if (!function_exists('brl')) {
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
-                        <li><a href="vendidos.php" >Vendidos</a></li>
-                        <li><a href="vendas.php" class="active">À Prazo</a></li>
+                        <li><a href="vendidos.php">Vendidos</a></li>
+                        <li><a href="fiados.php"  class="active">À Prazo</a></li>
                         <li><a href="devolucoes.php">Devoluções</a></li>
                     </ul>
                 </li>
@@ -187,6 +199,7 @@ if (!function_exists('brl')) {
             </ul>
         </nav>
     </aside>
+
     <div class="overlay"></div>
 
     <main class="main-wrapper">
