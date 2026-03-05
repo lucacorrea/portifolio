@@ -1286,6 +1286,18 @@ $csrf = csrf_token();
                 </div>
             </div>
         </header>
+         <section class="section">
+            <div class="container-fluid">
+                <div class="title-wrapper pt-30">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="title">
+                                <h2>Gestão de Vendas À Prazo</h2>
+                                <p class="text-muted">Listagem, filtros e recebimentos (AVS)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
         <section class="section">
             <div class="container-fluid">
