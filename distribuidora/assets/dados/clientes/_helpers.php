@@ -54,15 +54,21 @@ function post_int(string $k, int $def = 0): int {
 }
 
 /* =========================
-   URL BASE (importante: /distribuidora/...)
+   URL BASE
 ========================= */
 function base_path(): string {
   $dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-  return $dir === '' ? '' : $dir; // ex.: /distribuidora
+  return $dir === '' ? '' : $dir;
 }
 
 function url_here(string $file): string {
   return base_path() . '/' . ltrim($file, '/');
+}
+
+/* URL padrão do clientes.php */
+function clientes_url(): string {
+  $base = base_path();
+  return ($base ? $base : '') . '/clientes.php';
 }
 
 /* =========================
@@ -95,10 +101,10 @@ function csrf_token(): string {
 
 function safe_return_to(string $uri): string {
   $u = trim($uri);
-  if ($u === '') return url_here('../../../clientes.php');
-  if (str_contains($u, "\n") || str_contains($u, "\r")) return url_here('clientes.php');
-  if (!str_starts_with($u, '/')) return url_here('../../../clientes.php');
-  if (!str_contains($u, 'clientes.php')) return url_here('../../../clientes.php');
+  if ($u === '') return clientes_url();
+  if (str_contains($u, "\n") || str_contains($u, "\r")) return clientes_url();
+  if (!str_starts_with($u, '/')) return clientes_url();
+  if (!str_contains($u, 'clientes.php')) return clientes_url();
   return $u;
 }
 
@@ -107,31 +113,20 @@ function csrf_validate_or_die(): void {
   $sess = (string)($_SESSION['_csrf'] ?? '');
   if ($t === '' || $sess === '' || !hash_equals($sess, $t)) {
     flash_set('flash_err', 'CSRF inválido. Atualize a página e tente novamente.');
-    $ret = safe_return_to(post_str('return_to', url_here('clientes.php')));
+    $ret = safe_return_to(post_str('return_to', clientes_url()));
     redirect($ret);
   }
 }
 
 /* =========================
    VALIDADORES
+   - CPF: apenas 11 dígitos (sem validar DV)
 ========================= */
 function cpf_is_valid(string $cpfDigits): bool {
   $cpf = only_digits($cpfDigits);
   if (strlen($cpf) !== 11) return false;
   if (preg_match('/^(\d)\1{10}$/', $cpf)) return false;
-
-  $sum = 0;
-  for ($i = 0, $w = 10; $i < 9; $i++, $w--) $sum += ((int)$cpf[$i]) * $w;
-  $d1 = 11 - ($sum % 11);
-  $d1 = ($d1 >= 10) ? 0 : $d1;
-  if ($d1 !== (int)$cpf[9]) return false;
-
-  $sum = 0;
-  for ($i = 0, $w = 11; $i < 10; $i++, $w--) $sum += ((int)$cpf[$i]) * $w;
-  $d2 = 11 - ($sum % 11);
-  $d2 = ($d2 >= 10) ? 0 : $d2;
-
-  return $d2 === (int)$cpf[10];
+  return true;
 }
 
 function tel_min_ok(string $telDigits): bool {
