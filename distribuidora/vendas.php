@@ -664,7 +664,7 @@ function fmtMoney($v): string
   </div>
 
   <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper active">
+  <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -819,7 +819,7 @@ function fmtMoney($v): string
 
   <div class="overlay"></div>
 
-  <main class="main-wrapper active">
+  <main class="main-wrapper">
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -2186,3 +2186,4 @@ function fmtMoney($v): string
   </script>
 </body>
 </html>
+
