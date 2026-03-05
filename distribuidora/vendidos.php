@@ -1268,18 +1268,12 @@ $csrf = csrf_token();
                                 <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="profile-info">
                                         <div class="info">
-                                            <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
                                             <div>
-                                                <h6 class="fw-500">Administrador</h6>
-                                                <p>Distribuidora</p>
+                                                <h6 class="fw-500">Sair</h6>
                                             </div>
                                         </div>
                                     </div>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                                    <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                                    <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
-                                </ul>
                             </div>
                         </div>
                     </div>
