@@ -11,7 +11,7 @@ require_db_or_die();
 $pdo = db();
 
 /**
- * URL padrão de retorno: /distribuidora/clientes.php
+ * URL padrão /distribuidora/clientes.php
  */
 $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
 $root = preg_replace('#/assets/dados/clientes/[^/]+$#', '', $script);
@@ -22,16 +22,39 @@ if (!is_post()) redirect($clientesUrl);
 csrf_validate_or_die();
 $return = safe_return_to(post_str('return_to', $clientesUrl));
 
+/* ========= DADOS ========= */
 $id   = post_int('id', 0);
 $nome = trim(post_str('nome'));
-$cpf  = only_digits(post_str('cpf'));       // <<< CPF só números
-$tel  = only_digits(post_str('telefone'));  // <<< telefone só números
+
+// CPF: salva só números
+$cpfDigits = only_digits(post_str('cpf'));
+
+// Telefone: salva como digitado (formatado pode)
+$telefoneInput = trim(post_str('telefone'));
+$telefoneDigits = only_digits($telefoneInput);
+
 $end  = trim(post_str('endereco', ''));
 
-if ($id <= 0)                               { flash_set('flash_err', 'ID inválido.'); redirect($return); }
-if ($nome === '' || mb_strlen($nome) < 2)   { flash_set('flash_err', 'Informe um nome válido.'); redirect($return); }
-if (!cpf_is_valid($cpf))                    { flash_set('flash_err', 'CPF inválido.'); redirect($return); }
-if (!tel_min_ok($tel))                      { flash_set('flash_err', 'Telefone inválido.'); redirect($return); }
+/* ========= VALIDAÇÕES ========= */
+if ($id <= 0) {
+  flash_set('flash_err', 'ID inválido.');
+  redirect($return);
+}
+
+if ($nome === '' || mb_strlen($nome) < 2) {
+  flash_set('flash_err', 'Informe um nome válido.');
+  redirect($return);
+}
+
+if (strlen($cpfDigits) !== 11 || preg_match('/^(\d)\1{10}$/', $cpfDigits)) {
+  flash_set('flash_err', 'CPF deve ter 11 dígitos (somente números).');
+  redirect($return);
+}
+
+if (!tel_min_ok($telefoneDigits)) {
+  flash_set('flash_err', 'Telefone inválido.');
+  redirect($return);
+}
 
 try {
   // existe?
@@ -42,7 +65,7 @@ try {
     redirect($return);
   }
 
-  // CPF único (robusto: compara normalizado e ignora o próprio)
+  // CPF único (normalizado) exceto o próprio
   $st = $pdo->prepare("
     SELECT id
     FROM clientes
@@ -50,7 +73,7 @@ try {
       AND id <> :id
     LIMIT 1
   ");
-  $st->execute(['cpf' => $cpf, 'id' => $id]);
+  $st->execute(['cpf' => $cpfDigits, 'id' => $id]);
   if ($st->fetchColumn()) {
     flash_set('flash_err', 'CPF já cadastrado em outro cliente.');
     redirect($return);
@@ -67,8 +90,8 @@ try {
   $stmt = $pdo->prepare($sql);
   $stmt->execute([
     'nome' => $nome,
-    'cpf'  => $cpf,
-    'tel'  => $tel,
+    'cpf'  => $cpfDigits,         // <<< CPF SEM . e -
+    'tel'  => $telefoneInput,     // <<< TELEFONE pode ir formatado
     'end'  => ($end !== '' ? $end : null),
     'id'   => $id,
   ]);
