@@ -34,10 +34,7 @@ $produtos = $pdo->query("
   LEFT JOIN categorias c ON c.id = p.categoria_id
   LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
   ORDER BY p.id DESC
-// function img_url_from_db(string $dbValue): string
-// {
-//     return '';
-// }
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
