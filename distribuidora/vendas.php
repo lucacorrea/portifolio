@@ -710,8 +710,8 @@ function fmtMoney($v): string
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-            <li><a href="vendidos.php">vendidos</a></li>
-            <li><a href="fiados.php">Fiados</a></li>
+            <li><a href="vendidos.php">Vendidos</a></li>
+            <li><a href="fiados.php">À Prazo</a></li>
             <li><a href="devolucoes.php">Devoluções</a></li>
           </ul>
         </li>
