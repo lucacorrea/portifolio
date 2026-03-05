@@ -479,13 +479,19 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
                     <div class="body">
                         <div class="row g-2 align-items-end">
-                            <div class="col-md-8 col-12">
+                            <div class="col-md-10">
                                 <label class="form-label" style="font-weight:900;color:#0f172a;">
                                     Buscar (Nome / CPF / Telefone / ID / Endereço)
                                 </label>
                                 <input type="text" class="form-control compact" id="q"
                                     placeholder="Digite... (CPF/Telefone só números)"
                                     autocomplete="off">
+                            </div>
+                            <div class="col-md-2 d-flex gap-2 flex-wrap">
+                                <button class="main-btn light-btn btn-hover w-100" id="btnLimpar" type="button">
+                                    <i class="lni lni-close me-1"></i> Limpar
+                                </button>
+                                <span class="pill warn" id="pillLoading" style="display:none;">Carregando…</span>
                             </div>
                         </div>
                     </div>
