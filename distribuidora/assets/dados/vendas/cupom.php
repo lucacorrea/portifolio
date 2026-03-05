@@ -54,7 +54,7 @@ function payName(string $m): string {
     'DINHEIRO' => 'Dinheiro',
     'PIX'      => 'Pix',
     'CARTAO'   => 'Cartão',
-    'BOLETO'   => 'Boleto',
+    'FIADO'    => 'À Prazo',
     'MULTI'    => 'Múltiplos',
     default    => $m !== '' ? $m : '—',
   };

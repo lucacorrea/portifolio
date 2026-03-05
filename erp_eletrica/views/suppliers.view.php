@@ -32,7 +32,15 @@
                                 </div>
                                 <div>
                                     <div class="fw-bold text-dark"><?= $s['nome_fantasia'] ?></div>
-                                    <div class="text-muted extra-small">ID: #<?= $s['id'] ?></div>
+                                    <div class="d-flex align-items-center mt-1">
+                                        <span class="text-muted extra-small me-2">ID: #<?= $s['id'] ?></span>
+                                        <?php if ($s['pending_nfe_count'] > 0): ?>
+                                            <a href="importar_automatico.php" class="badge bg-danger rounded-pill text-decoration-none" title="Notas pendentes na SEFAZ">
+                                                <i class="fas fa-file-invoice me-1"></i>
+                                                <?= $s['pending_nfe_count'] ?> Nota(s) Disponível(is)
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </td>

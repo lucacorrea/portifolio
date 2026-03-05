@@ -56,4 +56,27 @@ class ClientController extends BaseController {
             $this->redirect('clientes.php?msg=Cliente salvo com sucesso');
         }
     }
+
+    public function quickSave() {
+        header('Content-Type: application/json');
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (empty($data['nome'])) {
+                throw new \Exception("Nome é obrigatório.");
+            }
+
+            $model = new Client();
+            $clientId = $model->create([
+                'nome' => $data['nome'],
+                'cpf_cnpj' => $data['cpf_cnpj'] ?? null,
+                'telefone' => $data['telefone'] ?? null,
+                'filial_id' => $_SESSION['filial_id'] ?? 1
+            ]);
+
+            echo json_encode(['success' => true, 'client_id' => $clientId]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
 }

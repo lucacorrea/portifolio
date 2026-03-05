@@ -10,7 +10,9 @@ if (empty($_SESSION['usuario_logado'])) {
 }
 
 /* ADMIN */
-if (!in_array('ADMIN', $_SESSION['perfis'] ?? [], true)) {
+$perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
+if (!in_array('ADMIN', $perfis, true)) {
     header('Location: ../operador/index.php');
     exit;
 }
@@ -35,10 +37,9 @@ $csrf = $_SESSION['csrf_token'];
 $TABELA = 'comunidades';
 
 /* Defaults */
-$tipo = $_POST['tipo'] ?? '';
-$feira_id = $_POST['feira_id'] ?? ''; // para comunidade: 1,2,all
-$nome = trim($_POST['nome'] ?? '');
-$ativo = $_POST['ativo'] ?? '1';
+$tipo       = $_POST['tipo'] ?? ''; // 'comunidade' | 'bairro'
+$nome       = trim($_POST['nome'] ?? '');
+$ativo      = $_POST['ativo'] ?? '1';
 $observacao = trim($_POST['observacao'] ?? '');
 
 $msgErro = '';
@@ -60,34 +61,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     /**
-     * Regra:
-     * - Comunidade -> feira_id = 1, 2 ou all (1 e 2)
-     * - Bairro     -> feira_id = 3 (automático)
+     * REGRA NOVA (você pediu):
+     * - Qualquer cadastro (bairro OU comunidade) -> cadastra para os 3 ids.
      */
     $feirasDestino = [];
     if ($msgErro === '') {
-        if ($tipo === 'bairro') {
-            $feirasDestino = [3];
-        } else {
-            // comunidade
-            if ($feira_id === 'all') {
-                $feirasDestino = [1, 2];
-            } else {
-                $fid = (int)$feira_id;
-                if (!in_array($fid, [1, 2], true)) {
-                    $msgErro = 'Para Comunidade, selecione Feira 1, Feira 2 ou Todas.';
-                } else {
-                    $feirasDestino = [$fid];
-                }
-            }
-        }
+        $feirasDestino = [1, 2, 3];
     }
 
     if ($msgErro === '') {
         $ativo_int = ($ativo === '0') ? 0 : 1;
 
         try {
-            // 1) checar duplicidade em todas as feiras destino
+            // 1) checar duplicidade nas feiras destino
             $stCheck = $pdo->prepare("SELECT COUNT(*) FROM {$TABELA} WHERE nome = :nome AND feira_id = :feira_id");
             $duplicadas = [];
 
@@ -104,15 +90,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!empty($duplicadas)) {
                 $msgErro = 'Já existe um registro com esse nome na(s) feira(s): ' . implode(', ', $duplicadas) . '.';
             } else {
-                // 2) inserir (se forem 2 feiras, faz 2 inserts)
+                // 2) inserir (3 inserts)
                 $pdo->beginTransaction();
 
                 $stIns = $pdo->prepare("
-          INSERT INTO {$TABELA}
-            (feira_id, nome, ativo, observacao, criado_em, atualizado_em)
-          VALUES
-            (:feira_id, :nome, :ativo, :observacao, NOW(), NULL)
-        ");
+                    INSERT INTO {$TABELA}
+                      (feira_id, nome, ativo, observacao, criado_em, atualizado_em)
+                    VALUES
+                      (:feira_id, :nome, :ativo, :observacao, NOW(), NULL)
+                ");
 
                 foreach ($feirasDestino as $fid) {
                     $stIns->execute([
@@ -125,13 +111,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->commit();
 
-                $msgSucesso = ($tipo === 'comunidade' && count($feirasDestino) === 2)
-                    ? 'Comunidade cadastrada nas Feiras 1 e 2 com sucesso!'
-                    : 'Cadastro realizado com sucesso!';
+                $msgSucesso = 'Cadastro realizado para as Feiras 1, 2 e 3 com sucesso!';
 
                 // limpar
                 $tipo = '';
-                $feira_id = '';
                 $nome = '';
                 $ativo = '1';
                 $observacao = '';
@@ -149,11 +132,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 /* Últimos cadastrados */
 try {
     $lista = $pdo->query("
-    SELECT id, feira_id, nome, ativo, observacao, criado_em
-    FROM {$TABELA}
-    ORDER BY id DESC
-    LIMIT 15
-  ")->fetchAll(PDO::FETCH_ASSOC);
+        SELECT id, feira_id, nome, ativo, observacao, criado_em
+        FROM {$TABELA}
+        ORDER BY id DESC
+        LIMIT 15
+    ")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     error_log("Erro ao listar últimos: " . $e->getMessage());
     $lista = [];
@@ -241,9 +224,9 @@ try {
                         </a>
                     </li>
 
-                   
+
                     <li class="nav-item active">
-                        <a class="nav-link"  href="#">
+                        <a class="nav-link" href="#">
                             <i class="ti-map menu-icon"></i>
                             <span class="menu-title">Localidades</span>
                         </a>
@@ -323,19 +306,6 @@ try {
                                                         <option value="comunidade" <?= $tipo === 'comunidade' ? 'selected' : '' ?>>Comunidade</option>
                                                         <option value="bairro" <?= $tipo === 'bairro' ? 'selected' : '' ?>>Bairro</option>
                                                     </select>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-md-4" id="wrapFeira">
-                                                <div class="form-group">
-                                                    <label>Feira (somente para Comunidade) *</label>
-                                                    <select class="form-control" name="feira_id" id="feira_id">
-                                                        <option value="">Selecione a feira...</option>
-                                                        <option value="all" <?= $feira_id === 'all' ? 'selected' : '' ?>>Todas as Ferias</option>
-                                                        <option value="1" <?= $feira_id === '1' ? 'selected' : '' ?>>Feira Alternativa</option>
-                                                        <option value="2" <?= $feira_id === '2' ? 'selected' : '' ?>>Feira do Produto</option>
-                                                    </select>
-                                                  
                                                 </div>
                                             </div>
 

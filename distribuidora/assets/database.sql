@@ -138,6 +138,36 @@ CREATE INDEX idx_vendas_cliente ON vendas (cliente);
 CREATE INDEX idx_vendas_canal ON vendas (canal);
 
 
+
+CREATE TABLE IF NOT EXISTS venda_itens (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  venda_id INT NOT NULL,
+  produto_id INT NOT NULL,
+  codigo VARCHAR(50) NOT NULL,
+  nome VARCHAR(255) NOT NULL,
+  unidade VARCHAR(50) DEFAULT NULL,
+  preco_unit DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  qtd INT NOT NULL DEFAULT 1,
+  subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE IF NOT EXISTS clientes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(255) NOT NULL,
+  cpf VARCHAR(20) DEFAULT NULL,
+  telefone VARCHAR(20) DEFAULT NULL,
+  endereco TEXT DEFAULT NULL,
+  created_at DATETIME DEFAULT current_timestamp(),
+  updated_at DATETIME DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ;
+
+CREATE UNIQUE INDEX ux_clientes_cpf ON clientes (cpf);
+CREATE INDEX idx_clientes_nome ON clientes (nome);
+CREATE INDEX idx_clientes_telefone ON clientes (telefone);
+
+
 CREATE TABLE IF NOT EXISTS devolucoes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   venda_no INT NULL,

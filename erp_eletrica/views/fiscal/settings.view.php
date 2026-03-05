@@ -13,6 +13,35 @@
                     </div>
                 </div>
 
+                <!-- Global Certificate Status -->
+                <div class="alert bg-light border-0 d-flex align-items-center p-4 mb-4">
+                    <div class="me-4 text-primary">
+                        <i class="fas fa-shield-halved fa-3x"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <h6 class="fw-bold mb-0">Configuração de Certificado Global A1</h6>
+                            <a href="importar_automatico.php?action=config" class="btn btn-sm btn-primary fw-bold">
+                                <i class="fas fa-cog me-2"></i>GERENCIAR GLOBAL
+                            </a>
+                        </div>
+                        <?php if ($globalConfig && $globalConfig['certificado_path']): ?>
+                            <div class="text-success small fw-bold">
+                                <i class="fas fa-check-circle me-1"></i> ATIVO: Todas as filiais estão configuradas via Certificado Concentrado.
+                            </div>
+                            <div class="extra-small text-muted mt-1">
+                                <strong>Arquivo:</strong> <?= $globalConfig['certificado_path'] ?> | 
+                                <strong>Ambiente:</strong> <?= $globalConfig['ambiente'] == 'producao' ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO' ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="text-warning small fw-bold">
+                                <i class="fas fa-exclamation-triangle me-1"></i> NENHUM CERTIFICADO GLOBAL CONFIGURADO.
+                            </div>
+                            <div class="extra-small text-muted mt-1">O sistema utilizará os certificados individuais das filiais (se houver).</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle border-top">
                         <thead class="bg-light">
@@ -38,25 +67,39 @@
                                     <div class="extra-small text-muted">IE: <?= $b['inscricao_estadual'] ?: '---' ?></div>
                                 </td>
                                 <td>
-                                    <?php if($b['certificado_pfx']): ?>
+                                    <?php if ($globalConfig && $globalConfig['certificado_path']): ?>
+                                        <div class="d-flex align-items-center text-primary small">
+                                            <i class="fas fa-link me-2"></i>
+                                            <div>
+                                                <div class="fw-bold">HERDADO DO GLOBAL</div>
+                                                <div class="extra-small text-muted">Certificado Concentrado Ativo</div>
+                                            </div>
+                                        </div>
+                                    <?php elseif($b['certificado_pfx']): ?>
                                         <div class="d-flex align-items-center text-success small">
                                             <i class="fas fa-check-circle me-2"></i>
                                             <div>
-                                                <div class="fw-bold">PFX Carregado</div>
+                                                <div class="fw-bold">PFX Individual</div>
                                                 <div class="extra-small text-muted"><?= $b['certificado_pfx'] ?></div>
                                             </div>
                                         </div>
                                     <?php else: ?>
                                         <div class="d-flex align-items-center text-danger small">
                                             <i class="fas fa-exclamation-triangle me-2"></i>
-                                            <span class="fw-bold">CERTIFICADO AUSENTE</span>
+                                            <span class="fw-bold">SEM CERTIFICADO</span>
                                         </div>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge <?= $b['ambiente'] == 1 ? 'bg-danger' : 'bg-warning' ?> rounded-pill px-3">
-                                        <?= $b['ambiente'] == 1 ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO' ?>
-                                    </span>
+                                    <?php if ($globalConfig && $globalConfig['certificado_path']): ?>
+                                        <span class="badge <?= $globalConfig['ambiente'] == 'producao' ? 'bg-danger' : 'bg-warning' ?> rounded-pill px-3">
+                                            <?= $globalConfig['ambiente'] == 'producao' ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO' ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge <?= $b['ambiente'] == 1 ? 'bg-danger' : 'bg-warning' ?> rounded-pill px-3">
+                                            <?= $b['ambiente'] == 1 ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO' ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="btn-group">

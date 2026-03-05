@@ -12,6 +12,38 @@ class FiscalService extends BaseService {
         $this->db = Database::getInstance()->getConnection();
     }
 
+    private function getFiscalConfig($branchId) {
+        // 1. Load Branch Info
+        $stmt = $this->db->prepare("SELECT * FROM filiais WHERE id = ?");
+        $stmt->execute([$branchId]);
+        $branch = $stmt->fetch();
+
+        // 2. Load Global Config
+        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
+        $global = $stmt->fetch();
+
+        // The requirement is that Global Certificate applies to all branches.
+        // We prioritize Global if available.
+        if ($global && !empty($global['certificado_path'])) {
+            return [
+                'cnpj' => $branch['cnpj'],
+                'certificado_pfx' => $global['certificado_path'],
+                'certificado_senha' => base64_decode($global['certificado_senha']), // Decrypt
+                'ambiente' => $global['ambiente'] == 'producao' ? 1 : 2,
+                'nome' => $branch['nome']
+            ];
+        }
+
+        // Fallback to legacy branch-specific config if global not set
+        return [
+            'cnpj' => $branch['cnpj'],
+            'certificado_pfx' => $branch['certificado_pfx'],
+            'certificado_senha' => $branch['certificado_senha'],
+            'ambiente' => $branch['ambiente'],
+            'nome' => $branch['nome']
+        ];
+    }
+
     /**
      * Generates and transmits an NFC-e (Consumer Invoice)
      */
@@ -19,20 +51,20 @@ class FiscalService extends BaseService {
         try {
             // 1. Fetch sale data with items and branch info
             $sale = $this->getSaleData($vendaId);
-            $branch = $this->getBranchData($sale['filial_id']);
+            $fiscal = $this->getFiscalConfig($sale['filial_id']);
 
-            if (empty($branch['cnpj']) || empty($branch['certificado_pfx'])) {
-                throw new Exception("Configuração fiscal da filial incompleta (CNPJ ou Certificado ausente).");
+            if (empty($fiscal['cnpj']) || empty($fiscal['certificado_pfx'])) {
+                throw new Exception("Configuração fiscal incompleta (CNPJ ou Certificado ausente).");
             }
 
             // 2. Generate XML (Mock for now, following SEFAZ 4.00 standard)
-            $xml = $this->generateXML($sale, $branch, 'nfce');
+            $xml = $this->generateXML($sale, $fiscal, 'nfce');
 
             // 3. Sign XML (Requires openssl and .pfx)
-            $signedXml = $this->signXML($xml, $branch);
+            $signedXml = $this->signXML($xml, $fiscal);
 
             // 4. Transmit to SEFAZ (Mocked for Homologação)
-            $response = $this->transmitToSEFAZ($signedXml, $branch, 'nfce');
+            $response = $this->transmitToSEFAZ($signedXml, $fiscal, 'nfce');
 
             // 5. Save record in database
             $this->saveFiscalRecord($vendaId, 'nfce', $response);

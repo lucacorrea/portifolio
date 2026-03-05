@@ -74,12 +74,29 @@
             </div>
             <div class="card-body flex-grow-1">
                 <div class="mb-4">
-                    <label class="form-label small fw-bold text-uppercase text-muted">Cliente</label>
-                    <div class="input-group mb-2">
-                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-muted"></i></span>
-                        <input type="text" class="form-control bg-light border-start-0" id="customerSearch" placeholder="C.P.F. ou Nome (Opcional)">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Identificar Cliente (Obrigatório para Fiado)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="fas fa-user-tag"></i>
+                        </span>
+                        <input type="text" id="customerSearch" class="form-control border-start-0 ps-0" placeholder="Nome, CPF ou Telefone...">
+                        <button class="btn btn-outline-primary" type="button" onclick="abrirModalQuickClient()" title="Novo Cliente">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
-                    <small class="text-muted" id="customerDisplay">Consumidor Final</small>
+                    <div id="customerResults" class="list-group mt-2 shadow-sm position-absolute w-100" style="z-index: 1050; display: none; left:0; right:0;"></div>
+                    
+                    <div id="selectedCustomerInfo" class="mt-3 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-10 rounded d-none">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="mb-0 fw-bold text-primary" id="customerNameDisplay"></p>
+                                <p class="mb-0 small text-muted" id="customerDocDisplay"></p>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="clearCustomer()">
+                                <i class="fas fa-times me-1"></i>Remover
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-4">
@@ -109,8 +126,15 @@
                                 <i class="fas fa-barcode me-2 text-secondary"></i> Boleto
                             </label>
                         </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
+                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_fiado">
+                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado)
+                            </label>
+                        </div>
                     </div>
                 </div>
+
 
                 <div class="bg-light p-4 rounded-3 border mb-4">
                     <div class="d-flex justify-content-between mb-2">
@@ -163,7 +187,7 @@
 <div class="modal fade" id="modalPendingPV" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-light border-0">
+            <div class="modal-header bg-light border-0 d-flex justify-content-between align-items-center">
                 <h5 class="modal-title fw-bold"><i class="fas fa-file-import me-2"></i>Pré-Vendas Pendentes</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -254,11 +278,79 @@
     </div>
 </div>
 
-<!-- Scripts for PDV Logic -->
+<!-- Modal: Entrada Fiado -->
+<div class="modal fade" id="modalEntrada" data-bs-backdrop="static" tabindex="-1" style="z-index: 1060;">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Entrada / Sinal</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada em dinheiro</strong> para esta venda fiado?</p>
+                <div class="mb-3 text-start">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor da Entrada (R$)</label>
+                    <input type="number" id="entradaValor" class="form-control form-control-lg text-center fw-bold text-success" placeholder="0,00" step="0.01" min="0">
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-warning fw-bold py-2 shadow-sm" onclick="confirmarCheckoutFiado()">
+                        FINALIZAR VENDA
+                    </button>
+                </div>
+                <button class="btn btn-link btn-sm text-muted mt-2 text-decoration-none" onclick="document.getElementById('entradaValor').value=0; confirmarCheckoutFiado()">Continuar sem entrada</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Complemento de Cadastro (Fiado) -->
+<div class="modal fade" id="modalCompleteClient" data-bs-backdrop="static" tabindex="-1" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-user-edit me-2"></i>Completar Cadastro para Fiado</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-4">Para realizar vendas a prazo (Fiado), é obrigatório que o cliente possua os dados abaixo preenchidos:</p>
+                
+                <input type="hidden" id="edit_client_id">
+                
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">CPF ou CNPJ</label>
+                    <input type="text" id="edit_client_doc" class="form-control" placeholder="000.000.000-00">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Telefone / WhatsApp</label>
+                    <input type="text" id="edit_client_phone" class="form-control" placeholder="(00) 00000-0000">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço Completo</label>
+                    <textarea id="edit_client_address" class="form-control" rows="2" placeholder="Rua, Número, Bairro, Cidade..."></textarea>
+                </div>
+
+                <div class="d-grid">
+                    <button class="btn btn-primary fw-bold py-3 shadow-sm" onclick="updateClientAndContinue()">
+                        SALVAR E CONTINUAR VENDA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let cart = [];
 let currentPvId = null;
 let activeManageId = null;
+let selectedCustomerId = null;
+let selectedCustomerName = null;
 const currentUserLevel = '<?= $_SESSION['usuario_nivel'] ?? 'vendedor' ?>';
 
 const pdvSearch = document.getElementById('pdvSearch');
@@ -283,7 +375,7 @@ pdvSearch.addEventListener('input', async (e) => {
         return;
     }
 
-    const response = await fetch(`vendas.php?action=search&term=${term}`);
+    const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
     const products = await response.json();
     renderSearchResults(products);
 });
@@ -298,17 +390,37 @@ function renderSearchResults(products) {
     products.forEach(p => {
         const item = document.createElement('button');
         item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3';
+        
+        const isPV = p.type === 'pre_sale';
+        const icon = isPV ? 'fa-file-invoice-dollar text-warning' : 'fa-box text-primary';
+        const badge = isPV ? '<span class="badge bg-warning text-dark extra-small ms-2">PRÉ-VENDA</span>' : '';
+
         item.innerHTML = `
-            <div>
-                <div class="fw-bold text-primary">${p.nome}</div>
-                <small class="text-muted">Cód: ${p.id} | Un: ${p.unidade}</small>
+            <div class="d-flex align-items-center">
+                <i class="fas ${icon} fs-4 me-3 opacity-75"></i>
+                <div>
+                    <div class="fw-bold ${isPV ? 'text-warning' : 'text-primary'}">${p.nome} ${badge}</div>
+                    <small class="text-muted">Cód: ${p.codigo || p.id} | Un: ${p.unidade}</small>
+                </div>
             </div>
             <div class="text-end">
                 <div class="fw-bold">R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</div>
+                ${isPV ? '<small class="text-success extra-small fw-bold">CLIQUE PARA IMPORTAR</small>' : ''}
             </div>
         `;
-        item.onmouseover = () => showPreview(p);
-        item.onclick = () => addToCart(p);
+        
+        if (isPV) {
+            item.onclick = (e) => {
+                e.preventDefault();
+                importPreSale(p.codigo);
+                pdvSearch.value = '';
+                searchResults.classList.add('d-none');
+            };
+        } else {
+            item.onmouseover = () => showPreview(p);
+            item.onclick = () => addToCart(p);
+        }
+        
         searchResults.appendChild(item);
     });
     searchResults.classList.remove('d-none');
@@ -397,28 +509,154 @@ function removeFromCart(index) {
     renderCart();
 }
 
+const customerSearch = document.getElementById('customerSearch');
+const customerResults = document.getElementById('customerResults');
+const selectedCustomerInfo = document.getElementById('selectedCustomerInfo');
+
+if (customerSearch) {
+    customerSearch.addEventListener('input', async (e) => {
+        const term = e.target.value;
+        if (term.length < 2) {
+            customerResults.style.display = 'none';
+            return;
+        }
+
+        try {
+            const response = await fetch(`vendas.php?action=search_clients&term=${encodeURIComponent(term)}`);
+            const clients = await response.json();
+            renderCustomerSearchResults(clients);
+        } catch (err) {
+            console.error("PDV: Erro ao buscar clientes:", err);
+        }
+    });
+}
+
+function renderCustomerSearchResults(clients) {
+    customerResults.innerHTML = '';
+    if (clients.length === 0) {
+        customerResults.style.display = 'none';
+        return;
+    }
+
+    clients.forEach(c => {
+        const item = document.createElement('button');
+        item.className = 'list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center';
+        item.innerHTML = `
+            <div>
+                <div class="fw-bold">${c.nome}</div>
+                <small class="text-muted">${c.doc || 'Sem CPF/CNPJ'}</small>
+            </div>
+            <i class="fas fa-chevron-right text-muted small"></i>
+        `;
+        item.onclick = () => {
+            selectCustomer(c.id, c.nome, c.doc);
+        };
+        customerResults.appendChild(item);
+    });
+    customerResults.style.display = 'block';
+}
+
+function selectCustomer(id, nome, doc) {
+    selectedCustomerId = id;
+    selectedCustomerName = nome;
+    
+    document.getElementById('customerNameDisplay').innerText = nome;
+    document.getElementById('customerDocDisplay').innerText = doc || 'Sem documento';
+    
+    selectedCustomerInfo.classList.remove('d-none');
+    customerResults.style.display = 'none';
+    customerSearch.value = '';
+    
+    // Hide search group
+    customerSearch.closest('.input-group').classList.add('d-none');
+    customerSearch.closest('div.mb-4').querySelector('label').classList.add('d-none');
+}
+
+function clearCustomer() {
+    selectedCustomerId = null;
+    selectedCustomerName = null;
+    
+    selectedCustomerInfo.classList.add('d-none');
+    customerSearch.closest('.input-group').classList.remove('d-none');
+    customerSearch.closest('div.mb-4').querySelector('label').classList.remove('d-none');
+    customerSearch.value = '';
+    customerSearch.focus();
+}
+
+function abrirModalQuickClient() {
+    document.getElementById('qc_nome').value = '';
+    document.getElementById('qc_cpf_cnpj').value = '';
+    document.getElementById('qc_telefone').value = '';
+    new bootstrap.Modal(document.getElementById('modalQuickClient')).show();
+}
+
+async function salvarQuickClient() {
+    const nome = document.getElementById('qc_nome').value;
+    const cpf_cnpj = document.getElementById('qc_cpf_cnpj').value;
+    const telefone = document.getElementById('qc_telefone').value;
+
+    if (!nome) return alert('O nome é obrigatório.');
+
+    try {
+        const res = await fetch('vendas.php?action=quick_register_client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, cpf_cnpj, telefone })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            selectCustomer(result.client_id, nome, cpf_cnpj);
+            bootstrap.Modal.getInstance(document.getElementById('modalQuickClient')).hide();
+        } else {
+            alert('Erro ao cadastrar: ' + result.error);
+        }
+    } catch (err) {
+        alert('Erro de conexão: ' + err.message);
+    }
+}
+
 // Pre-sale flow
 async function loadPendingPreSales() {
-    const res = await fetch('pre_vendas.php?action=list_pending');
-    const pvs = await res.json();
-    const list = document.getElementById('listPendingPVs');
-    list.innerHTML = '';
+    console.log("PDV: Carregando pré-vendas pendentes...");
+    const term = '';
     
-    pvs.forEach(pv => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="ps-4 fw-bold text-primary">${pv.codigo}</td>
-            <td>${pv.cliente_nome || 'Consumidor Final'}</td>
-            <td class="fw-bold">R$ ${parseFloat(pv.valor_total).toFixed(2).replace('.', ',')}</td>
-            <td class="small text-muted">${pv.vendedor_nome}</td>
-            <td class="text-end pe-4">
-                <button class="btn btn-sm btn-primary fw-bold" onclick="importPreSale('${pv.codigo}')">CARREGAR</button>
-            </td>
-        `;
-        list.appendChild(row);
-    });
-    
-    new bootstrap.Modal(document.getElementById('modalPendingPV')).show();
+    try {
+        const res = await fetch(`pre_vendas.php?action=list_pending&term=${encodeURIComponent(term)}`);
+        if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
+        const pvs = await res.json();
+        const list = document.getElementById('listPendingPVs');
+        if (!list) return;
+        
+        list.innerHTML = '';
+        
+        if (pvs.length === 0) {
+            list.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhuma pré-venda encontrada.</td></tr>';
+        }
+
+        pvs.forEach(pv => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="ps-4 fw-bold text-primary">${pv.codigo}</td>
+                <td>${pv.cliente_nome || 'Consumidor Final'}</td>
+                <td class="fw-bold">R$ ${parseFloat(pv.valor_total).toFixed(2).replace('.', ',')}</td>
+                <td class="small text-muted">${pv.vendedor_nome}</td>
+                <td class="text-end pe-4">
+                    <button class="btn btn-sm btn-primary fw-bold" onclick="importPreSale('${pv.codigo}')">CARREGAR</button>
+                </td>
+            `;
+            list.appendChild(row);
+        });
+        
+        const modalEl = document.getElementById('modalPendingPV');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    } catch (err) {
+        console.error("PDV: Erro ao carregar pré-vendas:", err);
+        alert("Erro ao carregar pré-vendas. Verifique o console.");
+    }
 }
 
 async function importPreSale(code) {
@@ -433,10 +671,36 @@ async function importPreSale(code) {
             qty: parseFloat(i.quantidade),
             imagens: i.imagens
         }));
+        
         currentPvId = pv.id;
-        document.getElementById('customerDisplay').innerText = pv.cliente_nome || 'Consumidor Final';
+        
+        // Auto-select customer if present in pre-sale
+        if (pv.cliente_id) {
+            selectCustomer(pv.cliente_id, pv.cliente_nome, pv.cliente_doc || '');
+        } else if (pv.nome_cliente_avulso) {
+            // If it's a walk-in name, we can just set the name for the record but not a DB ID
+            selectedCustomerId = null;
+            selectedCustomerName = pv.nome_cliente_avulso;
+            // UI Update for walk-in
+            const customerInfo = document.getElementById('selectedCustomerInfo');
+            const customerNameDisplay = document.getElementById('selectedCustomerName');
+            const customerDocDisplay = document.getElementById('selectedCustomerDoc');
+            if (customerInfo && customerNameDisplay) {
+                customerNameDisplay.innerText = pv.nome_cliente_avulso;
+                customerDocDisplay.innerText = 'Consumidor Avulso';
+                customerInfo.classList.remove('d-none');
+                customerSearch.closest('.input-group').classList.add('d-none');
+                customerSearch.closest('div.mb-4').querySelector('label').classList.add('d-none');
+            }
+        } else {
+            clearCustomer();
+        }
+        
         renderCart();
-        bootstrap.Modal.getInstance(document.getElementById('modalPendingPV')).hide();
+        
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalPendingPV'));
+        if (modalInstance) modalInstance.hide();
+        
         pdvSearch.focus();
     }
 }
@@ -606,7 +870,6 @@ btnCheckout.onclick = async () => {
     
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     
-    // Safety check: blockage if discount exists but not authorized
     if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
         alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
         await loadAdmins();
@@ -614,17 +877,103 @@ btnCheckout.onclick = async () => {
         return;
     }
 
+    const payment = document.querySelector('input[name="payment"]:checked').value;
+    
+    if (payment === 'fiado') {
+        if (!selectedCustomerId) {
+            alert('Vendas a prazo (Fiado) exigem a seleção de um cliente cadastrado.');
+            customerSearch.focus();
+            return;
+        }
+
+        // Validation: Completeness for Fiado
+        try {
+            const res = await fetch(`vendas.php?action=check_client_completeness&id=${selectedCustomerId}`);
+            const data = await res.json();
+            
+            if (!data.is_complete) {
+                // Show completion modal
+                document.getElementById('edit_client_id').value = selectedCustomerId;
+                document.getElementById('edit_client_doc').value = data.client.cpf_cnpj || '';
+                document.getElementById('edit_client_phone').value = data.client.telefone || '';
+                document.getElementById('edit_client_address').value = data.client.endereco || '';
+                
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompleteClient')).show();
+                return;
+            }
+        } catch (err) {
+            console.error("Erro validando cliente:", err);
+        }
+
+        // Proceed to entry modal if complete
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
+        document.getElementById('entradaValor').value = '';
+        modal.show();
+        setTimeout(() => document.getElementById('entradaValor').focus(), 500);
+    } else {
+        processarCheckout();
+    }
+};
+
+async function updateClientAndContinue() {
+    const id = document.getElementById('edit_client_id').value;
+    const doc = document.getElementById('edit_client_doc').value;
+    const phone = document.getElementById('edit_client_phone').value;
+    const address = document.getElementById('edit_client_address').value;
+
+    if (!doc || !phone || !address) {
+        alert('Por favor, preencha todos os campos obrigatórios para o Fiado.');
+        return;
+    }
+
+    try {
+        const res = await fetch('vendas.php?action=update_client_quick', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, cpf_cnpj: doc, telefone: phone, endereco: address })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCompleteClient')).hide();
+            // Now show the entry modal
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
+            document.getElementById('entradaValor').value = '';
+            modal.show();
+            setTimeout(() => document.getElementById('entradaValor').focus(), 500);
+        } else {
+            alert('Erro ao atualizar cliente: ' + result.error);
+        }
+    } catch (err) {
+        alert('Erro de conexão: ' + err.message);
+    }
+}
+
+async function confirmarCheckoutFiado() {
+    processarCheckout();
+}
+
+async function processarCheckout() {
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const total = subtotal * (1 - (discountPercent / 100));
-
     const payment = document.querySelector('input[name="payment"]:checked').value;
+    const entrada = parseFloat(document.getElementById('entradaValor')?.value) || 0;
+
+    if (payment === 'fiado' && entrada >= total) {
+        alert('O valor da entrada não pode ser maior ou igual ao total da venda a prazo. Se o cliente vai pagar tudo agora, selecione outro método de pagamento.');
+        return;
+    }
+
     const data = {
         subtotal: subtotal,
         discount_percent: discountPercent,
         total: total,
         items: cart,
         pagamento: payment,
-        cliente_id: null,
+        entrada_valor: entrada,
+        cliente_id: selectedCustomerId,
+        nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
         pv_id: currentPvId,
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential
@@ -638,6 +987,10 @@ btnCheckout.onclick = async () => {
 
     const result = await res.json();
     if (result.success) {
+        // Close modals if open
+        const modalEntrada = bootstrap.Modal.getInstance(document.getElementById('modalEntrada'));
+        if (modalEntrada) modalEntrada.hide();
+
         showSuccessModal(result.sale_id, data.total);
         cart = [];
         currentPvId = null;
@@ -645,12 +998,13 @@ btnCheckout.onclick = async () => {
         authSupervisorId = null;
         authSupervisorCredential = null;
         document.getElementById('discountPercent').value = 0;
+        if (document.getElementById('entradaValor')) document.getElementById('entradaValor').value = 0;
         renderCart();
         loadRecentSales();
     } else {
         alert('Erro ao finalizar: ' + result.error);
     }
-};
+}
 
 function showSuccessModal(saleId, total) {
     const modalHtml = `
@@ -740,7 +1094,7 @@ document.addEventListener('keydown', (e) => {
 // Barcode optimization: If search returns exactly 1 result and looks like a barcode, add to cart automatically
 async function handleBarcode(val) {
     if (val.length >= 8 && !isNaN(val)) {
-        const response = await fetch(`vendas.php?action=search&term=${val}`);
+        const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(val)}`);
         const products = await response.json();
         if (products.length === 1) {
             addToCart(products[0]);

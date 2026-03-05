@@ -147,9 +147,10 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
   $st->execute($params);
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  $head = ["Nº Venda", "Data/Hora", "Cliente", "Entrega", "Pagamento", "Total"];
+  $head = ["Nº Venda", "Data/Hora", "Cliente", "Entrega", "Pagamento", "Total", "Recebido"];
   $body = [];
   $sum = 0.0;
+  $sumRec = 0.0;
 
   foreach ($rows as $r) {
     $id = (int)($r['id'] ?? 0);
@@ -159,6 +160,14 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
     $total = (float)($r['total'] ?? 0);
     $sum += $total;
 
+    $recebido = $total;
+    if (strtoupper((string)($r['pagamento'] ?? '')) === 'FIADO') {
+        $stF = $pdo->prepare("SELECT valor_pago FROM fiados WHERE venda_id = ?");
+        $stF->execute([$id]);
+        $recebido = (float)($stF->fetchColumn() ?: 0);
+    }
+    $sumRec += $recebido;
+
     $body[] = [
       '#' . $id,
       br_datetime((string)($r['created_at'] ?? '')),
@@ -166,6 +175,7 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
       entrega_label((string)($r['canal'] ?? '')),
       pagamento_label((string)($r['pagamento_mode'] ?? ''), (string)($r['pagamento'] ?? '')),
       br_money($total),
+      br_money($recebido),
     ];
   }
 
@@ -176,7 +186,10 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q)
     'sum' => $sum,
     'sum_text' => br_money($sum),
     'sum_label' => 'Total vendido',
-    'rightCols' => [5],
+    'sum_rec' => $sumRec,
+    'sum_rec_text' => br_money($sumRec),
+    'sum_rec_label' => 'Total recebido (Caixa)',
+    'rightCols' => [5, 6],
     'centerCols' => [0, 3, 4],
   ];
 }
@@ -910,7 +923,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 <body>
   <div id="preloader"><div class="spinner"></div></div>
 
-  <!-- ======== sidebar-nav start =========== -->
+    <!-- ======== sidebar-nav start =========== -->
+    <aside class="sidebar-nav-wrapper">
+        <div class="navbar-logo">
+            <a href="dashboard.php" class="d-flex align-items-center gap-2">
+                <img src="assets/images/logo/logo.svg" alt="logo" />
+            </a>
+        </div>
+
+           <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -932,6 +953,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           </a>
         </li>
 
+        <li class="nav-item">
+          <a href="vendas.php">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="text">Vendas</span>
+          </a>
+        </li>
+
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
             <span class="icon">
@@ -942,13 +975,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-            <li><a href="vendidos.php">Vendidos</a></li>
-            <li><a href="vendas.php">Vendas</a></li>
+            <li><a href="vendidos.php"  >Vendidos</a></li>
+            <li><a href="fiados.php">À Prazo</a></li>
             <li><a href="devolucoes.php">Devoluções</a></li>
           </ul>
         </li>
 
-        <li class="nav-item nav-item-has-children">
+        <li class="nav-item nav-item-has-children ">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -960,7 +993,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           </a>
           <ul id="ddmenu_estoque" class="collapse dropdown-nav">
             <li><a href="produtos.php">Produtos</a></li>
-            <li><a href="inventario.php">Inventário</a></li>
+            <li><a href="inventario.php" >Inventário</a></li>
             <li><a href="entradas.php">Entradas</a></li>
             <li><a href="saidas.php">Saídas</a></li>
             <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
@@ -986,18 +1019,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           </ul>
         </li>
 
-        <li class="nav-item active">
+        <li class="nav-item">
           <a href="relatorios.php">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
               </svg>
             </span>
-            <span class="text">Relatórios</span>
+            <span class="text"  class="active">Relatórios</span>
           </a>
         </li>
 
-        <span class="divider"><hr /></span>
+        <span class="divider">
+          <hr />
+        </span>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
@@ -1235,10 +1270,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
                 <div class="box-tot mt-3">
                   <div class="tot-row"><span>Linhas</span><span id="tRows">0</span></div>
-                  <div class="tot-row"><span>Somatório</span><span id="tSum" style="font-weight:1000;color:#0b5ed7;">—</span></div>
+                  <div class="tot-row"><span>Vendido</span><span id="tSum" style="font-weight:900;">—</span></div>
+                  <div class="tot-row" id="rowSumRec" style="display:none;"><span>Recebido (Caixa)</span><span id="tSumRec" style="font-weight:1000;color:#0b5ed7;">—</span></div>
                   <div class="tot-hr"></div>
                   <div class="grand">
-                    <span class="lbl">TOTAL</span>
+                    <span class="lbl">TOTAL CAIXA</span>
                     <span class="val" id="tGrand">—</span>
                   </div>
                   <div class="muted mt-2" id="tNote">* O somatório depende do tipo de relatório.</div>
@@ -1400,7 +1436,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
       const sumText = rep.sum_text || numberToMoney(rep.sum || 0);
       tSum.textContent = sumText;
-      tGrand.textContent = sumText;
+      
+      if (rep.sum_rec_text) {
+        document.getElementById('rowSumRec').style.display = 'flex';
+        document.getElementById('tSumRec').textContent = rep.sum_rec_text;
+        tGrand.textContent = rep.sum_rec_text;
+      } else {
+        document.getElementById('rowSumRec').style.display = 'none';
+        tGrand.textContent = sumText;
+      }
 
       tNote.textContent = `* ${rep.sum_label || "Somatório"}.`;
       setInfo(rep.title || "Relatório", true);
@@ -1504,7 +1548,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       html += `<tr><td class="title" colspan="${colN}">PAINEL DA DISTRIBUIDORA - ${safeText(String(rep.title || "RELATÓRIO").toUpperCase())}</td></tr>`;
       html += `<tr><td class="muted">Gerado em:</td><td colspan="${colN - 1}">${safeText(dt)}</td></tr>`;
       html += `<tr><td class="muted">Período:</td><td colspan="${colN - 1}">${safeText(periodo)}</td></tr>`;
-      html += `<tr><td class="muted">Somatório:</td><td colspan="${colN - 1}">${safeText(rep.sum_text || "—")} (${safeText(rep.sum_label || "")})</td></tr>`;
+      html += `<tr><td class="muted">Somatório (Vendido):</td><td colspan="${colN - 1}">${safeText(rep.sum_text || "—")}</td></tr>`;
+      if (rep.sum_rec_text) {
+        html += `<tr><td class="muted">Total Recebido (Caixa):</td><td colspan="${colN - 1}">${safeText(rep.sum_rec_text)}</td></tr>`;
+      }
       html += `<tr class="spacer"><td colspan="${colN}"></td></tr>`;
 
       html += `<tr>${rep.head.map((h, idx) => {
@@ -1557,7 +1604,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       doc.setFontSize(10);
       doc.text(`Gerado em: ${dt}`, M, 75);
       doc.text(`Período: ${periodo}`, M, 92);
-      doc.text(`Somatório: ${rep.sum_text || "—"} (${rep.sum_label || ""})`, M, 108);
+      doc.text(`Somatório (Vendido): ${rep.sum_text || "—"}`, M, 108);
+      if (rep.sum_rec_text) {
+        doc.text(`Total Recebido (Caixa): ${rep.sum_rec_text}`, M, 122);
+      }
 
       doc.autoTable({
         head: [rep.head],

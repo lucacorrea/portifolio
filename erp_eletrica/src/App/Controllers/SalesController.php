@@ -18,27 +18,94 @@ class SalesController extends BaseController {
     }
 
     public function search() {
+        $term = trim($_GET['term'] ?? '');
+        if (empty($term)) {
+            echo json_encode([]);
+            exit;
+        }
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $filialId = $_SESSION['filial_id'] ?? 1;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        
+        $results = [];
+
+        // 1. Search Products
+        $sqlProd = "SELECT id, nome, preco_venda, unidade, imagens, codigo, 'product' as type 
+                    FROM produtos 
+                    WHERE (nome LIKE ? OR codigo LIKE ? OR codigo = ?) ";
+        $paramsProd = ["%$term%", "%$term%", $term];
+        
+        if (!$isMatriz) {
+            $sqlProd .= " AND filial_id = ?";
+            $paramsProd[] = $filialId;
+        }
+        $sqlProd .= " ORDER BY (CASE WHEN codigo = ? THEN 1 WHEN codigo LIKE ? THEN 2 ELSE 3 END), nome ASC LIMIT 10";
+        $paramsProd[] = $term;
+        $paramsProd[] = "$term%";
+
+        $stmtProd = $db->prepare($sqlProd);
+        $stmtProd->execute($paramsProd);
+        $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
+        foreach ($products as $p) $results[] = $p;
+
+        // 2. Search Pre-Sales (Pending)
+        $modelPV = new \App\Models\PreSale();
+        $avulsoCol = $modelPV->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
+        
+        $sqlPV = "
+            SELECT pv.id, pv.codigo, pv.valor_total as preco_venda, 
+                   COALESCE(c.nome, $avulsoCol, 'Consumidor') as nome, 
+                   'UN' as unidade, '' as imagens, 'pre_sale' as type
+            FROM pre_vendas pv 
+            LEFT JOIN clientes c ON pv.cliente_id = c.id 
+            WHERE pv.status = 'pendente' ";
+            
+        $paramsPV = [];
+        if (!$isMatriz) {
+            $sqlPV .= " AND pv.filial_id = ? ";
+            $paramsPV[] = $filialId;
+        }
+
+        $termLike = "%$term%";
+        $termInt = (int)$term;
+        $sqlPV .= " AND (LOWER(pv.codigo) LIKE ? OR pv.id = ? OR LOWER(c.nome) LIKE ? OR LOWER($avulsoCol) LIKE ?) ";
+        $paramsPV[] = strtolower($termLike);
+        $paramsPV[] = $termInt;
+        $paramsPV[] = strtolower($termLike);
+        $paramsPV[] = strtolower($termLike);
+        
+        $sqlPV .= " LIMIT 5";
+        
+        $stmtPV = $db->prepare($sqlPV);
+        $stmtPV->execute($paramsPV);
+        $pvs = $stmtPV->fetchAll(\PDO::FETCH_ASSOC);
+        foreach ($pvs as $pv) {
+            $pv['nome'] = "PRÉ-VENDA: " . $pv['codigo'] . " (" . $pv['nome'] . ")";
+            $results[] = $pv;
+        }
+
+        // Sort: PVs first if they match PV code, then products
+        usort($results, function($a, $b) use ($term) {
+            if ($a['type'] === 'pre_sale' && str_contains(strtolower($a['codigo'] ?? ''), strtolower($term))) return -1;
+            if ($b['type'] === 'pre_sale' && str_contains(strtolower($b['codigo'] ?? ''), strtolower($term))) return 1;
+            return 0;
+        });
+
+        echo json_encode(array_slice($results, 0, 15));
+        exit;
+    }
+
+    public function search_clients() {
         $term = $_GET['term'] ?? '';
         $db = \App\Config\Database::getInstance()->getConnection();
         
-        $filialId = $_SESSION['filial_id'] ?? null;
-        $isMatriz = $_SESSION['is_matriz'] ?? false;
-        
-        $sql = "SELECT id, nome, preco_venda, unidade, imagens, codigo 
-                FROM produtos 
-                WHERE (nome LIKE ? OR codigo LIKE ? OR codigo = ?) ";
-        $params = ["%$term%", "%$term%", $term];
-        
-        if (!$isMatriz && $filialId) {
-            $sql .= " AND filial_id = ?";
-            $params[] = $filialId;
-        }
-        
-        $sql .= " ORDER BY (CASE WHEN codigo = ? THEN 1 WHEN codigo LIKE ? THEN 2 ELSE 3 END), nome ASC LIMIT 15";
-        $params[] = $term;
-        $params[] = "$term%";
+        $sql = "SELECT id, nome, cpf_cnpj as doc FROM clientes 
+                WHERE (nome LIKE ? OR cpf_cnpj LIKE ?) 
+                AND filial_id = ? 
+                LIMIT 10";
         $stmt = $db->prepare($sql);
-        $stmt->execute($params);
+        $stmt->execute(["%$term%", "%$term%", $_SESSION['filial_id'] ?? 1]);
         echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
         exit;
     }
@@ -52,6 +119,13 @@ class SalesController extends BaseController {
 
             try {
                 $db->beginTransaction();
+
+                // Validation: Cashier Open Check
+                $cashierModel = new \App\Models\Cashier();
+                $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+                if (!$caixaAberto) {
+                    throw new \Exception("É necessário abrir o caixa antes de realizar vendas.");
+                }
 
                 // Validation: Discount Limit
                 $maxDiscount = 100; // Default if column missing
@@ -67,39 +141,103 @@ class SalesController extends BaseController {
                 
                 $requestedDiscount = $data['discount_percent'] ?? 0;
                 $supervisorId = null;
+                $authCode = $data['auth_code'] ?? null;
 
                 // Re-validation for Non-Admins with Discount
                 if ($requestedDiscount > 0 && $_SESSION['usuario_nivel'] !== 'admin') {
-                    $supervisorId = $data['supervisor_id'] ?? null;
-                    $supervisorCredential = $data['supervisor_credential'] ?? null;
+                    $isValid = false;
 
-                    if (!$supervisorId || !$supervisorCredential) {
-                        throw new \Exception("Esta venda com desconto requer autorização de um administrador.");
+                    // Option 1: Temporary Code
+                    if ($authCode) {
+                        $authService = new \App\Services\AuthorizationService();
+                        if ($authService->validateAndUse($authCode, 'desconto', $_SESSION['filial_id'] ?? 1)) {
+                            $isValid = true;
+                            $supervisorId = 0; // System flagged
+                            $audit = new \App\Services\AuditLogService();
+                            $audit->record('Uso de código de desconto', 'vendas', null, null, $authCode);
+                        }
                     }
 
-                    $userModel = new \App\Models\User();
-                    // Re-verify credentials
-                    if (!$userModel->validateAuth($supervisorId, $supervisorCredential)) {
-                        throw new \Exception("Credenciais de autorização inválidas.");
+                    // Option 2: Direct Supervisor Credentials (legacy/fallback)
+                    if (!$isValid) {
+                        $supervisorId = $data['supervisor_id'] ?? null;
+                        $supervisorCredential = $data['supervisor_credential'] ?? null;
+
+                        if (!$supervisorId || !$supervisorCredential) {
+                            throw new \Exception("Esta venda com desconto requer autorização ou um código válido.");
+                        }
+
+                        $userModel = new \App\Models\User();
+                        if (!$userModel->validateAuth($supervisorId, $supervisorCredential)) {
+                            throw new \Exception("Credenciais ou código de autorização inválidos.");
+                        }
+
+                        $supervisor = $db->query("SELECT nivel FROM usuarios WHERE id = " . (int)$supervisorId)->fetch();
+                        if (!$supervisor || $supervisor['nivel'] !== 'admin') {
+                            throw new \Exception("Apenas administradores podem autorizar descontos.");
+                        }
+                        $isValid = true;
                     }
 
-                    // Ensure the supervisor is actually an admin
-                    $supervisor = $db->query("SELECT nivel FROM usuarios WHERE id = " . (int)$supervisorId)->fetch();
-                    if (!$supervisor || $supervisor['nivel'] !== 'admin') {
-                        throw new \Exception("Apenas administradores podem autorizar descontos.");
+                    if (!$isValid) {
+                        throw new \Exception("Autorização de desconto falhou.");
                     }
                 }
 
                 $saleData = [
                     'cliente_id' => $data['cliente_id'] ?? null,
+                    'nome_cliente_avulso' => $data['nome_cliente_avulso'] ?? null,
                     'usuario_id' => $_SESSION['usuario_id'],
                     'filial_id' => $_SESSION['filial_id'] ?? 1,
                     'valor_total' => $data['total'],
-                    'desconto_total' => $data['subtotal'] * ($requestedDiscount / 100),
-                    'autorizado_por' => $supervisorId,
-                    'forma_pagamento' => $data['pagamento']
+                    'desconto_total' => ($data['subtotal'] * ($data['discount_percent'] / 100)),
+                    'forma_pagamento' => $data['pagamento'],
+                    'autorizado_por' => $supervisorId
                 ];
+
                 $saleId = $saleModel->create($saleData);
+                
+                // Automatic accounts receivable for 'fiado'
+                if ($data['pagamento'] === 'fiado') {
+                    if (empty($data['cliente_id'])) {
+                        throw new \Exception("Vendas a prazo (fiado) exigem um cliente cadastrado.");
+                    }
+
+                    $entrada = (float)($data['entrada_valor'] ?? 0);
+                    $valorDivida = (float)$data['total'] - $entrada;
+
+                    // 1. If there's a down payment, record it in cashier
+                    if ($entrada > 0) {
+                        $cashierModel->recordMovement([
+                            'caixa_id' => $caixaAberto['id'],
+                            'tipo' => 'entrada',
+                            'descricao' => "Entrada Venda #$saleId (Fiado)",
+                            'valor' => $entrada,
+                            'forma_pagamento' => 'dinheiro',
+                            'usuario_id' => $_SESSION['usuario_id']
+                        ]);
+                    }
+
+                    // 2. Create the receivable for the remaining balance
+                    $receivableModel = new \App\Models\AccountReceivable();
+                    $receivableModel->create([
+                        'venda_id' => $saleId,
+                        'cliente_id' => $data['cliente_id'],
+                        'valor' => $data['total'],
+                        'valor_pago' => $entrada,
+                        'saldo' => $valorDivida,
+                        'status' => 'pendente',
+                        'data_vencimento' => date('Y-m-d', strtotime('+30 days')),
+                        'filial_id' => $_SESSION['filial_id'] ?? 1
+                    ]);
+                    
+                    $audit = new \App\Services\AuditLogService();
+                    $audit->record('Venda fiado criada', 'vendas', $saleId, null, json_encode([
+                        'total' => $data['total'],
+                        'entrada' => $entrada,
+                        'saldo_devedor' => $valorDivida
+                    ]));
+                }
 
                 // Se houver ID de pré-venda, marca como finalizado
                 if (!empty($data['pv_id'])) {
@@ -201,5 +339,53 @@ class SalesController extends BaseController {
         $userModel = new \App\Models\User();
         echo json_encode($userModel->findAdmins());
         exit;
+    }
+
+    public function check_client_completeness() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            echo json_encode(['is_complete' => false, 'missing' => ['id']]);
+            exit;
+        }
+
+        $model = new Client();
+        $client = $model->find($id);
+        
+        if (!$client) {
+            echo json_encode(['is_complete' => false, 'error' => 'Cliente não encontrado']);
+            exit;
+        }
+
+        $missing = [];
+        if (empty($client['cpf_cnpj'])) $missing[] = 'cpf_cnpj';
+        if (empty($client['endereco'])) $missing[] = 'endereco';
+        if (empty($client['telefone'])) $missing[] = 'telefone';
+
+        echo json_encode([
+            'is_complete' => empty($missing),
+            'missing' => $missing,
+            'client' => $client
+        ]);
+        exit;
+    }
+
+    public function update_client_quick() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? null;
+            if (!$id) {
+                echo json_encode(['success' => false, 'error' => 'ID ausente']);
+                exit;
+            }
+
+            try {
+                $model = new Client();
+                $model->save($data);
+                echo json_encode(['success' => true]);
+            } catch (\Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+            exit;
+        }
     }
 }

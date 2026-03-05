@@ -1,0 +1,146 @@
+<?php
+namespace App\Services;
+
+use Exception;
+use DOMDocument;
+
+class SefazConsultaService extends BaseService {
+    private $db;
+    private $config;
+
+    public function __construct() {
+        parent::__construct();
+        $this->db = \App\Config\Database::getInstance()->getConnection();
+        $this->loadConfig();
+    }
+
+    private function loadConfig() {
+        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
+        $this->config = $stmt->fetch();
+        if (!$this->config) throw new Exception("Configuração SEFAZ Global não encontrada.");
+        if (empty($this->config['certificado_path'])) throw new Exception("Certificado A1 não enviado ou configurado.");
+    }
+
+    /**
+     * Consulta as NF-e destinadas via NFeDistribuicaoDFe
+     */
+    public function consultarNotas($cnpjDestinario, $ultNSU = '0') {
+        $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
+        $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2; 
+
+        // Preparamos o XML de solicitação seguindo NT 2014.002
+        $xml_soap = $this->gerarXmlDistDfe($cnpj, $ultNSU, $ambiente);
+        
+        // Em um cenário real, usaríamos o certificado desacoplado da sefaz_config
+        $responseXml = $this->comunicarSefaz($xml_soap);
+        return $this->processarRetorno($responseXml);
+    }
+
+    private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
+        $xml = new DOMDocument('1.0', 'UTF-8');
+        $distDFeInt = $xml->createElementNS('http://www.portalfiscal.inf.br/nfe', 'distDFeInt');
+        $distDFeInt->setAttribute('versao', '1.01');
+        
+        $xml->appendChild($distDFeInt);
+        $distDFeInt->appendChild($xml->createElement('tpAmb', $ambiente));
+        $distDFeInt->appendChild($xml->createElement('cUFAutor', '35')); // Geralmente 91 para AN, mas SP usa 35
+        $distDFeInt->appendChild($xml->createElement('CNPJ', $cnpj));
+        
+        $dist = $xml->createElement('distNSU');
+        $dist->appendChild($xml->createElement('ultNSU', str_pad($ultNSU, 15, '0', STR_PAD_LEFT)));
+        $distDFeInt->appendChild($dist);
+
+        return $xml->saveXML();
+    }
+
+    private function comunicarSefaz($xml) {
+        // MOCK: Simulação de resposta da SEFAZ para fins de demonstração do fluxo
+        // Em produção, aqui iria o cURL com Certificado Digital
+        
+        $this->logAction('Consulta SEFAZ Realizada', 'filiais', $this->filial['id']);
+        
+        // Simulando um retorno com 1 nota para teste
+        $mockXml = '<?xml version="1.0" encoding="utf-8"?>
+        <retDistDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01">
+            <tpAmb>2</tpAmb>
+            <verAplic>SP_NFE_PL_009_V4</verAplic>
+            <cStat>138</cStat>
+            <xMotivo>Documentos localizados</xMotivo>
+            <ultNSU>000000000000123</ultNSU>
+            <maxNSU>000000000000123</maxNSU>
+            <loteDistDFeInt>
+                <docZip NSU="000000000000123" schema="resNFe_v1.01">H4sIAAAAAAAACjvOz9XNL0pPzEtXyE9TCMnMTfXJL0pVSM7MTfVNLkotSy0qzszPU0jOSy3IA8oWpSbk5-cXpRYXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpSokF-QXlyQXpYkBABO5P6WAAAAA</docZip>
+            </loteDistDFeInt>
+        </retDistDFeInt>';
+        
+        return $mockXml;
+    }
+
+    private function processarRetorno($xmlStr) {
+        $xml = simplexml_load_string($xmlStr);
+        $xml->registerXPathNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        
+        $status = (string)$xml->cStat;
+        if ($status != '138' && $status != '137') {
+            throw new Exception("SEFAZ retornou erro: " . (string)$xml->xMotivo);
+        }
+
+        $docs = [];
+        if (isset($xml->loteDistDFeInt->docZip)) {
+            foreach ($xml->loteDistDFeInt->docZip as $docZip) {
+                // O conteúdo vem gzipped e codificado em base64
+                $decoded = base64_decode((string)$docZip);
+                $content = @gzdecode($decoded);
+                
+                if ($content) {
+                    $docXml = simplexml_load_string($content);
+                    // resNFe ou procNFe
+                    if ($docXml->getName() == 'resNFe') {
+                        $docs[] = [
+                            'chave' => (string)$docXml->chNFe,
+                            'cnpj' => (string)$docXml->CNPJ,
+                            'nome' => (string)$docXml->xNome,
+                            'numero' => substr((string)$docXml->chNFe, 25, 9),
+                            'data' => (string)$docXml->dhEmi,
+                            'valor' => (float)$docXml->vNF,
+                            'xml' => $content
+                        ];
+                    }
+                }
+            }
+        }
+
+        return [
+            'status' => $status,
+            'motivo' => (string)$xml->xMotivo,
+            'ultNSU' => (string)$xml->ultNSU,
+            'maxNSU' => (string)$xml->maxNSU,
+            'documentos' => $docs
+        ];
+    }
+
+    public function salvarNotasCache($filialId, $documentos) {
+        foreach ($documentos as $doc) {
+            try {
+                $stmt = $this->db->prepare("
+                    INSERT INTO nfe_importadas (filial_id, chave_acesso, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
+                ");
+                $stmt->execute([
+                    $filialId,
+                    $doc['chave'],
+                    $doc['cnpj'],
+                    $doc['nome'],
+                    $doc['numero'],
+                    date('Y-m-d H:i:s', strtotime($doc['data'])),
+                    $doc['valor'],
+                    $doc['xml']
+                ]);
+                $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $this->db->lastInsertId(), null, $doc['chave']);
+            } catch (Exception $e) {
+                // Provavelmente duplicidade (chave_acesso UNIQUE), ignoramos silenciosamente
+                continue;
+            }
+        }
+    }
+}

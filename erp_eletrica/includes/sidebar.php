@@ -36,6 +36,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
 
+        <a href="caixa.php" class="nav-link <?= $current_page == 'caixa.php' ? 'active' : '' ?>">
+            <i class="fas fa-vault"></i> <span>Controle de Caixa</span>
+        </a>
+
         <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
@@ -62,6 +66,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <a href="fornecedores.php" class="nav-link <?= $current_page == 'fornecedores.php' ? 'active' : '' ?>">
             <i class="fas fa-truck-fast"></i> <span>Fornecedores</span>
+        </a>
+        <a href="importar_automatico.php" class="nav-link <?= $current_page == 'importar_automatico.php' ? 'active' : '' ?>">
+            <i class="fas fa-cloud-download-alt"></i> <span>Importação Automática</span>
         </a>
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Financeiro</div>
@@ -91,6 +98,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
         <?php endif; ?>
 
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'gerente'])): ?>
+        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão Estratégica</div>
+        
+        <a href="custos.php" class="nav-link <?= $current_page == 'custos.php' ? 'active' : '' ?>">
+            <i class="fas fa-chart-pie"></i> <span>Centro de Custos</span>
+        </a>
+        <a href="inteligencia.php" class="nav-link <?= $current_page == 'inteligencia.php' ? 'active' : '' ?>">
+            <i class="fas fa-brain"></i> <span>Inteligência BI</span>
+        </a>
+        <?php endif; ?>
+
         <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
         
@@ -102,6 +120,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <a href="fiscal.php?action=settings" class="nav-link <?= ($current_page == 'fiscal.php' && ($_GET['action'] ?? '') == 'settings') ? 'active' : '' ?>">
             <i class="fas fa-server"></i> <span>Conectividade SEFAZ</span>
+        </a>
+        <a href="importar_automatico.php?action=config" class="nav-link <?= ($current_page == 'importar_automatico.php' && ($_GET['action'] ?? '') == 'config') ? 'active' : '' ?>">
+            <i class="fas fa-shield-halved"></i> <span>Certificado Global A1</span>
         </a>
         <?php endif; ?>
         

@@ -21,9 +21,30 @@ class PreSaleController extends BaseController {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents('php://input'), true);
             $model = new PreSale();
+            $clientModel = new Client();
             
             $data['usuario_id'] = $_SESSION['usuario_id'];
             $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
+
+            // Automated Client Registration/Selection
+            if (empty($data['cliente_id']) && !empty($data['nome_cliente_avulso'])) {
+                $nome = trim($data['nome_cliente_avulso']);
+                // Check if client with this EXACT name exists to avoid duplicates
+                $stmt = \App\Config\Database::getInstance()->getConnection()->prepare("SELECT id FROM clientes WHERE nome = ? AND filial_id = ? LIMIT 1");
+                $stmt->execute([$nome, $data['filial_id']]);
+                $existingId = $stmt->fetchColumn();
+
+                if ($existingId) {
+                    $data['cliente_id'] = $existingId;
+                } else {
+                    // Create new quick client
+                    $newClientId = $clientModel->create([
+                        'nome' => $nome,
+                        'filial_id' => $data['filial_id']
+                    ]);
+                    $data['cliente_id'] = $newClientId;
+                }
+            }
 
             try {
                 $result = $model->create($data);
@@ -45,15 +66,71 @@ class PreSaleController extends BaseController {
 
     public function list_pending() {
         $db = \App\Config\Database::getInstance()->getConnection();
-        $recent = $db->query("
-            SELECT pv.id, pv.codigo, pv.valor_total, c.nome as cliente_nome, u.nome as vendedor_nome 
+        $term = trim($_GET['term'] ?? '');
+        $model = new PreSale();
+        
+        $filialId = $_SESSION['filial_id'] ?? 1;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        
+        $avulsoCol = $model->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
+
+        $sql = "
+            SELECT pv.id, pv.codigo, pv.valor_total, pv.status, pv.created_at,
+                   COALESCE(c.nome, $avulsoCol, 'Consumidor') as cliente_nome, 
+                   u.nome as vendedor_nome 
             FROM pre_vendas pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
             LEFT JOIN usuarios u ON pv.usuario_id = u.id
-            WHERE pv.status = 'pendente' 
-            ORDER BY pv.created_at DESC LIMIT 20
-        ")->fetchAll(\PDO::FETCH_ASSOC);
-        echo json_encode($recent);
+            WHERE 1=1 ";
+        
+        $params = [];
+        
+        if (!$isMatriz) {
+            $sql .= " AND pv.filial_id = ? ";
+            $params[] = $filialId;
+        }
+
+        if ($term) {
+            $termLike = "%" . strtolower($term) . "%";
+            $termInt = (int)$term;
+            
+            $sql .= " AND (
+                LOWER(TRIM(COALESCE(c.nome, ''))) LIKE ? 
+                OR LOWER(TRIM(COALESCE(c.cpf_cnpj, ''))) LIKE ? 
+                OR LOWER(TRIM(COALESCE($avulsoCol, ''))) LIKE ? 
+                OR LOWER(TRIM(COALESCE(u.nome, ''))) LIKE ?
+                OR LOWER(TRIM(pv.codigo)) LIKE ? 
+                OR pv.id = ? 
+                OR EXISTS (
+                    SELECT 1 FROM pre_venda_itens pvi 
+                    INNER JOIN produtos p ON pvi.produto_id = p.id 
+                    WHERE pvi.pre_venda_id = pv.id 
+                    AND (LOWER(TRIM(p.nome)) LIKE ? OR LOWER(TRIM(p.codigo)) LIKE ? OR p.id = ? OR LOWER(TRIM(p.codigo_barras)) LIKE ?)
+                )
+            )";
+            $params[] = $termLike; // c.nome
+            $params[] = $termLike; // c.cpf_cnpj
+            $params[] = $termLike; // avulso
+            $params[] = $termLike; // u.nome
+            $params[] = $termLike; // pv.codigo
+            $params[] = $termInt;  // pv.id
+            $params[] = $termLike; // p.nome
+            $params[] = $termLike; // p.codigo
+            $params[] = $termInt;  // p.id
+            $params[] = $termLike; // p.codigo_barras
+        } else {
+            $sql .= " AND pv.status = 'pendente' ";
+        }
+
+        $sql .= " ORDER BY pv.created_at DESC LIMIT 30";
+        
+        try {
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            echo json_encode(['error' => $e->getMessage(), 'sql' => $sql]);
+        }
         exit;
     }
 }

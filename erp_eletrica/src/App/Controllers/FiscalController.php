@@ -68,8 +68,13 @@ class FiscalController extends BaseController {
         $stmt->execute($params);
         $branches = $stmt->fetchAll();
 
+        // Get Global Config
+        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
+        $globalConfig = $stmt->fetch();
+
         $this->render('fiscal/settings', [
             'branches' => $branches,
+            'globalConfig' => $globalConfig,
             'title' => 'Configurações SEFAZ',
             'pageTitle' => 'Central de Conectividade Fiscal'
         ]);

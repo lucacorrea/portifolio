@@ -5,18 +5,36 @@ class Sale extends BaseModel {
     protected $table = 'vendas';
 
     public function create($data) {
-        $sql = "INSERT INTO {$this->table} (cliente_id, usuario_id, filial_id, valor_total, desconto_total, autorizado_por, forma_pagamento, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        $params = [
-            $data['cliente_id'],
-            $data['usuario_id'],
-            $data['filial_id'],
-            $data['valor_total'],
-            $data['desconto_total'] ?? 0,
-            $data['autorizado_por'] ?? null,
-            $data['forma_pagamento'],
-            'concluido'
-        ];
+        $hasAvulso = $this->columnExists('nome_cliente_avulso');
+        
+        if ($hasAvulso) {
+            $sql = "INSERT INTO {$this->table} (cliente_id, nome_cliente_avulso, usuario_id, filial_id, valor_total, desconto_total, autorizado_por, forma_pagamento, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $params = [
+                $data['cliente_id'] ?? null,
+                $data['nome_cliente_avulso'] ?? null,
+                $data['usuario_id'],
+                $data['filial_id'],
+                $data['valor_total'],
+                $data['desconto_total'] ?? 0,
+                $data['autorizado_por'] ?? null,
+                $data['forma_pagamento'],
+                'concluido'
+            ];
+        } else {
+            $sql = "INSERT INTO {$this->table} (cliente_id, usuario_id, filial_id, valor_total, desconto_total, autorizado_por, forma_pagamento, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $params = [
+                $data['cliente_id'] ?? null,
+                $data['usuario_id'],
+                $data['filial_id'],
+                $data['valor_total'],
+                $data['desconto_total'] ?? 0,
+                $data['autorizado_por'] ?? null,
+                $data['forma_pagamento'],
+                'concluido'
+            ];
+        }
         $this->query($sql, $params);
         return $this->db->lastInsertId();
     }
@@ -25,9 +43,10 @@ class Sale extends BaseModel {
         $filialId = $this->getFilialContext();
         $where = $filialId ? "WHERE v.filial_id = ?" : "";
         $params = $filialId ? [$filialId] : [];
+        $nameField = $this->columnExists('nome_cliente_avulso') ? 'v.nome_cliente_avulso' : 'NULL';
 
         return $this->query("
-            SELECT v.*, c.nome as cliente_nome, u.nome as vendedor_nome 
+            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome 
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
             LEFT JOIN usuarios u ON v.usuario_id = u.id 
@@ -41,9 +60,10 @@ class Sale extends BaseModel {
         $filialId = $this->getFilialContext();
         $where = $filialId ? "WHERE v.filial_id = ?" : "";
         $params = $filialId ? [$filialId] : [];
+        $nameField = $this->columnExists('nome_cliente_avulso') ? 'v.nome_cliente_avulso' : 'NULL';
 
         return $this->query("
-            SELECT v.*, c.nome as cliente_nome, u.nome as vendedor_nome 
+            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome 
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
             LEFT JOIN usuarios u ON v.usuario_id = u.id 
@@ -61,8 +81,9 @@ class Sale extends BaseModel {
     }
 
     public function findById($id) {
+        $nameField = $this->columnExists('nome_cliente_avulso') ? 'v.nome_cliente_avulso' : 'NULL';
         $sale = $this->query("
-            SELECT v.*, c.nome as cliente_nome, u.nome as vendedor_nome 
+            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome 
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
             LEFT JOIN usuarios u ON v.usuario_id = u.id 

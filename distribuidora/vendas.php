@@ -37,32 +37,6 @@ function json_out(array $data, int $code = 200): void
 }
 
 /* =========================
-   Monta URL da imagem
-   - banco salva: images/xxx.png
-   - precisa virar: assets/dados/produtos/images/xxx.png
-========================= */
-function img_url(string $raw): string
-{
-  $raw = trim($raw);
-  if ($raw === '') return '';
-
-  // normaliza \ do windows
-  $raw = str_replace('\\', '/', $raw);
-
-  if (preg_match('~^https?://~i', $raw)) return $raw;
-
-  $raw = ltrim($raw, '/');
-
-  // se já veio com assets..., não duplica
-  if (strpos($raw, 'assets/') === 0) return $raw;
-
-  // base onde ficam as imagens
-  $base = 'assets/dados/produtos/';
-
-  return rtrim($base, '/') . '/' . $raw; // images/xxx -> assets/dados/produtos/images/xxx
-}
-
-/* =========================
    ENDPOINT INTERNO (AJAX)
    - só pra "ultimasVendas"
 ========================= */
@@ -120,14 +94,6 @@ try {
   $rowsP = $stP->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
   $PRODUTOS_CACHE = array_map(static function (array $r): array {
-    $img = trim((string)($r['imagem'] ?? ''));
-
-    // fallback: se imagem estiver vazia e você salvou o caminho no OBS
-    if ($img === '') {
-      $obs = trim((string)($r['obs'] ?? ''));
-      if (preg_match('~^(images/|uploads/|img/|prod_).+~i', $obs)) $img = $obs;
-    }
-
     return [
       'id'    => (int)($r['id'] ?? 0),
       'code'  => (string)($r['codigo'] ?? ''),
@@ -135,7 +101,6 @@ try {
       'unit'  => (string)($r['unidade'] ?? ''),
       'price' => (float)($r['preco'] ?? 0),
       'stock' => (int)($r['estoque'] ?? 0),
-      'img'   => img_url($img),
     ];
   }, $rowsP);
 } catch (Throwable $e) {
@@ -344,15 +309,7 @@ function fmtMoney($v): string
       background: rgba(241, 245, 249, .9);
     }
 
-    .pimg {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      object-fit: cover;
-      border: 1px solid rgba(148, 163, 184, .30);
-      background: #fff;
-      flex: 0 0 auto;
-    }
+
 
     .it .meta {
       min-width: 0;
@@ -384,38 +341,9 @@ function fmtMoney($v): string
       white-space: nowrap;
     }
 
-    .preview-box {
-      width: 100%;
-      height: 130px;
-      border-radius: 16px;
-      border: 1px dashed rgba(148, 163, 184, .55);
-      background: rgba(248, 250, 252, .7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-      text-align: center;
-    }
 
-    .preview-box img {
-      width: 86px;
-      height: 86px;
-      border-radius: 16px;
-      object-fit: cover;
-      border: 1px solid rgba(148, 163, 184, .30);
-      background: #fff;
-      margin-bottom: 6px;
-    }
 
-    .preview-name {
-      font-weight: 900;
-      font-size: 12px;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 220px;
-    }
+
 
     .table td,
     .table th {
@@ -626,6 +554,24 @@ function fmtMoney($v): string
       font-size: 12px;
     }
 
+    .fiado-alert {
+      color: #ef4444;
+      font-size: 12px;
+      font-weight: 800;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .client-verified {
+      border-color: #22c55e !important;
+      background-color: #f0fdf4 !important;
+    }
+
+    .client-unverified {
+      border-color: #ef4444 !important;
+      background-color: #fef2f2 !important;
+    }
+
     .last-box {
       border: 1px solid rgba(148, 163, 184, .25);
       border-radius: 14px;
@@ -742,21 +688,30 @@ function fmtMoney($v): string
           </a>
         </li>
 
-        <li class="nav-item nav-item-has-children active">
-          <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
-            aria-controls="ddmenu_operacoes" aria-expanded="true">
+        <li class="nav-item active">
+          <a href="vendas.php" class="active">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="text">Vendas</span>
+          </a>
+        </li>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
+            <span class="icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
               </svg>
             </span>
             <span class="text">Operações</span>
           </a>
-          <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
-            <li><a href="pedidos.php">Pedidos</a></li>
-            <li><a href="vendas.php" class="active">Vendas</a></li>
+          <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
+            <li><a href="vendidos.php">vendidos</a></li>
+            <li><a href="fiados.php">Fiados</a></li>
             <li><a href="devolucoes.php">Devoluções</a></li>
           </ul>
         </li>
@@ -949,23 +904,13 @@ function fmtMoney($v): string
               <div class="pdv-card pdv-search mb-3">
                 <div class="pdv-body">
                   <div class="row g-3 align-items-stretch">
-                    <div class="col-12 col-md-8">
+                    <div class="col-12">
                       <label class="form-label">Pesquisar Produto (F4)</label>
                       <div class="search-wrap">
                         <input class="form-control compact" id="qProd" placeholder="Nome ou código..." autocomplete="off" />
                         <div class="suggest" id="suggest"></div>
                       </div>
                       <div class="muted mt-2">Dica: digite e pressione <b>Enter</b> para adicionar o 1º resultado.</div>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                      <label class="form-label">Imagem</label>
-                      <div class="preview-box">
-                        <div>
-                          <img id="previewImg" alt="Prévia" />
-                          <div class="preview-name" id="previewName">AGUARDANDO...</div>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
@@ -1022,7 +967,8 @@ function fmtMoney($v): string
                 <div class="checkout-body">
                   <div class="mb-3">
                     <label class="form-label">Cliente</label>
-                    <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" />
+                    <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" autocomplete="off" />
+                    <div id="fiadoFeedback" class="fiado-alert">Cliente não localizado. Pressione F6 para cadastrar. (Obrigatório para venda À Prazo)</div>
                     <div class="muted mt-1">Consumidor final (se vazio).</div>
                   </div>
 
@@ -1079,7 +1025,7 @@ function fmtMoney($v): string
                         <div class="pay-btn active" data-pay="DINHEIRO"><i class="lni lni-coin"></i> Dinheiro</div>
                         <div class="pay-btn" data-pay="PIX"><i class="lni lni-telegram-original"></i> Pix</div>
                         <div class="pay-btn" data-pay="CARTAO"><i class="lni lni-credit-cards"></i> Cartão</div>
-                        <div class="pay-btn" data-pay="BOLETO"><i class="lni lni-ticket-alt"></i> Boleto</div>
+                        <div class="pay-btn" data-pay="FIADO"><i class="lni lni-handshake"></i> À Prazo</div>
                       </div>
 
                       <div class="row g-2">
@@ -1210,14 +1156,7 @@ function fmtMoney($v): string
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const AJAX_URL = "vendas.php";
 
-    const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
-  <rect width="100%" height="100%" fill="#f1f5f9"/>
-  <path d="M18 86l22-22 14 14 12-12 26 26" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="42" cy="42" r="10" fill="#94a3b8"/>
-  <text x="50%" y="92%" text-anchor="middle" font-family="Arial" font-size="12" fill="#64748b">Sem imagem</text>
-</svg>
-`);
+
 
     function safeText(s) {
       return String(s ?? "")
@@ -1250,13 +1189,7 @@ function fmtMoney($v): string
     }
 
     function bindImgFallback(scope = document) {
-      scope.querySelectorAll("img").forEach(img => {
-        img.addEventListener("error", () => {
-          img.src = DEFAULT_IMG;
-        }, {
-          once: true
-        });
-      });
+      // images removed
     }
 
     /* ==============================
@@ -1275,8 +1208,6 @@ function fmtMoney($v): string
     const qProd = document.getElementById("qProd");
     const suggest = document.getElementById("suggest");
     const qGlobal = document.getElementById("qGlobal");
-
-    const previewImg = document.getElementById("previewImg");
     const previewName = document.getElementById("previewName");
 
     const tbodyItens = document.getElementById("tbodyItens");
@@ -1329,10 +1260,7 @@ function fmtMoney($v): string
        UI
     ============================== */
     function setPreview(prod) {
-      const img = (prod && prod.img) ? prod.img : DEFAULT_IMG;
-      previewImg.src = img || DEFAULT_IMG;
       previewName.textContent = prod ? prod.name : "AGUARDANDO...";
-      bindImgFallback(document);
     }
 
     function showSuggest(list) {
@@ -1343,7 +1271,6 @@ function fmtMoney($v): string
       }
       suggest.innerHTML = list.map(p => `
         <div class="it" data-id="${Number(p.id)}">
-          <img class="pimg" src="${safeText(p.img || DEFAULT_IMG)}" alt="">
           <div class="meta">
             <div class="t">${safeText(p.name)}</div>
             <div class="s">${safeText(p.code)} • Estoque: ${Number(p.stock ?? 0)}</div>
@@ -1506,7 +1433,6 @@ function fmtMoney($v): string
         code: prod.code,
         name: prod.name,
         price: Number(prod.price || 0),
-        img: (prod.img && String(prod.img).trim() !== "") ? prod.img : DEFAULT_IMG,
         unit: prod.unit || "",
         qty: 1
       });
@@ -1575,7 +1501,7 @@ function fmtMoney($v): string
                 <option value="DINHEIRO" ${method==="DINHEIRO"?"selected":""}>Dinheiro</option>
                 <option value="PIX" ${method==="PIX"?"selected":""}>Pix</option>
                 <option value="CARTAO" ${method==="CARTAO"?"selected":""}>Cartão</option>
-                <option value="BOLETO" ${method==="BOLETO"?"selected":""}>Boleto</option>
+                <option value="FIADO" ${method==="FIADO"?"selected":""}>Fiado</option>
               </select>
             </div>
             <div class="col-4">
@@ -1650,6 +1576,7 @@ function fmtMoney($v): string
       } else {
         hintTroco.style.display = "none";
         ok = (Math.abs(paid - total) < 0.009) && total > 0;
+        if (method === "FIADO") ok = total > 0; // Fiado doesnt need 'paid' to match 'total' in simplified check here
         troco = 0;
       }
       pTroco.value = troco.toFixed(2).replace(".", ",");
@@ -1676,7 +1603,6 @@ function fmtMoney($v): string
             <td>${i + 1}</td>
             <td>
               <div class="d-flex align-items-center gap-2">
-                <img class="pimg" src="${safeText(it.img || DEFAULT_IMG)}" alt="">
                 <div style="min-width:0;">
                   <div style="font-weight:1000;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">
                     ${safeText(it.name)}
@@ -1701,7 +1627,7 @@ function fmtMoney($v): string
         `);
       });
 
-      bindImgFallback(tbodyItens);
+
     }
 
     function recalcAll() {
@@ -1875,7 +1801,7 @@ function fmtMoney($v): string
           };
           return {
             ok: false,
-            msg: "Para Pix/Cartão/Boleto, o valor pago deve ser igual ao total."
+            msg: "Para Pix/Cartão/À Prazo, o valor pago deve ser igual ao total."
           };
         }
         return {
@@ -1893,16 +1819,252 @@ function fmtMoney($v): string
       };
     }
 
-    async function confirmSale() {
+    /* ==============================
+       Fiado / Clientes
+    ============================== */
+    let SELECTED_CLIENT = null;
+
+    async function checkClientFiado() {
+      const q = cCliente.value.trim();
+      const fiadoFeedback = document.getElementById("fiadoFeedback");
+      
+      if (q === '') {
+        fiadoFeedback.style.display = 'none';
+        cCliente.classList.remove('client-verified', 'client-unverified');
+        SELECTED_CLIENT = null;
+        return;
+      }
+
+      try {
+        const r = await fetchJSON(`assets/dados/clientes_api.php?action=search&q=${encodeURIComponent(q)}`);
+        const found = r.items && r.items.length > 0;
+        
+        if (found) {
+          // Se houver mais de um, por enquanto pegamos o primeiro ou o exato
+          const exact = r.items.find(it => it.nome.toLowerCase() === q.toLowerCase() || it.cpf === q);
+          SELECTED_CLIENT = exact || r.items[0];
+          cCliente.value = SELECTED_CLIENT.nome; // Auto-completa com o nome correto
+          cCliente.classList.add("client-verified");
+          cCliente.classList.remove("client-unverified");
+          fiadoFeedback.style.display = "none";
+        } else {
+          SELECTED_CLIENT = null;
+          if (PAY_SELECTED === "FIADO" || isMultiFiado()) { // Keep "FIADO" for internal logic
+            cCliente.classList.add("client-unverified");
+            cCliente.classList.remove("client-verified");
+            fiadoFeedback.style.display = "block";
+            fiadoFeedback.innerText = "Nome não encontrado. Venda À Prazo exige cadastro (F6).";
+          } else {
+            cCliente.classList.remove("client-verified", "client-unverified");
+            fiadoFeedback.style.display = "none";
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao buscar cliente:", e);
+      }
+    }
+
+    cCliente.addEventListener("blur", checkClientFiado);
+
+    // Modal de Cadastro de Cliente
+    const modalClienteHTML = `
+    <div class="modal fade" id="modalNovoCliente" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalNovoClienteLabel">Cadastro de Cliente (Obrigatório À Prazo)</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="formNovoCliente">
+              <div class="mb-3">
+                <label class="form-label">Nome Completo</label>
+                <input type="text" class="form-control" id="mClienteNome" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">CPF</label>
+                <input type="text" class="form-control" id="mClienteCPF">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Telefone</label>
+                <input type="text" class="form-control" id="mClienteTelefone">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Endereço</label>
+                <textarea class="form-control" id="mClienteEndereco" rows="2"></textarea>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btnSalvarCliente">Salvar Cliente</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalClienteHTML);
+    const modalNovoCliente = new bootstrap.Modal(document.getElementById('modalNovoCliente'));
+
+    function openModalCliente() {
+      document.getElementById("mClienteNome").value = cCliente.value.trim();
+      modalNovoCliente.show();
+      setTimeout(() => document.getElementById("mClienteNome").focus(), 500);
+    }
+
+    document.getElementById("btnSalvarCliente").addEventListener("click", async () => {
+      const payload = {
+        nome: document.getElementById("mClienteNome").value.trim(),
+        cpf: document.getElementById("mClienteCPF").value.trim(),
+        telefone: document.getElementById("mClienteTelefone").value.trim(),
+        endereco: document.getElementById("mClienteEndereco").value.trim()
+      };
+
+      if (!payload.nome) return alert("O nome é obrigatório.");
+
+      try {
+        const r = await fetchJSON("assets/dados/clientes_api.php?action=register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        alert(r.msg);
+        cCliente.value = payload.nome;
+        modalNovoCliente.hide();
+        checkClientFiado();
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+
+    // Modal de Entrada (Fiado)
+    const modalEntradaHTML = `
+    <div class="modal fade" id="modalEntradaFiado" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">Venda À Prazo - Entrada</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Deseja registrar uma entrada para esta venda?</p>
+            <div class="mb-3">
+              <label class="form-label">Valor da Entrada (R$)</label>
+              <input type="text" class="form-control" id="vEntrada" value="0,00">
+            </div>
+            <div id="entradaMethod" class="mb-3" style="display:none;">
+              <label class="form-label">Método da Entrada</label>
+              <select class="form-select" id="mEntradaMethod">
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="PIX">Pix</option>
+                <option value="CARTAO">Cartão</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between">
+            <button type="button" class="btn btn-outline-secondary" id="btnSemEntrada">Finalizar Sem Entrada</button>
+            <button type="button" class="btn btn-primary" id="btnComEntrada">Finalizar Com Entrada</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalEntradaHTML);
+    const modalEntradaFiado = new bootstrap.Modal(document.getElementById('modalEntradaFiado'));
+
+    document.getElementById("vEntrada").addEventListener("input", function() {
+      const val = moneyToNumber(this.value);
+      document.getElementById("entradaMethod").style.display = val > 0 ? "block" : "none";
+    });
+
+    let fiadoCallback = null;
+
+    function handleFiadoSale(callback) {
+      fiadoCallback = callback;
+      const total = calcTotal();
+      document.getElementById("vEntrada").value = "0,00";
+      document.getElementById("entradaMethod").style.display = "none";
+      modalEntradaFiado.show();
+    }
+
+    document.getElementById("btnSemEntrada").addEventListener("click", () => {
+      modalEntradaFiado.hide();
+      if (fiadoCallback) fiadoCallback({ entry: 0, method: null });
+    });
+
+    document.getElementById("btnComEntrada").addEventListener("click", () => {
+      const entry = moneyToNumber(document.getElementById("vEntrada").value);
+      const method = document.getElementById("mEntradaMethod").value;
+      const total = calcTotal();
+      if (entry >= total) return alert("O valor da entrada não pode ser maior ou igual ao total da venda.");
+      modalEntradaFiado.hide();
+      if (fiadoCallback) fiadoCallback({ entry, method });
+    });
+
+    /* ==============================
+       Confirmar venda (server)
+       (continua usando salvarVendas.php)
+    ============================== */
+    function validateSaleClient() {
+      if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
+      
+      if (PAY_SELECTED === "FIADO" || (PAY_MODE === "MULTI" && Array.from(paysWrap.querySelectorAll(".mMethod")).some(s => s.value === "FIADO"))) {
+        if (!SELECTED_CLIENT) return { ok: false, msg: "Venda à prazo exige um cliente cadastrado selecionado." };
+      }
+
+      if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return {
+        ok: false,
+        msg: "Informe o endereço do Delivery."
+      };
+      const total = calcTotal();
+      if (total <= 0) return {
+        ok: false,
+        msg: "Total inválido."
+      };
+
+      if (PAY_MODE === "UNICO") {
+        const r = computeSinglePay();
+        if (!r.ok) {
+          if (r.method === "DINHEIRO") return {
+            ok: false,
+            msg: "No dinheiro, o valor pago deve ser >= total."
+          };
+          if (r.method === "FIADO") return { ok: true }; // Custom check already passed
+          return {
+            ok: false,
+            msg: "Para Pix/Cartão/À Prazo, o valor pago deve ser igual ao total."
+          };
+        }
+        return {
+          ok: true
+        };
+      }
+
+      const m = computeMultiPay();
+      if (!m.ok) return {
+        ok: false,
+        msg: "Pagamento múltiplo inválido. Ajuste os valores."
+      };
+      return {
+        ok: true
+      };
+    }
+
+    async function confirmSale(fiadoData = null) {
       const v = validateSaleClient();
       if (!v.ok) {
         alert(v.msg);
         return;
       }
 
+      // Se for fiado ÚNICO e ainda não temos os dados da entrada, abre o modal
+      if (PAY_MODE === "UNICO" && PAY_SELECTED === "FIADO" && !fiadoData) {
+        handleFiadoSale((data) => confirmSale(data));
+        return;
+      }
+
       const payload = {
         csrf_token: CSRF,
         customer: String(cCliente.value || "").trim(),
+        client_id: SELECTED_CLIENT ? SELECTED_CLIENT.id : null,
         delivery: {
           mode: DELIVERY_MODE,
           address: DELIVERY_MODE === "DELIVERY" ? String(cEndereco.value || "").trim() : "",
@@ -1916,7 +2078,13 @@ function fmtMoney($v): string
         pay: (PAY_MODE === "UNICO") ? {
           mode: "UNICO",
           method: PAY_SELECTED,
-          paid: moneyToNumber(pValor.value)
+          paid: (PAY_SELECTED === "FIADO" && fiadoData) ? fiadoData.entry : moneyToNumber(pValor.value),
+          fiado: (PAY_SELECTED === "FIADO") ? {
+            has_entry: fiadoData ? fiadoData.entry > 0 : false,
+            entry_value: fiadoData ? fiadoData.entry : 0,
+            entry_method: fiadoData ? fiadoData.method : null,
+            debt_value: calcTotal() - (fiadoData ? fiadoData.entry : 0)
+          } : null
         } : {
           mode: "MULTI",
           parts: Array.from(paysWrap.querySelectorAll(".pay-split-row")).map(row => ({
@@ -1953,6 +2121,10 @@ function fmtMoney($v): string
         setPreview(null);
 
         cCliente.value = "";
+        SELECTED_CLIENT = null;
+        cCliente.classList.remove("client-verified", "client-unverified");
+        document.getElementById("fiadoFeedback").style.display = "none";
+
         setDeliveryMode("PRESENCIAL");
 
         dTipo.value = "PERC";
@@ -1980,7 +2152,7 @@ function fmtMoney($v): string
         btnConfirmar.disabled = false;
       }
     }
-    btnConfirmar.addEventListener("click", confirmSale);
+    btnConfirmar.addEventListener("click", () => confirmSale());
 
     /* ==============================
        Atalhos teclado
@@ -1994,6 +2166,11 @@ function fmtMoney($v): string
       if (e.key === "F2") {
         e.preventDefault();
         confirmSale();
+        return;
+      }
+      if (e.key === "F6") {
+        e.preventDefault();
+        openModalCliente();
         return;
       }
       if (e.key === "Escape") hideSuggest();
@@ -2034,5 +2211,4 @@ function fmtMoney($v): string
     init();
   </script>
 </body>
-
 </html>

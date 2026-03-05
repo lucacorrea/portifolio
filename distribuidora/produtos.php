@@ -37,17 +37,10 @@ $produtos = $pdo->query("
   LIMIT 2000
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-/**
- * ✅ CAMINHO DA IMAGEM (como você pediu)
- * Banco: images/arquivo.png
- * Exibir no produtos.php: ./assets/dados/produtos/images/arquivo.png
  */
 function img_url_from_db(string $dbValue): string
 {
-    $v = trim($dbValue);
-    if ($v === '') return '';
-    $v = ltrim($v, '/');
-    return 'assets/dados/produtos/' . $v; // assets/dados/produtos/images/xxx.png
+    return '';
 }
 ?>
 <!DOCTYPE html>
@@ -177,31 +170,6 @@ function img_url_from_db(string $dbValue): string
         .badge-soft-gray {
             background: rgba(148, 163, 184, .18);
             color: #475569;
-        }
-
-        /* imagem produto */
-        .prod-img {
-            width: 42px;
-            height: 42px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 1px solid rgba(148, 163, 184, .35);
-            background: #fff;
-        }
-
-        .img-preview {
-            width: 110px;
-            height: 110px;
-            object-fit: cover;
-            border-radius: 16px;
-            border: 1px dashed rgba(148, 163, 184, .6);
-            background: #fff;
-        }
-
-        /* bloco imagem modal centralizado */
-        .img-block {
-            max-width: 320px;
-            width: 100%;
         }
 
         .flash-auto-hide {
@@ -497,7 +465,6 @@ function img_url_from_db(string $dbValue): string
                         <table class="table text-nowrap" id="tbProdutos">
                             <thead>
                                 <tr>
-                                    <th class="minw-120">Imagem</th>
                                     <th class="minw-140">Código</th>
                                     <th>Produto</th>
                                     <th class="minw-140">Categoria</th>
@@ -529,25 +496,6 @@ function img_url_from_db(string $dbValue): string
                                     $catNome = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
                                     $forNome = trim((string)($p['fornecedor_nome'] ?? '')) ?: '—';
 
-                                    $imgDb = trim((string)($p['imagem'] ?? '')); // images/xxx.png
-                                    $imgUrl = img_url_from_db($imgDb); // assets/dados/produtos/images/xxx.png
-                                    ?>
-                                    <tr
-                                        data-id="<?= $id ?>"
-                                        data-codigo="<?= e((string)$p['codigo']) ?>"
-                                        data-nome="<?= e((string)$p['nome']) ?>"
-                                        data-status="<?= e($status) ?>"
-                                        data-cat-id="<?= $catId ?>"
-                                        data-for-id="<?= $forId ?>"
-                                        data-unidade="<?= e((string)($p['unidade'] ?? '')) ?>"
-                                        data-preco="<?= e((string)($p['preco'] ?? '0')) ?>"
-                                        data-estoque="<?= $estoque ?>"
-                                        data-minimo="<?= $minimo ?>"
-                                        data-obs="<?= e((string)($p['obs'] ?? '')) ?>"
-                                        data-categoria="<?= $catId ?>"
-                                        data-baixo="<?= $baixo ? 1 : 0 ?>"
-                                        data-img="<?= e($imgUrl) ?>">
-                                        <td><img class="prod-img" alt="<?= e((string)$p['nome']) ?>" src="<?= e($imgUrl) ?>" /></td>
                                         <td><?= e((string)$p['codigo']) ?></td>
                                         <td>
                                             <div style="font-weight:800;color:#0f172a;line-height:1.1;"><?= e((string)$p['nome']) ?></div>
@@ -608,19 +556,7 @@ function img_url_from_db(string $dbValue): string
                         <input type="hidden" name="img_remove" id="imgRemove" value="0">
 
                         <div class="row g-3">
-                            <!-- IMAGEM CENTRAL -->
-                            <div class="col-12">
-                                <div class="d-flex justify-content-center">
-                                    <div class="img-block text-center">
-                                        <label class="form-label">Imagem</label>
-                                        <div class="d-flex flex-column gap-2 align-items-center">
-                                            <img id="previewImg" class="img-preview" alt="Prévia" />
-                                            <input type="file" class="form-control" id="pImagem" name="imagem" accept="image/*" />
-                                            <button type="button" class="main-btn light-btn btn-hover btn-compact w-100" id="btnRemoverImagem">Remover</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+
 
                             <div class="col-12">
                                 <hr class="my-2">
@@ -728,23 +664,7 @@ function img_url_from_db(string $dbValue): string
             }, 1500);
         })();
 
-        const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
-        <rect width="100%" height="100%" fill="#f1f5f9"/>
-        <path d="M18 68l18-18 12 12 10-10 20 20" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="34" cy="34" r="7" fill="#94a3b8"/>
-        <text x="50%" y="86%" text-anchor="middle" font-family="Arial" font-size="10" fill="#64748b">Sem imagem</text>
-      </svg>
-    `);
 
-        // fallback imagem (NÃO sobrescreve as válidas)
-        document.querySelectorAll("img.prod-img").forEach(img => {
-            const src = img.getAttribute('src') || '';
-            if (!src) img.src = DEFAULT_IMG;
-            img.addEventListener('error', () => img.src = DEFAULT_IMG, {
-                once: true
-            });
-        });
 
         const tb = document.getElementById('tbProdutos');
         const qProdutos = document.getElementById('qProdutos');
@@ -892,11 +812,6 @@ function img_url_from_db(string $dbValue): string
                 pMinimo.value = tr.getAttribute('data-minimo') || 0;
                 pObs.value = tr.getAttribute('data-obs') || '';
 
-                const imgUrl = tr.getAttribute('data-img') || '';
-                imgRemove.value = '0';
-                pImagem.value = '';
-                setPreview(imgUrl || DEFAULT_IMG);
-
                 modal.show();
             }
         });
@@ -915,18 +830,18 @@ function img_url_from_db(string $dbValue): string
 
             const body = rows.map(tr => {
                 return [
-                    tr.children[1].innerText.trim(), // Código
-                    (tr.getAttribute('data-nome') || tr.children[2].innerText.trim()), // Produto (sem "Fornecedor:")
-                    tr.children[3].innerText.trim(), // Categoria (nome)
-                    tr.children[4].innerText.trim(), // Unidade
-                    tr.children[5].innerText.trim(), // Preço
-                    tr.children[6].innerText.trim(), // Estoque
-                    tr.children[7].innerText.trim(), // Mínimo
-                    tr.children[8].innerText.trim() // Status (ATIVO/BAIXO/INATIVO)
+                    tr.children[0].innerText.trim(), // Código
+                    (tr.getAttribute('data-nome') || tr.children[1].innerText.trim()), // Produto (sem "Fornecedor:")
+                    tr.children[2].innerText.trim(), // Categoria (nome)
+                    tr.children[3].innerText.trim(), // Unidade
+                    tr.children[4].innerText.trim(), // Preço
+                    tr.children[5].innerText.trim(), // Estoque
+                    tr.children[6].innerText.trim(), // Mínimo
+                    tr.children[7].innerText.trim() // Status (ATIVO/BAIXO/INATIVO)
                 ];
             });
 
-            const isCenterCol = (idx) => (idx === 4 || idx === 5 || idx === 6 || idx === 7);
+            const isCenterCol = (idx) => (idx === 3 || idx === 4 || idx === 5 || idx === 6);
 
             let html = `
         <html>
@@ -1015,14 +930,14 @@ function img_url_from_db(string $dbValue): string
             ];
 
             const body = rows.map(tr => ([
-                tr.children[1].innerText.trim(),
-                (tr.getAttribute('data-nome') || tr.children[2].innerText.trim()),
+                tr.children[0].innerText.trim(),
+                (tr.getAttribute('data-nome') || tr.children[1].innerText.trim()),
+                tr.children[2].innerText.trim(),
                 tr.children[3].innerText.trim(),
                 tr.children[4].innerText.trim(),
                 tr.children[5].innerText.trim(),
                 tr.children[6].innerText.trim(),
                 tr.children[7].innerText.trim(),
-                tr.children[8].innerText.trim(),
             ]));
 
             doc.autoTable({
@@ -1056,6 +971,9 @@ function img_url_from_db(string $dbValue): string
                     fillColor: [248, 250, 252]
                 },
                 columnStyles: {
+                    3: {
+                        halign: 'center'
+                    },
                     4: {
                         halign: 'center'
                     },
@@ -1063,9 +981,6 @@ function img_url_from_db(string $dbValue): string
                         halign: 'center'
                     },
                     6: {
-                        halign: 'center'
-                    },
-                    7: {
                         halign: 'center'
                     }
                 },
