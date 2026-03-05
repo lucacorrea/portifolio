@@ -848,32 +848,21 @@ $total12m = array_sum($chart1);
                 </ul>
               </div>
 
-              <div class="profile-box ml-15">
-                <button class="dropdown-toggle" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                  <div class="profile-info">
-                    <div class="info">
-                      <h6>Admin</h6>
-                      <div class="image">
-                        <img src="assets/images/lead/lead-1.png" alt="" />
-                        <span class="status"></span>
-                      </div>
+                <div class="col-lg-7 col-md-7 col-6">
+                        <div class="header-right">
+                            <div class="profile-box ml-15">
+                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="profile-info">
+                                        <div class="info">
+                                            <div>
+                                                <h6 class="fw-500">Sair</h6>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-                  <i class="lni lni-chevron-down"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                  <li>
-                    <a href="perfil.php">
-                      <i class="lni lni-user"></i> Ver Perfil
-                    </a>
-                  </li>
-                  <li>
-                    <a href="sair.php">
-                      <i class="lni lni-exit"></i> Sair
-                    </a>
-                  </li>
-                </ul>
-              </div>
             </div>
           </div>
         </div>
