@@ -18,46 +18,29 @@ function brDate(?string $ymd): string
     if (count($p) !== 3) return (string)$ymd;
     return $p[2] . '/' . $p[1] . '/' . $p[0];
 }
-
 function fmtBRL($n): string
 {
     return 'R$ ' . number_format((float)$n, 2, ',', '.');
 }
 
-/**
- * Banco guarda: images/arquivo.png
- * Página precisa: assets/dados/produtos/images/arquivo.png
- */
-function prodImgUrl(?string $dbPath): string
-{
-    $s = trim((string)$dbPath);
-    if ($s === '') return '';
-    if (preg_match('~^(https?://|/|data:)~i', $s)) return $s;
-
-    if (strpos($s, 'assets/') === 0) return $s;
-
-    return 'assets/dados/produtos/' . ltrim($s, '/');
-}
-
-// Produtos
+// PRODUTOS (base na sua tabela)
 $produtos = $pdo->query("
-  SELECT id, codigo, nome, unidade, preco, estoque, imagem, status
+  SELECT id, codigo, nome, unidade, preco, estoque, status
   FROM produtos
+  WHERE status = 'ATIVO'
   ORDER BY nome ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Saídas (perdas/avarias)
+// SAÍDAS
 $saidas = $pdo->query("
   SELECT s.*,
-         p.codigo   AS produto_codigo,
-         p.nome     AS produto_nome,
-         p.imagem   AS produto_imagem
+         p.codigo AS produto_codigo,
+         p.nome   AS produto_nome
   FROM saidas s
   LEFT JOIN produtos p ON p.id = s.produto_id
   ORDER BY s.data DESC, s.id DESC
   LIMIT 3000
 ")->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -143,6 +126,10 @@ $saidas = $pdo->query("
             min-width: 200px;
         }
 
+        .minw-240 {
+            min-width: 240px;
+        }
+
         .minw-260 {
             min-width: 260px;
         }
@@ -153,7 +140,7 @@ $saidas = $pdo->query("
 
         #tbSaidas {
             width: 100%;
-            min-width: 1320px;
+            min-width: 1220px;
         }
 
         #tbSaidas th,
@@ -199,15 +186,6 @@ $saidas = $pdo->query("
             color: #16a34a;
         }
 
-        .prod-img {
-            width: 42px;
-            height: 42px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 1px solid rgba(148, 163, 184, .35);
-            background: #fff;
-        }
-
         .td-center {
             text-align: center;
         }
@@ -221,20 +199,6 @@ $saidas = $pdo->query("
             height: 38px;
             padding: 8px 12px;
             font-size: 13px;
-        }
-
-        .img-preview {
-            width: 110px;
-            height: 110px;
-            object-fit: cover;
-            border-radius: 16px;
-            border: 1px dashed rgba(148, 163, 184, .6);
-            background: #fff;
-        }
-
-        .img-block {
-            max-width: 360px;
-            width: 100%;
         }
 
         .flash-auto-hide {
@@ -264,18 +228,28 @@ $saidas = $pdo->query("
 
         <nav class="sidebar-nav">
             <ul>
-                <li class="nav-item"><a href="dashboard.php"><span class="icon">
+                <li class="nav-item">
+                    <a href="dashboard.php">
+                        <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
                                 <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
-                            </svg></span><span class="text">Dashboard</span></a>
+                            </svg>
+                        </span>
+                        <span class="text">Dashboard</span>
+                    </a>
                 </li>
 
-                <li class="nav-item"><a href="vendas.php"><span class="icon">
+                <li class="nav-item">
+                    <a href="vendas.php">
+                        <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                 <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg></span><span class="text">Vendas</span></a>
+                            </svg>
+                        </span>
+                        <span class="text">Vendas</span>
+                    </a>
                 </li>
 
                 <li class="nav-item nav-item-has-children">
@@ -332,10 +306,15 @@ $saidas = $pdo->query("
                     </ul>
                 </li>
 
-                <li class="nav-item"><a href="relatorios.php"><span class="icon">
+                <li class="nav-item">
+                    <a href="relatorios.php">
+                        <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
-                            </svg></span><span class="text">Relatórios</span></a>
+                            </svg>
+                        </span>
+                        <span class="text">Relatórios</span>
+                    </a>
                 </li>
 
                 <span class="divider">
@@ -357,11 +336,16 @@ $saidas = $pdo->query("
                     </ul>
                 </li>
 
-                <li class="nav-item"><a href="suporte.php"><span class="icon">
+                <li class="nav-item">
+                    <a href="suporte.php">
+                        <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
                                 <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
-                            </svg></span><span class="text">Suporte</span></a>
+                            </svg>
+                        </span>
+                        <span class="text">Suporte</span>
+                    </a>
                 </li>
             </ul>
         </nav>
@@ -424,7 +408,7 @@ $saidas = $pdo->query("
                         <div class="col-md-7">
                             <div class="title">
                                 <h2>Saídas (Perdas/Avarias/Vencidos)</h2>
-                                <p class="text-sm text-gray mb-0">Use esta tela para registrar <b>produtos estragados</b>, <b>vencidos</b>, <b>quebrados</b> ou <b>consumo interno</b>.</p>
+                                <p class="text-sm text-gray mb-0">Registrar produto estragado, vencido, quebrado ou consumo interno (não é venda).</p>
                             </div>
                         </div>
                     </div>
@@ -436,7 +420,6 @@ $saidas = $pdo->query("
                     </div>
                 <?php endif; ?>
 
-                <!-- Toolbar -->
                 <div class="card-style mb-30">
                     <div class="row g-3 align-items-end">
                         <div class="col-12 col-md-6 col-lg-4">
@@ -481,23 +464,21 @@ $saidas = $pdo->query("
                     </div>
                 </div>
 
-                <!-- Tabela -->
                 <div class="card-style mb-30">
                     <div class="table-responsive">
                         <table class="table text-nowrap" id="tbSaidas">
                             <thead>
                                 <tr>
-                                    <th class="minw-120">Imagem</th>
                                     <th class="minw-140">Data</th>
                                     <th class="minw-160 td-center">Tipo</th>
                                     <th class="minw-260">Motivo</th>
                                     <th class="minw-140">Código</th>
                                     <th class="minw-260">Produto</th>
                                     <th class="minw-140">Unidade</th>
-                                    <th class="minw-140 td-center">Qtd</th>
-                                    <th class="minw-160 td-center">Custo (un)</th>
+                                    <th class="minw-120 td-center">Qtd</th>
+                                    <th class="minw-160 td-center">Valor (un)</th>
                                     <th class="minw-160 td-center">Total</th>
-                                    <th class="minw-200">Obs</th>
+                                    <th class="minw-240">Obs</th>
                                     <th class="minw-140 text-end">Ações</th>
                                 </tr>
                             </thead>
@@ -511,11 +492,10 @@ $saidas = $pdo->query("
                                     $motivo = (string)($s['motivo'] ?? '');
                                     $obs = (string)($s['obs'] ?? '');
 
-                                    $img = prodImgUrl((string)($s['produto_imagem'] ?? ''));
                                     $codigo = trim((string)($s['produto_codigo'] ?? '')) ?: '—';
                                     $prodNome = trim((string)($s['produto_nome'] ?? '')) ?: '—';
 
-                                    $qtd = (float)$s['qtd'];
+                                    $qtd = (int)$s['qtd'];
                                     $valorUnit = (float)($s['valor_unit'] ?? 0);
                                     $valorTotal = (float)($s['valor_total'] ?? 0);
 
@@ -536,17 +516,15 @@ $saidas = $pdo->query("
                                         data-obs="<?= e($obs) ?>"
                                         data-produto-id="<?= (int)$s['produto_id'] ?>"
                                         data-unidade="<?= e((string)$s['unidade']) ?>"
-                                        data-qtd="<?= e((string)$s['qtd']) ?>"
-                                        data-valor-unit="<?= e((string)($s['valor_unit'] ?? 0)) ?>"
-                                        data-img="<?= e($img) ?>">
-                                        <td><img class="prod-img" alt="<?= e($prodNome) ?>" src="<?= e($img) ?>" /></td>
+                                        data-qtd="<?= e((string)$qtd) ?>"
+                                        data-valor-unit="<?= e((string)($s['valor_unit'] ?? 0)) ?>">
                                         <td class="date"><?= e(brDate($ymd)) ?></td>
                                         <td class="td-center tipo"><?= $badge ?></td>
                                         <td class="motivo"><?= e($motivo) ?></td>
                                         <td class="cod"><?= e($codigo) ?></td>
                                         <td class="prod"><?= e($prodNome) ?></td>
                                         <td class="und"><?= e((string)$s['unidade']) ?></td>
-                                        <td class="td-center qtd"><?= e(number_format($qtd, 3, ',', '.')) ?></td>
+                                        <td class="td-center qtd"><?= e((string)$qtd) ?></td>
                                         <td class="td-center vunit"><?= e(fmtBRL($valorUnit)) ?></td>
                                         <td class="td-center vtot"><?= e(fmtBRL($valorTotal)) ?></td>
                                         <td class="obs"><?= e($obs) ?></td>
@@ -578,13 +556,11 @@ $saidas = $pdo->query("
         </footer>
     </main>
 
-    <!-- DELETE FORM -->
     <form id="frmDelete" action="assets/dados/saidas/excluirSaidas.php" method="post" style="display:none;">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <input type="hidden" name="id" id="delId" value="">
     </form>
 
-    <!-- Modal Saída -->
     <div class="modal fade" id="modalSaida" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
@@ -599,11 +575,6 @@ $saidas = $pdo->query("
                         <input type="hidden" name="id" id="pId" value="">
 
                         <div class="row g-3">
-                
-                            <div class="col-12">
-                                <hr class="my-2">
-                            </div>
-
                             <div class="col-md-3">
                                 <label class="form-label">Data</label>
                                 <input type="date" class="form-control compact" id="pData" name="data" required />
@@ -624,7 +595,7 @@ $saidas = $pdo->query("
 
                             <div class="col-md-5">
                                 <label class="form-label">Motivo</label>
-                                <input type="text" class="form-control compact" id="pMotivo" name="motivo" placeholder="Ex: Estragou / Venceu / Quebrou / Consumo interno..." required />
+                                <input type="text" class="form-control compact" id="pMotivo" name="motivo" placeholder="Ex: estragou, venceu, quebrou..." required />
                             </div>
 
                             <div class="col-md-6">
@@ -633,21 +604,19 @@ $saidas = $pdo->query("
                                     <option value="">Selecione…</option>
                                     <?php foreach ($produtos as $p): ?>
                                         <?php
-                                        $img = prodImgUrl((string)($p['imagem'] ?? ''));
-                                        $cod = (string)($p['codigo'] ?? '');
-                                        $nm  = (string)($p['nome'] ?? '');
+                                        $cod = (string)$p['codigo'];
+                                        $nm  = (string)$p['nome'];
                                         $un  = (string)($p['unidade'] ?? '');
                                         $pr  = (string)($p['preco'] ?? '0');
                                         $est = (string)($p['estoque'] ?? '0');
                                         ?>
                                         <option
                                             value="<?= (int)$p['id'] ?>"
-                                            data-img="<?= e($img) ?>"
                                             data-codigo="<?= e($cod) ?>"
                                             data-nome="<?= e($nm) ?>"
                                             data-unidade="<?= e($un) ?>"
-                                            data-valor="<?= e($pr) ?>"
-                                            data-estoque="<?= e($est) ?>"><?= e($cod . ' - ' . $nm) ?></option>
+                                            data-preco="<?= e($pr) ?>"
+                                            data-estoque="<?= e($est) ?>"><?= e($cod . ' - ' . $nm . ' (Est: ' . $est . ')') ?></option>
                                     <?php endforeach; ?>
                                 </select>
                                 <div class="text-xs text-gray mt-1" id="pEstoqueInfo"></div>
@@ -672,11 +641,11 @@ $saidas = $pdo->query("
 
                             <div class="col-md-3">
                                 <label class="form-label">Qtd</label>
-                                <input type="number" step="0.001" class="form-control compact td-center" id="pQtd" name="qtd" min="0" value="0" required />
+                                <input type="number" step="1" class="form-control compact td-center" id="pQtd" name="qtd" min="1" value="1" required />
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label">Custo (un) <span class="text-xs text-gray">(opcional)</span></label>
+                                <label class="form-label">Valor (un) <span class="text-xs text-gray">(opcional)</span></label>
                                 <input type="text" class="form-control compact td-center" id="pValorUnit" name="valor_unit" placeholder="0,00" />
                             </div>
 
@@ -687,13 +656,13 @@ $saidas = $pdo->query("
 
                             <div class="col-12">
                                 <label class="form-label">Observação</label>
-                                <textarea class="form-control compact" id="pObs" name="obs" rows="2" placeholder="Detalhes (ex: embalagem rasgada, vencimento, quebra no transporte...)"></textarea>
+                                <textarea class="form-control compact" id="pObs" name="obs" rows="2" placeholder="Detalhes do ocorrido..."></textarea>
                             </div>
                         </div>
                     </form>
 
                     <p class="text-sm text-gray mt-3 mb-0">
-                        O total (se informado custo) é calculado automaticamente: <b>Qtd × Custo</b>.
+                        Total (se informado valor): <b>Qtd × Valor</b>.
                     </p>
                 </div>
 
@@ -723,24 +692,6 @@ $saidas = $pdo->query("
             }, 1500);
         })();
 
-        const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
-  <rect width="100%" height="100%" fill="#f1f5f9"/>
-  <path d="M18 68l18-18 12 12 10-10 20 20" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="34" cy="34" r="7" fill="#94a3b8"/>
-  <text x="50%" y="86%" text-anchor="middle" font-family="Arial" font-size="10" fill="#64748b">Sem imagem</text>
-</svg>`);
-
-        // fallback img tabela
-        document.querySelectorAll("img.prod-img").forEach(img => {
-            const src = img.getAttribute('src') || '';
-            if (!src) img.src = DEFAULT_IMG;
-            img.addEventListener('error', () => img.src = DEFAULT_IMG, {
-                once: true
-            });
-        });
-
-        // refs
         const tb = document.getElementById('tbSaidas');
         const qSaidas = document.getElementById('qSaidas');
         const qGlobal = document.getElementById('qGlobal');
@@ -804,8 +755,6 @@ $saidas = $pdo->query("
         const modalTitle = document.getElementById('modalSaidaTitle');
 
         const pId = document.getElementById('pId');
-        const previewImg = document.getElementById('previewImg');
-
         const pData = document.getElementById('pData');
         const pTipo = document.getElementById('pTipo');
         const pMotivo = document.getElementById('pMotivo');
@@ -818,13 +767,6 @@ $saidas = $pdo->query("
         const pValorUnit = document.getElementById('pValorUnit');
         const pTotal = document.getElementById('pTotal');
         const pEstoqueInfo = document.getElementById('pEstoqueInfo');
-
-        function setPreview(src) {
-            previewImg.src = src || DEFAULT_IMG;
-        }
-        previewImg.addEventListener('error', () => previewImg.src = DEFAULT_IMG, {
-            once: true
-        });
 
         function todayYMD() {
             const t = new Date();
@@ -844,16 +786,15 @@ $saidas = $pdo->query("
             pProdutoId.value = '';
             pCodigo.value = '';
             pUnidade.value = '';
-            pQtd.value = 0;
+            pQtd.value = 1;
 
             pValorUnit.value = '';
             pTotal.value = fmtBRL(0);
             pEstoqueInfo.textContent = '';
-            setPreview(DEFAULT_IMG);
         }
 
         document.getElementById('btnNovo').addEventListener('click', () => {
-            modalTitle.textContent = 'Nova Saída (Perda/Avaria)';
+            modalTitle.textContent = 'Nova Saída';
             limparForm();
         });
 
@@ -865,13 +806,12 @@ $saidas = $pdo->query("
         pQtd.addEventListener('input', recalcularTotal);
         pValorUnit.addEventListener('input', recalcularTotal);
 
-        // quando seleciona produto
+        // selecionou produto: preenche código/unidade e sugere valor com base no produtos.preco
         pProdutoId.addEventListener('change', () => {
             const opt = pProdutoId.selectedOptions && pProdutoId.selectedOptions[0];
             if (!opt || !opt.value) {
                 pCodigo.value = '';
                 pEstoqueInfo.textContent = '';
-                setPreview(DEFAULT_IMG);
                 return;
             }
 
@@ -882,14 +822,13 @@ $saidas = $pdo->query("
             const est = opt.getAttribute('data-estoque') || '';
             pEstoqueInfo.textContent = est !== '' ? `Estoque atual: ${est}` : '';
 
-            // opcional: se custo estiver vazio, puxa do produto (preco) como estimativa
+            // se valor vazio, sugere o preco do produto
             if (!pValorUnit.value) {
-                const v = opt.getAttribute('data-valor') || '';
-                const n = Number(String(v).replace(',', '.'));
+                const pr = opt.getAttribute('data-preco') || '';
+                const n = Number(String(pr).replace(',', '.'));
                 if (!Number.isNaN(n)) pValorUnit.value = String(n.toFixed(2)).replace('.', ',');
             }
 
-            setPreview(opt.getAttribute('data-img') || DEFAULT_IMG);
             recalcularTotal();
         });
 
@@ -912,7 +851,7 @@ $saidas = $pdo->query("
             const btnEdit = e.target.closest('.btnEdit');
             if (!btnEdit) return;
 
-            modalTitle.textContent = 'Editar Saída (Perda/Avaria)';
+            modalTitle.textContent = 'Editar Saída';
 
             pId.value = tr.getAttribute('data-id') || '';
             pData.value = tr.getAttribute('data-data') || todayYMD();
@@ -924,13 +863,11 @@ $saidas = $pdo->query("
             pProdutoId.dispatchEvent(new Event('change'));
 
             pUnidade.value = tr.getAttribute('data-unidade') || pUnidade.value || '';
-            pQtd.value = tr.getAttribute('data-qtd') || '0';
+            pQtd.value = tr.getAttribute('data-qtd') || '1';
 
             const vunit = tr.getAttribute('data-valor-unit') || '0';
             const vn = Number(String(vunit).replace(',', '.'));
             pValorUnit.value = Number.isNaN(vn) ? '' : String(vn.toFixed(2)).replace('.', ',');
-
-            setPreview(tr.getAttribute('data-img') || DEFAULT_IMG);
 
             recalcularTotal();
             modal.show();
@@ -947,7 +884,7 @@ $saidas = $pdo->query("
             const ini = dtIni.value || '';
             const fim = dtFim.value || '';
 
-            const header = ['Data', 'Tipo', 'Motivo', 'Código', 'Produto', 'Unidade', 'Qtd', 'Custo (un)', 'Total', 'Obs'];
+            const header = ['Data', 'Tipo', 'Motivo', 'Código', 'Produto', 'Unidade', 'Qtd', 'Valor (un)', 'Total', 'Obs'];
 
             const body = rows.map(tr => ([
                 tr.querySelector('.date')?.innerText.trim() || '',
@@ -1039,7 +976,7 @@ $saidas = $pdo->query("
             doc.text(`Tipo:  ${tipo} | Período:  ${ini} até ${fim}`, M, 92);
 
             const head = [
-                ['Data', 'Tipo', 'Motivo', 'Código', 'Produto', 'Unidade', 'Qtd', 'Custo (un)', 'Total', 'Obs']
+                ['Data', 'Tipo', 'Motivo', 'Código', 'Produto', 'Unidade', 'Qtd', 'Valor (un)', 'Total', 'Obs']
             ];
 
             const body = rows.map(tr => ([
