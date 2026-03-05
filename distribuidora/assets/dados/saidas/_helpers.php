@@ -9,7 +9,7 @@ $global = __DIR__ . '/../_helpers.php';
 if (is_file($global)) {
   require_once $global;
 } else {
-  // fallback mínimo (se o global não existir)
+  // fallback mínimo, caso o global não exista
   function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
   function redirect_to(string $url): void { header("Location: {$url}"); exit; }
 
@@ -34,6 +34,7 @@ if (is_file($global)) {
       redirect_to($backUrl);
     }
   }
+
   function require_post_or_redirect(string $backUrl): void {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
       flash_set('warning', 'Ação inválida.');

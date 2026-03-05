@@ -12,12 +12,13 @@ csrf_validate_or_redirect($back);
 
 $pdo = db();
 
-/** qtd pode vir com vírgula em alguns navegadores */
-function to_float_qty($v): float {
+function to_int_safe($v): int {
   $s = trim((string)$v);
-  if ($s === '') return 0.0;
-  $s = str_replace(',', '.', $s);
-  return (float)$s;
+  if ($s === '') return 0;
+  if (!preg_match('/^-?\d+$/', $s)) {
+    $s = preg_replace('/[^\d-]/', '', $s);
+  }
+  return (int)$s;
 }
 
 $id        = (int)($_POST['id'] ?? 0);
@@ -26,9 +27,8 @@ $tipo      = strtoupper(trim((string)($_POST['tipo'] ?? 'PERDA')));
 $motivo    = trim((string)($_POST['motivo'] ?? ''));
 $produtoId = (int)($_POST['produto_id'] ?? 0);
 $unidade   = trim((string)($_POST['unidade'] ?? ''));
-$qtd       = to_float_qty($_POST['qtd'] ?? 0);
-$valorUnitTxt = (string)($_POST['valor_unit'] ?? '0');
-$valorUnit = brl_to_float($valorUnitTxt);
+$qtd       = to_int_safe($_POST['qtd'] ?? 0);
+$valorUnit = brl_to_float((string)($_POST['valor_unit'] ?? '0'));
 $obs       = trim((string)($_POST['obs'] ?? ''));
 
 $tiposOk = ['PERDA','AVARIA','VENCIDO','CONSUMO','AJUSTE','OUTROS'];
@@ -52,12 +52,6 @@ $valorTotal = $qtd * $valorUnit;
 try {
   $pdo->beginTransaction();
 
-  // trava produto
-  $st = $pdo->prepare("SELECT id, estoque FROM produtos WHERE id = ? FOR UPDATE");
-  $st->execute([$produtoId]);
-  $prod = $st->fetch(PDO::FETCH_ASSOC);
-  if (!$prod) throw new RuntimeException('Produto não encontrado.');
-
   if ($id > 0) {
     // trava saída antiga
     $oldSt = $pdo->prepare("SELECT id, produto_id, qtd FROM saidas WHERE id = ? FOR UPDATE");
@@ -66,29 +60,54 @@ try {
     if (!$old) throw new RuntimeException('Saída não encontrada.');
 
     $oldPid = (int)$old['produto_id'];
-    $oldQtd = (float)$old['qtd'];
+    $oldQtd = (int)$old['qtd'];
 
     if ($oldPid === $produtoId) {
-      // ajusta apenas diferença
-      $delta = $qtd - $oldQtd; // >0: baixar mais | <0: devolver
-      $upd = $pdo->prepare("UPDATE produtos SET estoque = estoque - ? WHERE id = ?");
-      $upd->execute([$delta, $produtoId]);
-    } else {
-      // devolve no produto antigo
-      $upd1 = $pdo->prepare("UPDATE produtos SET estoque = estoque + ? WHERE id = ?");
-      $upd1->execute([$oldQtd, $oldPid]);
+      // trava produto
+      $pSt = $pdo->prepare("SELECT id, estoque FROM produtos WHERE id = ? FOR UPDATE");
+      $pSt->execute([$produtoId]);
+      $p = $pSt->fetch(PDO::FETCH_ASSOC);
+      if (!$p) throw new RuntimeException('Produto não encontrado.');
 
-      // baixa no novo produto
-      $upd2 = $pdo->prepare("UPDATE produtos SET estoque = estoque - ? WHERE id = ?");
-      $upd2->execute([$qtd, $produtoId]);
+      $estoqueAtual = (int)$p['estoque'];
+      $delta = $qtd - $oldQtd; // >0 baixa mais | <0 devolve
+
+      $novoEstoque = $estoqueAtual - $delta;
+      if ($novoEstoque < 0) throw new RuntimeException('Estoque insuficiente para esta saída.');
+
+      $upd = $pdo->prepare("UPDATE produtos SET estoque = ? WHERE id = ?");
+      $upd->execute([$novoEstoque, $produtoId]);
+
+    } else {
+      // produto mudou: trava os 2 produtos
+      $pOldSt = $pdo->prepare("SELECT id, estoque FROM produtos WHERE id = ? FOR UPDATE");
+      $pOldSt->execute([$oldPid]);
+      $pOld = $pOldSt->fetch(PDO::FETCH_ASSOC);
+      if (!$pOld) throw new RuntimeException('Produto antigo não encontrado.');
+
+      $pNewSt = $pdo->prepare("SELECT id, estoque FROM produtos WHERE id = ? FOR UPDATE");
+      $pNewSt->execute([$produtoId]);
+      $pNew = $pNewSt->fetch(PDO::FETCH_ASSOC);
+      if (!$pNew) throw new RuntimeException('Produto novo não encontrado.');
+
+      $oldEst = (int)$pOld['estoque'];
+      $newEst = (int)$pNew['estoque'];
+
+      // devolve no antigo
+      $oldEst2 = $oldEst + $oldQtd;
+
+      // baixa no novo
+      $newEst2 = $newEst - $qtd;
+      if ($newEst2 < 0) throw new RuntimeException('Estoque insuficiente para esta saída.');
+
+      $upd1 = $pdo->prepare("UPDATE produtos SET estoque = ? WHERE id = ?");
+      $upd1->execute([$oldEst2, $oldPid]);
+
+      $upd2 = $pdo->prepare("UPDATE produtos SET estoque = ? WHERE id = ?");
+      $upd2->execute([$newEst2, $produtoId]);
     }
 
-    // valida estoque >= 0
-    $chk = $pdo->prepare("SELECT estoque FROM produtos WHERE id = ?");
-    $chk->execute([$produtoId]);
-    $stk = (float)$chk->fetchColumn();
-    if ($stk < 0) throw new RuntimeException('Estoque insuficiente para registrar esta saída.');
-
+    // atualiza a saída
     $up = $pdo->prepare("
       UPDATE saidas
       SET data=?, tipo=?, motivo=?, produto_id=?, unidade=?, qtd=?, valor_unit=?, valor_total=?, obs=?, updated_at=NOW()
@@ -97,18 +116,22 @@ try {
     $up->execute([$data, $tipo, $motivo, $produtoId, $unidade, $qtd, $valorUnit, $valorTotal, $obs, $id]);
 
     $pdo->commit();
-    flash_set('success', 'Saída (perda/avaria) atualizada com sucesso!');
+    flash_set('success', 'Saída atualizada com sucesso!');
     redirect_to($back);
   }
 
-  // NOVA saída -> baixa estoque
-  $upd = $pdo->prepare("UPDATE produtos SET estoque = estoque - ? WHERE id = ?");
-  $upd->execute([$qtd, $produtoId]);
+  // NOVA: trava produto
+  $pSt = $pdo->prepare("SELECT id, estoque FROM produtos WHERE id = ? FOR UPDATE");
+  $pSt->execute([$produtoId]);
+  $p = $pSt->fetch(PDO::FETCH_ASSOC);
+  if (!$p) throw new RuntimeException('Produto não encontrado.');
 
-  $chk = $pdo->prepare("SELECT estoque FROM produtos WHERE id = ?");
-  $chk->execute([$produtoId]);
-  $stk = (float)$chk->fetchColumn();
-  if ($stk < 0) throw new RuntimeException('Estoque insuficiente para registrar esta saída.');
+  $estoqueAtual = (int)$p['estoque'];
+  $novoEstoque = $estoqueAtual - $qtd;
+  if ($novoEstoque < 0) throw new RuntimeException('Estoque insuficiente para esta saída.');
+
+  $upd = $pdo->prepare("UPDATE produtos SET estoque = ? WHERE id = ?");
+  $upd->execute([$novoEstoque, $produtoId]);
 
   $ins = $pdo->prepare("
     INSERT INTO saidas (data, tipo, motivo, produto_id, unidade, qtd, valor_unit, valor_total, obs)
@@ -117,7 +140,7 @@ try {
   $ins->execute([$data, $tipo, $motivo, $produtoId, $unidade, $qtd, $valorUnit, $valorTotal, $obs]);
 
   $pdo->commit();
-  flash_set('success', 'Saída (perda/avaria) registrada com sucesso!');
+  flash_set('success', 'Saída registrada com sucesso!');
   redirect_to($back);
 
 } catch (Throwable $e) {
