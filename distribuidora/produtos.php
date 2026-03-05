@@ -26,14 +26,15 @@ $categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome
 $fornecedores = $pdo->query("SELECT id, nome, status FROM fornecedores ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // produtos
-$produtos = $pdo->query(
+$produtos = $pdo->query("
   SELECT p.*,
          c.nome AS categoria_nome,
          f.nome AS fornecedor_nome
   FROM produtos p
   LEFT JOIN categorias c ON c.id = p.categoria_id
   LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
-  ORDER BY p.id DESC
+  ORDER BY p.id DESC 
+  ")
 // function img_url_from_db(string $dbValue): string
 // {
 //     return '';
