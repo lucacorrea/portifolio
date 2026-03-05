@@ -33,12 +33,12 @@ try {
   $upd = $pdo->prepare("UPDATE produtos SET estoque = estoque + ? WHERE id = ?");
   $upd->execute([$qtd, $pid]);
 
-  // exclui
+  // exclui registro
   $del = $pdo->prepare("DELETE FROM saidas WHERE id = ?");
   $del->execute([$id]);
 
   $pdo->commit();
-  flash_set('success', 'Saída excluída e estoque devolvido!');
+  flash_set('success', 'Saída excluída e estoque devolvido.');
   redirect_to($back);
 
 } catch (Throwable $e) {
