@@ -303,7 +303,7 @@ foreach ($produtos as $p) {
     </div>
 
     <!-- ======== sidebar-nav start =========== -->
-    <aside class="sidebar-nav-wrapper">
+    <aside class="sidebar-nav-wrapper active">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -311,7 +311,7 @@ foreach ($produtos as $p) {
         </div>
 
            <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
+  <aside class="sidebar-nav-wrapper active">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -445,7 +445,7 @@ foreach ($produtos as $p) {
 
     <div class="overlay"></div>
 
-    <main class="main-wrapper">
+    <main class="main-wrapper active">
         <header class="header">
             <div class="container-fluid">
                 <div class="row">

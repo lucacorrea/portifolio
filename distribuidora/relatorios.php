@@ -924,7 +924,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
   <div id="preloader"><div class="spinner"></div></div>
 
     <!-- ======== sidebar-nav start =========== -->
-    <aside class="sidebar-nav-wrapper">
+    <aside class="sidebar-nav-wrapper active">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -1058,7 +1058,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
   <div class="overlay"></div>
 
-  <main class="main-wrapper">
+  <main class="main-wrapper active">
     <header class="header">
       <div class="container-fluid">
         <div class="row">

@@ -31,7 +31,7 @@ if (!function_exists('e')) {
 </head>
 <body>
     <div id="preloader"><div class="spinner"></div></div>
-    <aside class="sidebar-nav-wrapper">
+    <aside class="sidebar-nav-wrapper active">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -154,7 +154,7 @@ if (!function_exists('e')) {
         </nav>
     </aside>
     <div class="overlay"></div>
-    <main class="main-wrapper">
+    <main class="main-wrapper active">
         <header class="header"><div class="container-fluid"><div class="row align-items-center"><div class="col-6"><button id="menu-toggle" class="main-btn primary-btn btn-sm"><i class="lni lni-menu"></i></button></div><div class="col-6 text-end"><span class="muted">Suporte</span></div></div></div></header>
         <section class="section"><div class="container-fluid p-4">
             <div class="card-style">
@@ -198,3 +198,4 @@ if (!function_exists('e')) {
     </main>
     <script src="assets/js/bootstrap.bundle.min.js"></script><script src="assets/js/main.js"></script>
 </body></html>
+

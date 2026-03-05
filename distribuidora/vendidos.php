@@ -1115,7 +1115,7 @@ $csrf = csrf_token();
 
     <!-- ======== sidebar-nav start =========== -->
   <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
+  <aside class="sidebar-nav-wrapper active">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -1249,7 +1249,7 @@ $csrf = csrf_token();
 
     <div class="overlay"></div>
 
-    <main class="main-wrapper">
+    <main class="main-wrapper active">
         <header class="header"> ... </header>
 
         <section class="section">

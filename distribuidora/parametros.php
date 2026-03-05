@@ -34,7 +34,7 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
 </head>
 <body>
     <div id="preloader"><div class="spinner"></div></div>
-    <aside class="sidebar-nav-wrapper">
+    <aside class="sidebar-nav-wrapper active">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -157,7 +157,7 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
         </nav>
     </aside>
     <div class="overlay"></div>
-    <main class="main-wrapper">
+    <main class="main-wrapper active">
         <header class="header"><div class="container-fluid"><div class="row"><div class="col-6"><button id="menu-toggle" class="main-btn primary-btn btn-sm"><i class="lni lni-menu"></i></button></div><div class="col-6 text-end"><span class="muted">Parâmetros</span></div></div></div></header>
         <section class="section"><div class="container-fluid p-4">
             <?php if ($flashOk): ?><div class="alert alert-success"><?= e($flashOk) ?></div><?php endif; ?>
@@ -201,3 +201,4 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
         });
     </script>
 </body></html>
+

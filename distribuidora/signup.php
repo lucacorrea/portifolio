@@ -22,7 +22,7 @@
     <!-- ======== Preloader =========== -->
 
     <!-- ======== sidebar-nav start =========== -->
-    <aside class="sidebar-nav-wrapper">
+    <aside class="sidebar-nav-wrapper active">
       <div class="navbar-logo">
         <a href="index.html">
           <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -275,7 +275,7 @@
     <!-- ======== sidebar-nav end =========== -->
 
     <!-- ======== main-wrapper start =========== -->
-    <main class="main-wrapper">
+    <main class="main-wrapper active">
       <!-- ========== header start ========== -->
       <header class="header">
         <div class="container-fluid">
@@ -643,3 +643,4 @@
     <script src="assets/js/main.js"></script>
   </body>
 </html>
+

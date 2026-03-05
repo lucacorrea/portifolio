@@ -25,7 +25,7 @@
     <!-- ======== sidebar-nav end =========== -->
 
     <!-- ======== main-wrapper start =========== -->
-    <main class="main-wrapper">
+    <main class="main-wrapper active">
 
       <!-- ========== signin-section start ========== -->
       <section class="signin-section">
@@ -135,3 +135,4 @@
     <script src="assets/js/main.js"></script>
   </body>
 </html>
+

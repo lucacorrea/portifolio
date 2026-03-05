@@ -25,6 +25,14 @@
   const menuToggleButtonIcon = document.querySelector("#menu-toggle i");
   const overlay = document.querySelector(".overlay");
 
+  // Set initial icon based on state
+  if (sidebarNavWrapper && sidebarNavWrapper.classList.contains("active")) {
+    if (menuToggleButtonIcon) {
+      menuToggleButtonIcon.classList.remove("lni-chevron-left");
+      menuToggleButtonIcon.classList.add("lni-menu");
+    }
+  }
+
   menuToggleButton.addEventListener("click", () => {
     sidebarNavWrapper.classList.toggle("active");
     overlay.classList.add("active");
