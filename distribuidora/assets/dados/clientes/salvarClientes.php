@@ -11,8 +11,7 @@ require_db_or_die();
 $pdo = db();
 
 /**
- * URL padrão de retorno: /distribuidora/clientes.php
- * (remove o sufixo /assets/dados/clientes/<arquivo>.php do SCRIPT_NAME)
+ * URL padrão /distribuidora/clientes.php (sem ../../../)
  */
 $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
 $root = preg_replace('#/assets/dados/clientes/[^/]+$#', '', $script);
@@ -23,14 +22,35 @@ if (!is_post()) redirect($clientesUrl);
 csrf_validate_or_die();
 $return = safe_return_to(post_str('return_to', $clientesUrl));
 
+/* ========= DADOS ========= */
 $nome = trim(post_str('nome'));
-$cpf  = only_digits(post_str('cpf'));       // <<< CPF só números
-$tel  = only_digits(post_str('telefone'));  // <<< telefone só números
+
+// CPF: pode vir com pontos e traço -> salva só números
+$cpfDigits = only_digits(post_str('cpf'));
+
+// Telefone: PODE salvar formatado (como digitado)
+$telefoneInput = trim(post_str('telefone'));      // salva assim
+$telefoneDigits = only_digits($telefoneInput);    // usa só pra validar
+
 $end  = trim(post_str('endereco', ''));
 
-if ($nome === '' || mb_strlen($nome) < 2) { flash_set('flash_err', 'Informe um nome válido.'); redirect($return); }
-if (!cpf_is_valid($cpf))                   { flash_set('flash_err', 'CPF inválido.'); redirect($return); }
-if (!tel_min_ok($tel))                     { flash_set('flash_err', 'Telefone inválido.'); redirect($return); }
+/* ========= VALIDAÇÕES ========= */
+if ($nome === '' || mb_strlen($nome) < 2) {
+  flash_set('flash_err', 'Informe um nome válido.');
+  redirect($return);
+}
+
+// CPF: valida só 11 dígitos (sem dígito verificador)
+if (strlen($cpfDigits) !== 11 || preg_match('/^(\d)\1{10}$/', $cpfDigits)) {
+  flash_set('flash_err', 'CPF deve ter 11 dígitos (somente números).');
+  redirect($return);
+}
+
+// Telefone: valida pelo mínimo de dígitos, mas salva formatado
+if (!tel_min_ok($telefoneDigits)) {
+  flash_set('flash_err', 'Telefone inválido.');
+  redirect($return);
+}
 
 try {
   // CPF único (robusto: pega casos antigos com pontuação)
@@ -40,7 +60,7 @@ try {
     WHERE REPLACE(REPLACE(REPLACE(cpf,'.',''),'-',''),' ','') = :cpf
     LIMIT 1
   ");
-  $st->execute(['cpf' => $cpf]);
+  $st->execute(['cpf' => $cpfDigits]);
   if ($st->fetchColumn()) {
     flash_set('flash_err', 'CPF já cadastrado.');
     redirect($return);
@@ -51,8 +71,8 @@ try {
   $stmt = $pdo->prepare($sql);
   $stmt->execute([
     'nome' => $nome,
-    'cpf'  => $cpf,
-    'tel'  => $tel,
+    'cpf'  => $cpfDigits,                 // <<< CPF vai SEM . e -
+    'tel'  => $telefoneInput,             // <<< TELEFONE pode ir formatado
     'end'  => ($end !== '' ? $end : null),
   ]);
 
