@@ -272,6 +272,14 @@ if ($action === 'fetch') {
             $itCount++;
         }
 
+        // Cálculo do valor recebido no ato
+        $vRecebido = (float)($r['total'] ?? 0);
+        if (strtoupper((string)($r['pagamento'] ?? '')) === 'FIADO') {
+            $stF = $pdo->prepare("SELECT valor_pago FROM fiados WHERE venda_id = ?");
+            $stF->execute([$id]);
+            $vRecebido = (float)($stF->fetchColumn() ?: 0);
+        }
+
         $outRows[] = [
             'id' => $id,
             'data' => (string)$r['data'],
@@ -283,6 +291,7 @@ if ($action === 'fetch') {
             'desconto' => (float)($r['desconto_valor'] ?? 0),
             'taxa' => (float)($r['taxa_entrega'] ?? 0),
             'total' => (float)($r['total'] ?? 0),
+            'recebido' => $vRecebido, // Adicionado aqui
             'endereco' => (string)($r['endereco'] ?? ''),
             'obs' => (string)($r['obs'] ?? ''),
             'itens' => $itens,
@@ -294,6 +303,16 @@ if ($action === 'fetch') {
     $totalCount = (int)($tot['qtd'] ?? 0);
     $pages = (int)max(1, ceil($totalCount / $per));
 
+    // Ajuste das datas para o pagamento de fiados (usar di/df que o JS envia)
+    $dtI = get_str('di', date('Y-m-d'));
+    $dtF = get_str('df', date('Y-m-d'));
+
+    $stPag = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE DATE(created_at) BETWEEN ? AND ?");
+    $stPag->execute([$dtI, $dtF]);
+    $recFiadoExtra = (float)$stPag->fetchColumn();
+
+    $sumRecebidoVendas = array_sum(array_column($outRows, 'recebido'));
+
     json_out([
         'ok' => true,
         'meta' => [
@@ -303,11 +322,14 @@ if ($action === 'fetch') {
             'total' => $totalCount,
         ],
         'totais' => [
-            'qtd' => (int)($tot['qtd'] ?? 0),
+            'qtd' => $totalCount,
             'subtotal' => (float)($tot['subtotal'] ?? 0),
             'desconto' => (float)($tot['desconto'] ?? 0),
             'taxa' => (float)($tot['taxa'] ?? 0),
             'total' => (float)($tot['total'] ?? 0),
+            'recebido_vendas' => $sumRecebidoVendas,
+            'recebido_fiados' => $recFiadoExtra,
+            'caixa_real' => $sumRecebidoVendas + $recFiadoExtra
         ],
         'rows' => $outRows,
     ]);
@@ -1303,11 +1325,41 @@ $csrf = csrf_token();
                             <div class="head">
                                 <div class="muted"><b>Vendidos</b> • clique em <b>Detalhes</b> para ver itens/infos</div>
                                 <div class="toolbar">
-                                    <span class="pill" id="pillLoading" style="display:none;">Carregando…</span>
+                                    <div class="pill ok" id="pillCount">0 vendas</div>
+                                    <div class="pill" id="pillLoading" style="display:none;">
+                                        <i class="lni lni-spinner-arrow lni-spin"></i> Carregando…
+                                    </div>
                                 </div>
                             </div>
-
                             <div class="body">
+                                <!-- RESUMO FINANCEIRO (NOVO) -->
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-3">
+                                        <div class="card p-3 border-0 shadow-sm bg-light">
+                                            <div class="muted mb-1" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b;">Total Vendido (Bruto)</div>
+                                            <div class="h4 mb-0 fw-bold" id="txtTotalBruto">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card p-3 border-0 shadow-sm" style="background-color: #f0fdf4;">
+                                            <div class="muted mb-1" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #166534;">Recebido em Vendas</div>
+                                            <div class="h4 mb-0 fw-bold text-success" id="txtRecVendas">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card p-3 border-0 shadow-sm" style="background-color: #f0f9ff;">
+                                            <div class="muted mb-1" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #0369a1;">Receb. À Prazo (Dívidas)</div>
+                                            <div class="h4 mb-0 fw-bold text-primary" id="txtRecFiado">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card p-3 border-0 shadow-sm" style="background-color: #eef2ff; border-left: 4px solid #4338ca !important;">
+                                            <div class="muted mb-1" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #4338ca;">Caixa Real (Total)</div>
+                                            <div class="h3 mb-0 fw-bold" style="color: #4338ca;" id="txtCaixaReal">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="table-wrap">
                                     <table class="table table-hover mb-0" id="tbDev">
                                         <thead>
@@ -1318,16 +1370,14 @@ $csrf = csrf_token();
                                                 <th class="col-canal">Canal</th>
                                                 <th class="col-pag">Pagamento</th>
                                                 <th class="col-itens">Itens</th>
-                                                <th class="col-num text-end">Subtotal</th>
-                                                <th class="col-num text-end">Desconto</th>
-                                                <th class="col-num text-end">Entrega</th>
                                                 <th class="col-num text-end">Total</th>
+                                                <th class="col-num text-end">Recebido</th>
                                                 <th class="col-acoes">Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody id="tbody">
                                             <tr>
-                                                <td colspan="11" class="muted">Carregando…</td>
+                                                <td colspan="9" class="muted">Carregando…</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1562,6 +1612,12 @@ $csrf = csrf_token();
                 el('tTaxa').textContent = brl(js.totais.taxa);
                 el('tTotal').textContent = brl(js.totais.total);
 
+                // Novos Totais de Reconciliação
+                document.getElementById('txtTotalBruto').textContent = brl(js.totais.total);
+                document.getElementById('txtRecVendas').textContent = brl(js.totais.recebido_vendas);
+                document.getElementById('txtRecFiado').textContent = brl(js.totais.recebido_fiados);
+                document.getElementById('txtCaixaReal').textContent = brl(js.totais.caixa_real);
+
                 el('pillCount').textContent = `${js.totais.qtd} vendas`;
                 el('pageInfo').textContent = `Página ${state.page} / ${state.pages}`;
                 el('btnPrev').disabled = state.page <= 1;
@@ -1618,10 +1674,8 @@ $csrf = csrf_token();
               <td class="td-nowrap">${canalBadge}</td>
               <td class="td-nowrap">${pagBadge}</td>
               <td>${itensHtml}</td>
-              <td class="td-money">${brl(r.subtotal)}</td>
-              <td class="td-right">${brl(r.desconto)}</td>
-              <td class="td-right">${brl(r.taxa)}</td>
               <td class="td-money">${brl(r.total)}</td>
+              <td class="td-money text-success">${brl(r.recebido)}</td>
               <td>
                 <div class="actions-wrap">
                   <button class="main-btn light-btn btn-hover btn-action" onclick="openDetails(${r.id})">Detalhes</button>
