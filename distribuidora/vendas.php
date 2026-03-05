@@ -1234,6 +1234,7 @@ function fmtMoney($v): string
        UI
     ============================== */
     function setPreview(prod) {
+      if (!previewName) return;
       previewName.textContent = prod ? prod.name : "AGUARDANDO...";
     }
 
