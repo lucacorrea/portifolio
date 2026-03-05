@@ -613,15 +613,15 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                         <input type="hidden" name="id" id="fmId" value="">
 
                         <div class="row g-2">
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <label class="form-label" style="font-weight:900;">Nome *</label>
                                 <input type="text" class="form-control compact" name="nome" id="fmNome" required>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label class="form-label" style="font-weight:900;">CPF * (somente números)</label>
                                 <input type="text" class="form-control compact" name="cpf" id="fmCpf" required maxlength="11" inputmode="numeric">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label class="form-label" style="font-weight:900;">Telefone * (somente números)</label>
                                 <input type="text" class="form-control compact" name="telefone" id="fmTel" required maxlength="11" inputmode="tel">
                             </div>
