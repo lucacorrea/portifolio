@@ -11,6 +11,7 @@ if (empty($_SESSION['usuario_logado'])) {
 
 /* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
@@ -39,36 +40,9 @@ $pdo = db();
 /* Feira do Produtor = 1 (na Feira Alternativa use 2) */
 $feiraId = 1;
 
-/* ===== Helpers ===== */
-function money_to_decimal(?string $raw): ?string
-{
-  $raw = trim((string)$raw);
-  if ($raw === '') return null;
-
-  // remove espaços
-  $raw = preg_replace('/\s+/', '', $raw) ?? $raw;
-
-  // se vier "1.234,56" -> "1234.56"
-  // se vier "1234,56" -> "1234.56"
-  // se vier "1234.56" -> "1234.56"
-  if (strpos($raw, ',') !== false && strpos($raw, '.') !== false) {
-    // assume '.' milhar e ',' decimal
-    $raw = str_replace('.', '', $raw);
-    $raw = str_replace(',', '.', $raw);
-  } else {
-    $raw = str_replace(',', '.', $raw);
-  }
-
-  // valida número
-  if (!preg_match('/^\d+(\.\d{1,2})?$/', $raw)) return null;
-
-  return $raw;
-}
-
 /* ===== Carregar selects ===== */
 $categorias = [];
 $unidades   = [];
-$produtores = [];
 
 try {
   $stmt = $pdo->prepare("SELECT id, nome FROM categorias WHERE feira_id = :feira AND ativo = 1 ORDER BY nome ASC");
@@ -80,21 +54,14 @@ try {
   $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
   $stmt->execute();
   $unidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-  $stmt = $pdo->prepare("SELECT id, nome FROM produtores WHERE feira_id = :feira AND ativo = 1 ORDER BY nome ASC");
-  $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-  $stmt->execute();
-  $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar categorias/unidades/produtores agora.';
+  $err = $err ?: 'Não foi possível carregar categorias/unidades agora.';
 }
 
 /* ===== Valores do form (repopular) ===== */
 $nome        = '';
 $categoriaId = '';
 $unidadeId   = '';
-$produtorId  = '';
-$preco       = '';
 $ativo       = '1';
 $observacao  = '';
 
@@ -111,7 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $nome        = trim((string)($_POST['nome'] ?? ''));
   $categoriaId = (string)($_POST['categoria_id'] ?? '');
   $unidadeId   = (string)($_POST['unidade_id'] ?? '');
-  $preco       = trim((string)($_POST['preco'] ?? ''));
   $ativo       = (string)($_POST['ativo'] ?? '1');
   $observacao  = trim((string)($_POST['observacao'] ?? ''));
 
@@ -122,21 +88,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   $categoriaInt = ($categoriaId !== '') ? (int)$categoriaId : 0;
   $unidadeInt   = ($unidadeId !== '') ? (int)$unidadeId : 0;
-  $produtorInt  = ($produtorId !== '') ? (int)$produtorId : 0;
-
-  $precoDecimal = money_to_decimal($preco);
 
   // ===== Validações =====
   if ($nomeNorm === '') {
+    $err = 'Informe o nome do produto.';
   } elseif (mb_strlen($nomeNorm) > 160) {
     $err = 'O nome do produto deve ter no máximo 160 caracteres.';
   } elseif ($categoriaInt <= 0) {
     $err = 'Selecione a categoria.';
   } elseif ($unidadeInt <= 0) {
     $err = 'Selecione a unidade.';
-  } elseif ($produtorInt <= 0) {
-  } elseif ($precoDecimal === null) {
-    $err = 'Informe um preço válido (ex.: 10,50).';
   } elseif ($obsNorm !== '' && mb_strlen($obsNorm) > 255) {
     $err = 'A observação deve ter no máximo 255 caracteres.';
   } else {
@@ -150,7 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt->execute([':feira' => $feiraId, ':id' => $unidadeInt]);
       if (!$stmt->fetchColumn()) throw new RuntimeException('Unidade inválida para esta feira.');
 
-
       // Evitar duplicado por feira (nome)
       $chk = $pdo->prepare("SELECT id FROM produtos WHERE feira_id = :feira AND nome = :nome LIMIT 1");
       $chk->bindValue(':feira', $feiraId, PDO::PARAM_INT);
@@ -163,15 +123,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       } else {
         $ins = $pdo->prepare("
           INSERT INTO produtos
-            (feira_id, nome, categoria_id, unidade_id, preco_referencia, ativo, observacao)
+            (feira_id, nome, categoria_id, unidade_id, ativo, observacao)
           VALUES
-            (:feira_id, :nome, :categoria_id, :unidade_id, :preco, :ativo, :observacao)
+            (:feira_id, :nome, :categoria_id, :unidade_id, :ativo, :observacao)
         ");
         $ins->bindValue(':feira_id', $feiraId, PDO::PARAM_INT);
         $ins->bindValue(':nome', $nomeNorm, PDO::PARAM_STR);
         $ins->bindValue(':categoria_id', $categoriaInt, PDO::PARAM_INT);
         $ins->bindValue(':unidade_id', $unidadeInt, PDO::PARAM_INT);
-        $ins->bindValue(':preco', $precoDecimal, PDO::PARAM_STR);
         $ins->bindValue(':ativo', $ativoInt, PDO::PARAM_INT);
 
         if ($obsNorm === '') {
@@ -196,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       } elseif ($mysqlCode === 1062) {
         $err = 'Já existe um produto com esse nome nesta feira.';
       } elseif ($mysqlCode === 1452) {
-        $err = 'Categoria/Unidade/Produtor inválido (FK).';
+        $err = 'Categoria/Unidade inválida (FK).';
       } else {
         $sqlState = (string)$e->getCode();
         $err = "Não foi possível salvar o produto agora. (SQLSTATE {$sqlState} / MySQL {$mysqlCode})";
@@ -627,6 +586,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                       </div>
                       <div class="col-md-6"></div>
+
                       <div class="col-md-6">
                         <div class="form-group">
                           <label>Categoria (Tipo) *</label>
@@ -664,16 +624,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                       </div>
 
-                      <div class="col-md-3">
-                        <div class="form-group">
-                          <label>Preço de referência (R$) *</label>
-                          <input type="text" class="form-control" name="preco"
-                            placeholder="0,00" required value="<?= h($preco) ?>">
-                          <small class="text-muted">Pode ajustar no lançamento da venda.</small>
-                        </div>
-                      </div>
-
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <div class="form-group">
                           <label>Status *</label>
                           <select class="form-control" name="ativo" required>
@@ -702,9 +653,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       </button>
                     </div>
 
-                    <?php if (empty($categorias) || empty($unidades) || empty($produtores)): ?>
+                    <?php if (empty($categorias) || empty($unidades)): ?>
                       <small class="text-muted d-block mt-3">
-                        Obs.: Se algum select estiver vazio, cadastre primeiro: Categoria / Unidade / Produtor.
+                        Obs.: Se algum select estiver vazio, cadastre primeiro: Categoria / Unidade.
                       </small>
                     <?php endif; ?>
 

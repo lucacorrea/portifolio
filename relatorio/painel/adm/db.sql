@@ -104,15 +104,11 @@ CREATE TABLE `produtores` (
 
 
 CREATE TABLE `produtos` (
-  `id` bigint(20) UNSIGNED NOT NULL,
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   `feira_id` tinyint(3) UNSIGNED NOT NULL,
   `nome` varchar(160) NOT NULL,
   `categoria_id` bigint(20) UNSIGNED DEFAULT NULL,
   `unidade_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `produtor_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `preco_referencia` decimal(10, 2) DEFAULT NULL,
-  `custo_referencia` decimal(10, 2) DEFAULT NULL,
-  `codigo_interno` varchar(60) DEFAULT NULL,
   `ativo` tinyint(1) NOT NULL DEFAULT 1,
   `observacao` varchar(255) DEFAULT NULL,
   `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
