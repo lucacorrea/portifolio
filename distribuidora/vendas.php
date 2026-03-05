@@ -829,7 +829,7 @@ function fmtMoney($v): string
                 <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
-              </div>
+              </div></div>
            
 
             <div class="col-lg-7 col-md-7 col-6">
@@ -848,7 +848,7 @@ function fmtMoney($v): string
                         </div>
                     </div>
 
-        </div>
+        
       </div>
     </header>
 
