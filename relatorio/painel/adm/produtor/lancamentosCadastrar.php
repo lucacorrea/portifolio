@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $tokenPost = (string)($_POST['csrf_token'] ?? '');
   if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
     $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
-    header('Location: ./lancamentosMensal.php');
+    header('Location: ./lancamentosCadastrar.php');
     exit;
   }
 
@@ -206,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
 
         $_SESSION['flash_ok'] = 'Lançamento mensal cadastrado com sucesso! (Venda ID: ' . $vendaId . ')';
-        header('Location: ./lancamentosMensal.php');
+        header('Location: ./lancamentosCadastrar.php');
         exit;
       } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
