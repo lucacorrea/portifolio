@@ -38,7 +38,7 @@ $produtos = $pdo->query("
 // {
 //     return '';
 // }
-?>
+")?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
