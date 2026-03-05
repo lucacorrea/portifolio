@@ -111,7 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $nome        = trim((string)($_POST['nome'] ?? ''));
   $categoriaId = (string)($_POST['categoria_id'] ?? '');
   $unidadeId   = (string)($_POST['unidade_id'] ?? '');
-  $produtorId  = (string)($_POST['produtor_id'] ?? '');
   $preco       = trim((string)($_POST['preco'] ?? ''));
   $ativo       = (string)($_POST['ativo'] ?? '1');
   $observacao  = trim((string)($_POST['observacao'] ?? ''));
@@ -129,7 +128,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   // ===== Validações =====
   if ($nomeNorm === '') {
-    $err = 'Informe o nome do produto.';
   } elseif (mb_strlen($nomeNorm) > 160) {
     $err = 'O nome do produto deve ter no máximo 160 caracteres.';
   } elseif ($categoriaInt <= 0) {
@@ -137,7 +135,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } elseif ($unidadeInt <= 0) {
     $err = 'Selecione a unidade.';
   } elseif ($produtorInt <= 0) {
-    $err = 'Selecione o produtor.';
   } elseif ($precoDecimal === null) {
     $err = 'Informe um preço válido (ex.: 10,50).';
   } elseif ($obsNorm !== '' && mb_strlen($obsNorm) > 255) {
@@ -153,9 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt->execute([':feira' => $feiraId, ':id' => $unidadeInt]);
       if (!$stmt->fetchColumn()) throw new RuntimeException('Unidade inválida para esta feira.');
 
-      $stmt = $pdo->prepare("SELECT 1 FROM produtores WHERE feira_id = :feira AND id = :id LIMIT 1");
-      $stmt->execute([':feira' => $feiraId, ':id' => $produtorInt]);
-      if (!$stmt->fetchColumn()) throw new RuntimeException('Produtor inválido para esta feira.');
 
       // Evitar duplicado por feira (nome)
       $chk = $pdo->prepare("SELECT id FROM produtos WHERE feira_id = :feira AND nome = :nome LIMIT 1");
@@ -169,15 +163,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       } else {
         $ins = $pdo->prepare("
           INSERT INTO produtos
-            (feira_id, nome, categoria_id, unidade_id, produtor_id, preco_referencia, ativo, observacao)
+            (feira_id, nome, categoria_id, unidade_id, preco_referencia, ativo, observacao)
           VALUES
-            (:feira_id, :nome, :categoria_id, :unidade_id, :produtor_id, :preco, :ativo, :observacao)
+            (:feira_id, :nome, :categoria_id, :unidade_id, :preco, :ativo, :observacao)
         ");
         $ins->bindValue(':feira_id', $feiraId, PDO::PARAM_INT);
         $ins->bindValue(':nome', $nomeNorm, PDO::PARAM_STR);
         $ins->bindValue(':categoria_id', $categoriaInt, PDO::PARAM_INT);
         $ins->bindValue(':unidade_id', $unidadeInt, PDO::PARAM_INT);
-        $ins->bindValue(':produtor_id', $produtorInt, PDO::PARAM_INT);
         $ins->bindValue(':preco', $precoDecimal, PDO::PARAM_STR);
         $ins->bindValue(':ativo', $ativoInt, PDO::PARAM_INT);
 
@@ -633,8 +626,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             required maxlength="160" value="<?= h($nome) ?>">
                         </div>
                       </div>
-
-                      <div class="col-md-3">
+                      <div class="col-md-6"></div>
+                      <div class="col-md-6">
                         <div class="form-group">
                           <label>Categoria (Tipo) *</label>
                           <select class="form-control" name="categoria_id" required>
@@ -650,7 +643,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                       </div>
 
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <div class="form-group">
                           <label>Unidade *</label>
                           <select class="form-control" name="unidade_id" required>
@@ -668,22 +661,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php endforeach; ?>
                           </select>
                           <small class="text-muted">Ex.: kg, unidade, maço, litro.</small>
-                        </div>
-                      </div>
-
-                      <div class="col-md-6">
-                        <div class="form-group">
-                          <label>Produtor (Feirante) *</label>
-                          <select class="form-control" name="produtor_id" required>
-                            <option value="" disabled <?= $produtorId === '' ? 'selected' : '' ?>>Selecione...</option>
-                            <?php foreach ($produtores as $p): ?>
-                              <?php $pid = (int)$p['id']; ?>
-                              <option value="<?= $pid ?>" <?= ((string)$pid === (string)$produtorId) ? 'selected' : '' ?>>
-                                <?= h($p['nome'] ?? '') ?>
-                              </option>
-                            <?php endforeach; ?>
-                          </select>
-                          <small class="text-muted">Produtores rurais cadastrados no sistema.</small>
                         </div>
                       </div>
 
