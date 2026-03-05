@@ -839,41 +839,7 @@ function fmtMoney($v): string
             </div>
           </div>
 
-          <div class="col-lg-7 col-md-7 col-6">
-            <div class="header-right">
-              <div class="profile-box ml-15">
-                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile"
-                  data-bs-toggle="dropdown" aria-expanded="false">
-                  <div class="profile-info">
-                    <div class="info">
-                      <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
-                      <div>
-                        <h6 class="fw-500">Administrador</h6>
-                        <p>Distribuidora</p>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                  <li>
-                    <div class="author-info flex items-center !p-1">
-                      <div class="image"><img src="assets/images/profile/profile-image.png" alt="image" /></div>
-                      <div class="content">
-                        <h4 class="text-sm">Administrador</h4>
-                        <a class="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-xs" href="#">Admin</a>
-                      </div>
-                    </div>
-                  </li>
-                  <li class="divider"></li>
-                  <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                  <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
-                  <li class="divider"></li>
-                  <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
-                </ul>
-              </div>
-            </div>
-          </div>
+         </div>
 
         </div>
       </div>
