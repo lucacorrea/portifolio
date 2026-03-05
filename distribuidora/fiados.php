@@ -109,7 +109,7 @@ if (!function_exists('brl')) {
           </a>
         </li>
 
-        <li class="nav-item nav-item-has-children">
+        <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
