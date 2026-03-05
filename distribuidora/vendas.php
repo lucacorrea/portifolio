@@ -10,8 +10,8 @@ declare(strict_types=1);
  */
 
 // ✅ BLINDA: evita “JSON quebrado” por warnings/avisos
-@ini_set('display_errors', '0');
-@error_reporting(0);
+
+
 if (function_exists('ob_start')) {
   @ob_start();
 }
@@ -2186,4 +2186,5 @@ function fmtMoney($v): string
   </script>
 </body>
 </html>
+
 
