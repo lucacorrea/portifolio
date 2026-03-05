@@ -10,23 +10,36 @@ require_once __DIR__ . '/_helpers.php';
 require_db_or_die();
 $pdo = db();
 
-if (!is_post()) redirect(url_here('../../../clientes.php'));
+/**
+ * URL padrão de retorno: /distribuidora/clientes.php
+ * (remove o sufixo /assets/dados/clientes/<arquivo>.php do SCRIPT_NAME)
+ */
+$script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+$root = preg_replace('#/assets/dados/clientes/[^/]+$#', '', $script);
+$clientesUrl = rtrim($root ?: '/', '/') . '/clientes.php';
+
+if (!is_post()) redirect($clientesUrl);
 
 csrf_validate_or_die();
-$return = safe_return_to(post_str('return_to', url_here('../../../clientes.php')));
+$return = safe_return_to(post_str('return_to', $clientesUrl));
 
 $nome = trim(post_str('nome'));
-$cpf  = only_digits(post_str('cpf'));
-$tel  = only_digits(post_str('telefone'));
+$cpf  = only_digits(post_str('cpf'));       // <<< CPF só números
+$tel  = only_digits(post_str('telefone'));  // <<< telefone só números
 $end  = trim(post_str('endereco', ''));
 
 if ($nome === '' || mb_strlen($nome) < 2) { flash_set('flash_err', 'Informe um nome válido.'); redirect($return); }
-if (!cpf_is_valid($cpf)) { flash_set('flash_err', 'CPF inválido.'); redirect($return); }
-if (!tel_min_ok($tel)) { flash_set('flash_err', 'Telefone inválido.'); redirect($return); }
+if (!cpf_is_valid($cpf))                   { flash_set('flash_err', 'CPF inválido.'); redirect($return); }
+if (!tel_min_ok($tel))                     { flash_set('flash_err', 'Telefone inválido.'); redirect($return); }
 
 try {
-  // CPF único
-  $st = $pdo->prepare("SELECT id FROM clientes WHERE cpf = :cpf LIMIT 1");
+  // CPF único (robusto: pega casos antigos com pontuação)
+  $st = $pdo->prepare("
+    SELECT id
+    FROM clientes
+    WHERE REPLACE(REPLACE(REPLACE(cpf,'.',''),'-',''),' ','') = :cpf
+    LIMIT 1
+  ");
   $st->execute(['cpf' => $cpf]);
   if ($st->fetchColumn()) {
     flash_set('flash_err', 'CPF já cadastrado.');
@@ -38,9 +51,9 @@ try {
   $stmt = $pdo->prepare($sql);
   $stmt->execute([
     'nome' => $nome,
-    'cpf' => $cpf,
-    'tel' => $tel,
-    'end' => ($end !== '' ? $end : null),
+    'cpf'  => $cpf,
+    'tel'  => $tel,
+    'end'  => ($end !== '' ? $end : null),
   ]);
 
   flash_set('flash_ok', 'Cliente cadastrado com sucesso.');
