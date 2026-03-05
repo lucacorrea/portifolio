@@ -26,8 +26,7 @@ $categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome
 $fornecedores = $pdo->query("SELECT id, nome, status FROM fornecedores ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // produtos
-$produtos = $pdo->query("
-  SELECT p.*,
+$produtos = $pdo->query("SELECT p.*,
          c.nome AS categoria_nome,
          f.nome AS fornecedor_nome
   FROM produtos p
