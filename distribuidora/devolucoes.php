@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-@ini_set('display_errors', '0');
-@error_reporting(0);
+
+
 if (function_exists('ob_start')) {
   @ob_start();
 }
@@ -970,7 +970,7 @@ $flash = flash_pop();
   </div>
 
 <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper active">
+  <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -1105,7 +1105,7 @@ $flash = flash_pop();
 
   <div class="overlay"></div>
 
-  <main class="main-wrapper active">
+  <main class="main-wrapper">
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -2105,3 +2105,5 @@ $flash = flash_pop();
 </body>
 
 </html>
+
+

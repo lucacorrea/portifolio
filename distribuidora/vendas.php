@@ -10,8 +10,8 @@ declare(strict_types=1);
  */
 
 // ✅ BLINDA: evita “JSON quebrado” por warnings/avisos
-@ini_set('display_errors', '0');
-@error_reporting(0);
+
+
 if (function_exists('ob_start')) {
   @ob_start();
 }
@@ -664,7 +664,7 @@ function fmtMoney($v): string
   </div>
 
   <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper active">
+  <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -819,7 +819,7 @@ function fmtMoney($v): string
 
   <div class="overlay"></div>
 
-  <main class="main-wrapper active">
+  <main class="main-wrapper">
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -830,12 +830,7 @@ function fmtMoney($v): string
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
               </div>
-              <div class="header-search d-none d-md-flex">
-                <form action="#">
-                  <input type="text" placeholder="Atalho: F4 pesquisar..." id="qGlobal" />
-                  <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
-                </form>
-              </div>
+           
             </div>
           </div>
    <div class="col-lg-7 col-md-7 col-6">
@@ -1239,6 +1234,7 @@ function fmtMoney($v): string
        UI
     ============================== */
     function setPreview(prod) {
+      if (!previewName) return;
       previewName.textContent = prod ? prod.name : "AGUARDANDO...";
     }
 
@@ -2191,3 +2187,5 @@ function fmtMoney($v): string
   </script>
 </body>
 </html>
+
+

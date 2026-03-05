@@ -673,7 +673,7 @@ $total12m = array_sum($chart1);
   </div>
 
   <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper active">
+  <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -808,7 +808,7 @@ $total12m = array_sum($chart1);
   <div class="overlay"></div>
 
                 </ul>
-      <main class="main-wrapper active">
+      <main class="main-wrapper">
     <!-- Header -->
     <header class="header">
       <div class="container-fluid">
@@ -2177,3 +2177,4 @@ $total12m = array_sum($chart1);
 </body>
 
 </html>
+

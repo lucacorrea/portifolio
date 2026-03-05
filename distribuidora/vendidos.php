@@ -1,10 +1,10 @@
 <?php
-
 declare(strict_types=1);
-
+ini_set('display_errors', '1'); error_reporting(E_ALL);
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+
 
 /* ========= INCLUDES (ajuste se precisar) ========= */
 $helpers = __DIR__ . '/assets/dados/_helpers.php';
@@ -1115,7 +1115,7 @@ $csrf = csrf_token();
 
     <!-- ======== sidebar-nav start =========== -->
   <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper active">
+  <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -1249,7 +1249,7 @@ $csrf = csrf_token();
 
     <div class="overlay"></div>
 
-    <main class="main-wrapper active">
+    <main class="main-wrapper">
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -1944,3 +1944,4 @@ $csrf = csrf_token();
 </body>
 
 </html>
+

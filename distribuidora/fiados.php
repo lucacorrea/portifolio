@@ -68,7 +68,7 @@ if (!function_exists('brl')) {
 <body>
     <div id="preloader"><div class="spinner"></div></div>
 
-    <aside class="sidebar-nav-wrapper active">
+    <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -202,7 +202,7 @@ if (!function_exists('brl')) {
 
     <div class="overlay"></div>
 
-    <main class="main-wrapper active">
+    <main class="main-wrapper">
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -211,6 +211,21 @@ if (!function_exists('brl')) {
                             <div class="menu-toggle-btn mr-15">
                                 <button id="menu-toggle" class="main-btn primary-btn btn-hover">
                                     <i class="lni lni-chevron-left me-2"></i> Menu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                       <div class="col-lg-7 col-md-7 col-6">
+                        <div class="header-right">
+                            <div class="profile-box ml-15">
+                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="profile-info">
+                                        <div class="info">
+                                            <div>
+                                                <h6 class="fw-500">Sair</h6>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </button>
                             </div>
                         </div>
@@ -494,3 +509,4 @@ if (!function_exists('brl')) {
     </script>
 </body>
 </html>
+

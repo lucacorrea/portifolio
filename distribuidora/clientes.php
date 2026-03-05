@@ -449,7 +449,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
     </div>
 
     <!-- SIDEBAR (mantido) -->
-    <aside class="sidebar-nav-wrapper active">
+    <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -583,7 +583,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     <div class="overlay"></div>
 
-    <main class="main-wrapper active">
+    <main class="main-wrapper">
         <header class="header">
             <div class="container-fluid">
                 <div class="row align-items-center">
@@ -1174,3 +1174,4 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 </body>
 
 </html>
+

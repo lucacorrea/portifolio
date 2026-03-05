@@ -220,8 +220,8 @@ function badgeStatus(string $st): string
     <div class="spinner"></div>
   </div>
 
-   <!-- ======== sidebar-nav start =========== -->
-    <aside class="sidebar-nav-wrapper active">
+    <!-- ======== sidebar-nav start =========== -->
+    <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -312,7 +312,7 @@ function badgeStatus(string $st): string
                     <a href="relatorios.php">
                         <span class="icon">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
+                                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.0872 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
                             </svg>
                         </span>
                         <span class="text">Relatórios</span>
@@ -352,72 +352,10 @@ function badgeStatus(string $st): string
             </ul>
         </nav>
     </aside>
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
-              </svg>
-            </span>
-            <span class="text">Cadastros</span>
-          </a>
-          <ul id="ddmenu_cadastros" class="collapse show dropdown-nav">
-            <li><a href="clientes.php">Clientes</a></li>
-            <li><a href="fornecedores.php">Fornecedores</a></li>
-            <li><a href="categorias.php" class="active">Categorias</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item">
-          <a href="relatorios.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
-              </svg>
-            </span>
-            <span class="text">Relatórios</span>
-          </a>
-        </li>
-
-        <span class="divider">
-          <hr />
-        </span>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
-              </svg>
-            </span>
-            <span class="text">Configurações</span>
-          </a>
-          <ul id="ddmenu_config" class="collapse dropdown-nav">
-            <li><a href="usuarios.php">Usuários e Permissões</a></li>
-            <li><a href="parametros.php">Parâmetros do Sistema</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item">
-          <a href="suporte.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
-              </svg>
-            </span>
-            <span class="text">Suporte</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
-  </aside>
 
   <div class="overlay"></div>
 
-  <main class="main-wrapper active">
+  <main class="main-wrapper">
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -864,3 +802,4 @@ function badgeStatus(string $st): string
 </body>
 
 </html>
+

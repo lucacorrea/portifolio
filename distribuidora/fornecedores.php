@@ -240,10 +240,8 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     <div class="spinner"></div>
   </div>
 
-   <!-- ======== sidebar-nav start =========== -->
-    <aside class="sidebar-nav-wrapper active">
-        <div class="navbar-logo">
-  <aside class="sidebar-nav-wrapper active">
+    <!-- ======== sidebar-nav start =========== -->
+  <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
@@ -377,7 +375,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
   <div class="overlay"></div>
 
-  <main class="main-wrapper active">
+  <main class="main-wrapper">
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -825,3 +823,4 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 </body>
 
 </html>
+
