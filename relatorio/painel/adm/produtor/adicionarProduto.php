@@ -671,22 +671,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                       </div>
 
-                      <div class="col-md-6">
-                        <div class="form-group">
-                          <label>Produtor (Feirante) *</label>
-                          <select class="form-control" name="produtor_id" required>
-                            <option value="" disabled <?= $produtorId === '' ? 'selected' : '' ?>>Selecione...</option>
-                            <?php foreach ($produtores as $p): ?>
-                              <?php $pid = (int)$p['id']; ?>
-                              <option value="<?= $pid ?>" <?= ((string)$pid === (string)$produtorId) ? 'selected' : '' ?>>
-                                <?= h($p['nome'] ?? '') ?>
-                              </option>
-                            <?php endforeach; ?>
-                          </select>
-                          <small class="text-muted">Produtores rurais cadastrados no sistema.</small>
-                        </div>
-                      </div>
-
                       <div class="col-md-3">
                         <div class="form-group">
                           <label>Preço de referência (R$) *</label>
