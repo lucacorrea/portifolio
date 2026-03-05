@@ -931,14 +931,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
             </a>
         </div>
 
-           <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
-    <div class="navbar-logo">
-      <a href="dashboard.php" class="d-flex align-items-center gap-2">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
-      </a>
-    </div>
-
     <nav class="sidebar-nav">
       <ul>
         <li class="nav-item">

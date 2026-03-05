@@ -397,21 +397,12 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         <div class="spinner"></div>
     </div>
 
-      <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
                 <img src="assets/images/logo/logo.svg" alt="logo" />
             </a>
         </div>
-
-           <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
-    <div class="navbar-logo">
-      <a href="dashboard.php" class="d-flex align-items-center gap-2">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
-      </a>
-    </div>
 
     <nav class="sidebar-nav">
       <ul>
