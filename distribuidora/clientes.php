@@ -11,69 +11,139 @@ require_once __DIR__ . '/assets/dados/clientes/_helpers.php';
 require_db_or_die();
 $pdo = db();
 
+/* =========================
+   JSON OUT (local)
+========================= */
+function json_out(array $payload, int $code = 200): void
+{
+    http_response_code($code);
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+/* =========================
+   AJAX ENDPOINT
+   clientes.php?action=ajax&q=...&page=1&per=25
+========================= */
+$action = strtolower(get_str('action', ''));
+if ($action === 'ajax') {
+    try {
+        $q = trim(get_str('q', ''));
+        $page = max(1, get_int('page', 1));
+        $per  = get_int('per', 25);
+        $per  = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
+        $off  = ($page - 1) * $per;
+
+        $params = [];
+        $where = " WHERE 1=1 ";
+
+        if ($q !== '') {
+            $qd = only_digits($q);
+
+            // ID
+            if (ctype_digit($q) && strlen($q) <= 9) {
+                $where .= " AND c.id = :id ";
+                $params['id'] = (int)$q;
+            }
+            // digitou números (CPF/Telefone)
+            elseif ($qd !== '') {
+                // Importante: funciona mesmo se no banco tiver CPF com pontuação (legacy)
+                $where .= " AND (
+            REPLACE(REPLACE(REPLACE(c.cpf,'.',''),'-',''),' ','') LIKE :qd
+         OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.telefone,'(',''),')',''),'-',''),' ',''),'+','') LIKE :qd
+         OR c.cpf LIKE :qraw
+         OR c.telefone LIKE :qraw
+        ) ";
+                $params['qd'] = '%' . $qd . '%';
+                $params['qraw'] = '%' . $q . '%';
+            }
+            // texto (nome/endereço)
+            else {
+                $where .= " AND (c.nome LIKE :q OR c.endereco LIKE :q) ";
+                $params['q'] = '%' . $q . '%';
+            }
+        }
+
+        // total
+        $sqlTot = "SELECT COUNT(*) AS total FROM clientes c $where";
+        $stTot = $pdo->prepare($sqlTot);
+        $stTot->execute($params);
+        $totalCount = (int)($stTot->fetchColumn() ?: 0);
+
+        $pages = (int)max(1, (int)ceil($totalCount / $per));
+        if ($page > $pages) $page = $pages;
+        $off = ($page - 1) * $per;
+
+        // lista
+        $sql = "SELECT c.id, c.nome, c.cpf, c.telefone, c.endereco, c.created_at
+            FROM clientes c
+            $where
+            ORDER BY c.id DESC
+            LIMIT $per OFFSET $off";
+        $st = $pdo->prepare($sql);
+        $st->execute($params);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $out = [];
+        foreach ($rows as $r) {
+            $cpfRaw = (string)($r['cpf'] ?? '');
+            $telRaw = (string)($r['telefone'] ?? '');
+
+            $out[] = [
+                'id' => (int)$r['id'],
+                'nome' => (string)$r['nome'],
+                // digits (para editar)
+                'cpf_digits' => only_digits($cpfRaw),
+                'tel_digits' => only_digits($telRaw),
+                // formatados (para mostrar)
+                'cpf_fmt' => cpf_fmt($cpfRaw),
+                'tel_fmt' => tel_fmt($telRaw),
+                'endereco' => (string)($r['endereco'] ?? ''),
+                'created_at' => (string)($r['created_at'] ?? ''),
+            ];
+        }
+
+        json_out([
+            'ok' => true,
+            'meta' => [
+                'q' => $q,
+                'page' => $page,
+                'per' => $per,
+                'pages' => $pages,
+                'total' => $totalCount,
+                'shown' => count($out),
+            ],
+            'rows' => $out,
+        ]);
+    } catch (Throwable $e) {
+        json_out(['ok' => false, 'msg' => 'Erro no AJAX: ' . $e->getMessage()], 500);
+    }
+}
+
+/* =========================
+   HTML NORMAL (primeiro load)
+========================= */
 $csrf = csrf_token();
 $return_to = (string)($_SERVER['REQUEST_URI'] ?? url_here('clientes.php'));
 
 $flashOk  = flash_pop('flash_ok');
 $flashErr = flash_pop('flash_err');
 
-/* =========================
-   FILTROS / PAGINAÇÃO
-   (SEM status, pq sua tabela não tem)
-========================= */
-$q    = get_str('q', '');
-$page = max(1, get_int('page', 1));
-$per  = get_int('per', 25);
-$per  = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
-$off  = ($page - 1) * $per;
+// Primeira renderização: traz página 1 sem filtro (JS assume depois)
+$page = 1;
+$per  = 25;
 
-$params = [];
-$where  = " WHERE 1=1 ";
-
-if ($q !== '') {
-    $qd = only_digits($q);
-
-    if (ctype_digit($q) && strlen($q) <= 9) {
-        $where .= " AND c.id = :id ";
-        $params['id'] = (int)$q;
-    } elseif ($qd !== '') {
-        $where .= " AND (c.cpf LIKE :qd OR c.telefone LIKE :qd) ";
-        $params['qd'] = '%' . $qd . '%';
-    } else {
-        $where .= " AND (c.nome LIKE :q OR c.endereco LIKE :q) ";
-        $params['q'] = '%' . $q . '%';
-    }
-}
-
-$sqlTot = "SELECT COUNT(*) AS total FROM clientes c $where";
-$stTot  = $pdo->prepare($sqlTot);
-$stTot->execute($params);
-$totalCount = (int)($stTot->fetchColumn() ?: 0);
-
+$sqlTot = "SELECT COUNT(*) AS total FROM clientes";
+$totalCount = (int)($pdo->query($sqlTot)->fetchColumn() ?: 0);
 $pages = (int)max(1, (int)ceil($totalCount / $per));
-if ($page > $pages) $page = $pages;
-$off = ($page - 1) * $per;
 
-$sql = "SELECT c.id, c.nome, c.cpf, c.telefone, c.endereco, c.created_at
-        FROM clientes c
-        $where
-        ORDER BY c.id DESC
-        LIMIT $per OFFSET $off";
-$st = $pdo->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-function url_with(array $over): string
-{
-    $cur = $_GET;
-    foreach ($over as $k => $v) {
-        if ($v === null) unset($cur[$k]);
-        else $cur[$k] = (string)$v;
-    }
-    $qs = http_build_query($cur);
-    $self = (string)($_SERVER['SCRIPT_NAME'] ?? '/clientes.php');
-    return $self . ($qs ? ('?' . $qs) : '');
-}
+$sql = "SELECT id, nome, cpf, telefone, endereco, created_at
+        FROM clientes
+        ORDER BY id DESC
+        LIMIT $per OFFSET 0";
+$rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -93,22 +163,12 @@ function url_with(array $over): string
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
-        /* =========================
-       AJUSTES VISUAIS (NOTEBOOK/RESPONSIVO)
-    ========================== */
         .section {
             padding-top: 18px
         }
 
         .page-pad {
             padding-top: 12px
-        }
-
-        .main-btn.btn-compact {
-            height: 36px !important;
-            padding: 8px 12px !important;
-            font-size: 13px !important;
-            line-height: 1 !important;
         }
 
         .form-control.compact,
@@ -163,6 +223,12 @@ function url_with(array $over): string
             color: #166534
         }
 
+        .pill.warn {
+            border-color: rgba(245, 158, 11, .25);
+            background: rgba(255, 251, 235, .95);
+            color: #92400e
+        }
+
         .toolbar {
             display: flex;
             gap: 10px;
@@ -171,9 +237,6 @@ function url_with(array $over): string
             justify-content: flex-end;
         }
 
-        /* =========================
-       TABELA (FONTE MAIOR)
-    ========================== */
         .table-wrap {
             overflow: auto;
             border-radius: 14px
@@ -201,7 +264,6 @@ function url_with(array $over): string
             border-top: 1px solid rgba(148, 163, 184, .15);
             padding: 14px 12px;
             font-size: 14.5px;
-            /* <<< AUMENTO DA FONTE */
             line-height: 1.25;
             vertical-align: middle;
             color: #0f172a;
@@ -220,7 +282,6 @@ function url_with(array $over): string
             max-width: 100%
         }
 
-        /* col widths */
         .col-id {
             width: 70px
         }
@@ -249,10 +310,6 @@ function url_with(array $over): string
             width: 260px
         }
 
-        /* =========================
-       AÇÕES (ARRUMADAS)
-       - Em notebook, vira “ícone-only” pra não quebrar linha
-    ========================== */
         .actions-wrap {
             display: flex;
             gap: 8px;
@@ -276,7 +333,6 @@ function url_with(array $over): string
             font-size: 16px
         }
 
-        /* notebook/menor: esconde textos e deixa só ícones */
         @media (max-width: 1400px) {
             .btn-action .act-text {
                 display: none
@@ -287,7 +343,6 @@ function url_with(array $over): string
             }
         }
 
-        /* mobile: deixa ações quebrar se precisar */
         @media (max-width: 992px) {
             #tbClientes {
                 min-width: 920px
@@ -303,7 +358,6 @@ function url_with(array $over): string
             }
         }
 
-        /* Paginação */
         .page-nav {
             display: flex;
             gap: 10px;
@@ -322,13 +376,12 @@ function url_with(array $over): string
             font-weight: 900;
             font-size: 12.5px;
             cursor: pointer;
-            text-decoration: none;
             color: #0f172a;
         }
 
-        .page-btn.disabled {
+        .page-btn[disabled] {
             opacity: .55;
-            pointer-events: none
+            cursor: not-allowed
         }
 
         .page-info {
@@ -344,7 +397,7 @@ function url_with(array $over): string
         <div class="spinner"></div>
     </div>
 
-    <!-- SIDEBAR: mantenha o seu template aqui (não mexi no menu) -->
+    <!-- SIDEBAR (mantido) -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -399,29 +452,27 @@ function url_with(array $over): string
                     <div class="alert alert-danger" style="border-radius:14px;"><?= e($flashErr) ?></div>
                 <?php endif; ?>
 
-                <!-- FILTROS -->
-                <form method="get" id="formFiltros" class="cardx mb-3">
-                    <input type="hidden" name="page" id="page" value="<?= (int)$page ?>">
-
+                <!-- FILTRO (SEM submit) -->
+                <div class="cardx mb-3">
                     <div class="head">
                         <div>
                             <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="pill ok"><?= (int)$totalCount ?> clientes</span>
-                                <span class="muted"><?= $q ? ('Busca: ' . e($q)) : '—' ?></span>
+                                <span class="pill ok" id="pillCount"><?= (int)$totalCount ?> clientes</span>
+                                <span class="muted" id="lblRange">—</span>
                             </div>
-                            <div class="muted mt-1">Digite no campo e a tabela atualiza automaticamente (sem clicar em Filtrar).</div>
+                            <div class="muted mt-1">Digite para pesquisar. Atualiza a tabela via AJAX (sem recarregar).</div>
                         </div>
 
                         <div class="toolbar">
-                            <button type="button" class="main-btn primary-btn btn-hover btn-compact" id="btnNovo">
+                            <button type="button" class="main-btn primary-btn btn-hover" id="btnNovo">
                                 <i class="lni lni-plus me-1"></i> Novo
                             </button>
 
-                            <select name="per" id="per" class="form-select compact" style="min-width:190px;">
-                                <option value="10" <?= $per === 10 ? 'selected' : '' ?>>10 por página</option>
-                                <option value="25" <?= $per === 25 ? 'selected' : '' ?>>25 por página</option>
-                                <option value="50" <?= $per === 50 ? 'selected' : '' ?>>50 por página</option>
-                                <option value="100" <?= $per === 100 ? 'selected' : '' ?>>100 por página</option>
+                            <select id="per" class="form-select compact" style="min-width:190px;">
+                                <option value="10">10 por página</option>
+                                <option value="25" selected>25 por página</option>
+                                <option value="50">50 por página</option>
+                                <option value="100">100 por página</option>
                             </select>
                         </div>
                     </div>
@@ -429,27 +480,28 @@ function url_with(array $over): string
                     <div class="body">
                         <div class="row g-2 align-items-end">
                             <div class="col-md-10">
-                                <label class="form-label" style="font-weight:900;color:#0f172a;">Buscar (Nome / CPF / Telefone / ID / Endereço)</label>
-                                <input type="text" class="form-control compact" name="q" id="q" value="<?= e($q) ?>" placeholder="Comece a digitar…">
+                                <label class="form-label" style="font-weight:900;color:#0f172a;">
+                                    Buscar (Nome / CPF / Telefone / ID / Endereço)
+                                </label>
+                                <input type="text" class="form-control compact" id="q"
+                                    placeholder="Digite... (CPF/Telefone só números)"
+                                    autocomplete="off">
                             </div>
                             <div class="col-md-2 d-flex gap-2 flex-wrap">
-                                <!-- Filtrar ainda existe, mas não precisa -->
-                                <button class="main-btn primary-btn btn-hover btn-compact w-100" type="submit">
-                                    <i class="lni lni-funnel me-1"></i> Filtrar
-                                </button>
-                                <a class="main-btn light-btn btn-hover btn-compact w-100" href="<?= e(url_here('clientes.php')) ?>">
+                                <button class="main-btn light-btn btn-hover w-100" id="btnLimpar" type="button">
                                     <i class="lni lni-close me-1"></i> Limpar
-                                </a>
+                                </button>
+                                <span class="pill warn" id="pillLoading" style="display:none;">Carregando…</span>
                             </div>
                         </div>
                     </div>
-                </form>
+                </div>
 
                 <!-- TABELA -->
                 <div class="cardx">
                     <div class="head">
                         <div class="muted"><b>Clientes</b> • ações: Detalhes / Editar / Excluir</div>
-                        <div class="muted">Página <?= (int)$page ?> de <?= (int)$pages ?></div>
+                        <div class="muted" id="pageMeta">Página 1 de <?= (int)$pages ?></div>
                     </div>
 
                     <div class="body">
@@ -466,7 +518,7 @@ function url_with(array $over): string
                                         <th class="col-acoes text-end">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="tbody">
                                     <?php if (!$rows): ?>
                                         <tr>
                                             <td colspan="7" class="muted">Nenhum cliente encontrado.</td>
@@ -479,48 +531,40 @@ function url_with(array $over): string
                                             $telRaw = (string)($r['telefone'] ?? '');
                                             $end = (string)($r['endereco'] ?? '');
                                             $created = (string)($r['created_at'] ?? '');
-                                            $cpfF = cpf_fmt($cpfRaw);
-                                            $telF = tel_fmt($telRaw);
                                         ?>
                                             <tr>
                                                 <td class="td-nowrap fw-1000"><?= $id ?></td>
                                                 <td><span class="td-clip" title="<?= e($nome) ?>"><?= e($nome) ?></span></td>
-                                                <td class="td-nowrap"><?= e($cpfF) ?></td>
-                                                <td class="td-nowrap"><?= e($telF) ?></td>
+                                                <td class="td-nowrap"><?= e(cpf_fmt($cpfRaw)) ?></td>
+                                                <td class="td-nowrap"><?= e(tel_fmt($telRaw)) ?></td>
                                                 <td><span class="td-clip" title="<?= e($end) ?>"><?= e($end ?: '—') ?></span></td>
                                                 <td class="td-nowrap"><?= e($created ?: '—') ?></td>
                                                 <td class="text-end">
                                                     <div class="actions-wrap">
-                                                        <button type="button"
-                                                            class="main-btn light-btn btn-hover btn-action btnDetalhes"
-                                                            title="Detalhes"
+                                                        <button type="button" class="main-btn light-btn btn-hover btn-action btnDetalhes"
                                                             data-id="<?= $id ?>"
                                                             data-nome="<?= e($nome) ?>"
-                                                            data-cpf="<?= e($cpfF) ?>"
-                                                            data-tel="<?= e($telF) ?>"
+                                                            data-cpf="<?= e(cpf_fmt($cpfRaw)) ?>"
+                                                            data-tel="<?= e(tel_fmt($telRaw)) ?>"
                                                             data-end="<?= e($end) ?>"
                                                             data-created="<?= e($created) ?>">
                                                             <i class="lni lni-eye"></i> <span class="act-text">Detalhes</span>
                                                         </button>
 
-                                                        <button type="button"
-                                                            class="main-btn primary-btn btn-hover btn-action btnEditar"
-                                                            title="Editar"
+                                                        <button type="button" class="main-btn primary-btn btn-hover btn-action btnEditar"
                                                             data-id="<?= $id ?>"
                                                             data-nome="<?= e($nome) ?>"
-                                                            data-cpfraw="<?= e($cpfRaw) ?>"
-                                                            data-telraw="<?= e($telRaw) ?>"
+                                                            data-cpfdigits="<?= e(only_digits($cpfRaw)) ?>"
+                                                            data-teldigits="<?= e(only_digits($telRaw)) ?>"
                                                             data-end="<?= e($end) ?>">
                                                             <i class="lni lni-pencil"></i> <span class="act-text">Editar</span>
                                                         </button>
 
-                                                        <button type="button"
-                                                            class="main-btn light-btn btn-hover btn-action btnExcluir"
-                                                            title="Excluir"
+                                                        <button type="button" class="main-btn light-btn btn-hover btn-action btnExcluir"
                                                             data-id="<?= $id ?>"
                                                             data-nome="<?= e($nome) ?>"
-                                                            data-cpf="<?= e($cpfF) ?>"
-                                                            data-tel="<?= e($telF) ?>">
+                                                            data-cpf="<?= e(cpf_fmt($cpfRaw)) ?>"
+                                                            data-tel="<?= e(tel_fmt($telRaw)) ?>">
                                                             <i class="lni lni-trash-can"></i> <span class="act-text">Excluir</span>
                                                         </button>
                                                     </div>
@@ -533,13 +577,9 @@ function url_with(array $over): string
                         </div>
 
                         <div class="page-nav">
-                            <?php
-                            $prevUrl = url_with(['page' => max(1, $page - 1)]);
-                            $nextUrl = url_with(['page' => min($pages, $page + 1)]);
-                            ?>
-                            <a class="page-btn <?= $page <= 1 ? 'disabled' : '' ?>" href="<?= e($prevUrl) ?>">←</a>
-                            <span class="page-info">Página <?= (int)$page ?> de <?= (int)$pages ?></span>
-                            <a class="page-btn <?= $page >= $pages ? 'disabled' : '' ?>" href="<?= e($nextUrl) ?>">→</a>
+                            <button class="page-btn" id="btnPrev" type="button">←</button>
+                            <span class="page-info" id="pageInfo">Página 1 de <?= (int)$pages ?></span>
+                            <button class="page-btn" id="btnNext" type="button">→</button>
                         </div>
                     </div>
                 </div>
@@ -562,7 +602,7 @@ function url_with(array $over): string
                     <div class="modal-header">
                         <div>
                             <h5 class="modal-title" id="fmTitulo">Novo cliente</h5>
-                            <div class="muted" id="fmSub">Preencha Nome, CPF e Telefone</div>
+                            <div class="muted" id="fmSub">CPF/Telefone: somente números</div>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
@@ -578,12 +618,12 @@ function url_with(array $over): string
                                 <input type="text" class="form-control compact" name="nome" id="fmNome" required>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label" style="font-weight:900;">CPF *</label>
-                                <input type="text" class="form-control compact" name="cpf" id="fmCpf" required maxlength="14">
+                                <label class="form-label" style="font-weight:900;">CPF * (somente números)</label>
+                                <input type="text" class="form-control compact" name="cpf" id="fmCpf" required maxlength="11" inputmode="numeric">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label" style="font-weight:900;">Telefone *</label>
-                                <input type="text" class="form-control compact" name="telefone" id="fmTel" required maxlength="16">
+                                <label class="form-label" style="font-weight:900;">Telefone * (somente números)</label>
+                                <input type="text" class="form-control compact" name="telefone" id="fmTel" required maxlength="11" inputmode="tel">
                             </div>
                             <div class="col-12">
                                 <label class="form-label" style="font-weight:900;">Endereço</label>
@@ -593,10 +633,10 @@ function url_with(array $over): string
                     </div>
 
                     <div class="modal-footer">
-                        <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
+                        <button class="main-btn primary-btn btn-hover" type="submit">
                             <i class="lni lni-save me-1"></i> Salvar
                         </button>
-                        <button class="main-btn light-btn btn-hover btn-compact" type="button" data-bs-dismiss="modal">
+                        <button class="main-btn light-btn btn-hover" type="button" data-bs-dismiss="modal">
                             <i class="lni lni-close me-1"></i> Cancelar
                         </button>
                     </div>
@@ -620,30 +660,30 @@ function url_with(array $over): string
                 <div class="modal-body">
                     <div class="row g-2">
                         <div class="col-sm-7">
-                            <div class="mini">Nome</div>
+                            <div class="muted">Nome</div>
                             <div class="fw-1000" id="dtNome">—</div>
                         </div>
                         <div class="col-sm-5">
-                            <div class="mini">Criado em</div>
+                            <div class="muted">Criado em</div>
                             <div class="fw-1000" id="dtCreated">—</div>
                         </div>
                         <div class="col-sm-6">
-                            <div class="mini">CPF</div>
+                            <div class="muted">CPF</div>
                             <div class="fw-1000" id="dtCpf">—</div>
                         </div>
                         <div class="col-sm-6">
-                            <div class="mini">Telefone</div>
+                            <div class="muted">Telefone</div>
                             <div class="fw-1000" id="dtTel">—</div>
                         </div>
                         <div class="col-12">
-                            <div class="mini">Endereço</div>
+                            <div class="muted">Endereço</div>
                             <div class="fw-1000" id="dtEnd">—</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">
+                    <button class="main-btn light-btn btn-hover" data-bs-dismiss="modal" type="button">
                         <i class="lni lni-close me-1"></i> Fechar
                     </button>
                 </div>
@@ -671,10 +711,10 @@ function url_with(array $over): string
                     </div>
 
                     <div class="modal-footer">
-                        <button class="main-btn light-btn btn-hover btn-compact" type="button" data-bs-dismiss="modal">
+                        <button class="main-btn light-btn btn-hover" type="button" data-bs-dismiss="modal">
                             <i class="lni lni-close me-1"></i> Cancelar
                         </button>
-                        <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
+                        <button class="main-btn primary-btn btn-hover" type="submit">
                             <i class="lni lni-trash-can me-1"></i> Excluir
                         </button>
                     </div>
@@ -688,132 +728,253 @@ function url_with(array $over): string
 
     <script>
         /* =========================
-     AUTO-PESQUISA (AO DIGITAR)
-     - sem AJAX: só faz submit GET com debounce
+     AJAX SEARCH -> atualiza SOMENTE tbody
   ========================== */
-        const formFiltros = document.getElementById('formFiltros');
-        const qInput = document.getElementById('q');
-        const perSel = document.getElementById('per');
-        const pageInp = document.getElementById('page');
+        const $ = (id) => document.getElementById(id);
 
-        let t = null;
+        const state = {
+            q: '',
+            page: 1,
+            per: 25,
+            pages: 1,
+            total: 0
+        };
 
-        function submitAuto() {
-            if (!formFiltros) return;
-            if (pageInp) pageInp.value = '1'; // sempre volta pra primeira página
-            formFiltros.submit();
+        function setLoading(on) {
+            const pill = $('pillLoading');
+            if (!pill) return;
+            pill.style.display = on ? 'inline-flex' : 'none';
         }
 
-        qInput?.addEventListener('input', () => {
-            clearTimeout(t);
-            t = setTimeout(submitAuto, 350);
-        });
+        function renderMeta(meta) {
+            $('pillCount').textContent = `${meta.total} clientes`;
+            $('lblRange').textContent = meta.q ? `Busca: ${meta.q}` : '—';
+            $('pageInfo').textContent = `Página ${meta.page} de ${meta.pages}`;
+            $('pageMeta').textContent = `Página ${meta.page} de ${meta.pages}`;
 
-        // Enter: aplica imediato
-        qInput?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                clearTimeout(t);
-                submitAuto();
-            }
-        });
+            $('btnPrev').disabled = meta.page <= 1;
+            $('btnNext').disabled = meta.page >= meta.pages;
 
-        // Mudou "por página": atualiza sozinho
-        perSel?.addEventListener('change', () => {
-            clearTimeout(t);
-            submitAuto();
-        });
-
-        /* =========================
-           MODAIS + AÇÕES
-        ========================== */
-        const mdForm = new bootstrap.Modal(document.getElementById('mdForm'));
-        const mdDetalhes = new bootstrap.Modal(document.getElementById('mdDetalhes'));
-        const mdExcluir = new bootstrap.Modal(document.getElementById('mdExcluir'));
-
-        const formCliente = document.getElementById('formCliente');
-        const fmTitulo = document.getElementById('fmTitulo');
-        const fmSub = document.getElementById('fmSub');
-        const fmId = document.getElementById('fmId');
-        const fmNome = document.getElementById('fmNome');
-        const fmCpf = document.getElementById('fmCpf');
-        const fmTel = document.getElementById('fmTel');
-        const fmEnd = document.getElementById('fmEnd');
-
-        function onlyDigits(s) {
-            return String(s || '').replace(/\D+/g, '');
+            state.page = meta.page;
+            state.pages = meta.pages;
+            state.total = meta.total;
         }
 
-        function maskCpf(v) {
-            const d = onlyDigits(v).slice(0, 11);
-            if (d.length <= 3) return d;
-            if (d.length <= 6) return d.replace(/(\d{3})(\d+)/, '$1.$2');
-            if (d.length <= 9) return d.replace(/(\d{3})(\d{3})(\d+)/, '$1.$2.$3');
-            return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        function rowHtml(r) {
+            const end = r.endereco ? r.endereco : '—';
+            const created = r.created_at ? r.created_at : '—';
+
+            return `
+      <tr>
+        <td class="td-nowrap fw-1000">${r.id}</td>
+        <td><span class="td-clip" title="${escapeHtml(r.nome)}">${escapeHtml(r.nome)}</span></td>
+        <td class="td-nowrap">${escapeHtml(r.cpf_fmt || '')}</td>
+        <td class="td-nowrap">${escapeHtml(r.tel_fmt || '')}</td>
+        <td><span class="td-clip" title="${escapeHtml(end)}">${escapeHtml(end)}</span></td>
+        <td class="td-nowrap">${escapeHtml(created)}</td>
+        <td class="text-end">
+          <div class="actions-wrap">
+            <button type="button" class="main-btn light-btn btn-hover btn-action btnDetalhes"
+              data-id="${r.id}"
+              data-nome="${escapeHtml(r.nome)}"
+              data-cpf="${escapeHtml(r.cpf_fmt || '')}"
+              data-tel="${escapeHtml(r.tel_fmt || '')}"
+              data-end="${escapeHtml(r.endereco || '')}"
+              data-created="${escapeHtml(r.created_at || '')}">
+              <i class="lni lni-eye"></i> <span class="act-text">Detalhes</span>
+            </button>
+
+            <button type="button" class="main-btn primary-btn btn-hover btn-action btnEditar"
+              data-id="${r.id}"
+              data-nome="${escapeHtml(r.nome)}"
+              data-cpfdigits="${escapeHtml(r.cpf_digits || '')}"
+              data-teldigits="${escapeHtml(r.tel_digits || '')}"
+              data-end="${escapeHtml(r.endereco || '')}">
+              <i class="lni lni-pencil"></i> <span class="act-text">Editar</span>
+            </button>
+
+            <button type="button" class="main-btn light-btn btn-hover btn-action btnExcluir"
+              data-id="${r.id}"
+              data-nome="${escapeHtml(r.nome)}"
+              data-cpf="${escapeHtml(r.cpf_fmt || '')}"
+              data-tel="${escapeHtml(r.tel_fmt || '')}">
+              <i class="lni lni-trash-can"></i> <span class="act-text">Excluir</span>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
         }
 
-        function maskTel(v) {
-            const d = onlyDigits(v).slice(0, 11);
-            if (!d) return '';
-            if (d.length <= 2) return `(${d}`;
-            const dd = d.slice(0, 2),
-                rest = d.slice(2);
-            if (rest.length <= 4) return `(${dd}) ${rest}`;
-            if (rest.length <= 8) return `(${dd}) ${rest.slice(0,4)}-${rest.slice(4)}`;
-            return `(${dd}) ${rest.slice(0,5)}-${rest.slice(5)}`;
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", "&#039;");
         }
-        fmCpf?.addEventListener('input', e => e.target.value = maskCpf(e.target.value));
-        fmTel?.addEventListener('input', e => e.target.value = maskTel(e.target.value));
 
-        document.getElementById('btnNovo')?.addEventListener('click', () => {
-            formCliente.action = 'assets/dados/clientes/salvarClientes.php';
-            fmTitulo.textContent = 'Novo cliente';
-            fmSub.textContent = 'Preencha Nome, CPF e Telefone';
-            fmId.value = '';
-            fmNome.value = '';
-            fmCpf.value = '';
-            fmTel.value = '';
-            fmEnd.value = '';
-            mdForm.show();
-            setTimeout(() => fmNome.focus(), 150);
-        });
+        function bindRowActions() {
+            const mdForm = new bootstrap.Modal($('mdForm'));
+            const mdDetalhes = new bootstrap.Modal($('mdDetalhes'));
+            const mdExcluir = new bootstrap.Modal($('mdExcluir'));
 
-        document.querySelectorAll('.btnDetalhes').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('dtTitulo').textContent = `Detalhes do cliente #${btn.dataset.id}`;
-                document.getElementById('dtNome').textContent = btn.dataset.nome || '—';
-                document.getElementById('dtCpf').textContent = btn.dataset.cpf || '—';
-                document.getElementById('dtTel').textContent = btn.dataset.tel || '—';
-                document.getElementById('dtEnd').textContent = btn.dataset.end || '—';
-                document.getElementById('dtCreated').textContent = btn.dataset.created || '—';
-                mdDetalhes.show();
+            const formCliente = $('formCliente');
+            const fmTitulo = $('fmTitulo');
+            const fmSub = $('fmSub');
+            const fmId = $('fmId');
+            const fmNome = $('fmNome');
+            const fmCpf = $('fmCpf');
+            const fmTel = $('fmTel');
+            const fmEnd = $('fmEnd');
+
+            // Detalhes
+            document.querySelectorAll('.btnDetalhes').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    $('dtTitulo').textContent = `Detalhes do cliente #${btn.dataset.id}`;
+                    $('dtNome').textContent = btn.dataset.nome || '—';
+                    $('dtCpf').textContent = btn.dataset.cpf || '—';
+                    $('dtTel').textContent = btn.dataset.tel || '—';
+                    $('dtEnd').textContent = btn.dataset.end || '—';
+                    $('dtCreated').textContent = btn.dataset.created || '—';
+                    mdDetalhes.show();
+                });
             });
-        });
 
-        document.querySelectorAll('.btnEditar').forEach(btn => {
-            btn.addEventListener('click', () => {
-                formCliente.action = 'assets/dados/clientes/editarClientes.php';
-                fmTitulo.textContent = `Editar cliente #${btn.dataset.id}`;
-                fmSub.textContent = 'Altere e salve';
-                fmId.value = btn.dataset.id || '';
-                fmNome.value = btn.dataset.nome || '';
-                fmCpf.value = maskCpf(btn.dataset.cpfraw || '');
-                fmTel.value = maskTel(btn.dataset.telraw || '');
-                fmEnd.value = btn.dataset.end || '';
+            // Editar (CPF e telefone: somente números)
+            document.querySelectorAll('.btnEditar').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    formCliente.action = 'assets/dados/clientes/editarClientes.php';
+                    fmTitulo.textContent = `Editar cliente #${btn.dataset.id}`;
+                    fmSub.textContent = 'CPF/Telefone: somente números';
+                    fmId.value = btn.dataset.id || '';
+                    fmNome.value = btn.dataset.nome || '';
+                    fmCpf.value = (btn.dataset.cpfdigits || '').slice(0, 11);
+                    fmTel.value = (btn.dataset.teldigits || '').slice(0, 11);
+                    fmEnd.value = btn.dataset.end || '';
+                    mdForm.show();
+                    setTimeout(() => fmNome.focus(), 150);
+                });
+            });
+
+            // Excluir
+            document.querySelectorAll('.btnExcluir').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    $('exId').value = btn.dataset.id || '';
+                    $('exNome').textContent = btn.dataset.nome || '—';
+                    $('exMeta').textContent = `${btn.dataset.cpf || ''} • ${btn.dataset.tel || ''}`;
+                    mdExcluir.show();
+                });
+            });
+
+            // Novo
+            $('btnNovo')?.addEventListener('click', () => {
+                formCliente.action = 'assets/dados/clientes/salvarClientes.php';
+                fmTitulo.textContent = 'Novo cliente';
+                fmSub.textContent = 'CPF/Telefone: somente números';
+                fmId.value = '';
+                fmNome.value = '';
+                fmCpf.value = '';
+                fmTel.value = '';
+                fmEnd.value = '';
                 mdForm.show();
                 setTimeout(() => fmNome.focus(), 150);
             });
+
+            // força somente dígitos nos inputs
+            const onlyDigits = (s) => String(s || '').replace(/\D+/g, '');
+            fmCpf?.addEventListener('input', (e) => e.target.value = onlyDigits(e.target.value).slice(0, 11));
+            fmTel?.addEventListener('input', (e) => e.target.value = onlyDigits(e.target.value).slice(0, 11));
+        }
+
+        async function loadAjax() {
+            setLoading(true);
+            const url = new URL(window.location.href);
+            url.searchParams.set('action', 'ajax');
+            url.searchParams.set('q', state.q);
+            url.searchParams.set('page', String(state.page));
+            url.searchParams.set('per', String(state.per));
+
+            try {
+                const res = await fetch(url.toString(), {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await res.json();
+
+                if (!data.ok) {
+                    $('tbody').innerHTML = `<tr><td colspan="7" class="muted">Erro: ${escapeHtml(data.msg || 'Falha')}</td></tr>`;
+                    setLoading(false);
+                    return;
+                }
+
+                renderMeta(data.meta);
+
+                const rows = data.rows || [];
+                if (!rows.length) {
+                    $('tbody').innerHTML = `<tr><td colspan="7" class="muted">Nenhum cliente encontrado.</td></tr>`;
+                } else {
+                    $('tbody').innerHTML = rows.map(rowHtml).join('');
+                }
+
+                bindRowActions();
+            } catch (err) {
+                $('tbody').innerHTML = `<tr><td colspan="7" class="muted">Erro de rede/servidor. Tente novamente.</td></tr>`;
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Debounce na busca
+        let timer = null;
+        $('q').addEventListener('input', (e) => {
+            state.q = e.target.value.trim();
+            state.page = 1;
+            clearTimeout(timer);
+            timer = setTimeout(loadAjax, 250);
         });
 
-        document.querySelectorAll('.btnExcluir').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('exId').value = btn.dataset.id || '';
-                document.getElementById('exNome').textContent = btn.dataset.nome || '—';
-                document.getElementById('exMeta').textContent = `${btn.dataset.cpf || ''} • ${btn.dataset.tel || ''}`;
-                mdExcluir.show();
-            });
+        $('per').addEventListener('change', (e) => {
+            state.per = Number(e.target.value) || 25;
+            state.page = 1;
+            loadAjax();
         });
+
+        $('btnLimpar').addEventListener('click', () => {
+            $('q').value = '';
+            state.q = '';
+            state.page = 1;
+            loadAjax();
+        });
+
+        $('btnPrev').addEventListener('click', () => {
+            state.page = Math.max(1, state.page - 1);
+            loadAjax();
+        });
+
+        $('btnNext').addEventListener('click', () => {
+            state.page = Math.min(state.pages || 1, state.page + 1);
+            loadAjax();
+        });
+
+        // PRIMEIRO LOAD: sincroniza estado e liga ações existentes
+        (function init() {
+            state.q = '';
+            state.page = 1;
+            state.per = Number($('per').value) || 25;
+            bindRowActions(); // binds dos botões do HTML inicial
+            renderMeta({
+                q: '',
+                page: 1,
+                per: state.per,
+                pages: <?= (int)$pages ?>,
+                total: <?= (int)$totalCount ?>
+            });
+        })();
     </script>
+
 </body>
 
 </html>
