@@ -26,7 +26,7 @@ function db(): PDO
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
 
-    // Inicialização automática do banco
+    /*
     $initFile = __DIR__ . '/dados/db_init.php';
     if (is_file($initFile)) {
         require_once $initFile;
@@ -34,6 +34,7 @@ function db(): PDO
             db_initialize($pdo);
         }
     }
+    */
 
     return $pdo;
 }
