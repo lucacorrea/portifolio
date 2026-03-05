@@ -249,102 +249,176 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       list-style: none !important;
     }
 
+    /* ✅ Slim */
+    .content-wrapper {
+      padding: 1.2rem !important;
+    }
+
+    .card {
+      border-radius: 12px;
+    }
+
+    .card-body {
+      padding: 14px !important;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: #6b7280;
+      margin: 2px 0 0 0;
+    }
+
     .form-control {
-      min-height: 42px;
-      height: auto;
+      min-height: 36px;
+      padding: .35rem .6rem;
+      font-size: 13px;
     }
 
     .btn {
-      min-height: 42px;
+      min-height: 36px;
+      padding: .35rem .6rem;
+      font-size: 13px;
     }
 
-    .help-hint {
-      font-size: 12px;
-    }
-
-    .card-title-row {
+    .slim-row {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
     }
 
-    .req-badge {
-      display: inline-block;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #eef2ff;
-      color: #1f2a6b;
-      font-weight: 700;
-      margin-left: 6px;
-      vertical-align: middle;
+    .slim-col {
+      flex: 1 1 180px;
+      min-width: 180px;
+    }
+
+    .slim-col.sm {
+      flex: 0 0 140px;
+      min-width: 140px;
+    }
+
+    .slim-col.md {
+      flex: 0 0 180px;
+      min-width: 180px;
     }
 
     .form-section {
       background: #fff;
       border: 1px solid rgba(0, 0, 0, .06);
       border-radius: 12px;
-      padding: 14px 14px 6px 14px;
-      margin-bottom: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
     }
 
-    .form-section .section-title {
-      font-weight: 800;
-      font-size: 13px;
-      margin-bottom: 10px;
-      color: #111827;
+    .section-title {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 12px;
+      color: #111827;
+      margin-bottom: 10px;
     }
 
-    .items-table th,
-    .items-table td {
+    .section-title .hint {
+      font-weight: 600;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .table-slim {
+      margin-bottom: 0;
+    }
+
+    .table-slim th,
+    .table-slim td {
+      padding: .35rem .45rem;
       vertical-align: middle;
     }
 
-    .items-table input,
-    .items-table select {
-      width: 100%;
+    .table-slim th {
+      font-size: 12px;
     }
 
-    .total-box {
-      background: #f8f9fa;
-      border: 1px solid rgba(0, 0, 0, .08);
-      border-radius: 12px;
-      padding: 10px;
+    .table-slim input,
+    .table-slim select {
+      font-size: 13px;
+    }
+
+    .total-bar {
+      margin-top: 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
+      background: #f8fafc;
+      border: 1px solid rgba(0, 0, 0, .06);
+      border-radius: 12px;
+      padding: 10px 12px;
     }
 
-    .total-box .label {
+    .total-bar .label {
+      font-size: 12px;
       font-weight: 800;
+      color: #111827;
     }
 
-    .total-box .value {
-      font-size: 18px;
+    .total-bar .value {
+      font-size: 16px;
       font-weight: 900;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      margin: 10px 0 0 0;
+    }
+
+    .toolbar .left {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-icon {
+      width: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
     }
 
     @media (max-width: 576px) {
       .content-wrapper {
-        padding: 1rem !important;
+        padding: 0.9rem !important;
       }
 
-      .card-title-row a.btn {
-        width: 100%;
+      .slim-col,
+      .slim-col.sm,
+      .slim-col.md {
+        flex: 1 1 100%;
+        min-width: 100%;
       }
 
       .btn {
         width: 100%;
       }
+
+      .btn-icon {
+        width: 100%;
+      }
     }
-  </style>
+  </style>  
 </head>
 
 <body>
