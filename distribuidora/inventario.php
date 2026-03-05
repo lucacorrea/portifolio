@@ -26,32 +26,98 @@ function img_url_from_db(string $dbValue): string
     return 'assets/dados/produtos/' . $v; // assets/dados/produtos/images/xxx.png
 }
 
+function to_int($v): int
+{
+    $n = (int)($v ?? 0);
+    return $n;
+}
+
+/** =========================
+ *  PAGINAÇÃO
+ *  ========================= */
+$per = (int)($_GET['per'] ?? 25);
+if ($per < 10) $per = 10;
+if ($per > 100) $per = 100;
+
+$page = (int)($_GET['page'] ?? 1);
+if ($page < 1) $page = 1;
+
+$total = (int)$pdo->query("SELECT COUNT(*) FROM produtos")->fetchColumn();
+$pages = max(1, (int)ceil($total / $per));
+if ($page > $pages) $page = $pages;
+
+$offset = ($page - 1) * $per;
+
+function url_with_page(int $p): string
+{
+    $q = $_GET;
+    $q['page'] = $p;
+    $self = basename($_SERVER['PHP_SELF'] ?? 'inventario.php');
+    return $self . '?' . http_build_query($q);
+}
+
+$prevUrl = url_with_page(max(1, $page - 1));
+$nextUrl = url_with_page(min($pages, $page + 1));
+
 // Categorias (filtro)
 $categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome ASC")
     ->fetchAll(PDO::FETCH_ASSOC);
 
-// Produtos (para modal “Lançar”)
+/**
+ * Totais por produto:
+ * - entradas: SUM(entradas.qtd)
+ * - vendas:   SUM(venda_itens.qtd)
+ * - saidas:   SUM(saidas.qtd)
+ * Previsto = entradas - vendas - saidas
+ */
+
+// Produtos (para modal “Lançar”) - com totais
 $prodList = $pdo->query("
-  SELECT p.id, p.codigo, p.nome, p.unidade, p.estoque, p.categoria_id,
-         c.nome AS categoria_nome
+  SELECT 
+    p.id, p.codigo, p.nome, p.unidade, p.estoque, p.categoria_id,
+    c.nome AS categoria_nome,
+    COALESCE(en.ent,0) AS entradas,
+    COALESCE(vi.vend,0) AS vendas,
+    COALESCE(sa.said,0) AS saidas,
+    (COALESCE(en.ent,0) - COALESCE(vi.vend,0) - COALESCE(sa.said,0)) AS previsto
   FROM produtos p
   LEFT JOIN categorias c ON c.id = p.categoria_id
+  LEFT JOIN (SELECT produto_id, SUM(qtd) ent FROM entradas GROUP BY produto_id) en ON en.produto_id = p.id
+  LEFT JOIN (SELECT produto_id, SUM(qtd) vend FROM venda_itens GROUP BY produto_id) vi ON vi.produto_id = p.id
+  LEFT JOIN (SELECT produto_id, SUM(qtd) said FROM saidas GROUP BY produto_id) sa ON sa.produto_id = p.id
   ORDER BY p.nome ASC
   LIMIT 5000
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Itens do inventário (lista todos os produtos, com inventário se existir)
-$rows = $pdo->query("
-  SELECT p.id AS produto_id, p.codigo, p.nome, p.unidade, p.estoque, p.categoria_id,
-         c.nome AS categoria_nome,
-         p.imagem,
-         i.contagem, i.diferenca, i.situacao
+// Itens do inventário (lista todos os produtos, com inventário se existir) - PAGINADO
+$st = $pdo->prepare("
+  SELECT 
+    p.id AS produto_id, p.codigo, p.nome, p.unidade, p.estoque, p.categoria_id,
+    c.nome AS categoria_nome,
+    p.imagem,
+    i.contagem,
+
+    COALESCE(en.ent,0) AS entradas,
+    COALESCE(vi.vend,0) AS vendas,
+    COALESCE(sa.said,0) AS saidas,
+    (COALESCE(en.ent,0) - COALESCE(vi.vend,0) - COALESCE(sa.said,0)) AS previsto
+
   FROM produtos p
   LEFT JOIN categorias c ON c.id = p.categoria_id
   LEFT JOIN inventario_itens i ON i.produto_id = p.id
+
+  LEFT JOIN (SELECT produto_id, SUM(qtd) ent FROM entradas GROUP BY produto_id) en ON en.produto_id = p.id
+  LEFT JOIN (SELECT produto_id, SUM(qtd) vend FROM venda_itens GROUP BY produto_id) vi ON vi.produto_id = p.id
+  LEFT JOIN (SELECT produto_id, SUM(qtd) said FROM saidas GROUP BY produto_id) sa ON sa.produto_id = p.id
+
   ORDER BY p.nome ASC
-  LIMIT 5000
-")->fetchAll(PDO::FETCH_ASSOC);
+  LIMIT :lim OFFSET :off
+");
+$st->bindValue(':lim', $per, PDO::PARAM_INT);
+$st->bindValue(':off', $offset, PDO::PARAM_INT);
+$st->execute();
+$rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -133,13 +199,21 @@ $rows = $pdo->query("
             min-width: 160px;
         }
 
+        .minw-180 {
+            min-width: 180px;
+        }
+
+        .minw-200 {
+            min-width: 200px;
+        }
+
         .table-responsive {
             -webkit-overflow-scrolling: touch;
         }
 
         #tbInventario {
             width: 100%;
-            min-width: 1280px;
+            min-width: 1520px;
         }
 
         #tbInventario th,
@@ -157,7 +231,7 @@ $rows = $pdo->query("
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 92px;
+            min-width: 110px;
         }
 
         .badge-soft-success {
@@ -211,6 +285,25 @@ $rows = $pdo->query("
             font-size: 12px;
             color: #64748b;
         }
+
+        .pager-box {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .pager-box .page-text {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .btn-disabled {
+            opacity: .45;
+            pointer-events: none;
+        }
     </style>
 </head>
 
@@ -219,140 +312,138 @@ $rows = $pdo->query("
         <div class="spinner"></div>
     </div>
 
-   <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
-    <div class="navbar-logo">
-      <a href="dashboard.php" class="d-flex align-items-center gap-2">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
-      </a>
-    </div>
+    <!-- ======== sidebar-nav start =========== -->
+    <aside class="sidebar-nav-wrapper">
+        <div class="navbar-logo">
+            <a href="dashboard.php" class="d-flex align-items-center gap-2">
+                <img src="assets/images/logo/logo.svg" alt="logo" />
+            </a>
+        </div>
 
-    <nav class="sidebar-nav">
-      <ul>
-        <li class="nav-item">
-          <a href="dashboard.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
-                <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
-              </svg>
-            </span>
-            <span class="text">Dashboard</span>
-          </a>
-        </li>
+        <nav class="sidebar-nav">
+            <ul>
+                <li class="nav-item">
+                    <a href="dashboard.php">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
+                                <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Dashboard</span>
+                    </a>
+                </li>
 
-        <li class="nav-item">
-          <a href="vendas.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-            <span class="text">Vendas</span>
-          </a>
-        </li>
+                <li class="nav-item">
+                    <a href="vendas.php">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </span>
+                        <span class="text">Vendas</span>
+                    </a>
+                </li>
 
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
-              </svg>
-            </span>
-            <span class="text">Operações</span>
-          </a>
-          <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-            <li><a href="vendidos.php"  >Vendidos</a></li>
-            <li><a href="fiados.php">À Prazo</a></li>
-            <li><a href="devolucoes.php">Devoluções</a></li>
-          </ul>
-        </li>
+                <li class="nav-item nav-item-has-children">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Operações</span>
+                    </a>
+                    <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
+                        <li><a href="vendidos.php">Vendidos</a></li>
+                        <li><a href="fiados.php">À Prazo</a></li>
+                        <li><a href="devolucoes.php">Devoluções</a></li>
+                    </ul>
+                </li>
 
-        <li class="nav-item nav-item-has-children active">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
-                <path d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
-              </svg>
-            </span>
-            <span class="text">Estoque</span>
-          </a>
-          <ul id="ddmenu_estoque" class="collapse show dropdown-nav">
-            <li><a href="produtos.php">Produtos</a></li>
-            <li><a href="inventario.php" class="active">Inventário</a></li>
-            <li><a href="entradas.php">Entradas</a></li>
-            <li><a href="saidas.php">Saídas</a></li>
-            <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
-          </ul>
-        </li>
+                <li class="nav-item nav-item-has-children active">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
+                                <path d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Estoque</span>
+                    </a>
+                    <ul id="ddmenu_estoque" class="collapse show dropdown-nav">
+                        <li><a href="produtos.php">Produtos</a></li>
+                        <li><a href="inventario.php" class="active">Inventário</a></li>
+                        <li><a href="entradas.php">Entradas</a></li>
+                        <li><a href="saidas.php">Saídas</a></li>
+                        <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
+                    </ul>
+                </li>
 
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
-              </svg>
-            </span>
-            <span class="text">Cadastros</span>
-          </a>
-          <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-            <li><a href="clientes.php">Clientes</a></li>
-            <li><a href="fornecedores.php">Fornecedores</a></li>
-            <li><a href="categorias.php">Categorias</a></li>
-          </ul>
-        </li>
+                <li class="nav-item nav-item-has-children">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
+                                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
+                                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
+                                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Cadastros</span>
+                    </a>
+                    <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
+                        <li><a href="clientes.php">Clientes</a></li>
+                        <li><a href="fornecedores.php">Fornecedores</a></li>
+                        <li><a href="categorias.php">Categorias</a></li>
+                    </ul>
+                </li>
 
-        <li class="nav-item">
-          <a href="relatorios.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
-              </svg>
-            </span>
-            <span class="text">Relatórios</span>
-          </a>
-        </li>
+                <li class="nav-item">
+                    <a href="relatorios.php">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Relatórios</span>
+                    </a>
+                </li>
 
-        <span class="divider">
-          <hr />
-        </span>
+                <span class="divider">
+                    <hr />
+                </span>
 
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
-              </svg>
-            </span>
-            <span class="text">Configurações</span>
-          </a>
-          <ul id="ddmenu_config" class="collapse dropdown-nav">
-            <li><a href="usuarios.php">Usuários e Permissões</a></li>
-            <li><a href="parametros.php">Parâmetros do Sistema</a></li>
-          </ul>
-        </li>
+                <li class="nav-item nav-item-has-children">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Configurações</span>
+                    </a>
+                    <ul id="ddmenu_config" class="collapse dropdown-nav">
+                        <li><a href="usuarios.php">Usuários e Permissões</a></li>
+                        <li><a href="parametros.php">Parâmetros do Sistema</a></li>
+                    </ul>
+                </li>
 
-        <li class="nav-item">
-          <a href="suporte.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
-              </svg>
-            </span>
-            <span class="text">Suporte</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
-  </aside>
-
-
+                <li class="nav-item">
+                    <a href="suporte.php">
+                        <span class="icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
+                                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
+                            </svg>
+                        </span>
+                        <span class="text">Suporte</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
 
     <div class="overlay"></div>
 
@@ -412,6 +503,7 @@ $rows = $pdo->query("
                         <div class="col-md-6">
                             <div class="title">
                                 <h2>Inventário</h2>
+                                <p class="text-sm text-gray mb-0">Situação calculada por: <b>Previsto = Entradas − Vendas − Saídas</b> e comparado com a <b>Contagem</b>.</p>
                             </div>
                         </div>
                     </div>
@@ -475,10 +567,15 @@ $rows = $pdo->query("
                                 <tr>
                                     <th class="minw-120">Imagem</th>
                                     <th class="minw-140">Código</th>
-                                    <th class="minw-160">Produto</th>
-                                    <th class="minw-140">Categoria</th>
+                                    <th class="minw-200">Produto</th>
+                                    <th class="minw-160">Categoria</th>
                                     <th class="minw-140">Unidade</th>
-                                    <th class="minw-140 td-center">Sistema</th>
+
+                                    <th class="minw-120 td-center">Entradas</th>
+                                    <th class="minw-120 td-center">Vendas</th>
+                                    <th class="minw-120 td-center">Saídas</th>
+                                    <th class="minw-140 td-center">Previsto</th>
+
                                     <th class="minw-160 td-center">Contagem</th>
                                     <th class="minw-140 td-center">Diferença</th>
                                     <th class="minw-160 td-center">Situação</th>
@@ -493,7 +590,11 @@ $rows = $pdo->query("
                                     $catId = (int)($r['categoria_id'] ?? 0);
                                     $catNome = trim((string)($r['categoria_nome'] ?? '')) ?: '—';
                                     $unidade = trim((string)($r['unidade'] ?? '')) ?: '—';
-                                    $sistema = (int)($r['estoque'] ?? 0);
+
+                                    $entradas = to_int($r['entradas'] ?? 0);
+                                    $vendas   = to_int($r['vendas'] ?? 0);
+                                    $saidas   = to_int($r['saidas'] ?? 0);
+                                    $previsto = to_int($r['previsto'] ?? 0);
 
                                     $contagem = $r['contagem'];
                                     $hasCount = ($contagem !== null && $contagem !== '');
@@ -506,8 +607,9 @@ $rows = $pdo->query("
                                         $countVal = '';
                                     } else {
                                         $countVal = (string)(int)$contagem;
-                                        $diff = ((int)$contagem) - $sistema;
+                                        $diff = ((int)$contagem) - $previsto;
                                         $diffTxt = (string)$diff;
+
                                         if ($diff === 0) {
                                             $sit = 'OK';
                                             $badgeCls = 'badge-soft badge-soft-success st';
@@ -522,13 +624,22 @@ $rows = $pdo->query("
                                     $imgDb  = trim((string)($r['imagem'] ?? ''));
                                     $imgUrl = img_url_from_db($imgDb);
                                     ?>
-                                    <tr data-produto-id="<?= $produtoId ?>" data-categoria="<?= $catId ?>" data-situacao="<?= e($sit) ?>">
+                                    <tr
+                                        data-produto-id="<?= $produtoId ?>"
+                                        data-categoria="<?= $catId ?>"
+                                        data-situacao="<?= e($sit) ?>">
                                         <td><img class="prod-img" alt="<?= e((string)$r['nome']) ?>" src="<?= e($imgUrl) ?>" /></td>
-                                        <td><?= e((string)$r['codigo']) ?></td>
-                                        <td><?= e((string)$r['nome']) ?></td>
-                                        <td><?= e($catNome) ?></td>
-                                        <td><?= e($unidade) ?></td>
-                                        <td class="td-center sys"><?= $sistema ?></td>
+
+                                        <td class="cod"><?= e((string)$r['codigo']) ?></td>
+                                        <td class="prod"><?= e((string)$r['nome']) ?></td>
+                                        <td class="cat"><?= e($catNome) ?></td>
+                                        <td class="und"><?= e($unidade) ?></td>
+
+                                        <td class="td-center ent"><?= e((string)$entradas) ?></td>
+                                        <td class="td-center vend"><?= e((string)$vendas) ?></td>
+                                        <td class="td-center sai"><?= e((string)$saidas) ?></td>
+                                        <td class="td-center prev"><?= e((string)$previsto) ?></td>
+
                                         <td class="td-center">
                                             <input type="number" class="form-control count-input count" min="0" value="<?= e($countVal) ?>" placeholder="—" />
                                         </td>
@@ -545,7 +656,20 @@ $rows = $pdo->query("
                             </tbody>
                         </table>
                     </div>
+
                     <p class="text-sm text-gray mt-2 mb-0" id="infoCount"></p>
+
+                    <!-- Paginação (igual ao estilo do Vendidos) -->
+                    <div class="pager-box">
+                        <a class="main-btn light-btn btn-hover btn-compact icon-btn <?= $page <= 1 ? 'btn-disabled' : '' ?>" href="<?= e($prevUrl) ?>" title="Anterior">
+                            <i class="lni lni-chevron-left"></i>
+                        </a>
+                        <span class="page-text">Página <?= (int)$page ?>/<?= (int)$pages ?></span>
+                        <a class="main-btn light-btn btn-hover btn-compact icon-btn <?= $page >= $pages ? 'btn-disabled' : '' ?>" href="<?= e($nextUrl) ?>" title="Próxima">
+                            <i class="lni lni-chevron-right"></i>
+                        </a>
+                    </div>
+
                 </div>
 
             </div>
@@ -602,7 +726,10 @@ $rows = $pdo->query("
                                             data-nome="<?= e((string)$p['nome']) ?>"
                                             data-categoria="<?= e((string)($p['categoria_nome'] ?? '—')) ?>"
                                             data-unidade="<?= e((string)($p['unidade'] ?? '—')) ?>"
-                                            data-sistema="<?= e((string)($p['estoque'] ?? 0)) ?>">
+                                            data-entradas="<?= e((string)($p['entradas'] ?? 0)) ?>"
+                                            data-vendas="<?= e((string)($p['vendas'] ?? 0)) ?>"
+                                            data-saidas="<?= e((string)($p['saidas'] ?? 0)) ?>"
+                                            data-previsto="<?= e((string)($p['previsto'] ?? 0)) ?>">
                                             <?= e((string)$p['nome']) ?> (<?= e((string)$p['codigo']) ?>)
                                         </option>
                                     <?php endforeach; ?>
@@ -629,9 +756,25 @@ $rows = $pdo->query("
                                 <input type="text" class="form-control" id="mCategoria" value="—" readonly />
                             </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label">Sistema</label>
-                                <input type="number" class="form-control" id="mSistema" value="0" readonly />
+                            <div class="col-md-8">
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Entradas</label>
+                                        <input type="number" class="form-control" id="mEntradas" value="0" readonly />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Vendas</label>
+                                        <input type="number" class="form-control" id="mVendas" value="0" readonly />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Saídas</label>
+                                        <input type="number" class="form-control" id="mSaidas" value="0" readonly />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Previsto</label>
+                                        <input type="number" class="form-control" id="mPrevisto" value="0" readonly />
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-md-4">
@@ -642,7 +785,7 @@ $rows = $pdo->query("
                     </form>
 
                     <p class="text-sm text-gray mt-3 mb-0">
-                        A situação é calculada automaticamente pela diferença (Contagem - Sistema).
+                        A situação será: <b>OK</b> se <b>Contagem == Previsto</b>, senão <b>Divergente</b>.
                     </p>
                 </div>
 
@@ -674,13 +817,13 @@ $rows = $pdo->query("
         })();
 
         const DEFAULT_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
-        <rect width="100%" height="100%" fill="#f1f5f9"/>
-        <path d="M18 68l18-18 12 12 10-10 20 20" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="34" cy="34" r="7" fill="#94a3b8"/>
-        <text x="50%" y="86%" text-anchor="middle" font-family="Arial" font-size="10" fill="#64748b">Sem imagem</text>
-      </svg>
-    `);
+          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">
+            <rect width="100%" height="100%" fill="#f1f5f9"/>
+            <path d="M18 68l18-18 12 12 10-10 20 20" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="34" cy="34" r="7" fill="#94a3b8"/>
+            <text x="50%" y="86%" text-anchor="middle" font-family="Arial" font-size="10" fill="#64748b">Sem imagem</text>
+          </svg>
+        `);
 
         // fallback imagem
         document.querySelectorAll("img.prod-img").forEach(img => {
@@ -703,7 +846,7 @@ $rows = $pdo->query("
         }
 
         function calcularLinha(tr) {
-            const sys = Number(tr.querySelector('.sys')?.innerText || 0);
+            const previsto = Number(tr.querySelector('.prev')?.innerText || 0);
             const inp = tr.querySelector('input.count');
             const diffEl = tr.querySelector('.diff');
             const stEl = tr.querySelector('.st');
@@ -720,7 +863,7 @@ $rows = $pdo->query("
             const count = Number(inp.value);
             if (Number.isNaN(count)) return;
 
-            const diff = count - sys;
+            const diff = count - previsto;
             diffEl.innerText = String(diff);
 
             if (diff === 0) {
@@ -736,7 +879,7 @@ $rows = $pdo->query("
 
         function aplicarFiltros() {
             const q = norm(qInv.value || qGlobal.value);
-            const cat = String(fCategoria.value || '').trim(); // id
+            const cat = String(fCategoria.value || '').trim();
             const sit = String(fSituacao.value || '').trim();
 
             const rows = Array.from(tb.querySelectorAll('tbody tr'));
@@ -756,7 +899,7 @@ $rows = $pdo->query("
                 if (ok) shown++;
             });
 
-            infoCount.textContent = `Mostrando ${shown} item(ns) no inventário.`;
+            infoCount.textContent = `Mostrando ${shown} item(ns) nesta página do inventário.`;
         }
 
         qInv.addEventListener('input', aplicarFiltros);
@@ -780,7 +923,7 @@ $rows = $pdo->query("
 
             const btnDel = e.target.closest('.btnDel');
             if (btnDel) {
-                const nome = tr.children[2].innerText.trim();
+                const nome = tr.querySelector('.prod')?.innerText.trim() || '';
                 if (confirm(`Remover do inventário: "${nome}"?`)) {
                     document.getElementById('dlProdutoId').value = tr.getAttribute('data-produto-id') || '';
                     document.getElementById('frmDelete').submit();
@@ -806,7 +949,12 @@ $rows = $pdo->query("
         const mNome = document.getElementById('mNome');
         const mCategoria = document.getElementById('mCategoria');
         const mUnidade = document.getElementById('mUnidade');
-        const mSistema = document.getElementById('mSistema');
+
+        const mEntradas = document.getElementById('mEntradas');
+        const mVendas = document.getElementById('mVendas');
+        const mSaidas = document.getElementById('mSaidas');
+        const mPrevisto = document.getElementById('mPrevisto');
+
         const mContagem = document.getElementById('mContagem');
 
         mProdutoId.addEventListener('change', () => {
@@ -816,14 +964,24 @@ $rows = $pdo->query("
                 mNome.value = '—';
                 mCategoria.value = '—';
                 mUnidade.value = '—';
-                mSistema.value = 0;
+
+                mEntradas.value = 0;
+                mVendas.value = 0;
+                mSaidas.value = 0;
+                mPrevisto.value = 0;
+
                 return;
             }
             mCodigo.value = opt.getAttribute('data-codigo') || '—';
             mNome.value = opt.getAttribute('data-nome') || '—';
             mCategoria.value = opt.getAttribute('data-categoria') || '—';
             mUnidade.value = opt.getAttribute('data-unidade') || '—';
-            mSistema.value = Number(opt.getAttribute('data-sistema') || 0);
+
+            mEntradas.value = Number(opt.getAttribute('data-entradas') || 0);
+            mVendas.value = Number(opt.getAttribute('data-vendas') || 0);
+            mSaidas.value = Number(opt.getAttribute('data-saidas') || 0);
+            mPrevisto.value = Number(opt.getAttribute('data-previsto') || 0);
+
             mContagem.value = '';
             mContagem.focus();
         });
@@ -832,7 +990,7 @@ $rows = $pdo->query("
         Array.from(tb.querySelectorAll('tbody tr')).forEach(calcularLinha);
         aplicarFiltros();
 
-        // ✅ Excel (igual ao seu modelo)
+        // ✅ Excel
         function exportExcel() {
             const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
 
@@ -842,56 +1000,55 @@ $rows = $pdo->query("
             const catTxt = fCategoria.value ? (fCategoria.options[fCategoria.selectedIndex].text) : 'Todas';
             const sitTxt = fSituacao.value ? (fSituacao.options[fSituacao.selectedIndex].text) : 'Todas';
 
-            const header = ['Código', 'Produto', 'Categoria', 'Unidade', 'Sistema', 'Contagem', 'Diferença', 'Situação'];
+            const header = ['Código', 'Produto', 'Categoria', 'Unidade', 'Entradas', 'Vendas', 'Saídas', 'Previsto', 'Contagem', 'Diferença', 'Situação'];
 
             const body = rows.map(tr => {
-                const sys = tr.querySelector('.sys')?.innerText.trim() || '';
-                const count = tr.querySelector('input.count')?.value ?? '';
-                const diff = tr.querySelector('.diff')?.innerText.trim() || '';
-                const st = tr.querySelector('.st')?.innerText.trim() || '';
                 return [
-                    tr.children[1].innerText.trim(),
-                    tr.children[2].innerText.trim(),
-                    tr.children[3].innerText.trim(),
-                    tr.children[4].innerText.trim(),
-                    sys,
-                    String(count),
-                    diff,
-                    st
+                    tr.querySelector('.cod')?.innerText.trim() || '',
+                    tr.querySelector('.prod')?.innerText.trim() || '',
+                    tr.querySelector('.cat')?.innerText.trim() || '',
+                    tr.querySelector('.und')?.innerText.trim() || '',
+                    tr.querySelector('.ent')?.innerText.trim() || '',
+                    tr.querySelector('.vend')?.innerText.trim() || '',
+                    tr.querySelector('.sai')?.innerText.trim() || '',
+                    tr.querySelector('.prev')?.innerText.trim() || '',
+                    tr.querySelector('input.count')?.value ?? '',
+                    tr.querySelector('.diff')?.innerText.trim() || '',
+                    tr.querySelector('.st')?.innerText.trim() || ''
                 ];
             });
 
-            const isCenterCol = (idx) => (idx === 4 || idx === 5 || idx === 6 || idx === 7);
+            const isCenterCol = (idx) => ([4, 5, 6, 7, 8, 9, 10].includes(idx));
 
             let html = `
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              table { border: 0.6px solid #999; font-family: Arial; font-size: 12px; }
-              td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
-              th { background: #f1f5f9; font-weight: 700; }
-              .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
-              .muted { color: #555; font-weight: 700; }
-              .center { text-align: center; }
-            </style>
-          </head>
-          <body>
-            <table>
-      `;
+                <html>
+                  <head>
+                    <meta charset="utf-8">
+                    <style>
+                      table { border: 0.6px solid #999; font-family: Arial; font-size: 12px; }
+                      td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
+                      th { background: #f1f5f9; font-weight: 700; }
+                      .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
+                      .muted { color: #555; font-weight: 700; }
+                      .center { text-align: center; }
+                    </style>
+                  </head>
+                  <body>
+                    <table>
+              `;
 
-            html += `<tr><td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - INVENTÁRIO</td></tr>`;
-            html += `<tr><td class="muted">Gerado em:</td><td colspan="7">${dt}</td></tr>`;
-            html += `<tr><td class="muted">Categoria:</td><td>${catTxt}</td><td class="muted">Situação:</td><td>${sitTxt}</td><td colspan="4"></td></tr>`;
+            html += `<tr><td class="title" colspan="11">PAINEL DA DISTRIBUIDORA - INVENTÁRIO</td></tr>`;
+            html += `<tr><td class="muted">Gerado em:</td><td colspan="10">${dt}</td></tr>`;
+            html += `<tr><td class="muted">Categoria:</td><td>${catTxt}</td><td class="muted">Situação:</td><td>${sitTxt}</td><td colspan="7"></td></tr>`;
 
             html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
 
             body.forEach(r => {
                 html += `<tr>${r.map((c, idx) => {
-          const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-          const cls = isCenterCol(idx) ? 'center' : '';
-          return `<td class="${cls}">${safe}</td>`;
-        }).join('')}</tr>`;
+                  const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+                  const cls = isCenterCol(idx) ? 'center' : '';
+                  return `<td class="${cls}">${safe}</td>`;
+                }).join('')}</tr>`;
             });
 
             html += `</table></body></html>`;
@@ -911,7 +1068,7 @@ $rows = $pdo->query("
         }
         document.getElementById('btnExcel').addEventListener('click', exportExcel);
 
-        // ✅ PDF (igual ao seu modelo)
+        // ✅ PDF
         function exportPDF() {
             if (!window.jspdf || !window.jspdf.jsPDF) {
                 alert('Biblioteca do PDF não carregou.');
@@ -947,25 +1104,24 @@ $rows = $pdo->query("
             doc.text(`Categoria:  ${catTxt} | Situação:  ${sitTxt}`, M, 92);
 
             const head = [
-                ['Código', 'Produto', 'Categoria', 'Unidade', 'Sistema', 'Contagem', 'Diferença', 'Situação']
+                [
+                    'Código', 'Produto', 'Categoria', 'Unidade', 'Entradas', 'Vendas', 'Saídas', 'Previsto', 'Contagem', 'Diferença', 'Situação'
+                ]
             ];
 
-            const body = rows.map(tr => {
-                const sys = tr.querySelector('.sys')?.innerText.trim() || '';
-                const count = tr.querySelector('input.count')?.value ?? '';
-                const diff = tr.querySelector('.diff')?.innerText.trim() || '';
-                const st = tr.querySelector('.st')?.innerText.trim() || '';
-                return [
-                    tr.children[1].innerText.trim(),
-                    tr.children[2].innerText.trim(),
-                    tr.children[3].innerText.trim(),
-                    tr.children[4].innerText.trim(),
-                    sys,
-                    String(count),
-                    diff,
-                    st
-                ];
-            });
+            const body = rows.map(tr => ([
+                tr.querySelector('.cod')?.innerText.trim() || '',
+                tr.querySelector('.prod')?.innerText.trim() || '',
+                tr.querySelector('.cat')?.innerText.trim() || '',
+                tr.querySelector('.und')?.innerText.trim() || '',
+                tr.querySelector('.ent')?.innerText.trim() || '',
+                tr.querySelector('.vend')?.innerText.trim() || '',
+                tr.querySelector('.sai')?.innerText.trim() || '',
+                tr.querySelector('.prev')?.innerText.trim() || '',
+                tr.querySelector('input.count')?.value ?? '',
+                tr.querySelector('.diff')?.innerText.trim() || '',
+                tr.querySelector('.st')?.innerText.trim() || ''
+            ]));
 
             doc.autoTable({
                 head,
@@ -1009,6 +1165,15 @@ $rows = $pdo->query("
                     },
                     7: {
                         halign: 'center'
+                    },
+                    8: {
+                        halign: 'center'
+                    },
+                    9: {
+                        halign: 'center'
+                    },
+                    10: {
+                        halign: 'center'
                     }
                 },
                 didParseCell: function(data) {
@@ -1023,4 +1188,3 @@ $rows = $pdo->query("
 </body>
 
 </html>
-
