@@ -427,7 +427,7 @@ $saidas = $pdo->query("
                             <input type="text" class="form-control compact" id="qSaidas" placeholder="Produto, motivo, observação..." />
                         </div>
 
-                        <div class="col-12 col-md-6 col-lg-3">
+                        <div class="col-12 col-md-6 col-lg-2">
                             <label class="form-label">Tipo</label>
                             <select class="form-select compact" id="fTipo">
                                 <option value="">Todos</option>
@@ -448,7 +448,7 @@ $saidas = $pdo->query("
                             </div>
                         </div>
 
-                        <div class="col-12 col-md-6 col-lg-2">
+                        <div class="col-12 col-md-6 col-lg-3">
                             <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
                                 <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal" data-bs-target="#modalSaida" id="btnNovo" type="button">
                                     <i class="lni lni-plus me-1"></i> Nova
