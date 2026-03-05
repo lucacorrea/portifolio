@@ -833,14 +833,14 @@ function fmtMoney($v): string
 
             </div>
           </div>
-          <div class="btn btn-sm primary-btn btn-hover btn-compact">
+          <div class="col-lg-7 col-md-7 col-6">
             <div class="header-right">
               <div class="profile-box ml-15">
-                <a class="btn btn-sm btn-primary color-white" href="#">
+                <a class="btn btn-sm primary-btn btn-hover color-white" href="#">
                   <div class="profile-info">
                     <div class="info">
                       <div>
-                        <h6 class="fw-500"> <i class="lni lni-chevron-left me-2"></i> Sair</h6>
+                        <h6 class="fw-500"><i class="lni lni-chevron-left me-2"></i> Sair</h6>
                       </div>
                     </div>
                   </div>
