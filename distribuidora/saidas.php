@@ -599,17 +599,7 @@ $saidas = $pdo->query("
                         <input type="hidden" name="id" id="pId" value="">
 
                         <div class="row g-3">
-                            <div class="col-12">
-                                <div class="d-flex justify-content-center">
-                                    <div class="img-block text-center">
-                                        <label class="form-label">Imagem (do produto)</label>
-                                        <div class="d-flex flex-column gap-2 align-items-center">
-                                            <img id="previewImg" class="img-preview" alt="Prévia" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
+                
                             <div class="col-12">
                                 <hr class="my-2">
                             </div>
