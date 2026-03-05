@@ -838,8 +838,21 @@ function fmtMoney($v): string
               </div>
             </div>
           </div>
-
-         </div>
+   <div class="col-lg-7 col-md-7 col-6">
+                        <div class="header-right">
+                            <div class="profile-box ml-15">
+                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="profile-info">
+                                        <div class="info">
+                                            <div>
+                                                <h6 class="fw-500">Sair</h6>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
         </div>
       </div>
