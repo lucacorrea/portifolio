@@ -128,7 +128,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   // ===== Validações =====
   if ($nomeNorm === '') {
-  
   } elseif (mb_strlen($nomeNorm) > 160) {
     $err = 'O nome do produto deve ter no máximo 160 caracteres.';
   } elseif ($categoriaInt <= 0) {
@@ -136,7 +135,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } elseif ($unidadeInt <= 0) {
     $err = 'Selecione a unidade.';
   } elseif ($produtorInt <= 0) {
-   
   } elseif ($precoDecimal === null) {
     $err = 'Informe um preço válido (ex.: 10,50).';
   } elseif ($obsNorm !== '' && mb_strlen($obsNorm) > 255) {
@@ -152,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt->execute([':feira' => $feiraId, ':id' => $unidadeInt]);
       if (!$stmt->fetchColumn()) throw new RuntimeException('Unidade inválida para esta feira.');
 
-      
+
       // Evitar duplicado por feira (nome)
       $chk = $pdo->prepare("SELECT id FROM produtos WHERE feira_id = :feira AND nome = :nome LIMIT 1");
       $chk->bindValue(':feira', $feiraId, PDO::PARAM_INT);
@@ -628,8 +626,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             required maxlength="160" value="<?= h($nome) ?>">
                         </div>
                       </div>
-
-                      <div class="col-md-3">
+                      <div class="col-md-6"></div>
+                      <div class="col-md-6">
                         <div class="form-group">
                           <label>Categoria (Tipo) *</label>
                           <select class="form-control" name="categoria_id" required>
@@ -645,7 +643,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                       </div>
 
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <div class="form-group">
                           <label>Unidade *</label>
                           <select class="form-control" name="unidade_id" required>
