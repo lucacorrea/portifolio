@@ -836,7 +836,7 @@ function fmtMoney($v): string
           <div class="col-lg-7 col-md-7 col-6">
             <div class="header-right">
               <div class="profile-box ml-15">
-                <a class="btn btn-sm btn-secondary" href="#">
+                <a class="btn btn-sm btn-primary color-white" href="#">
                   <div class="profile-info">
                     <div class="info">
                       <div>
