@@ -488,7 +488,7 @@ $produtos = $pdo->query("
 
                                     $catNome = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
                                     $forNome = trim((string)($p['fornecedor_nome'] ?? '')) ?: '—';
-
+                                    ?>
                                     <tr data-id="<?= $id ?>" data-nome="<?= e((string)$p['nome']) ?>" data-categoria="<?= $catId ?>" data-status="<?= $status ?>" data-baixo="<?= $baixo ? '1' : '0' ?>">
                                         <td><?= e((string)$p['codigo']) ?></td>
                                         <td>
