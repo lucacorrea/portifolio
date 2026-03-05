@@ -664,7 +664,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                       </div>
 
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <div class="form-group">
                           <label>Preço de referência (R$) *</label>
                           <input type="text" class="form-control" name="preco"
@@ -673,7 +673,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                       </div>
 
-                      <div class="col-md-3">
+                      <div class="col-md-6">
                         <div class="form-group">
                           <label>Status *</label>
                           <select class="form-control" name="ativo" required>
