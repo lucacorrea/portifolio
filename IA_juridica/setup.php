@@ -1,11 +1,12 @@
-<?php
-/**
- * Setup script to initialize the database
- */
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 require_once __DIR__ . '/database/init.php';
 
 echo "<h1>Setup IA Jurídica</h1>";
+
+echo "<p>Iniciando processo de configuração...</p>";
+echo "<p>Testando conexão e criando tabelas...</p>";
 
 if (initializeDatabase()) {
     echo "<p style='color: green;'>✅ Banco de dados inicializado com sucesso!</p>";

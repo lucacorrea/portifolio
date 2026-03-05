@@ -7,7 +7,9 @@
 require_once __DIR__ . '/../config/database.php';
 
 function initializeDatabase() {
+    echo "<p>Tentando abrir conexão com o banco...</p>";
     $pdo = getDatabaseConnection();
+    echo "<p>Conexão estabelecida com sucesso! Criando tabela 'documentos'...</p>";
 
     $sql = "CREATE TABLE IF NOT EXISTS documentos (
         id INT AUTO_INCREMENT PRIMARY KEY,
