@@ -585,7 +585,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             required maxlength="160" value="<?= h($nome) ?>">
                         </div>
                       </div>
-                      <div class="col-md-6"></div>
+                      
 
                       <div class="col-md-6">
                         <div class="form-group">
