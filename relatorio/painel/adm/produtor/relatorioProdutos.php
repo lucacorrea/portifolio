@@ -18,7 +18,8 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-function h($s): string {
+function h($s): string
+{
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
@@ -38,7 +39,8 @@ $pdo = db();
 /* ======================
    HELPERS (SCHEMA)
 ====================== */
-function hasTable(PDO $pdo, string $table): bool {
+function hasTable(PDO $pdo, string $table): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.tables
@@ -49,7 +51,8 @@ function hasTable(PDO $pdo, string $table): bool {
   return (int)$st->fetchColumn() > 0;
 }
 
-function hasColumn(PDO $pdo, string $table, string $column): bool {
+function hasColumn(PDO $pdo, string $table, string $column): bool
+{
   $st = $pdo->prepare("
     SELECT COUNT(*)
     FROM information_schema.columns
@@ -96,6 +99,47 @@ if ($colDataVenda) {
 }
 
 /* ======================
+   RELAÇÃO PRODUTOR (JOIN DINÂMICO)
+====================== */
+$colViProdutorId = hasColumn($pdo, 'venda_itens', 'produtor_id');
+$colPrProdutorId = hasColumn($pdo, 'produtos', 'produtor_id');
+
+$colPrProdutorDoc =
+  hasColumn($pdo, 'produtos', 'produtor_documento') ||
+  hasColumn($pdo, 'produtos', 'produtor_cpf') ||
+  hasColumn($pdo, 'produtos', 'documento_produtor');
+
+$colProdDocumento = hasColumn($pdo, 'produtores', 'documento');
+
+/* Monta JOIN com produtores conforme o seu schema */
+$joinProdutor = "";
+$canFilterProdutor = false;
+
+if (hasTable($pdo, 'produtores')) {
+  if ($colViProdutorId) {
+    // venda_itens.produtor_id -> produtores.id
+    $joinProdutor = "JOIN produtores prod ON prod.id = vi.produtor_id";
+    $canFilterProdutor = true;
+  } elseif ($colPrProdutorId) {
+    // produtos.produtor_id -> produtores.id
+    $joinProdutor = "JOIN produtores prod ON prod.id = pr.produtor_id";
+    $canFilterProdutor = true;
+  } elseif ($colProdDocumento && $colPrProdutorDoc) {
+    // produtos.produtor_documento|produtor_cpf|documento_produtor -> produtores.documento
+    if (hasColumn($pdo, 'produtos', 'produtor_documento')) {
+      $joinProdutor = "JOIN produtores prod ON prod.documento = pr.produtor_documento";
+      $canFilterProdutor = true;
+    } elseif (hasColumn($pdo, 'produtos', 'produtor_cpf')) {
+      $joinProdutor = "JOIN produtores prod ON prod.documento = pr.produtor_cpf";
+      $canFilterProdutor = true;
+    } elseif (hasColumn($pdo, 'produtos', 'documento_produtor')) {
+      $joinProdutor = "JOIN produtores prod ON prod.documento = pr.documento_produtor";
+      $canFilterProdutor = true;
+    }
+  }
+}
+
+/* ======================
    FILTRO
 ====================== */
 $tipoFiltro = $_GET['tipo'] ?? 'mes';
@@ -129,6 +173,11 @@ $pageCategoria = max(1, (int)($_GET['page_categoria'] ?? 1));
 $offsetProdutos = ($pageProdutos - 1) * $PER_PAGE;
 $offsetCategoria = ($pageCategoria - 1) * $PER_PAGE;
 
+$totalPagesProdutos = 1;
+$totalPagesCategoria = 1;
+$totalProdutos = 0;
+$totalCategoria = 0;
+
 /* ======================
    DADOS
 ====================== */
@@ -154,12 +203,15 @@ try {
     }
 
     /* Filtros adicionais */
-    $extraJoin = "";
     $extraWhere = "";
 
     if ($produtorFiltro > 0) {
-      $extraWhere .= " AND pr.produtor_id = :prod";
-      $params[':prod'] = $produtorFiltro;
+      if ($canFilterProdutor && $joinProdutor !== "") {
+        $extraWhere .= " AND prod.id = :prod";
+        $params[':prod'] = $produtorFiltro;
+      } else {
+        $err = 'Não foi possível filtrar por feirante: relação com produtores não encontrada no banco.';
+      }
     }
 
     if ($categoriaFiltro > 0 && $colCategoria) {
@@ -167,111 +219,115 @@ try {
       $params[':cat'] = $categoriaFiltro;
     }
 
-    /* ======================
-       RESUMO GERAL
-    ====================== */
-    $st = $pdo->prepare("
-      SELECT 
-        COUNT(DISTINCT vi.produto_id) produtos_distintos,
-        SUM(vi.quantidade) quantidade_total,
-        SUM(vi.subtotal) valor_total
-      FROM vendas v
-      JOIN venda_itens vi ON vi.venda_id = v.id
-      JOIN produtos pr ON pr.id = vi.produto_id
-      {$where} {$extraWhere}
-    ");
-    $st->execute($params);
-    $r = $st->fetch();
-
-    if ($r) {
-      $resumo['produtos_distintos'] = (int)$r['produtos_distintos'];
-      $resumo['quantidade_total'] = (float)$r['quantidade_total'];
-      $resumo['valor_total'] = (float)$r['valor_total'];
-    }
-
-    /* ======================
-       PRODUTOS MAIS VENDIDOS (PAGINADO)
-    ====================== */
-    $unidadeJoin = "";
-    $unidadeSelect = "'UN' as unidade_nome";
-    
-    if ($colUnidade && hasTable($pdo, 'unidades')) {
-      $unidadeJoin = "LEFT JOIN unidades u ON u.id = pr.unidade_id";
-      $unidadeSelect = "COALESCE(u.nome, 'UN') as unidade_nome";
-    }
-
-    $st = $pdo->prepare("
-      SELECT SQL_CALC_FOUND_ROWS
-        pr.id,
-        pr.nome,
-        prod.nome as produtor_nome,
-        {$unidadeSelect},
-        SUM(vi.quantidade) as quantidade,
-        SUM(vi.subtotal) as valor_total,
-        COUNT(DISTINCT v.id) as num_vendas
-      FROM vendas v
-      JOIN venda_itens vi ON vi.venda_id = v.id
-      JOIN produtos pr ON pr.id = vi.produto_id
-      JOIN produtores prod ON prod.id = pr.produtor_id
-      {$unidadeJoin}
-      {$where} {$extraWhere}
-      GROUP BY pr.id
-      ORDER BY quantidade DESC
-      LIMIT {$PER_PAGE} OFFSET {$offsetProdutos}
-    ");
-    $st->execute($params);
-    $porProduto = $st->fetchAll();
-
-    $totalProdutos = (int)$pdo->query("SELECT FOUND_ROWS()")->fetchColumn();
-    $totalPagesProdutos = (int)ceil($totalProdutos / $PER_PAGE);
-
-    /* ======================
-       POR CATEGORIA (SE EXISTIR)
-    ====================== */
-    if ($colCategoria && hasTable($pdo, 'categorias')) {
+    if (!$err) {
+      /* ======================
+         RESUMO GERAL
+      ====================== */
       $st = $pdo->prepare("
-        SELECT SQL_CALC_FOUND_ROWS
-          COALESCE(c.nome, 'Sem categoria') as categoria_nome,
-          COUNT(DISTINCT pr.id) as produtos_distintos,
-          SUM(vi.quantidade) as quantidade,
-          SUM(vi.subtotal) as valor_total
+        SELECT 
+          COUNT(DISTINCT vi.produto_id) produtos_distintos,
+          SUM(vi.quantidade) quantidade_total,
+          SUM(vi.subtotal) valor_total
         FROM vendas v
         JOIN venda_itens vi ON vi.venda_id = v.id
         JOIN produtos pr ON pr.id = vi.produto_id
-        LEFT JOIN categorias c ON c.id = pr.categoria_id
+        " . ($joinProdutor !== "" ? $joinProdutor : "") . "
         {$where} {$extraWhere}
-        GROUP BY pr.categoria_id
-        ORDER BY valor_total DESC
-        LIMIT {$PER_PAGE} OFFSET {$offsetCategoria}
       ");
       $st->execute($params);
-      $porCategoria = $st->fetchAll();
+      $r = $st->fetch(PDO::FETCH_ASSOC);
 
-      $totalCategoria = (int)$pdo->query("SELECT FOUND_ROWS()")->fetchColumn();
-      $totalPagesCategoria = (int)ceil($totalCategoria / $PER_PAGE);
-    }
+      if ($r) {
+        $resumo['produtos_distintos'] = (int)($r['produtos_distintos'] ?? 0);
+        $resumo['quantidade_total'] = (float)($r['quantidade_total'] ?? 0);
+        $resumo['valor_total'] = (float)($r['valor_total'] ?? 0);
+      }
 
-    /* ======================
-       LISTA DE PRODUTORES (PARA FILTRO)
-    ====================== */
-    $st = $pdo->query("
-      SELECT id, nome 
-      FROM produtores 
-      WHERE ativo = 1 
-      ORDER BY nome
-    ");
-    $listaProdutores = $st->fetchAll();
+      /* ======================
+         PRODUTOS MAIS VENDIDOS (PAGINADO)
+      ====================== */
+      $unidadeJoin = "";
+      $unidadeSelect = "'UN' as unidade_nome";
 
-    /* ======================
-       LISTA DE CATEGORIAS (PARA FILTRO)
-    ====================== */
-    if ($colCategoria && hasTable($pdo, 'categorias')) {
+      if ($colUnidade && hasTable($pdo, 'unidades')) {
+        $unidadeJoin = "LEFT JOIN unidades u ON u.id = pr.unidade_id";
+        $unidadeSelect = "COALESCE(u.nome, 'UN') as unidade_nome";
+      }
+
+      $st = $pdo->prepare("
+        SELECT SQL_CALC_FOUND_ROWS
+          pr.id,
+          pr.nome,
+          COALESCE(prod.nome, '-') as produtor_nome,
+          {$unidadeSelect},
+          SUM(vi.quantidade) as quantidade,
+          SUM(vi.subtotal) as valor_total,
+          COUNT(DISTINCT v.id) as num_vendas
+        FROM vendas v
+        JOIN venda_itens vi ON vi.venda_id = v.id
+        JOIN produtos pr ON pr.id = vi.produto_id
+        " . ($joinProdutor !== "" ? $joinProdutor : "LEFT JOIN produtores prod ON 1=0") . "
+        {$unidadeJoin}
+        {$where} {$extraWhere}
+        GROUP BY pr.id
+        ORDER BY quantidade DESC
+        LIMIT {$PER_PAGE} OFFSET {$offsetProdutos}
+      ");
+      $st->execute($params);
+      $porProduto = $st->fetchAll(PDO::FETCH_ASSOC);
+
+      $totalProdutos = (int)$pdo->query("SELECT FOUND_ROWS()")->fetchColumn();
+      $totalPagesProdutos = max(1, (int)ceil($totalProdutos / $PER_PAGE));
+
+      /* ======================
+         POR CATEGORIA (SE EXISTIR)
+      ====================== */
+      if ($colCategoria && hasTable($pdo, 'categorias')) {
+        $st = $pdo->prepare("
+          SELECT SQL_CALC_FOUND_ROWS
+            COALESCE(c.nome, 'Sem categoria') as categoria_nome,
+            COUNT(DISTINCT pr.id) as produtos_distintos,
+            SUM(vi.quantidade) as quantidade,
+            SUM(vi.subtotal) as valor_total
+          FROM vendas v
+          JOIN venda_itens vi ON vi.venda_id = v.id
+          JOIN produtos pr ON pr.id = vi.produto_id
+          " . ($joinProdutor !== "" ? $joinProdutor : "") . "
+          LEFT JOIN categorias c ON c.id = pr.categoria_id
+          {$where} {$extraWhere}
+          GROUP BY pr.categoria_id
+          ORDER BY valor_total DESC
+          LIMIT {$PER_PAGE} OFFSET {$offsetCategoria}
+        ");
+        $st->execute($params);
+        $porCategoria = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        $totalCategoria = (int)$pdo->query("SELECT FOUND_ROWS()")->fetchColumn();
+        $totalPagesCategoria = max(1, (int)ceil($totalCategoria / $PER_PAGE));
+      }
+
+      /* ======================
+         LISTA DE PRODUTORES (PARA FILTRO)
+      ====================== */
       $st = $pdo->query("
         SELECT id, nome 
-        FROM categorias 
+        FROM produtores 
+        WHERE ativo = 1 
         ORDER BY nome
       ");
-      $listaCategorias = $st->fetchAll();
+      $listaProdutores = $st->fetchAll(PDO::FETCH_ASSOC);
+
+      /* ======================
+         LISTA DE CATEGORIAS (PARA FILTRO)
+      ====================== */
+      if ($colCategoria && hasTable($pdo, 'categorias')) {
+        $st = $pdo->query("
+          SELECT id, nome 
+          FROM categorias 
+          ORDER BY nome
+        ");
+        $listaCategorias = $st->fetchAll(PDO::FETCH_ASSOC);
+      }
     }
   }
 } catch (Throwable $e) {
@@ -778,7 +834,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                     <select name="produtor" class="form-control">
                       <option value="0">Todos os feirantes</option>
                       <?php foreach ($listaProdutores as $p): ?>
-                        <option value="<?= $p['id'] ?>" <?= $produtorFiltro == $p['id'] ? 'selected' : '' ?>>
+                        <option value="<?= (int)$p['id'] ?>" <?= $produtorFiltro == (int)$p['id'] ? 'selected' : '' ?>>
                           <?= h($p['nome']) ?>
                         </option>
                       <?php endforeach; ?>
@@ -792,7 +848,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                       <select name="categoria" class="form-control">
                         <option value="0">Todas as categorias</option>
                         <?php foreach ($listaCategorias as $c): ?>
-                          <option value="<?= $c['id'] ?>" <?= $categoriaFiltro == $c['id'] ? 'selected' : '' ?>>
+                          <option value="<?= (int)$c['id'] ?>" <?= $categoriaFiltro == (int)$c['id'] ? 'selected' : '' ?>>
                             <?= h($c['nome']) ?>
                           </option>
                         <?php endforeach; ?>
@@ -892,28 +948,28 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                         <tr>
                           <td class="text-center">
                             <span class="ranking-badge <?= $rankingClass ?>">
-                              <?= $position ?>
+                              <?= (int)$position ?>
                             </span>
                           </td>
                           <td>
-                            <strong><?= h($prod['nome']) ?></strong>
+                            <strong><?= h($prod['nome'] ?? '') ?></strong>
                           </td>
                           <td>
                             <span class="badge badge-soft">
-                              <?= h($prod['produtor_nome']) ?>
+                              <?= h($prod['produtor_nome'] ?? '-') ?>
                             </span>
                           </td>
                           <td class="text-center">
                             <span class="product-badge">
-                              <?= number_format((float)$prod['quantidade'], 2, ',', '.') ?>
-                              <?= h($prod['unidade_nome']) ?>
+                              <?= number_format((float)($prod['quantidade'] ?? 0), 2, ',', '.') ?>
+                              <?= h($prod['unidade_nome'] ?? 'UN') ?>
                             </span>
                           </td>
                           <td class="text-center">
-                            <?= (int)$prod['num_vendas'] ?>
+                            <?= (int)($prod['num_vendas'] ?? 0) ?>
                           </td>
                           <td class="text-right">
-                            <b>R$ <?= number_format((float)$prod['valor_total'], 2, ',', '.') ?></b>
+                            <b>R$ <?= number_format((float)($prod['valor_total'] ?? 0), 2, ',', '.') ?></b>
                           </td>
                         </tr>
                     <?php
@@ -931,7 +987,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                       <li class="page-item <?= $i == $pageProdutos ? 'active' : '' ?>">
                         <a class="page-link"
                           href="?<?= http_build_query(array_merge($_GET, ['page_produtos' => $i])) ?>">
-                          <?= $i ?>
+                          <?= (int)$i ?>
                         </a>
                       </li>
                     <?php endfor; ?>
@@ -967,18 +1023,18 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                       <?php foreach ($porCategoria as $cat): ?>
                         <tr>
                           <td>
-                            <strong><?= h($cat['categoria_nome']) ?></strong>
+                            <strong><?= h($cat['categoria_nome'] ?? 'Sem categoria') ?></strong>
                           </td>
                           <td class="text-center">
                             <span class="badge badge-primary">
-                              <?= (int)$cat['produtos_distintos'] ?>
+                              <?= (int)($cat['produtos_distintos'] ?? 0) ?>
                             </span>
                           </td>
                           <td class="text-center">
-                            <?= number_format((float)$cat['quantidade'], 2, ',', '.') ?>
+                            <?= number_format((float)($cat['quantidade'] ?? 0), 2, ',', '.') ?>
                           </td>
                           <td class="text-right">
-                            <b>R$ <?= number_format((float)$cat['valor_total'], 2, ',', '.') ?></b>
+                            <b>R$ <?= number_format((float)($cat['valor_total'] ?? 0), 2, ',', '.') ?></b>
                           </td>
                         </tr>
                       <?php endforeach; ?>
@@ -993,7 +1049,7 @@ $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
                         <li class="page-item <?= $i == $pageCategoria ? 'active' : '' ?>">
                           <a class="page-link"
                             href="?<?= http_build_query(array_merge($_GET, ['page_categoria' => $i])) ?>">
-                            <?= $i ?>
+                            <?= (int)$i ?>
                           </a>
                         </li>
                       <?php endfor; ?>

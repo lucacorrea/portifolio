@@ -90,24 +90,24 @@ CREATE TABLE IF NOT EXISTS entradas (
 );
 
 
+
 CREATE TABLE IF NOT EXISTS saidas (
   id INT AUTO_INCREMENT PRIMARY KEY,
   data DATE NOT NULL,
-  pedido VARCHAR(60) NOT NULL,
-  cliente VARCHAR(180) NOT NULL,
-  canal VARCHAR(20) NOT NULL,
-  pagamento VARCHAR(30) NOT NULL,
+  tipo VARCHAR(30) NOT NULL DEFAULT 'PERDA',  
+  motivo VARCHAR(120) NOT NULL,
   produto_id INT NOT NULL,
-  unidade VARCHAR(40) NOT NULL,
-  qtd DECIMAL(10,3) NOT NULL DEFAULT 0,
-  preco DECIMAL(10,2) NOT NULL DEFAULT 0,
-  total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  unidade VARCHAR(50) NOT NULL,
+  qtd INT NOT NULL DEFAULT 0,
+  valor_unit DECIMAL(10,2) NOT NULL DEFAULT 0,
+  valor_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  obs TEXT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,
   INDEX (data),
   INDEX (produto_id),
-  INDEX (pedido),
-  INDEX (cliente)
+  INDEX (tipo),
+  INDEX (motivo)
 );
 
 

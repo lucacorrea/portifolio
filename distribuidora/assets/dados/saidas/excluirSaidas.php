@@ -27,18 +27,25 @@ try {
   if (!$row) throw new RuntimeException('Saída não encontrada.');
 
   $pid = (int)$row['produto_id'];
-  $qtd = (float)$row['qtd'];
+  $qtd = (int)$row['qtd'];
 
-  // devolve estoque
-  $upd = $pdo->prepare("UPDATE produtos SET estoque = estoque + ? WHERE id = ?");
-  $upd->execute([$qtd, $pid]);
+  // trava produto
+  $pSt = $pdo->prepare("SELECT id, estoque FROM produtos WHERE id = ? FOR UPDATE");
+  $pSt->execute([$pid]);
+  $p = $pSt->fetch(PDO::FETCH_ASSOC);
+  if (!$p) throw new RuntimeException('Produto não encontrado.');
 
-  // exclui
+  $estoqueAtual = (int)$p['estoque'];
+  $novoEstoque = $estoqueAtual + $qtd;
+
+  $upd = $pdo->prepare("UPDATE produtos SET estoque = ? WHERE id = ?");
+  $upd->execute([$novoEstoque, $pid]);
+
   $del = $pdo->prepare("DELETE FROM saidas WHERE id = ?");
   $del->execute([$id]);
 
   $pdo->commit();
-  flash_set('success', 'Saída excluída e estoque devolvido!');
+  flash_set('success', 'Saída excluída e estoque devolvido.');
   redirect_to($back);
 
 } catch (Throwable $e) {

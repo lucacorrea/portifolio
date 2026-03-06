@@ -710,8 +710,8 @@ function fmtMoney($v): string
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-            <li><a href="vendidos.php">vendidos</a></li>
-            <li><a href="fiados.php">Fiados</a></li>
+            <li><a href="vendidos.php">Vendidos</a></li>
+            <li><a href="fiados.php">À Prazo</a></li>
             <li><a href="devolucoes.php">Devoluções</a></li>
           </ul>
         </li>
@@ -830,24 +830,24 @@ function fmtMoney($v): string
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
               </div>
-           
+
             </div>
           </div>
-   <div class="col-lg-7 col-md-7 col-6">
-                        <div class="header-right">
-                            <div class="profile-box ml-15">
-                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <div class="profile-info">
-                                        <div class="info">
-                                            <div>
-                                                <h6 class="fw-500">Sair</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                            </div>
-                        </div>
+          <div class="col-lg-7 col-md-7 col-6">
+            <div class="header-right">
+              <div class="profile-box ml-15">
+                <a class="btn btn-sm btn-primary color-white" href="#">
+                  <div class="profile-info">
+                    <div class="info">
+                      <div>
+                        <h6 class="fw-500"><i class="lni lni-chevron-left me-2"></i> Sair</h6>
+                      </div>
                     </div>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
 
         </div>
       </div>
@@ -1875,7 +1875,7 @@ function fmtMoney($v): string
     async function checkClientFiado() {
       const q = cCliente.value.trim();
       const fiadoFeedback = document.getElementById("fiadoFeedback");
-      
+
       if (q === '') {
         fiadoFeedback.style.display = 'none';
         cCliente.classList.remove('client-verified', 'client-unverified');
@@ -1889,7 +1889,7 @@ function fmtMoney($v): string
       try {
         const r = await fetchJSON(`assets/dados/clientes_api.php?action=search&q=${encodeURIComponent(q)}`);
         const found = r.items && r.items.length > 0;
-        
+
         if (found) {
           const exact = r.items.find(it => it.nome.toLowerCase() === q.toLowerCase() || it.cpf === q);
           if (exact) {
@@ -1991,7 +1991,9 @@ function fmtMoney($v): string
       try {
         const r = await fetchJSON("assets/dados/clientes_api.php?action=register", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify(payload)
         });
         alert(r.msg);
@@ -2054,7 +2056,10 @@ function fmtMoney($v): string
 
     document.getElementById("btnSemEntrada").addEventListener("click", () => {
       modalEntradaFiado.hide();
-      if (fiadoCallback) fiadoCallback({ entry: 0, method: null });
+      if (fiadoCallback) fiadoCallback({
+        entry: 0,
+        method: null
+      });
     });
 
     document.getElementById("btnComEntrada").addEventListener("click", () => {
@@ -2063,7 +2068,10 @@ function fmtMoney($v): string
       const total = calcTotal();
       if (entry >= total) return alert("O valor da entrada não pode ser maior ou igual ao total da venda.");
       modalEntradaFiado.hide();
-      if (fiadoCallback) fiadoCallback({ entry, method });
+      if (fiadoCallback) fiadoCallback({
+        entry,
+        method
+      });
     });
 
     /* ==============================
@@ -2071,10 +2079,16 @@ function fmtMoney($v): string
        (continua usando salvarVendas.php)
     ============================== */
     function validateSaleClient() {
-      if (!CART.length) return { ok: false, msg: "Adicione pelo menos 1 item." };
-      
+      if (!CART.length) return {
+        ok: false,
+        msg: "Adicione pelo menos 1 item."
+      };
+
       if (PAY_SELECTED === "FIADO" || (PAY_MODE === "MULTI" && Array.from(paysWrap.querySelectorAll(".mMethod")).some(s => s.value === "FIADO"))) {
-        if (!SELECTED_CLIENT) return { ok: false, msg: "Venda à prazo exige um cliente cadastrado selecionado." };
+        if (!SELECTED_CLIENT) return {
+          ok: false,
+          msg: "Venda à prazo exige um cliente cadastrado selecionado."
+        };
       }
 
       if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return {
@@ -2094,7 +2108,9 @@ function fmtMoney($v): string
             ok: false,
             msg: "No dinheiro, o valor pago deve ser >= total."
           };
-          if (r.method === "FIADO") return { ok: true }; // Custom check already passed
+          if (r.method === "FIADO") return {
+            ok: true
+          }; // Custom check already passed
           return {
             ok: false,
             msg: "Para Pix/Cartão/À Prazo, o valor pago deve ser igual ao total."
@@ -2278,6 +2294,5 @@ function fmtMoney($v): string
     init();
   </script>
 </body>
+
 </html>
-
-

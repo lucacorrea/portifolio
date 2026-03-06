@@ -380,7 +380,7 @@ $vars = [
     }
 
     .documento {
-      padding: 12mm 18mm;
+      padding: 12mm 12mm;
       height: 297mm;
       display: flex;
       flex-direction: column;
@@ -389,8 +389,8 @@ $vars = [
     /* CABEÇALHO */
     .cabecalho {
       text-align: center;
-      padding-bottom: 10px;
-      margin-bottom: 12px;
+      padding-bottom: 3px;
+      margin-bottom: 2px;
       border-bottom: 2px double var(--cor-primaria);
     }
 
@@ -398,7 +398,7 @@ $vars = [
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 2px;
     }
 
     .logos img {
@@ -582,7 +582,7 @@ $vars = [
     /* RODAPÉ */
     .rodape {
       margin-top: auto;
-      padding-top: 12px;
+      padding-top: 18px;
       border-top: 1px solid var(--cor-borda);
     }
 
@@ -596,11 +596,13 @@ $vars = [
       text-align: center;
       width: 250px;
       margin: 0 auto;
+     
     }
 
     .assinatura-linha {
       border-top: 1px solid var(--cor-texto);
       padding-top: 5px;
+      margin-top: 15px !important;
     }
 
     .assinatura-nome {
