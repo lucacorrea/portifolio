@@ -1518,6 +1518,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
         <li class="nav-item"><a href="suporte.php"><span class="icon"><i class="lni lni-whatsapp"></i></span><span class="text">Suporte</span></a></li>
       </ul>
     </nav>
+    
   </aside>
 
   <div class="overlay"></div>
