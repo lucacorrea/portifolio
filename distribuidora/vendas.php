@@ -673,7 +673,7 @@ function fmtMoney($v): string
 
     <nav class="sidebar-nav">
       <ul>
-        <li class="nav-item active">
+        <li class="nav-item">
           <a href="dashboard.php">
             <span class="icon">
               <i class="lni lni-dashboard"></i>
