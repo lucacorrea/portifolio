@@ -106,7 +106,7 @@ if (!function_exists('brl')) {
             flex: 0 0 auto;
             display: flex;
             gap: 8px;
-            align-items: center;
+            align-items: right;
             justify-content: flex-end;
             flex-wrap: wrap;
             margin-top: 10px;
