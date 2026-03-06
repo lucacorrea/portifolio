@@ -380,7 +380,7 @@ $vars = [
     }
 
     .documento {
-      padding: 12mm 18mm;
+      padding: 12mm 12mm;
       height: 297mm;
       display: flex;
       flex-direction: column;
