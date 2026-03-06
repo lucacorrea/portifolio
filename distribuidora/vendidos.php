@@ -15,6 +15,19 @@ if (is_file($helpers)) require_once $helpers;
 $con = __DIR__ . '/assets/conexao.php';
 if (is_file($con)) require_once $con;
 
+/* ========= DOMPDF (OPCIONAL, PARA BAIXAR PDF REAL) ========= */
+$autoloads = [
+    __DIR__ . '/vendor/autoload.php',
+    dirname(__DIR__) . '/vendor/autoload.php',
+    dirname(__DIR__, 2) . '/vendor/autoload.php',
+];
+foreach ($autoloads as $autoload) {
+    if (is_file($autoload)) {
+        require_once $autoload;
+        break;
+    }
+}
+
 /* ========= FALLBACKS ========= */
 if (!function_exists('e')) {
     function e(string $v): string
@@ -42,7 +55,7 @@ if (!function_exists('db')) {
 function clean_buffers(): void
 {
     while (ob_get_level() > 0) {
-        ob_end_clean();
+        @ob_end_clean();
     }
 }
 
@@ -69,6 +82,11 @@ function get_int(string $k, int $def = 0): int
 function brl(float $v): string
 {
     return 'R$ ' . number_format($v, 2, ',', '.');
+}
+
+function num_pt(float $v): string
+{
+    return number_format($v, 2, ',', '.');
 }
 
 function table_exists(PDO $pdo, string $table): bool
@@ -133,7 +151,7 @@ function build_where(array &$params): string
             $params[':vid'] = (int)$q;
         } else {
             $where .= " AND (
-                v.cliente   LIKE :q
+                v.cliente    LIKE :q
                 OR v.endereco LIKE :q
                 OR v.obs      LIKE :q
                 OR v.pagamento LIKE :q
@@ -364,7 +382,6 @@ function fetch_filtered_result(): array
         && column_exists($pdo, 'fiados_pagamentos', 'valor')
         && column_exists($pdo, 'fiados_pagamentos', 'created_at')
     ) {
-
         $di = get_str('di');
         $df = get_str('df');
 
@@ -584,6 +601,199 @@ function render_table_rows(array $rows): string
     return $html;
 }
 
+function pdf_html(array $rows, string $agora, string $di, string $df, string $canal, string $pag, string $q): string
+{
+    $sumSub = 0.0;
+    $sumDesc = 0.0;
+    $sumTax = 0.0;
+    $sumTot = 0.0;
+
+    foreach ($rows as $r) {
+        $sumSub += (float)$r['subtotal'];
+        $sumDesc += (float)$r['desconto'];
+        $sumTax += (float)$r['taxa'];
+        $sumTot += (float)$r['total'];
+    }
+
+    ob_start();
+?>
+    <!doctype html>
+    <html lang="pt-BR">
+
+    <head>
+        <meta charset="utf-8">
+        <title>PAINEL DA DISTRIBUIDORA - VENDIDOS</title>
+        <style>
+            @page {
+                size: A4 landscape;
+                margin: 12mm;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
+                color: #111827;
+                font-size: 11px;
+            }
+
+            .wrap {
+                width: 100%;
+            }
+
+            .meta-box {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 10px;
+            }
+
+            .meta-box td {
+                border: 1px solid #94a3b8;
+                padding: 6px 8px;
+                font-size: 11px;
+            }
+
+            .meta-title {
+                text-align: center;
+                font-size: 15px;
+                font-weight: 700;
+                background: #f1f5f9;
+            }
+
+            table.report {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+
+            table.report th,
+            table.report td {
+                border: 1px solid #94a3b8;
+                padding: 6px 7px;
+                font-size: 10px;
+                vertical-align: top;
+                word-wrap: break-word;
+            }
+
+            table.report thead th {
+                background: #e2e8f0;
+                font-weight: 700;
+                text-align: left;
+            }
+
+            table.report tfoot td {
+                background: #f8fafc;
+                font-weight: 700;
+            }
+
+            .right {
+                text-align: right;
+            }
+
+            .center {
+                text-align: center;
+            }
+
+            .w-id {
+                width: 6%;
+            }
+
+            .w-data {
+                width: 10%;
+            }
+
+            .w-cliente {
+                width: 28%;
+            }
+
+            .w-canal {
+                width: 10%;
+            }
+
+            .w-pag {
+                width: 12%;
+            }
+
+            .w-num {
+                width: 11%;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="wrap">
+            <table class="meta-box">
+                <tr>
+                    <td colspan="9" class="meta-title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
+                </tr>
+                <tr>
+                    <td colspan="9">Gerado em: <?= e($agora) ?></td>
+                </tr>
+                <tr>
+                    <td colspan="9">
+                        Período: <?= e($di) ?> até <?= e($df) ?> |
+                        Canal: <?= e($canal) ?> |
+                        Pagamento: <?= e($pag) ?> |
+                        Busca: <?= e($q) ?>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="report">
+                <thead>
+                    <tr>
+                        <th class="w-id">ID</th>
+                        <th class="w-data">Data</th>
+                        <th class="w-cliente">Cliente</th>
+                        <th class="w-canal">Canal</th>
+                        <th class="w-pag">Pagamento</th>
+                        <th class="w-num right">Subtotal</th>
+                        <th class="w-num right">Desconto</th>
+                        <th class="w-num right">Entrega</th>
+                        <th class="w-num right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!$rows): ?>
+                        <tr>
+                            <td colspan="9" class="center">Nenhuma venda encontrada.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($rows as $r): ?>
+                            <tr>
+                                <td><?= (int)$r['id'] ?></td>
+                                <td><?= e((string)$r['data']) ?></td>
+                                <td><?= e((string)($r['cliente'] ?? '')) ?></td>
+                                <td><?= e((string)($r['canal'] ?? '')) ?></td>
+                                <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
+                                <td class="right"><?= e(num_pt((float)$r['subtotal'])) ?></td>
+                                <td class="right"><?= e(num_pt((float)$r['desconto'])) ?></td>
+                                <td class="right"><?= e(num_pt((float)$r['taxa'])) ?></td>
+                                <td class="right"><?= e(num_pt((float)$r['total'])) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="right">Totais</td>
+                        <td class="right"><?= e(num_pt($sumSub)) ?></td>
+                        <td class="right"><?= e(num_pt($sumDesc)) ?></td>
+                        <td class="right"><?= e(num_pt($sumTax)) ?></td>
+                        <td class="right"><?= e(num_pt($sumTot)) ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </body>
+
+    </html>
+<?php
+    return (string)ob_get_clean();
+}
+
 /* ========= ACTIONS ========= */
 $action = strtolower(get_str('action'));
 
@@ -652,6 +862,7 @@ if ($action === 'excel') {
 
     $fname = 'vendidos_' . date('Y-m-d_His') . '.xls';
 
+    clean_buffers();
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $fname . '"');
     header('Pragma: no-cache');
@@ -659,38 +870,39 @@ if ($action === 'excel') {
 
     echo "\xEF\xBB\xBF";
 ?>
-    <table border="0" cellpadding="4" cellspacing="0" style="width:100%;">
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;">
         <tr>
-            <td colspan="9" align="center" style="font-size:16px;font-weight:900;">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
+            <td colspan="9" align="center" style="font-size:16px;font-weight:900;border:1px solid #000;background:#eef2ff;">
+                PAINEL DA DISTRIBUIDORA - VENDIDOS
+            </td>
         </tr>
         <tr>
-            <td colspan="9" style="font-size:12px;">Gerado em: <?= e($agora) ?></td>
+            <td colspan="9" style="font-size:12px;border:1px solid #000;">
+                Gerado em: <?= e($agora) ?>
+            </td>
         </tr>
         <tr>
-            <td colspan="9" style="font-size:12px;">
+            <td colspan="9" style="font-size:12px;border:1px solid #000;">
                 Período: <?= e($di) ?> até <?= e($df) ?> |
                 Canal: <?= e($canal) ?> |
                 Pagamento: <?= e($pag) ?> |
                 Busca: <?= e($q) ?>
             </td>
         </tr>
-        <tr>
-            <td colspan="9"></td>
-        </tr>
     </table>
 
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;">
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin-top:6px;">
         <thead>
             <tr style="background:#eef2ff;font-weight:900;">
-                <th>ID</th>
-                <th>Data</th>
-                <th>Cliente</th>
-                <th>Canal</th>
-                <th>Pagamento</th>
-                <th>Subtotal</th>
-                <th>Desconto</th>
-                <th>Entrega</th>
-                <th>Total</th>
+                <th style="border:1px solid #000;">ID</th>
+                <th style="border:1px solid #000;">Data</th>
+                <th style="border:1px solid #000;">Cliente</th>
+                <th style="border:1px solid #000;">Canal</th>
+                <th style="border:1px solid #000;">Pagamento</th>
+                <th style="border:1px solid #000;">Subtotal</th>
+                <th style="border:1px solid #000;">Desconto</th>
+                <th style="border:1px solid #000;">Entrega</th>
+                <th style="border:1px solid #000;">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -706,28 +918,125 @@ if ($action === 'excel') {
                 $sumTot += (float)$r['total'];
             ?>
                 <tr>
-                    <td><?= (int)$r['id'] ?></td>
-                    <td><?= e((string)$r['data']) ?></td>
-                    <td><?= e((string)($r['cliente'] ?? '')) ?></td>
-                    <td><?= e((string)($r['canal'] ?? '')) ?></td>
-                    <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
-                    <td><?= e(number_format((float)$r['subtotal'], 2, ',', '.')) ?></td>
-                    <td><?= e(number_format((float)$r['desconto'], 2, ',', '.')) ?></td>
-                    <td><?= e(number_format((float)$r['taxa'], 2, ',', '.')) ?></td>
-                    <td><?= e(number_format((float)$r['total'], 2, ',', '.')) ?></td>
+                    <td style="border:1px solid #000;"><?= (int)$r['id'] ?></td>
+                    <td style="border:1px solid #000;"><?= e((string)$r['data']) ?></td>
+                    <td style="border:1px solid #000;"><?= e((string)($r['cliente'] ?? '')) ?></td>
+                    <td style="border:1px solid #000;"><?= e((string)($r['canal'] ?? '')) ?></td>
+                    <td style="border:1px solid #000;"><?= e((string)($r['pagamento'] ?? '')) ?></td>
+                    <td style="border:1px solid #000;"><?= e(number_format((float)$r['subtotal'], 2, ',', '.')) ?></td>
+                    <td style="border:1px solid #000;"><?= e(number_format((float)$r['desconto'], 2, ',', '.')) ?></td>
+                    <td style="border:1px solid #000;"><?= e(number_format((float)$r['taxa'], 2, ',', '.')) ?></td>
+                    <td style="border:1px solid #000;"><?= e(number_format((float)$r['total'], 2, ',', '.')) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
         <tfoot>
             <tr style="font-weight:900;background:#f8fafc;">
-                <td colspan="5" align="right">Totais</td>
-                <td><?= e(number_format($sumSub, 2, ',', '.')) ?></td>
-                <td><?= e(number_format($sumDesc, 2, ',', '.')) ?></td>
-                <td><?= e(number_format($sumTax, 2, ',', '.')) ?></td>
-                <td><?= e(number_format($sumTot, 2, ',', '.')) ?></td>
+                <td colspan="5" align="right" style="border:1px solid #000;">Totais</td>
+                <td style="border:1px solid #000;"><?= e(number_format($sumSub, 2, ',', '.')) ?></td>
+                <td style="border:1px solid #000;"><?= e(number_format($sumDesc, 2, ',', '.')) ?></td>
+                <td style="border:1px solid #000;"><?= e(number_format($sumTax, 2, ',', '.')) ?></td>
+                <td style="border:1px solid #000;"><?= e(number_format($sumTot, 2, ',', '.')) ?></td>
             </tr>
         </tfoot>
     </table>
+<?php
+    exit;
+}
+
+if ($action === 'pdf') {
+    $result = fetch_filtered_result();
+    $rows = $result['rows'];
+
+    $agora = date('d/m/Y H:i:s');
+    $di = get_str('di') ?: '—';
+    $df = get_str('df') ?: '—';
+    $canal = get_str('canal', 'TODOS');
+    $pag = get_str('pag', 'TODOS');
+    $q = get_str('q') ?: '—';
+
+    $html = pdf_html($rows, $agora, $di, $df, $canal, $pag, $q);
+    $fileName = 'vendidos_' . date('Y-m-d_His') . '.pdf';
+
+    if (class_exists('\Dompdf\Dompdf')) {
+        clean_buffers();
+
+        $options = new \Dompdf\Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+        $options->setDefaultFont('DejaVu Sans');
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        echo $dompdf->output();
+        exit;
+    }
+
+    // fallback caso não tenha dompdf
+?>
+    <!doctype html>
+    <html lang="pt-BR">
+
+    <head>
+        <meta charset="utf-8">
+        <title>PDF não disponível</title>
+        <style>
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+                background: #f8fafc;
+                padding: 24px;
+                color: #0f172a;
+            }
+
+            .box {
+                max-width: 760px;
+                margin: 0 auto;
+                background: #fff;
+                border: 1px solid #cbd5e1;
+                border-radius: 14px;
+                padding: 20px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, .08);
+            }
+
+            .btn {
+                display: inline-block;
+                padding: 10px 14px;
+                border-radius: 10px;
+                text-decoration: none;
+                border: 1px solid #cbd5e1;
+                font-weight: 700;
+                color: #0f172a;
+                margin-top: 10px;
+            }
+
+            .frame {
+                width: 100%;
+                height: 70vh;
+                border: 1px solid #cbd5e1;
+                border-radius: 10px;
+                margin-top: 14px;
+                background: #fff;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="box">
+            <h2>O download direto em PDF precisa do Dompdf instalado.</h2>
+            <p>No momento, o sistema abriu a visualização em paisagem como fallback.</p>
+            <p>Para baixar PDF real pelo botão, instale o Dompdf no projeto:</p>
+            <pre>composer require dompdf/dompdf</pre>
+            <iframe class="frame" srcdoc="<?= e($html) ?>"></iframe>
+            <a href="javascript:window.print()" class="btn">Imprimir / Salvar como PDF</a>
+        </div>
+    </body>
+
+    </html>
 <?php
     exit;
 }
@@ -743,179 +1052,7 @@ if ($action === 'print') {
     $pag = get_str('pag', 'TODOS');
     $q = get_str('q') ?: '—';
 
-    $sumSub = 0.0;
-    $sumDesc = 0.0;
-    $sumTax = 0.0;
-    $sumTot = 0.0;
-
-    foreach ($rows as $r) {
-        $sumSub += (float)$r['subtotal'];
-        $sumDesc += (float)$r['desconto'];
-        $sumTax += (float)$r['taxa'];
-        $sumTot += (float)$r['total'];
-    }
-?>
-    <!doctype html>
-    <html lang="pt-BR">
-
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>PAINEL DA DISTRIBUIDORA - VENDIDOS</title>
-        <style>
-            @page {
-                size: A4;
-                margin: 16mm;
-            }
-
-            body {
-                font-family: Arial, Helvetica, sans-serif;
-                color: #0f172a;
-            }
-
-            h1 {
-                font-size: 18px;
-                margin: 0 0 8px;
-            }
-
-            .meta {
-                font-size: 12px;
-                margin: 2px 0;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 12px;
-            }
-
-            th,
-            td {
-                border: 1px solid #e5e7eb;
-                padding: 8px;
-                font-size: 12px;
-            }
-
-            th {
-                background: #f1f5f9;
-                text-align: left;
-            }
-
-            tfoot td {
-                font-weight: 900;
-                background: #f8fafc;
-            }
-
-            .right {
-                text-align: right;
-            }
-
-            .muted {
-                color: #475569;
-            }
-
-            .topbar {
-                display: flex;
-                justify-content: space-between;
-                gap: 12px;
-                align-items: flex-start;
-            }
-
-            .btn {
-                display: none;
-            }
-
-            @media screen {
-                body {
-                    background: #0b1220;
-                    padding: 24px;
-                }
-
-                .sheet {
-                    max-width: 920px;
-                    margin: 0 auto;
-                    background: #fff;
-                    border-radius: 14px;
-                    padding: 18px;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
-                }
-
-                .btn {
-                    display: inline-block;
-                    margin-top: 10px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    border: 1px solid #cbd5e1;
-                    cursor: pointer;
-                    font-weight: 900;
-                    background: #fff;
-                }
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="sheet">
-            <div class="topbar">
-                <div>
-                    <h1>PAINEL DA DISTRIBUIDORA - VENDIDOS</h1>
-                    <div class="meta">Gerado em: <span class="muted"><?= e($agora) ?></span></div>
-                    <div class="meta">Período: <span class="muted"><?= e($di) ?></span> até <span class="muted"><?= e($df) ?></span></div>
-                    <div class="meta">Canal: <span class="muted"><?= e($canal) ?></span> | Pagamento: <span class="muted"><?= e($pag) ?></span> | Busca: <span class="muted"><?= e($q) ?></span></div>
-                </div>
-                <div><button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button></div>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:70px;">ID</th>
-                        <th style="width:90px;">Data</th>
-                        <th>Cliente</th>
-                        <th style="width:110px;">Canal</th>
-                        <th style="width:130px;">Pagamento</th>
-                        <th class="right" style="width:110px;">Subtotal</th>
-                        <th class="right" style="width:110px;">Desconto</th>
-                        <th class="right" style="width:110px;">Entrega</th>
-                        <th class="right" style="width:110px;">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($rows as $r): ?>
-                        <tr>
-                            <td><?= (int)$r['id'] ?></td>
-                            <td><?= e((string)$r['data']) ?></td>
-                            <td><?= e((string)($r['cliente'] ?? '')) ?></td>
-                            <td><?= e((string)($r['canal'] ?? '')) ?></td>
-                            <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
-                            <td class="right"><?= e(brl((float)$r['subtotal'])) ?></td>
-                            <td class="right"><?= e(brl((float)$r['desconto'])) ?></td>
-                            <td class="right"><?= e(brl((float)$r['taxa'])) ?></td>
-                            <td class="right"><?= e(brl((float)$r['total'])) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5" class="right">Totais</td>
-                        <td class="right"><?= e(brl($sumSub)) ?></td>
-                        <td class="right"><?= e(brl($sumDesc)) ?></td>
-                        <td class="right"><?= e(brl($sumTax)) ?></td>
-                        <td class="right"><?= e(brl($sumTot)) ?></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <script>
-            window.addEventListener('load', () => {
-                setTimeout(() => window.print(), 300);
-            });
-        </script>
-    </body>
-
-    </html>
-<?php
+    echo pdf_html($rows, $agora, $di, $df, $canal, $pag, $q);
     exit;
 }
 
@@ -1461,27 +1598,21 @@ $initialTotais = $initial['totais'];
             <ul>
                 <li class="nav-item">
                     <a href="dashboard.php">
-                        <span class="icon">
-                            <i class="lni lni-dashboard"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-dashboard"></i></span>
                         <span class="text">Dashboard</span>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="vendas.php">
-                        <span class="icon">
-                            <i class="lni lni-cart"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-cart"></i></span>
                         <span class="text">Vendas</span>
                     </a>
                 </li>
 
                 <li class="nav-item nav-item-has-children active">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-layers"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-layers"></i></span>
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav show">
@@ -1493,9 +1624,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-package"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-package"></i></span>
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -1509,9 +1638,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-users"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-users"></i></span>
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
@@ -1523,9 +1650,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item">
                     <a href="relatorios.php">
-                        <span class="icon">
-                            <i class="lni lni-clipboard"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-clipboard"></i></span>
                         <span class="text">Relatórios</span>
                     </a>
                 </li>
@@ -1536,9 +1661,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-cog"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-cog"></i></span>
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -1549,9 +1672,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item">
                     <a href="suporte.php">
-                        <span class="icon">
-                            <i class="lni lni-whatsapp"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-whatsapp"></i></span>
                         <span class="text">Suporte</span>
                     </a>
                 </li>
@@ -1852,7 +1973,7 @@ $initialTotais = $initial['totais'];
         const state = {
             page: <?= (int)$initialMeta['page'] ?>,
             pages: <?= (int)$initialMeta['pages'] ?>,
-            per: 10,
+            per: 25,
             lastCupomId: null
         };
 
@@ -2045,7 +2166,6 @@ $initialTotais = $initial['totais'];
                 el('lblRange').textContent = `Período: ${di} até ${df}`;
 
                 renderRows(js.rows || []);
-
             } catch (err) {
                 el('tbody').innerHTML = `<tr><td colspan="9" class="text-danger">Erro: ${escapeHtml(err.message || String(err))}</td></tr>`;
             } finally {
@@ -2116,7 +2236,6 @@ $initialTotais = $initial['totais'];
 
                 const modal = new bootstrap.Modal(el('mdDetalhes'));
                 modal.show();
-
             } catch (err) {
                 alert('Erro: ' + (err.message || String(err)));
             }
@@ -2171,7 +2290,7 @@ $initialTotais = $initial['totais'];
         });
 
         el('btnPdf').addEventListener('click', () => {
-            window.open(buildExportUrl('print'), '_blank');
+            window.location.href = buildExportUrl('pdf');
         });
 
         el('q').addEventListener('keydown', (ev) => {
