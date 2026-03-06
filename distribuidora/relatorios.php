@@ -1011,8 +1011,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           </ul>
         </li>
 
-        <li class="nav-item">
-          <a href="relatorios.php">
+        <li class="nav-item active">
+          <a href="relatorios.php" class="active">
             <span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
