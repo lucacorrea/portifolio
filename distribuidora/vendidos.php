@@ -2112,7 +2112,7 @@ $initialTotais = $initial['totais'];
             el('pag').value = 'TODOS';
             el('q').value = '';
             state.page = 1;
-            state.per = Number(el('per').value || 25);
+            state.per = Number(el('per').value || 10);
             searchRows();
         });
 
