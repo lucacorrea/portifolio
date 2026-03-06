@@ -1865,6 +1865,12 @@ function fmtMoney($v): string
         LAST_CLIENT_SUGG = r.items || [];
         showSuggestCliente(LAST_CLIENT_SUGG);
         
+        // Se encontrar resultados, limpa o aviso de erro (ainda não é verificado, mas tem candidatos)
+        if (LAST_CLIENT_SUGG.length > 0) {
+          cCliente.classList.remove("client-unverified");
+          document.getElementById("fiadoFeedback").style.display = "none";
+        }
+
         // Se não encontrar nada e for prazo, já marca vermelho mais rápido
         if (LAST_CLIENT_SUGG.length === 0 && isFiado) {
           cCliente.classList.add("client-unverified");
