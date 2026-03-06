@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-
+@date_default_timezone_set('America/Manaus');
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 if (function_exists('ob_start')) {
   @ob_start();
@@ -12,6 +13,67 @@ require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/devolucoes/_helpers.php';
 
 $pdo = db();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+/* =========================
+   FALLBACKS (se helpers não tiver)
+========================= */
+if (!function_exists('e')) {
+  function e(string $s): string
+  {
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  }
+}
+if (!function_exists('csrf_token')) {
+  function csrf_token(): string
+  {
+    if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+    return (string)$_SESSION['csrf_token'];
+  }
+}
+if (!function_exists('csrf_validate_token')) {
+  function csrf_validate_token(string $t): bool
+  {
+    return isset($_SESSION['csrf_token']) && hash_equals((string)$_SESSION['csrf_token'], (string)$t);
+  }
+}
+if (!function_exists('json_input')) {
+  function json_input(): array
+  {
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw ?: '', true);
+    return is_array($data) ? $data : [];
+  }
+}
+if (!function_exists('to_int')) {
+  function to_int($v, int $min = PHP_INT_MIN, int $max = PHP_INT_MAX): int
+  {
+    $n = (int)($v ?? 0);
+    if ($n < $min) $n = $min;
+    if ($n > $max) $n = $max;
+    return $n;
+  }
+}
+if (!function_exists('to_float')) {
+  function to_float($v): float
+  {
+    $s = trim((string)$v);
+    $s = preg_replace('/[^\d,.\-]/', '', $s);
+    $s = str_replace('.', '', $s);
+    $s = str_replace(',', '.', $s);
+    $n = (float)$s;
+    return $n;
+  }
+}
+if (!function_exists('flash_pop')) {
+  function flash_pop(): ?array
+  {
+    $x = $_SESSION['flash'] ?? null;
+    unset($_SESSION['flash']);
+    return is_array($x) ? $x : null;
+  }
+}
 
 function json_out(array $data, int $code = 200): void
 {
@@ -24,41 +86,57 @@ function json_out(array $data, int $code = 200): void
   echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   exit;
 }
-function table_missing(Throwable $e): bool
+
+function brl(float $v): string
 {
-  $m = strtolower($e->getMessage());
-  return str_contains($m, "doesn't exist") || str_contains($m, "unknown table") || str_contains($m, "not found");
+  return 'R$ ' . number_format($v, 2, ',', '.');
+}
+function dtbr(string $ymd): string
+{
+  $ts = strtotime($ymd);
+  return $ts ? date('d/m/Y', $ts) : $ymd;
+}
+function dtbr_dt(string $ymd, string $his): string
+{
+  $ymd = trim($ymd);
+  $his = trim($his);
+  if ($ymd === '') return '';
+  $ts = strtotime($ymd . ' ' . ($his ?: '00:00:00'));
+  return $ts ? date('d/m/Y H:i', $ts) : ($ymd . ' ' . $his);
+}
+
+/* =========================================================
+   ✅ table_exists CORRETO (INFORMATION_SCHEMA)
+   (não depende de SHOW TABLES / bind)
+========================================================= */
+function table_exists(PDO $pdo, string $table): bool
+{
+  $st = $pdo->prepare("
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE()
+      AND table_name = :t
+    LIMIT 1
+  ");
+  $st->execute([':t' => $table]);
+  return (bool)$st->fetchColumn();
 }
 
 /* =========================================================
    ESTOQUE (reposição ao concluir devolução)
-   - Só mexe no estoque quando status = CONCLUIDO
-   - Se mudar de CONCLUIDO -> ABERTO/CANCELADO, desfaz (subtrai)
 ========================================================= */
-
 function extract_product_code(string $product): string
 {
   $p = trim(str_replace(["\r", "\n", "\t"], ' ', $product));
   if ($p === '') return '';
-  // Se for "CODIGO - Nome"
   if (strpos($p, ' - ') !== false) {
     $parts = explode(' - ', $p, 2);
-    $c = trim($parts[0] ?? '');
-    return $c;
+    return trim((string)($parts[0] ?? ''));
   }
-  // fallback: pega o primeiro "token"
   if (preg_match('/^([A-Za-z0-9._-]+)/', $p, $m)) return trim($m[1]);
   return '';
 }
 
-/**
- * Gera mapa de reposição de estoque:
- *   [codigo => qtd]
- * Só retorna algo se status = CONCLUIDO.
- *
- * TOTAL: usa venda_itens (pela venda_no).
- * PARCIAL: usa produto (string) + qtd.
- */
 function devolucao_effect(PDO $pdo, array $dev): array
 {
   $status = strtoupper(trim((string)($dev['status'] ?? '')));
@@ -70,8 +148,7 @@ function devolucao_effect(PDO $pdo, array $dev): array
   $effect = [];
 
   if ($type === 'TOTAL') {
-    if ($saleNo <= 0) return []; // sem venda, não dá pra repor corretamente
-
+    if ($saleNo <= 0) return [];
     $st = $pdo->prepare("SELECT codigo, qtd FROM venda_itens WHERE venda_id = ? ORDER BY id ASC");
     $st->execute([$saleNo]);
     $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -84,23 +161,16 @@ function devolucao_effect(PDO $pdo, array $dev): array
     return $effect;
   }
 
-  // PARCIAL
   $product = (string)($dev['product'] ?? $dev['produto'] ?? '');
   $qty     = (int)($dev['qty'] ?? $dev['qtd'] ?? 0);
   if ($qty <= 0) return [];
 
   $code = extract_product_code($product);
-  if ($code === '') return []; // sem código, não repõe
+  if ($code === '') return [];
   $effect[$code] = ($effect[$code] ?? 0) + $qty;
   return $effect;
 }
 
-/**
- * Aplica delta no estoque:
- * - delta pode ser positivo (repor) ou negativo (desfazer)
- * - nunca deixa estoque negativo
- * Retorna lista de códigos não encontrados.
- */
 function apply_stock_delta(PDO $pdo, array $deltaMap): array
 {
   $missing = [];
@@ -117,20 +187,13 @@ function apply_stock_delta(PDO $pdo, array $deltaMap): array
     $delta = (int)$delta;
     if ($code === '' || $delta === 0) continue;
 
-    $up->execute([
-      ':delta' => $delta,
-      ':codigo' => $code,
-    ]);
-
-    if ($up->rowCount() === 0) {
-      $missing[] = $code;
-    }
+    $up->execute([':delta' => $delta, ':codigo' => $code]);
+    if ($up->rowCount() === 0) $missing[] = $code;
   }
 
   return $missing;
 }
 
-/** soma mapas: $a + $b (b pode ter negativos) */
 function map_add(array $a, array $b): array
 {
   foreach ($b as $k => $v) {
@@ -141,27 +204,334 @@ function map_add(array $a, array $b): array
 }
 
 /* =========================================================
-   PRODUTOS (fallback) - carrega 1x (para autocomplete quando não tiver venda)
+   PRODUTOS (cache p/ autocomplete)
 ========================================================= */
 $PRODUTOS_CACHE = [];
 try {
-  $stP = $pdo->query("
-    SELECT id, codigo, nome, status
-    FROM produtos
-    WHERE (status IS NULL OR status = '' OR UPPER(TRIM(status))='ATIVO')
-    ORDER BY nome ASC
-    LIMIT 6000
-  ");
-  $rowsP = $stP->fetchAll(PDO::FETCH_ASSOC) ?: [];
-  $PRODUTOS_CACHE = array_map(static function (array $r): array {
-    return [
-      'id'   => (int)($r['id'] ?? 0),
-      'code' => (string)($r['codigo'] ?? ''),
-      'name' => (string)($r['nome'] ?? ''),
-    ];
-  }, $rowsP);
+  if (table_exists($pdo, 'produtos')) {
+    $stP = $pdo->query("
+      SELECT id, codigo, nome, status
+      FROM produtos
+      WHERE (status IS NULL OR status = '' OR UPPER(TRIM(status))='ATIVO')
+      ORDER BY nome ASC
+      LIMIT 6000
+    ");
+    $rowsP = $stP->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($rowsP as $r) {
+      $PRODUTOS_CACHE[] = [
+        'id'   => (int)($r['id'] ?? 0),
+        'code' => (string)($r['codigo'] ?? ''),
+        'name' => (string)($r['nome'] ?? ''),
+      ];
+    }
+  }
 } catch (Throwable $e) {
   $PRODUTOS_CACHE = [];
+}
+
+/* =========================================================
+   WHERE builder (para list / export)
+========================================================= */
+function build_where(string $q, string $status): array
+{
+  $where = [];
+  $params = [];
+
+  $q = trim($q);
+  $status = strtoupper(trim($status));
+
+  if ($status !== '' && in_array($status, ['ABERTO', 'CONCLUIDO', 'CANCELADO'], true)) {
+    $where[] = "UPPER(TRIM(d.status)) = :status";
+    $params[':status'] = $status;
+  }
+
+  if ($q !== '') {
+    if (preg_match('/^\d+$/', $q)) {
+      $where[] = "(CAST(d.id AS CHAR) LIKE :qstart OR CAST(d.venda_no AS CHAR) LIKE :qstart)";
+      $params[':qstart'] = $q . '%';
+    } else {
+      $where[] = "(
+        d.cliente LIKE :qlike
+        OR d.produto LIKE :qlike
+        OR d.motivo LIKE :qlike
+        OR d.obs LIKE :qlike
+      )";
+      $params[':qlike'] = '%' . $q . '%';
+    }
+  }
+
+  $sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+  return [$sql, $params];
+}
+
+/* =========================================================
+   EXPORTS (EXCEL/PDF)
+========================================================= */
+$export = strtolower(trim((string)($_GET['export'] ?? '')));
+if ($export === 'excel' || $export === 'pdf') {
+  $q = (string)($_GET['q'] ?? '');
+  $status = (string)($_GET['status'] ?? '');
+
+  [$w, $p] = build_where($q, $status);
+
+  $st = $pdo->prepare("
+    SELECT d.id, d.venda_no, d.cliente, d.data, d.hora, d.tipo, d.produto, d.qtd, d.valor, d.motivo, d.obs, d.status, d.created_at
+    FROM devolucoes d
+    $w
+    ORDER BY d.data DESC, d.hora DESC, d.id DESC
+  ");
+  $st->execute($p);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  // Totais (no mesmo filtro aplicado)
+  $tot = ['ABERTO' => 0.0, 'CONCLUIDO' => 0.0, 'CANCELADO' => 0.0, 'GERAL' => 0.0];
+  foreach ($rows as $r) {
+    $v = (float)($r['valor'] ?? 0);
+    $stt = strtoupper((string)($r['status'] ?? 'ABERTO'));
+    if (!isset($tot[$stt])) $stt = 'ABERTO';
+    $tot[$stt] += $v;
+    $tot['GERAL'] += $v;
+  }
+
+  $geradoEm = date('d/m/Y H:i:s');
+  $filtroTxt = 'Status: ' . ($status !== '' ? strtoupper($status) : 'Todos');
+  if (trim($q) !== '') $filtroTxt .= ' | Busca: ' . $q;
+
+  if ($export === 'excel') {
+    $fn = 'devolucoes_' . date('Ymd_His') . '.xls';
+    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $fn . '"');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    echo "\xEF\xBB\xBF";
+?>
+    <html>
+
+    <head>
+      <meta charset="utf-8">
+    </head>
+
+    <body>
+      <table border="0" cellpadding="4" cellspacing="0" style="font-family:Calibri,Arial; font-size:12px; width:100%;">
+        <tr>
+          <td colspan="10" style="font-size:16px; font-weight:800;">
+            PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES (RESUMO)
+          </td>
+        </tr>
+        <tr>
+          <td><b>Gerado em:</b></td>
+          <td colspan="9"><?= e($geradoEm) ?></td>
+        </tr>
+        <tr>
+          <td><b>Filtro:</b></td>
+          <td colspan="9"><?= e($filtroTxt) ?></td>
+        </tr>
+        <tr>
+          <td><b>Total (Aberto):</b></td>
+          <td><?= e(brl($tot['ABERTO'])) ?></td>
+          <td colspan="8"></td>
+        </tr>
+        <tr>
+          <td><b>Total (Concluído):</b></td>
+          <td><?= e(brl($tot['CONCLUIDO'])) ?></td>
+          <td colspan="8"></td>
+        </tr>
+        <tr>
+          <td><b>Total (Cancelado):</b></td>
+          <td><?= e(brl($tot['CANCELADO'])) ?></td>
+          <td colspan="8"></td>
+        </tr>
+        <tr>
+          <td><b>TOTAL (Geral):</b></td>
+          <td><b><?= e(brl($tot['GERAL'])) ?></b></td>
+          <td colspan="8"></td>
+        </tr>
+      </table>
+
+      <br>
+
+      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; font-family:Calibri,Arial; font-size:12px; width:100%;">
+        <tr style="background:#f3f6f8; font-weight:800;">
+          <td>ID</td>
+          <td>Data/Hora</td>
+          <td>Venda</td>
+          <td>Cliente</td>
+          <td>Tipo</td>
+          <td>Produto</td>
+          <td>Qtd</td>
+          <td>Valor</td>
+          <td>Motivo</td>
+          <td>Status</td>
+        </tr>
+        <?php foreach ($rows as $r): ?>
+          <tr>
+            <td><?= (int)$r['id'] ?></td>
+            <td><?= e(dtbr_dt((string)$r['data'], (string)$r['hora'])) ?></td>
+            <td><?= ($r['venda_no'] !== null ? '#' . (int)$r['venda_no'] : '—') ?></td>
+            <td><?= e((string)($r['cliente'] ?? '')) ?></td>
+            <td><?= e((string)($r['tipo'] ?? 'TOTAL')) ?></td>
+            <td><?= e((string)($r['produto'] ?? '')) ?></td>
+            <td><?= ($r['qtd'] !== null ? (int)$r['qtd'] : '—') ?></td>
+            <td><?= e(brl((float)$r['valor'])) ?></td>
+            <td><?= e((string)($r['motivo'] ?? '')) ?></td>
+            <td><?= e((string)($r['status'] ?? 'ABERTO')) ?></td>
+          </tr>
+        <?php endforeach; ?>
+      </table>
+    </body>
+
+    </html>
+  <?php
+    exit;
+  }
+
+  // PDF (layout A4 para imprimir/salvar)
+  ?>
+  <!doctype html>
+  <html lang="pt-BR">
+
+  <head>
+    <meta charset="utf-8">
+    <title>Devoluções (PDF)</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 12mm;
+      }
+
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #0f172a;
+      }
+
+      .title {
+        font-size: 18px;
+        font-weight: 800;
+        text-align: center;
+        margin: 0 0 8px;
+      }
+
+      .meta {
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+
+      .meta div {
+        margin: 2px 0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+
+      th,
+      td {
+        border: 1px solid #d1d5db;
+        padding: 6px;
+        vertical-align: middle;
+      }
+
+      th {
+        background: #f3f6f8;
+        font-weight: 800;
+      }
+
+      .tot {
+        margin: 10px 0 12px;
+        font-size: 12px;
+      }
+
+      .tot b {
+        font-size: 13px;
+      }
+
+      .btnbar {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin: 0 0 10px;
+      }
+
+      .btn {
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .btn.primary {
+        border-color: #2563eb;
+        color: #2563eb;
+      }
+
+      @media print {
+        .btnbar {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="btnbar">
+      <button class="btn primary" onclick="window.print()">Imprimir / Salvar como PDF</button>
+      <button class="btn" onclick="window.close()">Fechar</button>
+    </div>
+
+    <div class="title">PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES</div>
+
+    <div class="meta">
+      <div><b>Gerado em:</b> <?= e($geradoEm) ?></div>
+      <div><b>Filtro:</b> <?= e($filtroTxt) ?></div>
+    </div>
+
+    <div class="tot">
+      <div><b>Total em aberto:</b> <?= e(brl($tot['ABERTO'])) ?></div>
+      <div><b>Total concluído:</b> <?= e(brl($tot['CONCLUIDO'])) ?></div>
+      <div><b>Total cancelado:</b> <?= e(brl($tot['CANCELADO'])) ?></div>
+      <div style="margin-top:6px;"><b>TOTAL (geral):</b> <?= e(brl($tot['GERAL'])) ?></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Data/Hora</th>
+          <th>Venda</th>
+          <th>Cliente</th>
+          <th>Tipo</th>
+          <th>Produto</th>
+          <th>Qtd</th>
+          <th>Valor</th>
+          <th>Motivo</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($rows as $r): ?>
+          <tr>
+            <td><?= (int)$r['id'] ?></td>
+            <td><?= e(dtbr_dt((string)$r['data'], (string)$r['hora'])) ?></td>
+            <td><?= ($r['venda_no'] !== null ? '#' . (int)$r['venda_no'] : '—') ?></td>
+            <td><?= e((string)($r['cliente'] ?? '')) ?></td>
+            <td><?= e((string)($r['tipo'] ?? 'TOTAL')) ?></td>
+            <td><?= e((string)($r['produto'] ?? '')) ?></td>
+            <td><?= ($r['qtd'] !== null ? (int)$r['qtd'] : '—') ?></td>
+            <td><?= e(brl((float)$r['valor'])) ?></td>
+            <td><?= e((string)($r['motivo'] ?? '')) ?></td>
+            <td><?= e((string)($r['status'] ?? 'ABERTO')) ?></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </body>
+
+  </html>
+<?php
+  exit;
 }
 
 /* =========================================================
@@ -172,10 +542,12 @@ if (isset($_GET['ajax'])) {
 
   try {
 
-    // ===== buscar vendas digitando =====
+    // buscar vendas
     if ($ajax === 'buscarVendas') {
       $q = trim((string)($_GET['q'] ?? ''));
       if ($q === '') json_out(['ok' => true, 'items' => []]);
+
+      if (!table_exists($pdo, 'vendas')) json_out(['ok' => true, 'items' => []]);
 
       if (preg_match('/^\d+$/', $q)) {
         $st = $pdo->prepare("
@@ -198,23 +570,25 @@ if (isset($_GET['ajax'])) {
       }
 
       $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-      $items = array_map(static function (array $r): array {
-        return [
+      $items = [];
+      foreach ($rows as $r) {
+        $items[] = [
           'id' => (int)($r['id'] ?? 0),
           'date' => (string)($r['created_at'] ?? ''),
           'customer' => (string)($r['cliente'] ?? ''),
           'total' => (float)($r['total'] ?? 0),
           'canal' => (string)($r['canal'] ?? 'PRESENCIAL'),
         ];
-      }, $rows);
-
+      }
       json_out(['ok' => true, 'items' => $items]);
     }
 
-    // ===== itens da venda selecionada =====
+    // itens da venda
     if ($ajax === 'itensVenda') {
       $id = (int)($_GET['id'] ?? 0);
       if ($id <= 0) json_out(['ok' => true, 'items' => []]);
+
+      if (!table_exists($pdo, 'venda_itens')) json_out(['ok' => true, 'items' => []]);
 
       $st = $pdo->prepare("
         SELECT id, codigo, nome, qtd, preco_unit, subtotal, unidade
@@ -225,8 +599,9 @@ if (isset($_GET['ajax'])) {
       $st->execute([$id]);
       $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-      $items = array_map(static function (array $r): array {
-        return [
+      $items = [];
+      foreach ($rows as $r) {
+        $items[] = [
           'id' => (int)($r['id'] ?? 0),
           'code' => (string)($r['codigo'] ?? ''),
           'name' => (string)($r['nome'] ?? ''),
@@ -235,18 +610,52 @@ if (isset($_GET['ajax'])) {
           'price' => (float)($r['preco_unit'] ?? 0),
           'subtotal' => (float)($r['subtotal'] ?? 0),
         ];
-      }, $rows);
+      }
 
       json_out(['ok' => true, 'items' => $items]);
     }
 
-    // ===== list devolucoes =====
+    // ✅ listagem paginada (10 em 10)
     if ($ajax === 'list') {
-      $st = $pdo->query("SELECT * FROM devolucoes ORDER BY id DESC LIMIT 1500");
+      if (!table_exists($pdo, 'devolucoes')) json_out(['ok' => true, 'items' => [], 'page' => 1, 'per' => 10, 'total_rows' => 0, 'total_pages' => 1, 'totals' => []]);
+
+      $page = to_int($_GET['page'] ?? 1, 1, 999999);
+      $per  = to_int($_GET['per'] ?? 10, 1, 50);
+      if ($per < 1) $per = 10;
+      if ($per > 50) $per = 50;
+
+      $q = (string)($_GET['q'] ?? '');
+      $status = (string)($_GET['status'] ?? '');
+
+      // filtro do grid (inclui status)
+      [$w, $p] = build_where($q, $status);
+
+      // contagem
+      $stC = $pdo->prepare("SELECT COUNT(*) c FROM devolucoes d $w");
+      $stC->execute($p);
+      $totalRows = (int)($stC->fetchColumn() ?: 0);
+      $totalPages = max(1, (int)ceil($totalRows / $per));
+      if ($page > $totalPages) $page = $totalPages;
+      $off = ($page - 1) * $per;
+
+      // query paginada
+      $sql = "
+        SELECT d.id, d.venda_no, d.cliente, d.data, d.hora, d.tipo, d.produto, d.qtd, d.valor, d.motivo, d.obs, d.status, d.created_at
+        FROM devolucoes d
+        $w
+        ORDER BY d.data DESC, d.hora DESC, d.id DESC
+        LIMIT :lim OFFSET :off
+      ";
+      $st = $pdo->prepare($sql);
+      foreach ($p as $k => $v) $st->bindValue($k, $v);
+      $st->bindValue(':lim', (int)$per, PDO::PARAM_INT);
+      $st->bindValue(':off', (int)$off, PDO::PARAM_INT);
+      $st->execute();
       $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-      $items = array_map(static function (array $r): array {
-        return [
+      $items = [];
+      foreach ($rows as $r) {
+        $items[] = [
           'id'      => (int)($r['id'] ?? 0),
           'saleNo'  => ($r['venda_no'] !== null ? (int)$r['venda_no'] : null),
           'customer' => (string)($r['cliente'] ?? ''),
@@ -261,12 +670,38 @@ if (isset($_GET['ajax'])) {
           'status'  => (string)($r['status'] ?? 'ABERTO'),
           'created_at' => (string)($r['created_at'] ?? ''),
         ];
-      }, $rows);
+      }
 
-      json_out(['ok' => true, 'items' => $items]);
+      // totais do resumo (mesma busca, mas sem travar no status do filtro)
+      [$w2, $p2] = build_where($q, ''); // ignora status, mantém busca
+      $stT = $pdo->prepare("
+        SELECT UPPER(TRIM(d.status)) st, COALESCE(SUM(d.valor),0) s
+        FROM devolucoes d
+        $w2
+        GROUP BY UPPER(TRIM(d.status))
+      ");
+      $stT->execute($p2);
+      $tot = ['ABERTO' => 0.0, 'CONCLUIDO' => 0.0, 'CANCELADO' => 0.0, 'GERAL' => 0.0];
+      while ($r = $stT->fetch(PDO::FETCH_ASSOC)) {
+        $stx = strtoupper((string)($r['st'] ?? 'ABERTO'));
+        $sum = (float)($r['s'] ?? 0);
+        if (!isset($tot[$stx])) $stx = 'ABERTO';
+        $tot[$stx] += $sum;
+        $tot['GERAL'] += $sum;
+      }
+
+      json_out([
+        'ok' => true,
+        'items' => $items,
+        'page' => $page,
+        'per' => $per,
+        'total_rows' => $totalRows,
+        'total_pages' => $totalPages,
+        'totals' => $tot,
+      ]);
     }
 
-    // ===== save devolucao (COM ESTOQUE) =====
+    // save (com estoque)
     if ($ajax === 'save') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -302,12 +737,9 @@ if (isset($_GET['ajax'])) {
       $allowStatus = ['ABERTO', 'CONCLUIDO', 'CANCELADO'];
       if (!in_array($status, $allowStatus, true)) $status = 'ABERTO';
 
-      // validações por tipo
       if ($type === 'TOTAL') {
         $product = '';
         $qty = 0;
-
-        // se for CONCLUIDO, precisa de venda_no para repor estoque corretamente
         if ($status === 'CONCLUIDO' && (!$saleNo || $saleNo <= 0)) {
           json_out(['ok' => false, 'msg' => 'Para concluir uma devolução TOTAL, informe o nº da venda (para repor estoque).'], 400);
         }
@@ -317,13 +749,10 @@ if (isset($_GET['ajax'])) {
 
         if ($status === 'CONCLUIDO') {
           $code = extract_product_code($product);
-          if ($code === '') {
-            json_out(['ok' => false, 'msg' => 'Para concluir devolução PARCIAL, informe o produto com código (ex: P0001 - Arroz).'], 400);
-          }
+          if ($code === '') json_out(['ok' => false, 'msg' => 'Para concluir devolução PARCIAL, informe o produto com código (ex: P0001 - Arroz).'], 400);
         }
       }
 
-      // ===== TRANSAÇÃO: salva devolução + ajusta estoque corretamente
       $pdo->beginTransaction();
       $missing = [];
 
@@ -339,7 +768,6 @@ if (isset($_GET['ajax'])) {
           }
         }
 
-        // efeitos (estoque) antigo e novo
         $oldEffect = $old ? devolucao_effect($pdo, [
           'status' => (string)($old['status'] ?? ''),
           'tipo'   => (string)($old['tipo'] ?? 'TOTAL'),
@@ -356,18 +784,15 @@ if (isset($_GET['ajax'])) {
           'qty'    => ($type === 'PARCIAL' ? $qty : 0),
         ]);
 
-        // delta = new - old
         $delta = $newEffect;
         $negOld = [];
         foreach ($oldEffect as $k => $v) $negOld[$k] = -1 * (int)$v;
         $delta = map_add($delta, $negOld);
 
-        // aplica delta no estoque
-        if ($delta) {
+        if ($delta && table_exists($pdo, 'produtos')) {
           $missing = apply_stock_delta($pdo, $delta);
         }
 
-        // grava devolução
         if ($id > 0) {
           $st = $pdo->prepare("
             UPDATE devolucoes
@@ -419,41 +844,13 @@ if (isset($_GET['ajax'])) {
         throw $e;
       }
 
-      // devolve registro
-      $st = $pdo->prepare("SELECT * FROM devolucoes WHERE id=?");
-      $st->execute([$id]);
-      $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
-
       $msg = 'Devolução salva com sucesso!';
-      if ($missing) {
-        $msg .= ' (Atenção: produto(s) não encontrado(s) para repor estoque: ' . implode(', ', $missing) . ')';
-      }
+      if ($missing) $msg .= ' (Atenção: não encontrei no estoque: ' . implode(', ', $missing) . ')';
 
-      json_out([
-        'ok' => true,
-        'msg' => $msg,
-        'item' => [
-          'id' => (int)($r['id'] ?? $id),
-          'saleNo' => ($r['venda_no'] !== null ? (int)$r['venda_no'] : null),
-          'customer' => (string)($r['cliente'] ?? ''),
-          'date' => (string)($r['data'] ?? $date),
-          'time' => (string)($r['hora'] ?? $time),
-          'type' => (string)($r['tipo'] ?? $type),
-          'product' => (string)($r['produto'] ?? ''),
-          'qty' => ($r['qtd'] !== null ? (int)$r['qtd'] : null),
-          'amount' => (float)($r['valor'] ?? $amount),
-          'reason' => (string)($r['motivo'] ?? $reason),
-          'note' => (string)($r['obs'] ?? ''),
-          'status' => (string)($r['status'] ?? $status),
-          'created_at' => (string)($r['created_at'] ?? ''),
-        ],
-        'stock' => [
-          'missing_codes' => $missing
-        ]
-      ]);
+      json_out(['ok' => true, 'msg' => $msg]);
     }
 
-    // ===== delete (se estava CONCLUIDO, desfaz estoque) =====
+    // delete (desfaz estoque se estava CONCLUÍDO)
     if ($ajax === 'del') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -482,8 +879,7 @@ if (isset($_GET['ajax'])) {
           'qtd'    => (int)($old['qtd'] ?? 0),
         ]);
 
-        // desfaz (delta negativo)
-        if ($oldEffect) {
+        if ($oldEffect && table_exists($pdo, 'produtos')) {
           $neg = [];
           foreach ($oldEffect as $k => $v) $neg[$k] = -1 * (int)$v;
           $missing = apply_stock_delta($pdo, $neg);
@@ -504,86 +900,8 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'msg' => $msg]);
     }
 
-    // ===== import (não mexe em estoque; você pode concluir depois) =====
-    if ($ajax === 'import') {
-      $payload = json_input();
-      $csrf = (string)($payload['csrf_token'] ?? '');
-      if (!csrf_validate_token($csrf)) json_out(['ok' => false, 'msg' => 'CSRF inválido.'], 403);
-
-      $items = $payload['items'] ?? null;
-      if (!is_array($items) || !$items) json_out(['ok' => false, 'msg' => 'Nenhum item para importar.'], 400);
-
-      $ins = $pdo->prepare("
-        INSERT INTO devolucoes
-          (venda_no, cliente, data, hora, tipo, produto, qtd, valor, motivo, obs, status)
-        VALUES
-          (:venda_no, :cliente, :data, :hora, :tipo, :produto, :qtd, :valor, :motivo, :obs, :status)
-      ");
-
-      $count = 0;
-      foreach ($items as $x) {
-        if (!is_array($x)) continue;
-
-        $date = trim((string)($x['date'] ?? $x['data'] ?? ''));
-        $time = trim((string)($x['time'] ?? $x['hora'] ?? ''));
-        if ($date === '' || $time === '') continue;
-
-        $type = strtoupper(trim((string)($x['type'] ?? $x['tipo'] ?? 'TOTAL')));
-        if (!in_array($type, ['TOTAL', 'PARCIAL'], true)) $type = 'TOTAL';
-
-        $amount = (float)to_float($x['amount'] ?? $x['valor'] ?? 0);
-        if ($amount <= 0) continue;
-
-        $saleNo = trim((string)($x['saleNo'] ?? $x['vendaNo'] ?? $x['venda_no'] ?? ''));
-        $saleNo = ($saleNo !== '' && ctype_digit($saleNo)) ? (int)$saleNo : null;
-
-        $customer = trim((string)($x['customer'] ?? $x['cliente'] ?? ''));
-        $product = trim((string)($x['product'] ?? $x['produto'] ?? ''));
-        $qty = to_int($x['qty'] ?? $x['qtd'] ?? 1, 1);
-
-        if ($type === 'TOTAL') {
-          $product = '';
-          $qty = 0;
-        } else {
-          if ($product === '' || $qty < 1) continue;
-        }
-
-        $reason = strtoupper(trim((string)($x['reason'] ?? $x['motivo'] ?? 'OUTRO')));
-        $allowReason = ['DEFEITO', 'TROCA', 'ARREPENDIMENTO', 'AVARIA_TRANSPORTE', 'OUTRO'];
-        if (!in_array($reason, $allowReason, true)) $reason = 'OUTRO';
-
-        $note = trim((string)($x['note'] ?? $x['obs'] ?? ''));
-        $status = strtoupper(trim((string)($x['status'] ?? 'ABERTO')));
-        $allowStatus = ['ABERTO', 'CONCLUIDO', 'CANCELADO'];
-        if (!in_array($status, $allowStatus, true)) $status = 'ABERTO';
-
-        // Import não mexe estoque (pra evitar bagunça). Você conclui depois no sistema.
-        if ($status === 'CONCLUIDO') $status = 'ABERTO';
-
-        $ins->execute([
-          ':venda_no' => $saleNo,
-          ':cliente'  => ($customer !== '' ? $customer : null),
-          ':data'     => $date,
-          ':hora'     => $time,
-          ':tipo'     => $type,
-          ':produto'  => ($type === 'PARCIAL' ? $product : null),
-          ':qtd'      => ($type === 'PARCIAL' ? $qty : null),
-          ':valor'    => $amount,
-          ':motivo'   => $reason,
-          ':obs'      => ($note !== '' ? $note : null),
-          ':status'   => $status,
-        ]);
-        $count++;
-      }
-
-      json_out(['ok' => true, 'msg' => "Importação concluída: {$count} item(ns)."]);
-    }
-
     json_out(['ok' => false, 'msg' => 'Ação ajax inválida.'], 400);
   } catch (Throwable $e) {
-    if (table_missing($e)) {
-      json_out(['ok' => false, 'msg' => "Tabela necessária não encontrada (devolucoes/vendas/venda_itens/produtos). Rode os SQLs."], 500);
-    }
     json_out(['ok' => false, 'msg' => $e->getMessage()], 500);
   }
 }
@@ -612,25 +930,6 @@ $flash = flash_pop();
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    .profile-box .dropdown-menu {
-      width: max-content;
-      min-width: 260px;
-      max-width: calc(100vw - 24px)
-    }
-
-    .profile-box .dropdown-menu .author-info {
-      width: max-content;
-      max-width: 100%;
-      display: flex !important;
-      align-items: center;
-      gap: 10px
-    }
-
-    .profile-box .dropdown-menu .author-info .content {
-      min-width: 0;
-      max-width: 100%
-    }
-
     .main-btn.btn-compact {
       height: 38px !important;
       padding: 8px 14px !important;
@@ -745,12 +1044,22 @@ $flash = flash_pop();
 
     #tbDev {
       width: 100%;
-      min-width: 1080px
+      min-width: 1200px
     }
 
-    #tbDev th,
+    #tbDev th {
+      font-weight: 900;
+      color: #0f172a
+    }
+
     #tbDev td {
-      white-space: nowrap !important
+      font-weight: 600;
+      color: #0f172a
+    }
+
+    .money {
+      font-weight: 1000;
+      color: #0b5ed7
     }
 
     .mini {
@@ -759,61 +1068,14 @@ $flash = flash_pop();
       font-weight: 800
     }
 
-    .money {
-      font-weight: 1000;
-      color: #0b5ed7
-    }
-
-    .box-tot {
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 14px;
-      background: #fff;
-      padding: 12px
-    }
-
-    .tot-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: #334155;
-      margin-bottom: 8px;
-      font-weight: 900
-    }
-
-    .tot-hr {
-      height: 1px;
-      background: rgba(148, 163, 184, .22);
-      margin: 10px 0
-    }
-
-    .grand {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 10px;
-      margin-top: 4px
-    }
-
-    .grand .lbl {
-      font-weight: 1000;
-      color: #0f172a;
-      font-size: 16px
-    }
-
-    .grand .val {
-      font-weight: 1000;
-      color: #0b5ed7;
-      font-size: 26px;
-      letter-spacing: .2px
-    }
-
     .badge-soft {
       font-weight: 1000;
       border-radius: 999px;
       padding: 6px 10px;
-      font-size: 11px
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center
     }
 
     .b-open {
@@ -838,7 +1100,8 @@ $flash = flash_pop();
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
-      align-items: center
+      align-items: center;
+      width: 100%
     }
 
     .toolbar .grow {
@@ -848,6 +1111,25 @@ $flash = flash_pop();
 
     .toolbar .w180 {
       min-width: 180px
+    }
+
+    .pager-box {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px
+    }
+
+    .pager-box .page-text {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 900
+    }
+
+    .pager-box .btn-disabled {
+      opacity: .45;
+      pointer-events: none
     }
 
     .search-wrap {
@@ -896,7 +1178,6 @@ $flash = flash_pop();
       white-space: nowrap
     }
 
-    /* Itens da venda */
     .sale-box {
       border: 1px solid rgba(148, 163, 184, .22);
       border-radius: 14px;
@@ -951,16 +1232,6 @@ $flash = flash_pop();
       justify-content: space-between;
       gap: 10px
     }
-
-    @media(max-width:991.98px) {
-      #tbDev {
-        min-width: 980px
-      }
-
-      .grand .val {
-        font-size: 22px
-      }
-    }
   </style>
 </head>
 
@@ -969,7 +1240,7 @@ $flash = flash_pop();
     <div class="spinner"></div>
   </div>
 
-<!-- ======== sidebar-nav start =========== -->
+  <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -979,29 +1250,19 @@ $flash = flash_pop();
 
     <nav class="sidebar-nav">
       <ul>
-        <li class="nav-item">
-          <a href="dashboard.php">
-            <span class="icon">
+        <li class="nav-item"><a href="dashboard.php"><span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
                 <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
               </svg>
-            </span>
-            <span class="text">Dashboard</span>
-          </a>
-        </li>
+            </span><span class="text">Dashboard</span></a></li>
 
-        <li class="nav-item">
-          <a href="vendas.php">
-            <span class="icon">
+        <li class="nav-item"><a href="vendas.php"><span class="icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-            </span>
-            <span class="text">Vendas</span>
-          </a>
-        </li>
+            </span><span class="text">Vendas</span></a></li>
 
         <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
@@ -1013,7 +1274,7 @@ $flash = flash_pop();
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
-            <li><a href="vendidos.php"  >Vendidos</a></li>
+            <li><a href="vendidos.php">Vendidos</a></li>
             <li><a href="fiados.php">À Prazo</a></li>
             <li><a href="devolucoes.php" class="active">Devoluções</a></li>
           </ul>
@@ -1102,7 +1363,6 @@ $flash = flash_pop();
     </nav>
   </aside>
 
-
   <div class="overlay"></div>
 
   <main class="main-wrapper">
@@ -1173,7 +1433,6 @@ $flash = flash_pop();
           <div class="alert alert-<?= e($flash['type']) ?>"><?= e($flash['msg']) ?></div>
         <?php endif; ?>
 
-        <!-- Lançamento col-6 + Resumo col-6 -->
         <div class="row g-3 mb-3">
           <div class="col-12 col-lg-6">
             <div class="cardx">
@@ -1278,6 +1537,7 @@ $flash = flash_pop();
                     <i class="lni lni-eraser me-1"></i> Limpar
                   </button>
                 </div>
+
               </div>
             </div>
           </div>
@@ -1288,14 +1548,20 @@ $flash = flash_pop();
                 <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-stats-up me-1"></i> Resumo</div>
               </div>
               <div class="body">
-                <div class="box-tot">
-                  <div class="tot-row"><span>Total em aberto</span><span class="money" id="tAberto">R$ 0,00</span></div>
-                  <div class="tot-row"><span>Total concluído</span><span class="money" id="tConcl">R$ 0,00</span></div>
-                  <div class="tot-row"><span>Total cancelado</span><span class="money" id="tCancel">R$ 0,00</span></div>
-                  <div class="tot-hr"></div>
-                  <div class="grand">
-                    <span class="lbl">TOTAL (geral)</span>
-                    <span class="val" id="tGeral">R$ 0,00</span>
+                <div style="border:1px solid rgba(148,163,184,.25); border-radius:14px; background:#fff; padding:12px">
+                  <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#334155;margin-bottom:8px;font-weight:900">
+                    <span>Total em aberto</span><span class="money" id="tAberto">R$ 0,00</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#334155;margin-bottom:8px;font-weight:900">
+                    <span>Total concluído</span><span class="money" id="tConcl">R$ 0,00</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#334155;margin-bottom:8px;font-weight:900">
+                    <span>Total cancelado</span><span class="money" id="tCancel">R$ 0,00</span>
+                  </div>
+                  <div style="height:1px;background:rgba(148,163,184,.22);margin:10px 0"></div>
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:4px">
+                    <span style="font-weight:1000;color:#0f172a;font-size:16px">TOTAL (geral)</span>
+                    <span style="font-weight:1000;color:#0b5ed7;font-size:26px;letter-spacing:.2px" id="tGeral">R$ 0,00</span>
                   </div>
                 </div>
                 <div class="muted mt-2">* Somatório baseado no campo “Valor (R$)” das devoluções.</div>
@@ -1304,13 +1570,12 @@ $flash = flash_pop();
           </div>
         </div>
 
-        <!-- Tabela col-12 -->
         <div class="row g-3 mb-30">
           <div class="col-12">
             <div class="cardx">
               <div class="head">
                 <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-list me-1"></i> Listagem</div>
-                <div class="toolbar" style="width:100%;">
+                <div class="toolbar">
                   <input class="form-control compact grow" id="qDev" placeholder="Buscar: venda, cliente, produto, motivo..." />
                   <select class="form-select compact w180" id="fStatus">
                     <option value="">Todos</option>
@@ -1318,13 +1583,14 @@ $flash = flash_pop();
                     <option value="CONCLUIDO">Concluído</option>
                     <option value="CANCELADO">Cancelado</option>
                   </select>
-                  <button class="main-btn light-btn btn-hover btn-compact" id="btnExport" type="button">
-                    <i class="lni lni-download me-1"></i> Exportar JSON
+
+                  <!-- ✅ substitui JSON por Excel/PDF -->
+                  <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
+                    <i class="lni lni-download me-1"></i> Excel
                   </button>
-                  <button class="main-btn light-btn btn-hover btn-compact" id="btnImport" type="button">
-                    <i class="lni lni-upload me-1"></i> Importar JSON
+                  <button class="main-btn light-btn btn-hover btn-compact" id="btnPdf" type="button">
+                    <i class="lni lni-printer me-1"></i> PDF
                   </button>
-                  <input type="file" id="fileImport" accept="application/json" style="display:none;" />
                 </div>
               </div>
 
@@ -1334,22 +1600,26 @@ $flash = flash_pop();
                     <thead>
                       <tr>
                         <th style="min-width:80px;">ID</th>
-                        <th style="min-width:140px;">Data/Hora</th>
-                        <th style="min-width:120px;">Venda</th>
-                        <th style="min-width:200px;">Cliente</th>
-                        <th style="min-width:160px;">Tipo</th>
-                        <th style="min-width:240px;">Produto</th>
-                        <th style="min-width:90px;" class="text-center">Qtd</th>
-                        <th style="min-width:140px;" class="text-end">Valor</th>
-                        <th style="min-width:180px;">Motivo</th>
-                        <th style="min-width:150px;" class="text-center">Status</th>
-                        <th style="min-width:160px;" class="text-center">Ações</th>
+                        <th style="min-width:160px;">Data/Hora</th>
+                        <th style="min-width:110px;">Venda</th>
+                        <th style="min-width:220px;">Cliente</th>
+                        <th style="min-width:110px;">Tipo</th>
+                        <th style="min-width:260px;">Produto</th>
+                        <th style="min-width:80px;" class="text-center">Qtd</th>
+                        <th style="min-width:120px;" class="text-end">Valor</th>
+                        <th style="min-width:180px;">Motivo/Obs</th>
+                        <th style="min-width:130px;" class="text-center">Status</th>
+                        <th style="min-width:140px;" class="text-center">Ações</th>
                       </tr>
                     </thead>
                     <tbody id="tbodyDev"></tbody>
                   </table>
                 </div>
+
                 <div class="muted mt-2" id="hintNone" style="display:none;">Nenhuma devolução encontrada.</div>
+
+                <!-- ✅ paginação -->
+                <div class="pager-box" id="pagerDev" style="display:none;"></div>
               </div>
             </div>
           </div>
@@ -1380,7 +1650,9 @@ $flash = flash_pop();
     const PRODUCTS = <?= json_encode($PRODUTOS_CACHE, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     function safeText(s) {
-      return String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+      return String(s ?? "")
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
     }
 
     function moneyToNumber(txt) {
@@ -1425,7 +1697,9 @@ $flash = flash_pop();
       return `${d}/${m}/${y} ${t}`;
     }
 
-    let DEV = [];
+    // =========================
+    // STATE
+    // =========================
     let TYPE = "TOTAL";
     let SALE_SELECTED = null;
     let SALE_ITEMS = [];
@@ -1435,6 +1709,16 @@ $flash = flash_pop();
       prodTimer = null;
     let saleAbort = null;
 
+    // listagem paginada (server)
+    let CUR_PAGE = 1;
+    const PER_PAGE = 10;
+    let TOTAL_PAGES = 1;
+    let ROWS = [];
+    let SEARCH_TIMER = null;
+
+    // =========================
+    // ELEMENTS
+    // =========================
     const qGlobal = document.getElementById("qGlobal");
     const btnNova = document.getElementById("btnNova");
     const btnSalvar = document.getElementById("btnSalvar");
@@ -1469,16 +1753,19 @@ $flash = flash_pop();
     const fStatus = document.getElementById("fStatus");
     const tbodyDev = document.getElementById("tbodyDev");
     const hintNone = document.getElementById("hintNone");
+    const pagerDev = document.getElementById("pagerDev");
 
     const tAberto = document.getElementById("tAberto");
     const tConcl = document.getElementById("tConcl");
     const tCancel = document.getElementById("tCancel");
     const tGeral = document.getElementById("tGeral");
 
-    const btnExport = document.getElementById("btnExport");
-    const btnImport = document.getElementById("btnImport");
-    const fileImport = document.getElementById("fileImport");
+    const btnExcel = document.getElementById("btnExcel");
+    const btnPdf = document.getElementById("btnPdf");
 
+    // =========================
+    // FORM
+    // =========================
     function setFormMode(mode) {
       if (mode === "EDIT") {
         formMode.className = "pill ok";
@@ -1559,21 +1846,23 @@ $flash = flash_pop();
       setFormMode("NEW");
     }
 
-    // ===== buscar vendas =====
+    // =========================
+    // SALE SEARCH
+    // =========================
     function showSaleSuggest(list) {
       if (!list.length) {
         hideSaleSuggest();
         return;
       }
       saleSuggest.innerHTML = list.map(v => `
-      <div class="it" data-id="${Number(v.id)}">
-        <div style="min-width:0">
-          <div class="t">#${Number(v.id)} • ${safeText(v.customer||"Consumidor Final")}</div>
-          <div class="s">${safeText(v.date||"")} • ${safeText(v.canal||"")} • ${numberToMoney(v.total||0)}</div>
+        <div class="it" data-id="${Number(v.id)}">
+          <div style="min-width:0">
+            <div class="t">#${Number(v.id)} • ${safeText(v.customer||"Consumidor Final")}</div>
+            <div class="s">${safeText(v.date||"")} • ${safeText(v.canal||"")} • ${numberToMoney(v.total||0)}</div>
+          </div>
+          <div class="s">Selecionar</div>
         </div>
-        <div class="s">Selecionar</div>
-      </div>
-    `).join("");
+      `).join("");
       saleSuggest.style.display = "block";
       saleSuggest.scrollTop = 0;
     }
@@ -1583,6 +1872,7 @@ $flash = flash_pop();
       if (!s) return [];
       if (saleAbort) saleAbort.abort();
       saleAbort = new AbortController();
+
       const url = `${AJAX_URL}?ajax=buscarVendas&q=` + encodeURIComponent(s);
       const r = await fetch(url, {
         signal: saleAbort.signal
@@ -1607,9 +1897,7 @@ $flash = flash_pop();
     }
 
     dVendaNo.addEventListener("input", () => {
-      if (SALE_SELECTED && String(SALE_SELECTED.id) !== dVendaNo.value.trim()) {
-        clearSaleSelection();
-      }
+      if (SALE_SELECTED && String(SALE_SELECTED.id) !== dVendaNo.value.trim()) clearSaleSelection();
       refreshSaleDebounced();
     });
     dVendaNo.addEventListener("focus", refreshSaleDebounced);
@@ -1637,18 +1925,19 @@ $flash = flash_pop();
         return;
       }
       saleItemsWrap.style.display = "block";
+
       saleItemsBox.innerHTML = SALE_ITEMS.map(it => `
-      <div class="sale-row">
-        <div class="left">
-          <div class="nm">${safeText(it.name)}</div>
-          <div class="cd">${safeText(it.code)} • ${Number(it.qty||0)} ${safeText(it.unit||"")}</div>
+        <div class="sale-row">
+          <div class="left">
+            <div class="nm">${safeText(it.name)}</div>
+            <div class="cd">${safeText(it.code)} • ${Number(it.qty||0)} ${safeText(it.unit||"")}</div>
+          </div>
+          <div class="right">
+            <div style="font-weight:900;color:#0f172a;">${numberToMoney(it.subtotal||0)}</div>
+            <div class="muted">Unit: ${numberToMoney(it.price||0)}</div>
+          </div>
         </div>
-        <div class="right">
-          <div style="font-weight:900;color:#0f172a;">${numberToMoney(it.subtotal||0)}</div>
-          <div class="muted">Unit: ${numberToMoney(it.price||0)}</div>
-        </div>
-      </div>
-    `).join("");
+      `).join("");
 
       const sumQty = SALE_ITEMS.reduce((a, x) => a + Number(x.qty || 0), 0);
       const sumSub = SALE_ITEMS.reduce((a, x) => a + Number(x.subtotal || 0), 0);
@@ -1679,7 +1968,9 @@ $flash = flash_pop();
       if (!e.target.closest("#prodSuggest") && !e.target.closest("#dProduto")) hideProdSuggest();
     });
 
-    // ===== produto suggest (parcial) =====
+    // =========================
+    // PRODUCT SUGGEST (PARCIAL)
+    // =========================
     function onlyDigits(s) {
       return String(s || "").replace(/\D+/g, "");
     }
@@ -1688,7 +1979,6 @@ $flash = flash_pop();
       const s = String(q || "").trim().toLowerCase();
       if (!s) return [];
       const sDig = onlyDigits(s);
-
       const source = (SALE_SELECTED && SALE_ITEMS.length) ? SALE_ITEMS : PRODUCTS;
 
       const out = [];
@@ -1708,14 +1998,14 @@ $flash = flash_pop();
         return;
       }
       prodSuggest.innerHTML = list.map(p => `
-      <div class="it" data-code="${safeText(p.code)}">
-        <div style="min-width:0">
-          <div class="t">${safeText(p.name)}</div>
-          <div class="s">${safeText(p.code)}${(p.qty!=null && p.qty>0) ? ` • Qtd venda: ${Number(p.qty)}` : ""}</div>
+        <div class="it" data-code="${safeText(p.code)}">
+          <div style="min-width:0">
+            <div class="t">${safeText(p.name)}</div>
+            <div class="s">${safeText(p.code)}${(p.qty!=null && p.qty>0) ? ` • Qtd venda: ${Number(p.qty)}` : ""}</div>
+          </div>
+          <div class="s">${(p.subtotal!=null && p.subtotal>0) ? numberToMoney(p.subtotal) : "OK"}</div>
         </div>
-        <div class="s">${(p.subtotal!=null && p.subtotal>0) ? numberToMoney(p.subtotal) : "OK"}</div>
-      </div>
-    `).join("");
+      `).join("");
       prodSuggest.style.display = "block";
       prodSuggest.scrollTop = 0;
     }
@@ -1750,8 +2040,11 @@ $flash = flash_pop();
       hideProdSuggest();
     });
 
-    // ===== listagem devoluções =====
+    // =========================
+    // LIST / PAGINATION
+    // =========================
     function badgeStatus(s) {
+      s = String(s || "").toUpperCase();
       if (s === "CONCLUIDO") return `<span class="badge-soft b-done">CONCLUÍDO</span>`;
       if (s === "CANCELADO") return `<span class="badge-soft b-cancel">CANCELADO</span>`;
       return `<span class="badge-soft b-open">EM ABERTO</span>`;
@@ -1765,84 +2058,95 @@ $flash = flash_pop();
         "AVARIA_TRANSPORTE": "Avaria Transporte",
         "OUTRO": "Outro"
       };
-      return map[m] || m || "-";
+      const k = String(m || "").toUpperCase();
+      return map[k] || k || "-";
     }
 
-    function getFiltered() {
-      const q = (qDev.value || qGlobal.value || "").toLowerCase().trim();
-      const st = fStatus.value;
-      return DEV.filter(x => {
-        if (st && x.status !== st) return false;
-        if (!q) return true;
-        const blob = [
-          x.id, x.saleNo ?? "", x.customer ?? "", x.type ?? "", x.product ?? "",
-          x.reason ?? "", x.note ?? "", x.status ?? "",
-          fmtBRDateTime(x.date, x.time),
-          numberToMoney(x.amount),
-          String(x.qty ?? "")
-        ].join(" ").toLowerCase();
-        return blob.includes(q);
-      });
-    }
-
-    function recalcTotals() {
-      let aberto = 0,
-        concl = 0,
-        cancel = 0,
-        geral = 0;
-      DEV.forEach(x => {
-        const v = Number(x.amount || 0);
-        geral += v;
-        if (x.status === "CONCLUIDO") concl += v;
-        else if (x.status === "CANCELADO") cancel += v;
-        else aberto += v;
-      });
+    function setTotals(totals) {
+      const aberto = Number(totals?.ABERTO || 0);
+      const concl = Number(totals?.CONCLUIDO || 0);
+      const cancel = Number(totals?.CANCELADO || 0);
+      const geral = Number(totals?.GERAL || (aberto + concl + cancel));
       tAberto.textContent = numberToMoney(aberto);
       tConcl.textContent = numberToMoney(concl);
       tCancel.textContent = numberToMoney(cancel);
       tGeral.textContent = numberToMoney(geral);
     }
 
-    function render() {
-      const rows = getFiltered();
+    function renderTable() {
       tbodyDev.innerHTML = "";
-      hintNone.style.display = rows.length ? "none" : "block";
+      hintNone.style.display = ROWS.length ? "none" : "block";
 
-      rows.forEach(x => {
+      ROWS.forEach(x => {
         const dt = fmtBRDateTime(x.date, x.time);
         const sale = x.saleNo ? `#${safeText(x.saleNo)}` : "—";
         const cust = x.customer ? safeText(x.customer) : "Consumidor Final";
-        const prod = (x.type === "PARCIAL") ? (x.product ? safeText(x.product) : "—") : "—";
-        const qty = (x.type === "PARCIAL") ? Number(x.qty || 1) : "—";
+        const prod = (String(x.type).toUpperCase() === "PARCIAL") ? (x.product ? safeText(x.product) : "—") : "—";
+        const qty = (String(x.type).toUpperCase() === "PARCIAL") ? Number(x.qty || 1) : "—";
         const motivo = motivoLabel(x.reason);
         const valor = numberToMoney(x.amount);
 
-        tbodyDev.insertAdjacentHTML("beforeend", `
-        <tr data-id="${Number(x.id)}">
-          <td><span class="mini">${Number(x.id)}</span></td>
-          <td>${safeText(dt)}</td>
-          <td>${sale}</td>
-          <td>${cust}</td>
-          <td><span class="pill ${x.type==="PARCIAL"?"warn":"ok"}">${x.type==="PARCIAL"?"PARCIAL":"TOTAL"}</span></td>
-          <td>${prod}</td>
-          <td class="text-center">${qty}</td>
-          <td class="text-end"><span class="money">${valor}</span></td>
-          <td>${safeText(motivo)}${x.note?`<div class="muted" style="max-width:260px;white-space:normal;">${safeText(x.note)}</div>`:""}</td>
-          <td class="text-center">${badgeStatus(x.status)}</td>
-          <td class="text-center">
-            <button class="main-btn light-btn btn-hover btn-compact icon-btn btnEdit" type="button" title="Editar"><i class="lni lni-pencil"></i></button>
-            <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnDel" type="button" title="Excluir"><i class="lni lni-trash-can"></i></button>
-          </td>
-        </tr>
-      `);
-      });
+        const obs = (x.note && String(x.note).trim()) ?
+          `<div class="muted" style="max-width:260px;white-space:normal;margin-top:2px;">${safeText(x.note)}</div>` :
+          "";
 
-      recalcTotals();
+        tbodyDev.insertAdjacentHTML("beforeend", `
+          <tr data-id="${Number(x.id)}">
+            <td><span class="mini">${Number(x.id)}</span></td>
+            <td>${safeText(dt)}</td>
+            <td>${sale}</td>
+            <td>${cust}</td>
+            <td><span class="pill ${String(x.type).toUpperCase()==="PARCIAL"?"warn":"ok"}">${String(x.type).toUpperCase()==="PARCIAL"?"PARCIAL":"TOTAL"}</span></td>
+            <td>${prod}</td>
+            <td class="text-center">${qty}</td>
+            <td class="text-end"><span class="money">${valor}</span></td>
+            <td>${safeText(motivo)}${obs}</td>
+            <td class="text-center">${badgeStatus(x.status)}</td>
+            <td class="text-center">
+              <button class="main-btn light-btn btn-hover btn-compact icon-btn btnEdit" type="button" title="Editar"><i class="lni lni-pencil"></i></button>
+              <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnDel" type="button" title="Excluir"><i class="lni lni-trash-can"></i></button>
+            </td>
+          </tr>
+        `);
+      });
     }
 
-    async function loadAll() {
-      const r = await fetchJSON(`${AJAX_URL}?ajax=list`);
-      DEV = (r.items || []).map(x => ({
+    function renderPager() {
+      if (TOTAL_PAGES <= 1) {
+        pagerDev.style.display = "none";
+        pagerDev.innerHTML = "";
+        return;
+      }
+      pagerDev.style.display = "flex";
+
+      const prevDisabled = CUR_PAGE <= 1 ? "btn-disabled" : "";
+      const nextDisabled = CUR_PAGE >= TOTAL_PAGES ? "btn-disabled" : "";
+
+      pagerDev.innerHTML = `
+        <button class="main-btn light-btn btn-hover btn-sm ${prevDisabled}" id="pgPrev" type="button" title="Anterior">
+          <i class="lni lni-chevron-left"></i>
+        </button>
+        <span class="page-text">Página ${CUR_PAGE}/${TOTAL_PAGES}</span>
+        <button class="main-btn light-btn btn-hover btn-sm ${nextDisabled}" id="pgNext" type="button" title="Próxima">
+          <i class="lni lni-chevron-right"></i>
+        </button>
+      `;
+
+      const prevBtn = document.getElementById('pgPrev');
+      const nextBtn = document.getElementById('pgNext');
+      if (prevBtn && CUR_PAGE > 1) prevBtn.addEventListener('click', () => loadList(CUR_PAGE - 1));
+      if (nextBtn && CUR_PAGE < TOTAL_PAGES) nextBtn.addEventListener('click', () => loadList(CUR_PAGE + 1));
+    }
+
+    async function loadList(page = 1) {
+      const q = (qDev.value || "").trim();
+      const st = (fStatus.value || "").trim();
+      const url = `${AJAX_URL}?ajax=list&page=${encodeURIComponent(page)}&per=${PER_PAGE}&q=${encodeURIComponent(q)}&status=${encodeURIComponent(st)}`;
+      const r = await fetchJSON(url);
+
+      CUR_PAGE = Number(r.page || 1);
+      TOTAL_PAGES = Number(r.total_pages || 1);
+      ROWS = (r.items || []).map(x => ({
         id: Number(x.id),
         saleNo: (x.saleNo == null ? null : Number(x.saleNo)),
         customer: String(x.customer || ""),
@@ -1856,9 +2160,20 @@ $flash = flash_pop();
         note: String(x.note || ""),
         status: String(x.status || "ABERTO").toUpperCase(),
       }));
-      render();
+
+      setTotals(r.totals || {});
+      renderTable();
+      renderPager();
     }
 
+    function debounceLoad() {
+      clearTimeout(SEARCH_TIMER);
+      SEARCH_TIMER = setTimeout(() => loadList(1), 220);
+    }
+
+    // =========================
+    // SAVE / EDIT / DELETE
+    // =========================
     function validateForm() {
       const date = String(dData.value || "").trim();
       const time = String(dHora.value || "").trim();
@@ -1896,10 +2211,7 @@ $flash = flash_pop();
 
     async function saveDev() {
       const v = validateForm();
-      if (!v.ok) {
-        alert(v.msg);
-        return;
-      }
+      if (!v.ok) return alert(v.msg);
 
       const payload = {
         csrf_token: CSRF,
@@ -1926,30 +2238,9 @@ $flash = flash_pop();
           },
           body: JSON.stringify(payload)
         });
-
-        const item = r.item;
-        const norm = {
-          id: Number(item.id),
-          saleNo: (item.saleNo == null ? null : Number(item.saleNo)),
-          customer: String(item.customer || ""),
-          date: String(item.date || ""),
-          time: String(item.time || ""),
-          type: String(item.type || "TOTAL").toUpperCase(),
-          product: String(item.product || ""),
-          qty: (item.qty == null ? null : Number(item.qty)),
-          amount: Number(item.amount || 0),
-          reason: String(item.reason || "OUTRO").toUpperCase(),
-          note: String(item.note || ""),
-          status: String(item.status || "ABERTO").toUpperCase(),
-        };
-
-        const idx = DEV.findIndex(x => Number(x.id) === Number(norm.id));
-        if (idx >= 0) DEV[idx] = norm;
-        else DEV.unshift(norm);
-
-        render();
-        resetForm();
         alert(r.msg || "Devolução salva!");
+        resetForm();
+        await loadList(1);
       } catch (e) {
         alert(e.message || "Erro ao salvar.");
       } finally {
@@ -1958,7 +2249,7 @@ $flash = flash_pop();
     }
 
     function editDev(id) {
-      const x = DEV.find(d => Number(d.id) === Number(id));
+      const x = ROWS.find(d => Number(d.id) === Number(id));
       if (!x) return;
 
       dId.value = String(x.id);
@@ -1998,58 +2289,40 @@ $flash = flash_pop();
             id: Number(id)
           })
         });
-        DEV = DEV.filter(d => Number(d.id) !== Number(id));
-        render();
         resetForm();
+        await loadList(CUR_PAGE);
       } catch (e) {
         alert(e.message || "Erro ao excluir.");
       }
     }
 
-    function exportJson() {
-      const data = {
-        exported_at: new Date().toISOString(),
-        items: DEV
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json;charset=utf-8"
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "devolucoes.json";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+    // =========================
+    // EXPORTS
+    // =========================
+    function exportUrl(type) {
+      const q = (qDev.value || "").trim();
+      const st = (fStatus.value || "").trim();
+      const u = new URL(window.location.href);
+      u.searchParams.set('export', type);
+      u.searchParams.set('q', q);
+      u.searchParams.set('status', st);
+      // remove ajax params se tiver
+      u.searchParams.delete('ajax');
+      u.searchParams.delete('page');
+      u.searchParams.delete('per');
+      return u.toString();
     }
 
-    async function importJson(file) {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const obj = JSON.parse(reader.result);
-          const items = Array.isArray(obj) ? obj : (obj.items || []);
-          if (!Array.isArray(items) || !items.length) throw new Error("JSON sem itens.");
-          const r = await fetchJSON(`${AJAX_URL}?ajax=import`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              csrf_token: CSRF,
-              items
-            })
-          });
-          alert(r.msg || "Importação concluída!");
-          await loadAll();
-        } catch (e) {
-          alert("Falha ao importar: " + (e.message || e));
-        }
-      };
-      reader.readAsText(file);
-    }
+    btnExcel.addEventListener('click', () => {
+      window.location.href = exportUrl('excel');
+    });
+    btnPdf.addEventListener('click', () => {
+      window.open(exportUrl('pdf'), '_blank');
+    });
 
+    // =========================
+    // EVENTS
+    // =========================
     btnNova.addEventListener("click", resetForm);
     btnSalvar.addEventListener("click", saveDev);
     btnLimpar.addEventListener("click", resetForm);
@@ -2057,11 +2330,12 @@ $flash = flash_pop();
     chipTotal.addEventListener("click", () => setType("TOTAL"));
     chipParcial.addEventListener("click", () => setType("PARCIAL"));
 
-    qDev.addEventListener("input", render);
-    fStatus.addEventListener("change", render);
+    qDev.addEventListener("input", debounceLoad);
+    fStatus.addEventListener("change", () => loadList(1));
+
     qGlobal.addEventListener("input", () => {
       qDev.value = qGlobal.value;
-      render();
+      debounceLoad();
     });
 
     tbodyDev.addEventListener("click", (e) => {
@@ -2071,14 +2345,6 @@ $flash = flash_pop();
       if (!id) return;
       if (e.target.closest(".btnEdit")) return editDev(id);
       if (e.target.closest(".btnDel")) return deleteDev(id);
-    });
-
-    btnExport.addEventListener("click", exportJson);
-    btnImport.addEventListener("click", () => fileImport.click());
-    fileImport.addEventListener("change", () => {
-      const f = fileImport.files && fileImport.files[0];
-      if (f) importJson(f);
-      fileImport.value = "";
     });
 
     document.addEventListener("keydown", (e) => {
@@ -2098,12 +2364,10 @@ $flash = flash_pop();
 
     async function init() {
       resetForm();
-      await loadAll();
+      await loadList(1);
     }
     init();
   </script>
 </body>
 
 </html>
-
-
