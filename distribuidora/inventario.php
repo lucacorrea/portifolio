@@ -498,7 +498,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                         <table class="table text-nowrap" id="tbInventario">
                             <thead>
                                 <tr>
-                                    <th class="minw-120">Imagem</th>
                                     <th class="minw-140">Código</th>
                                     <th class="minw-220">Produto</th>
                                     <th class="minw-160">Categoria</th>
@@ -558,8 +557,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                                     $imgUrl = img_url_from_db($imgDb);
                                     ?>
                                     <tr data-produto-id="<?= $produtoId ?>" data-categoria="<?= $catId ?>" data-situacao="<?= e($sit) ?>">
-                                        <td><img class="prod-img" alt="<?= e((string)$r['nome']) ?>" src="<?= e($imgUrl) ?>" /></td>
-
                                         <td class="cod"><?= e((string)$r['codigo']) ?></td>
                                         <td class="prod"><?= e((string)$r['nome']) ?></td>
                                         <td class="cat"><?= e($catNome) ?></td>
