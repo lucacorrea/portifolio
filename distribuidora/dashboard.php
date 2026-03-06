@@ -1080,7 +1080,6 @@ $total12m = array_sum($chart1);
                     <option value="7" <?= $period === '7' ? 'selected' : ''; ?>>Últimos 7 dias</option>
                     <option value="30" <?= $period === '30' ? 'selected' : ''; ?>>Últimos 30 dias</option>
                   </select>
-                  <span class="text-sm text-gray">(impacta: Delivery x Presencial, Pagamentos, Vendas Recentes)</span>
                 </div>
               </div>
             </div>
