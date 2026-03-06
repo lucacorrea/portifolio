@@ -389,7 +389,7 @@ $vars = [
     /* CABEÇALHO */
     .cabecalho {
       text-align: center;
-      padding-bottom: 10px;
+      padding-bottom: 3px;
       margin-bottom: 2px;
       border-bottom: 2px double var(--cor-primaria);
     }
