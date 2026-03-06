@@ -273,36 +273,35 @@ if (!function_exists('brl')) {
                 </div>
 
                 <!-- Filtros -->
-                <!-- Tabela -->
-                <div class="card-fiado">
-                    <div class="body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-custom mb-0 text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th class="ps-4">Venda #</th>
-                                        <th>Data</th>
-                                        <th>Cliente</th>
-                                        <th>Total Venda</th>
-                                        <th>Total Pago</th>
-                                        <th>Restante</th>
-                                        <th>Status</th>
-                                        <th class="text-end pe-4">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="fiadosTableBody">
-                                    <tr>
-                                        <td colspan="8" class="text-center p-5">Carregando...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- Paginação -->
-                        <div class="page-nav d-flex justify-content-center align-items-center gap-3 p-3 border-top">
-                            <button class="page-btn btn btn-sm btn-outline-primary" id="btnPrev">← Anterior</button>
-                            <span class="page-info" id="pageInfo">Página 1 / 1</span>
-                            <button class="page-btn btn btn-sm btn-outline-primary" id="btnNext">Próxima →</button>
-                        </div>
+                <div class="card-fiado mb-30">
+                    <div class="body">
+                        <form id="filterForm" class="row g-3 align-items-end">
+                            <div class="col-md-2">
+                                <label class="form-label">Data Inicial</label>
+                                <input type="date" class="form-control" id="fDi">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Data Final</label>
+                                <input type="date" class="form-control" id="fDf">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Canal</label>
+                                <select class="form-select" id="fCanal">
+                                    <option value="TODOS">Todos</option>
+                                    <option value="PRESENCIAL">Presencial</option>
+                                    <option value="DELIVERY">Delivery</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cliente / Venda #</label>
+                                <input type="text" class="form-control" id="fSearch" placeholder="Nome do cliente ou ID da venda...">
+                            </div>
+                            <div class="col-md-2 d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="lni lni-funnel"></i> Filtrar
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
