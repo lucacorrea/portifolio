@@ -582,7 +582,7 @@ $vars = [
     /* RODAPÉ */
     .rodape {
       margin-top: auto;
-      padding-top: 12px;
+      padding-top: 18px;
       border-top: 1px solid var(--cor-borda);
     }
 
