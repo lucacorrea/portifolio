@@ -913,10 +913,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item">
           <a href="vendas.php">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <i class="lni lni-cart"></i>
             </span>
             <span class="text">Vendas</span>
           </a>
@@ -924,10 +921,7 @@ $total12m = array_sum($chart1);
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
-              </svg>
+            <i class="lni lni-layers"></i>
             </span>
             <span class="text">Operações</span>
           </a>
@@ -1256,12 +1250,24 @@ $total12m = array_sum($chart1);
                 <table class="table top-selling-table">
                   <thead>
                     <tr>
-                      <th><h6 class="text-sm text-medium">Venda</h6></th>
-                      <th class="min-width"><h6 class="text-sm text-medium">Cliente</h6></th>
-                      <th class="min-width"><h6 class="text-sm text-medium">Entrega</h6></th>
-                      <th class="min-width"><h6 class="text-sm text-medium">Pagamento</h6></th>
-                      <th class="min-width"><h6 class="text-sm text-medium">Valor</h6></th>
-                      <th class="min-width"><h6 class="text-sm text-medium">Data</h6></th>
+                      <th>
+                        <h6 class="text-sm text-medium">Venda</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Cliente</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Entrega</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Pagamento</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Valor</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Data</h6>
+                      </th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1269,7 +1275,9 @@ $total12m = array_sum($chart1);
                   <tbody>
                     <?php if (!$vendasRecentes): ?>
                       <tr>
-                        <td colspan="7"><p class="text-sm text-gray mb-0">Sem vendas no período.</p></td>
+                        <td colspan="7">
+                          <p class="text-sm text-gray mb-0">Sem vendas no período.</p>
+                        </td>
                       </tr>
                     <?php else: ?>
                       <?php foreach ($vendasRecentes as $v): ?>
@@ -1282,12 +1290,22 @@ $total12m = array_sum($chart1);
                         $badge = ($canal === 'DELIVERY') ? 'warning-btn' : 'success-btn';
                         ?>
                         <tr>
-                          <td><p class="text-sm"><?= e($vendano) ?></p></td>
-                          <td><p class="text-sm"><?= e($cli) ?></p></td>
+                          <td>
+                            <p class="text-sm"><?= e($vendano) ?></p>
+                          </td>
+                          <td>
+                            <p class="text-sm"><?= e($cli) ?></p>
+                          </td>
                           <td><span class="status-btn <?= $badge ?>"><?= e(ucfirst(strtolower($canal))) ?></span></td>
-                          <td><p class="text-sm"><?= e((string)$v['pagamento']) ?></p></td>
-                          <td><p class="text-sm"><?= brl($v['total']) ?></p></td>
-                          <td><p class="text-sm"><?= e(dtShort((string)$v['data'])) ?></p></td>
+                          <td>
+                            <p class="text-sm"><?= e((string)$v['pagamento']) ?></p>
+                          </td>
+                          <td>
+                            <p class="text-sm"><?= brl($v['total']) ?></p>
+                          </td>
+                          <td>
+                            <p class="text-sm"><?= e(dtShort((string)$v['data'])) ?></p>
+                          </td>
                           <td>
                             <div class="action justify-content-end">
                               <button class="edit btn-view-venda" type="button" title="Ver" data-id="<?= (int)$id ?>">
@@ -1427,25 +1445,45 @@ $total12m = array_sum($chart1);
                 <table class="table top-selling-table">
                   <thead>
                     <tr>
-                      <th><h6 class="text-sm text-medium">Produto</h6></th>
-                      <th class="min-width"><h6 class="text-sm text-medium">Categoria</h6></th>
-                      <th class="min-width"><h6 class="text-sm text-medium">Saldo</h6></th>
-                      <th class="min-width"><h6 class="text-sm text-medium">Mínimo</h6></th>
-                      <th><h6 class="text-sm text-medium text-end">Ação</h6></th>
+                      <th>
+                        <h6 class="text-sm text-medium">Produto</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Categoria</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Saldo</h6>
+                      </th>
+                      <th class="min-width">
+                        <h6 class="text-sm text-medium">Mínimo</h6>
+                      </th>
+                      <th>
+                        <h6 class="text-sm text-medium text-end">Ação</h6>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     <?php if (!$estoqueBaixo): ?>
                       <tr>
-                        <td colspan="5"><p class="text-sm text-gray mb-0">Nenhum produto abaixo do mínimo.</p></td>
+                        <td colspan="5">
+                          <p class="text-sm text-gray mb-0">Nenhum produto abaixo do mínimo.</p>
+                        </td>
                       </tr>
                     <?php else: ?>
                       <?php foreach ($estoqueBaixo as $p): ?>
                         <tr>
-                          <td><p class="text-sm"><?= e((string)$p['nome']) ?></p></td>
-                          <td><p class="text-sm"><?= e((string)$p['categoria']) ?></p></td>
-                          <td><p class="text-sm"><?= e((string)$p['estoque']) ?></p></td>
-                          <td><p class="text-sm"><?= e((string)$p['minimo']) ?></p></td>
+                          <td>
+                            <p class="text-sm"><?= e((string)$p['nome']) ?></p>
+                          </td>
+                          <td>
+                            <p class="text-sm"><?= e((string)$p['categoria']) ?></p>
+                          </td>
+                          <td>
+                            <p class="text-sm"><?= e((string)$p['estoque']) ?></p>
+                          </td>
+                          <td>
+                            <p class="text-sm"><?= e((string)$p['minimo']) ?></p>
+                          </td>
                           <td>
                             <div class="action justify-content-end">
                               <button class="edit btn-view-produto" type="button" title="Detalhes" data-id="<?= (int)$p['id'] ?>">
@@ -1778,12 +1816,16 @@ $total12m = array_sum($chart1);
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
+            legend: {
+              display: false
+            },
             tooltip: {
               intersect: false,
               backgroundColor: "#fbfbfb",
               displayColors: false,
-              callbacks: { label: (c) => fmtBRL(c.parsed.y) }
+              callbacks: {
+                label: (c) => fmtBRL(c.parsed.y)
+              }
             }
           }
         }
@@ -1807,7 +1849,11 @@ $total12m = array_sum($chart1);
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
         }
       });
     }
@@ -1841,12 +1887,16 @@ $total12m = array_sum($chart1);
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: true },
+            legend: {
+              display: true
+            },
             tooltip: {
               intersect: false,
               backgroundColor: "#fbfbfb",
               displayColors: false,
-              callbacks: { label: (c) => `${c.dataset.label}: ${fmtBRL(c.parsed.y)}` }
+              callbacks: {
+                label: (c) => `${c.dataset.label}: ${fmtBRL(c.parsed.y)}`
+              }
             }
           }
         }
@@ -1873,7 +1923,10 @@ $total12m = array_sum($chart1);
             }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
       });
     }
 
@@ -1889,7 +1942,11 @@ $total12m = array_sum($chart1);
             borderWidth: 0
           }]
         },
-        options: { responsive: true, maintainAspectRatio: false, cutout: "65%" }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "65%"
+        }
       });
     }
 
@@ -1907,7 +1964,15 @@ $total12m = array_sum($chart1);
             barThickness: 18
           }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
+        }
       });
     }
 
@@ -1931,16 +1996,26 @@ $total12m = array_sum($chart1);
         indexAxis: "y",
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
       };
 
       const optionsV2 = {
         responsive: true,
         maintainAspectRatio: false,
-        legend: { display: false },
+        legend: {
+          display: false
+        },
         scales: {
-          xAxes: [{ ticks: { beginAtZero: true } }],
-          yAxes: [{ }]
+          xAxes: [{
+            ticks: {
+              beginAtZero: true
+            }
+          }],
+          yAxes: [{}]
         }
       };
 
@@ -1958,7 +2033,10 @@ $total12m = array_sum($chart1);
 
     function fmtBRL2(v) {
       try {
-        return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v || 0));
+        return new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL"
+        }).format(Number(v || 0));
       } catch (e) {
         return "R$ " + String(v || 0);
       }
@@ -1982,7 +2060,9 @@ $total12m = array_sum($chart1);
 
       try {
         const res = await fetch(`dashboard.php?action=venda&id=${encodeURIComponent(id)}`, {
-          headers: { 'Accept': 'application/json' }
+          headers: {
+            'Accept': 'application/json'
+          }
         });
         const j = await res.json();
         if (!j.ok) throw new Error(j.error || 'Falha ao carregar venda.');
@@ -1995,9 +2075,9 @@ $total12m = array_sum($chart1);
         document.getElementById('vPagamento').textContent = safe(v.pagamento);
         document.getElementById('vSubtotal').textContent = fmtBRL2(v.subtotal);
 
-        const desc = (String(v.desconto_tipo || '').toUpperCase() === 'VALOR')
-          ? fmtBRL2(v.desconto_valor)
-          : `${Number(v.desconto_valor || 0).toFixed(2).replace('.', ',')}%`;
+        const desc = (String(v.desconto_tipo || '').toUpperCase() === 'VALOR') ?
+          fmtBRL2(v.desconto_valor) :
+          `${Number(v.desconto_valor || 0).toFixed(2).replace('.', ',')}%`;
         document.getElementById('vDesconto').textContent = `${desc} (taxa: ${fmtBRL2(v.taxa_entrega)})`;
         document.getElementById('vTotal').textContent = fmtBRL2(v.total);
 
@@ -2075,7 +2155,9 @@ $total12m = array_sum($chart1);
 
       try {
         const res = await fetch(`dashboard.php?action=produto&id=${encodeURIComponent(id)}`, {
-          headers: { 'Accept': 'application/json' }
+          headers: {
+            'Accept': 'application/json'
+          }
         });
         const j = await res.json();
         if (!j.ok) throw new Error(j.error || 'Falha ao carregar produto.');
