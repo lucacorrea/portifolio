@@ -596,11 +596,12 @@ $vars = [
       text-align: center;
       width: 250px;
       margin: 0 auto;
+      margin-top: 15px;
     }
 
     .assinatura-linha {
       border-top: 1px solid var(--cor-texto);
-      padding-top: 15px;
+      padding-top: 5px;
     }
 
     .assinatura-nome {
