@@ -1079,8 +1079,7 @@ $initialTotais = $initial['totais'];
             color: #0f172a;
         }
 
-        .summary-card.s2 .lbl,
-        .summary-card.s2 .val {
+        .summary-card.s2 .lbl {
             color: #166534;
         }
 
