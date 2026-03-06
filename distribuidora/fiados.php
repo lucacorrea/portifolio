@@ -331,7 +331,7 @@ if (!function_exists('brl')) {
                     </div>
                     <h6>Produtos da Venda</h6>
                     <div class="table-responsive mb-4">
-                        <table class="table table-sm table-striped p-2">
+                        <table class="table table-sm border p-2">
                             <thead class="bg-light">
                                 <tr><th>Produto</th><th>Qtd</th><th class="text-end">Preço</th><th class="text-end">Subtotal</th></tr>
                             </thead>
@@ -340,7 +340,7 @@ if (!function_exists('brl')) {
                     </div>
                     <h6>Histórico de Pagamentos (AVS)</h6>
                     <div class="table-responsive">
-                        <table class="table table-sm table-striped p-2">
+                        <table class="table table-sm border p-2">
                             <thead class="bg-light">
                                 <tr><th>Data/Hora</th><th>Método</th><th class="text-end">Valor</th></tr>
                             </thead>
