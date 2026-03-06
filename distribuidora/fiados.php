@@ -69,26 +69,8 @@ if (!function_exists('brl')) {
             margin-bottom: 20px;
         }
 
-        .card-fiado .head {
-            padding: 15px 20px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
         .card-fiado .body {
             padding: 20px;
-        }
-
-        .table-custom thead th {
-            background: #f8fafc;
-            color: #64748b;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 800;
-            border-bottom: 2px solid #edf2f7;
         }
 
         .status-badge {
