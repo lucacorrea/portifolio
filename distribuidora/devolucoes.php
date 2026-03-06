@@ -1,10 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
-if (function_exists('ob_start')) { @ob_start(); }
+if (function_exists('ob_start')) {
+  @ob_start();
+}
 
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/devolucoes/_helpers.php';
@@ -17,28 +20,35 @@ $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
    FALLBACKS (se helpers não tiver)
 ========================= */
 if (!function_exists('e')) {
-  function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+  function e(string $s): string
+  {
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  }
 }
 if (!function_exists('csrf_token')) {
-  function csrf_token(): string {
+  function csrf_token(): string
+  {
     if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
     return (string)$_SESSION['csrf_token'];
   }
 }
 if (!function_exists('csrf_validate_token')) {
-  function csrf_validate_token(string $t): bool {
+  function csrf_validate_token(string $t): bool
+  {
     return isset($_SESSION['csrf_token']) && hash_equals((string)$_SESSION['csrf_token'], (string)$t);
   }
 }
 if (!function_exists('json_input')) {
-  function json_input(): array {
+  function json_input(): array
+  {
     $raw = file_get_contents('php://input');
     $data = json_decode($raw ?: '', true);
     return is_array($data) ? $data : [];
   }
 }
 if (!function_exists('to_int')) {
-  function to_int($v, int $min = PHP_INT_MIN, int $max = PHP_INT_MAX): int {
+  function to_int($v, int $min = PHP_INT_MIN, int $max = PHP_INT_MAX): int
+  {
     $n = (int)($v ?? 0);
     if ($n < $min) $n = $min;
     if ($n > $max) $n = $max;
@@ -46,7 +56,8 @@ if (!function_exists('to_int')) {
   }
 }
 if (!function_exists('to_float')) {
-  function to_float($v): float {
+  function to_float($v): float
+  {
     $s = trim((string)$v);
     $s = preg_replace('/[^\d,.\-]/', '', $s);
     $s = str_replace('.', '', $s);
@@ -56,7 +67,8 @@ if (!function_exists('to_float')) {
   }
 }
 if (!function_exists('flash_pop')) {
-  function flash_pop(): ?array {
+  function flash_pop(): ?array
+  {
     $x = $_SESSION['flash'] ?? null;
     unset($_SESSION['flash']);
     return is_array($x) ? $x : null;
@@ -65,7 +77,9 @@ if (!function_exists('flash_pop')) {
 
 function json_out(array $data, int $code = 200): void
 {
-  if (function_exists('ob_get_length') && ob_get_length()) { @ob_clean(); }
+  if (function_exists('ob_get_length') && ob_get_length()) {
+    @ob_clean();
+  }
   http_response_code($code);
   header('Content-Type: application/json; charset=utf-8');
   header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -73,9 +87,14 @@ function json_out(array $data, int $code = 200): void
   exit;
 }
 
-function brl(float $v): string { return 'R$ ' . number_format($v, 2, ',', '.'); }
-function dtbr_dt(string $ymd, string $his): string {
-  $ymd = trim($ymd); $his = trim($his);
+function brl(float $v): string
+{
+  return 'R$ ' . number_format($v, 2, ',', '.');
+}
+function dtbr_dt(string $ymd, string $his): string
+{
+  $ymd = trim($ymd);
+  $his = trim($his);
   if ($ymd === '') return '';
   $ts = strtotime($ymd . ' ' . ($his ?: '00:00:00'));
   return $ts ? date('d/m/Y H:i', $ts) : ($ymd . ' ' . $his);
@@ -213,7 +232,7 @@ function build_where(string $q, string $status): array
   $q = trim($q);
   $status = strtoupper(trim($status));
 
-  if ($status !== '' && in_array($status, ['ABERTO','CONCLUIDO','CANCELADO'], true)) {
+  if ($status !== '' && in_array($status, ['ABERTO', 'CONCLUIDO', 'CANCELADO'], true)) {
     $where[] = "UPPER(TRIM(d.status)) = :status";
     $params[':status'] = $status;
   }
@@ -263,7 +282,7 @@ if ($export === 'excel' || $export === 'pdf') {
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
   // Totais
-  $tot = ['ABERTO'=>0.0,'CONCLUIDO'=>0.0,'CANCELADO'=>0.0,'GERAL'=>0.0];
+  $tot = ['ABERTO' => 0.0, 'CONCLUIDO' => 0.0, 'CANCELADO' => 0.0, 'GERAL' => 0.0];
   foreach ($rows as $r) {
     $v = (float)($r['valor'] ?? 0);
     $stt = strtoupper((string)($r['status'] ?? 'ABERTO'));
@@ -285,20 +304,48 @@ if ($export === 'excel' || $export === 'pdf') {
     header('Content-Disposition: attachment; filename="' . $fn . '"');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     echo "\xEF\xBB\xBF";
-    ?>
-    <html><head><meta charset="utf-8"></head><body>
+?>
+    <html>
+
+    <head>
+      <meta charset="utf-8">
+    </head>
+
+    <body>
       <table border="0" cellpadding="4" cellspacing="0" style="font-family:Calibri,Arial; font-size:12px; width:100%;">
         <tr>
           <td colspan="11" style="font-size:16px; font-weight:800;">
             PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES (RESUMO)
           </td>
         </tr>
-        <tr><td><b>Gerado em:</b></td><td colspan="10"><?= e($geradoEm) ?></td></tr>
-        <tr><td><b>Filtro:</b></td><td colspan="10"><?= e($filtroTxt) ?></td></tr>
-        <tr><td><b>Total (Aberto):</b></td><td><?= e(brl($tot['ABERTO'])) ?></td><td colspan="9"></td></tr>
-        <tr><td><b>Total (Concluído):</b></td><td><?= e(brl($tot['CONCLUIDO'])) ?></td><td colspan="9"></td></tr>
-        <tr><td><b>Total (Cancelado):</b></td><td><?= e(brl($tot['CANCELADO'])) ?></td><td colspan="9"></td></tr>
-        <tr><td><b>TOTAL (Geral):</b></td><td><b><?= e(brl($tot['GERAL'])) ?></b></td><td colspan="9"></td></tr>
+        <tr>
+          <td><b>Gerado em:</b></td>
+          <td colspan="10"><?= e($geradoEm) ?></td>
+        </tr>
+        <tr>
+          <td><b>Filtro:</b></td>
+          <td colspan="10"><?= e($filtroTxt) ?></td>
+        </tr>
+        <tr>
+          <td><b>Total (Aberto):</b></td>
+          <td><?= e(brl($tot['ABERTO'])) ?></td>
+          <td colspan="9"></td>
+        </tr>
+        <tr>
+          <td><b>Total (Concluído):</b></td>
+          <td><?= e(brl($tot['CONCLUIDO'])) ?></td>
+          <td colspan="9"></td>
+        </tr>
+        <tr>
+          <td><b>Total (Cancelado):</b></td>
+          <td><?= e(brl($tot['CANCELADO'])) ?></td>
+          <td colspan="9"></td>
+        </tr>
+        <tr>
+          <td><b>TOTAL (Geral):</b></td>
+          <td><b><?= e(brl($tot['GERAL'])) ?></b></td>
+          <td colspan="9"></td>
+        </tr>
       </table>
 
       <br>
@@ -333,8 +380,10 @@ if ($export === 'excel' || $export === 'pdf') {
           </tr>
         <?php endforeach; ?>
       </table>
-    </body></html>
-    <?php
+    </body>
+
+    </html>
+<?php
     exit;
   }
 
@@ -346,7 +395,7 @@ if ($export === 'excel' || $export === 'pdf') {
   ======================= */
 
   // helpers PDF
-  $pdf_to_1252 = function(string $s): string {
+  $pdf_to_1252 = function (string $s): string {
     $s = trim($s);
     if ($s === '') return '';
     if (function_exists('iconv')) {
@@ -357,7 +406,7 @@ if ($export === 'excel' || $export === 'pdf') {
     return preg_replace('/[^\x20-\x7E]/', '', $s) ?? $s;
   };
 
-  $pdf_escape = function(string $s) use ($pdf_to_1252): string {
+  $pdf_escape = function (string $s) use ($pdf_to_1252): string {
     $s = $pdf_to_1252($s);
     $s = str_replace('\\', '\\\\', $s);
     $s = str_replace('(', '\\(', $s);
@@ -365,20 +414,20 @@ if ($export === 'excel' || $export === 'pdf') {
     return $s;
   };
 
-  $pdf_trunc = function(string $s, int $max) : string {
+  $pdf_trunc = function (string $s, int $max): string {
     $s = trim($s);
     if ($s === '') return '';
     if (function_exists('mb_strlen') && function_exists('mb_substr')) {
       if (mb_strlen($s, 'UTF-8') <= $max) return $s;
-      return mb_substr($s, 0, max(1,$max-1), 'UTF-8') . '…';
+      return mb_substr($s, 0, max(1, $max - 1), 'UTF-8') . '…';
     }
     if (strlen($s) <= $max) return $s;
-    return substr($s, 0, max(1,$max-1)) . '...';
+    return substr($s, 0, max(1, $max - 1)) . '...';
   };
 
   // PDF builder
   $objects = [];
-  $addObj = function(string $body) use (&$objects): int {
+  $addObj = function (string $body) use (&$objects): int {
     $objects[] = $body;
     return count($objects); // obj number starts at 1
   };
@@ -387,32 +436,32 @@ if ($export === 'excel' || $export === 'pdf') {
   $pageH = 841.89;
   $m = 36.0;        // margin
   $x0 = $m;
-  $usableW = $pageW - 2*$m;
+  $usableW = $pageW - 2 * $m;
 
   // colunas (somatório = $usableW)
   $cols = [
-    ['k'=>'id',     't'=>'ID',        'w'=>22, 'a'=>'L', 'max'=>4],
-    ['k'=>'dt',     't'=>'Data/Hora', 'w'=>64, 'a'=>'L', 'max'=>16],
-    ['k'=>'venda',  't'=>'Venda',     'w'=>32, 'a'=>'L', 'max'=>7],
-    ['k'=>'cliente','t'=>'Cliente',   'w'=>85, 'a'=>'L', 'max'=>20],
-    ['k'=>'tipo',   't'=>'Tipo',      'w'=>38, 'a'=>'C', 'max'=>8],
-    ['k'=>'produto','t'=>'Produto',   'w'=>82, 'a'=>'L', 'max'=>20],
-    ['k'=>'qtd',    't'=>'Qtd',       'w'=>22, 'a'=>'C', 'max'=>4],
-    ['k'=>'valor',  't'=>'Valor',     'w'=>40, 'a'=>'R', 'max'=>10],
-    ['k'=>'motivo', 't'=>'Motivo',    'w'=>50, 'a'=>'L', 'max'=>12],
-    ['k'=>'obs',    't'=>'Obs',       'w'=>50, 'a'=>'L', 'max'=>12],
-    ['k'=>'status', 't'=>'Status',    'w'=>38, 'a'=>'C', 'max'=>10],
+    ['k' => 'id',     't' => 'ID',        'w' => 22, 'a' => 'L', 'max' => 4],
+    ['k' => 'dt',     't' => 'Data/Hora', 'w' => 64, 'a' => 'L', 'max' => 16],
+    ['k' => 'venda',  't' => 'Venda',     'w' => 32, 'a' => 'L', 'max' => 7],
+    ['k' => 'cliente', 't' => 'Cliente',   'w' => 85, 'a' => 'L', 'max' => 20],
+    ['k' => 'tipo',   't' => 'Tipo',      'w' => 38, 'a' => 'C', 'max' => 8],
+    ['k' => 'produto', 't' => 'Produto',   'w' => 82, 'a' => 'L', 'max' => 20],
+    ['k' => 'qtd',    't' => 'Qtd',       'w' => 22, 'a' => 'C', 'max' => 4],
+    ['k' => 'valor',  't' => 'Valor',     'w' => 40, 'a' => 'R', 'max' => 10],
+    ['k' => 'motivo', 't' => 'Motivo',    'w' => 50, 'a' => 'L', 'max' => 12],
+    ['k' => 'obs',    't' => 'Obs',       'w' => 50, 'a' => 'L', 'max' => 12],
+    ['k' => 'status', 't' => 'Status',    'w' => 38, 'a' => 'C', 'max' => 10],
   ];
 
   $rowH = 16.0;
   $headH = 18.0;
 
-  $drawRect = function(float $x, float $y, float $w, float $h, string $mode) : string {
+  $drawRect = function (float $x, float $y, float $w, float $h, string $mode): string {
     // mode: S (stroke), f (fill), B (fill+stroke)
     return sprintf("%.2f %.2f %.2f %.2f re %s\n", $x, $y, $w, $h, $mode);
   };
 
-  $textAt = function(float $x, float $y, string $txt, int $size, string $align='L', float $w=0.0) use ($pdf_escape): string {
+  $textAt = function (float $x, float $y, string $txt, int $size, string $align = 'L', float $w = 0.0) use ($pdf_escape): string {
     // y is baseline in PDF coords
     $txt = $pdf_escape($txt);
     if ($txt === '') return '';
@@ -422,19 +471,19 @@ if ($export === 'excel' || $export === 'pdf') {
       $x = max($x, $x + $w - $tw - 2);
     } elseif ($align === 'C' && $w > 0) {
       $tw = strlen($txt) * $size * 0.5;
-      $x = $x + max(0, ($w - $tw)/2);
+      $x = $x + max(0, ($w - $tw) / 2);
     }
     return "BT /F1 {$size} Tf 0 g " . sprintf("%.2f %.2f Td", $x, $y) . " ({$txt}) Tj ET\n";
   };
 
-  $buildHeader = function(string $title, string $geradoEm, string $filtroTxt, array $tot) use ($pageW,$pageH,$m,$x0,$usableW,$textAt): array {
+  $buildHeader = function (string $title, string $geradoEm, string $filtroTxt, array $tot) use ($pageW, $pageH, $m, $x0, $usableW, $textAt): array {
     $content = "";
 
     // title centered
     $titleY = $pageH - $m - 18;
     // manual center: compute x based on length
     $tw = strlen($title) * 14 * 0.5;
-    $tx = max($m, ($pageW - $tw)/2);
+    $tx = max($m, ($pageW - $tw) / 2);
     $content .= $textAt($tx, $titleY, $title, 14, 'L');
 
     // meta lines
@@ -458,7 +507,7 @@ if ($export === 'excel' || $export === 'pdf') {
   $title = "PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES";
   [$headContent, $yTopTable] = $buildHeader($title, $geradoEm, $filtroTxt, $tot);
 
-  $newPage = function() use (&$pagesContent, $headContent, $yTopTable): array {
+  $newPage = function () use (&$pagesContent, $headContent, $yTopTable): array {
     $content = $headContent;
     $y = $yTopTable;
     return [$content, $y];
@@ -468,7 +517,7 @@ if ($export === 'excel' || $export === 'pdf') {
   [$content, $y] = $newPage();
 
   // table header
-  $tableHeader = function(float $x0, float $y, array $cols) use ($drawRect, $textAt, $headH): string {
+  $tableHeader = function (float $x0, float $y, array $cols) use ($drawRect, $textAt, $headH): string {
     $c = "";
     // header background
     $c .= "0.95 g\n0.85 G 0.6 w\n"; // fill grey, stroke light
@@ -482,7 +531,7 @@ if ($export === 'excel' || $export === 'pdf') {
     return $c;
   };
 
-  $tableRow = function(float $x0, float $y, array $cols, array $data) use ($drawRect, $textAt, $rowH): string {
+  $tableRow = function (float $x0, float $y, array $cols, array $data) use ($drawRect, $textAt, $rowH): string {
     $c = "";
     $c .= "0 G 0.6 w\n"; // stroke
     $x = $x0;
@@ -574,7 +623,7 @@ if ($export === 'excel' || $export === 'pdf') {
 
   // fix Parent reference in each page object (replace "0 0 R" with pagesObj)
   foreach ($pageObjs as $idx => $pnum) {
-    $objects[$pnum-1] = str_replace("/Parent 0 0 R", "/Parent {$pagesObj} 0 R", $objects[$pnum-1]);
+    $objects[$pnum - 1] = str_replace("/Parent 0 0 R", "/Parent {$pagesObj} 0 R", $objects[$pnum - 1]);
   }
 
   // Catalog
@@ -583,17 +632,17 @@ if ($export === 'excel' || $export === 'pdf') {
   // write file
   $pdf = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
   $offsets = [0];
-  for ($i=1; $i<=count($objects); $i++) {
+  for ($i = 1; $i <= count($objects); $i++) {
     $offsets[$i] = strlen($pdf);
-    $pdf .= $i . " 0 obj\n" . $objects[$i-1] . "\nendobj\n";
+    $pdf .= $i . " 0 obj\n" . $objects[$i - 1] . "\nendobj\n";
   }
   $xrefPos = strlen($pdf);
-  $pdf .= "xref\n0 " . (count($objects)+1) . "\n";
+  $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
   $pdf .= "0000000000 65535 f \n";
-  for ($i=1; $i<=count($objects); $i++) {
+  for ($i = 1; $i <= count($objects); $i++) {
     $pdf .= str_pad((string)$offsets[$i], 10, '0', STR_PAD_LEFT) . " 00000 n \n";
   }
-  $pdf .= "trailer\n<< /Size " . (count($objects)+1) . " /Root {$catalogObj} 0 R >>\nstartxref\n{$xrefPos}\n%%EOF";
+  $pdf .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root {$catalogObj} 0 R >>\nstartxref\n{$xrefPos}\n%%EOF";
 
   $fn = 'devolucoes_' . date('Ymd_His') . '.pdf';
   header('Content-Type: application/pdf');
@@ -685,7 +734,7 @@ if (isset($_GET['ajax'])) {
     // ✅ listagem paginada (10 em 10)
     if ($ajax === 'list') {
       if (!table_exists($pdo, 'devolucoes')) {
-        json_out(['ok' => true, 'items' => [], 'page'=>1,'per'=>10,'total_rows'=>0,'total_pages'=>1,'totals'=>[]]);
+        json_out(['ok' => true, 'items' => [], 'page' => 1, 'per' => 10, 'total_rows' => 0, 'total_pages' => 1, 'totals' => []]);
       }
 
       $page = to_int($_GET['page'] ?? 1, 1, 999999);
@@ -724,7 +773,7 @@ if (isset($_GET['ajax'])) {
         $items[] = [
           'id'      => (int)($r['id'] ?? 0),
           'saleNo'  => ($r['venda_no'] !== null ? (int)$r['venda_no'] : null),
-          'customer'=> (string)($r['cliente'] ?? ''),
+          'customer' => (string)($r['cliente'] ?? ''),
           'date'    => (string)($r['data'] ?? ''),
           'time'    => (string)($r['hora'] ?? ''),
           'type'    => (string)($r['tipo'] ?? 'TOTAL'),
@@ -747,7 +796,7 @@ if (isset($_GET['ajax'])) {
         GROUP BY UPPER(TRIM(d.status))
       ");
       $stT->execute($p2);
-      $tot = ['ABERTO'=>0.0,'CONCLUIDO'=>0.0,'CANCELADO'=>0.0,'GERAL'=>0.0];
+      $tot = ['ABERTO' => 0.0, 'CONCLUIDO' => 0.0, 'CANCELADO' => 0.0, 'GERAL' => 0.0];
       while ($r = $stT->fetch(PDO::FETCH_ASSOC)) {
         $stx = strtoupper((string)($r['st'] ?? 'ABERTO'));
         $sum = (float)($r['s'] ?? 0);
@@ -826,7 +875,10 @@ if (isset($_GET['ajax'])) {
           $stOld = $pdo->prepare("SELECT * FROM devolucoes WHERE id = ? FOR UPDATE");
           $stOld->execute([$id]);
           $old = $stOld->fetch(PDO::FETCH_ASSOC);
-          if (!$old) { $pdo->rollBack(); json_out(['ok' => false, 'msg' => 'Devolução não encontrada para editar.'], 404); }
+          if (!$old) {
+            $pdo->rollBack();
+            json_out(['ok' => false, 'msg' => 'Devolução não encontrada para editar.'], 404);
+          }
         }
 
         $oldEffect = $old ? devolucao_effect($pdo, [
@@ -924,7 +976,10 @@ if (isset($_GET['ajax'])) {
         $stOld = $pdo->prepare("SELECT * FROM devolucoes WHERE id = ? FOR UPDATE");
         $stOld->execute([$id]);
         $old = $stOld->fetch(PDO::FETCH_ASSOC);
-        if (!$old) { $pdo->rollBack(); json_out(['ok' => false, 'msg' => 'Devolução não encontrada.'], 404); }
+        if (!$old) {
+          $pdo->rollBack();
+          json_out(['ok' => false, 'msg' => 'Devolução não encontrada.'], 404);
+        }
 
         $oldEffect = devolucao_effect($pdo, [
           'status' => (string)($old['status'] ?? ''),
@@ -968,6 +1023,7 @@ $flash = flash_pop();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -983,56 +1039,316 @@ $flash = flash_pop();
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    .main-btn.btn-compact{ height:38px!important; padding:8px 14px!important; font-size:13px!important; line-height:1!important }
-    .icon-btn{ height:34px!important; width:42px!important; padding:0!important; display:inline-flex!important; align-items:center!important; justify-content:center!important }
-    .form-control.compact,.form-select.compact{ height:38px; padding:8px 12px; font-size:13px }
-    .cardx{ border:1px solid rgba(148,163,184,.28); border-radius:16px; background:#fff; overflow:hidden }
-    .cardx .head{ padding:12px 14px; border-bottom:1px solid rgba(148,163,184,.22); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap }
-    .cardx .body{ padding:14px }
-    .muted{ font-size:12px; color:#64748b }
-    .pill{ padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.25); font-weight:900; font-size:12px; display:inline-flex; align-items:center; gap:8px; background:rgba(248,250,252,.7) }
-    .pill.ok{ border-color:rgba(34,197,94,.25); background:rgba(240,253,244,.9); color:#166534 }
-    .pill.warn{ border-color:rgba(245,158,11,.28); background:rgba(255,251,235,.9); color:#92400e }
-    .chip-toggle{ display:flex; gap:10px; flex-wrap:wrap }
-    .chip{ border:1px solid rgba(148,163,184,.35); border-radius:999px; padding:8px 12px; cursor:pointer; font-weight:900; font-size:12px; user-select:none; background:#fff }
-    .chip.active{ background:rgba(239,246,255,.75); border-color:rgba(37,99,235,.55); outline:2px solid rgba(37,99,235,.25) }
-    .reason-box{ border:1px solid rgba(148,163,184,.25); border-radius:14px; padding:10px 12px; background:rgba(248,250,252,.7) }
-    .table td,.table th{ vertical-align:middle }
-    .table-responsive{ -webkit-overflow-scrolling:touch }
-    #tbDev{ width:100%; min-width:1320px } /* ✅ mais largo pra não embolar */
-    #tbDev th{ font-weight:900; color:#0f172a }
-    #tbDev td{ font-weight:600; color:#0f172a }
-    .money{ font-weight:1000; color:#0b5ed7 }
-    .mini{ font-size:12px; color:#475569; font-weight:800 }
-    .badge-soft{ font-weight:1000; border-radius:999px; padding:6px 10px; font-size:11px; display:inline-flex; align-items:center; justify-content:center }
-    .b-open{ background:rgba(255,251,235,.95); color:#92400e; border:1px solid rgba(245,158,11,.25) }
-    .b-done{ background:rgba(240,253,244,.95); color:#166534; border:1px solid rgba(34,197,94,.25) }
-    .b-cancel{ background:rgba(254,242,242,.95); color:#991b1b; border:1px solid rgba(239,68,68,.25) }
-    .toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; width:100% }
-    .toolbar .grow{ flex:1 1 260px; min-width:240px }
-    .toolbar .w180{ min-width:180px }
-    .pager-box{ display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:12px }
-    .pager-box .page-text{ font-size:12px; color:#64748b; font-weight:900 }
-    .pager-box .btn-disabled{ opacity:.45; pointer-events:none }
-    .search-wrap{ position:relative }
-    .suggest{ position:absolute; z-index:9999; left:0; right:0; top:calc(100% + 6px); background:#fff; border:1px solid rgba(148,163,184,.25); border-radius:14px; box-shadow:0 10px 30px rgba(15,23,42,.10); max-height:280px; overflow:auto; display:none }
-    .suggest .it{ padding:10px 12px; cursor:pointer; display:flex; justify-content:space-between; gap:10px }
-    .suggest .it:hover{ background:rgba(241,245,249,.9) }
-    .suggest .t{ font-weight:900; font-size:12px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-    .suggest .s{ font-size:12px; color:#64748b; white-space:nowrap }
-    .sale-box{ border:1px solid rgba(148,163,184,.22); border-radius:14px; background:rgba(248,250,252,.7); padding:10px 12px; max-height:180px; overflow:auto; -webkit-overflow-scrolling:touch; }
-    .sale-row{ display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px dashed rgba(148,163,184,.35); font-size:12px; }
-    .sale-row:last-child{ border-bottom:none }
-    .sale-row .left{ min-width:0 }
-    .sale-row .left .nm{ font-weight:900; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:320px }
-    .sale-row .left .cd{ color:#64748b; font-size:12px }
-    .sale-row .right{ white-space:nowrap; text-align:right }
-    .sale-mini{ font-size:12px; color:#64748b; margin-top:6px; display:flex; justify-content:space-between; gap:10px }
+    .main-btn.btn-compact {
+      height: 38px !important;
+      padding: 8px 14px !important;
+      font-size: 13px !important;
+      line-height: 1 !important
+    }
+
+    .icon-btn {
+      height: 34px !important;
+      width: 42px !important;
+      padding: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important
+    }
+
+    .form-control.compact,
+    .form-select.compact {
+      height: 38px;
+      padding: 8px 12px;
+      font-size: 13px
+    }
+
+    .cardx {
+      border: 1px solid rgba(148, 163, 184, .28);
+      border-radius: 16px;
+      background: #fff;
+      overflow: hidden
+    }
+
+    .cardx .head {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(148, 163, 184, .22);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap
+    }
+
+    .cardx .body {
+      padding: 14px
+    }
+
+    .muted {
+      font-size: 12px;
+      color: #64748b
+    }
+
+    .pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, .25);
+      font-weight: 900;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(248, 250, 252, .7)
+    }
+
+    .pill.ok {
+      border-color: rgba(34, 197, 94, .25);
+      background: rgba(240, 253, 244, .9);
+      color: #166534
+    }
+
+    .pill.warn {
+      border-color: rgba(245, 158, 11, .28);
+      background: rgba(255, 251, 235, .9);
+      color: #92400e
+    }
+
+    .chip-toggle {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap
+    }
+
+    .chip {
+      border: 1px solid rgba(148, 163, 184, .35);
+      border-radius: 999px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 12px;
+      user-select: none;
+      background: #fff
+    }
+
+    .chip.active {
+      background: rgba(239, 246, 255, .75);
+      border-color: rgba(37, 99, 235, .55);
+      outline: 2px solid rgba(37, 99, 235, .25)
+    }
+
+    .reason-box {
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(248, 250, 252, .7)
+    }
+
+    .table td,
+    .table th {
+      vertical-align: middle
+    }
+
+    .table-responsive {
+      -webkit-overflow-scrolling: touch
+    }
+
+    #tbDev {
+      width: 100%;
+      min-width: 1320px
+    }
+
+    /* ✅ mais largo pra não embolar */
+    #tbDev th {
+      font-weight: 900;
+      color: #0f172a
+    }
+
+    #tbDev td {
+      font-weight: 600;
+      color: #0f172a
+    }
+
+    .money {
+      font-weight: 1000;
+      color: #0b5ed7
+    }
+
+    .mini {
+      font-size: 12px;
+      color: #475569;
+      font-weight: 800
+    }
+
+    .badge-soft {
+      font-weight: 1000;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .b-open {
+      background: rgba(255, 251, 235, .95);
+      color: #92400e;
+      border: 1px solid rgba(245, 158, 11, .25)
+    }
+
+    .b-done {
+      background: rgba(240, 253, 244, .95);
+      color: #166534;
+      border: 1px solid rgba(34, 197, 94, .25)
+    }
+
+    .b-cancel {
+      background: rgba(254, 242, 242, .95);
+      color: #991b1b;
+      border: 1px solid rgba(239, 68, 68, .25)
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      width: 100%
+    }
+
+    .toolbar .grow {
+      flex: 1 1 260px;
+      min-width: 240px
+    }
+
+    .toolbar .w180 {
+      min-width: 180px
+    }
+
+    .pager-box {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px
+    }
+
+    .pager-box .page-text {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 900
+    }
+
+    .pager-box .btn-disabled {
+      opacity: .45;
+      pointer-events: none
+    }
+
+    .search-wrap {
+      position: relative
+    }
+
+    .suggest {
+      position: absolute;
+      z-index: 9999;
+      left: 0;
+      right: 0;
+      top: calc(100% + 6px);
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
+      max-height: 280px;
+      overflow: auto;
+      display: none
+    }
+
+    .suggest .it {
+      padding: 10px 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px
+    }
+
+    .suggest .it:hover {
+      background: rgba(241, 245, 249, .9)
+    }
+
+    .suggest .t {
+      font-weight: 900;
+      font-size: 12px;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .suggest .s {
+      font-size: 12px;
+      color: #64748b;
+      white-space: nowrap
+    }
+
+    .sale-box {
+      border: 1px solid rgba(148, 163, 184, .22);
+      border-radius: 14px;
+      background: rgba(248, 250, 252, .7);
+      padding: 10px 12px;
+      max-height: 180px;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .sale-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(148, 163, 184, .35);
+      font-size: 12px;
+    }
+
+    .sale-row:last-child {
+      border-bottom: none
+    }
+
+    .sale-row .left {
+      min-width: 0
+    }
+
+    .sale-row .left .nm {
+      font-weight: 900;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px
+    }
+
+    .sale-row .left .cd {
+      color: #64748b;
+      font-size: 12px
+    }
+
+    .sale-row .right {
+      white-space: nowrap;
+      text-align: right
+    }
+
+    .sale-mini {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px
+    }
   </style>
 </head>
 
 <body>
-  <div id="preloader"><div class="spinner"></div></div>
+  <div id="preloader">
+    <div class="spinner"></div>
+  </div>
 
   <!-- sidebar (mantive igual ao seu layout) -->
   <aside class="sidebar-nav-wrapper">
@@ -1041,22 +1357,105 @@ $flash = flash_pop();
         <img src="assets/images/logo/logo.svg" alt="logo" />
       </a>
     </div>
+
     <nav class="sidebar-nav">
       <ul>
-        <li class="nav-item"><a href="dashboard.php"><span class="text">Dashboard</span></a></li>
-        <li class="nav-item"><a href="vendas.php"><span class="text">Vendas</span></a></li>
+        <li class="nav-item">
+          <a href="dashboard.php">
+            <span class="icon">
+              <i class="lni lni-dashboard"></i>
+            </span>
+            <span class="text">Dashboard</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="vendas.php">
+            <span class="icon">
+              <i class="lni lni-cart"></i>
+            </span>
+            <span class="text">Vendas</span>
+          </a>
+        </li>
+
         <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
+            <span class="icon">
+              <i class="lni lni-layers"></i>
+            </span>
             <span class="text">Operações</span>
           </a>
-          <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
-            <li><a href="vendidos.php">Vendidos</a></li>
+          <ul id="ddmenu_operacoes" class="collapse dropdown-nav show">
+            <li><a href="vendidos.php" class="active">Vendidos</a></li>
             <li><a href="fiados.php">À Prazo</a></li>
-            <li><a href="devolucoes.php" class="active">Devoluções</a></li>
+            <li><a href="devolucoes.php">Devoluções</a></li>
           </ul>
         </li>
-        <li class="nav-item"><a href="relatorios.php"><span class="text">Relatórios</span></a></li>
-        <li class="nav-item"><a href="suporte.php"><span class="text">Suporte</span></a></li>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
+            <span class="icon">
+              <i class="lni lni-package"></i>
+            </span>
+            <span class="text">Estoque</span>
+          </a>
+          <ul id="ddmenu_estoque" class="collapse dropdown-nav">
+            <li><a href="produtos.php">Produtos</a></li>
+            <li><a href="inventario.php">Inventário</a></li>
+            <li><a href="entradas.php">Entradas</a></li>
+            <li><a href="saidas.php">Saídas</a></li>
+            <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
+            <span class="icon">
+              <i class="lni lni-users"></i>
+            </span>
+            <span class="text">Cadastros</span>
+          </a>
+          <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
+            <li><a href="clientes.php">Clientes</a></li>
+            <li><a href="fornecedores.php">Fornecedores</a></li>
+            <li><a href="categorias.php">Categorias</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item">
+          <a href="relatorios.php">
+            <span class="icon">
+              <i class="lni lni-clipboard"></i>
+            </span>
+            <span class="text">Relatórios</span>
+          </a>
+        </li>
+
+        <span class="divider">
+          <hr />
+        </span>
+
+        <li class="nav-item nav-item-has-children">
+          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
+            <span class="icon">
+              <i class="lni lni-cog"></i>
+            </span>
+            <span class="text">Configurações</span>
+          </a>
+          <ul id="ddmenu_config" class="collapse dropdown-nav">
+            <li><a href="usuarios.php">Usuários e Permissões</a></li>
+            <li><a href="parametros.php">Parâmetros do Sistema</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item">
+          <a href="suporte.php">
+            <span class="icon">
+              <i class="lni lni-whatsapp"></i>
+            </span>
+            <span class="text">Suporte</span>
+          </a>
+        </li>
       </ul>
     </nav>
   </aside>
@@ -1318,6 +1717,7 @@ $flash = flash_pop();
         .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
     }
+
     function moneyToNumber(txt) {
       let s = String(txt ?? "").trim();
       if (!s) return 0;
@@ -1325,10 +1725,12 @@ $flash = flash_pop();
       const n = Number(s);
       return isNaN(n) ? 0 : n;
     }
+
     function numberToMoney(n) {
       const v = Number(n || 0);
       return "R$ " + v.toFixed(2).replace(".", ",");
     }
+
     function fetchJSON(url, opts = {}) {
       return fetch(url, opts).then(async r => {
         const data = await r.json().catch(() => ({}));
@@ -1336,15 +1738,21 @@ $flash = flash_pop();
         return data;
       });
     }
-    function pad2(n) { return String(n).padStart(2, "0"); }
+
+    function pad2(n) {
+      return String(n).padStart(2, "0");
+    }
+
     function nowISODate() {
       const d = new Date();
       return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
     }
+
     function nowISOTime() {
       const d = new Date();
       return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
     }
+
     function fmtBRDateTime(dateISO, timeISO) {
       if (!dateISO) return "";
       const [y, m, d] = String(dateISO).split("-");
@@ -1360,7 +1768,8 @@ $flash = flash_pop();
     let SALE_ITEMS = [];
     let LAST_SALES = [];
     let LAST_PROD = [];
-    let saleTimer = null, prodTimer = null;
+    let saleTimer = null,
+      prodTimer = null;
     let saleAbort = null;
 
     // listagem paginada
@@ -1429,14 +1838,24 @@ $flash = flash_pop();
         formMode.innerHTML = `<i class="lni lni-pencil"></i> NOVO`;
       }
     }
-    function hideSaleSuggest() { saleSuggest.style.display = "none"; saleSuggest.innerHTML = ""; }
-    function hideProdSuggest() { prodSuggest.style.display = "none"; prodSuggest.innerHTML = ""; }
+
+    function hideSaleSuggest() {
+      saleSuggest.style.display = "none";
+      saleSuggest.innerHTML = "";
+    }
+
+    function hideProdSuggest() {
+      prodSuggest.style.display = "none";
+      prodSuggest.innerHTML = "";
+    }
+
     function hideSaleItems() {
       saleItemsWrap.style.display = "none";
       saleItemsBox.innerHTML = "";
       saleMiniLeft.textContent = "—";
       saleMiniRight.textContent = "—";
     }
+
     function clearSaleSelection() {
       SALE_SELECTED = null;
       SALE_ITEMS = [];
@@ -1494,7 +1913,10 @@ $flash = flash_pop();
     // SALE SEARCH
     // =========================
     function showSaleSuggest(list) {
-      if (!list.length) { hideSaleSuggest(); return; }
+      if (!list.length) {
+        hideSaleSuggest();
+        return;
+      }
       saleSuggest.innerHTML = list.map(v => `
         <div class="it" data-id="${Number(v.id)}">
           <div style="min-width:0">
@@ -1514,7 +1936,9 @@ $flash = flash_pop();
       if (saleAbort) saleAbort.abort();
       saleAbort = new AbortController();
       const url = `${AJAX_URL}?ajax=buscarVendas&q=` + encodeURIComponent(s);
-      const r = await fetch(url, { signal: saleAbort.signal });
+      const r = await fetch(url, {
+        signal: saleAbort.signal
+      });
       const data = await r.json().catch(() => ({}));
       if (!r.ok || data.ok === false) return [];
       return (data.items || []);
@@ -1524,7 +1948,11 @@ $flash = flash_pop();
       clearTimeout(saleTimer);
       saleTimer = setTimeout(async () => {
         const q = dVendaNo.value.trim();
-        if (!q) { LAST_SALES = []; hideSaleSuggest(); return; }
+        if (!q) {
+          LAST_SALES = [];
+          hideSaleSuggest();
+          return;
+        }
         LAST_SALES = await searchSales(q);
         showSaleSuggest(LAST_SALES);
       }, 140);
@@ -1554,7 +1982,10 @@ $flash = flash_pop();
     }
 
     function renderSaleItems() {
-      if (!SALE_SELECTED || !SALE_ITEMS.length) { hideSaleItems(); return; }
+      if (!SALE_SELECTED || !SALE_ITEMS.length) {
+        hideSaleItems();
+        return;
+      }
       saleItemsWrap.style.display = "block";
 
       saleItemsBox.innerHTML = SALE_ITEMS.map(it => `
@@ -1601,7 +2032,10 @@ $flash = flash_pop();
     // =========================
     // PRODUCT SUGGEST (PARCIAL)
     // =========================
-    function onlyDigits(s) { return String(s || "").replace(/\D+/g, ""); }
+    function onlyDigits(s) {
+      return String(s || "").replace(/\D+/g, "");
+    }
+
     function filterProductsLocal(q) {
       const s = String(q || "").trim().toLowerCase();
       if (!s) return [];
@@ -1620,7 +2054,10 @@ $flash = flash_pop();
     }
 
     function showProdSuggest(list) {
-      if (!list.length) { hideProdSuggest(); return; }
+      if (!list.length) {
+        hideProdSuggest();
+        return;
+      }
       prodSuggest.innerHTML = list.map(p => `
         <div class="it" data-code="${safeText(p.code)}">
           <div style="min-width:0">
@@ -1637,7 +2074,10 @@ $flash = flash_pop();
     function refreshProdDebounced() {
       clearTimeout(prodTimer);
       prodTimer = setTimeout(() => {
-        if (TYPE !== "PARCIAL") { hideProdSuggest(); return; }
+        if (TYPE !== "PARCIAL") {
+          hideProdSuggest();
+          return;
+        }
         LAST_PROD = filterProductsLocal(dProduto.value);
         showProdSuggest(LAST_PROD);
       }, 120);
@@ -1685,13 +2125,13 @@ $flash = flash_pop();
 
     function setTotals(totals) {
       const aberto = Number(totals?.ABERTO || 0);
-      const concl  = Number(totals?.CONCLUIDO || 0);
+      const concl = Number(totals?.CONCLUIDO || 0);
       const cancel = Number(totals?.CANCELADO || 0);
-      const geral  = Number(totals?.GERAL || (aberto+concl+cancel));
+      const geral = Number(totals?.GERAL || (aberto + concl + cancel));
       tAberto.textContent = numberToMoney(aberto);
-      tConcl.textContent  = numberToMoney(concl);
+      tConcl.textContent = numberToMoney(concl);
       tCancel.textContent = numberToMoney(cancel);
-      tGeral.textContent  = numberToMoney(geral);
+      tGeral.textContent = numberToMoney(geral);
     }
 
     function renderTable() {
@@ -1703,7 +2143,7 @@ $flash = flash_pop();
         const sale = x.saleNo ? `#${safeText(x.saleNo)}` : "—";
         const cust = x.customer ? safeText(x.customer) : "Consumidor Final";
         const prod = (String(x.type).toUpperCase() === "PARCIAL") ? (x.product ? safeText(x.product) : "—") : "—";
-        const qty  = (String(x.type).toUpperCase() === "PARCIAL") ? Number(x.qty || 1) : "—";
+        const qty = (String(x.type).toUpperCase() === "PARCIAL") ? Number(x.qty || 1) : "—";
         const valor = numberToMoney(x.amount);
         const motivo = motivoLabel(x.reason);
         const obs = (x.note && String(x.note).trim()) ? safeText(x.note) : "—";
@@ -1731,7 +2171,11 @@ $flash = flash_pop();
     }
 
     function renderPager() {
-      if (TOTAL_PAGES <= 1) { pagerDev.style.display = "none"; pagerDev.innerHTML = ""; return; }
+      if (TOTAL_PAGES <= 1) {
+        pagerDev.style.display = "none";
+        pagerDev.innerHTML = "";
+        return;
+      }
       pagerDev.style.display = "flex";
 
       const prevDisabled = CUR_PAGE <= 1 ? "btn-disabled" : "";
@@ -1792,19 +2236,36 @@ $flash = flash_pop();
     function validateForm() {
       const date = String(dData.value || "").trim();
       const time = String(dHora.value || "").trim();
-      if (!date) return { ok:false, msg:"Informe a data." };
-      if (!time) return { ok:false, msg:"Informe a hora." };
+      if (!date) return {
+        ok: false,
+        msg: "Informe a data."
+      };
+      if (!time) return {
+        ok: false,
+        msg: "Informe a hora."
+      };
 
       const amt = moneyToNumber(dValor.value);
-      if (amt <= 0) return { ok:false, msg:"Informe um valor (R$) maior que zero." };
+      if (amt <= 0) return {
+        ok: false,
+        msg: "Informe um valor (R$) maior que zero."
+      };
 
       if (TYPE === "PARCIAL") {
         const prod = String(dProduto.value || "").trim();
-        if (!prod) return { ok:false, msg:"Informe o produto para devolução parcial." };
+        if (!prod) return {
+          ok: false,
+          msg: "Informe o produto para devolução parcial."
+        };
         const q = Number(dQtd.value || 0);
-        if (!q || q < 1) return { ok:false, msg:"Informe a quantidade (mín. 1)." };
+        if (!q || q < 1) return {
+          ok: false,
+          msg: "Informe a quantidade (mín. 1)."
+        };
       }
-      return { ok:true };
+      return {
+        ok: true
+      };
     }
 
     async function saveDev() {
@@ -1831,7 +2292,9 @@ $flash = flash_pop();
       try {
         const r = await fetchJSON(`${AJAX_URL}?ajax=save`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify(payload)
         });
         alert(r.msg || "Devolução salva!");
@@ -1866,7 +2329,10 @@ $flash = flash_pop();
 
       clearSaleSelection();
       setFormMode("EDIT");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
     }
 
     async function deleteDev(id) {
@@ -1874,8 +2340,13 @@ $flash = flash_pop();
       try {
         await fetchJSON(`${AJAX_URL}?ajax=del`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ csrf_token: CSRF, id: Number(id) })
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            csrf_token: CSRF,
+            id: Number(id)
+          })
         });
         resetForm();
         await loadList(CUR_PAGE);
@@ -1899,8 +2370,12 @@ $flash = flash_pop();
       u.searchParams.delete('per');
       return u.toString();
     }
-    btnExcel.addEventListener('click', () => { window.location.href = exportUrl('excel'); });
-    btnPdf.addEventListener('click', () => { window.location.href = exportUrl('pdf'); });
+    btnExcel.addEventListener('click', () => {
+      window.location.href = exportUrl('excel');
+    });
+    btnPdf.addEventListener('click', () => {
+      window.location.href = exportUrl('pdf');
+    });
 
     // =========================
     // EVENTS
@@ -1930,9 +2405,18 @@ $flash = flash_pop();
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "F2") { e.preventDefault(); saveDev(); }
-      if (e.key === "F4") { e.preventDefault(); qDev.focus(); }
-      if (e.key === "Escape") { hideSaleSuggest(); hideProdSuggest(); }
+      if (e.key === "F2") {
+        e.preventDefault();
+        saveDev();
+      }
+      if (e.key === "F4") {
+        e.preventDefault();
+        qDev.focus();
+      }
+      if (e.key === "Escape") {
+        hideSaleSuggest();
+        hideProdSuggest();
+      }
     });
 
     async function init() {
@@ -1942,4 +2426,5 @@ $flash = flash_pop();
     init();
   </script>
 </body>
+
 </html>
