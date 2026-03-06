@@ -940,8 +940,11 @@ function fmtMoney($v): string
 
                 <div class="checkout-body">
                   <div class="mb-3">
-                    <label class="form-label">Cliente</label>
-                    <input class="form-control compact" id="cCliente" placeholder="CPF ou Nome (Opcional)" autocomplete="off" />
+                    <label class="form-label">Cliente (CPF ou Nome)</label>
+                    <div class="search-wrap">
+                      <input class="form-control compact" id="cCliente" placeholder="Pesquisar por CPF ou Nome..." autocomplete="off" />
+                      <div class="suggest" id="suggestCliente"></div>
+                    </div>
                     <div id="fiadoFeedback" class="fiado-alert">Cliente não localizado. Pressione F6 para cadastrar. (Obrigatório para venda À Prazo)</div>
                     <div class="muted mt-1">Consumidor final (se vazio).</div>
                   </div>
@@ -1174,13 +1177,16 @@ function fmtMoney($v): string
     let PAY_SELECTED = "DINHEIRO";
     let DELIVERY_MODE = "PRESENCIAL";
     let LAST_SUGG = [];
+    let LAST_CLIENT_SUGG = [];
     let searchTimer = null;
+    let clientSearchTimer = null;
 
     /* ==============================
        DOM
     ============================== */
     const qProd = document.getElementById("qProd");
     const suggest = document.getElementById("suggest");
+    const suggestCliente = document.getElementById("suggestCliente");
     const qGlobal = document.getElementById("qGlobal");
     const previewName = document.getElementById("previewName");
 
@@ -1799,6 +1805,73 @@ function fmtMoney($v): string
     ============================== */
     let SELECTED_CLIENT = null;
 
+    function showSuggestCliente(list) {
+      if (!list.length) {
+        suggestCliente.style.display = "none";
+        suggestCliente.innerHTML = "";
+        return;
+      }
+      suggestCliente.innerHTML = list.map(c => `
+        <div class="it client-it" data-id="${Number(c.id)}">
+          <div class="meta">
+            <div class="t">${safeText(c.nome)}</div>
+            <div class="s">CPF: ${safeText(c.cpf || "N/A")} • Tel: ${safeText(c.telefone || "N/A")}</div>
+          </div>
+        </div>
+      `).join("");
+      suggestCliente.style.display = "block";
+      suggestCliente.scrollTop = 0;
+    }
+
+    function hideSuggestCliente() {
+      suggestCliente.style.display = "none";
+      suggestCliente.innerHTML = "";
+    }
+
+    async function searchClientsRealTime() {
+      const q = cCliente.value.trim();
+      if (!q) {
+        LAST_CLIENT_SUGG = [];
+        hideSuggestCliente();
+        SELECTED_CLIENT = null;
+        cCliente.classList.remove("client-verified", "client-unverified");
+        document.getElementById("fiadoFeedback").style.display = "none";
+        return;
+      }
+
+      try {
+        const r = await fetchJSON(`assets/dados/clientes_api.php?action=search&q=${encodeURIComponent(q)}`);
+        LAST_CLIENT_SUGG = r.items || [];
+        showSuggestCliente(LAST_CLIENT_SUGG);
+      } catch (e) {
+        console.error("Erro ao buscar clientes:", e);
+      }
+    }
+
+    cCliente.addEventListener("input", () => {
+      clearTimeout(clientSearchTimer);
+      clientSearchTimer = setTimeout(searchClientsRealTime, 200);
+    });
+
+    suggestCliente.addEventListener("click", (e) => {
+      const it = e.target.closest(".it");
+      if (!it) return;
+      const id = Number(it.getAttribute("data-id") || 0);
+      const client = LAST_CLIENT_SUGG.find(c => Number(c.id) === id);
+      if (client) {
+        selectClient(client);
+      }
+    });
+
+    function selectClient(client) {
+      SELECTED_CLIENT = client;
+      cCliente.value = client.nome;
+      cCliente.classList.add("client-verified");
+      cCliente.classList.remove("client-unverified");
+      document.getElementById("fiadoFeedback").style.display = "none";
+      hideSuggestCliente();
+    }
+
     async function checkClientFiado() {
       const q = cCliente.value.trim();
       const fiadoFeedback = document.getElementById("fiadoFeedback");
@@ -1810,21 +1883,29 @@ function fmtMoney($v): string
         return;
       }
 
+      // Se já estiver verificado e o nome bater, não faz nada
+      if (SELECTED_CLIENT && SELECTED_CLIENT.nome === q) return;
+
       try {
         const r = await fetchJSON(`assets/dados/clientes_api.php?action=search&q=${encodeURIComponent(q)}`);
         const found = r.items && r.items.length > 0;
         
         if (found) {
-          // Se houver mais de um, por enquanto pegamos o primeiro ou o exato
           const exact = r.items.find(it => it.nome.toLowerCase() === q.toLowerCase() || it.cpf === q);
-          SELECTED_CLIENT = exact || r.items[0];
-          cCliente.value = SELECTED_CLIENT.nome; // Auto-completa com o nome correto
-          cCliente.classList.add("client-verified");
-          cCliente.classList.remove("client-unverified");
-          fiadoFeedback.style.display = "none";
+          if (exact) {
+            selectClient(exact);
+          } else {
+            // Se não for exato, mas tiver resultados, deixa o usuário escolher da lista ou marca como não verificado se saiu do campo
+            SELECTED_CLIENT = null;
+            cCliente.classList.remove("client-verified");
+            if (PAY_SELECTED === "FIADO" || isMultiFiado()) {
+              cCliente.classList.add("client-unverified");
+              fiadoFeedback.style.display = "block";
+            }
+          }
         } else {
           SELECTED_CLIENT = null;
-          if (PAY_SELECTED === "FIADO" || isMultiFiado()) { // Keep "FIADO" for internal logic
+          if (PAY_SELECTED === "FIADO" || isMultiFiado()) {
             cCliente.classList.add("client-unverified");
             cCliente.classList.remove("client-verified");
             fiadoFeedback.style.display = "block";
@@ -1839,7 +1920,18 @@ function fmtMoney($v): string
       }
     }
 
-    cCliente.addEventListener("blur", checkClientFiado);
+    cCliente.addEventListener("blur", () => {
+      setTimeout(hideSuggestCliente, 200); // Delay para permitir o click na sugestão
+      checkClientFiado();
+    });
+
+    cCliente.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && LAST_CLIENT_SUGG.length > 0) {
+        e.preventDefault();
+        selectClient(LAST_CLIENT_SUGG[0]);
+      }
+      if (e.key === "Escape") hideSuggestCliente();
+    });
 
     // Modal de Cadastro de Cliente
     const modalClienteHTML = `
