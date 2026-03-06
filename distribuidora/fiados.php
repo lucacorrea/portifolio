@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
@@ -25,22 +26,30 @@ if (!function_exists('db')) {
 $pdo = db();
 
 if (!function_exists('csrf_token')) {
-    function csrf_token() { return $_SESSION['csrf_token'] ?? ''; }
+    function csrf_token()
+    {
+        return $_SESSION['csrf_token'] ?? '';
+    }
 }
 if (!function_exists('e')) {
-    function e($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+    function e($s)
+    {
+        return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+    }
 }
 
 $csrf = csrf_token();
 
 if (!function_exists('brl')) {
-    function brl($v): string {
+    function brl($v): string
+    {
         return 'R$ ' . number_format((float)$v, 2, ',', '.');
     }
 }
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -53,20 +62,68 @@ if (!function_exists('brl')) {
     <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" />
     <link rel="stylesheet" href="assets/css/main.css" />
     <style>
-        .card-fiado { border-radius: 16px; border: 1px solid rgba(148,163,184,0.15); background: #fff; margin-bottom: 20px; }
-        .card-fiado .head { padding: 15px 20px; border-bottom: 1px solid rgba(148,163,184,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .card-fiado .body { padding: 20px; }
-        .table-custom thead th { background: #f8fafc; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; border-bottom: 2px solid #edf2f7; }
-        .status-badge { padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 800; }
-        .status-aberto { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
-        .status-pago { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
-        .val-total { font-weight: 800; color: #0f172a; }
-        .val-restante { font-weight: 800; color: #ef4444; }
-        .btn-pay { border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 700; transition: all 0.2s; }
+        .card-fiado {
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            background: #fff;
+            margin-bottom: 20px;
+        }
+
+        .card-fiado .head {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-fiado .body {
+            padding: 20px;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .status-aberto {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #ffedd5;
+        }
+
+        .status-pago {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #dcfce7;
+        }
+
+        .val-total {
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .val-restante {
+            font-weight: 800;
+            color: #ef4444;
+        }
+
+        .btn-pay {
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
     </style>
 </head>
+
 <body>
-    <div id="preloader"><div class="spinner"></div></div>
+    <div id="preloader">
+        <div class="spinner"></div>
+    </div>
 
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
@@ -112,7 +169,7 @@ if (!function_exists('brl')) {
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
                         <li><a href="vendidos.php">Vendidos</a></li>
-                        <li><a href="fiados.php"  class="active">À Prazo</a></li>
+                        <li><a href="fiados.php" class="active">À Prazo</a></li>
                         <li><a href="devolucoes.php">Devoluções</a></li>
                     </ul>
                 </li>
@@ -215,7 +272,7 @@ if (!function_exists('brl')) {
                             </div>
                         </div>
                     </div>
-                       <div class="col-lg-7 col-md-7 col-6">
+                    <div class="col-lg-7 col-md-7 col-6">
                         <div class="header-right">
                             <div class="profile-box ml-15">
                                 <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
@@ -298,7 +355,9 @@ if (!function_exists('brl')) {
                                     </tr>
                                 </thead>
                                 <tbody id="fiadosTableBody">
-                                    <tr><td colspan="8" class="text-center p-5">Carregando...</td></tr>
+                                    <tr>
+                                        <td colspan="8" class="text-center p-5">Carregando...</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -333,7 +392,12 @@ if (!function_exists('brl')) {
                     <div class="table-responsive mb-4">
                         <table class="table table-sm border p-2">
                             <thead class="bg-light">
-                                <tr><th>Produto</th><th>Qtd</th><th class="text-end">Preço</th><th class="text-end">Subtotal</th></tr>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Qtd</th>
+                                    <th class="text-end">Preço</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
                             </thead>
                             <tbody id="detItemsBody"></tbody>
                         </table>
@@ -342,7 +406,11 @@ if (!function_exists('brl')) {
                     <div class="table-responsive">
                         <table class="table table-sm border p-2">
                             <thead class="bg-light">
-                                <tr><th>Data/Hora</th><th>Método</th><th class="text-end">Valor</th></tr>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Método</th>
+                                    <th class="text-end">Valor</th>
+                                </tr>
                             </thead>
                             <tbody id="detPaysBody"></tbody>
                         </table>
@@ -390,7 +458,10 @@ if (!function_exists('brl')) {
         const modalPagamento = new bootstrap.Modal(document.getElementById('modalPagamento'));
 
         function brlJs(v) {
-            return parseFloat(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            return parseFloat(v).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            });
         }
 
         async function loadFiados() {
@@ -402,12 +473,12 @@ if (!function_exists('brl')) {
                     canal: document.getElementById('fCanal').value,
                     q: document.getElementById('fSearch').value
                 });
-                
+
                 const r = await fetch(`${API}?${qs}`).then(res => res.json());
                 const body = document.getElementById('fiadosTableBody');
-                
+
                 if (!r.ok) throw new Error(r.msg);
-                
+
                 if (r.data.length === 0) {
                     body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Nenhuma venda à prazo encontrada.</td></tr>';
                     return;
@@ -436,7 +507,7 @@ if (!function_exists('brl')) {
                         </td>
                     </tr>
                 `).join('');
-                
+
             } catch (e) {
                 alert('Erro ao carregar dados: ' + e.message);
             }
@@ -446,24 +517,26 @@ if (!function_exists('brl')) {
             try {
                 const r = await fetch(`${API}?action=get_details&id=${id}`).then(res => res.json());
                 if (!r.ok) throw new Error(r.msg);
-                
+
                 const f = r.fiado;
                 document.getElementById('detVendaId').innerText = f.venda_id;
                 document.getElementById('detCliente').innerText = f.cliente_nome;
                 document.getElementById('detTotal').innerText = brlJs(f.valor_total);
                 document.getElementById('detPago').innerText = brlJs(f.valor_pago);
                 document.getElementById('detRestante').innerText = brlJs(f.valor_restante);
-                
+
                 document.getElementById('detItemsBody').innerHTML = r.items.map(it => `
                     <tr><td>${it.nome}</td><td>${it.qtd} ${it.unidade}</td><td class="text-end">${brlJs(it.preco_unit)}</td><td class="text-end">${brlJs(it.subtotal)}</td></tr>
                 `).join('');
-                
+
                 document.getElementById('detPaysBody').innerHTML = r.payments.map(p => `
                     <tr><td>${new Date(p.created_at).toLocaleString()}</td><td>${p.metodo}</td><td class="text-end">${brlJs(p.valor)}</td></tr>
                 `).join('') || '<tr><td colspan="3" class="text-center">Nenhum pagamento registrado.</td></tr>';
-                
+
                 modalDetalhes.show();
-            } catch (e) { alert(e.message); }
+            } catch (e) {
+                alert(e.message);
+            }
         }
 
         function openPay(id, cliente, restante) {
@@ -482,21 +555,32 @@ if (!function_exists('brl')) {
             const valor = parseFloat(valorRaw);
             const metodo = document.getElementById('payMetodo').value;
             if (isNaN(valor) || valor <= 0) return alert('Informe um valor válido.');
-            
+
             try {
                 const r = await fetch(`${API}?action=pay`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, valor, metodo })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id,
+                        valor,
+                        metodo
+                    })
                 }).then(res => res.json());
                 if (!r.ok) throw new Error(r.msg);
                 alert(r.msg);
                 modalPagamento.hide();
                 loadFiados();
-            } catch (e) { alert(e.message); }
+            } catch (e) {
+                alert(e.message);
+            }
         });
 
-        document.getElementById('filterForm').addEventListener('submit', (e) => { e.preventDefault(); loadFiados(); });
+        document.getElementById('filterForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            loadFiados();
+        });
 
         document.getElementById('payValor').addEventListener('input', function() {
             let v = this.value.replace(/\D/g, '');
@@ -508,5 +592,5 @@ if (!function_exists('brl')) {
         window.onload = loadFiados;
     </script>
 </body>
-</html>
 
+</html>
