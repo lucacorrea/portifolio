@@ -552,9 +552,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                                             $badgeTxt = 'DIVERGENTE';
                                         }
                                     }
-
-                                    $imgDb  = trim((string)($r['imagem'] ?? ''));
-                                    $imgUrl = img_url_from_db($imgDb);
                                     ?>
                                     <tr data-produto-id="<?= $produtoId ?>" data-categoria="<?= $catId ?>" data-situacao="<?= e($sit) ?>">
                                         <td class="cod"><?= e((string)$r['codigo']) ?></td>
