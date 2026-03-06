@@ -102,44 +102,40 @@ if (!function_exists('brl')) {
             color: #ef4444;
         }
 
-        .page-nav {
-            flex: 0 0 auto;
-            display: flex;
-            gap: 8px;
-            align-items: right;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-            margin-top: 10px;
-            padding-top: 6px;
-        }
-
-        .page-btn {
-            border: 1px solid rgba(148, 163, 184, .35);
-            background: #fff;
-            border-radius: 10px;
-            padding: 8px 10px;
-            font-weight: 900;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .page-btn[disabled] {
-            opacity: .55;
-            cursor: not-allowed;
-        }
-
-        .page-info {
-            font-size: 12px;
-            color: #64748b;
-            font-weight: 900;
-        }
-
         .btn-pay {
             border-radius: 8px;
             padding: 5px 10px;
             font-size: 12px;
             font-weight: 700;
             transition: all 0.2s;
+        }
+
+        /* ✅ paginação (parecida com vendidios) */
+        .pager-box {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 14px 16px;
+            border-top: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .pager-box .page-text {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 800;
+        }
+
+        .pager-box .btn-disabled {
+            opacity: .45;
+            pointer-events: none;
+        }
+
+        .pager-left {
+            margin-right: auto;
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 700;
         }
     </style>
 </head>
@@ -266,7 +262,7 @@ if (!function_exists('brl')) {
                     <div class="col-lg-5 col-md-5 col-6">
                         <div class="header-left d-flex align-items-center">
                             <div class="menu-toggle-btn mr-15">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover" type="button">
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
@@ -361,11 +357,17 @@ if (!function_exists('brl')) {
                                 </tbody>
                             </table>
                         </div>
-                        <!-- Paginação -->
-                        <div class="page-nav d-flex justify-content-center align-items-center gap-3 p-3 border-top">
-                            <button class="page-btn btn btn-sm btn-outline-primary" id="btnPrev">← Anterior</button>
-                            <span class="page-info" id="pageInfo">Página 1 / 1</span>
-                            <button class="page-btn btn btn-sm btn-outline-primary" id="btnNext">Próxima →</button>
+
+                        <!-- ✅ Paginação -->
+                        <div class="pager-box">
+                            <div class="pager-left" id="pgSummary">—</div>
+                            <a href="#0" id="pgPrev" class="main-btn light-btn btn-hover btn-sm btn-disabled" title="Anterior">
+                                <i class="lni lni-chevron-left"></i>
+                            </a>
+                            <span class="page-text" id="pgInfo">Página 1/1</span>
+                            <a href="#0" id="pgNext" class="main-btn light-btn btn-hover btn-sm btn-disabled" title="Próxima">
+                                <i class="lni lni-chevron-right"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -463,85 +465,211 @@ if (!function_exists('brl')) {
         const modalDetalhes = new bootstrap.Modal(document.getElementById('modalDetalhes'));
         const modalPagamento = new bootstrap.Modal(document.getElementById('modalPagamento'));
 
+        const STATE = {
+            per: 10,
+            page: 1,
+            totalPages: 1,
+            totalRows: 0,
+            rowsAll: [],
+            serverPaging: false,
+        };
+
+        const $body = document.getElementById('fiadosTableBody');
+        const $pgPrev = document.getElementById('pgPrev');
+        const $pgNext = document.getElementById('pgNext');
+        const $pgInfo = document.getElementById('pgInfo');
+        const $pgSummary = document.getElementById('pgSummary');
+
         function brlJs(v) {
-            return parseFloat(v).toLocaleString('pt-BR', {
+            return parseFloat(v || 0).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
             });
         }
 
-        async function loadFiados() {
+        function toDT(s) {
             try {
+                const d = new Date(String(s));
+                return isNaN(d.getTime()) ? String(s) : d.toLocaleString();
+            } catch (e) {
+                return String(s);
+            }
+        }
+
+        function setPagerUI() {
+            $pgInfo.textContent = `Página ${STATE.page}/${STATE.totalPages}`;
+
+            const canPrev = STATE.page > 1;
+            const canNext = STATE.page < STATE.totalPages;
+
+            $pgPrev.classList.toggle('btn-disabled', !canPrev);
+            $pgNext.classList.toggle('btn-disabled', !canNext);
+
+            const shownFrom = STATE.totalRows ? ((STATE.page - 1) * STATE.per + 1) : 0;
+            const shownTo = Math.min(STATE.page * STATE.per, STATE.totalRows);
+
+            $pgSummary.textContent = STATE.totalRows ?
+                `Mostrando ${shownFrom}-${shownTo} de ${STATE.totalRows}` :
+                '—';
+        }
+
+        function renderRows(rows) {
+            if (!rows || rows.length === 0) {
+                $body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Nenhuma venda à prazo encontrada.</td></tr>';
+                return;
+            }
+
+            $body.innerHTML = rows.map(f => `
+                <tr>
+                    <td class="ps-4"><b>#${f.venda_id}</b></td>
+                    <td>${toDT(f.created_at)}</td>
+                    <td>${(f.cliente_nome ?? '')}</td>
+                    <td class="val-total">${brlJs(f.valor_total)}</td>
+                    <td class="text-success">${brlJs(f.valor_pago)}</td>
+                    <td class="val-restante">${brlJs(f.valor_restante)}</td>
+                    <td>
+                        <span class="status-badge status-${String(f.status || '').toLowerCase()}">${f.status}</span>
+                    </td>
+                    <td class="text-end pe-4">
+                        <button class="btn btn-light btn-pay" onclick="showDetails(${f.id})">
+                            <i class="lni lni-eye"></i> Detalhes
+                        </button>
+                        ${String(f.status || '') === 'ABERTO' ? `
+                            <button class="btn btn-success btn-pay text-white ms-1" onclick="openPay(${f.id}, '${String(f.cliente_nome ?? '').replace(/'/g, "\\'")}', ${Number(f.valor_restante || 0)})">
+                                <i class="lni lni-reply"></i> Pagar
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function sliceClientPage() {
+            const start = (STATE.page - 1) * STATE.per;
+            const end = start + STATE.per;
+            return STATE.rowsAll.slice(start, end);
+        }
+
+        async function loadFiados(resetPage = false) {
+            try {
+                if (resetPage) STATE.page = 1;
+
+                $body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Carregando...</td></tr>';
+
                 const qs = new URLSearchParams({
                     action: 'fetch',
                     di: document.getElementById('fDi').value,
                     df: document.getElementById('fDf').value,
                     canal: document.getElementById('fCanal').value,
-                    q: document.getElementById('fSearch').value
+                    q: document.getElementById('fSearch').value,
+                    // ✅ já manda page/per (se sua API suportar server-side, ela usa)
+                    page: String(STATE.page),
+                    per: String(STATE.per),
                 });
 
                 const r = await fetch(`${API}?${qs}`).then(res => res.json());
-                const body = document.getElementById('fiadosTableBody');
 
-                if (!r.ok) throw new Error(r.msg);
+                if (!r.ok) throw new Error(r.msg || 'Falha ao carregar fiados.');
 
-                if (r.data.length === 0) {
-                    body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Nenhuma venda à prazo encontrada.</td></tr>';
+                // ✅ Detecta paginação server-side se a API devolver meta/pagination
+                // Aceita alguns formatos comuns:
+                // - r.pagination: {page, per, totalRows, totalPages}
+                // - r.meta: {page, per, total, pages}
+                // - r.totalRows/r.totalPages/r.page/r.per
+                let server = false;
+                let page = STATE.page,
+                    per = STATE.per,
+                    totalRows = 0,
+                    totalPages = 1;
+
+                if (r.pagination && typeof r.pagination === 'object') {
+                    server = true;
+                    page = parseInt(r.pagination.page ?? page, 10) || page;
+                    per = parseInt(r.pagination.per ?? per, 10) || per;
+                    totalRows = parseInt(r.pagination.totalRows ?? r.pagination.total ?? 0, 10) || 0;
+                    totalPages = parseInt(r.pagination.totalPages ?? r.pagination.pages ?? 1, 10) || 1;
+                } else if (r.meta && typeof r.meta === 'object') {
+                    server = true;
+                    page = parseInt(r.meta.page ?? page, 10) || page;
+                    per = parseInt(r.meta.per ?? per, 10) || per;
+                    totalRows = parseInt(r.meta.total ?? 0, 10) || 0;
+                    totalPages = parseInt(r.meta.pages ?? 1, 10) || 1;
+                } else if (typeof r.totalRows !== 'undefined' || typeof r.totalPages !== 'undefined') {
+                    server = true;
+                    page = parseInt(r.page ?? page, 10) || page;
+                    per = parseInt(r.per ?? per, 10) || per;
+                    totalRows = parseInt(r.totalRows ?? 0, 10) || 0;
+                    totalPages = parseInt(r.totalPages ?? 1, 10) || 1;
+                }
+
+                STATE.serverPaging = server;
+
+                if (server) {
+                    // server-side: r.data já vem “10 em 10”
+                    STATE.page = page;
+                    STATE.per = per;
+                    STATE.totalRows = totalRows;
+                    STATE.totalPages = Math.max(1, totalPages);
+
+                    renderRows(Array.isArray(r.data) ? r.data : []);
+                    setPagerUI();
                     return;
                 }
 
-                body.innerHTML = r.data.map(f => `
-                    <tr>
-                        <td class="ps-4"><b>#${f.venda_id}</b></td>
-                        <td>${new Date(f.created_at).toLocaleString()}</td>
-                        <td>${f.cliente_nome}</td>
-                        <td class="val-total">${brlJs(f.valor_total)}</td>
-                        <td class="text-success">${brlJs(f.valor_pago)}</td>
-                        <td class="val-restante">${brlJs(f.valor_restante)}</td>
-                        <td>
-                            <span class="status-badge status-${f.status.toLowerCase()}">${f.status}</span>
-                        </td>
-                        <td class="text-end pe-4">
-                            <button class="btn btn-light btn-pay" onclick="showDetails(${f.id})">
-                                <i class="lni lni-eye"></i> Detalhes
-                            </button>
-                            ${f.status === 'ABERTO' ? `
-                                <button class="btn btn-success btn-pay text-white ms-1" onclick="openPay(${f.id}, '${f.cliente_nome}', ${f.valor_restante})">
-                                    <i class="lni lni-reply"></i> Pagar
-                                </button>
-                            ` : ''}
-                        </td>
-                    </tr>
-                `).join('');
+                // client-side: pega tudo e fatia 10/10
+                STATE.rowsAll = Array.isArray(r.data) ? r.data : [];
+                STATE.totalRows = STATE.rowsAll.length;
+                STATE.totalPages = Math.max(1, Math.ceil(STATE.totalRows / STATE.per));
 
+                // garante page válida
+                if (STATE.page > STATE.totalPages) STATE.page = STATE.totalPages;
+
+                renderRows(sliceClientPage());
+                setPagerUI();
             } catch (e) {
-                alert('Erro ao carregar dados: ' + e.message);
+                alert('Erro ao carregar dados: ' + (e.message || e));
+                $body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Erro ao carregar.</td></tr>';
+                STATE.totalRows = 0;
+                STATE.totalPages = 1;
+                STATE.page = 1;
+                setPagerUI();
             }
         }
 
         async function showDetails(id) {
             try {
                 const r = await fetch(`${API}?action=get_details&id=${id}`).then(res => res.json());
-                if (!r.ok) throw new Error(r.msg);
+                if (!r.ok) throw new Error(r.msg || 'Falha ao buscar detalhes.');
 
-                const f = r.fiado;
-                document.getElementById('detVendaId').innerText = f.venda_id;
-                document.getElementById('detCliente').innerText = f.cliente_nome;
+                const f = r.fiado || {};
+                document.getElementById('detVendaId').innerText = f.venda_id ?? '';
+                document.getElementById('detCliente').innerText = f.cliente_nome ?? '';
                 document.getElementById('detTotal').innerText = brlJs(f.valor_total);
                 document.getElementById('detPago').innerText = brlJs(f.valor_pago);
                 document.getElementById('detRestante').innerText = brlJs(f.valor_restante);
 
-                document.getElementById('detItemsBody').innerHTML = r.items.map(it => `
-                    <tr><td>${it.nome}</td><td>${it.qtd} ${it.unidade}</td><td class="text-end">${brlJs(it.preco_unit)}</td><td class="text-end">${brlJs(it.subtotal)}</td></tr>
-                `).join('');
+                const items = Array.isArray(r.items) ? r.items : [];
+                document.getElementById('detItemsBody').innerHTML = items.length ? items.map(it => `
+                    <tr>
+                        <td>${it.nome ?? ''}</td>
+                        <td>${it.qtd ?? ''} ${it.unidade ?? ''}</td>
+                        <td class="text-end">${brlJs(it.preco_unit)}</td>
+                        <td class="text-end">${brlJs(it.subtotal)}</td>
+                    </tr>
+                `).join('') : '<tr><td colspan="4" class="text-center">Sem itens.</td></tr>';
 
-                document.getElementById('detPaysBody').innerHTML = r.payments.map(p => `
-                    <tr><td>${new Date(p.created_at).toLocaleString()}</td><td>${p.metodo}</td><td class="text-end">${brlJs(p.valor)}</td></tr>
-                `).join('') || '<tr><td colspan="3" class="text-center">Nenhum pagamento registrado.</td></tr>';
+                const pays = Array.isArray(r.payments) ? r.payments : [];
+                document.getElementById('detPaysBody').innerHTML = pays.length ? pays.map(p => `
+                    <tr>
+                        <td>${toDT(p.created_at)}</td>
+                        <td>${p.metodo ?? ''}</td>
+                        <td class="text-end">${brlJs(p.valor)}</td>
+                    </tr>
+                `).join('') : '<tr><td colspan="3" class="text-center">Nenhum pagamento registrado.</td></tr>';
 
                 modalDetalhes.show();
             } catch (e) {
-                alert(e.message);
+                alert(e.message || e);
             }
         }
 
@@ -551,13 +679,13 @@ if (!function_exists('brl')) {
             document.getElementById('paySaldo').innerText = brlJs(restante);
             document.getElementById('payValor').value = '';
             modalPagamento.show();
-            setTimeout(() => document.getElementById('payValor').focus(), 500);
+            setTimeout(() => document.getElementById('payValor').focus(), 300);
         }
 
         document.getElementById('payForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('payFiadoId').value;
-            const valorRaw = document.getElementById('payValor').value.replace('.', '').replace(',', '.').replace(/[^\d.]/g, '');
+            const valorRaw = document.getElementById('payValor').value.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '');
             const valor = parseFloat(valorRaw);
             const metodo = document.getElementById('payMetodo').value;
             if (isNaN(valor) || valor <= 0) return alert('Informe um valor válido.');
@@ -574,18 +702,45 @@ if (!function_exists('brl')) {
                         metodo
                     })
                 }).then(res => res.json());
-                if (!r.ok) throw new Error(r.msg);
-                alert(r.msg);
+
+                if (!r.ok) throw new Error(r.msg || 'Falha ao pagar.');
+
+                alert(r.msg || 'Pagamento registrado!');
                 modalPagamento.hide();
-                loadFiados();
+
+                // mantém página atual
+                loadFiados(false);
             } catch (e) {
-                alert(e.message);
+                alert(e.message || e);
             }
         });
 
         document.getElementById('filterForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            loadFiados();
+            loadFiados(true); // ✅ reseta pra página 1
+        });
+
+        // ✅ Botões de paginação
+        $pgPrev.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (STATE.page <= 1) return;
+            STATE.page--;
+            if (STATE.serverPaging) loadFiados(false);
+            else {
+                renderRows(sliceClientPage());
+                setPagerUI();
+            }
+        });
+
+        $pgNext.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (STATE.page >= STATE.totalPages) return;
+            STATE.page++;
+            if (STATE.serverPaging) loadFiados(false);
+            else {
+                renderRows(sliceClientPage());
+                setPagerUI();
+            }
         });
 
         document.getElementById('payValor').addEventListener('input', function() {
@@ -595,7 +750,7 @@ if (!function_exists('brl')) {
             this.value = v;
         });
 
-        window.onload = loadFiados;
+        window.onload = () => loadFiados(true);
     </script>
 </body>
 
