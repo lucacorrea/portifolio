@@ -1056,14 +1056,17 @@ $initialTotais = $initial['totais'];
 
         .summary-card.s1 {
             background: #f8fafc;
+            border-left: 4px solid #4338ca;
         }
 
         .summary-card.s2 {
             background: #f0fdf4;
+            border-left: 4px solid #4338ca;
         }
 
         .summary-card.s3 {
             background: #f0f9ff;
+            border-left: 4px solid #4338ca;
         }
 
         .summary-card.s4 {
