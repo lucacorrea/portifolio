@@ -1,81 +1,102 @@
 <?php
 declare(strict_types=1);
+session_start();
 
 require_once __DIR__ . '/../../conexao.php';
 require_once __DIR__ . '/./_helpers.php';
 
-function backInv(): void { redirect_to('../../../inventario.php'); }
+$back = '../../../inventario.php';
+
+require_post_or_redirect($back);
+csrf_validate_or_redirect($back);
+
+$pdo = db();
+
+$produtoId = (int)($_POST['produto_id'] ?? 0);
+$contagemRaw = trim((string)($_POST['contagem'] ?? ''));
+
+if ($produtoId <= 0) {
+  flash_set('danger', 'Produto inválido.');
+  redirect_to($back);
+}
+
+$hasCount = ($contagemRaw !== '');
+$contagem = null;
+
+if ($hasCount) {
+  if (!preg_match('/^\d+$/', $contagemRaw)) {
+    flash_set('danger', 'Contagem inválida.');
+    redirect_to($back);
+  }
+  $contagem = (int)$contagemRaw;
+  if ($contagem < 0) $contagem = 0;
+}
 
 try {
-  require_post_or_redirect('../../../inventario.php');
-  csrf_validate_or_redirect('../../../inventario.php');
+  $pdo->beginTransaction();
 
-  $produtoId = (int)($_POST['produto_id'] ?? 0);
-  if ($produtoId <= 0) {
-    flash_set('danger', 'Produto inválido.');
-    backInv();
+  // estoque do produto
+  $p = $pdo->prepare("SELECT id, estoque FROM produtos WHERE id = ? LIMIT 1");
+  $p->execute([$produtoId]);
+  $prod = $p->fetch(PDO::FETCH_ASSOC);
+  if (!$prod) throw new RuntimeException('Produto não encontrado.');
+
+  $estoque = (int)$prod['estoque'];
+
+  // vendas e saídas
+  $calc = $pdo->prepare("
+    SELECT
+      COALESCE((SELECT SUM(qtd) FROM venda_itens WHERE produto_id = :pid), 0) AS vendas,
+      COALESCE((SELECT SUM(qtd) FROM saidas WHERE produto_id = :pid), 0) AS saidas
+  ");
+  $calc->execute([':pid' => $produtoId]);
+  $r = $calc->fetch(PDO::FETCH_ASSOC) ?: ['vendas'=>0,'saidas'=>0];
+
+  $vendas = (int)$r['vendas'];
+  $saidas = (int)$r['saidas'];
+
+  $soma = $estoque + $vendas + $saidas;
+
+  if (!$hasCount) {
+    // NAO_CONFERIDO
+    $up = $pdo->prepare("
+      INSERT INTO inventario_itens (produto_id, contagem, diferenca, situacao)
+      VALUES (?, NULL, NULL, 'NAO_CONFERIDO')
+      ON DUPLICATE KEY UPDATE
+        contagem = NULL,
+        diferenca = NULL,
+        situacao = 'NAO_CONFERIDO',
+        updated_at = NOW()
+    ");
+    $up->execute([$produtoId]);
+
+    $pdo->commit();
+    flash_set('success', 'Item marcado como NÃO CONFERIDO.');
+    redirect_to($back);
   }
 
-  $raw = $_POST['contagem'] ?? '';
-  $raw = is_string($raw) ? trim($raw) : '';
+  $diferenca = (int)$contagem - (int)$soma;
+  $situacao = ($diferenca === 0) ? 'OK' : 'DIVERGENTE';
 
-  $contagem = null;
-  if ($raw !== '') {
-    if (!ctype_digit($raw)) {
-      flash_set('danger', 'Contagem inválida.');
-      backInv();
-    }
-    $contagem = (int)$raw;
-    if ($contagem < 0) $contagem = 0;
-  }
-
-  $pdo = db();
-
-  $st = $pdo->prepare("SELECT estoque, nome FROM produtos WHERE id = :id LIMIT 1");
-  $st->execute([':id' => $produtoId]);
-  $p = $st->fetch(PDO::FETCH_ASSOC);
-
-  if (!$p) {
-    flash_set('danger', 'Produto não encontrado.');
-    backInv();
-  }
-
-  $sistema = (int)($p['estoque'] ?? 0);
-
-  if ($contagem === null) {
-    $diferenca = null;
-    $situacao = 'NAO_CONFERIDO';
-  } else {
-    $diferenca = $contagem - $sistema;
-    $situacao = ($diferenca === 0) ? 'OK' : 'DIVERGENTE';
-  }
-
-  $sql = "
-    INSERT INTO inventario_itens (produto_id, contagem, diferenca, situacao, created_at, updated_at)
-    VALUES (:produto_id, :contagem, :diferenca, :situacao, NOW(), NOW())
+  $st = $pdo->prepare("
+    INSERT INTO inventario_itens (produto_id, contagem, diferenca, situacao)
+    VALUES (?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       contagem = VALUES(contagem),
       diferenca = VALUES(diferenca),
       situacao = VALUES(situacao),
       updated_at = NOW()
-  ";
-  $q = $pdo->prepare($sql);
-  $q->bindValue(':produto_id', $produtoId, PDO::PARAM_INT);
+  ");
+  $st->execute([$produtoId, $contagem, $diferenca, $situacao]);
 
-  if ($contagem === null) $q->bindValue(':contagem', null, PDO::PARAM_NULL);
-  else $q->bindValue(':contagem', $contagem, PDO::PARAM_INT);
+  $pdo->commit();
+  flash_set('success', "Inventário salvo! Situação: {$situacao}.");
+  redirect_to($back);
 
-  if ($diferenca === null) $q->bindValue(':diferenca', null, PDO::PARAM_NULL);
-  else $q->bindValue(':diferenca', (int)$diferenca, PDO::PARAM_INT);
-
-  $q->bindValue(':situacao', $situacao, PDO::PARAM_STR);
-  $q->execute();
-
-  flash_set('success', 'Inventário salvo: ' . (string)$p['nome']);
-  backInv();
 } catch (Throwable $e) {
-  flash_set('danger', 'Erro ao salvar inventário.');
-  backInv();
+  if ($pdo->inTransaction()) $pdo->rollBack();
+  flash_set('danger', 'Erro ao salvar inventário: ' . $e->getMessage());
+  redirect_to($back);
 }
 
 ?>
