@@ -1,600 +1,577 @@
 <?php
-
 declare(strict_types=1);
 
 @date_default_timezone_set('America/Manaus');
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
-/* =========================
-   CONEXÃO (db(): PDO)
-========================= */
-$possibleConn = [
-  __DIR__ . '/assets/conexao.php',
-  __DIR__ . '/assets/php/conexao.php',
-  __DIR__ . '/assets/dados/_helpers.php', // se existir (não obrigatório)
-];
-foreach ($possibleConn as $f) {
-  if (is_file($f)) require_once $f;
-}
+require_once __DIR__ . '/assets/conexao.php';
+
+// (opcional) helpers do seu projeto
+$helpers = __DIR__ . '/assets/dados/relatorios/__helpers.php';
+if (is_file($helpers)) require_once $helpers;
 
 if (!function_exists('db')) {
   http_response_code(500);
-  echo "ERRO: função db():PDO não encontrada. Ajuste o include da conexão em dashboard.php.";
+  echo "ERRO: função db():PDO não encontrada. Verifique /assets/conexao.php";
   exit;
 }
 
+// fallback de escape
+if (!function_exists('e')) {
+  function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+}
+
 $pdo = db();
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
 /* =========================
-   HELPERS
+   Utils
 ========================= */
-function e(string $s): string
-{
-  return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+function br_money($n): string {
+  return 'R$ ' . number_format((float)$n, 2, ',', '.');
 }
-function brl($v): string
-{
-  return 'R$ ' . number_format((float)$v, 2, ',', '.');
+function br_date(?string $iso): string {
+  $iso = trim((string)$iso);
+  if ($iso === '') return '—';
+  $dt = DateTime::createFromFormat('Y-m-d', $iso);
+  return $dt ? $dt->format('d/m/Y') : '—';
 }
-function nint($v): string
-{
-  return number_format((float)$v, 0, ',', '.');
+function br_datetime(?string $sqlDt): string {
+  $sqlDt = trim((string)$sqlDt);
+  if ($sqlDt === '') return '—';
+  $dt = DateTime::createFromFormat('Y-m-d H:i:s', $sqlDt);
+  if (!$dt) { try { $dt = new DateTime($sqlDt); } catch (\Throwable $e) { return '—'; } }
+  return $dt->format('d/m/Y H:i');
 }
-function pct(float $cur, float $prev): float
-{
-  if ($prev <= 0) return $cur > 0 ? 100.0 : 0.0;
-  return (($cur - $prev) / $prev) * 100.0;
-}
-function dt(string $ymd): string
-{
-  $ts = strtotime($ymd);
-  return $ts ? date('d/m', $ts) : $ymd;
-}
-function monthPtShort(int $m): string
-{
-  static $map = [1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Abr', 5 => 'Mai', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago', 9 => 'Set', 10 => 'Out', 11 => 'Nov', 12 => 'Dez'];
-  return $map[$m] ?? (string)$m;
-}
-function buildMonthKeys(DateTimeImmutable $start, int $months): array
-{
-  $keys = [];
-  for ($i = 0; $i < $months; $i++) $keys[] = $start->modify("+{$i} months")->format('Y-m');
-  return $keys;
-}
-function buildMonthLabels(array $keys): array
-{
-  $labels = [];
-  foreach ($keys as $ym) {
-    [$y, $m] = array_map('intval', explode('-', $ym));
-    $labels[] = monthPtShort($m) . '/' . substr((string)$y, -2);
-  }
-  return $labels;
-}
-function fetchKeyVal(PDO $pdo, string $sql, array $params, string $keyCol, string $valCol): array
-{
-  $st = $pdo->prepare($sql);
-  $st->execute($params);
-  $out = [];
-  while ($r = $st->fetch()) $out[(string)$r[$keyCol]] = $r[$valCol];
-  return $out;
-}
-function table_exists(PDO $pdo, string $table): bool
-{
+function table_exists(PDO $pdo, string $table): bool {
   try {
-    $st = $pdo->prepare("SHOW TABLES LIKE :t");
-    $st->execute([':t' => $table]);
-    return (bool)$st->fetchColumn();
-  } catch (Throwable $e) {
+    $st = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+    $st->execute([$table]);
+    return (int)$st->fetchColumn() > 0;
+  } catch (\Throwable $e) {
     return false;
   }
 }
-
-/* =========================
-   ENDPOINTS JSON (MODAIS)
-========================= */
-$action = (string)($_GET['action'] ?? '');
-if ($action !== '') {
-  header('Content-Type: application/json; charset=UTF-8');
-
-  try {
-    if ($action === 'venda') {
-      $id = (int)($_GET['id'] ?? 0);
-      if ($id <= 0) throw new RuntimeException('ID inválido.');
-
-      $st = $pdo->prepare("
-        SELECT
-          id, data, cliente, canal, endereco, obs,
-          desconto_tipo, desconto_valor, taxa_entrega,
-          subtotal, total,
-          pagamento_mode, pagamento, pagamento_json,
-          created_at
-        FROM vendas
-        WHERE id = :id
-        LIMIT 1
-      ");
-      $st->execute([':id' => $id]);
-      $v = $st->fetch();
-      if (!$v) throw new RuntimeException('Venda não encontrada.');
-
-      // ✅ ITENS VENDIDOS (venda_itens + produtos)
-      $itens = [];
-      $itens_total = 0.0;
-      $itens_qtd = 0.0;
-
-      if (table_exists($pdo, 'venda_itens')) {
-        $stIt = $pdo->prepare("
-          SELECT
-            vi.id,
-            vi.venda_id,
-            vi.produto_id,
-            vi.codigo,
-            COALESCE(p.nome, vi.nome) AS nome,
-            vi.unidade,
-            vi.preco_unit,
-            vi.qtd,
-            vi.subtotal
-          FROM venda_itens vi
-          LEFT JOIN produtos p ON p.id = vi.produto_id
-          WHERE vi.venda_id = :id
-          ORDER BY vi.id ASC
-        ");
-        $stIt->execute([':id' => $id]);
-        $itens = $stIt->fetchAll() ?: [];
-
-        foreach ($itens as $it) {
-          $qtd = (float)($it['qtd'] ?? 0);
-          $sub = (float)($it['subtotal'] ?? 0);
-          $vu  = (float)($it['preco_unit'] ?? 0);
-          if ($sub <= 0 && $qtd > 0) $sub = $vu * $qtd; // fallback
-          $itens_total += $sub;
-          $itens_qtd   += $qtd;
-        }
-      }
-
-      // devoluções vinculadas (se existir devolucoes)
-      $devols = [];
-      if (table_exists($pdo, 'devolucoes')) {
-        $st2 = $pdo->prepare("
-          SELECT id, data, hora, tipo, produto, qtd, valor, motivo, obs, status
-          FROM devolucoes
-          WHERE venda_no = :id
-          ORDER BY id DESC
-          LIMIT 50
-        ");
-        $st2->execute([':id' => $id]);
-        $devols = $st2->fetchAll() ?: [];
-      }
-
-      echo json_encode([
-        'ok' => true,
-        'venda' => $v,
-        'itens' => $itens,
-        'itens_total' => $itens_total,
-        'itens_qtd' => $itens_qtd,
-        'devolucoes' => $devols
-      ], JSON_UNESCAPED_UNICODE);
-      exit;
-    }
-
-    if ($action === 'produto') {
-      $id = (int)($_GET['id'] ?? 0);
-      if ($id <= 0) throw new RuntimeException('ID inválido.');
-
-      $st = $pdo->prepare("
-        SELECT
-          p.id, p.codigo, p.nome, p.unidade, p.preco, p.estoque, p.minimo, p.status, p.obs, p.imagem,
-          c.nome AS categoria
-        FROM produtos p
-        LEFT JOIN categorias c ON c.id = p.categoria_id
-        WHERE p.id = :id
-        LIMIT 1
-      ");
-      $st->execute([':id' => $id]);
-      $p = $st->fetch();
-      if (!$p) throw new RuntimeException('Produto não encontrado.');
-
-      echo json_encode(['ok' => true, 'produto' => $p], JSON_UNESCAPED_UNICODE);
-      exit;
-    }
-
-    echo json_encode(['ok' => false, 'error' => 'Ação inválida.'], JSON_UNESCAPED_UNICODE);
-    exit;
-  } catch (Throwable $ex) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => $ex->getMessage()], JSON_UNESCAPED_UNICODE);
-    exit;
+function period_range(string $period): array {
+  $p = strtolower(trim($period));
+  $today = new DateTimeImmutable('today');
+  $end = $today;
+  if ($p === 'today' || $p === 'hoje') {
+    $start = $today;
+  } elseif ($p === '7d') {
+    $start = $today->sub(new DateInterval('P6D'));
+  } elseif ($p === '30d') {
+    $start = $today->sub(new DateInterval('P29D'));
+  } elseif ($p === '12m') {
+    $start = $today->modify('first day of this month')->sub(new DateInterval('P11M'));
+  } else {
+    $start = $today->sub(new DateInterval('P6D'));
   }
+  return [$start->format('Y-m-d'), $end->format('Y-m-d')];
 }
-
-/* =========================
-   PERÍODOS (SELECTS)
-========================= */
-$period = (string)($_GET['period'] ?? 'today'); // today | 7 | 30
-$days = 0;
-if ($period === '7') $days = 7;
-if ($period === '30') $days = 30;
-
-$today = new DateTimeImmutable('today');
-$rangeStart = $days > 0 ? $today->modify("-" . ($days - 1) . " days") : $today;
-$rangeEnd   = $today;
-
-$rangeStartStr = $rangeStart->format('Y-m-d');
-$rangeEndStr   = $rangeEnd->format('Y-m-d');
-$yesterday = $today->modify('-1 day')->format('Y-m-d');
-
-/* =========================
-   KPIs (vendas/produtos)
-========================= */
-$st = $pdo->prepare("
-  SELECT
-    COUNT(*) c,
-    COALESCE(SUM(CASE WHEN pagamento = 'FIADO' THEN 0 ELSE total END), 0) as cash_vendas,
-    COALESCE(SUM(total), 0) as total_vendas
-  FROM vendas
-  WHERE data = :d
-");
-$st->execute([':d' => $today->format('Y-m-d')]);
-$resToday = $st->fetch();
-
-// Pegar entradas de fiados de hoje
-$stEntrada = $pdo->prepare("SELECT COALESCE(SUM(valor_pago),0) FROM fiados WHERE venda_id IN (SELECT id FROM vendas WHERE data = :d)");
-$stEntrada->execute([':d' => $today->format('Y-m-d')]);
-$entradasHoje = (float)$stEntrada->fetchColumn();
-
-// Pegar pagamentos de fiados de hoje (tabela fiados_pagamentos)
-$stPagFiado = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE DATE(created_at) = :d");
-$stPagFiado->execute([':d' => $today->format('Y-m-d')]);
-$recFiadoHoje = (float)$stPagFiado->fetchColumn();
-
-$kToday = [
-    'c' => (int)$resToday['c'],
-    's' => (float)$resToday['cash_vendas'] + $entradasHoje + $recFiadoHoje,
-    'total_bruto' => (float)$resToday['total_vendas']
-];
-
-$st->execute([':d' => $yesterday]);
-$kYest = $st->fetch() ?: ['c' => 0, 's' => 0];
-
-$vendasHoje = (int)$kToday['c'];
-$vendasOntem = (int)$kYest['c'];
-$vendasHojePct = pct((float)$vendasHoje, (float)$vendasOntem);
-
-// Faturamento mês atual / mês anterior
-$firstThisMonth = $today->modify('first day of this month')->format('Y-m-d');
-$firstNextMonth = $today->modify('first day of next month')->format('Y-m-d');
-$firstPrevMonth = $today->modify('first day of last month')->format('Y-m-d');
-$firstThisMonth2 = $firstThisMonth;
-
-$st = $pdo->prepare("
-  SELECT
-    COALESCE(SUM(CASE WHEN pagamento = 'FIADO' THEN 0 ELSE total END), 0) as cash_vendas
-  FROM vendas
-  WHERE data >= :ini AND data < :fim
-");
-$st->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
-$cashVendasMes = (float)($st->fetch()['cash_vendas'] ?? 0);
-
-$stEntMes = $pdo->prepare("SELECT COALESCE(SUM(valor_pago),0) FROM fiados WHERE created_at >= :ini AND created_at < :fim");
-$stEntMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
-$entradasMes = (float)$stEntMes->fetchColumn();
-
-$stPagMes = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE created_at >= :ini AND created_at < :fim");
-$stPagMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
-$recFiadoMes = (float)$stPagMes->fetchColumn();
-
-$faturMes = $cashVendasMes + $entradasMes + $recFiadoMes;
-
-// Mês Anterior
-$st->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
-$cashVendasPrev = (float)($st->fetch()['cash_vendas'] ?? 0);
-
-$stEntMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
-$entradasPrev = (float)$stEntMes->fetchColumn();
-
-$stPagMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
-$recFiadoPrev = (float)$stPagMes->fetchColumn();
-
-$faturMesPrev = $cashVendasPrev + $entradasPrev + $recFiadoPrev;
-
-$faturMesPct = pct($faturMes, $faturMesPrev);
-
-// Itens em estoque (snapshot)
-$itensEstoque = 0;
-if (table_exists($pdo, 'produtos')) {
-  $st = $pdo->query("SELECT COALESCE(SUM(estoque),0) s FROM produtos WHERE status = 'ATIVO'");
-  $itensEstoque = (int)($st->fetch()['s'] ?? 0);
-}
-
-// “Saídas” (movimento) - se existir tabela saidas
-$movDays = 30;
-$movEnd = $today->format('Y-m-d');
-$movStart = $today->modify("-" . ($movDays - 1) . " days")->format('Y-m-d');
-$movPrevEnd = $today->modify("-{$movDays} days")->format('Y-m-d');
-$movPrevStart = $today->modify("-" . (($movDays * 2) - 1) . " days")->format('Y-m-d');
-
-$saidas30 = 0.0;
-$saidas30Prev = 0.0;
-if (table_exists($pdo, 'saidas')) {
-  $st = $pdo->prepare("SELECT COALESCE(SUM(qtd),0) s FROM saidas WHERE data BETWEEN :ini AND :fim");
-  $st->execute([':ini' => $movStart, ':fim' => $movEnd]);
-  $saidas30 = (float)($st->fetch()['s'] ?? 0);
-
-  $st->execute([':ini' => $movPrevStart, ':fim' => $movPrevEnd]);
-  $saidas30Prev = (float)($st->fetch()['s'] ?? 0);
-}
-$saidasPct = pct($saidas30, $saidas30Prev);
-
-// Ticket médio hoje / ontem
-$st = $pdo->prepare("SELECT COALESCE(AVG(total),0) a FROM vendas WHERE data = :d");
-$st->execute([':d' => $today->format('Y-m-d')]);
-$tickHoje = (float)($st->fetch()['a'] ?? 0);
-
-$st->execute([':d' => $yesterday]);
-$tickOntem = (float)($st->fetch()['a'] ?? 0);
-$tickPct = pct($tickHoje, $tickOntem);
-
-/* =========================
-   GRÁFICOS (12 meses / 6 meses)
-========================= */
-$start12 = $today->modify('first day of this month')->modify('-11 months');
-$keys12 = buildMonthKeys($start12, 12);
-$labels12 = buildMonthLabels($keys12);
-$start12Str = $start12->format('Y-m-d');
-$end12Str = $today->modify('first day of next month')->format('Y-m-d');
-
-// Chart1: faturamento real 12m (vendas_cash + entradas_fiado + pagamentos_fiados)
-$cashVendasMap = fetchKeyVal($pdo, "
-   SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(CASE WHEN pagamento='FIADO' THEN 0 ELSE total END),0) s
-   FROM vendas WHERE data >= :ini AND data < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
-
-$entFiadoMap = fetchKeyVal($pdo, "
-   SELECT DATE_FORMAT(created_at,'%Y-%m') ym, COALESCE(SUM(valor_pago),0) s
-   FROM fiados WHERE created_at >= :ini AND created_at < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
-
-$pagFiadoMap = fetchKeyVal($pdo, "
-   SELECT DATE_FORMAT(created_at,'%Y-%m') ym, COALESCE(SUM(valor),0) s
-   FROM fiados_pagamentos WHERE created_at >= :ini AND created_at < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
-
-$chart1 = [];
-foreach ($keys12 as $k) {
-    $chart1[] = (float)($cashVendasMap[$k] ?? 0) + (float)($entFiadoMap[$k] ?? 0) + (float)($pagFiadoMap[$k] ?? 0);
-}
-
-// Chart2: vendas por mês
-$cntMap = fetchKeyVal(
-  $pdo,
-  "SELECT DATE_FORMAT(data,'%Y-%m') ym, COUNT(*) c
-   FROM vendas
-   WHERE data >= :ini AND data < :fim
-   GROUP BY ym
-   ORDER BY ym",
-  [':ini' => $start12Str, ':fim' => $end12Str],
-  'ym',
-  'c'
-);
-$chart2 = [];
-foreach ($keys12 as $k) $chart2[] = (int)($cntMap[$k] ?? 0);
-
-// Chart3: Mix (se tiver saidas; senão fallback)
-$topCanals = [];
-if (table_exists($pdo, 'saidas')) {
-  try {
-    $st = $pdo->prepare("
-      SELECT canal, COUNT(DISTINCT pedido) c
-      FROM saidas
-      WHERE data >= :ini AND data < :fim
-      GROUP BY canal
-      ORDER BY c DESC
-      LIMIT 2
-    ");
-    $st->execute([':ini' => $start12Str, ':fim' => $end12Str]);
-    $topCanals = array_values(array_filter(array_map(fn($r) => (string)$r['canal'], $st->fetchAll())));
-  } catch (Throwable $ex) {
-    $topCanals = [];
+function months_last_n(int $n = 12): array {
+  $now = new DateTimeImmutable('first day of this month');
+  $pt = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  $keys = [];
+  $labels = [];
+  for ($i = $n - 1; $i >= 0; $i--) {
+    $d = $now->sub(new DateInterval('P' . $i . 'M'));
+    $ym = $d->format('Y-m');
+    $keys[] = $ym;
+    $m = (int)$d->format('n');
+    $y = $d->format('y');
+    $labels[] = $pt[$m - 1] . '/' . $y;
   }
+  return [$keys, $labels];
 }
-if (count($topCanals) < 2) $topCanals = ['PRESENCIAL', 'DELIVERY'];
-$mixA = $topCanals[0] ?? 'PRESENCIAL';
-$mixB = $topCanals[1] ?? 'DELIVERY';
+function venda_exclude_devolvidas_sql(): string {
+  return "NOT EXISTS (
+    SELECT 1 FROM devolucoes d
+    WHERE d.venda_no = v.id
+      AND d.status <> 'CANCELADO'
+  )";
+}
+function decode_pay_json(?string $json): array {
+  $json = trim((string)$json);
+  if ($json === '') return [];
+  $d = json_decode($json, true);
+  return (json_last_error() === JSON_ERROR_NONE && is_array($d)) ? $d : [];
+}
+function fmt_pay_json(?string $json): string {
+  $d = decode_pay_json($json);
+  if (!$d) return '';
+  // tenta normalizar chaves comuns: mode/method/paid/total/troco/fiado/parts
+  $lines = [];
 
-$mixMap = [];
-if (table_exists($pdo, 'saidas')) {
-  $st = $pdo->prepare("
-    SELECT DATE_FORMAT(data,'%Y-%m') ym, canal, COUNT(DISTINCT pedido) c
-    FROM saidas
-    WHERE data >= :ini AND data < :fim
-    GROUP BY ym, canal
-    ORDER BY ym
+  $mode = strtoupper((string)($d['mode'] ?? $d['pagamento_mode'] ?? ''));
+  $method = strtoupper((string)($d['method'] ?? $d['pagamento'] ?? ''));
+
+  if ($mode !== '')   $lines[] = "Modo: {$mode}";
+  if ($method !== '') $lines[] = "Método: {$method}";
+
+  $paid = $d['paid'] ?? $d['pago'] ?? null;
+  $troco = $d['troco'] ?? null;
+  $total = $d['total'] ?? null;
+
+  if ($total !== null && $total !== '') $lines[] = "Total: " . br_money((float)$total);
+  if ($paid !== null && $paid !== '')   $lines[] = "Pago: " . br_money((float)$paid);
+  if ($troco !== null && $troco !== '') $lines[] = "Troco: " . br_money((float)$troco);
+
+  // Multi (partes)
+  if (isset($d['parts']) && is_array($d['parts'])) {
+    $lines[] = "Partes:";
+    foreach ($d['parts'] as $p) {
+      if (!is_array($p)) continue;
+      $m = strtoupper((string)($p['method'] ?? $p['metodo'] ?? ''));
+      $v = (float)($p['value'] ?? $p['valor'] ?? 0);
+      $lines[] = "• {$m}: " . br_money($v);
+    }
+  }
+
+  // fiado
+  if (array_key_exists('fiado', $d) && $d['fiado']) {
+    $lines[] = "Fiado: SIM";
+  }
+
+  return implode("\n", $lines);
+}
+
+/* =========================
+   Queries (Dashboard)
+========================= */
+function chart_delivery(PDO $pdo, string $period): array {
+  [$ini, $fim] = period_range($period);
+  $sql = "
+    SELECT UPPER(COALESCE(v.canal,'PRESENCIAL')) AS canal, COUNT(*) AS qtd
+    FROM vendas v
+    WHERE v.data BETWEEN :ini AND :fim
+      AND " . venda_exclude_devolvidas_sql() . "
+    GROUP BY UPPER(COALESCE(v.canal,'PRESENCIAL'))
+    ORDER BY qtd DESC
+  ";
+  $st = $pdo->prepare($sql);
+  $st->execute([':ini'=>$ini, ':fim'=>$fim]);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $map = ['PRESENCIAL'=>0, 'DELIVERY'=>0];
+  foreach ($rows as $r) {
+    $c = strtoupper((string)$r['canal']);
+    $map[$c] = (int)$r['qtd'];
+  }
+  return [
+    'labels' => ['Presencial','Delivery'],
+    'values' => [(int)$map['PRESENCIAL'], (int)$map['DELIVERY']],
+    'ini' => $ini, 'fim' => $fim,
+  ];
+}
+
+function chart_payments(PDO $pdo, string $period): array {
+  [$ini, $fim] = period_range($period);
+  $hasFiados = table_exists($pdo, 'fiados');
+
+  $recebExpr = $hasFiados
+    ? "CASE WHEN UPPER(v.pagamento)='FIADO' THEN COALESCE((SELECT f.valor_pago FROM fiados f WHERE f.venda_id=v.id LIMIT 1),0) ELSE v.total END"
+    : "v.total";
+
+  $sql = "
+    SELECT UPPER(COALESCE(v.pagamento,'DINHEIRO')) AS pag,
+           COUNT(*) AS qtd,
+           COALESCE(SUM(v.total),0) AS total,
+           COALESCE(SUM($recebExpr),0) AS recebido
+    FROM vendas v
+    WHERE v.data BETWEEN :ini AND :fim
+      AND " . venda_exclude_devolvidas_sql() . "
+    GROUP BY UPPER(COALESCE(v.pagamento,'DINHEIRO'))
+    ORDER BY qtd DESC
+    LIMIT 10
+  ";
+  $st = $pdo->prepare($sql);
+  $st->execute([':ini'=>$ini, ':fim'=>$fim]);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $labels = [];
+  $values = [];
+  foreach ($rows as $r) {
+    $labels[] = (string)$r['pag'];
+    $values[] = (int)$r['qtd'];
+  }
+
+  // totais do período (exibido no card)
+  $st2 = $pdo->prepare("
+    SELECT COALESCE(SUM(v.total),0) AS total,
+           COALESCE(SUM($recebExpr),0) AS recebido
+    FROM vendas v
+    WHERE v.data BETWEEN :ini AND :fim
+      AND " . venda_exclude_devolvidas_sql() . "
   ");
-  $st->execute([':ini' => $start12Str, ':fim' => $end12Str]);
-  while ($r = $st->fetch()) {
-    $mixMap[(string)$r['ym']][(string)$r['canal']] = (int)$r['c'];
-  }
-}
-$chart3A = [];
-$chart3B = [];
-foreach ($keys12 as $k) {
-  $chart3A[] = (int)($mixMap[$k][$mixA] ?? 0);
-  $chart3B[] = (int)($mixMap[$k][$mixB] ?? 0);
-}
+  $st2->execute([':ini'=>$ini, ':fim'=>$fim]);
+  $agg = $st2->fetch(PDO::FETCH_ASSOC) ?: ['total'=>0,'recebido'=>0];
 
-$devMap = [];
-if (table_exists($pdo, 'devolucoes')) {
-  $devMap = fetchKeyVal(
-    $pdo,
-    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COUNT(*) c
-     FROM devolucoes
-     WHERE data >= :ini AND data < :fim
-     GROUP BY ym
-     ORDER BY ym",
-    [':ini' => $start12Str, ':fim' => $end12Str],
-    'ym',
-    'c'
-  );
-}
-$chart3C = [];
-foreach ($keys12 as $k) $chart3C[] = (int)($devMap[$k] ?? 0);
-
-// Chart4: Entradas x Saídas (6 meses)
-$start6 = $today->modify('first day of this month')->modify('-5 months');
-$keys6 = buildMonthKeys($start6, 6);
-$labels6 = buildMonthLabels($keys6);
-$start6Str = $start6->format('Y-m-d');
-$end6Str = $today->modify('first day of next month')->format('Y-m-d');
-
-$entMap = [];
-$saiMap = [];
-if (table_exists($pdo, 'entradas')) {
-  $entMap = fetchKeyVal(
-    $pdo,
-    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(qtd),0) s
-     FROM entradas
-     WHERE data >= :ini AND data < :fim
-     GROUP BY ym
-     ORDER BY ym",
-    [':ini' => $start6Str, ':fim' => $end6Str],
-    'ym',
-    's'
-  );
-}
-if (table_exists($pdo, 'saidas')) {
-  $saiMap = fetchKeyVal(
-    $pdo,
-    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(qtd),0) s
-     FROM saidas
-     WHERE data >= :ini AND data < :fim
-     GROUP BY ym
-     ORDER BY ym",
-    [':ini' => $start6Str, ':fim' => $end6Str],
-    'ym',
-    's'
-  );
+  return [
+    'labels' => $labels,
+    'values' => $values,
+    'total' => (float)$agg['total'],
+    'recebido' => (float)$agg['recebido'],
+    'ini' => $ini, 'fim' => $fim,
+  ];
 }
 
-$chart4Ent = [];
-$chart4Sai = [];
-foreach ($keys6 as $k) {
-  $chart4Ent[] = (float)($entMap[$k] ?? 0);
-  $chart4Sai[] = (float)($saiMap[$k] ?? 0);
-}
-
-// Chart5: Delivery x Presencial (no período)
-$st = $pdo->prepare("
-  SELECT canal, COUNT(*) c
-  FROM vendas
-  WHERE data BETWEEN :ini AND :fim
-  GROUP BY canal
-");
-$st->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
-$canalCounts = ['DELIVERY' => 0, 'PRESENCIAL' => 0];
-while ($r = $st->fetch()) {
-  $k = strtoupper((string)$r['canal']);
-  if (!isset($canalCounts[$k])) $canalCounts[$k] = 0;
-  $canalCounts[$k] += (int)$r['c'];
-}
-$deliveryQtd = (int)($canalCounts['DELIVERY'] ?? 0);
-$presencialQtd = (int)($canalCounts['PRESENCIAL'] ?? 0);
-
-// Chart6: pagamentos mais usados (no período)
-$st = $pdo->prepare("
-  SELECT pagamento, COUNT(*) c
-  FROM vendas
-  WHERE data BETWEEN :ini AND :fim
-  GROUP BY pagamento
-  ORDER BY c DESC
-  LIMIT 5
-");
-$st->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
-$payLabels = [];
-$payData = [];
-while ($r = $st->fetch()) {
-  $payLabels[] = (string)$r['pagamento'];
-  $payData[] = (int)$r['c'];
-}
-if (!$payLabels) {
-  $payLabels = ['DINHEIRO', 'PIX', 'CARTAO'];
-  $payData = [0, 0, 0];
-}
-
-/* =========================
-   ✅ Chart7: TOP PRODUTOS VENDIDOS (CORRIGIDO)
-   Agora pega de: vendas + venda_itens + produtos
-   E usa COALESCE(v.data, DATE(v.created_at)) pra não falhar.
-========================= */
-$topDays = (int)($_GET['top'] ?? 7);
-if (!in_array($topDays, [7, 30, 90], true)) $topDays = 7;
-$topStart = $today->modify("-" . ($topDays - 1) . " days")->format('Y-m-d');
-$topEnd = $today->format('Y-m-d');
-
-$topProdLabels = [];
-$topProdData = [];
-
-if (table_exists($pdo, 'venda_itens')) {
-  $st = $pdo->prepare("
+function chart_top_products(PDO $pdo, string $period, int $limit = 7): array {
+  [$ini, $fim] = period_range($period);
+  $sql = "
     SELECT
-      COALESCE(p.nome, vi.nome) AS nome,
-      COALESCE(SUM(vi.qtd),0) AS qtd
+      vi.codigo,
+      vi.nome,
+      SUM(vi.qtd) AS qtd
     FROM venda_itens vi
     INNER JOIN vendas v ON v.id = vi.venda_id
-    LEFT JOIN produtos p ON p.id = vi.produto_id
-    WHERE COALESCE(v.data, DATE(v.created_at)) BETWEEN :ini AND :fim
-    GROUP BY vi.produto_id, COALESCE(p.nome, vi.nome)
-    ORDER BY qtd DESC, nome ASC
-    LIMIT 10
-  ");
-  $st->execute([':ini' => $topStart, ':fim' => $topEnd]);
+    WHERE v.data BETWEEN :ini AND :fim
+      AND " . venda_exclude_devolvidas_sql() . "
+    GROUP BY vi.codigo, vi.nome
+    ORDER BY qtd DESC, vi.nome ASC
+    LIMIT :lim
+  ";
+  $st = $pdo->prepare($sql);
+  $st->bindValue(':ini', $ini);
+  $st->bindValue(':fim', $fim);
+  $st->bindValue(':lim', $limit, PDO::PARAM_INT);
+  $st->execute();
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  while ($r = $st->fetch()) {
-    $topProdLabels[] = (string)$r['nome'];
-    $topProdData[] = (float)$r['qtd'];
+  $labels = [];
+  $values = [];
+  foreach ($rows as $r) {
+    $labels[] = (string)$r['nome'];
+    $values[] = (int)$r['qtd'];
   }
+  return ['labels'=>$labels,'values'=>$values,'ini'=>$ini,'fim'=>$fim];
 }
 
-if (!$topProdLabels) {
-  $topProdLabels = ['(sem dados)'];
-  $topProdData = [0];
+function chart_mix_saidas_devolucoes_12m(PDO $pdo): array {
+  [$keys, $labels] = months_last_n(12);
+  $start = $keys[0] . '-01';
+  $end = (new DateTimeImmutable('today'))->format('Y-m-d');
+
+  $mixSaidas = array_fill_keys($keys, 0.0);
+  $mixDevol  = array_fill_keys($keys, 0.0);
+
+  // SAIDAS (perdas) por mês
+  $st = $pdo->prepare("
+    SELECT DATE_FORMAT(s.data, '%Y-%m') AS ym, COALESCE(SUM(s.valor_total),0) AS total
+    FROM saidas s
+    WHERE s.data BETWEEN :ini AND :fim
+    GROUP BY DATE_FORMAT(s.data,'%Y-%m')
+  ");
+  $st->execute([':ini'=>$start, ':fim'=>$end]);
+  foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $ym = (string)$r['ym'];
+    if (isset($mixSaidas[$ym])) $mixSaidas[$ym] = (float)$r['total'];
+  }
+
+  // DEVOLUCOES por mês (não canceladas)
+  $st2 = $pdo->prepare("
+    SELECT DATE_FORMAT(d.data, '%Y-%m') AS ym, COALESCE(SUM(d.valor),0) AS total
+    FROM devolucoes d
+    WHERE d.status <> 'CANCELADO'
+      AND d.data BETWEEN :ini AND :fim
+    GROUP BY DATE_FORMAT(d.data,'%Y-%m')
+  ");
+  $st2->execute([':ini'=>$start, ':fim'=>$end]);
+  foreach (($st2->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $ym = (string)$r['ym'];
+    if (isset($mixDevol[$ym])) $mixDevol[$ym] = (float)$r['total'];
+  }
+
+  return [
+    'labels' => $labels,
+    'saidas' => array_values($mixSaidas),
+    'devolucoes' => array_values($mixDevol),
+  ];
+}
+
+function chart_canais_top2_saidas_devolucoes_12m(PDO $pdo): array {
+  [$keys, $labels] = months_last_n(12);
+  $start = $keys[0] . '-01';
+  $end = (new DateTimeImmutable('today'))->format('Y-m-d');
+
+  // devolucoes por canal (canal vem da venda)
+  $st = $pdo->prepare("
+    SELECT UPPER(COALESCE(v.canal,'PRESENCIAL')) AS canal, COALESCE(SUM(d.valor),0) AS total
+    FROM devolucoes d
+    LEFT JOIN vendas v ON v.id = d.venda_no
+    WHERE d.status <> 'CANCELADO'
+      AND d.data BETWEEN :ini AND :fim
+    GROUP BY UPPER(COALESCE(v.canal,'PRESENCIAL'))
+  ");
+  $st->execute([':ini'=>$start, ':fim'=>$end]);
+  $arr = [];
+  foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $arr[(string)$r['canal']] = (float)$r['total'];
+  }
+
+  // saidas (perdas) como “PERDAS”
+  $st2 = $pdo->prepare("
+    SELECT COALESCE(SUM(s.valor_total),0) AS total
+    FROM saidas s
+    WHERE s.data BETWEEN :ini AND :fim
+  ");
+  $st2->execute([':ini'=>$start, ':fim'=>$end]);
+  $perdas = (float)($st2->fetchColumn() ?: 0);
+  if ($perdas > 0) $arr['PERDAS'] = $perdas;
+
+  // ordena e pega top2
+  arsort($arr);
+  $top = array_slice($arr, 0, 2, true);
+
+  return [
+    'labels' => array_keys($top),
+    'values' => array_values($top),
+  ];
+}
+
+function chart_entradas_vs_saidas_estoque_12m(PDO $pdo): array {
+  [$keys, $labels] = months_last_n(12);
+  $start = $keys[0] . '-01';
+  $end = (new DateTimeImmutable('today'))->format('Y-m-d');
+
+  $ent = array_fill_keys($keys, 0);
+  $out = array_fill_keys($keys, 0);
+
+  // entradas qtd por mês
+  $st = $pdo->prepare("
+    SELECT DATE_FORMAT(e.data, '%Y-%m') AS ym, COALESCE(SUM(e.qtd),0) AS qtd
+    FROM entradas e
+    WHERE e.data BETWEEN :ini AND :fim
+    GROUP BY DATE_FORMAT(e.data,'%Y-%m')
+  ");
+  $st->execute([':ini'=>$start, ':fim'=>$end]);
+  foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $ym = (string)$r['ym'];
+    if (isset($ent[$ym])) $ent[$ym] = (int)$r['qtd'];
+  }
+
+  // saidas(perdas) qtd por mês
+  $st2 = $pdo->prepare("
+    SELECT DATE_FORMAT(s.data, '%Y-%m') AS ym, COALESCE(SUM(s.qtd),0) AS qtd
+    FROM saidas s
+    WHERE s.data BETWEEN :ini AND :fim
+    GROUP BY DATE_FORMAT(s.data,'%Y-%m')
+  ");
+  $st2->execute([':ini'=>$start, ':fim'=>$end]);
+  foreach (($st2->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $ym = (string)$r['ym'];
+    if (isset($out[$ym])) $out[$ym] += (int)$r['qtd'];
+  }
+
+  // vendas (itens) qtd por mês (saída de estoque por venda)
+  $st3 = $pdo->prepare("
+    SELECT DATE_FORMAT(v.data, '%Y-%m') AS ym, COALESCE(SUM(vi.qtd),0) AS qtd
+    FROM venda_itens vi
+    INNER JOIN vendas v ON v.id = vi.venda_id
+    WHERE v.data BETWEEN :ini AND :fim
+      AND " . venda_exclude_devolvidas_sql() . "
+    GROUP BY DATE_FORMAT(v.data,'%Y-%m')
+  ");
+  $st3->execute([':ini'=>$start, ':fim'=>$end]);
+  foreach (($st3->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $ym = (string)$r['ym'];
+    if (isset($out[$ym])) $out[$ym] += (int)$r['qtd'];
+  }
+
+  return [
+    'labels' => $labels,
+    'entradas' => array_values($ent),
+    'saidas' => array_values($out), // vendas + perdas
+  ];
+}
+
+function recent_vendas(PDO $pdo, int $limit = 10): array {
+  $hasFiados = table_exists($pdo, 'fiados');
+  $recebExpr = $hasFiados
+    ? "CASE WHEN UPPER(v.pagamento)='FIADO' THEN COALESCE((SELECT f.valor_pago FROM fiados f WHERE f.venda_id=v.id LIMIT 1),0) ELSE v.total END"
+    : "v.total";
+
+  $sql = "
+    SELECT v.id, v.data, v.pagamento, v.total, v.created_at, $recebExpr AS recebido
+    FROM vendas v
+    WHERE " . venda_exclude_devolvidas_sql() . "
+    ORDER BY v.created_at DESC, v.id DESC
+    LIMIT :lim
+  ";
+  $st = $pdo->prepare($sql);
+  $st->bindValue(':lim', $limit, PDO::PARAM_INT);
+  $st->execute();
+  return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function low_stock(PDO $pdo, int $limit = 10): array {
+  $sql = "
+    SELECT p.id, p.nome, p.estoque, p.minimo, c.nome AS categoria
+    FROM produtos p
+    LEFT JOIN categorias c ON c.id = p.categoria_id
+    WHERE p.minimo IS NOT NULL AND p.estoque < p.minimo
+    ORDER BY (p.estoque - p.minimo) ASC, p.nome ASC
+    LIMIT :lim
+  ";
+  $st = $pdo->prepare($sql);
+  $st->bindValue(':lim', $limit, PDO::PARAM_INT);
+  $st->execute();
+  return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
 /* =========================
-   TABELAS
+   AJAX: detalhes da venda (modal)
 ========================= */
-// Vendas recentes (período)
-$st = $pdo->prepare("
-  SELECT id, data, cliente, canal, pagamento, total
-  FROM vendas
-  WHERE data BETWEEN :ini AND :fim
-  ORDER BY data DESC, id DESC
-  LIMIT 10
-");
-$st->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
-$vendasRecentes = $st->fetchAll();
+if (isset($_GET['action']) && $_GET['action'] === 'venda_details') {
+  header('Content-Type: application/json; charset=utf-8');
 
-// Estoque baixo
-$estoqueBaixo = [];
-if (table_exists($pdo, 'produtos')) {
-  $st = $pdo->query("
-    SELECT
-      p.id, p.nome, p.estoque, p.minimo,
-      COALESCE(c.nome,'-') AS categoria
-    FROM produtos p
-    LEFT JOIN categorias c ON c.id = p.categoria_id
-    WHERE p.status = 'ATIVO' AND p.estoque <= p.minimo
-    ORDER BY (p.minimo - p.estoque) DESC, p.nome ASC
-    LIMIT 12
-  ");
-  $estoqueBaixo = $st->fetchAll();
+  try {
+    $id = (int)($_GET['id'] ?? 0);
+    if ($id <= 0) throw new RuntimeException('ID inválido.');
+
+    $st = $pdo->prepare("
+      SELECT
+        v.id, v.data, v.cliente, v.canal, v.endereco, v.obs,
+        v.desconto_tipo, v.desconto_valor, v.taxa_entrega,
+        v.subtotal, v.total,
+        v.pagamento_mode, v.pagamento, v.pagamento_json,
+        v.created_at
+      FROM vendas v
+      WHERE v.id = ?
+      LIMIT 1
+    ");
+    $st->execute([$id]);
+    $v = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$v) throw new RuntimeException('Venda não encontrada.');
+
+    $stI = $pdo->prepare("
+      SELECT id, codigo, nome, unidade, qtd, preco_unit, subtotal
+      FROM venda_itens
+      WHERE venda_id = ?
+      ORDER BY id ASC
+    ");
+    $stI->execute([$id]);
+    $itens = $stI->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $stD = $pdo->prepare("
+      SELECT id, data, hora, tipo, produto, qtd, valor, motivo, status
+      FROM devolucoes
+      WHERE venda_no = ?
+      ORDER BY data DESC, hora DESC, id DESC
+    ");
+    $stD->execute([$id]);
+    $devols = $stD->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    // desconto legível
+    $descTipo = strtoupper((string)($v['desconto_tipo'] ?? 'PERC'));
+    $descVal  = (float)($v['desconto_valor'] ?? 0);
+    $taxa     = (float)($v['taxa_entrega'] ?? 0);
+    $descText = ($descTipo === 'VALOR')
+      ? (br_money($descVal) . " (taxa: " . br_money($taxa) . ")")
+      : (number_format($descVal, 2, ',', '.') . "% (taxa: " . br_money($taxa) . ")");
+
+    $payload = [
+      'ok' => true,
+      'venda' => [
+        'id' => (int)$v['id'],
+        'data' => (string)$v['data'],
+        'created_at' => (string)($v['created_at'] ?? ''),
+        'cliente' => (string)($v['cliente'] ?? ''),
+        'canal' => (string)($v['canal'] ?? 'PRESENCIAL'),
+        'pagamento' => (string)($v['pagamento'] ?? ''),
+        'pagamento_mode' => (string)($v['pagamento_mode'] ?? ''),
+        'pagamento_json_fmt' => fmt_pay_json((string)($v['pagamento_json'] ?? '')),
+        'endereco' => (string)($v['endereco'] ?? ''),
+        'obs' => (string)($v['obs'] ?? ''),
+        'subtotal' => (float)($v['subtotal'] ?? 0),
+        'total' => (float)($v['total'] ?? 0),
+        'desconto_text' => $descText,
+      ],
+      'itens' => array_map(function($r){
+        return [
+          'codigo' => (string)($r['codigo'] ?? ''),
+          'nome' => (string)($r['nome'] ?? ''),
+          'unidade' => (string)($r['unidade'] ?? ''),
+          'qtd' => (int)($r['qtd'] ?? 0),
+          'preco_unit' => (float)($r['preco_unit'] ?? 0),
+          'subtotal' => (float)($r['subtotal'] ?? 0),
+        ];
+      }, $itens),
+      'devolucoes' => array_map(function($r){
+        return [
+          'id' => (int)($r['id'] ?? 0),
+          'data' => (string)($r['data'] ?? ''),
+          'hora' => (string)($r['hora'] ?? ''),
+          'tipo' => (string)($r['tipo'] ?? ''),
+          'produto' => (string)($r['produto'] ?? ''),
+          'qtd' => ($r['qtd'] === null ? null : (int)$r['qtd']),
+          'valor' => (float)($r['valor'] ?? 0),
+          'status' => (string)($r['status'] ?? ''),
+          'motivo' => (string)($r['motivo'] ?? ''),
+        ];
+      }, $devols),
+    ];
+
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  } catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode(['ok'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  }
+  exit;
 }
 
-$total12m = array_sum($chart1);
+/* =========================
+   AJAX: charts (dropdowns)
+========================= */
+if (isset($_GET['action']) && $_GET['action'] === 'chart') {
+  header('Content-Type: application/json; charset=utf-8');
+  try {
+    $name = strtolower((string)($_GET['name'] ?? ''));
+    $period = (string)($_GET['period'] ?? '7d');
+
+    if ($name === 'delivery') {
+      $data = chart_delivery($pdo, $period);
+    } elseif ($name === 'payments') {
+      $data = chart_payments($pdo, $period);
+    } elseif ($name === 'top_products') {
+      $data = chart_top_products($pdo, $period, 7);
+    } elseif ($name === 'mix12m') {
+      $data = chart_mix_saidas_devolucoes_12m($pdo);
+    } elseif ($name === 'channels_top2') {
+      $data = chart_canais_top2_saidas_devolucoes_12m($pdo);
+    } elseif ($name === 'flow12m') {
+      $data = chart_entradas_vs_saidas_estoque_12m($pdo);
+    } else {
+      throw new RuntimeException('Chart inválido.');
+    }
+
+    echo json_encode(['ok'=>true,'data'=>$data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  } catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode(['ok'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  }
+  exit;
+}
+
+/* =========================
+   Dados iniciais (render)
+========================= */
+$initDelivery   = chart_delivery($pdo, 'today');
+$initPayments   = chart_payments($pdo, 'today');
+$initTop        = chart_top_products($pdo, '7d', 7);
+$mix12m         = chart_mix_saidas_devolucoes_12m($pdo);
+$channelsTop2   = chart_canais_top2_saidas_devolucoes_12m($pdo);
+$flow12m        = chart_entradas_vs_saidas_estoque_12m($pdo);
+$recent         = recent_vendas($pdo, 10);
+$low            = low_stock($pdo, 10);
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
   <title>Painel da Distribuidora | Dashboard</title>
 
@@ -604,802 +581,482 @@ $total12m = array_sum($chart1);
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    .equal-row {
-      align-items: stretch
-    }
-
-    .equal-row>[class^="col-"],
-    .equal-row>[class*=" col-"] {
-      display: flex
-    }
-
-    .icon-card,
-    .card-style {
-      height: 100%;
-      width: 100%
-    }
-
-    .card-style {
-      display: flex;
-      flex-direction: column
-    }
-
-    .card-style .chart,
-    .card-style .table-responsive,
-    .card-style .card-body-flex {
-      flex: 1 1 auto
-    }
-
-    .chart {
-      position: relative;
-      min-height: 320px
-    }
-
-    .chart canvas {
-      height: 100% !important
-    }
-
-    .table-responsive {
-      padding-bottom: 6px
-    }
-
-    .mini-metrics span {
-      display: inline-flex;
-      gap: 6px;
-      align-items: center;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(143, 146, 161, .08);
-      font-size: 12px;
-      color: #111827
-    }
-
-    .btn-icon {
-      background: transparent;
-      border: 0;
-      padding: 0
-    }
-
-    .modal .table td,
-    .modal .table th {
-      vertical-align: middle
-    }
+    .main-btn.btn-compact{ height:38px!important; padding:8px 14px!important; font-size:13px!important; line-height:1!important; }
+    .main-btn.btn-compact i{ font-size:14px; vertical-align:-1px; }
+    .card-title-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .card-title-row .title{ font-weight:900; color:#0f172a; }
+    .muted{ font-size:12px; color:#64748b; }
+    .tbl-sm td,.tbl-sm th{ padding:.55rem .65rem; }
+    .icon-btn{ height:34px!important; width:42px!important; padding:0!important; display:inline-flex!important; align-items:center!important; justify-content:center!important; }
+    .badge-soft{ padding:.35rem .6rem; border-radius:999px; font-weight:800; font-size:.72rem; display:inline-flex; align-items:center; justify-content:center; }
+    .badge-soft-success{ background: rgba(34,197,94,.12); color:#16a34a; }
+    .badge-soft-warning{ background: rgba(245,158,11,.12); color:#b45309; }
+    .badge-soft-gray{ background: rgba(148,163,184,.18); color:#475569; }
+    pre.pay-json{ white-space:pre-wrap; margin:0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; color:#334155; background: rgba(248,250,252,.85); border:1px solid rgba(148,163,184,.22); padding:10px; border-radius:12px; }
   </style>
 </head>
 
 <body>
-  <div id="preloader">
-    <div class="spinner"></div>
+<div id="preloader"><div class="spinner"></div></div>
+
+<!-- ======== sidebar-nav start =========== -->
+<aside class="sidebar-nav-wrapper">
+  <div class="navbar-logo">
+    <a href="dashboard.php" class="d-flex align-items-center gap-2">
+      <img src="assets/images/logo/logo.svg" alt="logo" />
+    </a>
   </div>
 
-  <!-- ======== sidebar-nav start =========== -->
-  <aside class="sidebar-nav-wrapper">
-    <div class="navbar-logo">
-      <a href="dashboard.php" class="d-flex align-items-center gap-2">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
-      </a>
+  <nav class="sidebar-nav">
+    <ul>
+      <li class="nav-item active">
+        <a href="dashboard.php" class="active">
+          <span class="icon"><i class="lni lni-dashboard"></i></span>
+          <span class="text">Dashboard</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="vendas.php">
+          <span class="icon"><i class="lni lni-cart"></i></span>
+          <span class="text">Vendas</span>
+        </a>
+      </li>
+
+      <li class="nav-item nav-item-has-children">
+        <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
+          <span class="icon"><i class="lni lni-layers"></i></span>
+          <span class="text">Operações</span>
+        </a>
+        <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
+          <li><a href="vendidos.php">Vendidos</a></li>
+          <li><a href="fiados.php">À Prazo</a></li>
+          <li><a href="devolucoes.php">Devoluções</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item nav-item-has-children">
+        <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
+          <span class="icon"><i class="lni lni-package"></i></span>
+          <span class="text">Estoque</span>
+        </a>
+        <ul id="ddmenu_estoque" class="collapse dropdown-nav">
+          <li><a href="produtos.php">Produtos</a></li>
+          <li><a href="inventario.php">Inventário</a></li>
+          <li><a href="entradas.php">Entradas</a></li>
+          <li><a href="saidas.php">Saídas</a></li>
+          <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item nav-item-has-children">
+        <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
+          <span class="icon"><i class="lni lni-users"></i></span>
+          <span class="text">Cadastros</span>
+        </a>
+        <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
+          <li><a href="clientes.php">Clientes</a></li>
+          <li><a href="fornecedores.php">Fornecedores</a></li>
+          <li><a href="categorias.php">Categorias</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a href="relatorios.php">
+          <span class="icon"><i class="lni lni-clipboard"></i></span>
+          <span class="text">Relatórios</span>
+        </a>
+      </li>
+
+      <span class="divider"><hr /></span>
+
+      <li class="nav-item nav-item-has-children">
+        <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
+          <span class="icon"><i class="lni lni-cog"></i></span>
+          <span class="text">Configurações</span>
+        </a>
+        <ul id="ddmenu_config" class="collapse dropdown-nav">
+          <li><a href="usuarios.php">Usuários e Permissões</a></li>
+          <li><a href="parametros.php">Parâmetros do Sistema</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a href="suporte.php">
+          <span class="icon"><i class="lni lni-whatsapp"></i></span>
+          <span class="text">Suporte</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+</aside>
+
+<div class="overlay"></div>
+
+<main class="main-wrapper">
+  <header class="header">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-lg-5 col-md-5 col-6">
+          <div class="header-left d-flex align-items-center">
+            <div class="menu-toggle-btn mr-15">
+              <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
+                <i class="lni lni-chevron-left me-2"></i> Menu
+              </button>
+            </div>
+            <div class="header-search d-none d-md-flex">
+              <form action="#" onsubmit="return false;">
+                <input type="text" placeholder="Buscar..." disabled />
+                <button type="button" onclick="return false"><i class="lni lni-search-alt"></i></button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-7 col-md-7 col-6">
+          <div class="header-right">
+            <div class="profile-box ml-15">
+              <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="profile-info">
+                  <div class="info">
+                    <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
+                    <div>
+                      <h6 class="fw-500">Administrador</h6>
+                      <p>Distribuidora</p>
+                    </div>
+                  </div>
+                </div>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
+                <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
+                <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
+                <li class="divider"></li>
+                <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
+  </header>
 
-    <nav class="sidebar-nav">
-      <ul>
-        <li class="nav-item active">
-          <a href="dashboard.php" class="active">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
-                <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
-              </svg>
-            </span>
-            <span class="text">Dashboard</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a href="vendas.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-            <span class="text">Vendas</span>
-          </a>
-        </li>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
-              </svg>
-            </span>
-            <span class="text">Operações</span>
-          </a>
-          <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
-            <li><a href="vendidos.php">Vendidos</a></li>
-            <li><a href="fiados.php">À Prazo</a></li>
-            <li><a href="devolucoes.php">Devoluções</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
-                <path d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
-              </svg>
-            </span>
-            <span class="text">Estoque</span>
-          </a>
-          <ul id="ddmenu_estoque" class="collapse dropdown-nav">
-            <li><a href="produtos.php">Produtos</a></li>
-            <li><a href="inventario.php">Inventário</a></li>
-            <li><a href="entradas.php">Entradas</a></li>
-            <li><a href="saidas.php">Saídas</a></li>
-            <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
-              </svg>
-            </span>
-            <span class="text">Cadastros</span>
-          </a>
-          <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-            <li><a href="clientes.php">Clientes</a></li>
-            <li><a href="fornecedores.php">Fornecedores</a></li>
-            <li><a href="categorias.php">Categorias</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item">
-          <a href="relatorios.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
-              </svg>
-            </span>
-            <span class="text">Relatórios</span>
-          </a>
-        </li>
-
-        <span class="divider">
-          <hr />
-        </span>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
-              </svg>
-            </span>
-            <span class="text">Configurações</span>
-          </a>
-          <ul id="ddmenu_config" class="collapse dropdown-nav">
-            <li><a href="usuarios.php">Usuários e Permissões</a></li>
-            <li><a href="parametros.php">Parâmetros do Sistema</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item">
-          <a href="suporte.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
-              </svg>
-            </span>
-            <span class="text">Suporte</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
-  </aside>
-
-  <div class="overlay"></div>
-
-                </ul>
-      <main class="main-wrapper">
-    <!-- Header -->
-    <header class="header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-lg-5 col-md-5 col-6">
-            <div class="header-left d-flex align-items-center">
-              <div class="menu-toggle-btn mr-15">
-                <button id="menu-toggle" class="main-btn primary-btn btn-hover">
-                  <i class="lni lni-chevron-left me-2"></i> Menu
-                </button>
-              </div>
-              <div class="header-search d-none d-md-flex"></div>
-            </div>
-          </div>
-
-
-                <div class="col-lg-7 col-md-7 col-6">
-                        <div class="header-right">
-                            <div class="profile-box ml-15">
-                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <div class="profile-info">
-                                        <div class="info">
-                                            <div>
-                                                <h6 class="fw-500">Sair</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <!-- Conteúdo -->
-    <section class="section">
-      <div class="container-fluid">
-        <div class="title-wrapper pt-30">
-          <div class="row align-items-center">
-            <div class="col-md-6">
-              <div class="title">
-                <h2>Dashboard (Vendas e Estoque)</h2>
-                <div class="d-flex align-items-center gap-2 mt-2">
-                  <span class="text-sm text-gray">Período rápido:</span>
-                  <select id="periodSelect" class="form-select form-select-sm" style="max-width: 180px;">
-                    <option value="today" <?= $period === 'today' ? 'selected' : ''; ?>>Hoje</option>
-                    <option value="7" <?= $period === '7' ? 'selected' : ''; ?>>Últimos 7 dias</option>
-                    <option value="30" <?= $period === '30' ? 'selected' : ''; ?>>Últimos 30 dias</option>
-                  </select>
-                  <span class="text-sm text-gray">(impacta: Delivery x Presencial, Pagamentos, Vendas Recentes)</span>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="breadcrumb-wrapper">
-                <nav aria-label="breadcrumb">
-                  <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="dashboard.php">Dashboard</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Visão Geral</li>
-                  </ol>
-                </nav>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- KPIs -->
-        <div class="row equal-row">
-          <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
-            <div class="icon-card">
-              <div class="icon purple"><i class="lni lni-cart-full"></i></div>
-              <div class="content">
-                <h6 class="mb-10">Vendas Hoje</h6>
-                <h3 class="text-bold mb-10"><?= nint($vendasHoje) ?></h3>
-                <?php $cls = ($vendasHojePct >= 0) ? 'text-success' : 'text-danger'; ?>
-                <p class="text-sm <?= $cls ?>">
-                  <i class="lni <?= ($vendasHojePct >= 0) ? 'lni-arrow-up' : 'lni-arrow-down' ?>"></i>
-                  <?= number_format(abs($vendasHojePct), 1, ',', '.') ?>%
-                  <span class="text-gray">(vs. ontem)</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
-            <div class="icon-card">
-              <div class="icon success"><i class="lni lni-dollar"></i></div>
-              <div class="content">
-                <h6 class="mb-10">Faturamento (Mês)</h6>
-                <h3 class="text-bold mb-10"><?= brl($faturMes) ?></h3>
-                <?php $cls = ($faturMesPct >= 0) ? 'text-success' : 'text-danger'; ?>
-                <p class="text-sm <?= $cls ?>">
-                  <i class="lni <?= ($faturMesPct >= 0) ? 'lni-arrow-up' : 'lni-arrow-down' ?>"></i>
-                  <?= number_format(abs($faturMesPct), 1, ',', '.') ?>%
-                  <span class="text-gray">Crescimento</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
-            <div class="icon-card">
-              <div class="icon primary"><i class="lni lni-package"></i></div>
-              <div class="content">
-                <h6 class="mb-10">Itens em Estoque</h6>
-                <h3 class="text-bold mb-10"><?= nint($itensEstoque) ?></h3>
-                <?php $cls = ($saidasPct >= 0) ? 'text-danger' : 'text-success'; ?>
-                <p class="text-sm <?= $cls ?>">
-                  <i class="lni <?= ($saidasPct >= 0) ? 'lni-arrow-up' : 'lni-arrow-down' ?>"></i>
-                  <?= number_format(abs($saidasPct), 1, ',', '.') ?>%
-                  <span class="text-gray">Saídas (30d)</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-xl-3 col-lg-4 col-sm-6 mb-30">
-            <div class="icon-card">
-              <div class="icon orange"><i class="lni lni-calculator"></i></div>
-              <div class="content">
-                <h6 class="mb-10">Ticket Médio (Hoje)</h6>
-                <h3 class="text-bold mb-10"><?= brl($tickHoje) ?></h3>
-                <?php $cls = ($tickPct >= 0) ? 'text-success' : 'text-danger'; ?>
-                <p class="text-sm <?= $cls ?>">
-                  <i class="lni <?= ($tickPct >= 0) ? 'lni-arrow-up' : 'lni-arrow-down' ?>"></i>
-                  <?= number_format(abs($tickPct), 1, ',', '.') ?>%
-                  <span class="text-gray">média</span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Charts 1 e 2 -->
-        <div class="row equal-row">
-          <div class="col-lg-7 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap justify-content-between">
-                <div class="left">
-                  <h6 class="text-medium mb-10">Faturamento (12 meses)</h6>
-                  <h3 class="text-bold"><?= brl($total12m) ?></h3>
-                </div>
-                <div class="right">
-                  <div class="select-style-1">
-                    <div class="select-position select-sm">
-                      <select class="light-bg" disabled>
-                        <option>Anual (12m)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="chart"><canvas id="Chart1"></canvas></div>
-            </div>
-          </div>
-
-          <div class="col-lg-5 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                <div class="left">
-                  <h6 class="text-medium mb-30">Vendas por Mês (12m)</h6>
-                </div>
-                <div class="right">
-                  <div class="select-style-1">
-                    <div class="select-position select-sm">
-                      <select class="light-bg" disabled>
-                        <option>Últimos 12 meses</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="chart"><canvas id="Chart2"></canvas></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Entrega x Presencial + Vendas Recentes -->
-        <div class="row equal-row">
-          <div class="col-lg-5 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap justify-content-between align-items-center">
-                <div class="left">
-                  <h6 class="text-medium mb-10">Forma de Entrega</h6>
-                  <p class="text-sm text-gray mb-0">Delivery x Presencial (período)</p>
-                </div>
-                <div class="right">
-                  <div class="select-style-1">
-                    <div class="select-position select-sm">
-                      <select class="light-bg" disabled>
-                        <option><?= $period === 'today' ? 'Hoje' : ($period === '7' ? '7 dias' : '30 dias') ?></option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="chart"><canvas id="Chart5"></canvas></div>
-
-              <div class="mini-metrics d-flex flex-wrap gap-2 mt-10">
-                <span><b>Delivery</b> <?= (int)$deliveryQtd ?></span>
-                <span><b>Presencial</b> <?= (int)$presencialQtd ?></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-7 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap justify-content-between align-items-center">
-                <div class="left">
-                  <h6 class="text-medium mb-30">Vendas Recentes (período)</h6>
-                </div>
-                <div class="right">
-                  <div class="select-style-1">
-                    <div class="select-position select-sm">
-                      <select class="light-bg" disabled>
-                        <option><?= $period === 'today' ? 'Hoje' : ($period === '7' ? 'Últimos 7 dias' : 'Últimos 30 dias') ?></option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="table-responsive">
-                <table class="table top-selling-table">
-                  <thead>
-                    <tr>
-                      <th>
-                        <h6 class="text-sm text-medium">Venda</h6>
-                      </th>
-                      <th class="min-width">
-                        <h6 class="text-sm text-medium">Cliente</h6>
-                      </th>
-                      <th class="min-width">
-                        <h6 class="text-sm text-medium">Entrega</h6>
-                      </th>
-                      <th class="min-width">
-                        <h6 class="text-sm text-medium">Pagamento</h6>
-                      </th>
-                      <th class="min-width">
-                        <h6 class="text-sm text-medium">Valor</h6>
-                      </th>
-                      <th class="min-width">
-                        <h6 class="text-sm text-medium">Data</h6>
-                      </th>
-                      <th></th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    <?php if (!$vendasRecentes): ?>
-                      <tr>
-                        <td colspan="7">
-                          <p class="text-sm text-gray mb-0">Sem vendas no período.</p>
-                        </td>
-                      </tr>
-                    <?php else: ?>
-                      <?php foreach ($vendasRecentes as $v): ?>
-                        <?php
-                        $id = (int)$v['id'];
-                        $vendano = '#V-' . str_pad((string)$id, 5, '0', STR_PAD_LEFT);
-                        $cli = trim((string)($v['cliente'] ?? ''));
-                        if ($cli === '') $cli = '—';
-                        $canal = strtoupper((string)$v['canal']);
-                        $badge = ($canal === 'DELIVERY') ? 'warning-btn' : 'success-btn';
-                        ?>
-                        <tr>
-                          <td>
-                            <p class="text-sm"><?= e($vendano) ?></p>
-                          </td>
-                          <td>
-                            <p class="text-sm"><?= e($cli) ?></p>
-                          </td>
-                          <td><span class="status-btn <?= $badge ?>"><?= e(ucfirst(strtolower($canal))) ?></span></td>
-                          <td>
-                            <p class="text-sm"><?= e((string)$v['pagamento']) ?></p>
-                          </td>
-                          <td>
-                            <p class="text-sm"><?= brl($v['total']) ?></p>
-                          </td>
-                          <td>
-                            <p class="text-sm"><?= e(dt((string)$v['data'])) ?></p>
-                          </td>
-                          <td>
-                            <div class="action justify-content-end">
-                              <button class="edit btn-view-venda" type="button" title="Ver" data-id="<?= (int)$id ?>">
-                                <i class="lni lni-eye"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      <?php endforeach; ?>
-                    <?php endif; ?>
-                  </tbody>
-                </table>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        <!-- Mix + Entradas/Saídas -->
-        <div class="row equal-row">
-          <div class="col-lg-7 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                <div class="left">
-                  <h6 class="text-medium mb-2">Mix (Saídas) + Devoluções (12m)</h6>
-                  <p class="text-sm text-gray mb-0">Canais (top 2) em <b>saidas</b> + devoluções</p>
-                </div>
-                <div class="right">
-                  <div class="select-style-1 mb-2">
-                    <div class="select-position select-sm">
-                      <select class="light-bg" disabled>
-                        <option>Últimos 12 meses</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="chart"><canvas id="Chart3"></canvas></div>
-            </div>
-          </div>
-
-          <div class="col-lg-5 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                <div class="left">
-                  <h6 class="text-medium mb-2">Entradas x Saídas (Estoque)</h6>
-                  <p class="text-sm text-gray mb-0">Somatório de qtd (6 meses)</p>
-                </div>
-                <div class="right">
-                  <div class="select-style-1 mb-2">
-                    <div class="select-position select-sm">
-                      <select class="light-bg" disabled>
-                        <option>Últimos 6 meses</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="chart"><canvas id="Chart4"></canvas></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Pagamentos + Top produtos -->
-        <div class="row equal-row">
-          <div class="col-lg-5 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                <div class="left">
-                  <h6 class="text-medium mb-10">Formas de Pagamento</h6>
-                  <p class="text-sm text-gray mb-0">Mais utilizadas (período)</p>
-                </div>
-                <div class="right">
-                  <div class="select-style-1">
-                    <div class="select-position select-sm">
-                      <select class="light-bg" disabled>
-                        <option><?= $period === 'today' ? 'Hoje' : ($period === '7' ? '7 dias' : '30 dias') ?></option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="chart"><canvas id="Chart6"></canvas></div>
-            </div>
-          </div>
-
-          <div class="col-lg-7 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                <div class="left">
-                  <h6 class="text-medium mb-10">Top Produtos Vendidos</h6>
-                  <p class="text-sm text-gray mb-0">Quantidade (<?= (int)$topDays ?> dias)</p>
-                </div>
-                <div class="right d-flex align-items-center gap-2">
-                  <select id="topSelect" class="form-select form-select-sm" style="max-width: 170px;">
-                    <option value="7" <?= $topDays === 7 ? 'selected' : ''; ?>>Últimos 7 dias</option>
-                    <option value="30" <?= $topDays === 30 ? 'selected' : ''; ?>>Últimos 30 dias</option>
-                    <option value="90" <?= $topDays === 90 ? 'selected' : ''; ?>>Últimos 90 dias</option>
-                  </select>
-                  <a href="relatorios.php" class="main-btn primary-btn btn-hover btn-sm">Ver relatório</a>
-                </div>
-              </div>
-
-              <div class="chart"><canvas id="Chart7"></canvas></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Estoque baixo -->
-        <div class="row equal-row">
-          <div class="col-lg-12 mb-30">
-            <div class="card-style">
-              <div class="title d-flex flex-wrap align-items-center justify-content-between">
-                <div class="left">
-                  <h6 class="text-medium mb-30">Produtos com Estoque Baixo</h6>
-                </div>
-                <div class="right"><a href="estoque-minimo.php" class="main-btn primary-btn btn-hover btn-sm">Ver detalhes</a></div>
-              </div>
-
-              <div class="table-responsive">
-                <table class="table top-selling-table">
-                  <thead>
-                    <tr>
-                      <th>
-                        <h6 class="text-sm text-medium">Produto</h6>
-                      </th>
-                      <th class="min-width">
-                        <h6 class="text-sm text-medium">Categoria</h6>
-                      </th>
-                      <th class="min-width">
-                        <h6 class="text-sm text-medium">Saldo</h6>
-                      </th>
-                      <th class="min-width">
-                        <h6 class="text-sm text-medium">Mínimo</h6>
-                      </th>
-                      <th>
-                        <h6 class="text-sm text-medium text-end">Ação</h6>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php if (!$estoqueBaixo): ?>
-                      <tr>
-                        <td colspan="5">
-                          <p class="text-sm text-gray mb-0">Nenhum produto abaixo do mínimo.</p>
-                        </td>
-                      </tr>
-                    <?php else: ?>
-                      <?php foreach ($estoqueBaixo as $p): ?>
-                        <tr>
-                          <td>
-                            <p class="text-sm"><?= e((string)$p['nome']) ?></p>
-                          </td>
-                          <td>
-                            <p class="text-sm"><?= e((string)$p['categoria']) ?></p>
-                          </td>
-                          <td>
-                            <p class="text-sm"><?= e((string)$p['estoque']) ?></p>
-                          </td>
-                          <td>
-                            <p class="text-sm"><?= e((string)$p['minimo']) ?></p>
-                          </td>
-                          <td>
-                            <div class="action justify-content-end">
-                              <button class="edit btn-view-produto" type="button" title="Detalhes" data-id="<?= (int)$p['id'] ?>">
-                                <i class="lni lni-eye"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      <?php endforeach; ?>
-                    <?php endif; ?>
-                  </tbody>
-                </table>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <footer class="footer">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-md-6 order-last order-md-first">
-            <div class="copyright text-center text-md-start">
-              <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
-            </div>
-          </div>
+  <section class="section">
+    <div class="container-fluid">
+      <div class="title-wrapper pt-30">
+        <div class="row align-items-center">
           <div class="col-md-6">
-            <div class="terms d-flex justify-content-center justify-content-md-end">
-              <a href="#0" class="text-sm">Termos</a>
-              <a href="#0" class="text-sm ml-15">Privacidade</a>
+            <div class="title">
+              <h2>Dashboard</h2>
+              <div class="muted">Atualizado: itens da venda (venda_itens) + gráficos com Saídas=Perdas/Avarias.</div>
             </div>
           </div>
         </div>
       </div>
-    </footer>
-  </main>
 
-  <!-- ====== MODAL VENDA ====== -->
-  <div class="modal fade" id="modalVenda" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Detalhes da Venda</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      <!-- Linha 1: Entrega + Pagamento -->
+      <div class="row g-3 mb-30">
+        <div class="col-12 col-lg-6">
+          <div class="card-style">
+            <div class="card-title-row mb-2">
+              <div>
+                <div class="title">Forma de Entrega</div>
+                <div class="muted" id="lblDeliveryPeriod">Delivery x Presencial (Hoje)</div>
+              </div>
+              <select class="form-select" style="max-width:170px" id="selDeliveryPeriod">
+                <option value="today" selected>Hoje</option>
+                <option value="7d">Últimos 7 dias</option>
+                <option value="30d">Últimos 30 dias</option>
+                <option value="12m">Últimos 12 meses</option>
+              </select>
+            </div>
+            <canvas id="chartDelivery" height="160"></canvas>
+          </div>
         </div>
-        <div class="modal-body">
-          <div id="vendaLoading" class="text-sm text-gray">Carregando...</div>
-          <div id="vendaBody" style="display:none;">
-            <div class="row g-3">
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Venda</div>
-                  <div class="fw-600" id="vId">-</div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Data</div>
-                  <div class="fw-600" id="vData">-</div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Canal</div>
-                  <div class="fw-600" id="vCanal">-</div>
-                </div>
-              </div>
 
-              <div class="col-md-8">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Cliente</div>
-                  <div class="fw-600" id="vCliente">-</div>
+        <div class="col-12 col-lg-6">
+          <div class="card-style">
+            <div class="card-title-row mb-2">
+              <div>
+                <div class="title">Formas de Pagamento</div>
+                <div class="muted" id="lblPayPeriod">Mais utilizadas (Hoje)</div>
+                <div class="muted mt-1">
+                  <span class="me-2">Vendido: <b id="paySold"><?= e(br_money($initPayments['total'])) ?></b></span>
+                  <span>Recebido: <b id="payRec"><?= e(br_money($initPayments['recebido'])) ?></b></span>
                 </div>
               </div>
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Pagamento</div>
-                  <div class="fw-600" id="vPagamento">-</div>
-                </div>
-              </div>
+              <select class="form-select" style="max-width:170px" id="selPayPeriod">
+                <option value="today" selected>Hoje</option>
+                <option value="7d">Últimos 7 dias</option>
+                <option value="30d">Últimos 30 dias</option>
+                <option value="12m">Últimos 12 meses</option>
+              </select>
+            </div>
+            <canvas id="chartPayments" height="160"></canvas>
+          </div>
+        </div>
+      </div>
 
-              <div class="col-md-12">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Endereço / Observações</div>
-                  <div class="text-sm" id="vObs">-</div>
-                </div>
+      <!-- Linha 2: Top Produtos + Últimas Vendas -->
+      <div class="row g-3 mb-30">
+        <div class="col-12 col-lg-8">
+          <div class="card-style">
+            <div class="card-title-row mb-2">
+              <div>
+                <div class="title">Top Produtos Vendidos</div>
+                <div class="muted" id="lblTopPeriod">Quantidade (Últimos 7 dias)</div>
               </div>
+              <div class="d-flex gap-2 align-items-center flex-wrap">
+                <select class="form-select" style="max-width:170px" id="selTopPeriod">
+                  <option value="7d" selected>Últimos 7 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="12m">Últimos 12 meses</option>
+                </select>
+                <a class="main-btn primary-btn btn-hover btn-compact" href="relatorios.php" title="Abrir relatórios">
+                  Ver relatório
+                </a>
+              </div>
+            </div>
+            <canvas id="chartTopProducts" height="160"></canvas>
+            <div class="muted mt-2" id="hintTopNone" style="display:none;">(sem dados)</div>
+          </div>
+        </div>
 
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Subtotal</div>
-                  <div class="fw-600" id="vSubtotal">-</div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Desconto</div>
-                  <div class="fw-600" id="vDesconto">-</div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Total</div>
-                  <div class="fw-600" id="vTotal">-</div>
-                </div>
+        <div class="col-12 col-lg-4">
+          <div class="card-style">
+            <div class="card-title-row mb-2">
+              <div>
+                <div class="title">Últimas Vendas</div>
+                <div class="muted">Clique no olho para ver os itens (venda_itens).</div>
               </div>
             </div>
 
-            <hr class="my-3" />
-
-            <!-- ✅ ITENS DA VENDA -->
-            <h6 class="text-medium mb-2">Itens vendidos</h6>
             <div class="table-responsive">
-              <table class="table">
+              <table class="table tbl-sm">
+                <thead>
+                  <tr>
+                    <th>Pagamento</th>
+                    <th class="text-end">Valor</th>
+                    <th class="text-center">Data</th>
+                    <th class="text-end">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($recent as $r): ?>
+                  <?php
+                    $id = (int)$r['id'];
+                    $pag = strtoupper((string)$r['pagamento']);
+                    $val = (float)$r['total'];
+                    $dt  = (string)$r['data'];
+                  ?>
+                  <tr>
+                    <td><?= e($pag ?: '—') ?></td>
+                    <td class="text-end"><?= e(br_money($val)) ?></td>
+                    <td class="text-center"><?= e(br_date($dt)) ?></td>
+                    <td class="text-end">
+                      <button class="main-btn light-btn btn-hover icon-btn btnVenda" type="button" data-id="<?= (int)$id ?>" title="Ver detalhes">
+                        <i class="lni lni-eye"></i>
+                      </button>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+                <?php if (!$recent): ?>
+                  <tr><td colspan="4" class="text-center muted">Sem vendas.</td></tr>
+                <?php endif; ?>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha 3: Mix + Canais + Fluxo -->
+      <div class="row g-3 mb-30">
+        <div class="col-12 col-lg-4">
+          <div class="card-style">
+            <div class="card-title-row mb-2">
+              <div>
+                <div class="title">Mix (Saídas) + Devoluções</div>
+                <div class="muted">Últimos 12 meses (valores)</div>
+              </div>
+            </div>
+            <canvas id="chartMix12m" height="170"></canvas>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <div class="card-style">
+            <div class="card-title-row mb-2">
+              <div>
+                <div class="title">Canais (Top 2)</div>
+                <div class="muted">Devoluções (canal da venda) + Perdas</div>
+              </div>
+            </div>
+            <canvas id="chartChannelsTop2" height="170"></canvas>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <div class="card-style">
+            <div class="card-title-row mb-2">
+              <div>
+                <div class="title">Entradas x Saídas (Estoque)</div>
+                <div class="muted">Últimos 12 meses (qtd) • Saídas = Vendas + Perdas</div>
+              </div>
+            </div>
+            <canvas id="chartFlow12m" height="170"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha 4: Estoque baixo -->
+      <div class="row g-3 mb-30">
+        <div class="col-12">
+          <div class="card-style">
+            <div class="card-title-row mb-2">
+              <div>
+                <div class="title">Produtos com Estoque Baixo</div>
+                <div class="muted">Abaixo do mínimo</div>
+              </div>
+              <a class="main-btn primary-btn btn-hover btn-compact" href="estoque-minimo.php">Ver detalhes</a>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table tbl-sm">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Categoria</th>
+                    <th class="text-center">Saldo</th>
+                    <th class="text-center">Mínimo</th>
+                    <th class="text-center">Dif.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($low as $r): ?>
+                  <?php
+                    $saldo = (int)$r['estoque'];
+                    $min = (int)$r['minimo'];
+                    $diff = $saldo - $min;
+                    $badge = ($diff < 0) ? 'badge-soft badge-soft-warning' : 'badge-soft badge-soft-gray';
+                  ?>
+                  <tr>
+                    <td><?= e((string)$r['nome']) ?></td>
+                    <td><?= e((string)($r['categoria'] ?? '—')) ?></td>
+                    <td class="text-center"><?= (int)$saldo ?></td>
+                    <td class="text-center"><?= (int)$min ?></td>
+                    <td class="text-center"><span class="<?= e($badge) ?>"><?= (int)$diff ?></span></td>
+                  </tr>
+                <?php endforeach; ?>
+                <?php if (!$low): ?>
+                  <tr><td colspan="5" class="text-center muted">Nenhum produto abaixo do mínimo.</td></tr>
+                <?php endif; ?>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-6 order-last order-md-first">
+          <div class="copyright text-center text-md-start">
+            <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<!-- Modal: Detalhes da Venda -->
+<div class="modal fade" id="modalVenda" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detalhes da Venda</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12 col-lg-3">
+            <label class="form-label">Venda</label>
+            <input class="form-control" id="mVendaId" readonly />
+          </div>
+          <div class="col-12 col-lg-3">
+            <label class="form-label">Data</label>
+            <input class="form-control" id="mVendaData" readonly />
+          </div>
+          <div class="col-12 col-lg-3">
+            <label class="form-label">Canal</label>
+            <input class="form-control" id="mVendaCanal" readonly />
+          </div>
+          <div class="col-12 col-lg-3">
+            <label class="form-label">Pagamento</label>
+            <input class="form-control" id="mVendaPag" readonly />
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <label class="form-label">Cliente</label>
+            <input class="form-control" id="mVendaCliente" readonly />
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <label class="form-label">Endereço / Observações</label>
+            <textarea class="form-control" id="mVendaEndObs" rows="2" readonly></textarea>
+            <div class="muted mt-2">Pagamento (detalhes):</div>
+            <pre class="pay-json" id="mPayJson">—</pre>
+          </div>
+
+          <div class="col-12 col-lg-4">
+            <label class="form-label">Subtotal</label>
+            <input class="form-control" id="mVendaSubtotal" readonly />
+          </div>
+          <div class="col-12 col-lg-4">
+            <label class="form-label">Desconto</label>
+            <input class="form-control" id="mVendaDesconto" readonly />
+          </div>
+          <div class="col-12 col-lg-4">
+            <label class="form-label">Total</label>
+            <input class="form-control" id="mVendaTotal" readonly />
+          </div>
+
+          <div class="col-12 mt-2">
+            <hr>
+          </div>
+
+          <div class="col-12">
+            <div style="font-weight:900; color:#0f172a;">Itens vendidos</div>
+            <div class="table-responsive mt-2">
+              <table class="table tbl-sm" id="tbItens">
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>Produto</th>
-                    <th class="text-end">Qtd</th>
+                    <th class="text-center">Qtd</th>
                     <th class="text-end">V. Unit</th>
                     <th class="text-end">Subtotal</th>
                   </tr>
                 </thead>
-                <tbody id="vItensBody">
-                  <tr>
-                    <td colspan="5" class="text-sm text-gray">Sem itens.</td>
-                  </tr>
+                <tbody>
+                  <tr><td colspan="5" class="muted">Carregando…</td></tr>
                 </tbody>
               </table>
             </div>
-            <div class="d-flex justify-content-end gap-3">
-              <div class="text-sm text-gray"><b id="vItensQtd">0</b> unid</div>
-              <div class="text-sm"><b id="vItensTotal">R$ 0,00</b></div>
-            </div>
+          </div>
 
-            <hr class="my-3" />
-
-            <h6 class="text-medium mb-2">Devoluções vinculadas</h6>
-            <div class="table-responsive">
-              <table class="table">
+          <div class="col-12 mt-2">
+            <div style="font-weight:900; color:#0f172a;">Devoluções vinculadas</div>
+            <div class="table-responsive mt-2">
+              <table class="table tbl-sm" id="tbDevols">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -1407,774 +1064,298 @@ $total12m = array_sum($chart1);
                     <th>Hora</th>
                     <th>Tipo</th>
                     <th>Produto</th>
-                    <th>Qtd</th>
-                    <th>Valor</th>
+                    <th class="text-center">Qtd</th>
+                    <th class="text-end">Valor</th>
                     <th>Status</th>
                   </tr>
                 </thead>
-                <tbody id="vDevolBody">
-                  <tr>
-                    <td colspan="8" class="text-sm text-gray">Nenhuma devolução.</td>
-                  </tr>
+                <tbody>
+                  <tr><td colspan="8" class="muted">Carregando…</td></tr>
                 </tbody>
               </table>
             </div>
+            <div class="muted" id="mDevolHint"></div>
           </div>
 
-          <div id="vendaError" class="text-sm text-danger" style="display:none;"></div>
         </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="main-btn light-btn btn-hover btn-compact" type="button" data-bs-dismiss="modal">Fechar</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ====== MODAL PRODUTO ====== -->
-  <div class="modal fade" id="modalProduto" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Detalhes do Produto</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <div id="prodLoading" class="text-sm text-gray">Carregando...</div>
-          <div id="prodBody" style="display:none;">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Produto</div>
-                  <div class="fw-600" id="pNome">-</div>
-                  <div class="text-sm text-gray" id="pCodigo">-</div>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Estoque</div>
-                  <div class="fw-600" id="pEstoque">-</div>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Mínimo</div>
-                  <div class="fw-600" id="pMinimo">-</div>
-                </div>
-              </div>
+<script src="assets/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/main.js"></script>
 
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Categoria</div>
-                  <div class="fw-600" id="pCategoria">-</div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Unidade</div>
-                  <div class="fw-600" id="pUnidade">-</div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Preço</div>
-                  <div class="fw-600" id="pPreco">-</div>
-                </div>
-              </div>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-              <div class="col-md-12">
-                <div class="border rounded p-2">
-                  <div class="text-xs text-gray">Observação</div>
-                  <div class="text-sm" id="pObs">-</div>
-                </div>
-              </div>
+<script>
+  const INIT = {
+    delivery: <?= json_encode($initDelivery, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+    payments: <?= json_encode($initPayments, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+    top: <?= json_encode($initTop, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+    mix12m: <?= json_encode($mix12m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+    channelsTop2: <?= json_encode($channelsTop2, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+    flow12m: <?= json_encode($flow12m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+  };
 
-              <div class="col-md-12 d-flex justify-content-end gap-2">
-                <a href="entradas.php" class="main-btn primary-btn btn-hover btn-sm">Lançar entrada</a>
-                <a href="produtos.php" class="main-btn light-btn btn-hover btn-sm">Abrir produtos</a>
-              </div>
-            </div>
-          </div>
+  function moneyBR(n){
+    const v = Number(n||0);
+    return "R$ " + v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+  function safeText(s){
+    return String(s ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+  function labelPeriod(p){
+    if (p === 'today') return 'Hoje';
+    if (p === '7d') return 'Últimos 7 dias';
+    if (p === '30d') return 'Últimos 30 dias';
+    if (p === '12m') return 'Últimos 12 meses';
+    return p;
+  }
 
-          <div id="prodError" class="text-sm text-danger" style="display:none;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
+  // ===== Charts init =====
+  const ctxDelivery = document.getElementById('chartDelivery');
+  const ctxPayments = document.getElementById('chartPayments');
+  const ctxTop = document.getElementById('chartTopProducts');
+  const ctxMix = document.getElementById('chartMix12m');
+  const ctxChan = document.getElementById('chartChannelsTop2');
+  const ctxFlow = document.getElementById('chartFlow12m');
 
-  <!-- ========= JS ========= -->
-  <script src="assets/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/js/Chart.min.js"></script>
-  <script src="assets/js/polyfill.js"></script>
-  <script src="assets/js/main.js"></script>
+  const chartDelivery = new Chart(ctxDelivery, {
+    type: 'doughnut',
+    data: { labels: INIT.delivery.labels, datasets: [{ data: INIT.delivery.values }] },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } } }
+  });
 
-  <script>
-    (function() {
-      const sel = document.getElementById('periodSelect');
-      if (sel) {
-        sel.addEventListener('change', function() {
-          const url = new URL(window.location.href);
-          url.searchParams.set('period', sel.value);
-          window.location.href = url.toString();
-        });
-      }
-      const topSel = document.getElementById('topSelect');
-      if (topSel) {
-        topSel.addEventListener('change', function() {
-          const url = new URL(window.location.href);
-          url.searchParams.set('top', topSel.value);
-          window.location.href = url.toString();
-        });
-      }
-    })();
-  </script>
+  const chartPayments = new Chart(ctxPayments, {
+    type: 'bar',
+    data: { labels: INIT.payments.labels, datasets: [{ label:'Qtd', data: INIT.payments.values }] },
+    options: { responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+  });
 
-  <!-- ✅ Theme fix + dados do PHP -->
-  <script>
-    (function() {
-      const TEXT = "#111827";
-      const GRID = "rgba(17,24,39,.10)";
-      if (!window.Chart) return;
+  const chartTop = new Chart(ctxTop, {
+    type: 'bar',
+    data: { labels: INIT.top.labels, datasets: [{ label:'Qtd', data: INIT.top.values }] },
+    options: { responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+  });
 
-      if (Chart.defaults) {
-        if ("color" in Chart.defaults) Chart.defaults.color = TEXT;
-        if ("borderColor" in Chart.defaults) Chart.defaults.borderColor = GRID;
+  const chartMix12m = new Chart(ctxMix, {
+    type: 'bar',
+    data: {
+      labels: INIT.mix12m.labels,
+      datasets: [
+        { label: 'Saídas (Perdas)', data: INIT.mix12m.saidas, stack:'x' },
+        { label: 'Devoluções', data: INIT.mix12m.devolucoes, stack:'x' },
+      ]
+    },
+    options: {
+      responsive:true,
+      plugins:{ legend:{ position:'bottom' } },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
 
-        if (Chart.defaults.scale) {
-          Chart.defaults.scale.ticks.color = TEXT;
-          Chart.defaults.scale.grid.color = GRID;
-        }
+  const chartChannelsTop2 = new Chart(ctxChan, {
+    type: 'bar',
+    data: { labels: INIT.channelsTop2.labels, datasets: [{ label:'Valor', data: INIT.channelsTop2.values }] },
+    options: {
+      responsive:true,
+      plugins:{ legend:{ display:false } },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
 
-        if (Chart.defaults.plugins?.legend?.labels) {
-          Chart.defaults.plugins.legend.labels.color = TEXT;
-        }
-      }
+  const chartFlow12m = new Chart(ctxFlow, {
+    type: 'line',
+    data: {
+      labels: INIT.flow12m.labels,
+      datasets: [
+        { label:'Entradas (qtd)', data: INIT.flow12m.entradas, tension:.25 },
+        { label:'Saídas (qtd)', data: INIT.flow12m.saidas, tension:.25 },
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ y:{ beginAtZero:true } } }
+  });
 
-      if (Chart.defaults?.global) {
-        Chart.defaults.global.defaultFontColor = TEXT;
-      }
+  // ===== Dropdown loaders =====
+  async function loadChart(name, period){
+    const qs = new URLSearchParams({ action:'chart', name, period });
+    const res = await fetch('dashboard.php?' + qs.toString(), { headers:{ 'Accept':'application/json' }});
+    const js = await res.json().catch(()=>null);
+    if (!js || !js.ok) throw new Error((js && js.error) ? js.error : 'Falha ao carregar gráfico.');
+    return js.data;
+  }
 
-      window.__CHART_THEME__ = {
-        TEXT,
-        GRID
-      };
-    })();
+  const selDeliveryPeriod = document.getElementById('selDeliveryPeriod');
+  const selPayPeriod = document.getElementById('selPayPeriod');
+  const selTopPeriod = document.getElementById('selTopPeriod');
 
-    const THEME = window.__CHART_THEME__ || {
-      TEXT: "#111827",
-      GRID: "rgba(17,24,39,.10)"
-    };
+  const lblDeliveryPeriod = document.getElementById('lblDeliveryPeriod');
+  const lblPayPeriod = document.getElementById('lblPayPeriod');
+  const lblTopPeriod = document.getElementById('lblTopPeriod');
 
-    const fmtBRL = (v) => {
-      try {
-        return new Intl.NumberFormat("pt-BR", {
-          style: "currency",
-          currency: "BRL"
-        }).format(v);
-      } catch (e) {
-        return "R$ " + String(v);
-      }
-    };
+  const paySold = document.getElementById('paySold');
+  const payRec = document.getElementById('payRec');
 
-    const LABELS_12 = <?= json_encode($labels12, JSON_UNESCAPED_UNICODE) ?>;
-    const CHART1_DATA = <?= json_encode($chart1, JSON_UNESCAPED_UNICODE) ?>;
-    const CHART2_DATA = <?= json_encode($chart2, JSON_UNESCAPED_UNICODE) ?>;
+  const hintTopNone = document.getElementById('hintTopNone');
 
-    const MIX_LABEL_A = <?= json_encode($mixA, JSON_UNESCAPED_UNICODE) ?>;
-    const MIX_LABEL_B = <?= json_encode($mixB, JSON_UNESCAPED_UNICODE) ?>;
-    const CHART3_A = <?= json_encode($chart3A, JSON_UNESCAPED_UNICODE) ?>;
-    const CHART3_B = <?= json_encode($chart3B, JSON_UNESCAPED_UNICODE) ?>;
-    const CHART3_C = <?= json_encode($chart3C, JSON_UNESCAPED_UNICODE) ?>;
+  selDeliveryPeriod.addEventListener('change', async () => {
+    try {
+      const p = selDeliveryPeriod.value;
+      lblDeliveryPeriod.textContent = `Delivery x Presencial (${labelPeriod(p)})`;
+      const data = await loadChart('delivery', p);
+      chartDelivery.data.labels = data.labels;
+      chartDelivery.data.datasets[0].data = data.values;
+      chartDelivery.update();
+    } catch(e){ console.error(e); }
+  });
 
-    const LABELS_6 = <?= json_encode($labels6, JSON_UNESCAPED_UNICODE) ?>;
-    const CHART4_ENT = <?= json_encode($chart4Ent, JSON_UNESCAPED_UNICODE) ?>;
-    const CHART4_SAI = <?= json_encode($chart4Sai, JSON_UNESCAPED_UNICODE) ?>;
+  selPayPeriod.addEventListener('change', async () => {
+    try {
+      const p = selPayPeriod.value;
+      lblPayPeriod.textContent = `Mais utilizadas (${labelPeriod(p)})`;
+      const data = await loadChart('payments', p);
+      chartPayments.data.labels = data.labels || [];
+      chartPayments.data.datasets[0].data = data.values || [];
+      chartPayments.update();
 
-    const DELIV = <?= (int)$deliveryQtd ?>;
-    const PRES = <?= (int)$presencialQtd ?>;
+      paySold.textContent = moneyBR(data.total || 0);
+      payRec.textContent = moneyBR(data.recebido || 0);
+    } catch(e){ console.error(e); }
+  });
 
-    const PAY_LABELS = <?= json_encode($payLabels, JSON_UNESCAPED_UNICODE) ?>;
-    const PAY_DATA = <?= json_encode($payData, JSON_UNESCAPED_UNICODE) ?>;
+  selTopPeriod.addEventListener('change', async () => {
+    try {
+      const p = selTopPeriod.value;
+      lblTopPeriod.textContent = `Quantidade (${labelPeriod(p)})`;
+      const data = await loadChart('top_products', p);
 
-    // ✅ TOP PRODUTOS (venda_itens)
-    const TOP_LABELS = <?= json_encode($topProdLabels, JSON_UNESCAPED_UNICODE) ?>;
-    const TOP_DATA = <?= json_encode($topProdData, JSON_UNESCAPED_UNICODE) ?>;
-  </script>
+      chartTop.data.labels = data.labels || [];
+      chartTop.data.datasets[0].data = data.values || [];
+      chartTop.update();
 
-  <script>
-    const ctx1 = document.getElementById("Chart1")?.getContext("2d");
-    if (ctx1) {
-      new Chart(ctx1, {
-        type: "line",
-        data: {
-          labels: LABELS_12,
-          datasets: [{
-            label: "Faturamento",
-            backgroundColor: "transparent",
-            borderColor: "#365CF5",
-            data: CHART1_DATA,
-            pointBackgroundColor: "transparent",
-            pointHoverBackgroundColor: "#365CF5",
-            pointBorderColor: "transparent",
-            pointHoverBorderColor: "#fff",
-            pointHoverBorderWidth: 4,
-            borderWidth: 3,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            tension: 0.35
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              intersect: false,
-              backgroundColor: "#fbfbfb",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT,
-              callbacks: {
-                label: (c) => fmtBRL(c.parsed.y)
-              }
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                color: THEME.GRID
-              },
-              ticks: {
-                color: THEME.TEXT,
-                callback: (v) => (Number(v) / 1000).toFixed(0) + "k"
-              }
-            },
-            x: {
-              grid: {
-                color: THEME.GRID
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            }
-          }
-        }
-      });
+      hintTopNone.style.display = (data.labels && data.labels.length) ? 'none' : 'block';
+    } catch(e){ console.error(e); }
+  });
+
+  // ===== Modal detalhes venda =====
+  const modalVendaEl = document.getElementById('modalVenda');
+  const modalVenda = new bootstrap.Modal(modalVendaEl);
+
+  const mVendaId = document.getElementById('mVendaId');
+  const mVendaData = document.getElementById('mVendaData');
+  const mVendaCanal = document.getElementById('mVendaCanal');
+  const mVendaPag = document.getElementById('mVendaPag');
+  const mVendaCliente = document.getElementById('mVendaCliente');
+  const mVendaEndObs = document.getElementById('mVendaEndObs');
+  const mPayJson = document.getElementById('mPayJson');
+
+  const mVendaSubtotal = document.getElementById('mVendaSubtotal');
+  const mVendaDesconto = document.getElementById('mVendaDesconto');
+  const mVendaTotal = document.getElementById('mVendaTotal');
+
+  const tbItens = document.getElementById('tbItens').querySelector('tbody');
+  const tbDevols = document.getElementById('tbDevols').querySelector('tbody');
+  const mDevolHint = document.getElementById('mDevolHint');
+
+  function fmtISOToBR(iso){
+    if (!iso) return '—';
+    const p = String(iso).split('-');
+    if (p.length !== 3) return iso;
+    return `${p[2]}/${p[1]}/${p[0]}`;
+  }
+
+  async function openVenda(id){
+    tbItens.innerHTML = `<tr><td colspan="5" class="muted">Carregando…</td></tr>`;
+    tbDevols.innerHTML = `<tr><td colspan="8" class="muted">Carregando…</td></tr>`;
+    mDevolHint.textContent = '';
+
+    const qs = new URLSearchParams({ action:'venda_details', id:String(id) });
+    const res = await fetch('dashboard.php?' + qs.toString(), { headers:{ 'Accept':'application/json' }});
+    const js = await res.json().catch(()=>null);
+    if (!js || !js.ok) throw new Error((js && js.error) ? js.error : 'Falha ao carregar venda.');
+
+    const v = js.venda || {};
+    mVendaId.value = '#V-' + String(v.id || id).padStart(4,'0');
+    mVendaData.value = fmtISOToBR(v.data || '');
+    mVendaCanal.value = String(v.canal || '—');
+    mVendaPag.value = String(v.pagamento || '—');
+    mVendaCliente.value = (v.cliente && String(v.cliente).trim()) ? String(v.cliente) : 'Consumidor Final';
+
+    const end = (v.endereco && String(v.endereco).trim()) ? String(v.endereco).trim() : '';
+    const obs = (v.obs && String(v.obs).trim()) ? String(v.obs).trim() : '';
+    const endObs = (end || obs) ? [end, obs].filter(Boolean).join("\n") : '—';
+    mVendaEndObs.value = endObs;
+
+    const pj = (v.pagamento_json_fmt && String(v.pagamento_json_fmt).trim()) ? String(v.pagamento_json_fmt) : '—';
+    mPayJson.textContent = pj;
+
+    mVendaSubtotal.value = moneyBR(v.subtotal || 0);
+    mVendaDesconto.value = String(v.desconto_text || '—');
+    mVendaTotal.value = moneyBR(v.total || 0);
+
+    const itens = Array.isArray(js.itens) ? js.itens : [];
+    if (!itens.length) {
+      tbItens.innerHTML = `<tr><td colspan="5" class="muted">Sem itens cadastrados (venda_itens).</td></tr>`;
+    } else {
+      tbItens.innerHTML = itens.map((it, idx) => {
+        const nome = `${safeText(it.nome || '')} <span class="muted">${safeText(it.unidade || '')}</span>`;
+        return `
+          <tr>
+            <td>${idx+1}</td>
+            <td>${nome}</td>
+            <td class="text-center">${Number(it.qtd||0)}</td>
+            <td class="text-end">${moneyBR(it.preco_unit||0)}</td>
+            <td class="text-end">${moneyBR(it.subtotal||0)}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
-    const ctx2 = document.getElementById("Chart2")?.getContext("2d");
-    if (ctx2) {
-      new Chart(ctx2, {
-        type: "bar",
-        data: {
-          labels: LABELS_12,
-          datasets: [{
-            label: "Vendas",
-            backgroundColor: "#365CF5",
-            borderRadius: 12,
-            barThickness: 10,
-            data: CHART2_DATA
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              backgroundColor: "#F3F6F8",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT,
-              callbacks: {
-                label: (c) => `${c.parsed.y} vendas`
-              }
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            }
-          }
-        }
-      });
+    const devols = Array.isArray(js.devolucoes) ? js.devolucoes : [];
+    if (!devols.length) {
+      tbDevols.innerHTML = `<tr><td colspan="8" class="muted">Nenhuma devolução.</td></tr>`;
+    } else {
+      tbDevols.innerHTML = devols.map(d => {
+        const prod = (String(d.tipo||'') === 'PARCIAL') ? (d.produto || '—') : '—';
+        const qtd = (String(d.tipo||'') === 'PARCIAL') ? (d.qtd ?? '—') : '—';
+        return `
+          <tr>
+            <td>${Number(d.id||0)}</td>
+            <td>${fmtISOToBR(d.data||'')}</td>
+            <td>${safeText(d.hora||'—')}</td>
+            <td>${safeText(d.tipo||'—')}</td>
+            <td>${safeText(prod||'—')}</td>
+            <td class="text-center">${qtd === null ? '—' : safeText(String(qtd))}</td>
+            <td class="text-end">${moneyBR(d.valor||0)}</td>
+            <td>${safeText(d.status||'—')}</td>
+          </tr>
+        `;
+      }).join('');
+      mDevolHint.textContent = 'Obs.: devoluções com status CANCELADO podem existir, mas não entram nos relatórios/totalizadores.';
     }
 
-    const ctx3 = document.getElementById("Chart3")?.getContext("2d");
-    if (ctx3) {
-      new Chart(ctx3, {
-        type: "line",
-        data: {
-          labels: LABELS_12,
-          datasets: [{
-              label: MIX_LABEL_A,
-              backgroundColor: "transparent",
-              borderColor: "#365CF5",
-              data: CHART3_A,
-              tension: 0.35,
-              pointRadius: 2
-            },
-            {
-              label: MIX_LABEL_B,
-              backgroundColor: "transparent",
-              borderColor: "#9b51e0",
-              data: CHART3_B,
-              tension: 0.35,
-              pointRadius: 2
-            },
-            {
-              label: "Devoluções",
-              backgroundColor: "transparent",
-              borderColor: "#f2994a",
-              data: CHART3_C,
-              tension: 0.35,
-              pointRadius: 2
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: true,
-              labels: {
-                color: THEME.TEXT
-              }
-            },
-            tooltip: {
-              intersect: false,
-              backgroundColor: "#fbfbfb",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT,
-              callbacks: {
-                label: (c) => `${c.dataset.label}: ${c.parsed.y}`
-              }
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            },
-            x: {
-              grid: {
-                color: THEME.GRID
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            }
-          }
-        }
-      });
-    }
+    modalVenda.show();
+  }
 
-    const ctx4 = document.getElementById("Chart4")?.getContext("2d");
-    if (ctx4) {
-      new Chart(ctx4, {
-        type: "bar",
-        data: {
-          labels: LABELS_6,
-          datasets: [{
-            label: "Entradas",
-            backgroundColor: "#365CF5",
-            borderRadius: 12,
-            data: CHART4_ENT
-          }, {
-            label: "Saídas",
-            backgroundColor: "#d50100",
-            borderRadius: 12,
-            data: CHART4_SAI
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: true,
-              labels: {
-                color: THEME.TEXT
-              }
-            },
-            tooltip: {
-              backgroundColor: "#F3F6F8",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            }
-          }
-        }
-      });
-    }
-
-    const ctx5 = document.getElementById("Chart5")?.getContext("2d");
-    if (ctx5) {
-      new Chart(ctx5, {
-        type: "doughnut",
-        data: {
-          labels: ["Delivery", "Presencial"],
-          datasets: [{
-            data: [DELIV, PRES],
-            backgroundColor: ["#365CF5", "#52C41A"],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              backgroundColor: "#F3F6F8",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT
-            }
-          },
-          cutout: "65%"
-        }
-      });
-    }
-
-    const ctx6 = document.getElementById("Chart6")?.getContext("2d");
-    if (ctx6) {
-      new Chart(ctx6, {
-        type: "bar",
-        data: {
-          labels: PAY_LABELS,
-          datasets: [{
-            label: "Quantidade",
-            data: PAY_DATA,
-            backgroundColor: "#365CF5",
-            borderRadius: 10,
-            barThickness: 18
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              backgroundColor: "#F3F6F8",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // ✅ TOP PRODUTOS (compatível Chart.js v2 e v3)
-    const ctx7 = document.getElementById("Chart7")?.getContext("2d");
-    if (ctx7) {
-      const ver = (window.Chart && Chart.version) ? Chart.version : "3.0.0";
-      const major = parseInt(String(ver).split(".")[0] || "3", 10);
-      const isV3 = major >= 3;
-
-      const data = {
-        labels: TOP_LABELS,
-        datasets: [{
-          label: "Qtd",
-          data: TOP_DATA,
-          backgroundColor: "#365CF5"
-        }]
-      };
-
-      const optionsV3 = {
-        indexAxis: "y",
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            backgroundColor: "#F3F6F8",
-            displayColors: false,
-            titleColor: THEME.TEXT,
-            bodyColor: THEME.TEXT
-          }
-        },
-        scales: {
-          x: {
-            grid: {
-              color: THEME.GRID
-            },
-            ticks: {
-              color: THEME.TEXT
-            }
-          },
-          y: {
-            grid: {
-              display: false
-            },
-            ticks: {
-              color: THEME.TEXT
-            }
-          }
-        }
-      };
-
-      const optionsV2 = {
-        responsive: true,
-        maintainAspectRatio: false,
-        legend: {
-          display: false
-        },
-        tooltips: {
-          backgroundColor: "#F3F6F8",
-          displayColors: false,
-          titleFontColor: THEME.TEXT,
-          bodyFontColor: THEME.TEXT
-        },
-        scales: {
-          xAxes: [{
-            ticks: {
-              beginAtZero: true
-            },
-            gridLines: {
-              color: THEME.GRID
-            }
-          }],
-          yAxes: [{
-            gridLines: {
-              display: false
-            }
-          }]
-        }
-      };
-
-      new Chart(ctx7, {
-        type: isV3 ? "bar" : "horizontalBar",
-        data,
-        options: isV3 ? optionsV3 : optionsV2
-      });
-    }
-  </script>
-
-  <script>
-    const modalVenda = new bootstrap.Modal(document.getElementById('modalVenda'));
-    const modalProduto = new bootstrap.Modal(document.getElementById('modalProduto'));
-
-    function fmtBRL2(v) {
-      try {
-        return new Intl.NumberFormat("pt-BR", {
-          style: "currency",
-          currency: "BRL"
-        }).format(Number(v || 0));
-      } catch (e) {
-        return "R$ " + String(v || 0);
-      }
-    }
-
-    function safe(s) {
-      return (s === null || s === undefined || String(s).trim() === '') ? '—' : String(s);
-    }
-
-    async function openVenda(id) {
-      document.getElementById('vendaError').style.display = 'none';
-      document.getElementById('vendaBody').style.display = 'none';
-      document.getElementById('vendaLoading').style.display = 'block';
-      modalVenda.show();
-
-      try {
-        const res = await fetch(`dashboard.php?action=venda&id=${encodeURIComponent(id)}`, {
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        const j = await res.json();
-        if (!j.ok) throw new Error(j.error || 'Falha ao carregar venda.');
-
-        const v = j.venda;
-        document.getElementById('vId').textContent = '#V-' + String(v.id).padStart(5, '0');
-        document.getElementById('vData').textContent = safe(v.data);
-        document.getElementById('vCanal').textContent = safe(v.canal);
-        document.getElementById('vCliente').textContent = safe(v.cliente);
-        document.getElementById('vPagamento').textContent = safe(v.pagamento);
-        document.getElementById('vSubtotal').textContent = fmtBRL2(v.subtotal);
-
-        const desc = (v.desconto_tipo === 'VALOR') ?
-          fmtBRL2(v.desconto_valor) :
-          `${Number(v.desconto_valor||0).toFixed(2).replace('.',',')}%`;
-        document.getElementById('vDesconto').textContent = `${desc} (taxa: ${fmtBRL2(v.taxa_entrega)})`;
-        document.getElementById('vTotal').textContent = fmtBRL2(v.total);
-
-        const obs = [
-          v.endereco ? `Endereço: ${v.endereco}` : '',
-          v.obs ? `Obs: ${v.obs}` : '',
-          v.pagamento_json ? `Pagamento JSON: ${v.pagamento_json}` : ''
-        ].filter(Boolean).join(' • ');
-        document.getElementById('vObs').textContent = obs || '—';
-
-        // ✅ ITENS
-        const itBody = document.getElementById('vItensBody');
-        const itens = Array.isArray(j.itens) ? j.itens : [];
-        document.getElementById('vItensQtd').textContent = String(j.itens_qtd || 0);
-        document.getElementById('vItensTotal').textContent = fmtBRL2(j.itens_total || 0);
-
-        if (!itens.length) {
-          itBody.innerHTML = `<tr><td colspan="5" class="text-sm text-gray">Sem itens cadastrados (venda_itens).</td></tr>`;
-        } else {
-          itBody.innerHTML = itens.map((it, idx) => `
-            <tr>
-              <td>${idx+1}</td>
-              <td>
-                <div class="fw-600">${safe(it.nome)}</div>
-                <div class="text-xs text-gray">${safe(it.codigo)} • ${safe(it.unidade)}</div>
-              </td>
-              <td class="text-end">${safe(it.qtd)}</td>
-              <td class="text-end">${fmtBRL2(it.preco_unit)}</td>
-              <td class="text-end fw-600">${fmtBRL2(it.subtotal)}</td>
-            </tr>
-          `).join('');
-        }
-
-        // Devoluções
-        const tbody = document.getElementById('vDevolBody');
-        const devols = Array.isArray(j.devolucoes) ? j.devolucoes : [];
-        if (!devols.length) {
-          tbody.innerHTML = `<tr><td colspan="8" class="text-sm text-gray">Nenhuma devolução.</td></tr>`;
-        } else {
-          tbody.innerHTML = devols.map(d => `
-            <tr>
-              <td>${safe(d.id)}</td>
-              <td>${safe(d.data)}</td>
-              <td>${safe(d.hora)}</td>
-              <td>${safe(d.tipo)}</td>
-              <td>${safe(d.produto)}</td>
-              <td>${safe(d.qtd)}</td>
-              <td>${fmtBRL2(d.valor)}</td>
-              <td>${safe(d.status)}</td>
-            </tr>
-          `).join('');
-        }
-
-        document.getElementById('vendaLoading').style.display = 'none';
-        document.getElementById('vendaBody').style.display = 'block';
-      } catch (err) {
-        document.getElementById('vendaLoading').style.display = 'none';
-        const el = document.getElementById('vendaError');
-        el.textContent = err.message || String(err);
-        el.style.display = 'block';
-      }
-    }
-
-    async function openProduto(id) {
-      document.getElementById('prodError').style.display = 'none';
-      document.getElementById('prodBody').style.display = 'none';
-      document.getElementById('prodLoading').style.display = 'block';
-      modalProduto.show();
-
-      try {
-        const res = await fetch(`dashboard.php?action=produto&id=${encodeURIComponent(id)}`, {
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        const j = await res.json();
-        if (!j.ok) throw new Error(j.error || 'Falha ao carregar produto.');
-
-        const p = j.produto;
-        document.getElementById('pNome').textContent = safe(p.nome);
-        document.getElementById('pCodigo').textContent = 'Código: ' + safe(p.codigo);
-        document.getElementById('pEstoque').textContent = safe(p.estoque);
-        document.getElementById('pMinimo').textContent = safe(p.minimo);
-        document.getElementById('pCategoria').textContent = safe(p.categoria);
-        document.getElementById('pUnidade').textContent = safe(p.unidade);
-        document.getElementById('pPreco').textContent = fmtBRL2(p.preco);
-        document.getElementById('pObs').textContent = safe(p.obs);
-
-        document.getElementById('prodLoading').style.display = 'none';
-        document.getElementById('prodBody').style.display = 'block';
-      } catch (err) {
-        document.getElementById('prodLoading').style.display = 'none';
-        const el = document.getElementById('prodError');
-        el.textContent = err.message || String(err);
-        el.style.display = 'block';
-      }
-    }
-
-    document.addEventListener('click', function(ev) {
-      const btnVenda = ev.target.closest('.btn-view-venda');
-      if (btnVenda) {
-        ev.preventDefault();
-        openVenda(btnVenda.getAttribute('data-id'));
-        return;
-      }
-
-      const btnProd = ev.target.closest('.btn-view-produto');
-      if (btnProd) {
-        ev.preventDefault();
-        openProduto(btnProd.getAttribute('data-id'));
-        return;
-      }
+  document.querySelectorAll('.btnVenda').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id') || '';
+      if (!id) return;
+      try { await openVenda(id); } catch(e){ alert(e.message || e); }
     });
-  </script>
+  });
+
+  // init hint top chart
+  hintTopNone.style.display = (INIT.top.labels && INIT.top.labels.length) ? 'none' : 'block';
+</script>
+
 </body>
-
 </html>
-
