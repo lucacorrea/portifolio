@@ -1056,17 +1056,17 @@ $initialTotais = $initial['totais'];
 
         .summary-card.s1 {
             background: #f8fafc;
-            border-left: 4px solid #4338ca;
+            border-left: 4px solid #0f172a;
         }
 
         .summary-card.s2 {
             background: #f0fdf4;
-            border-left: 4px solid #4338ca;
+            border-left: 4px solid #166534;
         }
 
         .summary-card.s3 {
             background: #f0f9ff;
-            border-left: 4px solid #4338ca;
+            border-left: 4px solid #0369a1;
         }
 
         .summary-card.s4 {
@@ -1074,21 +1074,18 @@ $initialTotais = $initial['totais'];
             border-left: 4px solid #4338ca;
         }
 
-        .summary-card.s1 .lbl,
         .summary-card.s1 .val {
             color: #0f172a;
         }
 
-        .summary-card.s2 .lbl {
+        .summary-card.s2 .val {
             color: #166534;
         }
 
-        .summary-card.s3 .lbl,
         .summary-card.s3 .val {
             color: #0369a1;
         }
 
-        .summary-card.s4 .lbl,
         .summary-card.s4 .val {
             color: #4338ca;
         }
