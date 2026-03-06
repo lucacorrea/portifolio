@@ -81,6 +81,16 @@ if (!function_exists('brl')) {
             padding: 20px;
         }
 
+        .table-custom thead th {
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 800;
+            border-bottom: 2px solid #edf2f7;
+        }
+
         .status-badge {
             padding: 5px 12px;
             border-radius: 99px;
