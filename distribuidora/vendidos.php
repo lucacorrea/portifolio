@@ -1821,7 +1821,7 @@ $initialTotais = $initial['totais'];
         const state = {
             page: <?= (int)$initialMeta['page'] ?>,
             pages: <?= (int)$initialMeta['pages'] ?>,
-            per: 25,
+            per: 10,
             lastCupomId: null
         };
 
