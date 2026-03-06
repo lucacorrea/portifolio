@@ -102,6 +102,38 @@ if (!function_exists('brl')) {
             color: #ef4444;
         }
 
+        .page-nav {
+            flex: 0 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            padding-top: 6px;
+        }
+
+        .page-btn {
+            border: 1px solid rgba(148, 163, 184, .35);
+            background: #fff;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-weight: 900;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .page-btn[disabled] {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 900;
+        }
+
         .btn-pay {
             border-radius: 8px;
             padding: 5px 10px;
