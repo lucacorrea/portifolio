@@ -1704,6 +1704,7 @@ function fmtMoney($v): string
       payBtns.querySelectorAll(".pay-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       recalcAll();
+      searchClientsRealTime();
     });
     pValor.addEventListener("input", recalcAll);
 
@@ -1830,12 +1831,16 @@ function fmtMoney($v): string
 
     async function searchClientsRealTime() {
       const q = cCliente.value.trim();
-      if (!q) {
+      const isFiado = PAY_SELECTED === "FIADO" || isMultiFiado();
+
+      if (!q || !isFiado) {
         LAST_CLIENT_SUGG = [];
         hideSuggestCliente();
-        SELECTED_CLIENT = null;
-        cCliente.classList.remove("client-verified", "client-unverified");
-        document.getElementById("fiadoFeedback").style.display = "none";
+        if (!isFiado) {
+          SELECTED_CLIENT = null;
+          cCliente.classList.remove("client-verified", "client-unverified");
+          document.getElementById("fiadoFeedback").style.display = "none";
+        }
         return;
       }
 
@@ -1845,7 +1850,7 @@ function fmtMoney($v): string
         showSuggestCliente(LAST_CLIENT_SUGG);
         
         // Se não encontrar nada e for prazo, já marca vermelho mais rápido
-        if (LAST_CLIENT_SUGG.length === 0 && (PAY_SELECTED === "FIADO" || isMultiFiado())) {
+        if (LAST_CLIENT_SUGG.length === 0 && isFiado) {
           cCliente.classList.add("client-unverified");
           document.getElementById("fiadoFeedback").style.display = "block";
           document.getElementById("fiadoFeedback").innerText = "Nome não encontrado. Venda À Prazo exige cadastro (F6).";
@@ -1882,11 +1887,12 @@ function fmtMoney($v): string
     async function checkClientFiado() {
       const q = cCliente.value.trim();
       const fiadoFeedback = document.getElementById("fiadoFeedback");
+      const isFiado = PAY_SELECTED === "FIADO" || isMultiFiado();
 
-      if (q === '') {
+      if (q === '' || !isFiado) {
         fiadoFeedback.style.display = 'none';
         cCliente.classList.remove('client-verified', 'client-unverified');
-        SELECTED_CLIENT = null;
+        if (!isFiado) SELECTED_CLIENT = null;
         return;
       }
 
@@ -1896,7 +1902,7 @@ function fmtMoney($v): string
       try {
         const r = await fetchJSON(`assets/dados/clientes_api.php?action=search&q=${encodeURIComponent(q)}`);
         const found = r.items && r.items.length > 0;
-
+        
         if (found) {
           const exact = r.items.find(it => it.nome.toLowerCase() === q.toLowerCase() || it.cpf === q);
           if (exact) {
@@ -1905,14 +1911,14 @@ function fmtMoney($v): string
             // Se não for exato, mas tiver resultados, deixa o usuário escolher da lista ou marca como não verificado se saiu do campo
             SELECTED_CLIENT = null;
             cCliente.classList.remove("client-verified");
-            if (PAY_SELECTED === "FIADO" || isMultiFiado()) {
+            if (isFiado) {
               cCliente.classList.add("client-unverified");
               fiadoFeedback.style.display = "block";
             }
           }
         } else {
           SELECTED_CLIENT = null;
-          if (PAY_SELECTED === "FIADO" || isMultiFiado()) {
+          if (isFiado) {
             cCliente.classList.add("client-unverified");
             cCliente.classList.remove("client-verified");
             fiadoFeedback.style.display = "block";
