@@ -921,7 +921,7 @@ $total12m = array_sum($chart1);
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <i class="lni lni-layers"></i>
+            <i class="lni lni-layers me-2"></i>
             </span>
             <span class="text">Operações</span>
           </a>
