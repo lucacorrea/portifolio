@@ -1711,7 +1711,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
                   <div class="muted mt-2" id="hintNone" style="display:none;">Nenhum dado para o filtro selecionado.</div>
 
                   <!-- Paginação (igual inventário) -->
-                  <div class="pager-box" id="pagerBox" style="display:none;">
+                  <div class="pager-box mb-2" id="pagerBox" style="display:none;">
                     <button class="main-btn light-btn btn-hover btn-compact" id="btnPrevPage" type="button" title="Anterior">
                       <i class="lni lni-chevron-left"></i>
                     </button>
