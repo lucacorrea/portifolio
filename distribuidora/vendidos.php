@@ -1460,18 +1460,31 @@ $initialTotais = $initial['totais'];
         <nav class="sidebar-nav">
             <ul>
                 <li class="nav-item">
-                    <a href="dashboard.php"><span class="text">Dashboard</span></a>
+                    <a href="dashboard.php">
+                        <span class="icon">
+                            <i class="lni lni-dashboard"></i>
+                        </span>
+                        <span class="text">Dashboard</span>
+                    </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="vendas.php"><span class="text">Vendas</span></a>
+                    <a href="vendas.php">
+                        <span class="icon">
+                            <i class="lni lni-cart"></i>
+                        </span>
+                        <span class="text">Vendas</span>
+                    </a>
                 </li>
 
                 <li class="nav-item nav-item-has-children active">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
+                        <span class="icon">
+                            <i class="lni lni-layers"></i>
+                        </span>
                         <span class="text">Operações</span>
                     </a>
-                    <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
+                    <ul id="ddmenu_operacoes" class="collapse dropdown-nav show">
                         <li><a href="vendidos.php" class="active">Vendidos</a></li>
                         <li><a href="fiados.php">À Prazo</a></li>
                         <li><a href="devolucoes.php">Devoluções</a></li>
@@ -1479,7 +1492,10 @@ $initialTotais = $initial['totais'];
                 </li>
 
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
+                        <span class="icon">
+                            <i class="lni lni-package"></i>
+                        </span>
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -1492,7 +1508,10 @@ $initialTotais = $initial['totais'];
                 </li>
 
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
+                        <span class="icon">
+                            <i class="lni lni-users"></i>
+                        </span>
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
@@ -1503,7 +1522,12 @@ $initialTotais = $initial['totais'];
                 </li>
 
                 <li class="nav-item">
-                    <a href="relatorios.php"><span class="text">Relatórios</span></a>
+                    <a href="relatorios.php">
+                        <span class="icon">
+                            <i class="lni lni-clipboard"></i>
+                        </span>
+                        <span class="text">Relatórios</span>
+                    </a>
                 </li>
 
                 <span class="divider">
@@ -1511,7 +1535,10 @@ $initialTotais = $initial['totais'];
                 </span>
 
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config">
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
+                        <span class="icon">
+                            <i class="lni lni-cog"></i>
+                        </span>
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -1521,7 +1548,12 @@ $initialTotais = $initial['totais'];
                 </li>
 
                 <li class="nav-item">
-                    <a href="suporte.php"><span class="text">Suporte</span></a>
+                    <a href="suporte.php">
+                        <span class="icon">
+                            <i class="lni lni-whatsapp"></i>
+                        </span>
+                        <span class="text">Suporte</span>
+                    </a>
                 </li>
             </ul>
         </nav>
