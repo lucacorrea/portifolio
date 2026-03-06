@@ -1694,8 +1694,14 @@ function fmtMoney($v): string
       if (isMulti) ensureOnePayRow();
       recalcAll();
     }
-    chipPagUnico.addEventListener("click", () => setPayMode("UNICO"));
-    chipPagMulti.addEventListener("click", () => setPayMode("MULTI"));
+    chipPagUnico.addEventListener("click", () => {
+      setPayMode("UNICO");
+      searchClientsRealTime();
+    });
+    chipPagMulti.addEventListener("click", () => {
+      setPayMode("MULTI");
+      searchClientsRealTime();
+    });
 
     payBtns.addEventListener("click", (e) => {
       const btn = e.target.closest(".pay-btn");
@@ -1705,12 +1711,14 @@ function fmtMoney($v): string
       btn.classList.add("active");
       recalcAll();
       searchClientsRealTime();
+      checkClientFiado();
     });
     pValor.addEventListener("input", recalcAll);
 
     btnAddPay.addEventListener("click", () => {
       paysWrap.insertAdjacentHTML("beforeend", payRowTpl("PIX", "0,00"));
       recalcAll();
+      searchClientsRealTime();
     });
     paysWrap.addEventListener("click", (e) => {
       const btn = e.target.closest(".btnRemPay");
@@ -1719,12 +1727,20 @@ function fmtMoney($v): string
       if (row) row.remove();
       ensureOnePayRow();
       recalcAll();
+      searchClientsRealTime();
     });
     paysWrap.addEventListener("input", (e) => {
-      if (e.target.closest(".pay-split-row")) recalcAll();
+      if (e.target.closest(".pay-split-row")) {
+        recalcAll();
+        if (e.target.classList.contains("mValue")) searchClientsRealTime();
+      }
     });
     paysWrap.addEventListener("change", (e) => {
-      if (e.target.closest(".pay-split-row")) recalcAll();
+      if (e.target.closest(".pay-split-row")) {
+        recalcAll();
+        searchClientsRealTime();
+        checkClientFiado();
+      }
     });
 
     /* ==============================
@@ -2096,7 +2112,7 @@ function fmtMoney($v): string
        Confirmar venda (server)
        (continua usando salvarVendas.php)
     ============================== */
-    function validateSaleClient() {
+    async function validateSaleClient() {
       if (!CART.length) return {
         ok: false,
         msg: "Adicione pelo menos 1 item."
@@ -2104,16 +2120,24 @@ function fmtMoney($v): string
 
       const fiadoFeedback = document.getElementById("fiadoFeedback");
       const isFiado = PAY_SELECTED === "FIADO" || isMultiFiado();
+      const q = cCliente.value.trim();
 
       if (isFiado && !SELECTED_CLIENT) {
-        cCliente.classList.add("client-unverified");
-        cCliente.classList.remove("client-verified");
-        fiadoFeedback.style.display = "block";
-        fiadoFeedback.innerText = "Venda À Prazo exige cadastro selecionado (F6).";
-        return {
-          ok: false,
-          msg: "Venda à prazo exige um cliente cadastrado selecionado."
-        };
+        // Tenta uma verificação de última hora se houver texto
+        if (q !== "") {
+          await checkClientFiado();
+        }
+        
+        if (!SELECTED_CLIENT) {
+          cCliente.classList.add("client-unverified");
+          cCliente.classList.remove("client-verified");
+          fiadoFeedback.style.display = "block";
+          fiadoFeedback.innerText = "Venda À Prazo exige cadastro selecionado (F6).";
+          return {
+            ok: false,
+            msg: "Venda à prazo exige um cliente cadastrado selecionado."
+          };
+        }
       }
 
       if (DELIVERY_MODE === "DELIVERY" && !String(cEndereco.value || "").trim()) return {
