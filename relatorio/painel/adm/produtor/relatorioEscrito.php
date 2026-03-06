@@ -600,7 +600,7 @@ $vars = [
 
     .assinatura-linha {
       border-top: 1px solid var(--cor-texto);
-      padding-top: 5px;
+      padding-top: 15px;
     }
 
     .assinatura-nome {
