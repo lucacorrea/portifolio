@@ -1897,8 +1897,11 @@ function fmtMoney($v): string
       }
     });
 
+    let LAST_SELECTED_TS = 0;
+
     function selectClient(client) {
       SELECTED_CLIENT = client;
+      LAST_SELECTED_TS = Date.now();
       cCliente.value = client.nome;
       cCliente.classList.add("client-verified");
       cCliente.classList.remove("client-unverified");
@@ -1907,6 +1910,12 @@ function fmtMoney($v): string
     }
 
     async function checkClientFiado() {
+      // Pequeno delay para garantir que se o usuário clicou numa sugestão, o click seja processado primeiro
+      await new Promise(r => setTimeout(r, 150));
+      
+      // Se acabou de selecionar via clique, não faz a verificação automática de "saída" que pode dar erro
+      if (Date.now() - LAST_SELECTED_TS < 300) return;
+
       const q = cCliente.value.trim();
       const fiadoFeedback = document.getElementById("fiadoFeedback");
       const isFiado = PAY_SELECTED === "FIADO" || isMultiFiado();
@@ -1956,8 +1965,10 @@ function fmtMoney($v): string
     }
 
     cCliente.addEventListener("blur", () => {
-      setTimeout(hideSuggestCliente, 200); // Delay para permitir o click na sugestão
+      // O delay agora está dentro de checkClientFiado
       checkClientFiado();
+      // Oculta a lista após um tempo para não sumir antes do clique
+      setTimeout(hideSuggestCliente, 200);
     });
 
     cCliente.addEventListener("keydown", (e) => {
