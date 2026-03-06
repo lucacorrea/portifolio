@@ -329,6 +329,12 @@ if (!function_exists('brl')) {
                                 </tbody>
                             </table>
                         </div>
+                        <!-- Paginação -->
+                        <div class="page-nav d-flex justify-content-center align-items-center gap-3 p-3 border-top">
+                            <button class="page-btn btn btn-sm btn-outline-primary" id="btnPrev">← Anterior</button>
+                            <span class="page-info" id="pageInfo">Página 1 / 1</span>
+                            <button class="page-btn btn btn-sm btn-outline-primary" id="btnNext">Próxima →</button>
+                        </div>
                     </div>
                 </div>
             </div>
