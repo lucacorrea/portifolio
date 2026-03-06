@@ -283,7 +283,7 @@ if (!function_exists('brl')) {
                 <!-- Tabela -->
                 <div class="card-fiado">
                     <div class="body p-0">
-                        <div class="table-responsive">
+                        <div class="table-responsive text-nowrap">
                             <table class="table table-custom mb-0">
                                 <thead>
                                     <tr>
