@@ -1843,6 +1843,13 @@ function fmtMoney($v): string
         const r = await fetchJSON(`assets/dados/clientes_api.php?action=search&q=${encodeURIComponent(q)}`);
         LAST_CLIENT_SUGG = r.items || [];
         showSuggestCliente(LAST_CLIENT_SUGG);
+        
+        // Se não encontrar nada e for prazo, já marca vermelho mais rápido
+        if (LAST_CLIENT_SUGG.length === 0 && (PAY_SELECTED === "FIADO" || isMultiFiado())) {
+          cCliente.classList.add("client-unverified");
+          document.getElementById("fiadoFeedback").style.display = "block";
+          document.getElementById("fiadoFeedback").innerText = "Nome não encontrado. Venda À Prazo exige cadastro (F6).";
+        }
       } catch (e) {
         console.error("Erro ao buscar clientes:", e);
       }
@@ -1850,7 +1857,7 @@ function fmtMoney($v): string
 
     cCliente.addEventListener("input", () => {
       clearTimeout(clientSearchTimer);
-      clientSearchTimer = setTimeout(searchClientsRealTime, 200);
+      clientSearchTimer = setTimeout(searchClientsRealTime, 100); // Reduzido para 100ms
     });
 
     suggestCliente.addEventListener("click", (e) => {
@@ -2074,6 +2081,11 @@ function fmtMoney($v): string
       });
     });
 
+    function isMultiFiado() {
+      if (PAY_MODE !== "MULTI") return false;
+      return Array.from(paysWrap.querySelectorAll(".mMethod")).some(s => s.value === "FIADO");
+    }
+
     /* ==============================
        Confirmar venda (server)
        (continua usando salvarVendas.php)
@@ -2084,8 +2096,15 @@ function fmtMoney($v): string
         msg: "Adicione pelo menos 1 item."
       };
 
-      if (PAY_SELECTED === "FIADO" || (PAY_MODE === "MULTI" && Array.from(paysWrap.querySelectorAll(".mMethod")).some(s => s.value === "FIADO"))) {
-        if (!SELECTED_CLIENT) return {
+      const fiadoFeedback = document.getElementById("fiadoFeedback");
+      const isFiado = PAY_SELECTED === "FIADO" || isMultiFiado();
+
+      if (isFiado && !SELECTED_CLIENT) {
+        cCliente.classList.add("client-unverified");
+        cCliente.classList.remove("client-verified");
+        fiadoFeedback.style.display = "block";
+        fiadoFeedback.innerText = "Venda À Prazo exige cadastro selecionado (F6).";
+        return {
           ok: false,
           msg: "Venda à prazo exige um cliente cadastrado selecionado."
         };
