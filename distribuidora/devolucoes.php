@@ -91,11 +91,6 @@ function brl(float $v): string
 {
   return 'R$ ' . number_format($v, 2, ',', '.');
 }
-function dtbr(string $ymd): string
-{
-  $ts = strtotime($ymd);
-  return $ts ? date('d/m/Y', $ts) : $ymd;
-}
 function dtbr_dt(string $ymd, string $his): string
 {
   $ymd = trim($ymd);
@@ -107,7 +102,6 @@ function dtbr_dt(string $ymd, string $his): string
 
 /* =========================================================
    ✅ table_exists CORRETO (INFORMATION_SCHEMA)
-   (não depende de SHOW TABLES / bind)
 ========================================================= */
 function table_exists(PDO $pdo, string $table): bool
 {
@@ -174,7 +168,6 @@ function devolucao_effect(PDO $pdo, array $dev): array
 function apply_stock_delta(PDO $pdo, array $deltaMap): array
 {
   $missing = [];
-
   $up = $pdo->prepare("
     UPDATE produtos
     SET estoque = GREATEST(0, estoque + :delta)
@@ -190,7 +183,6 @@ function apply_stock_delta(PDO $pdo, array $deltaMap): array
     $up->execute([':delta' => $delta, ':codigo' => $code]);
     if ($up->rowCount() === 0) $missing[] = $code;
   }
-
   return $missing;
 }
 
@@ -272,6 +264,12 @@ if ($export === 'excel' || $export === 'pdf') {
   $q = (string)($_GET['q'] ?? '');
   $status = (string)($_GET['status'] ?? '');
 
+  if (!table_exists($pdo, 'devolucoes')) {
+    http_response_code(500);
+    echo "ERRO: tabela devolucoes não encontrada.";
+    exit;
+  }
+
   [$w, $p] = build_where($q, $status);
 
   $st = $pdo->prepare("
@@ -283,7 +281,7 @@ if ($export === 'excel' || $export === 'pdf') {
   $st->execute($p);
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  // Totais (no mesmo filtro aplicado)
+  // Totais
   $tot = ['ABERTO' => 0.0, 'CONCLUIDO' => 0.0, 'CANCELADO' => 0.0, 'GERAL' => 0.0];
   foreach ($rows as $r) {
     $v = (float)($r['valor'] ?? 0);
@@ -297,6 +295,9 @@ if ($export === 'excel' || $export === 'pdf') {
   $filtroTxt = 'Status: ' . ($status !== '' ? strtoupper($status) : 'Todos');
   if (trim($q) !== '') $filtroTxt .= ' | Busca: ' . $q;
 
+  /* =======================
+     ✅ EXCEL (separando OBS)
+  ======================= */
   if ($export === 'excel') {
     $fn = 'devolucoes_' . date('Ymd_His') . '.xls';
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
@@ -313,37 +314,37 @@ if ($export === 'excel' || $export === 'pdf') {
     <body>
       <table border="0" cellpadding="4" cellspacing="0" style="font-family:Calibri,Arial; font-size:12px; width:100%;">
         <tr>
-          <td colspan="10" style="font-size:16px; font-weight:800;">
+          <td colspan="11" style="font-size:16px; font-weight:800;">
             PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES (RESUMO)
           </td>
         </tr>
         <tr>
           <td><b>Gerado em:</b></td>
-          <td colspan="9"><?= e($geradoEm) ?></td>
+          <td colspan="10"><?= e($geradoEm) ?></td>
         </tr>
         <tr>
           <td><b>Filtro:</b></td>
-          <td colspan="9"><?= e($filtroTxt) ?></td>
+          <td colspan="10"><?= e($filtroTxt) ?></td>
         </tr>
         <tr>
           <td><b>Total (Aberto):</b></td>
           <td><?= e(brl($tot['ABERTO'])) ?></td>
-          <td colspan="8"></td>
+          <td colspan="9"></td>
         </tr>
         <tr>
           <td><b>Total (Concluído):</b></td>
           <td><?= e(brl($tot['CONCLUIDO'])) ?></td>
-          <td colspan="8"></td>
+          <td colspan="9"></td>
         </tr>
         <tr>
           <td><b>Total (Cancelado):</b></td>
           <td><?= e(brl($tot['CANCELADO'])) ?></td>
-          <td colspan="8"></td>
+          <td colspan="9"></td>
         </tr>
         <tr>
           <td><b>TOTAL (Geral):</b></td>
           <td><b><?= e(brl($tot['GERAL'])) ?></b></td>
-          <td colspan="8"></td>
+          <td colspan="9"></td>
         </tr>
       </table>
 
@@ -360,6 +361,7 @@ if ($export === 'excel' || $export === 'pdf') {
           <td>Qtd</td>
           <td>Valor</td>
           <td>Motivo</td>
+          <td>Obs</td>
           <td>Status</td>
         </tr>
         <?php foreach ($rows as $r): ?>
@@ -373,6 +375,7 @@ if ($export === 'excel' || $export === 'pdf') {
             <td><?= ($r['qtd'] !== null ? (int)$r['qtd'] : '—') ?></td>
             <td><?= e(brl((float)$r['valor'])) ?></td>
             <td><?= e((string)($r['motivo'] ?? '')) ?></td>
+            <td><?= e((string)($r['obs'] ?? '')) ?></td>
             <td><?= e((string)($r['status'] ?? 'ABERTO')) ?></td>
           </tr>
         <?php endforeach; ?>
@@ -380,157 +383,274 @@ if ($export === 'excel' || $export === 'pdf') {
     </body>
 
     </html>
-  <?php
+<?php
     exit;
   }
 
-  // PDF (layout A4 para imprimir/salvar)
-  ?>
-  <!doctype html>
-  <html lang="pt-BR">
+  /* =======================
+     ✅ PDF (arquivo para baixar)
+     - parecido com seus relatórios
+     - sem depender de libs
+     - separa Obs do Motivo
+  ======================= */
 
-  <head>
-    <meta charset="utf-8">
-    <title>Devoluções (PDF)</title>
-    <style>
-      @page {
-        size: A4;
-        margin: 12mm;
-      }
+  // helpers PDF
+  $pdf_to_1252 = function (string $s): string {
+    $s = trim($s);
+    if ($s === '') return '';
+    if (function_exists('iconv')) {
+      $x = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $s);
+      if ($x !== false) return $x;
+    }
+    // fallback bruto: remove chars fora do básico
+    return preg_replace('/[^\x20-\x7E]/', '', $s) ?? $s;
+  };
 
-      body {
-        font-family: Arial, Helvetica, sans-serif;
-        color: #0f172a;
-      }
+  $pdf_escape = function (string $s) use ($pdf_to_1252): string {
+    $s = $pdf_to_1252($s);
+    $s = str_replace('\\', '\\\\', $s);
+    $s = str_replace('(', '\\(', $s);
+    $s = str_replace(')', '\\)', $s);
+    return $s;
+  };
 
-      .title {
-        font-size: 18px;
-        font-weight: 800;
-        text-align: center;
-        margin: 0 0 8px;
-      }
+  $pdf_trunc = function (string $s, int $max): string {
+    $s = trim($s);
+    if ($s === '') return '';
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+      if (mb_strlen($s, 'UTF-8') <= $max) return $s;
+      return mb_substr($s, 0, max(1, $max - 1), 'UTF-8') . '…';
+    }
+    if (strlen($s) <= $max) return $s;
+    return substr($s, 0, max(1, $max - 1)) . '...';
+  };
 
-      .meta {
-        font-size: 12px;
-        margin-bottom: 10px;
-      }
+  // PDF builder
+  $objects = [];
+  $addObj = function (string $body) use (&$objects): int {
+    $objects[] = $body;
+    return count($objects); // obj number starts at 1
+  };
 
-      .meta div {
-        margin: 2px 0;
-      }
+  $pageW = 595.28;  // A4
+  $pageH = 841.89;
+  $m = 36.0;        // margin
+  $x0 = $m;
+  $usableW = $pageW - 2 * $m;
 
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 11px;
-      }
+  // colunas (somatório = $usableW)
+  $cols = [
+    ['k' => 'id',     't' => 'ID',        'w' => 22, 'a' => 'L', 'max' => 4],
+    ['k' => 'dt',     't' => 'Data/Hora', 'w' => 64, 'a' => 'L', 'max' => 16],
+    ['k' => 'venda',  't' => 'Venda',     'w' => 32, 'a' => 'L', 'max' => 7],
+    ['k' => 'cliente', 't' => 'Cliente',   'w' => 85, 'a' => 'L', 'max' => 20],
+    ['k' => 'tipo',   't' => 'Tipo',      'w' => 38, 'a' => 'C', 'max' => 8],
+    ['k' => 'produto', 't' => 'Produto',   'w' => 82, 'a' => 'L', 'max' => 20],
+    ['k' => 'qtd',    't' => 'Qtd',       'w' => 22, 'a' => 'C', 'max' => 4],
+    ['k' => 'valor',  't' => 'Valor',     'w' => 40, 'a' => 'R', 'max' => 10],
+    ['k' => 'motivo', 't' => 'Motivo',    'w' => 50, 'a' => 'L', 'max' => 12],
+    ['k' => 'obs',    't' => 'Obs',       'w' => 50, 'a' => 'L', 'max' => 12],
+    ['k' => 'status', 't' => 'Status',    'w' => 38, 'a' => 'C', 'max' => 10],
+  ];
 
-      th,
-      td {
-        border: 1px solid #d1d5db;
-        padding: 6px;
-        vertical-align: middle;
-      }
+  $rowH = 16.0;
+  $headH = 18.0;
 
-      th {
-        background: #f3f6f8;
-        font-weight: 800;
-      }
+  $drawRect = function (float $x, float $y, float $w, float $h, string $mode): string {
+    // mode: S (stroke), f (fill), B (fill+stroke)
+    return sprintf("%.2f %.2f %.2f %.2f re %s\n", $x, $y, $w, $h, $mode);
+  };
 
-      .tot {
-        margin: 10px 0 12px;
-        font-size: 12px;
-      }
+  $textAt = function (float $x, float $y, string $txt, int $size, string $align = 'L', float $w = 0.0) use ($pdf_escape): string {
+    // y is baseline in PDF coords
+    $txt = $pdf_escape($txt);
+    if ($txt === '') return '';
+    if ($align === 'R' && $w > 0) {
+      // crude width estimate: 0.5*size per char
+      $tw = strlen($txt) * $size * 0.5;
+      $x = max($x, $x + $w - $tw - 2);
+    } elseif ($align === 'C' && $w > 0) {
+      $tw = strlen($txt) * $size * 0.5;
+      $x = $x + max(0, ($w - $tw) / 2);
+    }
+    return "BT /F1 {$size} Tf 0 g " . sprintf("%.2f %.2f Td", $x, $y) . " ({$txt}) Tj ET\n";
+  };
 
-      .tot b {
-        font-size: 13px;
-      }
+  $buildHeader = function (string $title, string $geradoEm, string $filtroTxt, array $tot) use ($pageW, $pageH, $m, $x0, $usableW, $textAt): array {
+    $content = "";
 
-      .btnbar {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        margin: 0 0 10px;
-      }
+    // title centered
+    $titleY = $pageH - $m - 18;
+    // manual center: compute x based on length
+    $tw = strlen($title) * 14 * 0.5;
+    $tx = max($m, ($pageW - $tw) / 2);
+    $content .= $textAt($tx, $titleY, $title, 14, 'L');
 
-      .btn {
-        padding: 8px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        background: #fff;
-        cursor: pointer;
-        font-weight: 700;
-      }
+    // meta lines
+    $y = $titleY - 18;
+    $content .= $textAt($x0, $y, "Gerado em: {$geradoEm}", 10);
+    $y -= 14;
+    $content .= $textAt($x0, $y, $filtroTxt, 10);
 
-      .btn.primary {
-        border-color: #2563eb;
-        color: #2563eb;
-      }
+    // totals block (no estilo “relatório”)
+    $y -= 16;
+    $content .= $textAt($x0, $y, "Total (Aberto): " . brl((float)$tot['ABERTO']) . "   |   Total (Concluído): " . brl((float)$tot['CONCLUIDO']) . "   |   Total (Cancelado): " . brl((float)$tot['CANCELADO']), 10);
+    $y -= 14;
+    $content .= $textAt($x0, $y, "TOTAL (Geral): " . brl((float)$tot['GERAL']), 11);
 
-      @media print {
-        .btnbar {
-          display: none;
-        }
-      }
-    </style>
-  </head>
+    $y -= 18;
+    return [$content, $y];
+  };
 
-  <body>
-    <div class="btnbar">
-      <button class="btn primary" onclick="window.print()">Imprimir / Salvar como PDF</button>
-      <button class="btn" onclick="window.close()">Fechar</button>
-    </div>
+  $pagesContent = [];
 
-    <div class="title">PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES</div>
+  $title = "PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES";
+  [$headContent, $yTopTable] = $buildHeader($title, $geradoEm, $filtroTxt, $tot);
 
-    <div class="meta">
-      <div><b>Gerado em:</b> <?= e($geradoEm) ?></div>
-      <div><b>Filtro:</b> <?= e($filtroTxt) ?></div>
-    </div>
+  $newPage = function () use (&$pagesContent, $headContent, $yTopTable): array {
+    $content = $headContent;
+    $y = $yTopTable;
+    return [$content, $y];
+  };
 
-    <div class="tot">
-      <div><b>Total em aberto:</b> <?= e(brl($tot['ABERTO'])) ?></div>
-      <div><b>Total concluído:</b> <?= e(brl($tot['CONCLUIDO'])) ?></div>
-      <div><b>Total cancelado:</b> <?= e(brl($tot['CANCELADO'])) ?></div>
-      <div style="margin-top:6px;"><b>TOTAL (geral):</b> <?= e(brl($tot['GERAL'])) ?></div>
-    </div>
+  // start first page
+  [$content, $y] = $newPage();
 
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Data/Hora</th>
-          <th>Venda</th>
-          <th>Cliente</th>
-          <th>Tipo</th>
-          <th>Produto</th>
-          <th>Qtd</th>
-          <th>Valor</th>
-          <th>Motivo</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($rows as $r): ?>
-          <tr>
-            <td><?= (int)$r['id'] ?></td>
-            <td><?= e(dtbr_dt((string)$r['data'], (string)$r['hora'])) ?></td>
-            <td><?= ($r['venda_no'] !== null ? '#' . (int)$r['venda_no'] : '—') ?></td>
-            <td><?= e((string)($r['cliente'] ?? '')) ?></td>
-            <td><?= e((string)($r['tipo'] ?? 'TOTAL')) ?></td>
-            <td><?= e((string)($r['produto'] ?? '')) ?></td>
-            <td><?= ($r['qtd'] !== null ? (int)$r['qtd'] : '—') ?></td>
-            <td><?= e(brl((float)$r['valor'])) ?></td>
-            <td><?= e((string)($r['motivo'] ?? '')) ?></td>
-            <td><?= e((string)($r['status'] ?? 'ABERTO')) ?></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  </body>
+  // table header
+  $tableHeader = function (float $x0, float $y, array $cols) use ($drawRect, $textAt, $headH): string {
+    $c = "";
+    // header background
+    $c .= "0.95 g\n0.85 G 0.6 w\n"; // fill grey, stroke light
+    $x = $x0;
+    foreach ($cols as $col) {
+      $c .= $drawRect($x, $y - $headH, $col['w'], $headH, "B");
+      $c .= $textAt($x + 2, $y - 13, (string)$col['t'], 9, 'L');
+      $x += $col['w'];
+    }
+    $c .= "0 g\n0 G\n";
+    return $c;
+  };
 
-  </html>
-<?php
+  $tableRow = function (float $x0, float $y, array $cols, array $data) use ($drawRect, $textAt, $rowH): string {
+    $c = "";
+    $c .= "0 G 0.6 w\n"; // stroke
+    $x = $x0;
+    foreach ($cols as $col) {
+      $c .= $drawRect($x, $y - $rowH, $col['w'], $rowH, "S");
+      $txt = (string)($data[$col['k']] ?? '');
+      $c .= $textAt($x + 2, $y - 12, $txt, 9, $col['a'], $col['w'] - 4);
+      $x += $col['w'];
+    }
+    return $c;
+  };
+
+  // print header row
+  $content .= $tableHeader($x0, $y, $cols);
+  $y -= $headH;
+
+  // bottom limit
+  $bottom = $m + 28;
+
+  foreach ($rows as $r) {
+    // if need new page
+    if (($y - $rowH) < $bottom) {
+      $pagesContent[] = $content;
+      [$content, $y] = $newPage();
+      $content .= $tableHeader($x0, $y, $cols);
+      $y -= $headH;
+    }
+
+    $id = (string)((int)($r['id'] ?? 0));
+    $dt = dtbr_dt((string)($r['data'] ?? ''), (string)($r['hora'] ?? ''));
+    $venda = ($r['venda_no'] !== null) ? ('#' . (int)$r['venda_no']) : '—';
+    $cliente = (string)($r['cliente'] ?? '');
+    if (trim($cliente) === '') $cliente = 'Consumidor Final';
+    $tipo = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
+    $produto = (string)($r['produto'] ?? '');
+    if ($tipo !== 'PARCIAL') $produto = '—';
+    $qtd = ($tipo === 'PARCIAL') ? (string)((int)($r['qtd'] ?? 0)) : '—';
+    $valor = brl((float)($r['valor'] ?? 0));
+    $motivo = strtoupper((string)($r['motivo'] ?? 'OUTRO'));
+    $obs = (string)($r['obs'] ?? '');
+    $statusTxt = strtoupper((string)($r['status'] ?? 'ABERTO'));
+
+    // truncs for table
+    $rowData = [
+      'id' => $id,
+      'dt' => $pdf_trunc($dt, 16),
+      'venda' => $pdf_trunc($venda, 7),
+      'cliente' => $pdf_trunc($cliente, 20),
+      'tipo' => $pdf_trunc($tipo, 8),
+      'produto' => $pdf_trunc($produto, 20),
+      'qtd' => $pdf_trunc($qtd, 4),
+      'valor' => $pdf_trunc($valor, 10),
+      'motivo' => $pdf_trunc($motivo, 12),
+      'obs' => $pdf_trunc($obs, 12),
+      'status' => $pdf_trunc($statusTxt, 10),
+    ];
+
+    $content .= $tableRow($x0, $y, $cols, $rowData);
+    $y -= $rowH;
+  }
+
+  $pagesContent[] = $content;
+
+  // build PDF objects
+  $fontObj = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+
+  $pageObjs = [];
+  $contentObjs = [];
+
+  foreach ($pagesContent as $pc) {
+    $stream = $pc;
+    $len = strlen($stream);
+    $contentObj = $addObj("<< /Length {$len} >>\nstream\n{$stream}\nendstream");
+    $contentObjs[] = $contentObj;
+
+    $pageObj = $addObj("<<
+/Type /Page
+/Parent 0 0 R
+/MediaBox [0 0 {$pageW} {$pageH}]
+/Resources << /Font << /F1 {$fontObj} 0 R >> >>
+/Contents {$contentObj} 0 R
+>>");
+    $pageObjs[] = $pageObj;
+  }
+
+  // Pages tree
+  $kids = implode(' ', array_map(fn($n) => "{$n} 0 R", $pageObjs));
+  $pagesObj = $addObj("<< /Type /Pages /Kids [ {$kids} ] /Count " . count($pageObjs) . " >>");
+
+  // fix Parent reference in each page object (replace "0 0 R" with pagesObj)
+  foreach ($pageObjs as $idx => $pnum) {
+    $objects[$pnum - 1] = str_replace("/Parent 0 0 R", "/Parent {$pagesObj} 0 R", $objects[$pnum - 1]);
+  }
+
+  // Catalog
+  $catalogObj = $addObj("<< /Type /Catalog /Pages {$pagesObj} 0 R >>");
+
+  // write file
+  $pdf = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
+  $offsets = [0];
+  for ($i = 1; $i <= count($objects); $i++) {
+    $offsets[$i] = strlen($pdf);
+    $pdf .= $i . " 0 obj\n" . $objects[$i - 1] . "\nendobj\n";
+  }
+  $xrefPos = strlen($pdf);
+  $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+  $pdf .= "0000000000 65535 f \n";
+  for ($i = 1; $i <= count($objects); $i++) {
+    $pdf .= str_pad((string)$offsets[$i], 10, '0', STR_PAD_LEFT) . " 00000 n \n";
+  }
+  $pdf .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root {$catalogObj} 0 R >>\nstartxref\n{$xrefPos}\n%%EOF";
+
+  $fn = 'devolucoes_' . date('Ymd_His') . '.pdf';
+  header('Content-Type: application/pdf');
+  header('Content-Disposition: attachment; filename="' . $fn . '"');
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  header('Pragma: no-cache');
+  header('Content-Length: ' . strlen($pdf));
+  echo $pdf;
   exit;
 }
 
@@ -541,12 +661,10 @@ if (isset($_GET['ajax'])) {
   $ajax = (string)($_GET['ajax'] ?? '');
 
   try {
-
     // buscar vendas
     if ($ajax === 'buscarVendas') {
       $q = trim((string)($_GET['q'] ?? ''));
       if ($q === '') json_out(['ok' => true, 'items' => []]);
-
       if (!table_exists($pdo, 'vendas')) json_out(['ok' => true, 'items' => []]);
 
       if (preg_match('/^\d+$/', $q)) {
@@ -587,7 +705,6 @@ if (isset($_GET['ajax'])) {
     if ($ajax === 'itensVenda') {
       $id = (int)($_GET['id'] ?? 0);
       if ($id <= 0) json_out(['ok' => true, 'items' => []]);
-
       if (!table_exists($pdo, 'venda_itens')) json_out(['ok' => true, 'items' => []]);
 
       $st = $pdo->prepare("
@@ -611,13 +728,14 @@ if (isset($_GET['ajax'])) {
           'subtotal' => (float)($r['subtotal'] ?? 0),
         ];
       }
-
       json_out(['ok' => true, 'items' => $items]);
     }
 
     // ✅ listagem paginada (10 em 10)
     if ($ajax === 'list') {
-      if (!table_exists($pdo, 'devolucoes')) json_out(['ok' => true, 'items' => [], 'page' => 1, 'per' => 10, 'total_rows' => 0, 'total_pages' => 1, 'totals' => []]);
+      if (!table_exists($pdo, 'devolucoes')) {
+        json_out(['ok' => true, 'items' => [], 'page' => 1, 'per' => 10, 'total_rows' => 0, 'total_pages' => 1, 'totals' => []]);
+      }
 
       $page = to_int($_GET['page'] ?? 1, 1, 999999);
       $per  = to_int($_GET['per'] ?? 10, 1, 50);
@@ -627,10 +745,8 @@ if (isset($_GET['ajax'])) {
       $q = (string)($_GET['q'] ?? '');
       $status = (string)($_GET['status'] ?? '');
 
-      // filtro do grid (inclui status)
       [$w, $p] = build_where($q, $status);
 
-      // contagem
       $stC = $pdo->prepare("SELECT COUNT(*) c FROM devolucoes d $w");
       $stC->execute($p);
       $totalRows = (int)($stC->fetchColumn() ?: 0);
@@ -638,7 +754,6 @@ if (isset($_GET['ajax'])) {
       if ($page > $totalPages) $page = $totalPages;
       $off = ($page - 1) * $per;
 
-      // query paginada
       $sql = "
         SELECT d.id, d.venda_no, d.cliente, d.data, d.hora, d.tipo, d.produto, d.qtd, d.valor, d.motivo, d.obs, d.status, d.created_at
         FROM devolucoes d
@@ -672,8 +787,8 @@ if (isset($_GET['ajax'])) {
         ];
       }
 
-      // totais do resumo (mesma busca, mas sem travar no status do filtro)
-      [$w2, $p2] = build_where($q, ''); // ignora status, mantém busca
+      // totais do resumo (mesma busca, ignorando status do filtro)
+      [$w2, $p2] = build_where($q, '');
       $stT = $pdo->prepare("
         SELECT UPPER(TRIM(d.status)) st, COALESCE(SUM(d.valor),0) s
         FROM devolucoes d
@@ -724,7 +839,6 @@ if (isset($_GET['ajax'])) {
       $product = trim((string)($payload['product'] ?? ''));
       $qty = to_int($payload['qty'] ?? 1, 1);
       $amount = (float)to_float($payload['amount'] ?? 0);
-
       if ($amount <= 0) json_out(['ok' => false, 'msg' => 'Informe um valor (R$) maior que zero.'], 400);
 
       $reason = strtoupper(trim((string)($payload['reason'] ?? 'OUTRO')));
@@ -746,7 +860,6 @@ if (isset($_GET['ajax'])) {
       } else {
         if ($product === '') json_out(['ok' => false, 'msg' => 'Informe o produto para devolução parcial.'], 400);
         if ($qty < 1) json_out(['ok' => false, 'msg' => 'Informe a quantidade (mín. 1).'], 400);
-
         if ($status === 'CONCLUIDO') {
           $code = extract_product_code($product);
           if ($code === '') json_out(['ok' => false, 'msg' => 'Para concluir devolução PARCIAL, informe o produto com código (ex: P0001 - Arroz).'], 400);
@@ -789,9 +902,7 @@ if (isset($_GET['ajax'])) {
         foreach ($oldEffect as $k => $v) $negOld[$k] = -1 * (int)$v;
         $delta = map_add($delta, $negOld);
 
-        if ($delta && table_exists($pdo, 'produtos')) {
-          $missing = apply_stock_delta($pdo, $delta);
-        }
+        if ($delta && table_exists($pdo, 'produtos')) $missing = apply_stock_delta($pdo, $delta);
 
         if ($id > 0) {
           $st = $pdo->prepare("
@@ -846,7 +957,6 @@ if (isset($_GET['ajax'])) {
 
       $msg = 'Devolução salva com sucesso!';
       if ($missing) $msg .= ' (Atenção: não encontrei no estoque: ' . implode(', ', $missing) . ')';
-
       json_out(['ok' => true, 'msg' => $msg]);
     }
 
@@ -896,7 +1006,6 @@ if (isset($_GET['ajax'])) {
 
       $msg = 'Devolução excluída.';
       if ($missing) $msg .= ' (Atenção: não encontrei no estoque: ' . implode(', ', $missing) . ')';
-
       json_out(['ok' => true, 'msg' => $msg]);
     }
 
@@ -1044,9 +1153,10 @@ $flash = flash_pop();
 
     #tbDev {
       width: 100%;
-      min-width: 1200px
+      min-width: 1320px
     }
 
+    /* ✅ mais largo pra não embolar */
     #tbDev th {
       font-weight: 900;
       color: #0f172a
@@ -1240,37 +1350,19 @@ $flash = flash_pop();
     <div class="spinner"></div>
   </div>
 
-  <!-- ======== sidebar-nav start =========== -->
+  <!-- sidebar (mantive igual ao seu layout) -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
         <img src="assets/images/logo/logo.svg" alt="logo" />
       </a>
     </div>
-
     <nav class="sidebar-nav">
       <ul>
-        <li class="nav-item"><a href="dashboard.php"><span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
-                <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
-              </svg>
-            </span><span class="text">Dashboard</span></a></li>
-
-        <li class="nav-item"><a href="vendas.php"><span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span><span class="text">Vendas</span></a></li>
-
+        <li class="nav-item"><a href="dashboard.php"><span class="text">Dashboard</span></a></li>
+        <li class="nav-item"><a href="vendas.php"><span class="text">Vendas</span></a></li>
         <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
-              </svg>
-            </span>
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse show dropdown-nav">
@@ -1279,86 +1371,8 @@ $flash = flash_pop();
             <li><a href="devolucoes.php" class="active">Devoluções</a></li>
           </ul>
         </li>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
-                <path d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
-              </svg>
-            </span>
-            <span class="text">Estoque</span>
-          </a>
-          <ul id="ddmenu_estoque" class="collapse dropdown-nav">
-            <li><a href="produtos.php">Produtos</a></li>
-            <li><a href="inventario.php">Inventário</a></li>
-            <li><a href="entradas.php">Entradas</a></li>
-            <li><a href="saidas.php">Saídas</a></li>
-            <li><a href="estoque-minimo.php">Estoque Mínimo</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
-              </svg>
-            </span>
-            <span class="text">Cadastros</span>
-          </a>
-          <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
-            <li><a href="clientes.php">Clientes</a></li>
-            <li><a href="fornecedores.php">Fornecedores</a></li>
-            <li><a href="categorias.php">Categorias</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item">
-          <a href="relatorios.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
-              </svg>
-            </span>
-            <span class="text">Relatórios</span>
-          </a>
-        </li>
-
-        <span class="divider">
-          <hr />
-        </span>
-
-        <li class="nav-item nav-item-has-children">
-          <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
-              </svg>
-            </span>
-            <span class="text">Configurações</span>
-          </a>
-          <ul id="ddmenu_config" class="collapse dropdown-nav">
-            <li><a href="usuarios.php">Usuários e Permissões</a></li>
-            <li><a href="parametros.php">Parâmetros do Sistema</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item">
-          <a href="suporte.php">
-            <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
-              </svg>
-            </span>
-            <span class="text">Suporte</span>
-          </a>
-        </li>
+        <li class="nav-item"><a href="relatorios.php"><span class="text">Relatórios</span></a></li>
+        <li class="nav-item"><a href="suporte.php"><span class="text">Suporte</span></a></li>
       </ul>
     </nav>
   </aside>
@@ -1385,27 +1399,7 @@ $flash = flash_pop();
             </div>
           </div>
           <div class="col-lg-7 col-md-7 col-6">
-            <div class="header-right">
-              <div class="profile-box ml-15">
-                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                  <div class="profile-info">
-                    <div class="info">
-                      <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
-                      <div>
-                        <h6 class="fw-500">Administrador</h6>
-                        <p>Distribuidora</p>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                  <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                  <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
-                  <li class="divider"></li>
-                  <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
-                </ul>
-              </div>
-            </div>
+            <div class="header-right"></div>
           </div>
         </div>
       </div>
@@ -1418,7 +1412,7 @@ $flash = flash_pop();
             <div class="col-md-8">
               <div class="title">
                 <h2>Devoluções</h2>
-                <div class="muted">Registro e controle de devoluções • <b>F2</b> salvar | <b>F4</b> focar na busca</div>
+                <div class="muted">Registro e controle • <b>F2</b> salvar | <b>F4</b> focar na busca</div>
               </div>
             </div>
             <div class="col-md-4 text-md-end">
@@ -1454,7 +1448,7 @@ $flash = flash_pop();
 
                 <div class="mb-3">
                   <label class="form-label">Cliente</label>
-                  <input class="form-control compact" id="dCliente" placeholder="CPF ou Nome (opcional)" />
+                  <input class="form-control compact" id="dCliente" placeholder="Nome (opcional)" />
                 </div>
 
                 <div class="row g-2">
@@ -1576,7 +1570,7 @@ $flash = flash_pop();
               <div class="head">
                 <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-list me-1"></i> Listagem</div>
                 <div class="toolbar">
-                  <input class="form-control compact grow" id="qDev" placeholder="Buscar: venda, cliente, produto, motivo..." />
+                  <input class="form-control compact grow" id="qDev" placeholder="Buscar: venda, cliente, produto, motivo, obs..." />
                   <select class="form-select compact w180" id="fStatus">
                     <option value="">Todos</option>
                     <option value="ABERTO">Em aberto</option>
@@ -1584,12 +1578,11 @@ $flash = flash_pop();
                     <option value="CANCELADO">Cancelado</option>
                   </select>
 
-                  <!-- ✅ substitui JSON por Excel/PDF -->
                   <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                     <i class="lni lni-download me-1"></i> Excel
                   </button>
                   <button class="main-btn light-btn btn-hover btn-compact" id="btnPdf" type="button">
-                    <i class="lni lni-printer me-1"></i> PDF
+                    <i class="lni lni-download me-1"></i> PDF
                   </button>
                 </div>
               </div>
@@ -1599,7 +1592,7 @@ $flash = flash_pop();
                   <table class="table text-nowrap" id="tbDev">
                     <thead>
                       <tr>
-                        <th style="min-width:80px;">ID</th>
+                        <th style="min-width:70px;">ID</th>
                         <th style="min-width:160px;">Data/Hora</th>
                         <th style="min-width:110px;">Venda</th>
                         <th style="min-width:220px;">Cliente</th>
@@ -1607,7 +1600,8 @@ $flash = flash_pop();
                         <th style="min-width:260px;">Produto</th>
                         <th style="min-width:80px;" class="text-center">Qtd</th>
                         <th style="min-width:120px;" class="text-end">Valor</th>
-                        <th style="min-width:180px;">Motivo/Obs</th>
+                        <th style="min-width:160px;">Motivo</th>
+                        <th style="min-width:220px;">Obs</th>
                         <th style="min-width:130px;" class="text-center">Status</th>
                         <th style="min-width:140px;" class="text-center">Ações</th>
                       </tr>
@@ -1617,8 +1611,6 @@ $flash = flash_pop();
                 </div>
 
                 <div class="muted mt-2" id="hintNone" style="display:none;">Nenhuma devolução encontrada.</div>
-
-                <!-- ✅ paginação -->
                 <div class="pager-box" id="pagerDev" style="display:none;"></div>
               </div>
             </div>
@@ -1627,18 +1619,6 @@ $flash = flash_pop();
 
       </div>
     </section>
-
-    <footer class="footer">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-md-6 order-last order-md-first">
-            <div class="copyright text-center text-md-start">
-              <p class="text-sm">Painel da Distribuidora • <span class="text-gray">v1.0</span></p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
   </main>
 
   <script src="assets/js/bootstrap.bundle.min.js"></script>
@@ -1709,7 +1689,7 @@ $flash = flash_pop();
       prodTimer = null;
     let saleAbort = null;
 
-    // listagem paginada (server)
+    // listagem paginada
     let CUR_PAGE = 1;
     const PER_PAGE = 10;
     let TOTAL_PAGES = 1;
@@ -1872,7 +1852,6 @@ $flash = flash_pop();
       if (!s) return [];
       if (saleAbort) saleAbort.abort();
       saleAbort = new AbortController();
-
       const url = `${AJAX_URL}?ajax=buscarVendas&q=` + encodeURIComponent(s);
       const r = await fetch(url, {
         signal: saleAbort.signal
@@ -1959,7 +1938,6 @@ $flash = flash_pop();
 
       await loadSaleItems(id);
       renderSaleItems();
-
       if (TYPE === "TOTAL") applyTotalFromSaleIfAny();
     });
 
@@ -2083,12 +2061,9 @@ $flash = flash_pop();
         const cust = x.customer ? safeText(x.customer) : "Consumidor Final";
         const prod = (String(x.type).toUpperCase() === "PARCIAL") ? (x.product ? safeText(x.product) : "—") : "—";
         const qty = (String(x.type).toUpperCase() === "PARCIAL") ? Number(x.qty || 1) : "—";
-        const motivo = motivoLabel(x.reason);
         const valor = numberToMoney(x.amount);
-
-        const obs = (x.note && String(x.note).trim()) ?
-          `<div class="muted" style="max-width:260px;white-space:normal;margin-top:2px;">${safeText(x.note)}</div>` :
-          "";
+        const motivo = motivoLabel(x.reason);
+        const obs = (x.note && String(x.note).trim()) ? safeText(x.note) : "—";
 
         tbodyDev.insertAdjacentHTML("beforeend", `
           <tr data-id="${Number(x.id)}">
@@ -2100,7 +2075,8 @@ $flash = flash_pop();
             <td>${prod}</td>
             <td class="text-center">${qty}</td>
             <td class="text-end"><span class="money">${valor}</span></td>
-            <td>${safeText(motivo)}${obs}</td>
+            <td>${safeText(motivo)}</td>
+            <td style="white-space:normal; max-width:320px;">${obs}</td>
             <td class="text-center">${badgeStatus(x.status)}</td>
             <td class="text-center">
               <button class="main-btn light-btn btn-hover btn-compact icon-btn btnEdit" type="button" title="Editar"><i class="lni lni-pencil"></i></button>
@@ -2297,7 +2273,7 @@ $flash = flash_pop();
     }
 
     // =========================
-    // EXPORTS
+    // EXPORTS (agora baixa arquivo)
     // =========================
     function exportUrl(type) {
       const q = (qDev.value || "").trim();
@@ -2306,18 +2282,16 @@ $flash = flash_pop();
       u.searchParams.set('export', type);
       u.searchParams.set('q', q);
       u.searchParams.set('status', st);
-      // remove ajax params se tiver
       u.searchParams.delete('ajax');
       u.searchParams.delete('page');
       u.searchParams.delete('per');
       return u.toString();
     }
-
     btnExcel.addEventListener('click', () => {
       window.location.href = exportUrl('excel');
     });
     btnPdf.addEventListener('click', () => {
-      window.open(exportUrl('pdf'), '_blank');
+      window.location.href = exportUrl('pdf');
     });
 
     // =========================
