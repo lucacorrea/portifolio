@@ -2181,7 +2181,7 @@ function fmtMoney($v): string
     }
 
     async function confirmSale(fiadoData = null) {
-      const v = validateSaleClient();
+      const v = await validateSaleClient();
       if (!v.ok) {
         alert(v.msg);
         return;
