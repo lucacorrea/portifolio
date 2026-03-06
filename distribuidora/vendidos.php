@@ -1060,17 +1060,17 @@ $initialTotais = $initial['totais'];
         }
 
         .summary-card.s2 {
-            background: #f0fdf4;
-            border-left: 4px solid #166534;
+            background: #f8fafc;
+            border-left: 4px solid #166534 !important;
         }
 
         .summary-card.s3 {
-            background: #f0f9ff;
+            background: #f8fafc !important;
             border-left: 4px solid #0369a1;
         }
 
         .summary-card.s4 {
-            background: #eef2ff;
+            background: #f8fafc !important;
             border-left: 4px solid #4338ca;
         }
 
