@@ -34,6 +34,7 @@ function br_money($n): string
 {
   return 'R$ ' . number_format((float)$n, 2, ',', '.');
 }
+
 function br_date(?string $iso): string
 {
   $iso = trim((string)$iso);
@@ -41,6 +42,7 @@ function br_date(?string $iso): string
   $dt = DateTime::createFromFormat('Y-m-d', $iso);
   return $dt ? $dt->format('d/m/Y') : '—';
 }
+
 function br_datetime(?string $sqlDt): string
 {
   $sqlDt = trim((string)$sqlDt);
@@ -55,6 +57,7 @@ function br_datetime(?string $sqlDt): string
   }
   return $dt->format('d/m/Y H:i');
 }
+
 function table_exists(PDO $pdo, string $table): bool
 {
   try {
@@ -65,48 +68,17 @@ function table_exists(PDO $pdo, string $table): bool
     return false;
   }
 }
-function period_range(string $period): array
-{
-  $p = strtolower(trim($period));
-  $today = new DateTimeImmutable('today');
-  $end = $today;
-  if ($p === 'today' || $p === 'hoje') {
-    $start = $today;
-  } elseif ($p === '7d') {
-    $start = $today->sub(new DateInterval('P6D'));
-  } elseif ($p === '30d') {
-    $start = $today->sub(new DateInterval('P29D'));
-  } elseif ($p === '12m') {
-    $start = $today->modify('first day of this month')->sub(new DateInterval('P11M'));
-  } else {
-    $start = $today->sub(new DateInterval('P6D'));
-  }
-  return [$start->format('Y-m-d'), $end->format('Y-m-d')];
-}
-function months_last_n(int $n = 12): array
-{
-  $now = new DateTimeImmutable('first day of this month');
-  $pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  $keys = [];
-  $labels = [];
-  for ($i = $n - 1; $i >= 0; $i--) {
-    $d = $now->sub(new DateInterval('P' . $i . 'M'));
-    $ym = $d->format('Y-m');
-    $keys[] = $ym;
-    $m = (int)$d->format('n');
-    $y = $d->format('y');
-    $labels[] = $pt[$m - 1] . '/' . $y;
-  }
-  return [$keys, $labels];
-}
+
 function venda_exclude_devolvidas_sql(): string
 {
+  // regra do seu projeto: venda devolvida (status != CANCELADO) sai das “vendas”
   return "NOT EXISTS (
     SELECT 1 FROM devolucoes d
     WHERE d.venda_no = v.id
       AND d.status <> 'CANCELADO'
   )";
 }
+
 function decode_pay_json(?string $json): array
 {
   $json = trim((string)$json);
@@ -114,11 +86,12 @@ function decode_pay_json(?string $json): array
   $d = json_decode($json, true);
   return (json_last_error() === JSON_ERROR_NONE && is_array($d)) ? $d : [];
 }
+
 function fmt_pay_json(?string $json): string
 {
   $d = decode_pay_json($json);
   if (!$d) return '';
-  // tenta normalizar chaves comuns: mode/method/paid/total/troco/fiado/parts
+
   $lines = [];
 
   $mode = strtoupper((string)($d['mode'] ?? $d['pagamento_mode'] ?? ''));
@@ -127,15 +100,14 @@ function fmt_pay_json(?string $json): string
   if ($mode !== '')   $lines[] = "Modo: {$mode}";
   if ($method !== '') $lines[] = "Método: {$method}";
 
-  $paid = $d['paid'] ?? $d['pago'] ?? null;
+  $paid  = $d['paid']  ?? $d['pago']  ?? null;
   $troco = $d['troco'] ?? null;
   $total = $d['total'] ?? null;
 
   if ($total !== null && $total !== '') $lines[] = "Total: " . br_money((float)$total);
-  if ($paid !== null && $paid !== '')   $lines[] = "Pago: " . br_money((float)$paid);
+  if ($paid  !== null && $paid  !== '') $lines[] = "Pago: " . br_money((float)$paid);
   if ($troco !== null && $troco !== '') $lines[] = "Troco: " . br_money((float)$troco);
 
-  // Multi (partes)
   if (isset($d['parts']) && is_array($d['parts'])) {
     $lines[] = "Partes:";
     foreach ($d['parts'] as $p) {
@@ -146,8 +118,16 @@ function fmt_pay_json(?string $json): string
     }
   }
 
-  // fiado
-  if (array_key_exists('fiado', $d) && $d['fiado']) {
+  // fiado (no seu dump é objeto com has_entry/entry_value/debt_value)
+  if (isset($d['fiado']) && is_array($d['fiado'])) {
+    $lines[] = "Fiado:";
+    $has = !empty($d['fiado']['has_entry']);
+    $entryV = (float)($d['fiado']['entry_value'] ?? 0);
+    $entryM = (string)($d['fiado']['entry_method'] ?? '');
+    $debtV  = (float)($d['fiado']['debt_value'] ?? 0);
+    $lines[] = "• Entrada: " . ($has ? (br_money($entryV) . ($entryM ? " ({$entryM})" : "")) : "NÃO");
+    $lines[] = "• Restante: " . br_money($debtV);
+  } elseif (array_key_exists('fiado', $d) && $d['fiado']) {
     $lines[] = "Fiado: SIM";
   }
 
@@ -155,18 +135,74 @@ function fmt_pay_json(?string $json): string
 }
 
 /* =========================
+   Referência de período (IMPORTANTE)
+   -> usa a ÚLTIMA data existente em vendas, para não ficar “sem dados”.
+========================= */
+function ref_date_from_db(PDO $pdo): DateTimeImmutable
+{
+  try {
+    $max = (string)($pdo->query("SELECT MAX(data) FROM vendas")->fetchColumn() ?: '');
+    if ($max && preg_match('/^\d{4}-\d{2}-\d{2}$/', $max)) {
+      return new DateTimeImmutable($max);
+    }
+  } catch (\Throwable $e) {
+  }
+  return new DateTimeImmutable('today');
+}
+
+$REF_DATE = ref_date_from_db($pdo);
+
+function period_range(string $period, DateTimeImmutable $ref): array
+{
+  $p = strtolower(trim($period));
+  $end = $ref;
+
+  if ($p === 'today' || $p === 'hoje') {
+    $start = $ref;
+  } elseif ($p === '7d') {
+    $start = $ref->sub(new DateInterval('P6D'));
+  } elseif ($p === '30d') {
+    $start = $ref->sub(new DateInterval('P29D'));
+  } elseif ($p === '12m') {
+    $start = $ref->modify('first day of this month')->sub(new DateInterval('P11M'));
+    $end   = $ref;
+  } else {
+    $start = $ref->sub(new DateInterval('P6D'));
+  }
+  return [$start->format('Y-m-d'), $end->format('Y-m-d')];
+}
+
+function months_last_n_from_ref(DateTimeImmutable $ref, int $n = 12): array
+{
+  $base = $ref->modify('first day of this month');
+  $pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+  $keys = [];
+  $labels = [];
+  for ($i = $n - 1; $i >= 0; $i--) {
+    $d = $base->sub(new DateInterval('P' . $i . 'M'));
+    $ym = $d->format('Y-m');
+    $keys[] = $ym;
+    $m = (int)$d->format('n');
+    $y = $d->format('y');
+    $labels[] = $pt[$m - 1] . '/' . $y;
+  }
+  return [$keys, $labels];
+}
+
+/* =========================
    Queries (Dashboard)
 ========================= */
-function chart_delivery(PDO $pdo, string $period): array
+function chart_delivery(PDO $pdo, string $period, DateTimeImmutable $ref): array
 {
-  [$ini, $fim] = period_range($period);
+  [$ini, $fim] = period_range($period, $ref);
+
   $sql = "
     SELECT UPPER(COALESCE(v.canal,'PRESENCIAL')) AS canal, COUNT(*) AS qtd
     FROM vendas v
     WHERE v.data BETWEEN :ini AND :fim
       AND " . venda_exclude_devolvidas_sql() . "
     GROUP BY UPPER(COALESCE(v.canal,'PRESENCIAL'))
-    ORDER BY qtd DESC
   ";
   $st = $pdo->prepare($sql);
   $st->execute([':ini' => $ini, ':fim' => $fim]);
@@ -174,31 +210,31 @@ function chart_delivery(PDO $pdo, string $period): array
 
   $map = ['PRESENCIAL' => 0, 'DELIVERY' => 0];
   foreach ($rows as $r) {
-    $c = strtoupper((string)$r['canal']);
-    $map[$c] = (int)$r['qtd'];
+    $c = strtoupper((string)($r['canal'] ?? ''));
+    if (!isset($map[$c])) $map[$c] = 0;
+    $map[$c] = (int)($r['qtd'] ?? 0);
   }
+
   return [
     'labels' => ['Presencial', 'Delivery'],
     'values' => [(int)$map['PRESENCIAL'], (int)$map['DELIVERY']],
     'ini' => $ini,
-    'fim' => $fim,
+    'fim' => $fim
   ];
 }
 
-function chart_payments(PDO $pdo, string $period): array
+function chart_payments(PDO $pdo, string $period, DateTimeImmutable $ref): array
 {
-  [$ini, $fim] = period_range($period);
-  $hasFiados = table_exists($pdo, 'fiados');
+  [$ini, $fim] = period_range($period, $ref);
 
+  $hasFiados = table_exists($pdo, 'fiados');
   $recebExpr = $hasFiados
     ? "CASE WHEN UPPER(v.pagamento)='FIADO' THEN COALESCE((SELECT f.valor_pago FROM fiados f WHERE f.venda_id=v.id LIMIT 1),0) ELSE v.total END"
     : "v.total";
 
   $sql = "
     SELECT UPPER(COALESCE(v.pagamento,'DINHEIRO')) AS pag,
-           COUNT(*) AS qtd,
-           COALESCE(SUM(v.total),0) AS total,
-           COALESCE(SUM($recebExpr),0) AS recebido
+           COUNT(*) AS qtd
     FROM vendas v
     WHERE v.data BETWEEN :ini AND :fim
       AND " . venda_exclude_devolvidas_sql() . "
@@ -217,7 +253,6 @@ function chart_payments(PDO $pdo, string $period): array
     $values[] = (int)$r['qtd'];
   }
 
-  // totais do período (exibido no card)
   $st2 = $pdo->prepare("
     SELECT COALESCE(SUM(v.total),0) AS total,
            COALESCE(SUM($recebExpr),0) AS recebido
@@ -234,93 +269,136 @@ function chart_payments(PDO $pdo, string $period): array
     'total' => (float)$agg['total'],
     'recebido' => (float)$agg['recebido'],
     'ini' => $ini,
-    'fim' => $fim,
+    'fim' => $fim
   ];
 }
 
-function chart_top_products(PDO $pdo, string $period, int $limit = 7): array
+function top_products_rows(PDO $pdo, string $period, DateTimeImmutable $ref, int $limit = 7): array
 {
-  [$ini, $fim] = period_range($period);
+  [$ini, $fim] = period_range($period, $ref);
+
+  // cuidado com LIMIT bind (em alguns ambientes pode dar ruim): injeta sanitizado
+  $lim = max(1, min(50, $limit));
+
   $sql = "
-    SELECT
-      vi.codigo,
-      vi.nome,
-      SUM(vi.qtd) AS qtd
+    SELECT vi.codigo, vi.nome, SUM(vi.qtd) AS qtd
     FROM venda_itens vi
     INNER JOIN vendas v ON v.id = vi.venda_id
     WHERE v.data BETWEEN :ini AND :fim
       AND " . venda_exclude_devolvidas_sql() . "
     GROUP BY vi.codigo, vi.nome
     ORDER BY qtd DESC, vi.nome ASC
-    LIMIT :lim
+    LIMIT {$lim}
   ";
   $st = $pdo->prepare($sql);
-  $st->bindValue(':ini', $ini);
-  $st->bindValue(':fim', $fim);
-  $st->bindValue(':lim', $limit, PDO::PARAM_INT);
-  $st->execute();
-  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  $st->execute([':ini' => $ini, ':fim' => $fim]);
+  return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function chart_top_products(PDO $pdo, string $period, DateTimeImmutable $ref, int $limit = 7): array
+{
+  [$ini, $fim] = period_range($period, $ref);
+  $rows = top_products_rows($pdo, $period, $ref, $limit);
 
   $labels = [];
   $values = [];
   foreach ($rows as $r) {
-    $labels[] = (string)$r['nome'];
-    $values[] = (int)$r['qtd'];
+    $labels[] = (string)($r['nome'] ?? '—');
+    $values[] = (int)($r['qtd'] ?? 0);
   }
+
   return ['labels' => $labels, 'values' => $values, 'ini' => $ini, 'fim' => $fim];
 }
 
-function chart_mix_saidas_devolucoes_12m(PDO $pdo): array
+/**
+ * MIX (12m) em VALORES:
+ * - Saídas = Vendas.total + Saidas.valor_total (perdas/avarias)
+ * - Devoluções = devolucoes.valor (status != CANCELADO)
+ */
+function chart_mix_12m_valores(PDO $pdo, DateTimeImmutable $ref): array
 {
-  [$keys, $labels] = months_last_n(12);
+  [$keys, $labels] = months_last_n_from_ref($ref, 12);
   $start = $keys[0] . '-01';
-  $end = (new DateTimeImmutable('today'))->format('Y-m-d');
+  $end = $ref->format('Y-m-d');
 
-  $mixSaidas = array_fill_keys($keys, 0.0);
-  $mixDevol  = array_fill_keys($keys, 0.0);
+  $out = array_fill_keys($keys, 0.0);   // saidas total (vendas + perdas)
+  $dev = array_fill_keys($keys, 0.0);   // devolucoes total
 
-  // SAIDAS (perdas) por mês
+  // vendas por mês (ATENÇÃO: aqui é venda total mesmo; devolução fica separado)
   $st = $pdo->prepare("
+    SELECT DATE_FORMAT(v.data, '%Y-%m') AS ym, COALESCE(SUM(v.total),0) AS total
+    FROM vendas v
+    WHERE v.data BETWEEN :ini AND :fim
+    GROUP BY DATE_FORMAT(v.data,'%Y-%m')
+  ");
+  $st->execute([':ini' => $start, ':fim' => $end]);
+  foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $ym = (string)$r['ym'];
+    if (isset($out[$ym])) $out[$ym] += (float)$r['total'];
+  }
+
+  // perdas (saidas) por mês
+  $st2 = $pdo->prepare("
     SELECT DATE_FORMAT(s.data, '%Y-%m') AS ym, COALESCE(SUM(s.valor_total),0) AS total
     FROM saidas s
     WHERE s.data BETWEEN :ini AND :fim
     GROUP BY DATE_FORMAT(s.data,'%Y-%m')
   ");
-  $st->execute([':ini' => $start, ':fim' => $end]);
-  foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+  $st2->execute([':ini' => $start, ':fim' => $end]);
+  foreach (($st2->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
     $ym = (string)$r['ym'];
-    if (isset($mixSaidas[$ym])) $mixSaidas[$ym] = (float)$r['total'];
+    if (isset($out[$ym])) $out[$ym] += (float)$r['total'];
   }
 
-  // DEVOLUCOES por mês (não canceladas)
-  $st2 = $pdo->prepare("
+  // devolucoes por mês
+  $st3 = $pdo->prepare("
     SELECT DATE_FORMAT(d.data, '%Y-%m') AS ym, COALESCE(SUM(d.valor),0) AS total
     FROM devolucoes d
     WHERE d.status <> 'CANCELADO'
       AND d.data BETWEEN :ini AND :fim
     GROUP BY DATE_FORMAT(d.data,'%Y-%m')
   ");
-  $st2->execute([':ini' => $start, ':fim' => $end]);
-  foreach (($st2->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+  $st3->execute([':ini' => $start, ':fim' => $end]);
+  foreach (($st3->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
     $ym = (string)$r['ym'];
-    if (isset($mixDevol[$ym])) $mixDevol[$ym] = (float)$r['total'];
+    if (isset($dev[$ym])) $dev[$ym] = (float)$r['total'];
   }
 
   return [
     'labels' => $labels,
-    'saidas' => array_values($mixSaidas),
-    'devolucoes' => array_values($mixDevol),
+    'saidas' => array_values($out),
+    'devolucoes' => array_values($dev),
   ];
 }
 
-function chart_canais_top2_saidas_devolucoes_12m(PDO $pdo): array
+/**
+ * Canais (Top 2) (12m) em VALOR:
+ * - Vendas por canal (SUM(v.total))
+ * - + Devoluções por canal (SUM(d.valor) via join em vendas)
+ */
+function chart_canais_top2_12m(PDO $pdo, DateTimeImmutable $ref): array
 {
-  [$keys, $labels] = months_last_n(12);
+  [$keys, $_labels] = months_last_n_from_ref($ref, 12);
   $start = $keys[0] . '-01';
-  $end = (new DateTimeImmutable('today'))->format('Y-m-d');
+  $end = $ref->format('Y-m-d');
+
+  $map = [];
+
+  // vendas por canal
+  $st = $pdo->prepare("
+    SELECT UPPER(COALESCE(v.canal,'PRESENCIAL')) AS canal, COALESCE(SUM(v.total),0) AS total
+    FROM vendas v
+    WHERE v.data BETWEEN :ini AND :fim
+    GROUP BY UPPER(COALESCE(v.canal,'PRESENCIAL'))
+  ");
+  $st->execute([':ini' => $start, ':fim' => $end]);
+  foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $c = (string)$r['canal'];
+    $map[$c] = (float)$r['total'];
+  }
 
   // devolucoes por canal (canal vem da venda)
-  $st = $pdo->prepare("
+  $st2 = $pdo->prepare("
     SELECT UPPER(COALESCE(v.canal,'PRESENCIAL')) AS canal, COALESCE(SUM(d.valor),0) AS total
     FROM devolucoes d
     LEFT JOIN vendas v ON v.id = d.venda_no
@@ -328,25 +406,14 @@ function chart_canais_top2_saidas_devolucoes_12m(PDO $pdo): array
       AND d.data BETWEEN :ini AND :fim
     GROUP BY UPPER(COALESCE(v.canal,'PRESENCIAL'))
   ");
-  $st->execute([':ini' => $start, ':fim' => $end]);
-  $arr = [];
-  foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
-    $arr[(string)$r['canal']] = (float)$r['total'];
+  $st2->execute([':ini' => $start, ':fim' => $end]);
+  foreach (($st2->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
+    $c = (string)$r['canal'];
+    $map[$c] = ($map[$c] ?? 0) + (float)$r['total'];
   }
 
-  // saidas (perdas) como “PERDAS”
-  $st2 = $pdo->prepare("
-    SELECT COALESCE(SUM(s.valor_total),0) AS total
-    FROM saidas s
-    WHERE s.data BETWEEN :ini AND :fim
-  ");
-  $st2->execute([':ini' => $start, ':fim' => $end]);
-  $perdas = (float)($st2->fetchColumn() ?: 0);
-  if ($perdas > 0) $arr['PERDAS'] = $perdas;
-
-  // ordena e pega top2
-  arsort($arr);
-  $top = array_slice($arr, 0, 2, true);
+  arsort($map);
+  $top = array_slice($map, 0, 2, true);
 
   return [
     'labels' => array_keys($top),
@@ -354,16 +421,21 @@ function chart_canais_top2_saidas_devolucoes_12m(PDO $pdo): array
   ];
 }
 
-function chart_entradas_vs_saidas_estoque_12m(PDO $pdo): array
+/**
+ * Entradas x Saídas (Estoque) (12m) em QTD:
+ * - Entradas = SUM(entradas.qtd)
+ * - Saídas   = SUM(venda_itens.qtd) + SUM(saidas.qtd)
+ * Observação: devolução TOTAL não tem produto/qtd no seu banco, então não dá pra “devolver” qtd no gráfico.
+ */
+function chart_entradas_vs_saidas_12m(PDO $pdo, DateTimeImmutable $ref): array
 {
-  [$keys, $labels] = months_last_n(12);
+  [$keys, $labels] = months_last_n_from_ref($ref, 12);
   $start = $keys[0] . '-01';
-  $end = (new DateTimeImmutable('today'))->format('Y-m-d');
+  $end = $ref->format('Y-m-d');
 
-  $ent = array_fill_keys($keys, 0);
-  $out = array_fill_keys($keys, 0);
+  $ent = array_fill_keys($keys, 0.0);
+  $out = array_fill_keys($keys, 0.0);
 
-  // entradas qtd por mês
   $st = $pdo->prepare("
     SELECT DATE_FORMAT(e.data, '%Y-%m') AS ym, COALESCE(SUM(e.qtd),0) AS qtd
     FROM entradas e
@@ -373,10 +445,10 @@ function chart_entradas_vs_saidas_estoque_12m(PDO $pdo): array
   $st->execute([':ini' => $start, ':fim' => $end]);
   foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
     $ym = (string)$r['ym'];
-    if (isset($ent[$ym])) $ent[$ym] = (int)$r['qtd'];
+    if (isset($ent[$ym])) $ent[$ym] = (float)$r['qtd'];
   }
 
-  // saidas(perdas) qtd por mês
+  // perdas/avarias
   $st2 = $pdo->prepare("
     SELECT DATE_FORMAT(s.data, '%Y-%m') AS ym, COALESCE(SUM(s.qtd),0) AS qtd
     FROM saidas s
@@ -386,10 +458,10 @@ function chart_entradas_vs_saidas_estoque_12m(PDO $pdo): array
   $st2->execute([':ini' => $start, ':fim' => $end]);
   foreach (($st2->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
     $ym = (string)$r['ym'];
-    if (isset($out[$ym])) $out[$ym] += (int)$r['qtd'];
+    if (isset($out[$ym])) $out[$ym] += (float)$r['qtd'];
   }
 
-  // vendas (itens) qtd por mês (saída de estoque por venda)
+  // vendas (itens)
   $st3 = $pdo->prepare("
     SELECT DATE_FORMAT(v.data, '%Y-%m') AS ym, COALESCE(SUM(vi.qtd),0) AS qtd
     FROM venda_itens vi
@@ -401,18 +473,20 @@ function chart_entradas_vs_saidas_estoque_12m(PDO $pdo): array
   $st3->execute([':ini' => $start, ':fim' => $end]);
   foreach (($st3->fetchAll(PDO::FETCH_ASSOC) ?: []) as $r) {
     $ym = (string)$r['ym'];
-    if (isset($out[$ym])) $out[$ym] += (int)$r['qtd'];
+    if (isset($out[$ym])) $out[$ym] += (float)$r['qtd'];
   }
 
   return [
     'labels' => $labels,
     'entradas' => array_values($ent),
-    'saidas' => array_values($out), // vendas + perdas
+    'saidas' => array_values($out),
   ];
 }
 
 function recent_vendas(PDO $pdo, int $limit = 10): array
 {
+  $lim = max(1, min(50, $limit));
+
   $hasFiados = table_exists($pdo, 'fiados');
   $recebExpr = $hasFiados
     ? "CASE WHEN UPPER(v.pagamento)='FIADO' THEN COALESCE((SELECT f.valor_pago FROM fiados f WHERE f.venda_id=v.id LIMIT 1),0) ELSE v.total END"
@@ -423,32 +497,27 @@ function recent_vendas(PDO $pdo, int $limit = 10): array
     FROM vendas v
     WHERE " . venda_exclude_devolvidas_sql() . "
     ORDER BY v.created_at DESC, v.id DESC
-    LIMIT :lim
+    LIMIT {$lim}
   ";
-  $st = $pdo->prepare($sql);
-  $st->bindValue(':lim', $limit, PDO::PARAM_INT);
-  $st->execute();
-  return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
 function low_stock(PDO $pdo, int $limit = 10): array
 {
+  $lim = max(1, min(50, $limit));
   $sql = "
     SELECT p.id, p.nome, p.estoque, p.minimo, c.nome AS categoria
     FROM produtos p
     LEFT JOIN categorias c ON c.id = p.categoria_id
     WHERE p.minimo IS NOT NULL AND p.estoque < p.minimo
     ORDER BY (p.estoque - p.minimo) ASC, p.nome ASC
-    LIMIT :lim
+    LIMIT {$lim}
   ";
-  $st = $pdo->prepare($sql);
-  $st->bindValue(':lim', $limit, PDO::PARAM_INT);
-  $st->execute();
-  return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
 /* =========================
-   AJAX: detalhes da venda (modal)
+   AJAX: detalhes da venda (modal) + FIADOS
 ========================= */
 if (isset($_GET['action']) && $_GET['action'] === 'venda_details') {
   header('Content-Type: application/json; charset=utf-8');
@@ -498,7 +567,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'venda_details') {
       ? (br_money($descVal) . " (taxa: " . br_money($taxa) . ")")
       : (number_format($descVal, 2, ',', '.') . "% (taxa: " . br_money($taxa) . ")");
 
-    $payload = [
+    // recebido (se FIADO, usa fiados.valor_pago)
+    $recebido = (float)($v['total'] ?? 0);
+    $fiadoInfo = null;
+
+    if (strtoupper((string)($v['pagamento'] ?? '')) === 'FIADO' && table_exists($pdo, 'fiados')) {
+      $stF = $pdo->prepare("SELECT id, valor_total, valor_pago, valor_restante, status FROM fiados WHERE venda_id = ? LIMIT 1");
+      $stF->execute([$id]);
+      $fi = $stF->fetch(PDO::FETCH_ASSOC);
+      if ($fi) {
+        $recebido = (float)($fi['valor_pago'] ?? 0);
+        $fiadoInfo = [
+          'fiado_id' => (int)($fi['id'] ?? 0),
+          'valor_total' => (float)($fi['valor_total'] ?? 0),
+          'valor_pago' => (float)($fi['valor_pago'] ?? 0),
+          'valor_restante' => (float)($fi['valor_restante'] ?? 0),
+          'status' => (string)($fi['status'] ?? ''),
+        ];
+      } else {
+        $recebido = 0.0;
+      }
+    }
+
+    echo json_encode([
       'ok' => true,
       'venda' => [
         'id' => (int)$v['id'],
@@ -513,34 +604,30 @@ if (isset($_GET['action']) && $_GET['action'] === 'venda_details') {
         'obs' => (string)($v['obs'] ?? ''),
         'subtotal' => (float)($v['subtotal'] ?? 0),
         'total' => (float)($v['total'] ?? 0),
+        'recebido' => $recebido,
         'desconto_text' => $descText,
+        'fiado' => $fiadoInfo,
       ],
-      'itens' => array_map(function ($r) {
-        return [
-          'codigo' => (string)($r['codigo'] ?? ''),
-          'nome' => (string)($r['nome'] ?? ''),
-          'unidade' => (string)($r['unidade'] ?? ''),
-          'qtd' => (int)($r['qtd'] ?? 0),
-          'preco_unit' => (float)($r['preco_unit'] ?? 0),
-          'subtotal' => (float)($r['subtotal'] ?? 0),
-        ];
-      }, $itens),
-      'devolucoes' => array_map(function ($r) {
-        return [
-          'id' => (int)($r['id'] ?? 0),
-          'data' => (string)($r['data'] ?? ''),
-          'hora' => (string)($r['hora'] ?? ''),
-          'tipo' => (string)($r['tipo'] ?? ''),
-          'produto' => (string)($r['produto'] ?? ''),
-          'qtd' => ($r['qtd'] === null ? null : (int)$r['qtd']),
-          'valor' => (float)($r['valor'] ?? 0),
-          'status' => (string)($r['status'] ?? ''),
-          'motivo' => (string)($r['motivo'] ?? ''),
-        ];
-      }, $devols),
-    ];
-
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+      'itens' => array_map(fn($r) => [
+        'codigo' => (string)($r['codigo'] ?? ''),
+        'nome' => (string)($r['nome'] ?? ''),
+        'unidade' => (string)($r['unidade'] ?? ''),
+        'qtd' => (int)($r['qtd'] ?? 0),
+        'preco_unit' => (float)($r['preco_unit'] ?? 0),
+        'subtotal' => (float)($r['subtotal'] ?? 0),
+      ], $itens),
+      'devolucoes' => array_map(fn($r) => [
+        'id' => (int)($r['id'] ?? 0),
+        'data' => (string)($r['data'] ?? ''),
+        'hora' => (string)($r['hora'] ?? ''),
+        'tipo' => (string)($r['tipo'] ?? ''),
+        'produto' => (string)($r['produto'] ?? ''),
+        'qtd' => ($r['qtd'] === null ? null : (int)$r['qtd']),
+        'valor' => (float)($r['valor'] ?? 0),
+        'status' => (string)($r['status'] ?? ''),
+        'motivo' => (string)($r['motivo'] ?? ''),
+      ], $devols),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -549,7 +636,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'venda_details') {
 }
 
 /* =========================
-   AJAX: charts (dropdowns)
+   AJAX: charts
 ========================= */
 if (isset($_GET['action']) && $_GET['action'] === 'chart') {
   header('Content-Type: application/json; charset=utf-8');
@@ -557,18 +644,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'chart') {
     $name = strtolower((string)($_GET['name'] ?? ''));
     $period = (string)($_GET['period'] ?? '7d');
 
+    global $REF_DATE;
+
     if ($name === 'delivery') {
-      $data = chart_delivery($pdo, $period);
+      $data = chart_delivery($pdo, $period, $REF_DATE);
     } elseif ($name === 'payments') {
-      $data = chart_payments($pdo, $period);
+      $data = chart_payments($pdo, $period, $REF_DATE);
     } elseif ($name === 'top_products') {
-      $data = chart_top_products($pdo, $period, 7);
+      $data = chart_top_products($pdo, $period, $REF_DATE, 7);
+      $data['rows'] = top_products_rows($pdo, $period, $REF_DATE, 7);
     } elseif ($name === 'mix12m') {
-      $data = chart_mix_saidas_devolucoes_12m($pdo);
+      $data = chart_mix_12m_valores($pdo, $REF_DATE);
     } elseif ($name === 'channels_top2') {
-      $data = chart_canais_top2_saidas_devolucoes_12m($pdo);
+      $data = chart_canais_top2_12m($pdo, $REF_DATE);
     } elseif ($name === 'flow12m') {
-      $data = chart_entradas_vs_saidas_estoque_12m($pdo);
+      $data = chart_entradas_vs_saidas_12m($pdo, $REF_DATE);
     } else {
       throw new RuntimeException('Chart inválido.');
     }
@@ -584,12 +674,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'chart') {
 /* =========================
    Dados iniciais (render)
 ========================= */
-$initDelivery   = chart_delivery($pdo, 'today');
-$initPayments   = chart_payments($pdo, 'today');
-$initTop        = chart_top_products($pdo, '7d', 7);
-$mix12m         = chart_mix_saidas_devolucoes_12m($pdo);
-$channelsTop2   = chart_canais_top2_saidas_devolucoes_12m($pdo);
-$flow12m        = chart_entradas_vs_saidas_estoque_12m($pdo);
+$initDelivery   = chart_delivery($pdo, 'today', $REF_DATE);
+$initPayments   = chart_payments($pdo, 'today', $REF_DATE);
+$initTop        = chart_top_products($pdo, '7d', $REF_DATE, 7);
+$initTopRows    = top_products_rows($pdo, '7d', $REF_DATE, 7);
+
+$mix12m         = chart_mix_12m_valores($pdo, $REF_DATE);
+$channelsTop2   = chart_canais_top2_12m($pdo, $REF_DATE);
+$flow12m        = chart_entradas_vs_saidas_12m($pdo, $REF_DATE);
+
 $recent         = recent_vendas($pdo, 10);
 $low            = low_stock($pdo, 10);
 
@@ -663,11 +756,6 @@ $low            = low_stock($pdo, 10);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-    }
-
-    .badge-soft-success {
-      background: rgba(34, 197, 94, .12);
-      color: #16a34a;
     }
 
     .badge-soft-warning {
@@ -847,16 +935,16 @@ $low            = low_stock($pdo, 10);
       <div class="container-fluid">
         <div class="title-wrapper pt-30">
           <div class="row align-items-center">
-            <div class="col-md-6">
+            <div class="col-md-8">
               <div class="title">
                 <h2>Dashboard</h2>
-                <div class="muted">Atualizado: itens da venda (venda_itens) + gráficos com Saídas=Perdas/Avarias.</div>
+                <div class="muted">Períodos calculados pela última data em <b>vendas.data</b>: <?= e(br_date($REF_DATE->format('Y-m-d'))) ?></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Linha 1: Entrega + Pagamento -->
+        <!-- Linha 1 -->
         <div class="row g-3 mb-30">
           <div class="col-12 col-lg-6">
             <div class="card-style">
@@ -899,13 +987,13 @@ $low            = low_stock($pdo, 10);
           </div>
         </div>
 
-        <!-- Linha 2: Top Produtos + Últimas Vendas -->
+        <!-- Linha 2 -->
         <div class="row g-3 mb-30">
           <div class="col-12 col-lg-8">
             <div class="card-style">
               <div class="card-title-row mb-2">
                 <div>
-                  <div class="title">Top Produtos Vendidos</div>
+                  <div class="title">Top 7 Produtos Vendidos</div>
                   <div class="muted" id="lblTopPeriod">Quantidade (Últimos 7 dias)</div>
                 </div>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
@@ -914,13 +1002,43 @@ $low            = low_stock($pdo, 10);
                     <option value="30d">Últimos 30 dias</option>
                     <option value="12m">Últimos 12 meses</option>
                   </select>
-                  <a class="main-btn primary-btn btn-hover btn-compact" href="relatorios.php" title="Abrir relatórios">
-                    Ver relatório
-                  </a>
+                  <a class="main-btn primary-btn btn-hover btn-compact" href="relatorios.php" title="Abrir relatórios">Ver relatório</a>
                 </div>
               </div>
-              <canvas id="chartTopProducts" height="160"></canvas>
+
+              <canvas id="chartTopProducts" height="150"></canvas>
               <div class="muted mt-2" id="hintTopNone" style="display:none;">(sem dados)</div>
+
+              <div class="table-responsive mt-3">
+                <table class="table tbl-sm" id="tbTopTable">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Código</th>
+                      <th>Produto</th>
+                      <th class="text-center">Qtd</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php if (!$initTopRows): ?>
+                      <tr>
+                        <td colspan="4" class="text-center muted">Sem dados.</td>
+                      </tr>
+                    <?php else: ?>
+                      <?php $i = 1;
+                      foreach ($initTopRows as $r): ?>
+                        <tr>
+                          <td><?= (int)$i++ ?></td>
+                          <td><?= e((string)$r['codigo']) ?></td>
+                          <td><?= e((string)$r['nome']) ?></td>
+                          <td class="text-center"><?= (int)$r['qtd'] ?></td>
+                        </tr>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
+                  </tbody>
+                </table>
+              </div>
+
             </div>
           </div>
 
@@ -929,7 +1047,7 @@ $low            = low_stock($pdo, 10);
               <div class="card-title-row mb-2">
                 <div>
                   <div class="title">Últimas Vendas</div>
-                  <div class="muted">Clique no olho para ver os itens (venda_itens).</div>
+                  <div class="muted">Clique no olho para ver itens (venda_itens) + fiado.</div>
                 </div>
               </div>
 
@@ -975,14 +1093,14 @@ $low            = low_stock($pdo, 10);
           </div>
         </div>
 
-        <!-- Linha 3: Mix + Canais + Fluxo -->
+        <!-- Linha 3 -->
         <div class="row g-3 mb-30">
           <div class="col-12 col-lg-4">
             <div class="card-style">
               <div class="card-title-row mb-2">
                 <div>
                   <div class="title">Mix (Saídas) + Devoluções</div>
-                  <div class="muted">Últimos 12 meses (valores)</div>
+                  <div class="muted">12 meses (valores)</div>
                 </div>
               </div>
               <canvas id="chartMix12m" height="170"></canvas>
@@ -994,7 +1112,7 @@ $low            = low_stock($pdo, 10);
               <div class="card-title-row mb-2">
                 <div>
                   <div class="title">Canais (Top 2)</div>
-                  <div class="muted">Devoluções (canal da venda) + Perdas</div>
+                  <div class="muted">Vendas + Devoluções (12m)</div>
                 </div>
               </div>
               <canvas id="chartChannelsTop2" height="170"></canvas>
@@ -1006,7 +1124,7 @@ $low            = low_stock($pdo, 10);
               <div class="card-title-row mb-2">
                 <div>
                   <div class="title">Entradas x Saídas (Estoque)</div>
-                  <div class="muted">Últimos 12 meses (qtd) • Saídas = Vendas + Perdas</div>
+                  <div class="muted">12 meses (qtd) • Saídas = Vendas + Perdas</div>
                 </div>
               </div>
               <canvas id="chartFlow12m" height="170"></canvas>
@@ -1014,7 +1132,7 @@ $low            = low_stock($pdo, 10);
           </div>
         </div>
 
-        <!-- Linha 4: Estoque baixo -->
+        <!-- Linha 4 -->
         <div class="row g-3 mb-30">
           <div class="col-12">
             <div class="card-style">
@@ -1120,6 +1238,7 @@ $low            = low_stock($pdo, 10);
               <textarea class="form-control" id="mVendaEndObs" rows="2" readonly></textarea>
               <div class="muted mt-2">Pagamento (detalhes):</div>
               <pre class="pay-json" id="mPayJson">—</pre>
+              <div class="muted mt-2" id="mFiadoBox" style="display:none;"></div>
             </div>
 
             <div class="col-12 col-lg-4">
@@ -1131,7 +1250,7 @@ $low            = low_stock($pdo, 10);
               <input class="form-control" id="mVendaDesconto" readonly />
             </div>
             <div class="col-12 col-lg-4">
-              <label class="form-label">Total</label>
+              <label class="form-label">Total / Recebido</label>
               <input class="form-control" id="mVendaTotal" readonly />
             </div>
 
@@ -1199,8 +1318,6 @@ $low            = low_stock($pdo, 10);
 
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <script>
@@ -1208,6 +1325,7 @@ $low            = low_stock($pdo, 10);
       delivery: <?= json_encode($initDelivery, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
       payments: <?= json_encode($initPayments, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
       top: <?= json_encode($initTop, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      topRows: <?= json_encode($initTopRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
       mix12m: <?= json_encode($mix12m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
       channelsTop2: <?= json_encode($channelsTop2, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
       flow12m: <?= json_encode($flow12m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
@@ -1232,15 +1350,8 @@ $low            = low_stock($pdo, 10);
       return p;
     }
 
-    // ===== Charts init =====
-    const ctxDelivery = document.getElementById('chartDelivery');
-    const ctxPayments = document.getElementById('chartPayments');
-    const ctxTop = document.getElementById('chartTopProducts');
-    const ctxMix = document.getElementById('chartMix12m');
-    const ctxChan = document.getElementById('chartChannelsTop2');
-    const ctxFlow = document.getElementById('chartFlow12m');
-
-    const chartDelivery = new Chart(ctxDelivery, {
+    // ===== charts init =====
+    const chartDelivery = new Chart(document.getElementById('chartDelivery'), {
       type: 'doughnut',
       data: {
         labels: INIT.delivery.labels,
@@ -1258,7 +1369,7 @@ $low            = low_stock($pdo, 10);
       }
     });
 
-    const chartPayments = new Chart(ctxPayments, {
+    const chartPayments = new Chart(document.getElementById('chartPayments'), {
       type: 'bar',
       data: {
         labels: INIT.payments.labels,
@@ -1282,7 +1393,7 @@ $low            = low_stock($pdo, 10);
       }
     });
 
-    const chartTop = new Chart(ctxTop, {
+    const chartTop = new Chart(document.getElementById('chartTopProducts'), {
       type: 'bar',
       data: {
         labels: INIT.top.labels,
@@ -1306,12 +1417,12 @@ $low            = low_stock($pdo, 10);
       }
     });
 
-    const chartMix12m = new Chart(ctxMix, {
+    const chartMix12m = new Chart(document.getElementById('chartMix12m'), {
       type: 'bar',
       data: {
         labels: INIT.mix12m.labels,
         datasets: [{
-            label: 'Saídas (Perdas)',
+            label: 'Saídas (Vendas+Perdas)',
             data: INIT.mix12m.saidas,
             stack: 'x'
           },
@@ -1337,7 +1448,7 @@ $low            = low_stock($pdo, 10);
       }
     });
 
-    const chartChannelsTop2 = new Chart(ctxChan, {
+    const chartChannelsTop2 = new Chart(document.getElementById('chartChannelsTop2'), {
       type: 'bar',
       data: {
         labels: INIT.channelsTop2.labels,
@@ -1361,7 +1472,7 @@ $low            = low_stock($pdo, 10);
       }
     });
 
-    const chartFlow12m = new Chart(ctxFlow, {
+    const chartFlow12m = new Chart(document.getElementById('chartFlow12m'), {
       type: 'line',
       data: {
         labels: INIT.flow12m.labels,
@@ -1392,7 +1503,7 @@ $low            = low_stock($pdo, 10);
       }
     });
 
-    // ===== Dropdown loaders =====
+    // ===== dropdown loaders =====
     async function loadChart(name, period) {
       const qs = new URLSearchParams({
         action: 'chart',
@@ -1419,8 +1530,25 @@ $low            = low_stock($pdo, 10);
 
     const paySold = document.getElementById('paySold');
     const payRec = document.getElementById('payRec');
-
     const hintTopNone = document.getElementById('hintTopNone');
+
+    const tbTop = document.getElementById('tbTopTable').querySelector('tbody');
+
+    function renderTopTable(rows) {
+      const arr = Array.isArray(rows) ? rows : [];
+      if (!arr.length) {
+        tbTop.innerHTML = `<tr><td colspan="4" class="text-center muted">Sem dados.</td></tr>`;
+        return;
+      }
+      tbTop.innerHTML = arr.slice(0, 7).map((r, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td>${safeText(r.codigo || '')}</td>
+        <td>${safeText(r.nome || '')}</td>
+        <td class="text-center">${Number(r.qtd || 0)}</td>
+      </tr>
+    `).join('');
+    }
 
     selDeliveryPeriod.addEventListener('change', async () => {
       try {
@@ -1462,14 +1590,14 @@ $low            = low_stock($pdo, 10);
         chartTop.update();
 
         hintTopNone.style.display = (data.labels && data.labels.length) ? 'none' : 'block';
+        renderTopTable(data.rows || []);
       } catch (e) {
         console.error(e);
       }
     });
 
-    // ===== Modal detalhes venda =====
-    const modalVendaEl = document.getElementById('modalVenda');
-    const modalVenda = new bootstrap.Modal(modalVendaEl);
+    // ===== modal detalhes venda =====
+    const modalVenda = new bootstrap.Modal(document.getElementById('modalVenda'));
 
     const mVendaId = document.getElementById('mVendaId');
     const mVendaData = document.getElementById('mVendaData');
@@ -1478,6 +1606,7 @@ $low            = low_stock($pdo, 10);
     const mVendaCliente = document.getElementById('mVendaCliente');
     const mVendaEndObs = document.getElementById('mVendaEndObs');
     const mPayJson = document.getElementById('mPayJson');
+    const mFiadoBox = document.getElementById('mFiadoBox');
 
     const mVendaSubtotal = document.getElementById('mVendaSubtotal');
     const mVendaDesconto = document.getElementById('mVendaDesconto');
@@ -1498,6 +1627,8 @@ $low            = low_stock($pdo, 10);
       tbItens.innerHTML = `<tr><td colspan="5" class="muted">Carregando…</td></tr>`;
       tbDevols.innerHTML = `<tr><td colspan="8" class="muted">Carregando…</td></tr>`;
       mDevolHint.textContent = '';
+      mFiadoBox.style.display = 'none';
+      mFiadoBox.textContent = '';
 
       const qs = new URLSearchParams({
         action: 'venda_details',
@@ -1520,15 +1651,24 @@ $low            = low_stock($pdo, 10);
 
       const end = (v.endereco && String(v.endereco).trim()) ? String(v.endereco).trim() : '';
       const obs = (v.obs && String(v.obs).trim()) ? String(v.obs).trim() : '';
-      const endObs = (end || obs) ? [end, obs].filter(Boolean).join("\n") : '—';
-      mVendaEndObs.value = endObs;
+      mVendaEndObs.value = (end || obs) ? [end, obs].filter(Boolean).join("\n") : '—';
 
       const pj = (v.pagamento_json_fmt && String(v.pagamento_json_fmt).trim()) ? String(v.pagamento_json_fmt) : '—';
       mPayJson.textContent = pj;
 
       mVendaSubtotal.value = moneyBR(v.subtotal || 0);
       mVendaDesconto.value = String(v.desconto_text || '—');
-      mVendaTotal.value = moneyBR(v.total || 0);
+
+      const total = Number(v.total || 0);
+      const rec = Number(v.recebido ?? total);
+      mVendaTotal.value = `${moneyBR(total)}  |  Recebido: ${moneyBR(rec)}`;
+
+      // fiado extra
+      if (v.fiado && typeof v.fiado === 'object') {
+        const f = v.fiado;
+        mFiadoBox.style.display = 'block';
+        mFiadoBox.textContent = `Fiado: Total ${moneyBR(f.valor_total||0)} | Pago ${moneyBR(f.valor_pago||0)} | Restante ${moneyBR(f.valor_restante||0)} | Status ${String(f.status||'')}`;
+      }
 
       const itens = Array.isArray(js.itens) ? js.itens : [];
       if (!itens.length) {
@@ -1568,7 +1708,7 @@ $low            = low_stock($pdo, 10);
           </tr>
         `;
         }).join('');
-        mDevolHint.textContent = 'Obs.: devoluções com status CANCELADO podem existir, mas não entram nos relatórios/totalizadores.';
+        mDevolHint.textContent = 'Obs.: devoluções CANCELADO não entram nos totalizadores.';
       }
 
       modalVenda.show();
@@ -1586,8 +1726,9 @@ $low            = low_stock($pdo, 10);
       });
     });
 
-    // init hint top chart
+    // init top hint/table
     hintTopNone.style.display = (INIT.top.labels && INIT.top.labels.length) ? 'none' : 'block';
+    renderTopTable(INIT.topRows || []);
   </script>
 
 </body>
