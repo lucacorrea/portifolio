@@ -304,7 +304,7 @@ function fetch_filtered_result(): array
 
     $page = max(1, get_int('page', 1));
     $per  = get_int('per', 25);
-    $per  = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
+    $per  = in_array($per, [10, 25, 50, 100], true) ? $per : 10;
     $off  = ($page - 1) * $per;
 
     $params = [];
