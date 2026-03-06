@@ -390,7 +390,7 @@ $vars = [
     .cabecalho {
       text-align: center;
       padding-bottom: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
       border-bottom: 2px double var(--cor-primaria);
     }
 
@@ -398,7 +398,7 @@ $vars = [
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 2px;
     }
 
     .logos img {
