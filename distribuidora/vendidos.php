@@ -940,45 +940,6 @@ if ($action === 'excel') {
             </tr>
         </tfoot>
     </table>
-<?php
-    exit;
-}
-
-if ($action === 'pdf') {
-    $result = fetch_filtered_result();
-    $rows = $result['rows'];
-
-    $agora = date('d/m/Y H:i:s');
-    $di = get_str('di') ?: '—';
-    $df = get_str('df') ?: '—';
-    $canal = get_str('canal', 'TODOS');
-    $pag = get_str('pag', 'TODOS');
-    $q = get_str('q') ?: '—';
-
-    $html = pdf_html($rows, $agora, $di, $df, $canal, $pag, $q);
-    $fileName = 'vendidos_' . date('Y-m-d_His') . '.pdf';
-
-    if (class_exists('\Dompdf\Dompdf')) {
-        clean_buffers();
-
-        $options = new \Dompdf\Options();
-        $options->set('isRemoteEnabled', true);
-        $options->set('isHtml5ParserEnabled', true);
-        $options->setDefaultFont('DejaVu Sans');
-
-        $dompdf = new \Dompdf\Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'landscape');
-        $dompdf->render();
-
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="' . $fileName . '"');
-        echo $dompdf->output();
-        exit;
-    }
-
-    // fallback caso não tenha dompdf
-?>
     <!doctype html>
     <html lang="pt-BR">
 
@@ -2290,7 +2251,7 @@ $initialTotais = $initial['totais'];
         });
 
         el('btnPdf').addEventListener('click', () => {
-            window.location.href = buildExportUrl('pdf');
+            window.open(buildExportUrl('print'), '_blank');
         });
 
         el('q').addEventListener('keydown', (ev) => {
