@@ -2,13 +2,7 @@
 
 declare(strict_types=1);
 
-/**
- * relatorios.php (CORRIGIDO)
- * - Página + endpoint JSON (action=fetch) no mesmo arquivo
- * - Endpoint de sugestões (action=suggest) para autocomplete
- * - Paginação server-side: page/per
- * - Compatível com seu banco atual (vendas + venda_itens, saidas = perdas, entradas, produtos, etc.)
- */
+
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
@@ -1827,7 +1821,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     qGlobal.setAttribute("list", "dlGlobalSug");
 
     // paginação
-    const PER = 50;
+    const PER = 10;
     let PAGE = 1;
 
     let CURRENT = {
