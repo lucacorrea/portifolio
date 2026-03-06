@@ -596,7 +596,7 @@ $vars = [
       text-align: center;
       width: 250px;
       margin: 0 auto;
-      margin-top: 15px;
+      margin-top: 15px !important;
     }
 
     .assinatura-linha {
