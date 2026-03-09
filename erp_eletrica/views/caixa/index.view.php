@@ -240,3 +240,41 @@
     </div>
 </div>
 <?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation for Movement Modal (Sangria/Suprimento)
+    const movementModal = document.getElementById('modalMovimentacao');
+    if (movementModal) {
+        const form = movementModal.querySelector('form');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        const valorInput = form.querySelector('input[name="valor"]');
+        const motivoInput = form.querySelector('input[name="motivo"]');
+        const authCode = form.querySelector('input[name="auth_code"]');
+        const authPass = form.querySelector('input[name="auth_password"]');
+        const isAdmin = <?= in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master']) ? 'true' : 'false' ?>;
+
+        function validateMovement() {
+            let isValid = true;
+            
+            // 1. Basic fields
+            if (!valorInput.value || parseFloat(valorInput.value) <= 0) isValid = false;
+            if (!motivoInput.value.trim()) isValid = false;
+
+            // 2. Authorization (if not admin/master)
+            if (!isAdmin) {
+                if (!authCode.value.trim() && !authPass.value.trim()) {
+                    isValid = false;
+                }
+            }
+
+            btnSubmit.disabled = !isValid;
+            btnSubmit.style.opacity = isValid ? '1' : '0.5';
+            btnSubmit.style.cursor = isValid ? 'pointer' : 'not-allowed';
+        }
+
+        form.addEventListener('input', validateMovement);
+        validateMovement(); // Initial check
+    }
+});
+</script>
