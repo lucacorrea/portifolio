@@ -28,19 +28,28 @@ class AuthorizationService extends BaseService {
                 return $this->db->prepare("UPDATE autorizacoes_temporarias SET utilizado = 1 WHERE id = ?")
                                 ->execute([$id]);
             }
+            public function invalidateOldCodes($tipo, $filialId) {
+                $sql = "UPDATE autorizacoes_temporarias SET utilizado = 1 
+                        WHERE tipo = ? AND filial_id = ? AND utilizado = 0";
+                return $this->db->prepare($sql)->execute([$tipo, $filialId]);
+            }
         });
     }
 
     public function generateCode($tipo, $filialId, $usuarioAutorizadorId = null) {
-        $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        $validade = date('Y-m-d H:i:s', strtotime('+2 minutes'));
+        // Invalidate previous unused codes for this type and branch
+        $this->repository->invalidateOldCodes($tipo, $filialId);
+
+        $codigo = str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+        $validade = date('Y-m-d H:i:s', strtotime('+30 minutes')); // Increased validity since it might take a moment to use
         
         $this->repository->create([
             'tipo' => $tipo,
             'codigo' => $codigo,
             'usuario_autorizador_id' => $usuarioAutorizadorId,
             'validade' => $validade,
-            'filial_id' => $filialId
+            'filial_id' => $filialId,
+            'utilizado' => 0
         ]);
 
         return $codigo;

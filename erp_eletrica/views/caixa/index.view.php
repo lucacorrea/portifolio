@@ -167,6 +167,30 @@
                     <label class="form-label fw-bold">Motivo / Descrição</label>
                     <input type="text" name="motivo" class="form-control" placeholder="Ex: Adição de troco, Retirada para almoço..." required>
                 </div>
+
+                <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
+                <div class="card bg-light border-0 mt-4">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-shield-alt me-2"></i>Autorização Administrativa</h6>
+                        <p class="extra-small text-muted mb-3">Esta operação exige liberação de um Administrador.</p>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Código de Uso Único</label>
+                            <input type="text" name="auth_code" class="form-control form-control-sm text-center fw-bold" placeholder="000000">
+                            <div class="form-text extra-small text-center mt-1">Obtido na tela de login via "Gerar Código"</div>
+                        </div>
+                        
+                        <div class="text-center my-2">
+                             <span class="badge bg-secondary extra-small">OU</span>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label small fw-bold">Senha do Administrador</label>
+                            <input type="password" name="auth_password" class="form-control form-control-sm text-center" placeholder="••••••••">
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
