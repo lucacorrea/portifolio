@@ -122,25 +122,39 @@ class FiscalService extends BaseService {
     private function transmitToSEFAZ($signedXml, $fiscal, $type = 'nfce') {
         $soapClient = new SefazSoapClient();
         
-        // Em um cenário real, aqui faríamos a chamada SOAP e processaríamos o retorno XML
-        // Para garantir que o fluxo não quebre sem um servidor SEFAZ real respondendo agora,
-        // vou manter a estrutura de retorno mas integrar o cliente SOAP para quando houver conexão.
-        
         try {
-            // $responseXml = $soapClient->call('nfce_autorizacao', $signedXml, $fiscal);
-            // $responseData = $this->parseSefazResponse($responseXml);
-            // return $responseData;
+            $responseXml = $soapClient->call('nfce_autorizacao', $signedXml, $fiscal);
+            return $this->parseSefazResponse($responseXml);
         } catch (Exception $e) {
-            // Log do erro real de comunicação
             $this->logAction('sefaz_comm_error', 'vendas', null, null, ['error' => $e->getMessage()]);
+            throw new Exception("Falha na comunicação com a SEFAZ: " . $e->getMessage());
+        }
+    }
+
+    private function parseSefazResponse($xmlStr) {
+        // Remove namespaces for easier parsing in simple cases
+        $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $xmlStr);
+        $xml = simplexml_load_string($cleanXml);
+        
+        // SEFAZ response structure: nfeAutorizacaoLoteResult -> retEnviNFe
+        $ret = $xml->xpath('//retEnviNFe');
+        if (empty($ret)) {
+             throw new Exception("Resposta da SEFAZ em formato desconhecido.");
+        }
+        
+        $data = $ret[0];
+        $cStat = (string)$data->cStat;
+        $xMotivo = (string)$data->xMotivo;
+
+        if ($cStat != '103' && $cStat != '104') { // 103: Lote recebido, 104: Lote processado
+            throw new Exception("SEFAZ Rejeitou: [$cStat] $xMotivo");
         }
 
-        // Mock de sucesso estruturado para manter o fluxo do sistema enquanto não há resposta real da SEFAZ
         return [
             'status' => 'autorizada',
-            'protocolo' => '135' . rand(100000000, 999999999),
-            'chave' => '35' . date('ym') . str_replace(['.', '/', '-'], '', $fiscal['cnpj']) . '65001' . str_pad($sale['id'] ?? rand(1,999), 9, '0', STR_PAD_LEFT) . '1' . rand(10000000, 99999999),
-            'xml_path' => 'storage/nfe/xml/' . date('Y-m') . '/nfe_real_signed.xml'
+            'protocolo' => (string)$data->infRec->nRec ?? 'N/A',
+            'chave' => (string)$data->protNFe->infProt->chNFe ?? 'N/A',
+            'xml_path' => 'storage/nfe/xml/' . date('Y-m') . '/nfe_' . time() . '.xml'
         ];
     }
 

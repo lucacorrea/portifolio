@@ -79,9 +79,17 @@
                                                 <span class="badge bg-warning text-dark px-3 mt-1">PENDENTE</span>
                                             </td>
                                             <td class="text-end pe-4">
-                                                <button class="btn btn-sm btn-outline-primary fw-bold" onclick="visualizarItens(<?= $nota['id'] ?>)">
-                                                    <i class="fas fa-list me-1"></i> VISUALIZAR ITENS
-                                                </button>
+                                                <div class="btn-group">
+                                                    <button class="btn btn-sm btn-outline-info fw-bold" onclick="manifestarNota(<?= $nota['id'] ?>)" title="Ciência da Operação">
+                                                        <i class="fas fa-file-signature me-1"></i> MANIFESTAR
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-primary fw-bold" onclick="visualizarItens(<?= $nota['id'] ?>)">
+                                                        <i class="fas fa-list me-1"></i> ITENS
+                                                    </button>
+                                                    <a href="importar_automatico.php?action=baixar_xml&id=<?= $nota['id'] ?>" class="btn btn-sm btn-outline-secondary fw-bold" title="Baixar XML">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -154,8 +162,23 @@ async function sincronizarSefaz() {
     }
 }
 
+async function manifestarNota(id) {
+    if (!confirm('Deseja realizar a Ciência da Operação para esta nota? Isso permitirá baixar os produtos na SEFAZ.')) return;
+    showLoader();
+    try {
+        const response = await fetch(`importar_automatico.php?action=manifestar&id=${id}`);
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            // Sincronizar automaticamente após manifestar para tentar baixar o XML completo
+            sincronizarSefaz();
+        } else {
+            alert('Erro ao manifestar: ' + result.error);
+        }
+    } catch (e) {
+        alert('Erro de comunicação: ' + e.message);
     } finally {
-        loader.classList.add('d-none');
+        hideLoader();
     }
 }
 

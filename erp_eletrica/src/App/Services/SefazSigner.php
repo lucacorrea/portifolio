@@ -20,7 +20,15 @@ class SefazSigner extends BaseService {
         $dom->formatOutput = false;
         $dom->loadXML($xmlString);
 
-        $node = $dom->getElementsByTagName('infNFe')->item(0);
+        // Find the node to sign (infNFe or infEvento)
+        $node = null;
+        $tagsToSign = ['infNFe', 'infEvento'];
+        foreach ($tagsToSign as $tag) {
+            $node = $dom->getElementsByTagName($tag)->item(0);
+            if ($node) break;
+        }
+
+        if (!$node) throw new Exception("Nenhum nó passível de assinatura encontrado no XML.");
         $id = $node->getAttribute('Id');
 
         // C14N - Canonicalization

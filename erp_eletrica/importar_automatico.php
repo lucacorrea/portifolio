@@ -23,11 +23,17 @@ switch($action) {
     case 'sincronizar':
         $controller->sincronizar();
         break;
+    case 'manifestar':
+        $controller->manifestar();
+        break;
     case 'visualizar_produtos':
         $controller->visualizar_produtos();
         break;
     case 'processar_entrada':
         $controller->processar_entrada();
+        break;
+    case 'baixar_xml':
+        $controller->baixar_xml();
         break;
     default:
         $controller->index();
