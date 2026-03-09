@@ -736,12 +736,21 @@ if ($action === 'excel') {
                 border-collapse: collapse;
                 width: 100%;
                 table-layout: fixed;
+                border: 2px solid #000;
+            }
+
+            .tbl-meta {
+                border: 2px solid #000;
             }
 
             .tbl-meta td {
                 border: 1px solid #000;
                 padding: 6px;
                 font-size: 11pt;
+            }
+
+            .tbl-main {
+                border: 2px solid #000;
             }
 
             .tbl-main th,
@@ -809,7 +818,7 @@ if ($action === 'excel') {
     </head>
 
     <body>
-        <table class="tbl-meta print-wide" style="border: 0.8px solid #000;">
+        <table class="tbl-meta print-wide">
             <tr>
                 <td colspan="9" class="title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
             </tr>
@@ -826,7 +835,7 @@ if ($action === 'excel') {
             </tr>
         </table>
 
-        <table class="tbl-main print-wide" style="margin-top:6px;" style="border: 0.8px solid #000;">
+        <table class="tbl-main print-wide" style="margin-top:6px;">
             <thead>
                 <tr>
                     <th class="head w-id">ID</th>
