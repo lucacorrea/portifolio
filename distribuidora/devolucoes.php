@@ -17,7 +17,7 @@ $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
 /* =========================
-   FALLBACKS (se helpers não tiver)
+   FALLBACKS
 ========================= */
 if (!function_exists('e')) {
   function e(string $s): string
@@ -91,6 +91,7 @@ function brl(float $v): string
 {
   return 'R$ ' . number_format($v, 2, ',', '.');
 }
+
 function dtbr_dt(string $ymd, string $his): string
 {
   $ymd = trim($ymd);
@@ -100,9 +101,6 @@ function dtbr_dt(string $ymd, string $his): string
   return $ts ? date('d/m/Y H:i', $ts) : ($ymd . ' ' . $his);
 }
 
-/* =========================================================
-   ✅ table_exists CORRETO (INFORMATION_SCHEMA)
-========================================================= */
 function table_exists(PDO $pdo, string $table): bool
 {
   $st = $pdo->prepare("
@@ -117,7 +115,7 @@ function table_exists(PDO $pdo, string $table): bool
 }
 
 /* =========================================================
-   ESTOQUE (reposição ao concluir devolução)
+   ESTOQUE
 ========================================================= */
 function extract_product_code(string $product): string
 {
@@ -196,7 +194,7 @@ function map_add(array $a, array $b): array
 }
 
 /* =========================================================
-   PRODUTOS (cache p/ autocomplete)
+   PRODUTOS CACHE
 ========================================================= */
 $PRODUTOS_CACHE = [];
 try {
@@ -222,7 +220,7 @@ try {
 }
 
 /* =========================================================
-   WHERE builder (para list / export)
+   WHERE
 ========================================================= */
 function build_where(string $q, string $status): array
 {
@@ -257,10 +255,10 @@ function build_where(string $q, string $status): array
 }
 
 /* =========================================================
-   EXPORTS (EXCEL/PDF)
+   EXPORT EXCEL
 ========================================================= */
 $export = strtolower(trim((string)($_GET['export'] ?? '')));
-if ($export === 'excel' || $export === 'pdf') {
+if ($export === 'excel') {
   $q = (string)($_GET['q'] ?? '');
   $status = (string)($_GET['status'] ?? '');
 
@@ -273,7 +271,7 @@ if ($export === 'excel' || $export === 'pdf') {
   [$w, $p] = build_where($q, $status);
 
   $st = $pdo->prepare("
-    SELECT d.id, d.venda_no, d.cliente, d.data, d.hora, d.tipo, d.produto, d.qtd, d.valor, d.motivo, d.obs, d.status, d.created_at
+    SELECT d.id, d.venda_no, d.cliente, d.data, d.hora, d.tipo, d.produto, d.qtd, d.valor, d.motivo, d.obs, d.status
     FROM devolucoes d
     $w
     ORDER BY d.data DESC, d.hora DESC, d.id DESC
@@ -281,376 +279,251 @@ if ($export === 'excel' || $export === 'pdf') {
   $st->execute($p);
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  // Totais
-  $tot = ['ABERTO' => 0.0, 'CONCLUIDO' => 0.0, 'CANCELADO' => 0.0, 'GERAL' => 0.0];
+  $sumValor = 0.0;
   foreach ($rows as $r) {
-    $v = (float)($r['valor'] ?? 0);
-    $stt = strtoupper((string)($r['status'] ?? 'ABERTO'));
-    if (!isset($tot[$stt])) $stt = 'ABERTO';
-    $tot[$stt] += $v;
-    $tot['GERAL'] += $v;
+    $sumValor += (float)($r['valor'] ?? 0);
   }
 
-  $geradoEm = date('d/m/Y H:i:s');
-  $filtroTxt = 'Status: ' . ($status !== '' ? strtoupper($status) : 'Todos');
-  if (trim($q) !== '') $filtroTxt .= ' | Busca: ' . $q;
+  $agora = date('d/m/Y H:i');
+  $di = '—';
+  $df = '—';
+  $canal = '—';
+  $pag = strtoupper($status ?: 'TODOS');
+  $busca = trim($q) !== '' ? $q : '—';
 
-  /* =======================
-     ✅ EXCEL (separando OBS)
-  ======================= */
-  if ($export === 'excel') {
-    $fn = 'devolucoes_' . date('Ymd_His') . '.xls';
-    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $fn . '"');
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    echo "\xEF\xBB\xBF";
+  $fname = 'devolucoes_' . date('Y-m-d_His') . '.xls';
+
+  if (function_exists('ob_get_length') && ob_get_length()) {
+    @ob_clean();
+  }
+
+  header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+  header('Content-Disposition: attachment; filename="' . $fname . '"');
+  header('Pragma: no-cache');
+  header('Expires: 0');
+
+  echo "\xEF\xBB\xBF";
 ?>
-    <html>
+  <html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:x="urn:schemas-microsoft-com:office:excel"
+    xmlns="http://www.w3.org/TR/REC-html40">
 
-    <head>
-      <meta charset="utf-8">
-    </head>
+  <head>
+    <meta charset="UTF-8">
 
-    <body>
-      <table border="0" cellpadding="4" cellspacing="0" style="font-family:Calibri,Arial; font-size:12px; width:100%;">
+    <!--[if gte mso 9]>
+    <xml>
+        <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                    <x:Name>Devoluções</x:Name>
+                    <x:WorksheetOptions>
+                        <x:Selected/>
+                        <x:DisplayGridlines/>
+                        <x:FitToPage/>
+                        <x:DoNotDisplayGridlines/>
+                        <x:Print>
+                            <x:ValidPrinterInfo/>
+                            <x:PaperSizeIndex>9</x:PaperSizeIndex>
+                            <x:Scale>100</x:Scale>
+                            <x:FitWidth>1</x:FitWidth>
+                            <x:FitHeight>999</x:FitHeight>
+                            <x:HorizontalResolution>600</x:HorizontalResolution>
+                            <x:VerticalResolution>600</x:VerticalResolution>
+                        </x:Print>
+                        <x:PageSetup>
+                            <x:Layout x:Orientation="Landscape"/>
+                            <x:Header x:Margin="0.2"/>
+                            <x:Footer x:Margin="0.2"/>
+                            <x:PageMargins
+                                x:Bottom="0.25"
+                                x:Left="0.15"
+                                x:Right="0.15"
+                                x:Top="0.25"/>
+                        </x:PageSetup>
+                        <x:CenterHorizontal/>
+                    </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+        </x:ExcelWorkbook>
+    </xml>
+    <![endif]-->
+
+    <style>
+      @page {
+        size: A4 landscape;
+        margin: 0.5cm;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 11pt;
+        background: #fff;
+      }
+
+      .page-wrap {
+        width: 100%;
+        margin: 0 auto;
+      }
+
+      table {
+        border-collapse: collapse;
+        table-layout: fixed;
+        width: 100%;
+      }
+
+      .tbl-meta,
+      .tbl-main {
+        width: 100%;
+        border: 1px solid #000;
+      }
+
+      .tbl-meta td {
+        border: 1px solid #000;
+        padding: 6px;
+        font-size: 11pt;
+        vertical-align: middle;
+      }
+
+      .tbl-main th,
+      .tbl-main td {
+        border: 1px solid #000;
+        padding: 6px;
+        font-size: 11pt;
+        vertical-align: middle;
+      }
+
+      .title {
+        font-size: 16pt;
+        font-weight: 700;
+        text-align: center;
+        background: #dbeafe;
+        border: 1px solid #000 !important;
+      }
+
+      .head {
+        background: #dbeafe;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .center {
+        text-align: center;
+      }
+
+      .left {
+        text-align: left;
+      }
+
+      .foot {
+        font-weight: 700;
+        background: #eef2ff;
+      }
+
+      .w-id {
+        width: 7%;
+      }
+
+      .w-data {
+        width: 14%;
+      }
+
+      .w-venda {
+        width: 8%;
+      }
+
+      .w-cli {
+        width: 19%;
+      }
+
+      .w-tipo {
+        width: 9%;
+      }
+
+      .w-prod {
+        width: 17%;
+      }
+
+      .w-qtd {
+        width: 6%;
+      }
+
+      .w-num {
+        width: 8%;
+      }
+
+      .w-mot {
+        width: 12%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="page-wrap">
+      <table class="tbl-meta">
         <tr>
-          <td colspan="11" style="font-size:16px; font-weight:800;">
-            PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES (RESUMO)
+          <td colspan="10" class="title">PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES</td>
+        </tr>
+        <tr>
+          <td colspan="10">Gerado em: <?= e($agora) ?></td>
+        </tr>
+        <tr>
+          <td colspan="10">
+            Período: <?= e($di) ?> até <?= e($df) ?> |
+            Status: <?= e($pag) ?> |
+            Busca: <?= e($busca) ?>
           </td>
         </tr>
-        <tr>
-          <td><b>Gerado em:</b></td>
-          <td colspan="10"><?= e($geradoEm) ?></td>
-        </tr>
-        <tr>
-          <td><b>Filtro:</b></td>
-          <td colspan="10"><?= e($filtroTxt) ?></td>
-        </tr>
-        <tr>
-          <td><b>Total (Aberto):</b></td>
-          <td><?= e(brl($tot['ABERTO'])) ?></td>
-          <td colspan="9"></td>
-        </tr>
-        <tr>
-          <td><b>Total (Concluído):</b></td>
-          <td><?= e(brl($tot['CONCLUIDO'])) ?></td>
-          <td colspan="9"></td>
-        </tr>
-        <tr>
-          <td><b>Total (Cancelado):</b></td>
-          <td><?= e(brl($tot['CANCELADO'])) ?></td>
-          <td colspan="9"></td>
-        </tr>
-        <tr>
-          <td><b>TOTAL (Geral):</b></td>
-          <td><b><?= e(brl($tot['GERAL'])) ?></b></td>
-          <td colspan="9"></td>
-        </tr>
       </table>
 
-      <br>
-
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; font-family:Calibri,Arial; font-size:12px; width:100%;">
-        <tr style="background:#f3f6f8; font-weight:800;">
-          <td>ID</td>
-          <td>Data/Hora</td>
-          <td>Venda</td>
-          <td>Cliente</td>
-          <td>Tipo</td>
-          <td>Produto</td>
-          <td>Qtd</td>
-          <td>Valor</td>
-          <td>Motivo</td>
-          <td>Obs</td>
-          <td>Status</td>
-        </tr>
-        <?php foreach ($rows as $r): ?>
+      <table class="tbl-main" style="margin-top:6px;">
+        <thead>
           <tr>
-            <td><?= (int)$r['id'] ?></td>
-            <td><?= e(dtbr_dt((string)$r['data'], (string)$r['hora'])) ?></td>
-            <td><?= ($r['venda_no'] !== null ? '#' . (int)$r['venda_no'] : '—') ?></td>
-            <td><?= e((string)($r['cliente'] ?? '')) ?></td>
-            <td><?= e((string)($r['tipo'] ?? 'TOTAL')) ?></td>
-            <td><?= e((string)($r['produto'] ?? '')) ?></td>
-            <td><?= ($r['qtd'] !== null ? (int)$r['qtd'] : '—') ?></td>
-            <td><?= e(brl((float)$r['valor'])) ?></td>
-            <td><?= e((string)($r['motivo'] ?? '')) ?></td>
-            <td><?= e((string)($r['obs'] ?? '')) ?></td>
-            <td><?= e((string)($r['status'] ?? 'ABERTO')) ?></td>
+            <th class="head w-id">ID</th>
+            <th class="head w-data">Data/Hora</th>
+            <th class="head w-venda">Venda</th>
+            <th class="head w-cli">Cliente</th>
+            <th class="head w-tipo">Tipo</th>
+            <th class="head w-prod">Produto</th>
+            <th class="head w-qtd">Qtd</th>
+            <th class="head w-num">Valor</th>
+            <th class="head w-mot">Motivo</th>
+            <th class="head w-mot">Status</th>
           </tr>
-        <?php endforeach; ?>
+        </thead>
+        <tbody>
+          <?php foreach ($rows as $r): ?>
+            <tr>
+              <td class="center"><?= (int)$r['id'] ?></td>
+              <td class="center"><?= e(dtbr_dt((string)$r['data'], (string)$r['hora'])) ?></td>
+              <td class="center"><?= ($r['venda_no'] !== null ? '#' . (int)$r['venda_no'] : '—') ?></td>
+              <td class="left"><?= e((string)($r['cliente'] ?: 'Consumidor Final')) ?></td>
+              <td class="center"><?= e((string)($r['tipo'] ?? 'TOTAL')) ?></td>
+              <td class="left"><?= e((string)($r['produto'] ?? '—')) ?></td>
+              <td class="center"><?= ($r['qtd'] !== null ? (int)$r['qtd'] : '—') ?></td>
+              <td class="center"><?= e(number_format((float)$r['valor'], 2, ',', '.')) ?></td>
+              <td class="left"><?= e((string)($r['motivo'] ?? '')) ?></td>
+              <td class="center"><?= e((string)($r['status'] ?? 'ABERTO')) ?></td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+          <tr class="foot">
+            <td colspan="7" class="center">Totais</td>
+            <td class="center"><?= e(number_format($sumValor, 2, ',', '.')) ?></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
       </table>
-    </body>
+    </div>
+  </body>
 
-    </html>
+  </html>
 <?php
-    exit;
-  }
-
-  /* =======================
-     ✅ PDF (arquivo para baixar)
-     - parecido com seus relatórios
-     - sem depender de libs
-     - separa Obs do Motivo
-  ======================= */
-
-  // helpers PDF
-  $pdf_to_1252 = function (string $s): string {
-    $s = trim($s);
-    if ($s === '') return '';
-    if (function_exists('iconv')) {
-      $x = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $s);
-      if ($x !== false) return $x;
-    }
-    // fallback bruto: remove chars fora do básico
-    return preg_replace('/[^\x20-\x7E]/', '', $s) ?? $s;
-  };
-
-  $pdf_escape = function (string $s) use ($pdf_to_1252): string {
-    $s = $pdf_to_1252($s);
-    $s = str_replace('\\', '\\\\', $s);
-    $s = str_replace('(', '\\(', $s);
-    $s = str_replace(')', '\\)', $s);
-    return $s;
-  };
-
-  $pdf_trunc = function (string $s, int $max): string {
-    $s = trim($s);
-    if ($s === '') return '';
-    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
-      if (mb_strlen($s, 'UTF-8') <= $max) return $s;
-      return mb_substr($s, 0, max(1, $max - 1), 'UTF-8') . '…';
-    }
-    if (strlen($s) <= $max) return $s;
-    return substr($s, 0, max(1, $max - 1)) . '...';
-  };
-
-  // PDF builder
-  $objects = [];
-  $addObj = function (string $body) use (&$objects): int {
-    $objects[] = $body;
-    return count($objects); // obj number starts at 1
-  };
-
-  $pageW = 595.28;  // A4
-  $pageH = 841.89;
-  $m = 36.0;        // margin
-  $x0 = $m;
-  $usableW = $pageW - 2 * $m;
-
-  // colunas (somatório = $usableW)
-  $cols = [
-    ['k' => 'id',     't' => 'ID',        'w' => 22, 'a' => 'L', 'max' => 4],
-    ['k' => 'dt',     't' => 'Data/Hora', 'w' => 64, 'a' => 'L', 'max' => 16],
-    ['k' => 'venda',  't' => 'Venda',     'w' => 32, 'a' => 'L', 'max' => 7],
-    ['k' => 'cliente', 't' => 'Cliente',   'w' => 85, 'a' => 'L', 'max' => 20],
-    ['k' => 'tipo',   't' => 'Tipo',      'w' => 38, 'a' => 'C', 'max' => 8],
-    ['k' => 'produto', 't' => 'Produto',   'w' => 82, 'a' => 'L', 'max' => 20],
-    ['k' => 'qtd',    't' => 'Qtd',       'w' => 22, 'a' => 'C', 'max' => 4],
-    ['k' => 'valor',  't' => 'Valor',     'w' => 40, 'a' => 'R', 'max' => 10],
-    ['k' => 'motivo', 't' => 'Motivo',    'w' => 50, 'a' => 'L', 'max' => 12],
-    ['k' => 'obs',    't' => 'Obs',       'w' => 50, 'a' => 'L', 'max' => 12],
-    ['k' => 'status', 't' => 'Status',    'w' => 38, 'a' => 'C', 'max' => 10],
-  ];
-
-  $rowH = 16.0;
-  $headH = 18.0;
-
-  $drawRect = function (float $x, float $y, float $w, float $h, string $mode): string {
-    // mode: S (stroke), f (fill), B (fill+stroke)
-    return sprintf("%.2f %.2f %.2f %.2f re %s\n", $x, $y, $w, $h, $mode);
-  };
-
-  $textAt = function (float $x, float $y, string $txt, int $size, string $align = 'L', float $w = 0.0) use ($pdf_escape): string {
-    // y is baseline in PDF coords
-    $txt = $pdf_escape($txt);
-    if ($txt === '') return '';
-    if ($align === 'R' && $w > 0) {
-      // crude width estimate: 0.5*size per char
-      $tw = strlen($txt) * $size * 0.5;
-      $x = max($x, $x + $w - $tw - 2);
-    } elseif ($align === 'C' && $w > 0) {
-      $tw = strlen($txt) * $size * 0.5;
-      $x = $x + max(0, ($w - $tw) / 2);
-    }
-    return "BT /F1 {$size} Tf 0 g " . sprintf("%.2f %.2f Td", $x, $y) . " ({$txt}) Tj ET\n";
-  };
-
-  $buildHeader = function (string $title, string $geradoEm, string $filtroTxt, array $tot) use ($pageW, $pageH, $m, $x0, $usableW, $textAt): array {
-    $content = "";
-
-    // title centered
-    $titleY = $pageH - $m - 18;
-    // manual center: compute x based on length
-    $tw = strlen($title) * 14 * 0.5;
-    $tx = max($m, ($pageW - $tw) / 2);
-    $content .= $textAt($tx, $titleY, $title, 14, 'L');
-
-    // meta lines
-    $y = $titleY - 18;
-    $content .= $textAt($x0, $y, "Gerado em: {$geradoEm}", 10);
-    $y -= 14;
-    $content .= $textAt($x0, $y, $filtroTxt, 10);
-
-    // totals block (no estilo “relatório”)
-    $y -= 16;
-    $content .= $textAt($x0, $y, "Total (Aberto): " . brl((float)$tot['ABERTO']) . "   |   Total (Concluído): " . brl((float)$tot['CONCLUIDO']) . "   |   Total (Cancelado): " . brl((float)$tot['CANCELADO']), 10);
-    $y -= 14;
-    $content .= $textAt($x0, $y, "TOTAL (Geral): " . brl((float)$tot['GERAL']), 11);
-
-    $y -= 18;
-    return [$content, $y];
-  };
-
-  $pagesContent = [];
-
-  $title = "PAINEL DA DISTRIBUIDORA - DEVOLUÇÕES";
-  [$headContent, $yTopTable] = $buildHeader($title, $geradoEm, $filtroTxt, $tot);
-
-  $newPage = function () use (&$pagesContent, $headContent, $yTopTable): array {
-    $content = $headContent;
-    $y = $yTopTable;
-    return [$content, $y];
-  };
-
-  // start first page
-  [$content, $y] = $newPage();
-
-  // table header
-  $tableHeader = function (float $x0, float $y, array $cols) use ($drawRect, $textAt, $headH): string {
-    $c = "";
-    // header background
-    $c .= "0.95 g\n0.85 G 0.6 w\n"; // fill grey, stroke light
-    $x = $x0;
-    foreach ($cols as $col) {
-      $c .= $drawRect($x, $y - $headH, $col['w'], $headH, "B");
-      $c .= $textAt($x + 2, $y - 13, (string)$col['t'], 9, 'L');
-      $x += $col['w'];
-    }
-    $c .= "0 g\n0 G\n";
-    return $c;
-  };
-
-  $tableRow = function (float $x0, float $y, array $cols, array $data) use ($drawRect, $textAt, $rowH): string {
-    $c = "";
-    $c .= "0 G 0.6 w\n"; // stroke
-    $x = $x0;
-    foreach ($cols as $col) {
-      $c .= $drawRect($x, $y - $rowH, $col['w'], $rowH, "S");
-      $txt = (string)($data[$col['k']] ?? '');
-      $c .= $textAt($x + 2, $y - 12, $txt, 9, $col['a'], $col['w'] - 4);
-      $x += $col['w'];
-    }
-    return $c;
-  };
-
-  // print header row
-  $content .= $tableHeader($x0, $y, $cols);
-  $y -= $headH;
-
-  // bottom limit
-  $bottom = $m + 28;
-
-  foreach ($rows as $r) {
-    // if need new page
-    if (($y - $rowH) < $bottom) {
-      $pagesContent[] = $content;
-      [$content, $y] = $newPage();
-      $content .= $tableHeader($x0, $y, $cols);
-      $y -= $headH;
-    }
-
-    $id = (string)((int)($r['id'] ?? 0));
-    $dt = dtbr_dt((string)($r['data'] ?? ''), (string)($r['hora'] ?? ''));
-    $venda = ($r['venda_no'] !== null) ? ('#' . (int)$r['venda_no']) : '—';
-    $cliente = (string)($r['cliente'] ?? '');
-    if (trim($cliente) === '') $cliente = 'Consumidor Final';
-    $tipo = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
-    $produto = (string)($r['produto'] ?? '');
-    if ($tipo !== 'PARCIAL') $produto = '—';
-    $qtd = ($tipo === 'PARCIAL') ? (string)((int)($r['qtd'] ?? 0)) : '—';
-    $valor = brl((float)($r['valor'] ?? 0));
-    $motivo = strtoupper((string)($r['motivo'] ?? 'OUTRO'));
-    $obs = (string)($r['obs'] ?? '');
-    $statusTxt = strtoupper((string)($r['status'] ?? 'ABERTO'));
-
-    // truncs for table
-    $rowData = [
-      'id' => $id,
-      'dt' => $pdf_trunc($dt, 16),
-      'venda' => $pdf_trunc($venda, 7),
-      'cliente' => $pdf_trunc($cliente, 20),
-      'tipo' => $pdf_trunc($tipo, 8),
-      'produto' => $pdf_trunc($produto, 20),
-      'qtd' => $pdf_trunc($qtd, 4),
-      'valor' => $pdf_trunc($valor, 10),
-      'motivo' => $pdf_trunc($motivo, 12),
-      'obs' => $pdf_trunc($obs, 12),
-      'status' => $pdf_trunc($statusTxt, 10),
-    ];
-
-    $content .= $tableRow($x0, $y, $cols, $rowData);
-    $y -= $rowH;
-  }
-
-  $pagesContent[] = $content;
-
-  // build PDF objects
-  $fontObj = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-
-  $pageObjs = [];
-  $contentObjs = [];
-
-  foreach ($pagesContent as $pc) {
-    $stream = $pc;
-    $len = strlen($stream);
-    $contentObj = $addObj("<< /Length {$len} >>\nstream\n{$stream}\nendstream");
-    $contentObjs[] = $contentObj;
-
-    $pageObj = $addObj("<<
-/Type /Page
-/Parent 0 0 R
-/MediaBox [0 0 {$pageW} {$pageH}]
-/Resources << /Font << /F1 {$fontObj} 0 R >> >>
-/Contents {$contentObj} 0 R
->>");
-    $pageObjs[] = $pageObj;
-  }
-
-  // Pages tree
-  $kids = implode(' ', array_map(fn($n) => "{$n} 0 R", $pageObjs));
-  $pagesObj = $addObj("<< /Type /Pages /Kids [ {$kids} ] /Count " . count($pageObjs) . " >>");
-
-  // fix Parent reference in each page object (replace "0 0 R" with pagesObj)
-  foreach ($pageObjs as $idx => $pnum) {
-    $objects[$pnum - 1] = str_replace("/Parent 0 0 R", "/Parent {$pagesObj} 0 R", $objects[$pnum - 1]);
-  }
-
-  // Catalog
-  $catalogObj = $addObj("<< /Type /Catalog /Pages {$pagesObj} 0 R >>");
-
-  // write file
-  $pdf = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
-  $offsets = [0];
-  for ($i = 1; $i <= count($objects); $i++) {
-    $offsets[$i] = strlen($pdf);
-    $pdf .= $i . " 0 obj\n" . $objects[$i - 1] . "\nendobj\n";
-  }
-  $xrefPos = strlen($pdf);
-  $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
-  $pdf .= "0000000000 65535 f \n";
-  for ($i = 1; $i <= count($objects); $i++) {
-    $pdf .= str_pad((string)$offsets[$i], 10, '0', STR_PAD_LEFT) . " 00000 n \n";
-  }
-  $pdf .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root {$catalogObj} 0 R >>\nstartxref\n{$xrefPos}\n%%EOF";
-
-  $fn = 'devolucoes_' . date('Ymd_His') . '.pdf';
-  header('Content-Type: application/pdf');
-  header('Content-Disposition: attachment; filename="' . $fn . '"');
-  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-  header('Pragma: no-cache');
-  header('Content-Length: ' . strlen($pdf));
-  echo $pdf;
   exit;
 }
 
@@ -661,7 +534,6 @@ if (isset($_GET['ajax'])) {
   $ajax = (string)($_GET['ajax'] ?? '');
 
   try {
-    // buscar vendas
     if ($ajax === 'buscarVendas') {
       $q = trim((string)($_GET['q'] ?? ''));
       if ($q === '') json_out(['ok' => true, 'items' => []]);
@@ -701,7 +573,6 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'items' => $items]);
     }
 
-    // itens da venda
     if ($ajax === 'itensVenda') {
       $id = (int)($_GET['id'] ?? 0);
       if ($id <= 0) json_out(['ok' => true, 'items' => []]);
@@ -731,7 +602,6 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'items' => $items]);
     }
 
-    // ✅ listagem paginada (10 em 10)
     if ($ajax === 'list') {
       if (!table_exists($pdo, 'devolucoes')) {
         json_out(['ok' => true, 'items' => [], 'page' => 1, 'per' => 10, 'total_rows' => 0, 'total_pages' => 1, 'totals' => []]);
@@ -787,7 +657,6 @@ if (isset($_GET['ajax'])) {
         ];
       }
 
-      // totais do resumo (mesma busca, ignorando status do filtro)
       [$w2, $p2] = build_where($q, '');
       $stT = $pdo->prepare("
         SELECT UPPER(TRIM(d.status)) st, COALESCE(SUM(d.valor),0) s
@@ -816,7 +685,6 @@ if (isset($_GET['ajax'])) {
       ]);
     }
 
-    // save (com estoque)
     if ($ajax === 'save') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -960,7 +828,6 @@ if (isset($_GET['ajax'])) {
       json_out(['ok' => true, 'msg' => $msg]);
     }
 
-    // delete (desfaz estoque se estava CONCLUÍDO)
     if ($ajax === 'del') {
       $payload = json_input();
       $csrf = (string)($payload['csrf_token'] ?? '');
@@ -1016,7 +883,7 @@ if (isset($_GET['ajax'])) {
 }
 
 /* =========================================================
-   HTML NORMAL
+   HTML
 ========================================================= */
 $csrf = csrf_token();
 $flash = flash_pop();
@@ -1043,7 +910,7 @@ $flash = flash_pop();
       height: 38px !important;
       padding: 8px 14px !important;
       font-size: 13px !important;
-      line-height: 1 !important
+      line-height: 1 !important;
     }
 
     .icon-btn {
@@ -1052,21 +919,21 @@ $flash = flash_pop();
       padding: 0 !important;
       display: inline-flex !important;
       align-items: center !important;
-      justify-content: center !important
+      justify-content: center !important;
     }
 
     .form-control.compact,
     .form-select.compact {
       height: 38px;
       padding: 8px 12px;
-      font-size: 13px
+      font-size: 13px;
     }
 
     .cardx {
       border: 1px solid rgba(148, 163, 184, .28);
       border-radius: 16px;
       background: #fff;
-      overflow: hidden
+      overflow: hidden;
     }
 
     .cardx .head {
@@ -1076,16 +943,16 @@ $flash = flash_pop();
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      flex-wrap: wrap
+      flex-wrap: wrap;
     }
 
     .cardx .body {
-      padding: 14px
+      padding: 14px;
     }
 
     .muted {
       font-size: 12px;
-      color: #64748b
+      color: #64748b;
     }
 
     .pill {
@@ -1097,25 +964,25 @@ $flash = flash_pop();
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(248, 250, 252, .7)
+      background: rgba(248, 250, 252, .7);
     }
 
     .pill.ok {
       border-color: rgba(34, 197, 94, .25);
       background: rgba(240, 253, 244, .9);
-      color: #166534
+      color: #166534;
     }
 
     .pill.warn {
       border-color: rgba(245, 158, 11, .28);
       background: rgba(255, 251, 235, .9);
-      color: #92400e
+      color: #92400e;
     }
 
     .chip-toggle {
       display: flex;
       gap: 10px;
-      flex-wrap: wrap
+      flex-wrap: wrap;
     }
 
     .chip {
@@ -1126,56 +993,58 @@ $flash = flash_pop();
       font-weight: 900;
       font-size: 12px;
       user-select: none;
-      background: #fff
+      background: #fff;
     }
 
     .chip.active {
       background: rgba(239, 246, 255, .75);
       border-color: rgba(37, 99, 235, .55);
-      outline: 2px solid rgba(37, 99, 235, .25)
+      outline: 2px solid rgba(37, 99, 235, .25);
     }
 
     .reason-box {
       border: 1px solid rgba(148, 163, 184, .25);
       border-radius: 14px;
       padding: 10px 12px;
-      background: rgba(248, 250, 252, .7)
+      background: rgba(248, 250, 252, .7);
     }
 
     .table td,
     .table th {
-      vertical-align: middle
+      vertical-align: middle;
     }
 
     .table-responsive {
-      -webkit-overflow-scrolling: touch
+      -webkit-overflow-scrolling: touch;
     }
 
     #tbDev {
       width: 100%;
-      min-width: 1320px
+      min-width: 840px;
     }
 
-    /* ✅ mais largo pra não embolar */
     #tbDev th {
       font-weight: 900;
-      color: #0f172a
+      color: #0f172a;
+      text-align: center;
+      white-space: nowrap;
     }
 
     #tbDev td {
       font-weight: 600;
-      color: #0f172a
+      color: #0f172a;
+      vertical-align: middle;
     }
 
     .money {
       font-weight: 1000;
-      color: #0b5ed7
+      color: #0b5ed7;
     }
 
     .mini {
       font-size: 12px;
       color: #475569;
-      font-weight: 800
+      font-weight: 800;
     }
 
     .badge-soft {
@@ -1185,25 +1054,25 @@ $flash = flash_pop();
       font-size: 11px;
       display: inline-flex;
       align-items: center;
-      justify-content: center
+      justify-content: center;
     }
 
     .b-open {
       background: rgba(255, 251, 235, .95);
       color: #92400e;
-      border: 1px solid rgba(245, 158, 11, .25)
+      border: 1px solid rgba(245, 158, 11, .25);
     }
 
     .b-done {
       background: rgba(240, 253, 244, .95);
       color: #166534;
-      border: 1px solid rgba(34, 197, 94, .25)
+      border: 1px solid rgba(34, 197, 94, .25);
     }
 
     .b-cancel {
       background: rgba(254, 242, 242, .95);
       color: #991b1b;
-      border: 1px solid rgba(239, 68, 68, .25)
+      border: 1px solid rgba(239, 68, 68, .25);
     }
 
     .toolbar {
@@ -1211,16 +1080,16 @@ $flash = flash_pop();
       gap: 10px;
       flex-wrap: wrap;
       align-items: center;
-      width: 100%
+      width: 100%;
     }
 
     .toolbar .grow {
       flex: 1 1 260px;
-      min-width: 240px
+      min-width: 240px;
     }
 
     .toolbar .w180 {
-      min-width: 180px
+      min-width: 180px;
     }
 
     .pager-box {
@@ -1228,22 +1097,22 @@ $flash = flash_pop();
       align-items: center;
       justify-content: flex-end;
       gap: 10px;
-      margin-top: 12px
+      margin-top: 12px;
     }
 
     .pager-box .page-text {
       font-size: 12px;
       color: #64748b;
-      font-weight: 900
+      font-weight: 900;
     }
 
     .pager-box .btn-disabled {
       opacity: .45;
-      pointer-events: none
+      pointer-events: none;
     }
 
     .search-wrap {
-      position: relative
+      position: relative;
     }
 
     .suggest {
@@ -1258,7 +1127,7 @@ $flash = flash_pop();
       box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
       max-height: 280px;
       overflow: auto;
-      display: none
+      display: none;
     }
 
     .suggest .it {
@@ -1266,11 +1135,11 @@ $flash = flash_pop();
       cursor: pointer;
       display: flex;
       justify-content: space-between;
-      gap: 10px
+      gap: 10px;
     }
 
     .suggest .it:hover {
-      background: rgba(241, 245, 249, .9)
+      background: rgba(241, 245, 249, .9);
     }
 
     .suggest .t {
@@ -1279,13 +1148,13 @@ $flash = flash_pop();
       color: #0f172a;
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis
+      text-overflow: ellipsis;
     }
 
     .suggest .s {
       font-size: 12px;
       color: #64748b;
-      white-space: nowrap
+      white-space: nowrap;
     }
 
     .sale-box {
@@ -1308,11 +1177,11 @@ $flash = flash_pop();
     }
 
     .sale-row:last-child {
-      border-bottom: none
+      border-bottom: none;
     }
 
     .sale-row .left {
-      min-width: 0
+      min-width: 0;
     }
 
     .sale-row .left .nm {
@@ -1321,17 +1190,17 @@ $flash = flash_pop();
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 320px
+      max-width: 320px;
     }
 
     .sale-row .left .cd {
       color: #64748b;
-      font-size: 12px
+      font-size: 12px;
     }
 
     .sale-row .right {
       white-space: nowrap;
-      text-align: right
+      text-align: right;
     }
 
     .sale-mini {
@@ -1340,7 +1209,50 @@ $flash = flash_pop();
       margin-top: 6px;
       display: flex;
       justify-content: space-between;
-      gap: 10px
+      gap: 10px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .detail-box {
+      border: 1px solid rgba(148, 163, 184, .22);
+      border-radius: 14px;
+      background: #fff;
+      padding: 12px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px dashed rgba(148, 163, 184, .22);
+      font-size: 13px;
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-row span:first-child {
+      color: #64748b;
+      font-weight: 800;
+    }
+
+    .detail-row span:last-child {
+      color: #0f172a;
+      font-weight: 900;
+      text-align: right;
+    }
+
+    @media(max-width:767.98px) {
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -1350,7 +1262,6 @@ $flash = flash_pop();
     <div class="spinner"></div>
   </div>
 
-  <!-- sidebar (mantive igual ao seu layout) -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -1362,27 +1273,21 @@ $flash = flash_pop();
       <ul>
         <li class="nav-item">
           <a href="dashboard.php">
-            <span class="icon">
-              <i class="lni lni-dashboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-dashboard"></i></span>
             <span class="text">Dashboard</span>
           </a>
         </li>
 
         <li class="nav-item">
           <a href="vendas.php">
-            <span class="icon">
-              <i class="lni lni-cart"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cart"></i></span>
             <span class="text">Vendas</span>
           </a>
         </li>
 
         <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-layers"></i>
-            </span>
+            <span class="icon"><i class="lni lni-layers"></i></span>
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav show">
@@ -1394,9 +1299,7 @@ $flash = flash_pop();
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-package"></i>
-            </span>
+            <span class="icon"><i class="lni lni-package"></i></span>
             <span class="text">Estoque</span>
           </a>
           <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -1410,9 +1313,7 @@ $flash = flash_pop();
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-users"></i>
-            </span>
+            <span class="icon"><i class="lni lni-users"></i></span>
             <span class="text">Cadastros</span>
           </a>
           <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
@@ -1424,9 +1325,7 @@ $flash = flash_pop();
 
         <li class="nav-item">
           <a href="relatorios.php">
-            <span class="icon">
-              <i class="lni lni-clipboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-clipboard"></i></span>
             <span class="text">Relatórios</span>
           </a>
         </li>
@@ -1437,9 +1336,7 @@ $flash = flash_pop();
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-cog"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cog"></i></span>
             <span class="text">Configurações</span>
           </a>
           <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -1450,9 +1347,7 @@ $flash = flash_pop();
 
         <li class="nav-item">
           <a href="suporte.php">
-            <span class="icon">
-              <i class="lni lni-whatsapp"></i>
-            </span>
+            <span class="icon"><i class="lni lni-whatsapp"></i></span>
             <span class="text">Suporte</span>
           </a>
         </li>
@@ -1614,7 +1509,6 @@ $flash = flash_pop();
                     <i class="lni lni-eraser me-1"></i> Limpar
                   </button>
                 </div>
-
               </div>
             </div>
           </div>
@@ -1664,9 +1558,6 @@ $flash = flash_pop();
                   <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                     <i class="lni lni-download me-1"></i> Excel
                   </button>
-                  <button class="main-btn light-btn btn-hover btn-compact" id="btnPdf" type="button">
-                    <i class="lni lni-download me-1"></i> PDF
-                  </button>
                 </div>
               </div>
 
@@ -1675,18 +1566,11 @@ $flash = flash_pop();
                   <table class="table text-nowrap" id="tbDev">
                     <thead>
                       <tr>
-                        <th style="min-width:70px;">ID</th>
-                        <th style="min-width:160px;">Data/Hora</th>
-                        <th style="min-width:110px;">Venda</th>
-                        <th style="min-width:220px;">Cliente</th>
-                        <th style="min-width:110px;">Tipo</th>
-                        <th style="min-width:260px;">Produto</th>
-                        <th style="min-width:80px;" class="text-center">Qtd</th>
-                        <th style="min-width:120px;" class="text-end">Valor</th>
-                        <th style="min-width:160px;">Motivo</th>
-                        <th style="min-width:220px;">Obs</th>
-                        <th style="min-width:130px;" class="text-center">Status</th>
-                        <th style="min-width:140px;" class="text-center">Ações</th>
+                        <th style="min-width:80px;">ID</th>
+                        <th style="min-width:170px;">Data/Hora</th>
+                        <th style="min-width:260px;">Cliente</th>
+                        <th style="min-width:140px;">Valor</th>
+                        <th style="min-width:120px;">Ações</th>
                       </tr>
                     </thead>
                     <tbody id="tbodyDev"></tbody>
@@ -1703,6 +1587,49 @@ $flash = flash_pop();
       </div>
     </section>
   </main>
+
+  <div class="modal fade" id="mdDetalhes" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content" style="border-radius:16px;">
+        <div class="modal-header">
+          <h5 class="modal-title fw-1000">Detalhes da Devolução</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="detail-grid">
+            <div class="detail-box">
+              <div class="detail-row"><span>ID</span><span id="mId">—</span></div>
+              <div class="detail-row"><span>Data/Hora</span><span id="mData">—</span></div>
+              <div class="detail-row"><span>Venda</span><span id="mVenda">—</span></div>
+              <div class="detail-row"><span>Cliente</span><span id="mCliente">—</span></div>
+              <div class="detail-row"><span>Status</span><span id="mStatus">—</span></div>
+            </div>
+            <div class="detail-box">
+              <div class="detail-row"><span>Tipo</span><span id="mTipo">—</span></div>
+              <div class="detail-row"><span>Produto</span><span id="mProduto">—</span></div>
+              <div class="detail-row"><span>Qtd</span><span id="mQtd">—</span></div>
+              <div class="detail-row"><span>Valor</span><span id="mValor">—</span></div>
+              <div class="detail-row"><span>Motivo</span><span id="mMotivo">—</span></div>
+            </div>
+          </div>
+
+          <div class="detail-box mt-3">
+            <div style="font-weight:1000;color:#0f172a;margin-bottom:8px;">Observação</div>
+            <div id="mObs" style="white-space:pre-wrap;color:#334155;">—</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="main-btn light-btn btn-hover btn-compact" id="btnEditarModal" type="button">
+            <i class="lni lni-pencil me-1"></i> Editar
+          </button>
+          <button class="main-btn danger-btn-outline btn-hover btn-compact" id="btnExcluirModal" type="button">
+            <i class="lni lni-trash-can me-1"></i> Excluir
+          </button>
+          <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
@@ -1760,9 +1687,6 @@ $flash = flash_pop();
       return `${d}/${m}/${y} ${t}`;
     }
 
-    // =========================
-    // STATE
-    // =========================
     let TYPE = "TOTAL";
     let SALE_SELECTED = null;
     let SALE_ITEMS = [];
@@ -1772,16 +1696,13 @@ $flash = flash_pop();
       prodTimer = null;
     let saleAbort = null;
 
-    // listagem paginada
     let CUR_PAGE = 1;
     const PER_PAGE = 10;
     let TOTAL_PAGES = 1;
     let ROWS = [];
     let SEARCH_TIMER = null;
+    let SELECTED_ID = 0;
 
-    // =========================
-    // ELEMENTS
-    // =========================
     const qGlobal = document.getElementById("qGlobal");
     const btnNova = document.getElementById("btnNova");
     const btnSalvar = document.getElementById("btnSalvar");
@@ -1824,11 +1745,22 @@ $flash = flash_pop();
     const tGeral = document.getElementById("tGeral");
 
     const btnExcel = document.getElementById("btnExcel");
-    const btnPdf = document.getElementById("btnPdf");
 
-    // =========================
-    // FORM
-    // =========================
+    const mId = document.getElementById('mId');
+    const mData = document.getElementById('mData');
+    const mVenda = document.getElementById('mVenda');
+    const mCliente = document.getElementById('mCliente');
+    const mStatus = document.getElementById('mStatus');
+    const mTipo = document.getElementById('mTipo');
+    const mProduto = document.getElementById('mProduto');
+    const mQtd = document.getElementById('mQtd');
+    const mValor = document.getElementById('mValor');
+    const mMotivo = document.getElementById('mMotivo');
+    const mObs = document.getElementById('mObs');
+    const btnEditarModal = document.getElementById('btnEditarModal');
+    const btnExcluirModal = document.getElementById('btnExcluirModal');
+    const mdDetalhes = new bootstrap.Modal(document.getElementById('mdDetalhes'));
+
     function setFormMode(mode) {
       if (mode === "EDIT") {
         formMode.className = "pill ok";
@@ -1909,9 +1841,6 @@ $flash = flash_pop();
       setFormMode("NEW");
     }
 
-    // =========================
-    // SALE SEARCH
-    // =========================
     function showSaleSuggest(list) {
       if (!list.length) {
         hideSaleSuggest();
@@ -2029,9 +1958,6 @@ $flash = flash_pop();
       if (!e.target.closest("#prodSuggest") && !e.target.closest("#dProduto")) hideProdSuggest();
     });
 
-    // =========================
-    // PRODUCT SUGGEST (PARCIAL)
-    // =========================
     function onlyDigits(s) {
       return String(s || "").replace(/\D+/g, "");
     }
@@ -2101,9 +2027,6 @@ $flash = flash_pop();
       hideProdSuggest();
     });
 
-    // =========================
-    // LIST / PAGINATION
-    // =========================
     function badgeStatus(s) {
       s = String(s || "").toUpperCase();
       if (s === "CONCLUIDO") return `<span class="badge-soft b-done">CONCLUÍDO</span>`;
@@ -2140,30 +2063,17 @@ $flash = flash_pop();
 
       ROWS.forEach(x => {
         const dt = fmtBRDateTime(x.date, x.time);
-        const sale = x.saleNo ? `#${safeText(x.saleNo)}` : "—";
         const cust = x.customer ? safeText(x.customer) : "Consumidor Final";
-        const prod = (String(x.type).toUpperCase() === "PARCIAL") ? (x.product ? safeText(x.product) : "—") : "—";
-        const qty = (String(x.type).toUpperCase() === "PARCIAL") ? Number(x.qty || 1) : "—";
         const valor = numberToMoney(x.amount);
-        const motivo = motivoLabel(x.reason);
-        const obs = (x.note && String(x.note).trim()) ? safeText(x.note) : "—";
 
         tbodyDev.insertAdjacentHTML("beforeend", `
           <tr data-id="${Number(x.id)}">
-            <td><span class="mini">${Number(x.id)}</span></td>
-            <td>${safeText(dt)}</td>
-            <td>${sale}</td>
+            <td class="text-center"><span class="mini">${Number(x.id)}</span></td>
+            <td class="text-center">${safeText(dt)}</td>
             <td>${cust}</td>
-            <td><span class="pill ${String(x.type).toUpperCase()==="PARCIAL"?"warn":"ok"}">${String(x.type).toUpperCase()==="PARCIAL"?"PARCIAL":"TOTAL"}</span></td>
-            <td>${prod}</td>
-            <td class="text-center">${qty}</td>
-            <td class="text-end"><span class="money">${valor}</span></td>
-            <td>${safeText(motivo)}</td>
-            <td style="white-space:normal; max-width:320px;">${obs}</td>
-            <td class="text-center">${badgeStatus(x.status)}</td>
+            <td class="text-center"><span class="money">${valor}</span></td>
             <td class="text-center">
-              <button class="main-btn light-btn btn-hover btn-compact icon-btn btnEdit" type="button" title="Editar"><i class="lni lni-pencil"></i></button>
-              <button class="main-btn danger-btn-outline btn-hover btn-compact icon-btn btnDel" type="button" title="Excluir"><i class="lni lni-trash-can"></i></button>
+              <button class="main-btn light-btn btn-hover btn-compact" type="button" onclick="openDetails(${Number(x.id)})">Detalhes</button>
             </td>
           </tr>
         `);
@@ -2230,9 +2140,6 @@ $flash = flash_pop();
       SEARCH_TIMER = setTimeout(() => loadList(1), 220);
     }
 
-    // =========================
-    // SAVE / EDIT / DELETE
-    // =========================
     function validateForm() {
       const date = String(dData.value || "").trim();
       const time = String(dHora.value || "").trim();
@@ -2349,15 +2256,13 @@ $flash = flash_pop();
           })
         });
         resetForm();
+        mdDetalhes.hide();
         await loadList(CUR_PAGE);
       } catch (e) {
         alert(e.message || "Erro ao excluir.");
       }
     }
 
-    // =========================
-    // EXPORTS (agora baixa arquivo)
-    // =========================
     function exportUrl(type) {
       const q = (qDev.value || "").trim();
       const st = (fStatus.value || "").trim();
@@ -2370,16 +2275,43 @@ $flash = flash_pop();
       u.searchParams.delete('per');
       return u.toString();
     }
+
+    function openDetails(id) {
+      const x = ROWS.find(d => Number(d.id) === Number(id));
+      if (!x) return;
+
+      SELECTED_ID = Number(id);
+
+      mId.textContent = `#${x.id}`;
+      mData.textContent = fmtBRDateTime(x.date, x.time) || '—';
+      mVenda.textContent = x.saleNo ? `#${x.saleNo}` : '—';
+      mCliente.textContent = x.customer || 'Consumidor Final';
+      mStatus.innerHTML = badgeStatus(x.status);
+      mTipo.textContent = x.type || 'TOTAL';
+      mProduto.textContent = (x.type === 'PARCIAL' ? (x.product || '—') : '—');
+      mQtd.textContent = (x.type === 'PARCIAL' ? (x.qty ?? '—') : '—');
+      mValor.textContent = numberToMoney(x.amount || 0);
+      mMotivo.textContent = motivoLabel(x.reason);
+      mObs.textContent = (x.note && String(x.note).trim()) ? x.note : '—';
+
+      mdDetalhes.show();
+    }
+
+    btnEditarModal.addEventListener('click', () => {
+      if (!SELECTED_ID) return;
+      mdDetalhes.hide();
+      editDev(SELECTED_ID);
+    });
+
+    btnExcluirModal.addEventListener('click', () => {
+      if (!SELECTED_ID) return;
+      deleteDev(SELECTED_ID);
+    });
+
     btnExcel.addEventListener('click', () => {
       window.location.href = exportUrl('excel');
     });
-    btnPdf.addEventListener('click', () => {
-      window.location.href = exportUrl('pdf');
-    });
 
-    // =========================
-    // EVENTS
-    // =========================
     btnNova.addEventListener("click", resetForm);
     btnSalvar.addEventListener("click", saveDev);
     btnLimpar.addEventListener("click", resetForm);
@@ -2393,15 +2325,6 @@ $flash = flash_pop();
     qGlobal.addEventListener("input", () => {
       qDev.value = qGlobal.value;
       debounceLoad();
-    });
-
-    tbodyDev.addEventListener("click", (e) => {
-      const tr = e.target.closest("tr");
-      if (!tr) return;
-      const id = Number(tr.getAttribute("data-id") || 0);
-      if (!id) return;
-      if (e.target.closest(".btnEdit")) return editDev(id);
-      if (e.target.closest(".btnDel")) return deleteDev(id);
     });
 
     document.addEventListener("keydown", (e) => {
@@ -2418,6 +2341,8 @@ $flash = flash_pop();
         hideProdSuggest();
       }
     });
+
+    window.openDetails = openDetails;
 
     async function init() {
       resetForm();
