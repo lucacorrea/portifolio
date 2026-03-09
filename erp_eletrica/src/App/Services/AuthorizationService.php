@@ -57,10 +57,31 @@ class AuthorizationService extends BaseService {
 
     public function validateAndUse($codigo, $tipo, $filialId) {
         $auth = $this->repository->validate($codigo, $tipo, $filialId);
+        if (!$auth) {
+            $auth = $this->repository->validate($codigo, 'geral', $filialId);
+        }
+
         if ($auth) {
             $this->repository->markAsUsed($auth['id']);
             return true;
         }
         return false;
+    }
+
+    public function validateOnly($codigo, $tipo, $filialId) {
+        $auth = $this->repository->validate($codigo, $tipo, $filialId);
+        if ($auth) return ['success' => true];
+
+        // Check if it exists for ANOTHER type to provide better error message
+        $anyAuth = $this->repository->db->prepare("SELECT tipo FROM autorizacoes_temporarias WHERE codigo = ? AND filial_id = ? AND utilizado = 0 AND validade > datetime('now', 'localtime') LIMIT 1");
+        $anyAuth->execute([$codigo, $filialId]);
+        $found = $anyAuth->fetch();
+
+        if ($found) {
+            if ($found['tipo'] === 'geral') return ['success' => true];
+            return ['success' => false, 'error' => "Este código é para '" . ucfirst($found['tipo']) . "', não para '" . ucfirst($tipo) . "'."];
+        }
+
+        return ['success' => false, 'error' => 'Código inválido, expirado ou já utilizado.'];
     }
 }

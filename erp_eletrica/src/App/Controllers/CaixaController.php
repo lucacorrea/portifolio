@@ -174,6 +174,21 @@ class CaixaController extends BaseController {
         }
     }
 
+    public function validate_code() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $code = $data['code'] ?? '';
+            $tipo = $data['tipo'] ?? 'geral';
+            $filialId = $_SESSION['filial_id'];
+
+            $authService = new \App\Services\AuthorizationService();
+            $result = $authService->validateOnly($code, $tipo, $filialId);
+            
+            echo json_encode($result);
+            exit;
+        }
+    }
+
     protected function logAction(string $action, string $table = null, int $id = null, $old = null, $new = null) {
         $audit = new \App\Services\AuditLogService();
         $audit->record($action, $table, $id, $old, $new);

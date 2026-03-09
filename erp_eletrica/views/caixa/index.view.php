@@ -262,7 +262,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // 2. Authorization (if not admin/master)
             if (!isAdmin) {
-                if (!authCode.value.trim() && !authPass.value.trim()) {
+                const codeValue = authCode.value.trim();
+                const passValue = authPass.value.trim();
+
+                if (!codeValue && !passValue) {
+                    isValid = false;
+                    clearError();
+                } else if (codeValue && codeValue.length === 6) {
+                    // Check code validity via AJAX if it's 6 digits
+                    validateCodeAjax(codeValue);
+                    isValid = false; // Stay disabled until AJAX returns success
+                } else if (passValue) {
+                    isValid = true;
+                    clearError();
+                } else {
                     isValid = false;
                 }
             }
@@ -272,7 +285,64 @@ document.addEventListener('DOMContentLoaded', function() {
             btnSubmit.style.cursor = isValid ? 'pointer' : 'not-allowed';
         }
 
+        let lastValidatedCode = '';
+        async function validateCodeAjax(code) {
+            if (code === lastValidatedCode) return;
+            lastValidatedCode = code;
+
+            const tipo = form.querySelector('select[name="tipo"]').value;
+            
+            try {
+                const response = await fetch('caixa.php?action=validate_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code, tipo: tipo })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('Código Válido!');
+                    btnSubmit.disabled = false;
+                    btnSubmit.style.opacity = '1';
+                    btnSubmit.style.cursor = 'pointer';
+                } else {
+                    showError(result.error);
+                }
+            } catch (e) {
+                showError('Erro ao validar código.');
+            }
+        }
+
+        function showError(msg) {
+            let errDiv = form.querySelector('#auth-error');
+            if (!errDiv) {
+                errDiv = document.createElement('div');
+                errDiv.id = 'auth-error';
+                errDiv.className = 'text-danger extra-small mt-1 fw-bold text-center';
+                authCode.parentNode.appendChild(errDiv);
+            }
+            errDiv.innerText = msg;
+            errDiv.classList.remove('text-success');
+            errDiv.classList.add('text-danger');
+        }
+
+        function showSuccess(msg) {
+            showError(msg);
+            const errDiv = form.querySelector('#auth-error');
+            errDiv.classList.remove('text-danger');
+            errDiv.classList.add('text-success');
+        }
+
+        function clearError() {
+            const errDiv = form.querySelector('#auth-error');
+            if (errDiv) errDiv.innerText = '';
+        }
+
         form.addEventListener('input', validateMovement);
+        form.querySelector('select[name="tipo"]').addEventListener('change', () => {
+             lastValidatedCode = ''; // Forces re-validation if type changes
+             validateMovement();
+        });
         validateMovement(); // Initial check
     }
 });
