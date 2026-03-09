@@ -719,6 +719,7 @@ if ($action === 'excel') {
 
     <head>
         <meta charset="UTF-8">
+
         <!--[if gte mso 9]>
     <xml>
         <x:ExcelWorkbook>
@@ -726,24 +727,30 @@ if ($action === 'excel') {
                 <x:ExcelWorksheet>
                     <x:Name>Vendidos</x:Name>
                     <x:WorksheetOptions>
+                        <x:Selected/>
+                        <x:DisplayGridlines/>
+                        <x:FitToPage/>
+                        <x:DoNotDisplayGridlines/>
                         <x:Print>
                             <x:ValidPrinterInfo/>
                             <x:PaperSizeIndex>9</x:PaperSizeIndex>
                             <x:Scale>100</x:Scale>
+                            <x:FitWidth>1</x:FitWidth>
+                            <x:FitHeight>999</x:FitHeight>
                             <x:HorizontalResolution>600</x:HorizontalResolution>
                             <x:VerticalResolution>600</x:VerticalResolution>
                         </x:Print>
                         <x:PageSetup>
                             <x:Layout x:Orientation="Landscape"/>
-                            <x:Header x:Margin="0.3"/>
-                            <x:Footer x:Margin="0.3"/>
-                            <x:PageMargins x:Bottom="0.4" x:Left="0.25" x:Right="0.25" x:Top="0.4"/>
+                            <x:Header x:Margin="0.2"/>
+                            <x:Footer x:Margin="0.2"/>
+                            <x:PageMargins
+                                x:Bottom="0.25"
+                                x:Left="0.15"
+                                x:Right="0.15"
+                                x:Top="0.25"/>
                         </x:PageSetup>
-                        <x:FitToPage/>
-                        <x:FitWidth>1</x:FitWidth>
-                        <x:FitHeight>0</x:FitHeight>
                         <x:CenterHorizontal/>
-                        <x:CenterVertical/>
                     </x:WorksheetOptions>
                 </x:ExcelWorksheet>
             </x:ExcelWorksheets>
@@ -754,7 +761,7 @@ if ($action === 'excel') {
         <style>
             @page {
                 size: A4 landscape;
-                margin: 0.8cm;
+                margin: 0.5cm;
             }
 
             html,
@@ -762,27 +769,20 @@ if ($action === 'excel') {
                 margin: 0;
                 padding: 0;
                 width: 100%;
-                background: #fff;
                 font-family: Arial, Helvetica, sans-serif;
                 font-size: 11pt;
-            }
-
-            body {
-                text-align: center;
+                background: #fff;
             }
 
             .page-wrap {
                 width: 100%;
                 margin: 0 auto;
-                text-align: center;
             }
 
             table {
                 border-collapse: collapse;
                 table-layout: fixed;
                 width: 100%;
-                margin-left: auto;
-                margin-right: auto;
             }
 
             .tbl-meta,
@@ -842,7 +842,7 @@ if ($action === 'excel') {
             }
 
             .w-cli {
-                width: 29%;
+                width: 31%;
             }
 
             .w-canal {
@@ -854,18 +854,14 @@ if ($action === 'excel') {
             }
 
             .w-num {
-                width: 7%;
-            }
-
-            .print-wide {
-                width: 100%;
+                width: 6.5%;
             }
         </style>
     </head>
 
     <body>
         <div class="page-wrap">
-            <table class="tbl-meta print-wide">
+            <table class="tbl-meta">
                 <tr>
                     <td colspan="9" class="title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
                 </tr>
@@ -882,7 +878,7 @@ if ($action === 'excel') {
                 </tr>
             </table>
 
-            <table class="tbl-main print-wide" style="margin-top:6px;">
+            <table class="tbl-main" style="margin-top:6px;">
                 <thead>
                     <tr>
                         <th class="head w-id">ID</th>
