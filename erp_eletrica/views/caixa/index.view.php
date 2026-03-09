@@ -164,8 +164,8 @@
                     <input type="number" step="0.01" name="valor" class="form-control form-control-lg text-center fw-bold" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Motivo / Descrição</label>
-                    <input type="text" name="motivo" class="form-control" placeholder="Ex: Adição de troco, Retirada para almoço..." required>
+                    <label class="form-label fw-bold">Motivo / Descrição (Opcional)</label>
+                    <input type="text" name="motivo" class="form-control" placeholder="Ex: Adição de troco, Retirada para almoço...">
                 </div>
 
                 <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
@@ -257,9 +257,8 @@ document.addEventListener('DOMContentLoaded', function() {
         function validateMovement() {
             let isValid = true;
             
-            // 1. Basic fields
+            // 1. Basic fields (Valor is still required)
             if (!valorInput.value || parseFloat(valorInput.value) <= 0) isValid = false;
-            if (!motivoInput.value.trim()) isValid = false;
 
             // 2. Authorization (if not admin/master)
             if (!isAdmin) {
