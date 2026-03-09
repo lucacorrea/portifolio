@@ -741,11 +741,11 @@ if ($action === 'excel') {
             .tbl-meta,
             .tbl-main {
                 width: 100%;
-                border: 1px solid #000;
+                border: 1px solid #000 !important;
             }
 
             .tbl-meta td {
-                border: 1px solid #000;
+                border: 1px solid #000 !important;
                 padding: 6px;
                 font-size: 11pt;
                 vertical-align: middle;
@@ -753,7 +753,7 @@ if ($action === 'excel') {
 
             .tbl-main th,
             .tbl-main td {
-                border: 1px solid #000;
+                border: 1px solid #000 !important;
                 padding: 6px;
                 font-size: 11pt;
                 vertical-align: middle;
