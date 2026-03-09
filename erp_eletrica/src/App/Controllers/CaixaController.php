@@ -175,16 +175,34 @@ class CaixaController extends BaseController {
     }
 
     public function validate_code() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = json_decode(file_get_contents('php://input'), true);
-            $code = $data['code'] ?? '';
-            $tipo = $data['tipo'] ?? 'geral';
-            $filialId = $_SESSION['filial_id'];
+        header('Content-Type: application/json');
+        try {
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $raw = file_get_contents('php://input');
+                $data = json_decode($raw, true);
+                
+                if (!$data) {
+                    echo json_encode(['success' => false, 'error' => 'Dados de entrada inválidos.']);
+                    exit;
+                }
 
-            $authService = new \App\Services\AuthorizationService();
-            $result = $authService->validateOnly($code, $tipo, $filialId);
-            
-            echo json_encode($result);
+                $code = $data['code'] ?? '';
+                $tipo = $data['tipo'] ?? 'geral';
+                $filialId = $_SESSION['filial_id'] ?? null;
+
+                if (!$filialId) {
+                    echo json_encode(['success' => false, 'error' => 'Sessão expirada. Faça login novamente.']);
+                    exit;
+                }
+
+                $authService = new \App\Services\AuthorizationService();
+                $result = $authService->validateOnly($code, $tipo, $filialId);
+                
+                echo json_encode($result);
+                exit;
+            }
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Erro interno ao validar: ' . $e->getMessage()]);
             exit;
         }
     }

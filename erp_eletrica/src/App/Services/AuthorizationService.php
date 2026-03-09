@@ -5,7 +5,7 @@ class AuthorizationService extends BaseService {
     public function __construct() {
         $db = \App\Config\Database::getInstance()->getConnection();
         parent::__construct(new class($db) {
-            private $db;
+            public $db;
             public function __construct($db) { $this->db = $db; }
             public function create($data) {
                 $fields = array_keys($data);
