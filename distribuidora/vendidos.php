@@ -637,321 +637,6 @@ function render_table_rows(array $rows): string
     return $html;
 }
 
-function render_print_html(array $rows, string $agora, string $di, string $df, string $canal, string $pag, string $q): string
-{
-    $sumSub = 0.0;
-    $sumDesc = 0.0;
-    $sumTax = 0.0;
-    $sumTot = 0.0;
-
-    foreach ($rows as $r) {
-        $sumSub += (float)$r['subtotal'];
-        $sumDesc += (float)$r['desconto'];
-        $sumTax += (float)$r['taxa'];
-        $sumTot += (float)$r['total'];
-    }
-
-    ob_start();
-?>
-    <!doctype html>
-    <html lang="pt-BR">
-
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Vendidos - Exportação PDF</title>
-        <style>
-            @page {
-                size: A4 landscape;
-                margin: 10mm;
-            }
-
-            * {
-                box-sizing: border-box;
-            }
-
-            body {
-                font-family: Arial, Helvetica, sans-serif;
-                color: #0f172a;
-                margin: 0;
-                background: #eef2f7;
-            }
-
-            .screen-wrap {
-                max-width: 1500px;
-                margin: 18px auto;
-                padding: 0 14px;
-            }
-
-            .sheet {
-                background: #fff;
-                border: 1px solid #64748b;
-                border-radius: 10px;
-                overflow: hidden;
-                box-shadow: 0 12px 35px rgba(15, 23, 42, .10);
-            }
-
-            .topbar {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 12px;
-                padding: 14px 16px;
-                border-bottom: 1px solid #94a3b8;
-                background: #f8fafc;
-            }
-
-            .topbar h1 {
-                margin: 0;
-                font-size: 18px;
-                line-height: 1.2;
-            }
-
-            .topbar .sub {
-                font-size: 12px;
-                color: #475569;
-                margin-top: 4px;
-            }
-
-            .btn-print {
-                display: inline-block;
-                border: 1px solid #94a3b8;
-                background: #fff;
-                color: #0f172a;
-                padding: 10px 14px;
-                border-radius: 10px;
-                font-weight: 700;
-                cursor: pointer;
-            }
-
-            .meta-grid {
-                display: grid;
-                grid-template-columns: repeat(5, minmax(0, 1fr));
-                border-bottom: 1px solid #94a3b8;
-            }
-
-            .meta-box {
-                border-right: 1px solid #94a3b8;
-                padding: 10px 12px;
-                min-height: 66px;
-            }
-
-            .meta-box:last-child {
-                border-right: none;
-            }
-
-            .meta-lbl {
-                font-size: 11px;
-                font-weight: 700;
-                color: #475569;
-                text-transform: uppercase;
-                margin-bottom: 6px;
-            }
-
-            .meta-val {
-                font-size: 13px;
-                font-weight: 700;
-                color: #0f172a;
-                word-break: break-word;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                table-layout: fixed;
-            }
-
-            th,
-            td {
-                border: 1px solid #94a3b8;
-                padding: 8px 8px;
-                font-size: 11px;
-                vertical-align: top;
-            }
-
-            thead th {
-                background: #e2e8f0;
-                text-align: left;
-                font-weight: 800;
-            }
-
-            tbody td {
-                background: #fff;
-            }
-
-            tfoot td {
-                background: #f8fafc;
-                font-weight: 800;
-            }
-
-            .right {
-                text-align: right;
-            }
-
-            .center {
-                text-align: center;
-            }
-
-            .col-id {
-                width: 56px;
-            }
-
-            .col-data {
-                width: 86px;
-            }
-
-            .col-cliente {
-                width: 220px;
-            }
-
-            .col-canal {
-                width: 92px;
-            }
-
-            .col-pag {
-                width: 100px;
-            }
-
-            .col-sub {
-                width: 100px;
-            }
-
-            .col-desc {
-                width: 100px;
-            }
-
-            .col-ent {
-                width: 100px;
-            }
-
-            .col-total {
-                width: 110px;
-            }
-
-            .note {
-                padding: 10px 12px;
-                border-top: 1px solid #94a3b8;
-                font-size: 11px;
-                color: #475569;
-                background: #f8fafc;
-            }
-
-            @media print {
-                body {
-                    background: #fff;
-                }
-
-                .screen-wrap {
-                    max-width: none;
-                    margin: 0;
-                    padding: 0;
-                }
-
-                .sheet {
-                    border: none;
-                    border-radius: 0;
-                    box-shadow: none;
-                }
-
-                .btn-print {
-                    display: none !important;
-                }
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="screen-wrap">
-            <div class="sheet">
-                <div class="topbar">
-                    <div>
-                        <h1>PAINEL DA DISTRIBUIDORA - VENDIDOS</h1>
-                        <div class="sub">Relatório pronto para imprimir ou salvar em PDF</div>
-                    </div>
-                    <button class="btn-print" onclick="window.print()">Imprimir / Salvar em PDF</button>
-                </div>
-
-                <div class="meta-grid">
-                    <div class="meta-box">
-                        <div class="meta-lbl">Gerado em</div>
-                        <div class="meta-val"><?= e($agora) ?></div>
-                    </div>
-                    <div class="meta-box">
-                        <div class="meta-lbl">Data inicial</div>
-                        <div class="meta-val"><?= e($di) ?></div>
-                    </div>
-                    <div class="meta-box">
-                        <div class="meta-lbl">Data final</div>
-                        <div class="meta-val"><?= e($df) ?></div>
-                    </div>
-                    <div class="meta-box">
-                        <div class="meta-lbl">Canal / Pagamento</div>
-                        <div class="meta-val"><?= e($canal) ?> / <?= e($pag) ?></div>
-                    </div>
-                    <div class="meta-box">
-                        <div class="meta-lbl">Busca</div>
-                        <div class="meta-val"><?= e($q) ?></div>
-                    </div>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="col-id">ID</th>
-                            <th class="col-data">Data</th>
-                            <th class="col-cliente">Cliente</th>
-                            <th class="col-canal">Canal</th>
-                            <th class="col-pag">Pagamento</th>
-                            <th class="col-sub right">Subtotal</th>
-                            <th class="col-desc right">Desconto</th>
-                            <th class="col-ent right">Entrega</th>
-                            <th class="col-total right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!$rows): ?>
-                            <tr>
-                                <td colspan="9" class="center">Nenhuma venda encontrada.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($rows as $r): ?>
-                                <tr>
-                                    <td><?= (int)$r['id'] ?></td>
-                                    <td><?= e((string)$r['data']) ?></td>
-                                    <td><?= e((string)($r['cliente'] ?? '')) ?></td>
-                                    <td><?= e((string)($r['canal'] ?? '')) ?></td>
-                                    <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
-                                    <td class="right"><?= e(brl((float)$r['subtotal'])) ?></td>
-                                    <td class="right"><?= e(brl((float)$r['desconto'])) ?></td>
-                                    <td class="right"><?= e(brl((float)$r['taxa'])) ?></td>
-                                    <td class="right"><?= e(brl((float)$r['total'])) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5" class="right">Totais</td>
-                            <td class="right"><?= e(brl($sumSub)) ?></td>
-                            <td class="right"><?= e(brl($sumDesc)) ?></td>
-                            <td class="right"><?= e(brl($sumTax)) ?></td>
-                            <td class="right"><?= e(brl($sumTot)) ?></td>
-                        </tr>
-                    </tfoot>
-                </table>
-
-                <div class="note">
-                    Observação: sem biblioteca externa, esta página fica pronta para o navegador salvar como PDF mantendo o layout.
-                </div>
-            </div>
-        </div>
-    </body>
-
-    </html>
-<?php
-    return (string)ob_get_clean();
-}
-
 /* ========= ACTIONS ========= */
 $action = strtolower(get_str('action'));
 
@@ -1028,92 +713,172 @@ if ($action === 'excel') {
 
     echo "\xEF\xBB\xBF";
 ?>
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;">
-        <tr>
-            <td colspan="9" align="center" style="font-size:16px;font-weight:900;border:1px solid #000;background:#eef2ff;">
-                PAINEL DA DISTRIBUIDORA - VENDIDOS
-            </td>
-        </tr>
-        <tr>
-            <td colspan="9" style="font-size:12px;border:1px solid #000;">
-                Gerado em: <?= e($agora) ?>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="9" style="font-size:12px;border:1px solid #000;">
-                Período: <?= e($di) ?> até <?= e($df) ?> |
-                Canal: <?= e($canal) ?> |
-                Pagamento: <?= e($pag) ?> |
-                Busca: <?= e($q) ?>
-            </td>
-        </tr>
-    </table>
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+        xmlns:x="urn:schemas-microsoft-com:office:excel"
+        xmlns="http://www.w3.org/TR/REC-html40">
 
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin-top:6px;">
-        <thead>
-            <tr style="background:#eef2ff;font-weight:900;">
-                <th style="border:1px solid #000;">ID</th>
-                <th style="border:1px solid #000;">Data</th>
-                <th style="border:1px solid #000;">Cliente</th>
-                <th style="border:1px solid #000;">Canal</th>
-                <th style="border:1px solid #000;">Pagamento</th>
-                <th style="border:1px solid #000;">Subtotal</th>
-                <th style="border:1px solid #000;">Desconto</th>
-                <th style="border:1px solid #000;">Entrega</th>
-                <th style="border:1px solid #000;">Total</th>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @page {
+                size: landscape;
+                margin: 1cm;
+            }
+
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 11pt;
+                margin: 0;
+                padding: 0;
+            }
+
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .tbl-meta td {
+                border: 1px solid #000;
+                padding: 6px;
+                font-size: 11pt;
+            }
+
+            .tbl-main th,
+            .tbl-main td {
+                border: 1px solid #000;
+                padding: 6px;
+                font-size: 11pt;
+                vertical-align: middle;
+            }
+
+            .title {
+                font-size: 16pt;
+                font-weight: 700;
+                text-align: center;
+                background: #dbeafe;
+            }
+
+            .head {
+                background: #dbeafe;
+                font-weight: 700;
+                text-align: center;
+            }
+
+            .center {
+                text-align: center;
+            }
+
+            .right {
+                text-align: center;
+            }
+
+            .foot {
+                font-weight: 700;
+                background: #eef2ff;
+            }
+
+            .w-id {
+                width: 8%;
+            }
+
+            .w-data {
+                width: 12%;
+            }
+
+            .w-cli {
+                width: 26%;
+            }
+
+            .w-canal {
+                width: 12%;
+            }
+
+            .w-pag {
+                width: 12%;
+            }
+
+            .w-num {
+                width: 10%;
+            }
+
+            .print-wide {
+                width: 100%;
+            }
+        </style>
+    </head>
+
+    <body>
+        <table class="tbl-meta print-wide">
+            <tr>
+                <td colspan="9" class="title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
             </tr>
-        </thead>
-        <tbody>
-            <?php
-            $sumSub = 0.0;
-            $sumDesc = 0.0;
-            $sumTax = 0.0;
-            $sumTot = 0.0;
-            foreach ($rows as $r):
-                $sumSub += (float)$r['subtotal'];
-                $sumDesc += (float)$r['desconto'];
-                $sumTax += (float)$r['taxa'];
-                $sumTot += (float)$r['total'];
-            ?>
+            <tr>
+                <td colspan="9">Gerado em: <?= e($agora) ?></td>
+            </tr>
+            <tr>
+                <td colspan="9">
+                    Período: <?= e($di) ?> até <?= e($df) ?> |
+                    Canal: <?= e($canal) ?> |
+                    Pagamento: <?= e($pag) ?> |
+                    Busca: <?= e($q) ?>
+                </td>
+            </tr>
+        </table>
+
+        <table class="tbl-main print-wide" style="margin-top:6px;">
+            <thead>
                 <tr>
-                    <td style="border:1px solid #000;"><?= (int)$r['id'] ?></td>
-                    <td style="border:1px solid #000;"><?= e((string)$r['data']) ?></td>
-                    <td style="border:1px solid #000;"><?= e((string)($r['cliente'] ?? '')) ?></td>
-                    <td style="border:1px solid #000;"><?= e((string)($r['canal'] ?? '')) ?></td>
-                    <td style="border:1px solid #000;"><?= e((string)($r['pagamento'] ?? '')) ?></td>
-                    <td style="border:1px solid #000;"><?= e(number_format((float)$r['subtotal'], 2, ',', '.')) ?></td>
-                    <td style="border:1px solid #000;"><?= e(number_format((float)$r['desconto'], 2, ',', '.')) ?></td>
-                    <td style="border:1px solid #000;"><?= e(number_format((float)$r['taxa'], 2, ',', '.')) ?></td>
-                    <td style="border:1px solid #000;"><?= e(number_format((float)$r['total'], 2, ',', '.')) ?></td>
+                    <th class="head w-id">ID</th>
+                    <th class="head w-data">Data</th>
+                    <th class="head w-cli">Cliente</th>
+                    <th class="head w-canal">Canal</th>
+                    <th class="head w-pag">Pagamento</th>
+                    <th class="head w-num">Subtotal</th>
+                    <th class="head w-num">Desconto</th>
+                    <th class="head w-num">Entrega</th>
+                    <th class="head w-num">Total</th>
                 </tr>
-            <?php endforeach; ?>
-        </tbody>
-        <tfoot>
-            <tr style="font-weight:900;background:#f8fafc;">
-                <td colspan="5" align="right" style="border:1px solid #000;">Totais</td>
-                <td style="border:1px solid #000;"><?= e(number_format($sumSub, 2, ',', '.')) ?></td>
-                <td style="border:1px solid #000;"><?= e(number_format($sumDesc, 2, ',', '.')) ?></td>
-                <td style="border:1px solid #000;"><?= e(number_format($sumTax, 2, ',', '.')) ?></td>
-                <td style="border:1px solid #000;"><?= e(number_format($sumTot, 2, ',', '.')) ?></td>
-            </tr>
-        </tfoot>
-    </table>
+            </thead>
+            <tbody>
+                <?php
+                $sumSub = 0.0;
+                $sumDesc = 0.0;
+                $sumTax = 0.0;
+                $sumTot = 0.0;
+                foreach ($rows as $r):
+                    $sumSub += (float)$r['subtotal'];
+                    $sumDesc += (float)$r['desconto'];
+                    $sumTax += (float)$r['taxa'];
+                    $sumTot += (float)$r['total'];
+                ?>
+                    <tr>
+                        <td class="center"><?= (int)$r['id'] ?></td>
+                        <td class="center"><?= e((string)$r['data']) ?></td>
+                        <td><?= e((string)($r['cliente'] ?? '')) ?></td>
+                        <td class="center"><?= e((string)($r['canal'] ?? '')) ?></td>
+                        <td class="center"><?= e((string)($r['pagamento'] ?? '')) ?></td>
+                        <td class="center"><?= e(number_format((float)$r['subtotal'], 2, ',', '.')) ?></td>
+                        <td class="center"><?= e(number_format((float)$r['desconto'], 2, ',', '.')) ?></td>
+                        <td class="center"><?= e(number_format((float)$r['taxa'], 2, ',', '.')) ?></td>
+                        <td class="center"><?= e(number_format((float)$r['total'], 2, ',', '.')) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+            <tfoot>
+                <tr class="foot">
+                    <td colspan="5" class="center">Totais</td>
+                    <td class="center"><?= e(number_format($sumSub, 2, ',', '.')) ?></td>
+                    <td class="center"><?= e(number_format($sumDesc, 2, ',', '.')) ?></td>
+                    <td class="center"><?= e(number_format($sumTax, 2, ',', '.')) ?></td>
+                    <td class="center"><?= e(number_format($sumTot, 2, ',', '.')) ?></td>
+                </tr>
+            </tfoot>
+        </table>
+    </body>
+
+    </html>
 <?php
-    exit;
-}
-
-if ($action === 'print') {
-    $result = fetch_filtered_result();
-    $rows = $result['rows'];
-
-    $agora = date('d/m/Y H:i:s');
-    $di = get_str('di') ?: '—';
-    $df = get_str('df') ?: '—';
-    $canal = get_str('canal', 'TODOS');
-    $pag = get_str('pag', 'TODOS');
-    $q = get_str('q') ?: '—';
-
-    echo render_print_html($rows, $agora, $di, $df, $canal, $pag, $q);
     exit;
 }
 
@@ -1331,6 +1096,7 @@ $initialTotais = $initial['totais'];
             color: #0f172a;
             padding: 10px 10px;
             white-space: nowrap;
+            text-align: center;
         }
 
         #tbDev tbody td {
@@ -1457,13 +1223,14 @@ $initialTotais = $initial['totais'];
         }
 
         .td-money {
-            text-align: right;
+            text-align: center;
             font-weight: 900;
             white-space: nowrap;
         }
 
         .td-nowrap {
             white-space: nowrap;
+            text-align: center;
         }
 
         .td-clip {
@@ -1538,7 +1305,7 @@ $initialTotais = $initial['totais'];
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
-            justify-content: flex-start;
+            justify-content: center;
         }
 
         .btn-action {
@@ -1801,9 +1568,6 @@ $initialTotais = $initial['totais'];
                             <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel">
                                 <i class="lni lni-download me-1"></i> Excel
                             </button>
-                            <button class="main-btn light-btn btn-hover btn-compact" id="btnPdf">
-                                <i class="lni lni-printer me-1"></i> PDF
-                            </button>
                             <select id="per" class="form-select compact" style="min-width:190px;">
                                 <option value="10" selected>10 por página</option>
                                 <option value="20">20 por página</option>
@@ -1905,8 +1669,8 @@ $initialTotais = $initial['totais'];
                                                 <th class="col-canal">Canal</th>
                                                 <th class="col-pag">Pagamento</th>
                                                 <th class="col-itens">Itens</th>
-                                                <th class="col-num text-end">Total</th>
-                                                <th class="col-num text-end">Recebido</th>
+                                                <th class="col-num">Total</th>
+                                                <th class="col-num">Recebido</th>
                                                 <th class="col-acoes">Ações</th>
                                             </tr>
                                         </thead>
@@ -2165,7 +1929,7 @@ $initialTotais = $initial['totais'];
                 return `
                     <tr>
                         <td class="td-nowrap"><b>#${r.id}</b></td>
-                        <td>
+                        <td class="td-nowrap">
                             <div class="mini">${fmtDate(r.data)}</div>
                             <div class="muted2">${fmtDateTime(r.created_at)}</div>
                         </td>
@@ -2373,10 +2137,6 @@ $initialTotais = $initial['totais'];
 
         el('btnExcel').addEventListener('click', () => {
             window.location.href = buildExportUrl('excel');
-        });
-
-        el('btnPdf').addEventListener('click', () => {
-            window.open(buildExportUrl('print'), '_blank');
         });
 
         el('q').addEventListener('input', () => {
