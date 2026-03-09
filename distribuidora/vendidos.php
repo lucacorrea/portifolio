@@ -809,7 +809,7 @@ if ($action === 'excel') {
     </head>
 
     <body>
-        <table class="tbl-meta print-wide">
+        <table class="tbl-meta print-wide" style="border: 0.8px solid #000;">
             <tr>
                 <td colspan="9" class="title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
             </tr>
