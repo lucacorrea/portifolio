@@ -245,13 +245,127 @@ function build_where(string $q, string $status): array
         OR d.produto LIKE :qlike
         OR d.motivo LIKE :qlike
         OR d.obs LIKE :qlike
+        OR EXISTS (
+          SELECT 1
+          FROM venda_itens vi
+          WHERE vi.venda_id = d.venda_no
+            AND (
+              vi.codigo LIKE :qlike2
+              OR vi.nome LIKE :qlike3
+            )
+        )
       )";
       $params[':qlike'] = '%' . $q . '%';
+      $params[':qlike2'] = '%' . $q . '%';
+      $params[':qlike3'] = '%' . $q . '%';
     }
   }
 
   $sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
   return [$sql, $params];
+}
+
+/* =========================================================
+   ITENS DAS DEVOLUÇÕES
+========================================================= */
+function fetch_items_map_for_devolucoes(PDO $pdo, array $rows): array
+{
+  $map = [];
+
+  if (!$rows) return $map;
+
+  $saleNos = [];
+  foreach ($rows as $r) {
+    $id = (int)($r['id'] ?? 0);
+    $tipo = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
+
+    if ($tipo === 'PARCIAL') {
+      $produto = trim((string)($r['produto'] ?? ''));
+      $qtd = ($r['qtd'] !== null ? (int)$r['qtd'] : null);
+      $label = $produto !== '' ? $produto : '—';
+      if ($qtd !== null && $qtd > 0) {
+        $label .= ' (' . $qtd . ')';
+      }
+      $map[$id] = [$label];
+    } else {
+      $saleNo = (int)($r['venda_no'] ?? 0);
+      if ($saleNo > 0) $saleNos[$saleNo] = $saleNo;
+    }
+  }
+
+  if ($saleNos && table_exists($pdo, 'venda_itens')) {
+    $vals = array_values($saleNos);
+    $in = implode(',', array_fill(0, count($vals), '?'));
+
+    $st = $pdo->prepare("
+      SELECT venda_id, codigo, nome, qtd
+      FROM venda_itens
+      WHERE venda_id IN ($in)
+      ORDER BY venda_id ASC, id ASC
+    ");
+    $st->execute($vals);
+    $vit = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $saleItems = [];
+    foreach ($vit as $it) {
+      $vendaId = (int)($it['venda_id'] ?? 0);
+      $codigo = trim((string)($it['codigo'] ?? ''));
+      $nome = trim((string)($it['nome'] ?? ''));
+      $qtd = (int)($it['qtd'] ?? 0);
+
+      $txt = '';
+      if ($codigo !== '' && $nome !== '') {
+        $txt = $codigo . ' - ' . $nome;
+      } elseif ($nome !== '') {
+        $txt = $nome;
+      } elseif ($codigo !== '') {
+        $txt = $codigo;
+      } else {
+        $txt = 'Item';
+      }
+
+      if ($qtd > 0) {
+        $txt .= ' (' . $qtd . ')';
+      }
+
+      if (!isset($saleItems[$vendaId])) $saleItems[$vendaId] = [];
+      $saleItems[$vendaId][] = $txt;
+    }
+
+    foreach ($rows as $r) {
+      $id = (int)($r['id'] ?? 0);
+      $tipo = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
+      if ($tipo !== 'TOTAL') continue;
+
+      $saleNo = (int)($r['venda_no'] ?? 0);
+      $map[$id] = $saleItems[$saleNo] ?? ['—'];
+    }
+  } else {
+    foreach ($rows as $r) {
+      $id = (int)($r['id'] ?? 0);
+      if (!isset($map[$id])) $map[$id] = ['—'];
+    }
+  }
+
+  return $map;
+}
+
+function join_items_for_table(array $items, int $max = 2): string
+{
+  if (!$items) return '—';
+  $show = array_slice($items, 0, $max);
+  $txt = implode(' | ', $show);
+  $extra = count($items) - count($show);
+  if ($extra > 0) {
+    $txt .= ' | +' . $extra . ' item(ns)';
+  }
+  return $txt;
+}
+
+function join_items_for_excel(array $items): string
+{
+  if (!$items) return '—';
+  return implode(' | ', $items);
 }
 
 /* =========================================================
@@ -278,6 +392,7 @@ if ($export === 'excel') {
   ");
   $st->execute($p);
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  $itemsMap = fetch_items_map_for_devolucoes($pdo, $rows);
 
   $sumValor = 0.0;
   foreach ($rows as $r) {
@@ -285,12 +400,8 @@ if ($export === 'excel') {
   }
 
   $agora = date('d/m/Y H:i');
-  $di = '—';
-  $df = '—';
-  $canal = '—';
-  $pag = strtoupper($status ?: 'TODOS');
   $busca = trim($q) !== '' ? $q : '—';
-
+  $stat = strtoupper($status ?: 'TODOS');
   $fname = 'devolucoes_' . date('Y-m-d_His') . '.xls';
 
   if (function_exists('ob_get_length') && ob_get_length()) {
@@ -425,31 +536,31 @@ if ($export === 'excel') {
       }
 
       .w-id {
-        width: 7%;
+        width: 6%;
       }
 
       .w-data {
-        width: 14%;
+        width: 12%;
       }
 
       .w-venda {
-        width: 8%;
+        width: 7%;
       }
 
       .w-cli {
-        width: 19%;
+        width: 15%;
       }
 
       .w-tipo {
-        width: 9%;
+        width: 8%;
       }
 
-      .w-prod {
-        width: 17%;
+      .w-itens {
+        width: 24%;
       }
 
       .w-qtd {
-        width: 6%;
+        width: 5%;
       }
 
       .w-num {
@@ -457,7 +568,11 @@ if ($export === 'excel') {
       }
 
       .w-mot {
-        width: 12%;
+        width: 8%;
+      }
+
+      .w-st {
+        width: 7%;
       }
     </style>
   </head>
@@ -473,8 +588,7 @@ if ($export === 'excel') {
         </tr>
         <tr>
           <td colspan="10">
-            Período: <?= e($di) ?> até <?= e($df) ?> |
-            Status: <?= e($pag) ?> |
+            Status: <?= e($stat) ?> |
             Busca: <?= e($busca) ?>
           </td>
         </tr>
@@ -488,23 +602,28 @@ if ($export === 'excel') {
             <th class="head w-venda">Venda</th>
             <th class="head w-cli">Cliente</th>
             <th class="head w-tipo">Tipo</th>
-            <th class="head w-prod">Produto</th>
+            <th class="head w-itens">Itens</th>
             <th class="head w-qtd">Qtd</th>
             <th class="head w-num">Valor</th>
             <th class="head w-mot">Motivo</th>
-            <th class="head w-mot">Status</th>
+            <th class="head w-st">Status</th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($rows as $r): ?>
+            <?php
+            $id = (int)$r['id'];
+            $tipo = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
+            $itensTxt = join_items_for_excel($itemsMap[$id] ?? []);
+            ?>
             <tr>
-              <td class="center"><?= (int)$r['id'] ?></td>
+              <td class="center"><?= $id ?></td>
               <td class="center"><?= e(dtbr_dt((string)$r['data'], (string)$r['hora'])) ?></td>
               <td class="center"><?= ($r['venda_no'] !== null ? '#' . (int)$r['venda_no'] : '—') ?></td>
               <td class="left"><?= e((string)($r['cliente'] ?: 'Consumidor Final')) ?></td>
-              <td class="center"><?= e((string)($r['tipo'] ?? 'TOTAL')) ?></td>
-              <td class="left"><?= e((string)($r['produto'] ?? '—')) ?></td>
-              <td class="center"><?= ($r['qtd'] !== null ? (int)$r['qtd'] : '—') ?></td>
+              <td class="center"><?= e($tipo) ?></td>
+              <td class="left"><?= e($itensTxt) ?></td>
+              <td class="center"><?= ($tipo === 'PARCIAL' ? (int)($r['qtd'] ?? 0) : '—') ?></td>
               <td class="center"><?= e(number_format((float)$r['valor'], 2, ',', '.')) ?></td>
               <td class="left"><?= e((string)($r['motivo'] ?? '')) ?></td>
               <td class="center"><?= e((string)($r['status'] ?? 'ABERTO')) ?></td>
@@ -637,11 +756,13 @@ if (isset($_GET['ajax'])) {
       $st->bindValue(':off', (int)$off, PDO::PARAM_INT);
       $st->execute();
       $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+      $itemsMap = fetch_items_map_for_devolucoes($pdo, $rows);
 
       $items = [];
       foreach ($rows as $r) {
+        $id = (int)($r['id'] ?? 0);
         $items[] = [
-          'id'      => (int)($r['id'] ?? 0),
+          'id'      => $id,
           'saleNo'  => ($r['venda_no'] !== null ? (int)$r['venda_no'] : null),
           'customer' => (string)($r['cliente'] ?? ''),
           'date'    => (string)($r['data'] ?? ''),
@@ -654,6 +775,8 @@ if (isset($_GET['ajax'])) {
           'note'    => (string)($r['obs'] ?? ''),
           'status'  => (string)($r['status'] ?? 'ABERTO'),
           'created_at' => (string)($r['created_at'] ?? ''),
+          'items'   => $itemsMap[$id] ?? ['—'],
+          'items_text' => join_items_for_table($itemsMap[$id] ?? []),
         ];
       }
 
@@ -1020,7 +1143,7 @@ $flash = flash_pop();
 
     #tbDev {
       width: 100%;
-      min-width: 840px;
+      min-width: 1120px;
     }
 
     #tbDev th {
@@ -1247,6 +1370,23 @@ $flash = flash_pop();
       color: #0f172a;
       font-weight: 900;
       text-align: right;
+    }
+
+    .items-preview-box {
+      border: 1px solid rgba(148, 163, 184, .22);
+      border-radius: 14px;
+      background: rgba(248, 250, 252, .7);
+      padding: 12px;
+      white-space: normal;
+    }
+
+    .items-preview-box .it {
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(148, 163, 184, .22);
+    }
+
+    .items-preview-box .it:last-child {
+      border-bottom: none;
     }
 
     @media(max-width:767.98px) {
@@ -1563,13 +1703,14 @@ $flash = flash_pop();
 
               <div class="body">
                 <div class="table-responsive">
-                  <table class="table text-nowrap" id="tbDev">
+                  <table class="table" id="tbDev">
                     <thead>
                       <tr>
-                        <th style="min-width:80px;">ID</th>
-                        <th style="min-width:170px;">Data/Hora</th>
-                        <th style="min-width:260px;">Cliente</th>
-                        <th style="min-width:140px;">Valor</th>
+                        <th style="min-width:70px;">ID</th>
+                        <th style="min-width:160px;">Data/Hora</th>
+                        <th style="min-width:220px;">Cliente</th>
+                        <th style="min-width:300px;">Itens</th>
+                        <th style="min-width:120px;">Valor</th>
                         <th style="min-width:120px;">Ações</th>
                       </tr>
                     </thead>
@@ -1611,6 +1752,11 @@ $flash = flash_pop();
               <div class="detail-row"><span>Valor</span><span id="mValor">—</span></div>
               <div class="detail-row"><span>Motivo</span><span id="mMotivo">—</span></div>
             </div>
+          </div>
+
+          <div class="detail-box mt-3">
+            <div style="font-weight:1000;color:#0f172a;margin-bottom:8px;">Itens / Produtos</div>
+            <div id="mItens" class="items-preview-box">—</div>
           </div>
 
           <div class="detail-box mt-3">
@@ -1757,6 +1903,7 @@ $flash = flash_pop();
     const mValor = document.getElementById('mValor');
     const mMotivo = document.getElementById('mMotivo');
     const mObs = document.getElementById('mObs');
+    const mItens = document.getElementById('mItens');
     const btnEditarModal = document.getElementById('btnEditarModal');
     const btnExcluirModal = document.getElementById('btnExcluirModal');
     const mdDetalhes = new bootstrap.Modal(document.getElementById('mdDetalhes'));
@@ -1920,8 +2067,8 @@ $flash = flash_pop();
       saleItemsBox.innerHTML = SALE_ITEMS.map(it => `
         <div class="sale-row">
           <div class="left">
-            <div class="nm">${safeText(it.name)}</div>
-            <div class="cd">${safeText(it.code)} • ${Number(it.qty||0)} ${safeText(it.unit||"")}</div>
+            <div class="nm">${safeText(it.code ? (it.code + ' - ' + it.name) : it.name)}</div>
+            <div class="cd">${Number(it.qty||0)} ${safeText(it.unit||"")}</div>
           </div>
           <div class="right">
             <div style="font-weight:900;color:#0f172a;">${numberToMoney(it.subtotal||0)}</div>
@@ -2065,12 +2212,14 @@ $flash = flash_pop();
         const dt = fmtBRDateTime(x.date, x.time);
         const cust = x.customer ? safeText(x.customer) : "Consumidor Final";
         const valor = numberToMoney(x.amount);
+        const itens = safeText(x.items_text || '—');
 
         tbodyDev.insertAdjacentHTML("beforeend", `
           <tr data-id="${Number(x.id)}">
             <td class="text-center"><span class="mini">${Number(x.id)}</span></td>
             <td class="text-center">${safeText(dt)}</td>
             <td>${cust}</td>
+            <td style="white-space:normal;">${itens}</td>
             <td class="text-center"><span class="money">${valor}</span></td>
             <td class="text-center">
               <button class="main-btn light-btn btn-hover btn-compact" type="button" onclick="openDetails(${Number(x.id)})">Detalhes</button>
@@ -2128,6 +2277,8 @@ $flash = flash_pop();
         reason: String(x.reason || "OUTRO").toUpperCase(),
         note: String(x.note || ""),
         status: String(x.status || "ABERTO").toUpperCase(),
+        items: Array.isArray(x.items) ? x.items : [],
+        items_text: String(x.items_text || '—')
       }));
 
       setTotals(r.totals || {});
@@ -2293,6 +2444,12 @@ $flash = flash_pop();
       mValor.textContent = numberToMoney(x.amount || 0);
       mMotivo.textContent = motivoLabel(x.reason);
       mObs.textContent = (x.note && String(x.note).trim()) ? x.note : '—';
+
+      if (x.items && x.items.length) {
+        mItens.innerHTML = x.items.map(it => `<div class="it">${safeText(it)}</div>`).join('');
+      } else {
+        mItens.innerHTML = '—';
+      }
 
       mdDetalhes.show();
     }
