@@ -719,33 +719,80 @@ if ($action === 'excel') {
 
     <head>
         <meta charset="UTF-8">
+        <!--[if gte mso 9]>
+    <xml>
+        <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                    <x:Name>Vendidos</x:Name>
+                    <x:WorksheetOptions>
+                        <x:Print>
+                            <x:ValidPrinterInfo/>
+                            <x:PaperSizeIndex>9</x:PaperSizeIndex>
+                            <x:Scale>100</x:Scale>
+                            <x:HorizontalResolution>600</x:HorizontalResolution>
+                            <x:VerticalResolution>600</x:VerticalResolution>
+                        </x:Print>
+                        <x:PageSetup>
+                            <x:Layout x:Orientation="Landscape"/>
+                            <x:Header x:Margin="0.3"/>
+                            <x:Footer x:Margin="0.3"/>
+                            <x:PageMargins x:Bottom="0.4" x:Left="0.25" x:Right="0.25" x:Top="0.4"/>
+                        </x:PageSetup>
+                        <x:FitToPage/>
+                        <x:FitWidth>1</x:FitWidth>
+                        <x:FitHeight>0</x:FitHeight>
+                        <x:CenterHorizontal/>
+                        <x:CenterVertical/>
+                    </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+        </x:ExcelWorkbook>
+    </xml>
+    <![endif]-->
+
         <style>
             @page {
-                size: landscape;
-                margin: 1cm;
+                size: A4 landscape;
+                margin: 0.8cm;
+            }
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                background: #fff;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 11pt;
             }
 
             body {
-                font-family: Arial, Helvetica, sans-serif;
-                font-size: 11pt;
-                margin: 0;
-                padding: 0;
+                text-align: center;
+            }
+
+            .page-wrap {
+                width: 100%;
+                margin: 0 auto;
+                text-align: center;
             }
 
             table {
                 border-collapse: collapse;
-                width: 100%;
                 table-layout: fixed;
+                width: 100%;
+                margin-left: auto;
+                margin-right: auto;
             }
 
             .tbl-meta,
             .tbl-main {
                 width: 100%;
-                border: 1px solid #000 !important;
+                border: 1px solid #000;
             }
 
             .tbl-meta td {
-                border: 1px solid #000 !important;
+                border: 1px solid #000;
                 padding: 6px;
                 font-size: 11pt;
                 vertical-align: middle;
@@ -753,7 +800,7 @@ if ($action === 'excel') {
 
             th,
             td {
-                border: 1px solid #000 !important;
+                border: 0.6px solid #000;
                 padding: 6px;
                 font-size: 11pt;
                 vertical-align: middle;
@@ -787,7 +834,7 @@ if ($action === 'excel') {
             }
 
             .w-id {
-                width: 8%;
+                width: 7%;
             }
 
             .w-data {
@@ -795,7 +842,7 @@ if ($action === 'excel') {
             }
 
             .w-cli {
-                width: 26%;
+                width: 29%;
             }
 
             .w-canal {
@@ -807,7 +854,7 @@ if ($action === 'excel') {
             }
 
             .w-num {
-                width: 10%;
+                width: 7%;
             }
 
             .print-wide {
@@ -817,72 +864,74 @@ if ($action === 'excel') {
     </head>
 
     <body>
-        <table class="tbl-meta print-wide">
-            <tr>
-                <td colspan="9" class="title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
-            </tr>
-            <tr>
-                <td colspan="9">Gerado em: <?= e($agora) ?></td>
-            </tr>
-            <tr>
-                <td colspan="9">
-                    Período: <?= e($di) ?> até <?= e($df) ?> |
-                    Canal: <?= e($canal) ?> |
-                    Pagamento: <?= e($pag) ?> |
-                    Busca: <?= e($q) ?>
-                </td>
-            </tr>
-        </table>
-
-        <table class="tbl-main print-wide" style="margin-top:6px;">
-            <thead>
+        <div class="page-wrap">
+            <table class="tbl-meta print-wide">
                 <tr>
-                    <th class="head w-id">ID</th>
-                    <th class="head w-data">Data</th>
-                    <th class="head w-cli">Cliente</th>
-                    <th class="head w-canal">Canal</th>
-                    <th class="head w-pag">Pagamento</th>
-                    <th class="head w-num">Subtotal</th>
-                    <th class="head w-num">Desconto</th>
-                    <th class="head w-num">Entrega</th>
-                    <th class="head w-num">Total</th>
+                    <td colspan="9" class="title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
                 </tr>
-            </thead>
-            <tbody>
-                <?php
-                $sumSub = 0.0;
-                $sumDesc = 0.0;
-                $sumTax = 0.0;
-                $sumTot = 0.0;
-                foreach ($rows as $r):
-                    $sumSub += (float)$r['subtotal'];
-                    $sumDesc += (float)$r['desconto'];
-                    $sumTax += (float)$r['taxa'];
-                    $sumTot += (float)$r['total'];
-                ?>
+                <tr>
+                    <td colspan="9">Gerado em: <?= e($agora) ?></td>
+                </tr>
+                <tr>
+                    <td colspan="9">
+                        Período: <?= e($di) ?> até <?= e($df) ?> |
+                        Canal: <?= e($canal) ?> |
+                        Pagamento: <?= e($pag) ?> |
+                        Busca: <?= e($q) ?>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="tbl-main print-wide" style="margin-top:6px;">
+                <thead>
                     <tr>
-                        <td class="center"><?= (int)$r['id'] ?></td>
-                        <td class="center"><?= e((string)$r['data']) ?></td>
-                        <td class="left"><?= e((string)($r['cliente'] ?? '')) ?></td>
-                        <td class="center"><?= e((string)($r['canal'] ?? '')) ?></td>
-                        <td class="center"><?= e((string)($r['pagamento'] ?? '')) ?></td>
-                        <td class="center"><?= e(number_format((float)$r['subtotal'], 2, ',', '.')) ?></td>
-                        <td class="center"><?= e(number_format((float)$r['desconto'], 2, ',', '.')) ?></td>
-                        <td class="center"><?= e(number_format((float)$r['taxa'], 2, ',', '.')) ?></td>
-                        <td class="center"><?= e(number_format((float)$r['total'], 2, ',', '.')) ?></td>
+                        <th class="head w-id">ID</th>
+                        <th class="head w-data">Data</th>
+                        <th class="head w-cli">Cliente</th>
+                        <th class="head w-canal">Canal</th>
+                        <th class="head w-pag">Pagamento</th>
+                        <th class="head w-num">Subtotal</th>
+                        <th class="head w-num">Desconto</th>
+                        <th class="head w-num">Entrega</th>
+                        <th class="head w-num">Total</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-            <tfoot>
-                <tr class="foot">
-                    <td colspan="5" class="center">Totais</td>
-                    <td class="center"><?= e(number_format($sumSub, 2, ',', '.')) ?></td>
-                    <td class="center"><?= e(number_format($sumDesc, 2, ',', '.')) ?></td>
-                    <td class="center"><?= e(number_format($sumTax, 2, ',', '.')) ?></td>
-                    <td class="center"><?= e(number_format($sumTot, 2, ',', '.')) ?></td>
-                </tr>
-            </tfoot>
-        </table>
+                </thead>
+                <tbody>
+                    <?php
+                    $sumSub = 0.0;
+                    $sumDesc = 0.0;
+                    $sumTax = 0.0;
+                    $sumTot = 0.0;
+                    foreach ($rows as $r):
+                        $sumSub += (float)$r['subtotal'];
+                        $sumDesc += (float)$r['desconto'];
+                        $sumTax += (float)$r['taxa'];
+                        $sumTot += (float)$r['total'];
+                    ?>
+                        <tr>
+                            <td class="center"><?= (int)$r['id'] ?></td>
+                            <td class="center"><?= e((string)$r['data']) ?></td>
+                            <td class="left"><?= e((string)($r['cliente'] ?? '')) ?></td>
+                            <td class="center"><?= e((string)($r['canal'] ?? '')) ?></td>
+                            <td class="center"><?= e((string)($r['pagamento'] ?? '')) ?></td>
+                            <td class="center"><?= e(number_format((float)$r['subtotal'], 2, ',', '.')) ?></td>
+                            <td class="center"><?= e(number_format((float)$r['desconto'], 2, ',', '.')) ?></td>
+                            <td class="center"><?= e(number_format((float)$r['taxa'], 2, ',', '.')) ?></td>
+                            <td class="center"><?= e(number_format((float)$r['total'], 2, ',', '.')) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+                <tfoot>
+                    <tr class="foot">
+                        <td colspan="5" class="center">Totais</td>
+                        <td class="center"><?= e(number_format($sumSub, 2, ',', '.')) ?></td>
+                        <td class="center"><?= e(number_format($sumDesc, 2, ',', '.')) ?></td>
+                        <td class="center"><?= e(number_format($sumTax, 2, ',', '.')) ?></td>
+                        <td class="center"><?= e(number_format($sumTot, 2, ',', '.')) ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </body>
 
     </html>
