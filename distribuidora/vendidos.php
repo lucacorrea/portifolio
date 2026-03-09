@@ -755,7 +755,7 @@ if ($action === 'excel') {
 
             .tbl-main th,
             .tbl-main td {
-                border: 0.6px solid #000;
+                border: 0.6px solid #000 !important;
                 padding: 6px;
                 font-size: 11pt;
                 vertical-align: middle;
