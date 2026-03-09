@@ -38,7 +38,7 @@ class FiscalService extends BaseService {
         return [
             'cnpj' => $branch['cnpj'],
             'certificado_pfx' => $branch['certificado_pfx'],
-            'certificado_senha' => $branch['certificado_senha'],
+            'certificado_senha' => !empty($branch['certificado_senha']) ? base64_decode($branch['certificado_senha']) : '',
             'ambiente' => $branch['ambiente'],
             'nome' => $branch['nome']
         ];
