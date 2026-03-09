@@ -738,9 +738,22 @@ if ($action === 'excel') {
                 table-layout: fixed;
             }
 
+            .tbl-meta,
+            .tbl-main {
+                width: 100%;
+                border: 1px solid #000;
+            }
+
+            .tbl-meta td {
+                border: 1px solid #000;
+                padding: 6px;
+                font-size: 11pt;
+                vertical-align: middle;
+            }
 
             .tbl-main th,
             .tbl-main td {
+                border: 1px solid #000;
                 padding: 6px;
                 font-size: 11pt;
                 vertical-align: middle;
@@ -751,6 +764,7 @@ if ($action === 'excel') {
                 font-weight: 700;
                 text-align: center;
                 background: #dbeafe;
+                border: 1px solid #000 !important;
             }
 
             .head {
@@ -763,8 +777,8 @@ if ($action === 'excel') {
                 text-align: center;
             }
 
-            .right {
-                text-align: center;
+            .left {
+                text-align: left;
             }
 
             .foot {
@@ -849,7 +863,7 @@ if ($action === 'excel') {
                     <tr>
                         <td class="center"><?= (int)$r['id'] ?></td>
                         <td class="center"><?= e((string)$r['data']) ?></td>
-                        <td><?= e((string)($r['cliente'] ?? '')) ?></td>
+                        <td class="left"><?= e((string)($r['cliente'] ?? '')) ?></td>
                         <td class="center"><?= e((string)($r['canal'] ?? '')) ?></td>
                         <td class="center"><?= e((string)($r['pagamento'] ?? '')) ?></td>
                         <td class="center"><?= e(number_format((float)$r['subtotal'], 2, ',', '.')) ?></td>
