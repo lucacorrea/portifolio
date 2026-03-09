@@ -10,8 +10,12 @@ class PreSaleController extends BaseController {
         $model = new PreSale();
         $recent = $model->getRecent();
 
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+
         $this->render('pre_sales', [
             'recent' => $recent,
+            'caixaAberto' => $caixaAberto,
             'title' => 'Terminal de Pré-Venda',
             'pageTitle' => 'Geração de Orçamentos e Fichas'
         ]);

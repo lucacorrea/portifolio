@@ -1,4 +1,16 @@
-<div class="row g-4">
+<?php if (!$caixaAberto): ?>
+<div class="alert alert-warning shadow-sm border-0 d-flex align-items-center mb-4 p-3 rounded-4">
+    <i class="fas fa-cash-register fa-2x me-3"></i>
+    <div class="flex-grow-1">
+        <h6 class="mb-1 fw-bold">CAIXA FECHADO PARA ESTA FILIAL</h6>
+        <p class="mb-0 small">A geração de pré-vendas (orçamentos) requer que você tenha um caixa aberto. 
+           <a href="caixa.php" class="fw-bold text-dark text-decoration-underline ms-1">Abrir meu caixa agora.</a>
+        </p>
+    </div>
+</div>
+<?php endif; ?>
+
+<div class="row g-4 <?php echo !$caixaAberto ? 'opacity-50 select-none' : ''; ?>" style="<?php echo !$caixaAberto ? 'pointer-events: none;' : ''; ?>">
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-8 d-flex flex-column">
         <div class="row g-4 mb-4">
