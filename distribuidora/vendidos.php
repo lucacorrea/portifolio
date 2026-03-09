@@ -736,26 +736,11 @@ if ($action === 'excel') {
                 border-collapse: collapse;
                 width: 100%;
                 table-layout: fixed;
-                border: 0.6px solid #000;
             }
 
-            .tbl-meta {
-                border: 0.6px solid #000;
-            }
-
-            .tbl-meta td {
-                border: 0.6px solid #000;
-                padding: 6px;
-                font-size: 11pt;
-            }
-
-            .tbl-main {
-                border: 0.6px solid #000;
-            }
 
             .tbl-main th,
             .tbl-main td {
-                border: 0.6px solid #000 !important;
                 padding: 6px;
                 font-size: 11pt;
                 vertical-align: middle;
