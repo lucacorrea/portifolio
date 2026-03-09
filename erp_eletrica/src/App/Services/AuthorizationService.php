@@ -37,6 +37,9 @@ class AuthorizationService extends BaseService {
     }
 
     public function generateCode($tipo, $filialId, $usuarioAutorizadorId = null) {
+        $tipo = strtolower(trim($tipo));
+        error_log("Gerando código autorização: tipo=$tipo, filial=$filialId");
+        
         // Invalidate previous unused codes for this type and branch
         $this->repository->invalidateOldCodes($tipo, $filialId);
 
