@@ -826,7 +826,7 @@ if ($action === 'excel') {
             </tr>
         </table>
 
-        <table class="tbl-main print-wide" style="margin-top:6px;">
+        <table class="tbl-main print-wide" style="margin-top:6px;" style="border: 0.8px solid #000;">
             <thead>
                 <tr>
                     <th class="head w-id">ID</th>
