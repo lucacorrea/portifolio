@@ -128,16 +128,46 @@ function build_where(array &$params): string
     }
 
     if ($q !== '') {
-        $where .= " AND (
-            CAST(v.id AS CHAR) LIKE :q_id
-            OR COALESCE(v.cliente,'') LIKE :q_texto
-            OR COALESCE(v.endereco,'') LIKE :q_texto
-            OR COALESCE(v.obs,'') LIKE :q_texto
-            OR COALESCE(v.pagamento,'') LIKE :q_texto
-            OR COALESCE(v.canal,'') LIKE :q_texto
-        ) ";
-        $params[':q_id'] = '%' . $q . '%';
-        $params[':q_texto'] = '%' . $q . '%';
+        $params[':q_id']      = '%' . $q . '%';
+        $params[':q_data']    = '%' . $q . '%';
+        $params[':q_cliente'] = '%' . $q . '%';
+        $params[':q_end']     = '%' . $q . '%';
+        $params[':q_obs']     = '%' . $q . '%';
+        $params[':q_pag']     = '%' . $q . '%';
+        $params[':q_canal']   = '%' . $q . '%';
+        $params[':q_sub']     = '%' . $q . '%';
+        $params[':q_desc']    = '%' . $q . '%';
+        $params[':q_taxa']    = '%' . $q . '%';
+        $params[':q_total']   = '%' . $q . '%';
+        $params[':q_item1']   = '%' . $q . '%';
+        $params[':q_item2']   = '%' . $q . '%';
+        $params[':q_item3']   = '%' . $q . '%';
+
+        $where .= "
+            AND (
+                CAST(v.id AS CHAR) LIKE :q_id
+                OR CAST(v.data AS CHAR) LIKE :q_data
+                OR COALESCE(v.cliente,'') LIKE :q_cliente
+                OR COALESCE(v.endereco,'') LIKE :q_end
+                OR COALESCE(v.obs,'') LIKE :q_obs
+                OR COALESCE(v.pagamento,'') LIKE :q_pag
+                OR COALESCE(v.canal,'') LIKE :q_canal
+                OR CAST(COALESCE(v.subtotal,0) AS CHAR) LIKE :q_sub
+                OR CAST(COALESCE(v.desconto_valor,0) AS CHAR) LIKE :q_desc
+                OR CAST(COALESCE(v.taxa_entrega,0) AS CHAR) LIKE :q_taxa
+                OR CAST(COALESCE(v.total,0) AS CHAR) LIKE :q_total
+                OR EXISTS (
+                    SELECT 1
+                    FROM venda_itens vi
+                    WHERE vi.venda_id = v.id
+                      AND (
+                          COALESCE(vi.nome,'') LIKE :q_item1
+                          OR COALESCE(vi.codigo,'') LIKE :q_item2
+                          OR COALESCE(vi.unidade,'') LIKE :q_item3
+                      )
+                )
+            )
+        ";
     }
 
     return $where;
@@ -151,6 +181,8 @@ function fetch_items_for_sale_ids(array $saleIds): array
     if (!table_exists($pdo, 'venda_itens')) return [];
 
     $saleIds = array_values(array_unique(array_map('intval', $saleIds)));
+    if (!$saleIds) return [];
+
     $in = implode(',', array_fill(0, count($saleIds), '?'));
 
     $sql = "
@@ -295,6 +327,80 @@ function fetch_one_sale(int $id): ?array
     ];
 }
 
+function sum_recebido_vendas_geral(string $where, array $params): float
+{
+    $pdo = db();
+
+    $sql = "
+        SELECT
+            v.id,
+            v.pagamento,
+            v.total
+        FROM vendas v
+        $where
+    ";
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $sum = 0.0;
+    foreach ($rows as $r) {
+        $sum += get_recebido_for_sale(
+            $pdo,
+            (int)($r['id'] ?? 0),
+            (string)($r['pagamento'] ?? ''),
+            (float)($r['total'] ?? 0)
+        );
+    }
+
+    return $sum;
+}
+
+function sum_fiados_pagamentos_filtrados(PDO $pdo): float
+{
+    $recFiadoExtra = 0.0;
+
+    if (
+        table_exists($pdo, 'fiados_pagamentos')
+        && column_exists($pdo, 'fiados_pagamentos', 'valor')
+        && column_exists($pdo, 'fiados_pagamentos', 'created_at')
+    ) {
+        $di = get_str('di');
+        $df = get_str('df');
+
+        if ($di !== '' && $df !== '') {
+            $stPag = $pdo->prepare("
+                SELECT COALESCE(SUM(valor),0)
+                FROM fiados_pagamentos
+                WHERE DATE(created_at) BETWEEN ? AND ?
+            ");
+            $stPag->execute([$di, $df]);
+            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
+        } elseif ($di !== '') {
+            $stPag = $pdo->prepare("
+                SELECT COALESCE(SUM(valor),0)
+                FROM fiados_pagamentos
+                WHERE DATE(created_at) >= ?
+            ");
+            $stPag->execute([$di]);
+            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
+        } elseif ($df !== '') {
+            $stPag = $pdo->prepare("
+                SELECT COALESCE(SUM(valor),0)
+                FROM fiados_pagamentos
+                WHERE DATE(created_at) <= ?
+            ");
+            $stPag->execute([$df]);
+            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
+        } else {
+            $stPag = $pdo->query("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos");
+            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
+        }
+    }
+
+    return $recFiadoExtra;
+}
+
 function fetch_filtered_result(): array
 {
     $pdo = db();
@@ -355,49 +461,8 @@ function fetch_filtered_result(): array
 
     $rows = build_rows_from_sales($sales);
 
-    $recFiadoExtra = 0.0;
-    if (
-        table_exists($pdo, 'fiados_pagamentos')
-        && column_exists($pdo, 'fiados_pagamentos', 'valor')
-        && column_exists($pdo, 'fiados_pagamentos', 'created_at')
-    ) {
-        $di = get_str('di');
-        $df = get_str('df');
-
-        if ($di !== '' && $df !== '') {
-            $stPag = $pdo->prepare("
-                SELECT COALESCE(SUM(valor),0)
-                FROM fiados_pagamentos
-                WHERE DATE(created_at) BETWEEN ? AND ?
-            ");
-            $stPag->execute([$di, $df]);
-            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-        } elseif ($di !== '') {
-            $stPag = $pdo->prepare("
-                SELECT COALESCE(SUM(valor),0)
-                FROM fiados_pagamentos
-                WHERE DATE(created_at) >= ?
-            ");
-            $stPag->execute([$di]);
-            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-        } elseif ($df !== '') {
-            $stPag = $pdo->prepare("
-                SELECT COALESCE(SUM(valor),0)
-                FROM fiados_pagamentos
-                WHERE DATE(created_at) <= ?
-            ");
-            $stPag->execute([$df]);
-            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-        } else {
-            $stPag = $pdo->query("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos");
-            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-        }
-    }
-
-    $recebidoVendas = 0.0;
-    foreach ($rows as $r) {
-        $recebidoVendas += (float)$r['recebido'];
-    }
+    $recFiadoExtra = sum_fiados_pagamentos_filtrados($pdo);
+    $recebidoVendasGeral = sum_recebido_vendas_geral($where, $params);
 
     $totalCount = (int)($tot['qtd'] ?? 0);
     $pages = (int)max(1, ceil($totalCount / $per));
@@ -415,9 +480,9 @@ function fetch_filtered_result(): array
             'desconto'        => (float)($tot['desconto'] ?? 0),
             'taxa'            => (float)($tot['taxa'] ?? 0),
             'total'           => (float)($tot['total'] ?? 0),
-            'recebido_vendas' => $recebidoVendas,
+            'recebido_vendas' => $recebidoVendasGeral,
             'recebido_fiados' => $recFiadoExtra,
-            'caixa_real'      => $recebidoVendas + $recFiadoExtra,
+            'caixa_real'      => $recebidoVendasGeral + $recFiadoExtra,
         ],
         'rows' => $rows
     ];
@@ -470,16 +535,8 @@ function fetch_initial_result(): array
         'total' => 0
     ];
 
-    $recFiadoExtra = 0.0;
-    if (table_exists($pdo, 'fiados_pagamentos') && column_exists($pdo, 'fiados_pagamentos', 'valor')) {
-        $stPag = $pdo->query("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos");
-        $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-    }
-
-    $recebidoVendas = 0.0;
-    foreach ($rows as $r) {
-        $recebidoVendas += (float)$r['recebido'];
-    }
+    $recebidoVendasGeral = sum_recebido_vendas_geral(" WHERE 1=1 ", []);
+    $recFiadoExtra = sum_fiados_pagamentos_filtrados($pdo);
 
     $qtd = (int)($tot['qtd'] ?? 0);
     $pages = (int)max(1, ceil($qtd / $per));
@@ -497,9 +554,9 @@ function fetch_initial_result(): array
             'desconto'        => (float)($tot['desconto'] ?? 0),
             'taxa'            => (float)($tot['taxa'] ?? 0),
             'total'           => (float)($tot['total'] ?? 0),
-            'recebido_vendas' => $recebidoVendas,
+            'recebido_vendas' => $recebidoVendasGeral,
             'recebido_fiados' => $recFiadoExtra,
-            'caixa_real'      => $recebidoVendas + $recFiadoExtra,
+            'caixa_real'      => $recebidoVendasGeral + $recFiadoExtra,
         ],
         'rows' => $rows
     ];
@@ -698,10 +755,6 @@ function render_print_html(array $rows, string $agora, string $di, string $df, s
                 word-break: break-word;
             }
 
-            .table-wrap {
-                padding: 0;
-            }
-
             table {
                 width: 100%;
                 border-collapse: collapse;
@@ -804,12 +857,6 @@ function render_print_html(array $rows, string $agora, string $di, string $df, s
                     display: none !important;
                 }
             }
-
-            @media screen and (max-width: 1100px) {
-                .meta-grid {
-                    grid-template-columns: repeat(2, minmax(0, 1fr));
-                }
-            }
         </style>
     </head>
 
@@ -847,53 +894,51 @@ function render_print_html(array $rows, string $agora, string $di, string $df, s
                     </div>
                 </div>
 
-                <div class="table-wrap">
-                    <table>
-                        <thead>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-id">ID</th>
+                            <th class="col-data">Data</th>
+                            <th class="col-cliente">Cliente</th>
+                            <th class="col-canal">Canal</th>
+                            <th class="col-pag">Pagamento</th>
+                            <th class="col-sub right">Subtotal</th>
+                            <th class="col-desc right">Desconto</th>
+                            <th class="col-ent right">Entrega</th>
+                            <th class="col-total right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!$rows): ?>
                             <tr>
-                                <th class="col-id">ID</th>
-                                <th class="col-data">Data</th>
-                                <th class="col-cliente">Cliente</th>
-                                <th class="col-canal">Canal</th>
-                                <th class="col-pag">Pagamento</th>
-                                <th class="col-sub right">Subtotal</th>
-                                <th class="col-desc right">Desconto</th>
-                                <th class="col-ent right">Entrega</th>
-                                <th class="col-total right">Total</th>
+                                <td colspan="9" class="center">Nenhuma venda encontrada.</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!$rows): ?>
+                        <?php else: ?>
+                            <?php foreach ($rows as $r): ?>
                                 <tr>
-                                    <td colspan="9" class="center">Nenhuma venda encontrada.</td>
+                                    <td><?= (int)$r['id'] ?></td>
+                                    <td><?= e((string)$r['data']) ?></td>
+                                    <td><?= e((string)($r['cliente'] ?? '')) ?></td>
+                                    <td><?= e((string)($r['canal'] ?? '')) ?></td>
+                                    <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
+                                    <td class="right"><?= e(brl((float)$r['subtotal'])) ?></td>
+                                    <td class="right"><?= e(brl((float)$r['desconto'])) ?></td>
+                                    <td class="right"><?= e(brl((float)$r['taxa'])) ?></td>
+                                    <td class="right"><?= e(brl((float)$r['total'])) ?></td>
                                 </tr>
-                            <?php else: ?>
-                                <?php foreach ($rows as $r): ?>
-                                    <tr>
-                                        <td><?= (int)$r['id'] ?></td>
-                                        <td><?= e((string)$r['data']) ?></td>
-                                        <td><?= e((string)($r['cliente'] ?? '')) ?></td>
-                                        <td><?= e((string)($r['canal'] ?? '')) ?></td>
-                                        <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
-                                        <td class="right"><?= e(brl((float)$r['subtotal'])) ?></td>
-                                        <td class="right"><?= e(brl((float)$r['desconto'])) ?></td>
-                                        <td class="right"><?= e(brl((float)$r['taxa'])) ?></td>
-                                        <td class="right"><?= e(brl((float)$r['total'])) ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="5" class="right">Totais</td>
-                                <td class="right"><?= e(brl($sumSub)) ?></td>
-                                <td class="right"><?= e(brl($sumDesc)) ?></td>
-                                <td class="right"><?= e(brl($sumTax)) ?></td>
-                                <td class="right"><?= e(brl($sumTot)) ?></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" class="right">Totais</td>
+                            <td class="right"><?= e(brl($sumSub)) ?></td>
+                            <td class="right"><?= e(brl($sumDesc)) ?></td>
+                            <td class="right"><?= e(brl($sumTax)) ?></td>
+                            <td class="right"><?= e(brl($sumTot)) ?></td>
+                        </tr>
+                    </tfoot>
+                </table>
 
                 <div class="note">
                     Observação: sem biblioteca externa, esta página fica pronta para o navegador salvar como PDF mantendo o layout.
@@ -1801,8 +1846,8 @@ $initialTotais = $initial['totais'];
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label mini">Cliente / Venda #</label>
-                                <input type="text" class="form-control compact" id="q" placeholder="Digite para pesquisar automaticamente..." autocomplete="off">
+                                <label class="form-label mini">Pesquisar em tudo da tabela</label>
+                                <input type="text" class="form-control compact" id="q" placeholder="ID, cliente, canal, pagamento, itens, total..." autocomplete="off">
                             </div>
 
                             <div class="col-12 d-flex gap-2 flex-wrap mt-2">
@@ -1840,7 +1885,7 @@ $initialTotais = $initial['totais'];
                     <div class="col-lg-8">
                         <div class="cardx card-table">
                             <div class="head">
-                                <div class="muted"><b>Vendidos</b> • pesquisa parcial automática enquanto digita</div>
+                                <div class="muted"><b>Vendidos</b> • pesquisa AJAX automática em toda a tabela</div>
                                 <div class="toolbar">
                                     <div class="pill ok" id="pillCountTable"><?= (int)$initialTotais['qtd'] ?> vendas</div>
                                     <div class="pill" id="pillLoading" style="display:none;">
@@ -1884,7 +1929,7 @@ $initialTotais = $initial['totais'];
                         <div class="cardx card-tot">
                             <div class="head">
                                 <div class="fw-1000">Totais do Filtro</div>
-                                <div class="muted">Somatório da tabela <b>vendas</b></div>
+                                <div class="muted">Totais gerais do filtro inteiro, não só da página</div>
                             </div>
                             <div class="body">
                                 <div class="box-tot">
@@ -1900,7 +1945,7 @@ $initialTotais = $initial['totais'];
                                 </div>
 
                                 <div class="muted mt-3">
-                                    <b>Obs.:</b> itens carregados de <b>venda_itens</b> via <b>venda_id</b>.
+                                    <b>Obs.:</b> a pesquisa também procura em <b>venda_itens</b>.
                                 </div>
                             </div>
                         </div>
