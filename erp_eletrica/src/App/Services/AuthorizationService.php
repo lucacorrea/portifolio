@@ -78,8 +78,11 @@ class AuthorizationService extends BaseService {
         $found = $anyAuth->fetch();
 
         if ($found) {
-            if ($found['tipo'] === 'geral') return ['success' => true];
-            return ['success' => false, 'error' => "Este código é para '" . ucfirst($found['tipo']) . "', não para '" . ucfirst($tipo) . "'."];
+            $foundTipo = strtolower($found['tipo'] ?? '');
+            if ($foundTipo === 'geral') return ['success' => true];
+            
+            $tipoDisplay = $foundTipo ?: 'Não Definido';
+            return ['success' => false, 'error' => "Este código é para '" . ucfirst($tipoDisplay) . "', não para '" . ucfirst($tipo) . "'."];
         }
 
         return ['success' => false, 'error' => 'Código inválido, expirado ou já utilizado.'];
