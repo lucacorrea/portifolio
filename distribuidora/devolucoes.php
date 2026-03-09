@@ -114,21 +114,202 @@ function table_exists(PDO $pdo, string $table): bool
   return (bool)$st->fetchColumn();
 }
 
-/* =========================================================
-   ESTOQUE
-========================================================= */
+function normalize_search(string $txt): string
+{
+  $txt = mb_strtolower(trim($txt), 'UTF-8');
+  $map = [
+    'á' => 'a',
+    'à' => 'a',
+    'ã' => 'a',
+    'â' => 'a',
+    'ä' => 'a',
+    'é' => 'e',
+    'è' => 'e',
+    'ê' => 'e',
+    'ë' => 'e',
+    'í' => 'i',
+    'ì' => 'i',
+    'î' => 'i',
+    'ï' => 'i',
+    'ó' => 'o',
+    'ò' => 'o',
+    'õ' => 'o',
+    'ô' => 'o',
+    'ö' => 'o',
+    'ú' => 'u',
+    'ù' => 'u',
+    'û' => 'u',
+    'ü' => 'u',
+    'ç' => 'c'
+  ];
+  $txt = strtr($txt, $map);
+  $txt = preg_replace('/\s+/', ' ', $txt) ?? $txt;
+  return $txt;
+}
+
 function extract_product_code(string $product): string
 {
   $p = trim(str_replace(["\r", "\n", "\t"], ' ', $product));
   if ($p === '') return '';
+
   if (strpos($p, ' - ') !== false) {
     $parts = explode(' - ', $p, 2);
-    return trim((string)($parts[0] ?? ''));
+    $code = trim((string)($parts[0] ?? ''));
+    if ($code !== '') return $code;
   }
-  if (preg_match('/^([A-Za-z0-9._-]+)/', $p, $m)) return trim($m[1]);
+
+  if (preg_match('/^([A-Za-z0-9._-]+)/', $p, $m)) {
+    return trim((string)$m[1]);
+  }
+
   return '';
 }
 
+/* =========================================================
+   RESOLUÇÃO DO ITEM PARCIAL
+   - usa venda_itens primeiro
+   - se precisar, usa produtos
+========================================================= */
+function resolve_partial_item(PDO $pdo, ?int $saleNo, string $productText): ?array
+{
+  $productText = trim($productText);
+  if ($productText === '') return null;
+
+  $needle = normalize_search($productText);
+  $codeFromText = extract_product_code($productText);
+
+  if ($saleNo !== null && $saleNo > 0 && table_exists($pdo, 'venda_itens')) {
+    if ($codeFromText !== '') {
+      $st = $pdo->prepare("
+        SELECT codigo, nome, unidade
+        FROM venda_itens
+        WHERE venda_id = :venda AND codigo = :codigo
+        ORDER BY id ASC
+        LIMIT 1
+      ");
+      $st->execute([
+        ':venda' => $saleNo,
+        ':codigo' => $codeFromText
+      ]);
+      $r = $st->fetch(PDO::FETCH_ASSOC);
+      if ($r) {
+        return [
+          'codigo' => trim((string)($r['codigo'] ?? '')),
+          'nome'   => trim((string)($r['nome'] ?? '')),
+          'unidade' => trim((string)($r['unidade'] ?? '')),
+        ];
+      }
+    }
+
+    $st = $pdo->prepare("
+      SELECT codigo, nome, unidade
+      FROM venda_itens
+      WHERE venda_id = :venda
+      ORDER BY id ASC
+    ");
+    $st->execute([':venda' => $saleNo]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($rows as $r) {
+      $codigo = trim((string)($r['codigo'] ?? ''));
+      $nome   = trim((string)($r['nome'] ?? ''));
+      $full   = trim($codigo . ' - ' . $nome);
+
+      $cand1 = normalize_search($codigo);
+      $cand2 = normalize_search($nome);
+      $cand3 = normalize_search($full);
+
+      if (
+        $cand1 === $needle ||
+        $cand2 === $needle ||
+        $cand3 === $needle ||
+        str_contains($cand2, $needle) ||
+        str_contains($cand3, $needle)
+      ) {
+        return [
+          'codigo' => $codigo,
+          'nome'   => $nome,
+          'unidade' => trim((string)($r['unidade'] ?? '')),
+        ];
+      }
+    }
+  }
+
+  if (table_exists($pdo, 'produtos')) {
+    if ($codeFromText !== '') {
+      $st = $pdo->prepare("
+        SELECT codigo, nome, unidade
+        FROM produtos
+        WHERE codigo = ?
+        LIMIT 1
+      ");
+      $st->execute([$codeFromText]);
+      $r = $st->fetch(PDO::FETCH_ASSOC);
+      if ($r) {
+        return [
+          'codigo' => trim((string)($r['codigo'] ?? '')),
+          'nome'   => trim((string)($r['nome'] ?? '')),
+          'unidade' => trim((string)($r['unidade'] ?? '')),
+        ];
+      }
+    }
+
+    $st = $pdo->prepare("
+      SELECT codigo, nome, unidade
+      FROM produtos
+      WHERE nome LIKE :q OR codigo LIKE :q2
+      ORDER BY id ASC
+      LIMIT 30
+    ");
+    $st->execute([
+      ':q' => '%' . $productText . '%',
+      ':q2' => '%' . $productText . '%'
+    ]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($rows as $r) {
+      $codigo = trim((string)($r['codigo'] ?? ''));
+      $nome   = trim((string)($r['nome'] ?? ''));
+      $full   = trim($codigo . ' - ' . $nome);
+
+      $cand1 = normalize_search($codigo);
+      $cand2 = normalize_search($nome);
+      $cand3 = normalize_search($full);
+
+      if (
+        $cand1 === $needle ||
+        $cand2 === $needle ||
+        $cand3 === $needle ||
+        str_contains($cand2, $needle) ||
+        str_contains($cand3, $needle)
+      ) {
+        return [
+          'codigo' => $codigo,
+          'nome'   => $nome,
+          'unidade' => trim((string)($r['unidade'] ?? '')),
+        ];
+      }
+    }
+  }
+
+  return null;
+}
+
+function format_item_label(string $codigo, string $nome, int $qtd = 0): string
+{
+  $base = trim($codigo . ' - ' . $nome);
+  if ($base === '-' || trim($base) === '') {
+    $base = $nome !== '' ? $nome : ($codigo !== '' ? $codigo : 'Item');
+  }
+  if ($qtd > 0) {
+    $base .= ' (' . $qtd . ')';
+  }
+  return $base;
+}
+
+/* =========================================================
+   ESTOQUE
+========================================================= */
 function devolucao_effect(PDO $pdo, array $dev): array
 {
   $status = strtoupper(trim((string)($dev['status'] ?? '')));
@@ -157,8 +338,10 @@ function devolucao_effect(PDO $pdo, array $dev): array
   $qty     = (int)($dev['qty'] ?? $dev['qtd'] ?? 0);
   if ($qty <= 0) return [];
 
-  $code = extract_product_code($product);
-  if ($code === '') return [];
+  $item = resolve_partial_item($pdo, $saleNo > 0 ? $saleNo : null, $product);
+  if (!$item || trim((string)($item['codigo'] ?? '')) === '') return [];
+
+  $code = trim((string)$item['codigo']);
   $effect[$code] = ($effect[$code] ?? 0) + $qty;
   return $effect;
 }
@@ -200,7 +383,7 @@ $PRODUTOS_CACHE = [];
 try {
   if (table_exists($pdo, 'produtos')) {
     $stP = $pdo->query("
-      SELECT id, codigo, nome, status
+      SELECT id, codigo, nome, status, unidade
       FROM produtos
       WHERE (status IS NULL OR status = '' OR UPPER(TRIM(status))='ATIVO')
       ORDER BY nome ASC
@@ -212,6 +395,7 @@ try {
         'id'   => (int)($r['id'] ?? 0),
         'code' => (string)($r['codigo'] ?? ''),
         'name' => (string)($r['nome'] ?? ''),
+        'unit' => (string)($r['unidade'] ?? ''),
       ];
     }
   }
@@ -220,7 +404,7 @@ try {
 }
 
 /* =========================================================
-   WHERE
+   WHERE / BUSCA AJAX
 ========================================================= */
 function build_where(string $q, string $status): array
 {
@@ -236,29 +420,42 @@ function build_where(string $q, string $status): array
   }
 
   if ($q !== '') {
-    if (preg_match('/^\d+$/', $q)) {
-      $where[] = "(CAST(d.id AS CHAR) LIKE :qstart OR CAST(d.venda_no AS CHAR) LIKE :qstart)";
-      $params[':qstart'] = $q . '%';
-    } else {
-      $where[] = "(
-        d.cliente LIKE :qlike
-        OR d.produto LIKE :qlike
-        OR d.motivo LIKE :qlike
-        OR d.obs LIKE :qlike
-        OR EXISTS (
-          SELECT 1
-          FROM venda_itens vi
-          WHERE vi.venda_id = d.venda_no
-            AND (
-              vi.codigo LIKE :qlike2
-              OR vi.nome LIKE :qlike3
-            )
-        )
-      )";
-      $params[':qlike'] = '%' . $q . '%';
-      $params[':qlike2'] = '%' . $q . '%';
-      $params[':qlike3'] = '%' . $q . '%';
-    }
+    $params[':q_like']   = '%' . $q . '%';
+    $params[':q_like2']  = '%' . $q . '%';
+    $params[':q_like3']  = '%' . $q . '%';
+    $params[':q_like4']  = '%' . $q . '%';
+    $params[':q_like5']  = '%' . $q . '%';
+    $params[':q_like6']  = '%' . $q . '%';
+    $params[':q_like7']  = '%' . $q . '%';
+    $params[':q_like8']  = '%' . $q . '%';
+    $params[':q_like9']  = '%' . $q . '%';
+    $params[':q_like10'] = '%' . $q . '%';
+    $params[':q_like11'] = '%' . $q . '%';
+
+    $where[] = "(
+      CAST(d.id AS CHAR) LIKE :q_like
+      OR CAST(COALESCE(d.venda_no,'') AS CHAR) LIKE :q_like2
+      OR COALESCE(d.cliente,'') LIKE :q_like3
+      OR COALESCE(d.produto,'') LIKE :q_like4
+      OR COALESCE(d.motivo,'') LIKE :q_like5
+      OR COALESCE(d.obs,'') LIKE :q_like6
+      OR COALESCE(d.tipo,'') LIKE :q_like7
+      OR COALESCE(d.status,'') LIKE :q_like8
+      OR CAST(COALESCE(d.valor,0) AS CHAR) LIKE :q_like9
+      OR CAST(COALESCE(d.data,'') AS CHAR) LIKE :q_like10
+      OR CAST(COALESCE(d.hora,'') AS CHAR) LIKE :q_like11
+      OR EXISTS (
+        SELECT 1
+        FROM venda_itens vi
+        WHERE vi.venda_id = d.venda_no
+          AND (
+            vi.codigo LIKE :q_like
+            OR vi.nome LIKE :q_like2
+            OR CAST(vi.qtd AS CHAR) LIKE :q_like3
+            OR COALESCE(vi.unidade,'') LIKE :q_like4
+          )
+      )
+    )";
   }
 
   $sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
@@ -267,26 +464,38 @@ function build_where(string $q, string $status): array
 
 /* =========================================================
    ITENS DAS DEVOLUÇÕES
+   - TOTAL: venda_itens da venda
+   - PARCIAL: resolve item correto e monta igual ao total
 ========================================================= */
 function fetch_items_map_for_devolucoes(PDO $pdo, array $rows): array
 {
   $map = [];
-
   if (!$rows) return $map;
 
   $saleNos = [];
+
   foreach ($rows as $r) {
-    $id = (int)($r['id'] ?? 0);
+    $id   = (int)($r['id'] ?? 0);
     $tipo = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
 
     if ($tipo === 'PARCIAL') {
-      $produto = trim((string)($r['produto'] ?? ''));
-      $qtd = ($r['qtd'] !== null ? (int)$r['qtd'] : null);
-      $label = $produto !== '' ? $produto : '—';
-      if ($qtd !== null && $qtd > 0) {
-        $label .= ' (' . $qtd . ')';
+      $saleNo = (int)($r['venda_no'] ?? 0);
+      $qtd    = (int)($r['qtd'] ?? 0);
+      $prodTxt = (string)($r['produto'] ?? '');
+
+      $item = resolve_partial_item($pdo, $saleNo > 0 ? $saleNo : null, $prodTxt);
+
+      if ($item) {
+        $codigo = trim((string)($item['codigo'] ?? ''));
+        $nome   = trim((string)($item['nome'] ?? ''));
+        $map[$id] = [format_item_label($codigo, $nome, $qtd)];
+      } else {
+        $fallback = trim($prodTxt) !== '' ? trim($prodTxt) : '—';
+        if ($qtd > 0 && $fallback !== '—') {
+          $fallback .= ' (' . $qtd . ')';
+        }
+        $map[$id] = [$fallback];
       }
-      $map[$id] = [$label];
     } else {
       $saleNo = (int)($r['venda_no'] ?? 0);
       if ($saleNo > 0) $saleNos[$saleNo] = $saleNo;
@@ -313,20 +522,7 @@ function fetch_items_map_for_devolucoes(PDO $pdo, array $rows): array
       $nome = trim((string)($it['nome'] ?? ''));
       $qtd = (int)($it['qtd'] ?? 0);
 
-      $txt = '';
-      if ($codigo !== '' && $nome !== '') {
-        $txt = $codigo . ' - ' . $nome;
-      } elseif ($nome !== '') {
-        $txt = $nome;
-      } elseif ($codigo !== '') {
-        $txt = $codigo;
-      } else {
-        $txt = 'Item';
-      }
-
-      if ($qtd > 0) {
-        $txt .= ' (' . $qtd . ')';
-      }
+      $txt = format_item_label($codigo, $nome, $qtd);
 
       if (!isset($saleItems[$vendaId])) $saleItems[$vendaId] = [];
       $saleItems[$vendaId][] = $txt;
@@ -340,11 +536,11 @@ function fetch_items_map_for_devolucoes(PDO $pdo, array $rows): array
       $saleNo = (int)($r['venda_no'] ?? 0);
       $map[$id] = $saleItems[$saleNo] ?? ['—'];
     }
-  } else {
-    foreach ($rows as $r) {
-      $id = (int)($r['id'] ?? 0);
-      if (!isset($map[$id])) $map[$id] = ['—'];
-    }
+  }
+
+  foreach ($rows as $r) {
+    $id = (int)($r['id'] ?? 0);
+    if (!isset($map[$id])) $map[$id] = ['—'];
   }
 
   return $map;
@@ -423,42 +619,33 @@ if ($export === 'excel') {
     <meta charset="UTF-8">
 
     <!--[if gte mso 9]>
-    <xml>
-        <x:ExcelWorkbook>
-            <x:ExcelWorksheets>
-                <x:ExcelWorksheet>
-                    <x:Name>Devoluções</x:Name>
-                    <x:WorksheetOptions>
-                        <x:Selected/>
-                        <x:DisplayGridlines/>
-                        <x:FitToPage/>
-                        <x:DoNotDisplayGridlines/>
-                        <x:Print>
-                            <x:ValidPrinterInfo/>
-                            <x:PaperSizeIndex>9</x:PaperSizeIndex>
-                            <x:Scale>100</x:Scale>
-                            <x:FitWidth>1</x:FitWidth>
-                            <x:FitHeight>999</x:FitHeight>
-                            <x:HorizontalResolution>600</x:HorizontalResolution>
-                            <x:VerticalResolution>600</x:VerticalResolution>
-                        </x:Print>
-                        <x:PageSetup>
-                            <x:Layout x:Orientation="Landscape"/>
-                            <x:Header x:Margin="0.2"/>
-                            <x:Footer x:Margin="0.2"/>
-                            <x:PageMargins
-                                x:Bottom="0.25"
-                                x:Left="0.15"
-                                x:Right="0.15"
-                                x:Top="0.25"/>
-                        </x:PageSetup>
-                        <x:CenterHorizontal/>
-                    </x:WorksheetOptions>
-                </x:ExcelWorksheet>
-            </x:ExcelWorksheets>
-        </x:ExcelWorkbook>
-    </xml>
-    <![endif]-->
+  <xml>
+      <x:ExcelWorkbook>
+          <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                  <x:Name>Devoluções</x:Name>
+                  <x:WorksheetOptions>
+                      <x:Selected/>
+                      <x:DisplayGridlines/>
+                      <x:FitToPage/>
+                      <x:DoNotDisplayGridlines/>
+                      <x:Print>
+                          <x:ValidPrinterInfo/>
+                          <x:PaperSizeIndex>9</x:PaperSizeIndex>
+                          <x:Scale>100</x:Scale>
+                          <x:FitWidth>1</x:FitWidth>
+                          <x:FitHeight>999</x:FitHeight>
+                      </x:Print>
+                      <x:PageSetup>
+                          <x:Layout x:Orientation="Landscape"/>
+                      </x:PageSetup>
+                      <x:CenterHorizontal/>
+                  </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+          </x:ExcelWorksheets>
+      </x:ExcelWorkbook>
+  </xml>
+  <![endif]-->
 
     <style>
       @page {
@@ -493,13 +680,7 @@ if ($export === 'excel') {
         border: 1px solid #000;
       }
 
-      .tbl-meta td {
-        border: 1px solid #000;
-        padding: 6px;
-        font-size: 11pt;
-        vertical-align: middle;
-      }
-
+      .tbl-meta td,
       .tbl-main th,
       .tbl-main td {
         border: 1px solid #000;
@@ -513,7 +694,6 @@ if ($export === 'excel') {
         font-weight: 700;
         text-align: center;
         background: #dbeafe;
-        border: 1px solid #000 !important;
       }
 
       .head {
@@ -723,7 +903,15 @@ if (isset($_GET['ajax'])) {
 
     if ($ajax === 'list') {
       if (!table_exists($pdo, 'devolucoes')) {
-        json_out(['ok' => true, 'items' => [], 'page' => 1, 'per' => 10, 'total_rows' => 0, 'total_pages' => 1, 'totals' => []]);
+        json_out([
+          'ok' => true,
+          'items' => [],
+          'page' => 1,
+          'per' => 10,
+          'total_rows' => 0,
+          'total_pages' => 1,
+          'totals' => []
+        ]);
       }
 
       $page = to_int($_GET['page'] ?? 1, 1, 999999);
@@ -755,6 +943,7 @@ if (isset($_GET['ajax'])) {
       $st->bindValue(':lim', (int)$per, PDO::PARAM_INT);
       $st->bindValue(':off', (int)$off, PDO::PARAM_INT);
       $st->execute();
+
       $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
       $itemsMap = fetch_items_map_for_devolucoes($pdo, $rows);
 
@@ -762,20 +951,20 @@ if (isset($_GET['ajax'])) {
       foreach ($rows as $r) {
         $id = (int)($r['id'] ?? 0);
         $items[] = [
-          'id'      => $id,
-          'saleNo'  => ($r['venda_no'] !== null ? (int)$r['venda_no'] : null),
-          'customer' => (string)($r['cliente'] ?? ''),
-          'date'    => (string)($r['data'] ?? ''),
-          'time'    => (string)($r['hora'] ?? ''),
-          'type'    => (string)($r['tipo'] ?? 'TOTAL'),
-          'product' => (string)($r['produto'] ?? ''),
-          'qty'     => ($r['qtd'] !== null ? (int)$r['qtd'] : null),
-          'amount'  => (float)($r['valor'] ?? 0),
-          'reason'  => (string)($r['motivo'] ?? 'OUTRO'),
-          'note'    => (string)($r['obs'] ?? ''),
-          'status'  => (string)($r['status'] ?? 'ABERTO'),
+          'id'         => $id,
+          'saleNo'     => ($r['venda_no'] !== null ? (int)$r['venda_no'] : null),
+          'customer'   => (string)($r['cliente'] ?? ''),
+          'date'       => (string)($r['data'] ?? ''),
+          'time'       => (string)($r['hora'] ?? ''),
+          'type'       => (string)($r['tipo'] ?? 'TOTAL'),
+          'product'    => (string)($r['produto'] ?? ''),
+          'qty'        => ($r['qtd'] !== null ? (int)$r['qtd'] : null),
+          'amount'     => (float)($r['valor'] ?? 0),
+          'reason'     => (string)($r['motivo'] ?? 'OUTRO'),
+          'note'       => (string)($r['obs'] ?? ''),
+          'status'     => (string)($r['status'] ?? 'ABERTO'),
           'created_at' => (string)($r['created_at'] ?? ''),
-          'items'   => $itemsMap[$id] ?? ['—'],
+          'items'      => $itemsMap[$id] ?? ['—'],
           'items_text' => join_items_for_table($itemsMap[$id] ?? []),
         ];
       }
@@ -788,6 +977,7 @@ if (isset($_GET['ajax'])) {
         GROUP BY UPPER(TRIM(d.status))
       ");
       $stT->execute($p2);
+
       $tot = ['ABERTO' => 0.0, 'CONCLUIDO' => 0.0, 'CANCELADO' => 0.0, 'GERAL' => 0.0];
       while ($r = $stT->fetch(PDO::FETCH_ASSOC)) {
         $stx = strtoupper((string)($r['st'] ?? 'ABERTO'));
@@ -851,10 +1041,14 @@ if (isset($_GET['ajax'])) {
       } else {
         if ($product === '') json_out(['ok' => false, 'msg' => 'Informe o produto para devolução parcial.'], 400);
         if ($qty < 1) json_out(['ok' => false, 'msg' => 'Informe a quantidade (mín. 1).'], 400);
-        if ($status === 'CONCLUIDO') {
-          $code = extract_product_code($product);
-          if ($code === '') json_out(['ok' => false, 'msg' => 'Para concluir devolução PARCIAL, informe o produto com código (ex: P0001 - Arroz).'], 400);
+
+        $resolved = resolve_partial_item($pdo, $saleNo, $product);
+        if (!$resolved) {
+          json_out(['ok' => false, 'msg' => 'Não foi possível localizar o item correto da devolução parcial. Selecione o produto da lista da venda ou informe CODIGO - NOME.'], 400);
         }
+
+        // salva normalizado no campo produto, mas a exibição/listagem ignora o texto bruto
+        $product = trim((string)$resolved['codigo']) . ' - ' . trim((string)$resolved['nome']);
       }
 
       $pdo->beginTransaction();
@@ -873,19 +1067,19 @@ if (isset($_GET['ajax'])) {
         }
 
         $oldEffect = $old ? devolucao_effect($pdo, [
-          'status' => (string)($old['status'] ?? ''),
-          'tipo'   => (string)($old['tipo'] ?? 'TOTAL'),
+          'status'   => (string)($old['status'] ?? ''),
+          'tipo'     => (string)($old['tipo'] ?? 'TOTAL'),
           'venda_no' => (int)($old['venda_no'] ?? 0),
-          'produto' => (string)($old['produto'] ?? ''),
-          'qtd'    => (int)($old['qtd'] ?? 0),
+          'produto'  => (string)($old['produto'] ?? ''),
+          'qtd'      => (int)($old['qtd'] ?? 0),
         ]) : [];
 
         $newEffect = devolucao_effect($pdo, [
-          'status' => $status,
-          'type'   => $type,
-          'saleNo' => (int)($saleNo ?? 0),
+          'status'  => $status,
+          'type'    => $type,
+          'saleNo'  => (int)($saleNo ?? 0),
           'product' => $product,
-          'qty'    => ($type === 'PARCIAL' ? $qty : 0),
+          'qty'     => ($type === 'PARCIAL' ? $qty : 0),
         ]);
 
         $delta = $newEffect;
@@ -893,7 +1087,9 @@ if (isset($_GET['ajax'])) {
         foreach ($oldEffect as $k => $v) $negOld[$k] = -1 * (int)$v;
         $delta = map_add($delta, $negOld);
 
-        if ($delta && table_exists($pdo, 'produtos')) $missing = apply_stock_delta($pdo, $delta);
+        if ($delta && table_exists($pdo, 'produtos')) {
+          $missing = apply_stock_delta($pdo, $delta);
+        }
 
         if ($id > 0) {
           $st = $pdo->prepare("
@@ -972,11 +1168,11 @@ if (isset($_GET['ajax'])) {
         }
 
         $oldEffect = devolucao_effect($pdo, [
-          'status' => (string)($old['status'] ?? ''),
-          'tipo'   => (string)($old['tipo'] ?? 'TOTAL'),
+          'status'   => (string)($old['status'] ?? ''),
+          'tipo'     => (string)($old['tipo'] ?? 'TOTAL'),
           'venda_no' => (int)($old['venda_no'] ?? 0),
-          'produto' => (string)($old['produto'] ?? ''),
-          'qtd'    => (int)($old['qtd'] ?? 0),
+          'produto'  => (string)($old['produto'] ?? ''),
+          'qtd'      => (int)($old['qtd'] ?? 0),
         ]);
 
         if ($oldEffect && table_exists($pdo, 'produtos')) {
@@ -1221,17 +1417,29 @@ $flash = flash_pop();
       justify-content: flex-end;
       gap: 10px;
       margin-top: 12px;
+      flex-wrap: wrap;
     }
 
-    .pager-box .page-text {
+    .page-btn {
+      min-width: 42px;
+      height: 38px;
+      border: 1px solid rgba(148, 163, 184, .35);
+      border-radius: 10px;
+      background: #fff;
+      font-weight: 900;
+      color: #334155;
+    }
+
+    .page-btn[disabled] {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .page-text {
       font-size: 12px;
       color: #64748b;
       font-weight: 900;
-    }
-
-    .pager-box .btn-disabled {
-      opacity: .45;
-      pointer-events: none;
+      padding: 0 6px;
     }
 
     .search-wrap {
@@ -1687,7 +1895,7 @@ $flash = flash_pop();
               <div class="head">
                 <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-list me-1"></i> Listagem</div>
                 <div class="toolbar">
-                  <input class="form-control compact grow" id="qDev" placeholder="Buscar: venda, cliente, produto, motivo, obs..." />
+                  <input class="form-control compact grow" id="qDev" placeholder="Buscar: id, venda, cliente, produto, itens, tipo, status..." />
                   <select class="form-select compact w180" id="fStatus">
                     <option value="">Todos</option>
                     <option value="ABERTO">Em aberto</option>
@@ -1967,6 +2175,13 @@ $flash = flash_pop();
       if (isTotal) {
         hideProdSuggest();
         applyTotalFromSaleIfAny();
+      } else {
+        if (String(dProduto.value || '').startsWith('VENDA #')) {
+          dProduto.value = '';
+        }
+        if (!dQtd.value || Number(dQtd.value) < 1) {
+          dQtd.value = 1;
+        }
       }
     }
 
@@ -2235,25 +2450,23 @@ $flash = flash_pop();
         pagerDev.innerHTML = "";
         return;
       }
+
       pagerDev.style.display = "flex";
-
-      const prevDisabled = CUR_PAGE <= 1 ? "btn-disabled" : "";
-      const nextDisabled = CUR_PAGE >= TOTAL_PAGES ? "btn-disabled" : "";
-
       pagerDev.innerHTML = `
-        <button class="main-btn light-btn btn-hover btn-sm ${prevDisabled}" id="pgPrev" type="button" title="Anterior">
-          <i class="lni lni-chevron-left"></i>
-        </button>
+        <button class="page-btn" id="pgPrev" ${CUR_PAGE <= 1 ? 'disabled' : ''}>‹</button>
         <span class="page-text">Página ${CUR_PAGE}/${TOTAL_PAGES}</span>
-        <button class="main-btn light-btn btn-hover btn-sm ${nextDisabled}" id="pgNext" type="button" title="Próxima">
-          <i class="lni lni-chevron-right"></i>
-        </button>
+        <button class="page-btn" id="pgNext" ${CUR_PAGE >= TOTAL_PAGES ? 'disabled' : ''}>›</button>
       `;
 
       const prevBtn = document.getElementById('pgPrev');
       const nextBtn = document.getElementById('pgNext');
-      if (prevBtn && CUR_PAGE > 1) prevBtn.addEventListener('click', () => loadList(CUR_PAGE - 1));
-      if (nextBtn && CUR_PAGE < TOTAL_PAGES) nextBtn.addEventListener('click', () => loadList(CUR_PAGE + 1));
+
+      if (prevBtn) prevBtn.addEventListener('click', () => {
+        if (CUR_PAGE > 1) loadList(CUR_PAGE - 1);
+      });
+      if (nextBtn) nextBtn.addEventListener('click', () => {
+        if (CUR_PAGE < TOTAL_PAGES) loadList(CUR_PAGE + 1);
+      });
     }
 
     async function loadList(page = 1) {
@@ -2264,6 +2477,7 @@ $flash = flash_pop();
 
       CUR_PAGE = Number(r.page || 1);
       TOTAL_PAGES = Number(r.total_pages || 1);
+
       ROWS = (r.items || []).map(x => ({
         id: Number(x.id),
         saleNo: (x.saleNo == null ? null : Number(x.saleNo)),
