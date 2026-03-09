@@ -10,8 +10,12 @@ class SalesController extends BaseController {
         $saleModel = new Sale();
         $sales = $saleModel->getRecent();
 
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+
         $this->render('sales', [
             'sales' => $sales,
+            'caixaAberto' => $caixaAberto,
             'title' => 'Ponto de Venda & Checkout',
             'pageTitle' => 'Terminal de Vendas (PDV)'
         ]);

@@ -203,6 +203,8 @@ class ImportacaoAutomaticaController extends BaseController {
             }
             exit;
         }
+    }
+
     public function baixar_xml() {
         $id = $_GET['id'] ?? null;
         if (!$id) exit;
