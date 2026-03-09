@@ -760,8 +760,8 @@ if ($action === 'excel') {
 
         <style>
             @page {
-                size: A4 landscape;
-                margin: 0.5cm;
+                size: A4 landscape !important;
+                margin: 0.5cm !important;
             }
 
             html,
