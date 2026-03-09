@@ -71,11 +71,6 @@ function brl(float $v): string
     return 'R$ ' . number_format($v, 2, ',', '.');
 }
 
-function num_pt(float $v): string
-{
-    return number_format($v, 2, ',', '.');
-}
-
 function table_exists(PDO $pdo, string $table): bool
 {
     $sql = "SELECT COUNT(*)
@@ -133,19 +128,16 @@ function build_where(array &$params): string
     }
 
     if ($q !== '') {
-        if (ctype_digit($q)) {
-            $where .= " AND v.id = :vid ";
-            $params[':vid'] = (int)$q;
-        } else {
-            $where .= " AND (
-                v.cliente    LIKE :q
-                OR v.endereco LIKE :q
-                OR v.obs      LIKE :q
-                OR v.pagamento LIKE :q
-                OR v.canal     LIKE :q
-            ) ";
-            $params[':q'] = '%' . $q . '%';
-        }
+        $where .= " AND (
+            CAST(v.id AS CHAR) LIKE :q_id
+            OR COALESCE(v.cliente,'') LIKE :q_texto
+            OR COALESCE(v.endereco,'') LIKE :q_texto
+            OR COALESCE(v.obs,'') LIKE :q_texto
+            OR COALESCE(v.pagamento,'') LIKE :q_texto
+            OR COALESCE(v.canal,'') LIKE :q_texto
+        ) ";
+        $params[':q_id'] = '%' . $q . '%';
+        $params[':q_texto'] = '%' . $q . '%';
     }
 
     return $where;
@@ -292,7 +284,7 @@ function fetch_one_sale(int $id): ?array
 
     foreach ($itens as $it) {
         $itensTotal += (float)$it['total'];
-        $itensQtd += (float)$it['qtd'];
+        $itensQtd += (float)($it['qtd'] ?? 0);
     }
 
     return [
@@ -308,8 +300,8 @@ function fetch_filtered_result(): array
     $pdo = db();
 
     $page = max(1, get_int('page', 1));
-    $per  = get_int('per', 25);
-    $per  = in_array($per, [10, 25, 50, 100], true) ? $per : 10;
+    $per  = get_int('per', 10);
+    $per  = in_array($per, [10, 20, 30, 40, 50, 100], true) ? $per : 10;
     $off  = ($page - 1) * $per;
 
     $params = [];
@@ -435,7 +427,7 @@ function fetch_initial_result(): array
 {
     $pdo = db();
 
-    $per = 25;
+    $per = 10;
 
     $sql = "
         SELECT
@@ -610,11 +602,11 @@ function render_print_html(array $rows, string $agora, string $di, string $df, s
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>PAINEL DA DISTRIBUIDORA - VENDIDOS</title>
+        <title>Vendidos - Exportação PDF</title>
         <style>
             @page {
                 size: A4 landscape;
-                margin: 12mm;
+                margin: 10mm;
             }
 
             * {
@@ -625,52 +617,118 @@ function render_print_html(array $rows, string $agora, string $di, string $df, s
                 font-family: Arial, Helvetica, sans-serif;
                 color: #0f172a;
                 margin: 0;
+                background: #eef2f7;
+            }
+
+            .screen-wrap {
+                max-width: 1500px;
+                margin: 18px auto;
+                padding: 0 14px;
             }
 
             .sheet {
-                width: 100%;
+                background: #fff;
+                border: 1px solid #64748b;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 12px 35px rgba(15, 23, 42, .10);
             }
 
-            .meta-table,
-            .report-table {
+            .topbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                padding: 14px 16px;
+                border-bottom: 1px solid #94a3b8;
+                background: #f8fafc;
+            }
+
+            .topbar h1 {
+                margin: 0;
+                font-size: 18px;
+                line-height: 1.2;
+            }
+
+            .topbar .sub {
+                font-size: 12px;
+                color: #475569;
+                margin-top: 4px;
+            }
+
+            .btn-print {
+                display: inline-block;
+                border: 1px solid #94a3b8;
+                background: #fff;
+                color: #0f172a;
+                padding: 10px 14px;
+                border-radius: 10px;
+                font-weight: 700;
+                cursor: pointer;
+            }
+
+            .meta-grid {
+                display: grid;
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .meta-box {
+                border-right: 1px solid #94a3b8;
+                padding: 10px 12px;
+                min-height: 66px;
+            }
+
+            .meta-box:last-child {
+                border-right: none;
+            }
+
+            .meta-lbl {
+                font-size: 11px;
+                font-weight: 700;
+                color: #475569;
+                text-transform: uppercase;
+                margin-bottom: 6px;
+            }
+
+            .meta-val {
+                font-size: 13px;
+                font-weight: 700;
+                color: #0f172a;
+                word-break: break-word;
+            }
+
+            .table-wrap {
+                padding: 0;
+            }
+
+            table {
                 width: 100%;
                 border-collapse: collapse;
+                table-layout: fixed;
             }
 
-            .meta-table {
-                margin-bottom: 8px;
-            }
-
-            .meta-table td {
+            th,
+            td {
                 border: 1px solid #94a3b8;
-                padding: 7px 8px;
-                font-size: 12px;
-            }
-
-            .meta-title {
-                text-align: center;
-                font-size: 16px;
-                font-weight: 900;
-                background: #eef2ff;
-            }
-
-            .report-table th,
-            .report-table td {
-                border: 1px solid #94a3b8;
-                padding: 8px;
-                font-size: 12px;
+                padding: 8px 8px;
+                font-size: 11px;
                 vertical-align: top;
             }
 
-            .report-table thead th {
-                background: #eef2ff;
+            thead th {
+                background: #e2e8f0;
                 text-align: left;
-                font-weight: 900;
+                font-weight: 800;
             }
 
-            .report-table tfoot td {
-                font-weight: 900;
+            tbody td {
+                background: #fff;
+            }
+
+            tfoot td {
                 background: #f8fafc;
+                font-weight: 800;
             }
 
             .right {
@@ -681,114 +739,167 @@ function render_print_html(array $rows, string $agora, string $di, string $df, s
                 text-align: center;
             }
 
-            .btn {
-                display: none;
+            .col-id {
+                width: 56px;
             }
 
-            @media screen {
+            .col-data {
+                width: 86px;
+            }
+
+            .col-cliente {
+                width: 220px;
+            }
+
+            .col-canal {
+                width: 92px;
+            }
+
+            .col-pag {
+                width: 100px;
+            }
+
+            .col-sub {
+                width: 100px;
+            }
+
+            .col-desc {
+                width: 100px;
+            }
+
+            .col-ent {
+                width: 100px;
+            }
+
+            .col-total {
+                width: 110px;
+            }
+
+            .note {
+                padding: 10px 12px;
+                border-top: 1px solid #94a3b8;
+                font-size: 11px;
+                color: #475569;
+                background: #f8fafc;
+            }
+
+            @media print {
                 body {
-                    background: #0b1220;
-                    padding: 24px;
+                    background: #fff;
                 }
 
-                .sheet-wrap {
-                    max-width: 1400px;
-                    margin: 0 auto;
-                    background: #fff;
-                    border-radius: 14px;
-                    padding: 18px;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+                .screen-wrap {
+                    max-width: none;
+                    margin: 0;
+                    padding: 0;
                 }
 
-                .btn {
-                    display: inline-block;
-                    margin-bottom: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    border: 1px solid #cbd5e1;
-                    cursor: pointer;
-                    font-weight: 900;
-                    background: #fff;
+                .sheet {
+                    border: none;
+                    border-radius: 0;
+                    box-shadow: none;
+                }
+
+                .btn-print {
+                    display: none !important;
+                }
+            }
+
+            @media screen and (max-width: 1100px) {
+                .meta-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
                 }
             }
         </style>
     </head>
 
     <body>
-        <div class="sheet-wrap">
-            <button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button>
-
+        <div class="screen-wrap">
             <div class="sheet">
-                <table class="meta-table">
-                    <tr>
-                        <td colspan="9" class="meta-title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
-                    </tr>
-                    <tr>
-                        <td colspan="9">Gerado em: <?= e($agora) ?></td>
-                    </tr>
-                    <tr>
-                        <td colspan="9">
-                            Período: <?= e($di) ?> até <?= e($df) ?> |
-                            Canal: <?= e($canal) ?> |
-                            Pagamento: <?= e($pag) ?> |
-                            Busca: <?= e($q) ?>
-                        </td>
-                    </tr>
-                </table>
+                <div class="topbar">
+                    <div>
+                        <h1>PAINEL DA DISTRIBUIDORA - VENDIDOS</h1>
+                        <div class="sub">Relatório pronto para imprimir ou salvar em PDF</div>
+                    </div>
+                    <button class="btn-print" onclick="window.print()">Imprimir / Salvar em PDF</button>
+                </div>
 
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th style="width:70px;">ID</th>
-                            <th style="width:95px;">Data</th>
-                            <th>Cliente</th>
-                            <th style="width:120px;">Canal</th>
-                            <th style="width:130px;">Pagamento</th>
-                            <th class="right" style="width:110px;">Subtotal</th>
-                            <th class="right" style="width:110px;">Desconto</th>
-                            <th class="right" style="width:110px;">Entrega</th>
-                            <th class="right" style="width:110px;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!$rows): ?>
+                <div class="meta-grid">
+                    <div class="meta-box">
+                        <div class="meta-lbl">Gerado em</div>
+                        <div class="meta-val"><?= e($agora) ?></div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-lbl">Data inicial</div>
+                        <div class="meta-val"><?= e($di) ?></div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-lbl">Data final</div>
+                        <div class="meta-val"><?= e($df) ?></div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-lbl">Canal / Pagamento</div>
+                        <div class="meta-val"><?= e($canal) ?> / <?= e($pag) ?></div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-lbl">Busca</div>
+                        <div class="meta-val"><?= e($q) ?></div>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
                             <tr>
-                                <td colspan="9" class="center">Nenhuma venda encontrada.</td>
+                                <th class="col-id">ID</th>
+                                <th class="col-data">Data</th>
+                                <th class="col-cliente">Cliente</th>
+                                <th class="col-canal">Canal</th>
+                                <th class="col-pag">Pagamento</th>
+                                <th class="col-sub right">Subtotal</th>
+                                <th class="col-desc right">Desconto</th>
+                                <th class="col-ent right">Entrega</th>
+                                <th class="col-total right">Total</th>
                             </tr>
-                        <?php else: ?>
-                            <?php foreach ($rows as $r): ?>
+                        </thead>
+                        <tbody>
+                            <?php if (!$rows): ?>
                                 <tr>
-                                    <td><?= (int)$r['id'] ?></td>
-                                    <td><?= e((string)$r['data']) ?></td>
-                                    <td><?= e((string)($r['cliente'] ?? '')) ?></td>
-                                    <td><?= e((string)($r['canal'] ?? '')) ?></td>
-                                    <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
-                                    <td class="right"><?= e(brl((float)$r['subtotal'])) ?></td>
-                                    <td class="right"><?= e(brl((float)$r['desconto'])) ?></td>
-                                    <td class="right"><?= e(brl((float)$r['taxa'])) ?></td>
-                                    <td class="right"><?= e(brl((float)$r['total'])) ?></td>
+                                    <td colspan="9" class="center">Nenhuma venda encontrada.</td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5" class="right">Totais</td>
-                            <td class="right"><?= e(brl($sumSub)) ?></td>
-                            <td class="right"><?= e(brl($sumDesc)) ?></td>
-                            <td class="right"><?= e(brl($sumTax)) ?></td>
-                            <td class="right"><?= e(brl($sumTot)) ?></td>
-                        </tr>
-                    </tfoot>
-                </table>
+                            <?php else: ?>
+                                <?php foreach ($rows as $r): ?>
+                                    <tr>
+                                        <td><?= (int)$r['id'] ?></td>
+                                        <td><?= e((string)$r['data']) ?></td>
+                                        <td><?= e((string)($r['cliente'] ?? '')) ?></td>
+                                        <td><?= e((string)($r['canal'] ?? '')) ?></td>
+                                        <td><?= e((string)($r['pagamento'] ?? '')) ?></td>
+                                        <td class="right"><?= e(brl((float)$r['subtotal'])) ?></td>
+                                        <td class="right"><?= e(brl((float)$r['desconto'])) ?></td>
+                                        <td class="right"><?= e(brl((float)$r['taxa'])) ?></td>
+                                        <td class="right"><?= e(brl((float)$r['total'])) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5" class="right">Totais</td>
+                                <td class="right"><?= e(brl($sumSub)) ?></td>
+                                <td class="right"><?= e(brl($sumDesc)) ?></td>
+                                <td class="right"><?= e(brl($sumTax)) ?></td>
+                                <td class="right"><?= e(brl($sumTot)) ?></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="note">
+                    Observação: sem biblioteca externa, esta página fica pronta para o navegador salvar como PDF mantendo o layout.
+                </div>
             </div>
         </div>
-
-        <script>
-            window.addEventListener('load', () => {
-                setTimeout(() => window.print(), 300);
-            });
-        </script>
     </body>
 
     </html>
@@ -1503,27 +1614,21 @@ $initialTotais = $initial['totais'];
             <ul>
                 <li class="nav-item">
                     <a href="dashboard.php">
-                        <span class="icon">
-                            <i class="lni lni-dashboard"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-dashboard"></i></span>
                         <span class="text">Dashboard</span>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="vendas.php">
-                        <span class="icon">
-                            <i class="lni lni-cart"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-cart"></i></span>
                         <span class="text">Vendas</span>
                     </a>
                 </li>
 
                 <li class="nav-item nav-item-has-children active">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-layers"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-layers"></i></span>
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav show">
@@ -1535,9 +1640,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-package"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-package"></i></span>
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -1551,9 +1654,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-users"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-users"></i></span>
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
@@ -1565,9 +1666,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item">
                     <a href="relatorios.php">
-                        <span class="icon">
-                            <i class="lni lni-clipboard"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-clipboard"></i></span>
                         <span class="text">Relatórios</span>
                     </a>
                 </li>
@@ -1578,9 +1677,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-cog"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-cog"></i></span>
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -1591,9 +1688,7 @@ $initialTotais = $initial['totais'];
 
                 <li class="nav-item">
                     <a href="suporte.php">
-                        <span class="icon">
-                            <i class="lni lni-whatsapp"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-whatsapp"></i></span>
                         <span class="text">Suporte</span>
                     </a>
                 </li>
@@ -1665,8 +1760,10 @@ $initialTotais = $initial['totais'];
                                 <i class="lni lni-printer me-1"></i> PDF
                             </button>
                             <select id="per" class="form-select compact" style="min-width:190px;">
-                                <option value="10">10 por página</option>
-                                <option value="25" selected>25 por página</option>
+                                <option value="10" selected>10 por página</option>
+                                <option value="20">20 por página</option>
+                                <option value="30">30 por página</option>
+                                <option value="40">40 por página</option>
                                 <option value="50">50 por página</option>
                                 <option value="100">100 por página</option>
                             </select>
@@ -1705,7 +1802,7 @@ $initialTotais = $initial['totais'];
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label mini">Cliente / Venda #</label>
-                                <input type="text" class="form-control compact" id="q" placeholder="Ex.: Maria / 123" autocomplete="off">
+                                <input type="text" class="form-control compact" id="q" placeholder="Digite para pesquisar automaticamente..." autocomplete="off">
                             </div>
 
                             <div class="col-12 d-flex gap-2 flex-wrap mt-2">
@@ -1743,7 +1840,7 @@ $initialTotais = $initial['totais'];
                     <div class="col-lg-8">
                         <div class="cardx card-table">
                             <div class="head">
-                                <div class="muted"><b>Vendidos</b> • clique em <b>Detalhes</b> para ver itens/infos</div>
+                                <div class="muted"><b>Vendidos</b> • pesquisa parcial automática enquanto digita</div>
                                 <div class="toolbar">
                                     <div class="pill ok" id="pillCountTable"><?= (int)$initialTotais['qtd'] ?> vendas</div>
                                     <div class="pill" id="pillLoading" style="display:none;">
@@ -1894,8 +1991,9 @@ $initialTotais = $initial['totais'];
         const state = {
             page: <?= (int)$initialMeta['page'] ?>,
             pages: <?= (int)$initialMeta['pages'] ?>,
-            per: 25,
-            lastCupomId: null
+            per: 10,
+            lastCupomId: null,
+            searchTimer: null
         };
 
         function brl(v) {
@@ -1963,10 +2061,21 @@ $initialTotais = $initial['totais'];
         }
 
         function buildExportUrl(action) {
-            const p = buildParams();
+            const p = new URLSearchParams();
             p.set('action', action);
-            p.delete('page');
-            p.delete('per');
+
+            const di = el('di').value.trim();
+            const df = el('df').value.trim();
+            const canal = el('canal').value.trim();
+            const pag = el('pag').value.trim();
+            const q = el('q').value.trim();
+
+            if (di) p.set('di', di);
+            if (df) p.set('df', df);
+            if (canal) p.set('canal', canal);
+            if (pag) p.set('pag', pag);
+            if (q) p.set('q', q);
+
             return `vendidos.php?${p.toString()}`;
         }
 
@@ -2095,6 +2204,15 @@ $initialTotais = $initial['totais'];
             }
         }
 
+        function triggerAutoSearch() {
+            clearTimeout(state.searchTimer);
+            state.searchTimer = setTimeout(() => {
+                state.page = 1;
+                state.per = Number(el('per').value || 10);
+                searchRows();
+            }, 350);
+        }
+
         async function openDetails(id) {
             try {
                 const res = await fetch(`vendidos.php?action=one&id=${id}`, {
@@ -2175,7 +2293,7 @@ $initialTotais = $initial['totais'];
 
         el('btnFiltrar').addEventListener('click', () => {
             state.page = 1;
-            state.per = Number(el('per').value || 25);
+            state.per = Number(el('per').value || 10);
             searchRows();
         });
 
@@ -2186,7 +2304,7 @@ $initialTotais = $initial['totais'];
             el('pag').value = 'TODOS';
             el('q').value = '';
             state.page = 1;
-            state.per = Number(el('per').value || 25);
+            state.per = Number(el('per').value || 10);
             searchRows();
         });
 
@@ -2203,7 +2321,7 @@ $initialTotais = $initial['totais'];
         });
 
         el('per').addEventListener('change', () => {
-            state.per = Number(el('per').value || 25);
+            state.per = Number(el('per').value || 10);
             state.page = 1;
             searchRows();
         });
@@ -2216,9 +2334,30 @@ $initialTotais = $initial['totais'];
             window.open(buildExportUrl('print'), '_blank');
         });
 
+        el('q').addEventListener('input', () => {
+            triggerAutoSearch();
+        });
+
+        el('di').addEventListener('change', () => {
+            triggerAutoSearch();
+        });
+
+        el('df').addEventListener('change', () => {
+            triggerAutoSearch();
+        });
+
+        el('canal').addEventListener('change', () => {
+            triggerAutoSearch();
+        });
+
+        el('pag').addEventListener('change', () => {
+            triggerAutoSearch();
+        });
+
         el('q').addEventListener('keydown', (ev) => {
             if (ev.key === 'Enter') {
                 ev.preventDefault();
+                clearTimeout(state.searchTimer);
                 state.page = 1;
                 searchRows();
             }
