@@ -73,7 +73,7 @@ class AuthorizationService extends BaseService {
         if ($auth) return ['success' => true];
 
         // Check if it exists for ANOTHER type to provide better error message
-        $anyAuth = $this->repository->db->prepare("SELECT tipo FROM autorizacoes_temporarias WHERE codigo = ? AND filial_id = ? AND utilizado = 0 AND validade > datetime('now', 'localtime') LIMIT 1");
+        $anyAuth = $this->repository->db->prepare("SELECT tipo FROM autorizacoes_temporarias WHERE codigo = ? AND filial_id = ? AND utilizado = 0 AND validade > NOW() LIMIT 1");
         $anyAuth->execute([$codigo, $filialId]);
         $found = $anyAuth->fetch();
 
