@@ -183,19 +183,26 @@ class FiscalService extends BaseService {
             if (!file_exists($pfxPath)) throw new Exception("Arquivo do certificado não encontrado no servidor.");
             
             $pfxContent = file_get_contents($pfxPath);
-            $certs = [];
             $password = $branch['certificado_senha'];
             
-            if (!openssl_pkcs12_read($pfxContent, $certs, $password)) {
-                throw new Exception("Falha ao ler o certificado digital. Verifique a senha.");
+            require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+            
+            try {
+                $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
+            } catch (\Exception $e) {
+                throw new Exception("Falha ao ler o certificado digital NFePHP: " . $e->getMessage());
             }
 
-            // 1. Test signing a dummy string
-            $dataToSign = "test-signature-" . time();
-            $signature = '';
-            if (!openssl_sign($dataToSign, $signature, $certs['pkey'], OPENSSL_ALGO_SHA256)) {
-                throw new Exception("O certificado foi aberto, mas falhou ao assinar dados (Chave privada inválida?).");
+            // 1. Check if the certificate is valid
+            if ($certificate->isExpired()) {
+                throw new Exception("O certificado digital está expirado desde " . $certificate->getValidTo()->format('d/m/Y H:i:s'));
             }
+            
+            // To pass the cert to the array formatting below, we extract them:
+            $certs = [
+                'cert' => $certificate->certificate,
+                'pkey' => $certificate->privateKey
+            ];
 
             // 2. Real connectivity check (Status do Serviço)
             $soapClient = new SefazSoapClient();
