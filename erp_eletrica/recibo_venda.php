@@ -52,132 +52,346 @@ $dataVenda = date('d/m/Y H:i', strtotime($venda['data_venda'] ?? $venda['created
 ?>
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="utf-8">
-    <title>Recibo #<?= $vendaId ?></title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recibo #<?= $vendaId ?> - Não Fiscal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <style>
-        :root { --ticket-max: 384px; --pad: 12px; --ink: #111; --paper: #fff; --bg: #f5f7fb; }
-        * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); -webkit-text-size-adjust: 100%; }
-        body { font: 13px/1.45 monospace; }
-        .wrapper { width: 100%; max-width: var(--ticket-max); margin: 10px auto 90px; background: var(--paper); border-radius: 12px; box-shadow: 0 10px 28px rgba(0,0,0,.08); padding: var(--pad); }
-        .center { text-align: center; }
-        .right  { text-align: right; }
-        .left   { text-align: left; }
-        .small  { font-size: 11px; }
-        .hr     { border-top: 1px dashed #000; margin: 8px 0; }
-        .tbl    { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .tbl thead th { border-bottom: 1px dashed #000; font-weight: 700; padding: 4px 0; }
-        .tbl td { padding: 3px 0; vertical-align: top; }
-        .badge-nf { display:inline-block; background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:6px; font-size:10px; border:1px solid #fca5a5; }
-        .actions { position:fixed; left:0; right:0; bottom:0; z-index:50; padding:10px; background:#fff; border-top:1px solid #e5e7eb; display:flex; gap:10px; justify-content:center; }
-        .btn { appearance:none; border:0; border-radius:10px; padding:11px 20px; font-family:system-ui,sans-serif; font-weight:600; cursor:pointer; transition:.2s; white-space:nowrap; font-size:14px; }
-        .btn-primary   { background:#2563eb; color:#fff; }
-        .btn-secondary { background:#6b7280; color:#fff; }
-        @page { size: 80mm auto; margin: 3mm; }
+        :root {
+            --ticket-max: 384px;
+            --pad: 12px;
+            --qr: 210px;
+            --accent: #1a73e8;
+            --ink: #111;
+            --paper: #fff;
+            --bg: #f5f7fb
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--ink);
+            -webkit-text-size-adjust: 100%
+        }
+
+        body {
+            font: 13px/1.45 monospace
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: var(--ticket-max);
+            margin: 10px auto 92px;
+            background: var(--paper);
+            border-radius: 12px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
+            padding: var(--pad)
+        }
+
+        header h2 {
+            font-size: 14px;
+            margin: 4px 0 2px;
+            text-transform: uppercase
+        }
+
+        .small {
+            font-size: 11px;
+            color: #111
+        }
+
+        .hr {
+            border-top: 1px dashed #000;
+            margin: 8px 0
+        }
+
+        .tbl {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed
+        }
+
+        .tbl thead th {
+            border-bottom: 1px dashed #000;
+            font-weight: 700;
+            padding: 4px 0
+        }
+
+        .tbl td {
+            padding: 3px 0;
+            vertical-align: top
+        }
+
+        .left {
+            text-align: left
+        }
+
+        .right {
+            text-align: right
+        }
+
+        .center {
+            text-align: center
+        }
+
+        .key {
+            letter-spacing: 1px;
+            word-spacing: 4px
+        }
+
+        .logo {
+            max-height: 28px
+        }
+
+        .qr {
+            display: block;
+            margin: 8px auto;
+            width: min(var(--qr), calc(100% - 2*var(--pad)));
+            height: auto;
+            aspect-ratio: 1/1
+        }
+
+        .badge {
+            display: inline-block;
+            background: #eef2ff;
+            color: #1f2937;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-size: 10px
+        }
+        
+        .badge-nf { 
+            display:inline-block; background:#fee2e2; color:#991b1b; padding:4px 8px; border-radius:6px; font-size:12px; border:1px solid #fca5a5; font-weight: bold;
+        }
+
+        .actions {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 50;
+            padding: 10px env(safe-area-inset-right) calc(10px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+            background: #fff;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+            justify-content: center
+        }
+
+        .btn {
+            appearance: none;
+            border: 0;
+            border-radius: 10px;
+            padding: 11px 16px;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .2s;
+            white-space: nowrap
+        }
+
+        .btn:focus {
+            outline: 3px solid rgba(26, 115, 232, .25);
+            outline-offset: 2px
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff
+        }
+
+        .btn-primary:hover {
+            filter: brightness(.95)
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: #fff
+        }
+
+        .btn-secondary:hover {
+            filter: brightness(.95)
+        }
+
+        @media (max-width:420px) {
+            body {
+                font-size: 12px
+            }
+
+            .wrapper {
+                margin: 6px auto 88px;
+                border-radius: 10px
+            }
+
+            :root {
+                --qr: 180px
+            }
+
+            .tbl thead th,
+            .tbl td {
+                padding: 2px 0
+            }
+        }
+
+        @media (max-width:340px) {
+            .wrapper {
+                border-radius: 0;
+                box-shadow: none;
+                margin: 0 auto 88px
+            }
+        }
+
+        @page {
+            size: 80mm auto;
+            margin: 3mm
+        }
+
         @media print {
-            html, body { background:#fff; }
-            .wrapper { box-shadow:none; border-radius:0; margin:0; max-width:unset; width:75mm; padding:0; }
-            .actions { display:none; }
+
+            html,
+            body {
+                background: #fff
+            }
+
+            .wrapper {
+                box-shadow: none;
+                border-radius: 0;
+                margin: 0;
+                max-width: unset;
+                width: 75mm;
+                padding: 0
+            }
+
+            .actions {
+                display: none
+            }
+
+            .qr {
+                width: 210px;
+                height: 210px
+            }
         }
     </style>
 </head>
+
 <body>
-<div class="wrapper" role="document">
-    <header class="center">
-        <div style="font-size:16px;font-weight:700;text-transform:uppercase;"><?= htmlspecialchars($venda['filial_nome'] ?? 'ERP Elétrica') ?></div>
-        <?php if ($venda['filial_cnpj']): ?>
-        <div class="small">CNPJ: <?= htmlspecialchars($venda['filial_cnpj']) ?></div>
-        <?php endif; ?>
-        <?php if ($venda['filial_endereco']): ?>
-        <div class="small"><?= htmlspecialchars($venda['filial_endereco']) ?><?php if($venda['filial_cidade']): ?>, <?= htmlspecialchars($venda['filial_cidade']) ?>/<?= htmlspecialchars($venda['filial_uf']) ?><?php endif; ?></div>
-        <?php endif; ?>
-        <?php if ($venda['filial_telefone']): ?>
-        <div class="small">Tel: <?= htmlspecialchars($venda['filial_telefone']) ?></div>
-        <?php endif; ?>
-    </header>
+    <div class="wrapper" role="document" aria-label="Recibo Não Fiscal">
+        <header class="center">
+            <h2><?= htmlspecialchars($venda['filial_nome'] ?? 'ERP Elétrica') ?></h2>
+            <div class="small">
+                <?php if ($venda['filial_cnpj']): ?>CNPJ: <?= htmlspecialchars($venda['filial_cnpj']) ?><br><?php endif; ?>
+                <?php if ($venda['filial_endereco']): ?>
+                    <?= htmlspecialchars($venda['filial_endereco']) ?>
+                    <?php if($venda['filial_cidade']): ?> - <?= htmlspecialchars($venda['filial_cidade']) ?>/<?= htmlspecialchars($venda['filial_uf']) ?><?php endif; ?>
+                    <br>
+                <?php endif; ?>
+                <?php if ($venda['filial_telefone']): ?>Tel: <?= htmlspecialchars($venda['filial_telefone']) ?><?php endif; ?>
+            </div>
+            <div class="hr"></div>
+            <div class="center"><span class="badge-nf">DOCUMENTO NÃO FISCAL</span></div>
+            <div class="hr"></div>
+        </header>
 
-    <div class="hr"></div>
-    <div class="center"><span class="badge-nf">RECIBO NÃO FISCAL</span></div>
-    <div class="hr"></div>
+        <div class="small"><b>Recibo Nº:</b> <?= $vendaId ?> &nbsp;&nbsp; <b>Data:</b> <?= $dataVenda ?></div>
+        <div class="small"><b>Vendedor:</b> <?= htmlspecialchars($venda['vendedor_nome'] ?? '—') ?></div>
 
-    <div class="small">Recibo Nº: <b>#<?= $vendaId ?></b></div>
-    <div class="small">Data: <b><?= $dataVenda ?></b></div>
-    <div class="small">Vendedor: <?= htmlspecialchars($venda['vendedor_nome'] ?? '—') ?></div>
+        <div class="hr"></div>
 
-    <div class="hr"></div>
+        <table class="tbl small" aria-label="Itens">
+            <colgroup>
+                <col style="width:40%">
+                <col style="width:10%">
+                <col style="width:10%">
+                <col style="width:18%">
+                <col style="width:22%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th class="left">Produto</th>
+                    <th class="right">Qtd</th>
+                    <th class="left">Un</th>
+                    <th class="right">V.Unit</th>
+                    <th class="right">V.Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($itens as $it): 
+                    $subtotal = $it['quantidade'] * $it['preco_unitario'];
+                ?>
+                    <tr>
+                        <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'], 0, 22, '..')) ?></td>
+                        <td class="right"><?= number_format($it['quantidade'],2,',','.') ?></td>
+                        <td class="left"><?= htmlspecialchars($it['unidade'] ?? 'UN') ?></td>
+                        <td class="right"><?= number_format($it['preco_unitario'],2,',','.') ?></td>
+                        <td class="right"><?= number_format($subtotal,2,',','.') ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
 
-    <table class="tbl small">
-        <colgroup>
-            <col style="width:40%">
-            <col style="width:10%">
-            <col style="width:10%">
-            <col style="width:18%">
-            <col style="width:22%">
-        </colgroup>
-        <thead>
-            <tr>
-                <th class="left">Produto</th>
-                <th class="right">Qtd</th>
-                <th class="left">Un</th>
-                <th class="right">V.Unit</th>
-                <th class="right">V.Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($itens as $it):
-                $subtotal = $it['quantidade'] * $it['preco_unitario'];
-            ?>
-            <tr>
-                <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'], 0, 22, '..')) ?></td>
-                <td class="right"><?= number_format($it['quantidade'],2,',','.') ?></td>
-                <td class="left"><?= htmlspecialchars($it['unidade'] ?? 'UN') ?></td>
-                <td class="right"><?= number_format($it['preco_unitario'],2,',','.') ?></td>
-                <td class="right"><?= number_format($subtotal,2,',','.') ?></td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+        <div class="hr"></div>
 
-    <div class="hr"></div>
+        <table class="tbl small" aria-label="Totais">
+            <tbody>
+                <tr>
+                    <td class="left"><b>QTDE DE ITENS</b></td>
+                    <td class="right"><?= count($itens) ?></td>
+                </tr>
+                <tr>
+                    <td class="left" style="font-size:14px;"><b>VALOR TOTAL R$</b></td>
+                    <td class="right" style="font-size:14px;"><b><?= number_format($venda['valor_total'],2,',','.') ?></b></td>
+                </tr>
+                <?php if ($venda['desconto_total'] > 0): ?><tr>
+                        <td class="left"><b>DESCONTO</b></td>
+                        <td class="right">- <?= number_format($venda['desconto_total'],2,',','.') ?></td>
+                    </tr><?php endif; ?>
+                <tr>
+                    <td class="left"><b>FORMA DE PAGAMENTO</b></td>
+                    <td class="right"><?= htmlspecialchars($formaPag) ?></td>
+                </tr>
+            </tbody>
+        </table>
 
-    <table class="tbl small">
-        <tbody>
-            <?php if ($venda['desconto_total'] > 0): ?>
-            <tr><td class="left"><b>DESCONTO</b></td><td class="right">- R$ <?= number_format($venda['desconto_total'],2,',','.') ?></td></tr>
-            <?php endif; ?>
-            <tr><td class="left"><b>QTDE DE ITENS</b></td><td class="right"><?= count($itens) ?></td></tr>
-            <tr><td class="left" style="font-size:14px;"><b>TOTAL R$</b></td><td class="right" style="font-size:14px;"><b><?= number_format($venda['valor_total'],2,',','.') ?></b></td></tr>
-            <tr><td class="left"><b>PAGAMENTO</b></td><td class="right"><?= htmlspecialchars($formaPag) ?></td></tr>
-        </tbody>
-    </table>
+        <div class="hr"></div>
 
-    <div class="hr"></div>
+        <div class="small"><b>CONSUMIDOR</b></div>
+        <div class="small">
+            <?= htmlspecialchars($venda['cliente_nome']) ?><br>
+            <?php if (!empty($venda['cpf_cnpj'])): ?>CPF/CNPJ: <?= htmlspecialchars($venda['cpf_cnpj']) ?><?php endif; ?>
+        </div>
 
-    <div class="small center">Cliente: <b><?= htmlspecialchars($venda['cliente_nome']) ?></b></div>
-    <?php if (!empty($venda['cpf_cnpj'])): ?>
-    <div class="small center">CPF/CNPJ: <?= htmlspecialchars($venda['cpf_cnpj']) ?></div>
-    <?php endif; ?>
+        <div class="hr"></div>
 
-    <div class="hr"></div>
-
-    <div class="small center" style="color:#888;">
-        Este documento não tem validade fiscal.<br>
-        Obrigado pela preferência!
+        <div class="center small" style="color:#888;">
+            Este documento não tem validade fiscal.<br>Obrigado pela preferência!
+        </div>
     </div>
-</div>
 
-<div class="actions">
-    <button class="btn btn-secondary" onclick="window.close()">← Fechar</button>
-    <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir</button>
-</div>
+    <!-- Barra de ações -->
+    <div class="actions" aria-label="Ações">
+        <button class="btn btn-secondary" onclick="window.close()">← Fechar</button>
+        <button id="btn-print" class="btn btn-primary" type="button">🖨️ Imprimir</button>
+    </div>
 
-<script>
-    // Auto open print dialog after render
-    window.addEventListener('load', function() {
-        setTimeout(() => window.print(), 600);
-    });
-</script>
+    <script>
+        (function() {
+            document.getElementById('btn-print').addEventListener('click', function() {
+                window.print();
+            });
+            window.addEventListener('load', function() {
+                setTimeout(() => window.print(), 600);
+            });
+        })();
+    </script>
 </body>
+
 </html>
