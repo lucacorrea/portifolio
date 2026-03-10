@@ -663,9 +663,19 @@ function fmtMoney($v): string
       height: 100%;
     }
 
+    .brand-vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      text-align: center;
+    }
+
     .brand-name {
       display: block;
-      font-size: 18px;
+      font-size: 12px;
       line-height: 1.2;
       font-weight: 600;
       color: #1e2a78;
