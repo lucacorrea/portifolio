@@ -301,8 +301,8 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav show">
-                        <li><a href="usuarios.php">Usuários e Permissões</a></li>
-                        <li><a href="parametros.php" class="active">Parâmetros do Sistema</a></li>
+                        <li><a href="usuarios.php" class="active">Usuários e Permissões</a></li>
+                        <li><a href="parametros.php">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
 
