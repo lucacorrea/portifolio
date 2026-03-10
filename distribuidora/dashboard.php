@@ -1018,26 +1018,6 @@ $total12m = array_sum($chart1);
               <div class="header-search d-none d-md-flex"></div>
             </div>
           </div>
-
-          <div class="col-lg-7 col-md-7 col-6">
-            <div class="header-right">
-              <div class="profile-box ml-15">
-                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                  <div class="profile-info">
-                    <div class="info">
-                      <div>
-                        <h6 class="fw-500">Sair</h6>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                  <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </header>
