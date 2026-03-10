@@ -200,67 +200,36 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Unidade</label>
-                        <select name="unidade" class="form-select shadow-sm" id="edit_unidade">
+                        <select name="unidade" class="form-select shadow-sm" id="edit_unidade" onchange="updateFormVisibility()">
                             <option value="UN">Unidade (UN)</option>
                             <option value="MT">Metro (MT)</option>
                             <option value="CX">Caixa (CX)</option>
                             <option value="PCT">Pacote (PCT)</option>
+                            <option value="RL">Rolo (RL)</option>
+                            <option value="PC">Peça (PC)</option>
+                            <option value="CJ">Conjunto (CJ)</option>
+                            <option value="PR">Par (PR)</option>
+                            <option value="CTL">Cartela (CTL)</option>
+                            <option value="KG">Quilograma (KG)</option>
+                            <option value="GR">Grama (GR)</option>
+                            <option value="L">Litro (L)</option>
+                            <option value="ML">Mililitro (ML)</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Tipo de Produto *</label>
-                        <select name="tipo_produto" class="form-select shadow-sm" id="edit_tipo_produto" required>
-                            <option value="simples">Item Simples</option>
-                            <option value="composto">Kit / Composto</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Quantidade (Estoque) *</label>
-                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required id="edit_quantidade" value="0">
-                    </div>
-                    <div class="col-md-8">
-                        <label class="form-label small fw-bold">Categoria</label>
-                        <select name="categoria" class="form-select shadow-sm" id="edit_categoria">
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?= $cat ?>"><?= $cat ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço de Custo (R$)</label>
-                        <input type="number" step="0.01" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço Venda (Normal)</label>
-                        <input type="number" step="0.01" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço 2</label>
-                        <input type="number" step="0.01" name="preco_venda_2" class="form-control shadow-sm" id="edit_preco_venda_2">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço 3</label>
-                        <input type="number" step="0.01" name="preco_venda_3" class="form-control shadow-sm" id="edit_preco_venda_3">
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Preço Atacado (R$)</label>
-                        <input type="number" step="0.01" name="preco_venda_atacado" class="form-control shadow-sm text-success" id="edit_preco_venda_atacado">
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="div_estoque_minimo">
                         <label class="form-label small fw-bold">Estoque Mínimo (Alerta)</label>
                         <input type="number" name="estoque_minimo" class="form-control shadow-sm text-danger" id="edit_estoque_minimo">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="div_foto">
                         <label class="form-label small fw-bold">Foto do Produto</label>
                         <input type="file" name="foto" class="form-control shadow-sm">
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="div_peso">
                         <label class="form-label small fw-bold">Peso Bruto (KG)</label>
                         <input type="number" step="0.001" name="peso" class="form-control shadow-sm" id="edit_peso">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="div_dimensoes">
                         <label class="form-label small fw-bold">Dimensões (CxLxA)</label>
                         <input type="text" name="dimensoes" class="form-control shadow-sm" id="edit_dimensoes" placeholder="10x15x5cm">
                     </div>
@@ -270,6 +239,19 @@
                     </div>
 
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Informações Fiscais (SEFAZ)</h6></div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">NCM</label>
+                        <div class="input-group input-group-sm shadow-sm position-relative">
+                            <input type="text" name="ncm" class="form-control z-index-1" id="edit_ncm" placeholder="Digite Cod. ou Nm." onkeyup="searchNcmInline(this.value)">
+                            <span class="input-group-text bg-white" id="ncmLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary"></i></span>
+                            <button class="btn btn-outline-secondary" type="button" onclick="searchNcmInline(document.getElementById('edit_ncm').value, true)">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <ul id="ncmDropdown" class="dropdown-menu w-100 shadow" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 250px; overflow-y: auto;">
+                                <!-- NCMs ajax -->
+                            </ul>
+                        </div>
+                    </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">GTIN/EAN (cEAN)</label>
                         <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="SEM GTIN">
@@ -312,48 +294,7 @@
     </div>
 </div>
 
-<!-- NCM Search Modal -->
-<div class="modal fade" id="ncmSearchModal" tabindex="-1" style="z-index: 1060;">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold">Buscar NCM</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="input-group mb-3 custom-search-group">
-                    <input type="text" id="ncmSearchInput" class="form-control" placeholder="Buscar por código (ex: 8517) ou descrição (ex: celular)..." onkeyup="if(event.key === 'Enter') searchNcm()">
-                    <button class="btn btn-primary" type="button" onclick="searchNcm()" id="ncmSearchBtn">
-                        <i class="fas fa-search me-2"></i>Pesquisar
-                    </button>
-                </div>
-                
-                <div id="ncmLoading" class="text-center d-none my-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Buscando...</span>
-                    </div>
-                    <div class="mt-2 text-muted small">Consultando Tabela SEFAZ (BrasilAPI)...</div>
-                </div>
-
-                <div class="table-responsive d-none mt-3" id="ncmResultsContainer">
-                    <table class="table table-hover table-sm align-middle" style="font-size: 0.85rem;">
-                        <thead class="bg-light">
-                            <tr>
-                                <th width="15%">Código</th>
-                                <th width="75%">Descrição</th>
-                                <th width="10%">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ncmResultsBody">
-                            <!-- Results inject here -->
-                        </tbody>
-                    </table>
-                </div>
-                <div id="ncmError" class="alert alert-danger d-none mt-3 small"></div>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Removes old modal block completely -->
 
 <!-- Stock Movement Modal -->
 <div class="modal fade" id="movementModal" tabindex="-1">
@@ -455,78 +396,83 @@ document.getElementById('productSearch').addEventListener('keyup', function() {
     });
 });
 
-// NCM Search Logic
-let ncmModal;
-function openNcmSearch() {
-    if (!ncmModal) {
-        ncmModal = new bootstrap.Modal(document.getElementById('ncmSearchModal'));
-    }
-    document.getElementById('ncmSearchInput').value = '';
-    document.getElementById('ncmResultsContainer').classList.add('d-none');
-    document.getElementById('ncmError').classList.add('d-none');
-    ncmModal.show();
-    setTimeout(() => document.getElementById('ncmSearchInput').focus(), 500);
-}
+// NCM Search Logic with Inline Dropdown Autocomplete
+let ncmDebounceTimer;
 
-function searchNcm() {
-    const term = document.getElementById('ncmSearchInput').value.trim();
-    if (term.length < 3) {
-        alert('Digite pelo menos 3 caracteres para pesquisar.');
+function searchNcmInline(term, force = false) {
+    const dropdown = document.getElementById('ncmDropdown');
+    const loader = document.getElementById('ncmLoader');
+    
+    if (term.length < 3 && !force) {
+        dropdown.style.display = 'none';
         return;
     }
 
-    const btn = document.getElementById('ncmSearchBtn');
-    const loading = document.getElementById('ncmLoading');
-    const container = document.getElementById('ncmResultsContainer');
-    const tbody = document.getElementById('ncmResultsBody');
-    const errorDiv = document.getElementById('ncmError');
-
-    btn.disabled = true;
-    loading.classList.remove('d-none');
-    container.classList.add('d-none');
-    errorDiv.classList.add('d-none');
-    tbody.innerHTML = '';
-
-    fetch(`api/ncm_search.php?search=${encodeURIComponent(term)}`)
-        .then(response => {
-            if (!response.ok) throw new Error('Falha na consulta à API.');
-            return response.json();
-        })
-        .then(data => {
-            if (data && data.length > 0) {
-                // Remove format dots for saving, but show them in UI
-                data.forEach(item => {
-                    const cleanCode = item.codigo.replace(/\./g, '');
-                    tbody.innerHTML += `
-                        <tr>
-                            <td class="fw-bold font-monospace text-primary">${item.codigo}</td>
-                            <td class="text-truncate" style="max-width: 400px;" title="${item.descricao}">${item.descricao}</td>
-                            <td>
-                                <button class="btn btn-sm btn-success py-0 px-2 fw-bold" onclick="selectNcm('${cleanCode}')">
-                                    Usar
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-                container.classList.remove('d-none');
-            } else {
-                errorDiv.innerHTML = 'Nenhum NCM encontrado para esta pesquisa.';
-                errorDiv.classList.remove('d-none');
-            }
-        })
-        .catch(err => {
-            errorDiv.innerHTML = 'Erro ao buscar NCM: ' + err.message + ' Tente pesquisar por código ou descrição mais exata.';
-            errorDiv.classList.remove('d-none');
-        })
-        .finally(() => {
-            btn.disabled = false;
-            loading.classList.add('d-none');
-        });
+    clearTimeout(ncmDebounceTimer);
+    ncmDebounceTimer = setTimeout(() => {
+        loader.style.display = 'block';
+        
+        fetch(`api/ncm_search.php?search=${encodeURIComponent(term)}`)
+            .then(response => {
+                if (!response.ok) throw new Error('API Falhou');
+                return response.json();
+            })
+            .then(data => {
+                dropdown.innerHTML = '';
+                if (data && data.length > 0) {
+                    data.forEach(item => {
+                        const cleanCode = item.codigo.replace(/\./g, '');
+                        dropdown.innerHTML += `
+                            <li>
+                                <a class="dropdown-item py-2" href="javascript:void(0)" onclick="selectNcm('${cleanCode}')">
+                                    <div class="fw-bold text-primary font-monospace small">${item.codigo}</div>
+                                    <div class="text-truncate text-muted" style="max-width: 300px; font-size: 0.80rem;" title="${item.descricao}">${item.descricao}</div>
+                                </a>
+                            </li>
+                        `;
+                    });
+                } else {
+                    dropdown.innerHTML = '<li><span class="dropdown-item text-muted small">Nenhum NCM encontrado.</span></li>';
+                }
+                dropdown.style.display = 'block';
+            })
+            .catch(err => {
+                dropdown.innerHTML = '<li><span class="dropdown-item text-danger small">Erro na busca.</span></li>';
+                dropdown.style.display = 'block';
+            })
+            .finally(() => {
+                loader.style.display = 'none';
+            });
+    }, 500); // 500ms debounce
 }
 
 function selectNcm(code) {
     document.getElementById('edit_ncm').value = code;
-    ncmModal.hide();
+    document.getElementById('ncmDropdown').style.display = 'none';
+}
+
+// Close Dropdown if clicked outside
+document.addEventListener('click', function(event) {
+    const ncmGroup = document.querySelector('#edit_ncm').parentElement;
+    if (!ncmGroup.contains(event.target)) {
+        document.getElementById('ncmDropdown').style.display = 'none';
+    }
+});
+
+function updateFormVisibility() {
+    const tipo = document.getElementById('edit_tipo_produto').value;
+    const isService = (tipo === 'servico');
+    
+    // Elements to hide if it's a service/virtual good
+    document.getElementById('div_quantidade').style.display = isService ? 'none' : 'block';
+    document.getElementById('div_estoque_minimo').style.display = isService ? 'none' : 'block';
+    document.getElementById('div_peso').style.display = isService ? 'none' : 'block';
+    document.getElementById('div_dimensoes').style.display = isService ? 'none' : 'block';
+    
+    // Always sync hidden quantity if service so it defaults to 0 safely
+    if (isService) {
+        document.getElementById('edit_quantidade').value = 0;
+        document.getElementById('edit_estoque_minimo').value = 0;
+    }
 }
 </script>
