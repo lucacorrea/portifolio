@@ -298,35 +298,7 @@ $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
             LISTA DE PRODUTORES DA FEIRA
         </div>
 
-        <div class="filtro">
-
-            <form method="get">
-
-                <select name="tipo">
-
-                    <option value="TODOS" <?= ($tipo == 'TODOS' ? 'selected' : '') ?>>
-                        Todos
-                    </option>
-
-                    <option value="PRODUTOR RURAL" <?= ($tipo == 'PRODUTOR RURAL' ? 'selected' : '') ?>>
-                        Produtor Rural
-                    </option>
-
-                    <option value="FEIRANTE" <?= ($tipo == 'FEIRANTE' ? 'selected' : '') ?>>
-                        Feirante
-                    </option>
-
-                    <option value="MARRETEIRO" <?= ($tipo == 'MARRETEIRO' ? 'selected' : '') ?>>
-                        Marreteiro
-                    </option>
-
-                </select>
-
-                <button type="submit">Filtrar</button>
-
-            </form>
-
-        </div>
+       
 
         <p>Total: <strong><?= count($produtores) ?></strong></p>
 
