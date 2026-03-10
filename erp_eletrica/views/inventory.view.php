@@ -202,6 +202,17 @@
                             <option value="PCT">Pacote (PCT)</option>
                         </select>
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Tipo de Produto *</label>
+                        <select name="tipo_produto" class="form-select shadow-sm" id="edit_tipo_produto" required>
+                            <option value="simples">Item Simples</option>
+                            <option value="composto">Kit / Composto</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Quantidade (Estoque) *</label>
+                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required id="edit_quantidade" value="0">
+                    </div>
                     <div class="col-md-8">
                         <label class="form-label small fw-bold">Categoria</label>
                         <select name="categoria" class="form-select shadow-sm" id="edit_categoria">
@@ -210,21 +221,47 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <label class="form-label small fw-bold">Preço de Custo (R$)</label>
                         <input type="number" step="0.01" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Preço de Venda (R$)</label>
-                        <input type="number" step="0.01" name="preco_venda" class="form-control shadow-sm" required id="edit_preco_venda">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço Venda (Normal)</label>
+                        <input type="number" step="0.01" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço 2</label>
+                        <input type="number" step="0.01" name="preco_venda_2" class="form-control shadow-sm" id="edit_preco_venda_2">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço 3</label>
+                        <input type="number" step="0.01" name="preco_venda_3" class="form-control shadow-sm" id="edit_preco_venda_3">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Preço Atacado (R$)</label>
+                        <input type="number" step="0.01" name="preco_venda_atacado" class="form-control shadow-sm text-success" id="edit_preco_venda_atacado">
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label small fw-bold">Estoque Mínimo (Alerta)</label>
-                        <input type="number" name="estoque_minimo" class="form-control shadow-sm" id="edit_estoque_minimo">
+                        <input type="number" name="estoque_minimo" class="form-control shadow-sm text-danger" id="edit_estoque_minimo">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label small fw-bold">Foto do Produto</label>
                         <input type="file" name="foto" class="form-control shadow-sm">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Peso Bruto (KG)</label>
+                        <input type="number" step="0.001" name="peso" class="form-control shadow-sm" id="edit_peso">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Dimensões (CxLxA)</label>
+                        <input type="text" name="dimensoes" class="form-control shadow-sm" id="edit_dimensoes" placeholder="10x15x5cm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Especificações Técnicas</label>
+                        <input type="text" name="descricao" class="form-control shadow-sm" id="edit_descricao">
                     </div>
 
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Informações Fiscais (SEFAZ)</h6></div>
@@ -326,8 +363,18 @@ function editProduct(product) {
     document.getElementById('edit_nome').value = product.nome;
     document.getElementById('edit_unidade').value = product.unidade;
     document.getElementById('edit_categoria').value = product.categoria;
+    document.getElementById('edit_tipo_produto').value = product.tipo_produto || 'simples';
+    document.getElementById('edit_quantidade').value = product.quantidade || 0;
+    
+    document.getElementById('edit_peso').value = product.peso || '';
+    document.getElementById('edit_dimensoes').value = product.dimensoes || '';
+    document.getElementById('edit_descricao').value = product.descricao || '';
+    
     document.getElementById('edit_preco_custo').value = product.preco_custo;
     document.getElementById('edit_preco_venda').value = product.preco_venda;
+    document.getElementById('edit_preco_venda_2').value = product.preco_venda_2 || '';
+    document.getElementById('edit_preco_venda_3').value = product.preco_venda_3 || '';
+    document.getElementById('edit_preco_venda_atacado').value = product.preco_venda_atacado || '';
     document.getElementById('edit_estoque_minimo').value = product.estoque_minimo;
     
     // Fiscal Fields
