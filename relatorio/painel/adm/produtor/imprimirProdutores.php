@@ -545,8 +545,9 @@ try {
                 <div class="cabecalho-texto">
                     <div class="l1">ESTADO DO AMAZONAS</div>
                     <div class="l2">PREFEITURA MUNICIPAL DE COARI</div>
-                    <div class="l3">SECRETARIA MUNICIPAL DE TERRAS E HABITAÇÃO</div>
-                    <div class="l4">Rua Rio Aroã, nº 127C – Bairro Santa Efigênia – Coari – AM – CEP: 69460-000</div>
+                    <div class="l3">SECRETARIA MUNICIPAL DE DES. RURAL E ECONOMICO</div>
+                    <div class="l3">SECRETARIA ADJUNTA DE FEIRAS E NERCADO</div>
+                    <div class="l4">Rua Indepedência, S/N – Bairro Centro – Coari – AM – CEP: 69460-000</div>
                 </div>
 
                 <div class="logo-box">
