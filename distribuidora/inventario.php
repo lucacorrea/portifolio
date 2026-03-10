@@ -484,9 +484,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                                 <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                                     <i class="lni lni-download me-1"></i> Excel
                                 </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
-                                    <i class="lni lni-printer me-1"></i> PDF
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -724,9 +721,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-
     <script>
         (function() {
             const box = document.getElementById('flashBox');
@@ -903,6 +897,118 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             mContagem.value = '';
             mContagem.focus();
         });
+
+        function exportExcel() {
+            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
+
+            if (!rows.length) {
+                alert('Não há itens para exportar.');
+                return;
+            }
+
+            const now = new Date();
+            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+            const fileDt = now.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+
+            const categoria = fCategoria.value ?
+                fCategoria.options[fCategoria.selectedIndex].text :
+                'Todas';
+
+            const situacao = fSituacao.value || 'Todas';
+            const busca = (qInv.value || qGlobal.value || '').trim() || '—';
+
+            const header = [
+                'Código',
+                'Produto',
+                'Categoria',
+                'Unidade',
+                'Estoque',
+                'Vendas',
+                'Saídas',
+                'Soma',
+                'Contagem',
+                'Diferença',
+                'Situação'
+            ];
+
+            const body = rows.map(tr => {
+                const countInput = tr.querySelector('input.count');
+                const situacaoText = tr.querySelector('.st')?.innerText.trim() || '';
+
+                return [
+                    tr.querySelector('.cod')?.innerText.trim() || '',
+                    tr.querySelector('.prod')?.innerText.trim() || '',
+                    tr.querySelector('.cat')?.innerText.trim() || '',
+                    tr.querySelector('.und')?.innerText.trim() || '',
+                    tr.querySelector('.est')?.innerText.trim() || '',
+                    tr.querySelector('.vend')?.innerText.trim() || '',
+                    tr.querySelector('.sai')?.innerText.trim() || '',
+                    tr.querySelector('.soma')?.innerText.trim() || '',
+                    countInput ? String(countInput.value || '—') : '—',
+                    tr.querySelector('.diff')?.innerText.trim() || '',
+                    situacaoText
+                ];
+            });
+
+            const isCenterCol = (idx) => idx !== 1;
+
+            let html = `
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+                        td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; text-align: center; }
+                        th { background: #dbe5f1; font-weight: bold; }
+                        .title { font-size: 16px; font-weight: bold; text-align: center; background: #ddebf7; }
+                        .left { text-align: left; }
+                        .center { text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+            `;
+
+            html += `<tr><td class="title" colspan="11">PAINEL DA DISTRIBUIDORA - INVENTÁRIO</td></tr>`;
+            html += `<tr><td colspan="11">Gerado em: ${dt}</td></tr>`;
+            html += `<tr><td colspan="11">Categoria: ${categoria} | Situação: ${situacao} | Busca: ${busca}</td></tr>`;
+            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : 'left'}">${h}</th>`).join('')}</tr>`;
+
+            body.forEach(row => {
+                html += '<tr>';
+                row.forEach((cell, idx) => {
+                    const safe = String(cell)
+                        .replaceAll('&', '&amp;')
+                        .replaceAll('<', '&lt;')
+                        .replaceAll('>', '&gt;');
+
+                    const cls = isCenterCol(idx) ? 'center' : 'left';
+                    html += `<td class="${cls}">${safe}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += `
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(["\ufeff" + html], {
+                type: 'application/vnd.ms-excel;charset=utf-8;'
+            });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `inventario_${fileDt}.xls`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        document.getElementById('btnExcel').addEventListener('click', exportExcel);
 
         // init
         Array.from(tb.querySelectorAll('tbody tr')).forEach(calcularLinha);
