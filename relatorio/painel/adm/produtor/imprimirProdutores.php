@@ -497,7 +497,7 @@ try {
 <?php else: ?>
   <div class="screen-actions">
     <div>
-      <a href="./selecionarfeirante.php" class="btn">Voltar</a>
+      <a href="./selecionarFeirante.php" class="btn">Voltar</a>
     </div>
     <div>
       <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir</button>
