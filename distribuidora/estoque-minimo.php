@@ -652,7 +652,6 @@ foreach ($produtos as $p) {
                         <table class="table text-nowrap" id="tbMinimo">
                             <thead>
                                 <tr>
-                                    <th class="minw-120">Imagem</th>
                                     <th class="minw-140">Código</th>
                                     <th class="minw-200">Produto</th>
                                     <th class="minw-140">Categoria</th>
@@ -688,8 +687,6 @@ foreach ($produtos as $p) {
                                             ? '<span class="badge-soft badge-soft-warning">ABAIXO</span>'
                                             : '<span class="badge-soft badge-soft-success">OK</span>');
 
-                                    $imgDb = trim((string)($p['imagem'] ?? ''));
-                                    $img   = produto_img_url($imgDb);
                                     ?>
                                     <tr
                                         data-cat="<?= e($categoria) ?>"
@@ -697,9 +694,6 @@ foreach ($produtos as $p) {
                                         data-prod="<?= e($nome ?: '—') ?>"
                                         data-estoque="<?= (int)$estoque ?>"
                                         data-min="<?= (int)$minimo ?>">
-                                        <td>
-                                            <img class="prod-img" alt="<?= e($nome ?: $codigo) ?>" src="<?= e($img) ?>" />
-                                        </td>
                                         <td><?= e($codigo ?: '—') ?></td>
                                         <td><?= e($nome ?: '—') ?></td>
                                         <td><?= e($categoria) ?></td>
