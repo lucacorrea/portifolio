@@ -34,7 +34,7 @@ class SefazConfigController extends BaseController {
             
             $data = [
                 'ambiente' => $ambiente,
-                'certificado_senha' => base64_encode($senha) // Mantendo padrão Base64 para global
+                'certificado_senha' => $senha // Armazenar em formato texto puro, igual às filiais
             ];
 
             // Handle File Upload

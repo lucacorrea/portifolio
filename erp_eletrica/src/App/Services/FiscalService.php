@@ -184,7 +184,7 @@ class FiscalService extends BaseService {
             
             $pfxContent = file_get_contents($pfxPath);
             $certs = [];
-            $password = base64_decode($branch['certificado_senha']);
+            $password = $branch['certificado_senha'];
             
             if (!openssl_pkcs12_read($pfxContent, $certs, $password)) {
                 throw new Exception("Falha ao ler o certificado digital. Verifique a senha.");
