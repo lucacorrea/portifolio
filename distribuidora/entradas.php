@@ -214,6 +214,58 @@ $entradas = $pdo->query("
             font-size: 12px;
             color: #64748b
         }
+
+        .pagination-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            width: 42px;
+            height: 42px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: .2s ease;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: #eef2ff;
+            color: #1e40af;
+            border-color: #c7d2fe;
+        }
+
+        .page-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-weight: 700;
+            color: #475569;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        @media (max-width: 767.98px) {
+            .pagination-wrap {
+                justify-content: center;
+                width: 100%;
+            }
+
+            #infoCount {
+                text-align: center;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -464,9 +516,6 @@ $entradas = $pdo->query("
                                 <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                                     <i class="lni lni-download me-1"></i> Excel
                                 </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
-                                    <i class="lni lni-printer me-1"></i> PDF
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -505,7 +554,7 @@ $entradas = $pdo->query("
                                     $unidade = trim((string)($eRow['unidade'] ?? '')) ?: '—';
                                     $qtd = (int)($eRow['qtd'] ?? 0);
                                     $custo = (float)($eRow['custo'] ?? 0);
-                                    $total = (float)($eRow['total'] ?? 0);;
+                                    $total = (float)($eRow['total'] ?? 0);
                                     ?>
                                     <tr
                                         data-id="<?= $id ?>"
@@ -540,7 +589,21 @@ $entradas = $pdo->query("
                         </table>
                     </div>
 
-                    <p class="text-sm text-gray mt-2 mb-0" id="infoCount"></p>
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mt-3">
+                        <p class="text-sm text-gray mb-0" id="infoCount"></p>
+
+                        <div class="pagination-wrap">
+                            <button type="button" class="page-btn" id="btnPrevPage" aria-label="Página anterior">
+                                <i class="lni lni-chevron-left"></i>
+                            </button>
+
+                            <span class="page-info" id="pageInfo">Página 1/1</span>
+
+                            <button type="button" class="page-btn" id="btnNextPage" aria-label="Próxima página">
+                                <i class="lni lni-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -679,9 +742,6 @@ $entradas = $pdo->query("
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-
     <script>
         // flash 1.5s
         (function() {
@@ -712,12 +772,21 @@ $entradas = $pdo->query("
         });
 
         const tb = document.getElementById('tbEntradas');
+        const tbodyRows = Array.from(tb.querySelectorAll('tbody tr'));
+
         const qEntradas = document.getElementById('qEntradas');
         const qGlobal = document.getElementById('qGlobal');
         const fFornecedor = document.getElementById('fFornecedor');
         const dtIni = document.getElementById('dtIni');
         const dtFim = document.getElementById('dtFim');
         const infoCount = document.getElementById('infoCount');
+
+        const btnPrevPage = document.getElementById('btnPrevPage');
+        const btnNextPage = document.getElementById('btnNextPage');
+        const pageInfo = document.getElementById('pageInfo');
+
+        const PER_PAGE = 5;
+        let currentPage = 1;
 
         function norm(s) {
             return String(s ?? '').toLowerCase().trim();
@@ -740,40 +809,91 @@ $entradas = $pdo->query("
             return `${d}/${m}/${y}`;
         }
 
-        function aplicarFiltros() {
+        function syncSearch(source, target) {
+            if (target.value !== source.value) {
+                target.value = source.value;
+            }
+        }
+
+        function rowMatches(tr) {
             const q = norm(qEntradas.value || qGlobal.value);
             const fornId = String(fFornecedor.value || '').trim();
             const ini = dtIni.value || '';
             const fim = dtFim.value || '';
 
-            const rows = Array.from(tb.querySelectorAll('tbody tr'));
-            let shown = 0;
+            const text = norm(tr.innerText);
+            const rFornId = String(tr.getAttribute('data-fornecedor-id') || '').trim();
+            const rData = tr.getAttribute('data-data') || '';
 
-            rows.forEach(tr => {
-                const text = norm(tr.innerText);
-                const rFornId = String(tr.getAttribute('data-fornecedor-id') || '').trim();
-                const rData = tr.getAttribute('data-data') || '';
+            let ok = true;
+            if (q && !text.includes(q)) ok = false;
+            if (fornId && rFornId !== fornId) ok = false;
+            if (ini && rData && rData < ini) ok = false;
+            if (fim && rData && rData > fim) ok = false;
 
-                let ok = true;
-                if (q && !text.includes(q)) ok = false;
-                if (fornId && rFornId !== fornId) ok = false;
-
-                if (ini && rData && rData < ini) ok = false;
-                if (fim && rData && rData > fim) ok = false;
-
-                tr.style.display = ok ? '' : 'none';
-                if (ok) shown++;
-            });
-
-            infoCount.textContent = `Mostrando ${shown} entrada(s).`;
+            return ok;
         }
 
-        qEntradas.addEventListener('input', aplicarFiltros);
-        qGlobal.addEventListener('input', aplicarFiltros);
-        fFornecedor.addEventListener('change', aplicarFiltros);
-        dtIni.addEventListener('change', aplicarFiltros);
-        dtFim.addEventListener('change', aplicarFiltros);
-        aplicarFiltros();
+        function getFilteredRows() {
+            return tbodyRows.filter(rowMatches);
+        }
+
+        function renderTable(resetPage = false) {
+            if (resetPage) currentPage = 1;
+
+            const filtered = getFilteredRows();
+            const totalItems = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / PER_PAGE));
+
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            tbodyRows.forEach(tr => {
+                tr.style.display = 'none';
+            });
+
+            const start = (currentPage - 1) * PER_PAGE;
+            const end = start + PER_PAGE;
+            const pageRows = filtered.slice(start, end);
+
+            pageRows.forEach(tr => {
+                tr.style.display = '';
+            });
+
+            if (totalItems > 0) {
+                infoCount.textContent = `Mostrando ${pageRows.length} entrada(s) nesta página. Total filtrado: ${totalItems}.`;
+            } else {
+                infoCount.textContent = 'Nenhuma entrada encontrada.';
+            }
+
+            pageInfo.textContent = `Página ${currentPage}/${totalPages}`;
+            btnPrevPage.disabled = currentPage <= 1 || totalItems === 0;
+            btnNextPage.disabled = currentPage >= totalPages || totalItems === 0;
+        }
+
+        qEntradas.addEventListener('input', () => {
+            syncSearch(qEntradas, qGlobal);
+            renderTable(true);
+        });
+
+        qGlobal.addEventListener('input', () => {
+            syncSearch(qGlobal, qEntradas);
+            renderTable(true);
+        });
+
+        fFornecedor.addEventListener('change', () => renderTable(true));
+        dtIni.addEventListener('change', () => renderTable(true));
+        dtFim.addEventListener('change', () => renderTable(true));
+
+        btnPrevPage.addEventListener('click', () => {
+            currentPage--;
+            renderTable(false);
+        });
+
+        btnNextPage.addEventListener('click', () => {
+            currentPage++;
+            renderTable(false);
+        });
 
         // ===== Modal =====
         const modalEl = document.getElementById('modalEntrada');
@@ -797,6 +917,7 @@ $entradas = $pdo->query("
         const pTotal = document.getElementById('pTotal');
 
         function setPreview(src) {
+            if (!previewImg) return;
             previewImg.src = src || DEFAULT_IMG;
         }
 
@@ -879,7 +1000,6 @@ $entradas = $pdo->query("
                 pFornecedorSel.value = tr.getAttribute('data-fornecedor-id') || '';
 
                 pProdutoId.value = tr.getAttribute('data-produto-id') || '';
-                // dispara change pra preencher código/nome/unidade/img
                 pProdutoId.dispatchEvent(new Event('change'));
 
                 pUnidade.value = tr.getAttribute('data-unidade') || pUnidade.value || '';
@@ -896,16 +1016,23 @@ $entradas = $pdo->query("
         // init preview no modal
         setPreview(DEFAULT_IMG);
 
-        // ✅ Excel (igual ao seu modelo)
+        // ✅ Excel
         function exportExcel() {
-            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
+            const rows = getFilteredRows();
+
+            if (!rows.length) {
+                alert('Não há entradas para exportar.');
+                return;
+            }
 
             const now = new Date();
             const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+            const fileDt = now.toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
             const fornTxt = fFornecedor.value ? fFornecedor.options[fFornecedor.selectedIndex].text : 'Todos';
             const ini = dtIni.value || '—';
             const fim = dtFim.value || '—';
+            const busca = (qEntradas.value || qGlobal.value || '').trim() || '—';
 
             const header = ['Data', 'NF', 'Fornecedor', 'Código', 'Produto', 'Unidade', 'Qtd', 'Custo', 'Total'];
 
@@ -921,39 +1048,49 @@ $entradas = $pdo->query("
                 tr.querySelector('.total')?.innerText.trim() || ''
             ]));
 
-            const isCenterCol = (idx) => (idx === 6 || idx === 7 || idx === 8);
+            const isCenterCol = (idx) => (idx === 0 || idx === 1 || idx === 3 || idx === 5 || idx === 6 || idx === 7 || idx === 8);
 
             let html = `
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              table { border: 0.6px solid #999; font-family: Arial; font-size: 12px; }
-              td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
-              th { background: #f1f5f9; font-weight: 700; }
-              .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
-              .muted { color: #555; font-weight: 700; }
-              .center { text-align: center; }
-            </style>
-          </head>
-          <body>
-            <table>
-      `;
+                <html>
+                  <head>
+                    <meta charset="utf-8">
+                    <style>
+                      table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+                      td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; }
+                      th { background: #dbe5f1; font-weight: bold; }
+                      .title { font-size: 16px; font-weight: bold; text-align: center; background: #ddebf7; }
+                      .left { text-align: left; }
+                      .center { text-align: center; }
+                    </style>
+                  </head>
+                  <body>
+                    <table>
+            `;
 
             html += `<tr><td class="title" colspan="9">PAINEL DA DISTRIBUIDORA - ENTRADAS</td></tr>`;
-            html += `<tr><td class="muted">Gerado em:</td><td colspan="8">${dt}</td></tr>`;
-            html += `<tr><td class="muted">Fornecedor:</td><td>${fornTxt}</td><td class="muted">Período:</td><td colspan="6">${ini} até ${fim}</td></tr>`;
-            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
+            html += `<tr><td colspan="9">Gerado em: ${dt}</td></tr>`;
+            html += `<tr><td colspan="9">Fornecedor: ${fornTxt} | Período: ${ini} até ${fim} | Busca: ${busca}</td></tr>`;
+            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : 'left'}">${h}</th>`).join('')}</tr>`;
 
-            body.forEach(r => {
-                html += `<tr>${r.map((c, idx) => {
-          const safe = String(c).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-          const cls = isCenterCol(idx) ? 'center' : '';
-          return `<td class="${cls}">${safe}</td>`;
-        }).join('')}</tr>`;
+            body.forEach(row => {
+                html += '<tr>';
+                row.forEach((cell, idx) => {
+                    const safe = String(cell)
+                        .replaceAll('&', '&amp;')
+                        .replaceAll('<', '&lt;')
+                        .replaceAll('>', '&gt;');
+
+                    const cls = isCenterCol(idx) ? 'center' : 'left';
+                    html += `<td class="${cls}">${safe}</td>`;
+                });
+                html += '</tr>';
             });
 
-            html += `</table></body></html>`;
+            html += `
+                    </table>
+                  </body>
+                </html>
+            `;
 
             const blob = new Blob(["\ufeff" + html], {
                 type: 'application/vnd.ms-excel;charset=utf-8;'
@@ -962,7 +1099,7 @@ $entradas = $pdo->query("
 
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'entradas.xls';
+            a.download = `entradas_${fileDt}.xls`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -970,107 +1107,7 @@ $entradas = $pdo->query("
         }
         document.getElementById('btnExcel').addEventListener('click', exportExcel);
 
-        // ✅ PDF (igual ao seu modelo)
-        function exportPDF() {
-            if (!window.jspdf || !window.jspdf.jsPDF) {
-                alert('Biblioteca do PDF não carregou.');
-                return;
-            }
-
-            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
-            const now = new Date();
-            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
-
-            const fornTxt = fFornecedor.value ? fFornecedor.options[fFornecedor.selectedIndex].text : 'Todos';
-            const ini = dtIni.value || '—';
-            const fim = dtFim.value || '—';
-
-            const {
-                jsPDF
-            } = window.jspdf;
-            const doc = new jsPDF({
-                orientation: 'landscape',
-                unit: 'pt',
-                format: 'a4'
-            });
-
-            const M = 70;
-
-            doc.setTextColor(0, 0, 0);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
-            doc.text('PAINEL DA DISTRIBUIDORA - ENTRADAS', M, 55);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.text(`Gerado em:  ${dt}`, M, 75);
-            doc.text(`Fornecedor:  ${fornTxt} | Período:  ${ini} até ${fim}`, M, 92);
-
-            const head = [
-                ['Data', 'NF', 'Fornecedor', 'Código', 'Produto', 'Unidade', 'Qtd', 'Custo', 'Total']
-            ];
-
-            const body = rows.map(tr => ([
-                tr.querySelector('.date')?.innerText.trim() || '',
-                tr.querySelector('.nf')?.innerText.trim() || '',
-                tr.querySelector('.forn')?.innerText.trim() || '',
-                tr.querySelector('.cod')?.innerText.trim() || '',
-                tr.querySelector('.prod')?.innerText.trim() || '',
-                tr.querySelector('.und')?.innerText.trim() || '',
-                tr.querySelector('.qtd')?.innerText.trim() || '',
-                tr.querySelector('.custo')?.innerText.trim() || '',
-                tr.querySelector('.total')?.innerText.trim() || ''
-            ]));
-
-            doc.autoTable({
-                head,
-                body,
-                startY: 115,
-                margin: {
-                    left: M,
-                    right: M
-                },
-                theme: 'plain',
-                styles: {
-                    font: 'helvetica',
-                    fontSize: 9,
-                    textColor: [17, 24, 39],
-                    cellPadding: {
-                        top: 6,
-                        right: 6,
-                        bottom: 6,
-                        left: 6
-                    },
-                    lineWidth: 0
-                },
-                headStyles: {
-                    fillColor: [241, 245, 249],
-                    textColor: [17, 24, 39],
-                    fontStyle: 'bold',
-                    lineWidth: 0
-                },
-                alternateRowStyles: {
-                    fillColor: [248, 250, 252]
-                },
-                columnStyles: {
-                    6: {
-                        halign: 'center'
-                    },
-                    7: {
-                        halign: 'center'
-                    },
-                    8: {
-                        halign: 'center'
-                    }
-                },
-                didParseCell: function(data) {
-                    data.cell.styles.lineWidth = 0;
-                }
-            });
-
-            doc.save('entradas.pdf');
-        }
-        document.getElementById('btnPDF').addEventListener('click', exportPDF);
+        renderTable(true);
     </script>
 </body>
 

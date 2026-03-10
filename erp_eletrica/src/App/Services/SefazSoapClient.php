@@ -10,14 +10,14 @@ class SefazSoapClient extends BaseService {
         'homologacao' => [
             'nfce_autorizacao' => 'https://homologacao.nfce.fazenda.sp.gov.br/ws/nfceautorizacao4.asmx',
             'nfce_retorno' => 'https://homologacao.nfce.fazenda.sp.gov.br/ws/nfceretautorizacao4.asmx',
-            'sefaz_status' => 'https://homologacao.nfce.fazenda.sp.gov.br/ws/nfcestatusservico4.asmx',
+            'sefaz_status' => 'https://homologacao.nfce.fazenda.sp.gov.br/ws/nfestatusservico4.asmx',
             'nfe_distribuicao' => 'https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
             'nfe_evento' => 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeerecepcaoevento4.asmx'
         ],
         'producao' => [
             'nfce_autorizacao' => 'https://nfce.fazenda.sp.gov.br/ws/nfceautorizacao4.asmx',
             'nfce_retorno' => 'https://nfce.fazenda.sp.gov.br/ws/nfceretautorizacao4.asmx',
-            'sefaz_status' => 'https://nfce.fazenda.sp.gov.br/ws/nfcestatusservico4.asmx',
+            'sefaz_status' => 'https://nfce.fazenda.sp.gov.br/ws/nfestatusservico4.asmx',
             'nfe_distribuicao' => 'https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
             'nfe_evento' => 'https://nfe.fazenda.sp.gov.br/ws/nfeerecepcaoevento4.asmx'
         ]
@@ -89,7 +89,7 @@ class SefazSoapClient extends BaseService {
         // mTLS Authentication
         curl_setopt($ch, CURLOPT_SSLCERT, $pemCert['file']);
         curl_setopt($ch, CURLOPT_SSLKEY, $pemCert['file']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2); 
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
@@ -107,11 +107,9 @@ class SefazSoapClient extends BaseService {
             throw new Exception("Erro de conexão SEFAZ CURL: $error");
         }
         
-        // DEBUG: Gravar retorno se falhar
-        if ($httpCode >= 400 && defined('DEBUG') && DEBUG) {
-            $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_error_response.txt';
-            @file_put_contents($logPath, "HTTP $httpCode\n\n$response");
-        }
+        // DEBUG OVERRIDE: Forçar log de todos os retornos para identificar malformação XML
+        $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_response.xml';
+        @file_put_contents($logPath, "HTTP CODE: $httpCode\n\n=== RESPONSE ===\n$response");
 
         if ($httpCode >= 400 || empty($response)) {
              $motivo = $this->extractSoapFault($response);
