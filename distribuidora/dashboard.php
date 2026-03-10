@@ -904,6 +904,26 @@ $total12m = array_sum($chart1);
     .header-right {
       height: 100%;
     }
+
+    .brand-vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .brand-name {
+      display: block;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 600;
+      color: #1e2a78;
+      white-space: normal;
+      word-break: break-word;
+    }
   </style>
 </head>
 
@@ -915,8 +935,8 @@ $total12m = array_sum($chart1);
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
-      <a href="dashboard.php" class="d-flex align-items-center gap-2">
-      <span class="d-none d-md-inline text-sm fw-600">DISTRIBUIDORA PLHB</span>
+      <a href="dashboard.php" class="brand-vertical">
+        <span class="brand-name">DISTRIBUIDORA<br>PLHB</span>
       </a>
     </div>
 
