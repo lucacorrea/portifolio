@@ -112,4 +112,73 @@ class FiscalController extends BaseController {
         }
         exit;
     }
+
+    public function diagnostic() {
+        $branchId = $_GET['id'] ?? ($_SESSION['is_matriz'] ? null : $_SESSION['filial_id']);
+        if (!$branchId && !$_SESSION['is_matriz']) {
+            die("Acesso negado.");
+        }
+
+        // Fetch Branch limits if not matriz
+        $branches = [];
+        if ($_SESSION['is_matriz']) {
+            $stmt = $this->db->query("SELECT id, nome, cnpj, inscricao_estadual, certificado_pfx FROM filiais");
+            $branches = $stmt->fetchAll();
+            if (!$branchId && count($branches) > 0) $branchId = $branches[0]['id'];
+        } else {
+            $stmt = $this->db->prepare("SELECT id, nome, cnpj, inscricao_estadual, certificado_pfx FROM filiais WHERE id = ?");
+            $stmt->execute([$branchId]);
+            $branches = $stmt->fetchAll();
+        }
+
+        $stmt = $this->db->prepare("SELECT * FROM filiais WHERE id = ?");
+        $stmt->execute([$branchId]);
+        $branchInfo = $stmt->fetch();
+
+        // Fetch Global Cert Config
+        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
+        $globalConfig = $stmt->fetch();
+
+        // 1. Environment Tests
+        $env = [
+            'php_version' => phpversion(),
+            'curl_loaded' => extension_loaded('curl'),
+            'openssl_loaded' => extension_loaded('openssl'),
+            'soap_loaded' => extension_loaded('soap'),
+            'dom_loaded' => extension_loaded('dom'),
+            'simplexml_loaded' => extension_loaded('simplexml')
+        ];
+
+        // 2. Storage Tests
+        $storageDir = dirname(__DIR__, 3) . '/storage';
+        $certDir = $storageDir . '/certificados';
+        $storage = [
+            'storage_exists' => is_dir($storageDir),
+            'storage_writable' => is_writable($storageDir),
+            'cert_dir_exists' => is_dir($certDir),
+            'cert_dir_writable' => is_writable($certDir)
+        ];
+
+        // 3. Database Validation for Branch
+        $dbStatus = [
+            'has_cnpj' => !empty($branchInfo['cnpj']),
+            'valid_cnpj' => preg_match('/^\d{14}$/', preg_replace('/\D/', '', $branchInfo['cnpj'])),
+            'has_ie' => !empty($branchInfo['inscricao_estadual']),
+            'has_cep' => !empty($branchInfo['cep']) && strlen(preg_replace('/\D/', '', $branchInfo['cep'])) === 8,
+            'has_uf' => !empty($branchInfo['uf']) && strlen($branchInfo['uf']) === 2,
+            'has_ibge' => !empty($branchInfo['codigo_municipio']) && strlen($branchInfo['codigo_municipio']) === 7
+        ];
+
+        $this->render('fiscal/diagnostic', [
+            'title' => 'Diagnóstico Profundo SEFAZ',
+            'pageTitle' => 'Diagnóstico do Ambiente Fiscal',
+            'env' => $env,
+            'storage' => $storage,
+            'dbStatus' => $dbStatus,
+            'branch' => $branchInfo,
+            'branches' => $branches,
+            'globalConfig' => $globalConfig,
+            'selectedBranchId' => $branchId
+        ]);
+    }
 }
