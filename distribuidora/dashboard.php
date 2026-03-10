@@ -1011,29 +1011,25 @@ $total12m = array_sum($chart1);
           <div class="col-lg-5 col-md-5 col-6">
             <div class="header-left d-flex align-items-center">
               <div class="menu-toggle-btn mr-15">
-                <button id="menu-toggle" class="main-btn primary-btn btn-hover" type="button">
+                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
               </div>
-              <div class="header-search d-none d-md-flex"></div>
+
             </div>
           </div>
-
           <div class="col-lg-7 col-md-7 col-6">
             <div class="header-right">
               <div class="profile-box ml-15">
-                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
+                <a class="btn btn-sm btn-primary color-white" href="#">
                   <div class="profile-info">
                     <div class="info">
                       <div>
-                        <h6 class="fw-500">Sair</h6>
+                        <h6 class="fw-500"><i class="lni lni-chevron-left me-2"></i> Sair</h6>
                       </div>
                     </div>
                   </div>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                  <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
-                </ul>
+                </a>
               </div>
             </div>
           </div>
@@ -1041,6 +1037,7 @@ $total12m = array_sum($chart1);
         </div>
       </div>
     </header>
+
 
     <!-- Conteúdo -->
     <section class="section">
