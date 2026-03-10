@@ -47,6 +47,55 @@
     </div>
     <?php endif; ?>
 
+    <!-- NOVO COMPONENTE: AÇAIDINHOS STATUS NFC-e -->
+    <div class="col-12 mb-2">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex align-items-center justify-content-between">
+                <h5 class="fw-bold mb-0"><i class="fas fa-file-invoice-dollar text-primary me-2"></i> Status NFC-e (Integração SEFAZ)</h5>
+                <span class="badge <?= $isConfigurado ? 'bg-success' : 'bg-danger'; ?> fs-6">
+                    <?= $isConfigurado ? '<i class="fas fa-check-circle me-1"></i> Configurado' : '<i class="fas fa-times-circle me-1"></i> Pendente/Incompleto'; ?>
+                </span>
+            </div>
+            <div class="card-body mt-3">
+                <div class="row gx-4 gy-3">
+                    <div class="col-md-4">
+                        <span class="fw-bold text-muted d-block mb-1">Certificado Digital:</span>
+                        <span class="badge <?= str_replace('-label-', '-', $certificadoClass); ?> fs-6"><?= $certificadoStatus; ?></span>
+                        <?php if ($pfxPathDisplay): ?>
+                            <div class="mt-2 small text-muted text-break" style="font-size: 11px;"><i class="fas fa-link me-1"></i> <?= $pfxPathDisplay; ?></div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="fw-bold text-muted d-block mb-1">Ambiente:</span>
+                        <span class="badge <?= str_replace('-label-', '-', $ambienteClass); ?> fs-6"><?= $ambienteStatus; ?></span>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="fw-bold text-muted d-block mb-1">CNPJ:</span>
+                        <span class="text-dark fw-bold"><?= $cnpjExibe ?: '---'; ?></span>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="fw-bold text-muted d-block mb-1">CSC / ID Token:</span>
+                        <span class="text-dark fw-bold">
+                            <?= !empty($csc) ? '***' : '---'; ?> / <?= $idTokenExibe ?: '---'; ?>
+                        </span>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="fw-bold text-muted d-block mb-1">Fonte Configuração:</span>
+                        <span class="badge bg-secondary fs-6"><i class="fas fa-database me-1"></i> <?= $fonte; ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-light border-0 text-end">
+                <a href="filiais.php?action=edit&id=<?= $selectedBranchId ?>" class="btn btn-outline-primary btn-sm fw-bold">
+                    <i class="fas fa-edit me-1"></i> Editar Dados da Filial
+                </a>
+                <a href="fiscal.php?action=settings" class="btn btn-primary btn-sm fw-bold ms-2">
+                    <i class="fas fa-cog me-1"></i> Configurações SEFAZ
+                </a>
+            </div>
+        </div>
+    </div>
+
     <!-- 1. Database Validation -->
     <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100 <?= array_product($dbStatus) ? 'border-top border-success border-4' : 'border-top border-danger border-4' ?>">
