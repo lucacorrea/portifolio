@@ -146,13 +146,17 @@ class SefazSoapClient extends BaseService {
 
     private function extractPem($pfxPath, $password) {
         $pfxContent = file_get_contents($pfxPath);
-        $certs = [];
-        if (!openssl_pkcs12_read($pfxContent, $certs, $password)) {
-            throw new Exception("Falha ao extrair certificado para comunicação SOAP.");
+        
+        require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+        
+        try {
+            $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
+        } catch (\Exception $e) {
+            throw new Exception("Falha ao extrair certificado para comunicação SOAP: " . $e->getMessage());
         }
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'SEFAZ');
-        file_put_contents($tmpFile, $certs['cert'] . "\n" . $certs['pkey']);
+        file_put_contents($tmpFile, $certificate->certificate . "\n" . $certificate->privateKey);
         
         return ['file' => $tmpFile];
     }
