@@ -266,7 +266,7 @@ if (!function_exists('e')) {
         </header>
 
         <section class="section">
-            <div class="container-fluid p-4">
+            <div class="container-fluid p-4 mt-5">
                 <div class="card-style">
                     <div class="head">
                         <h5>Canais de Suporte</h5>
