@@ -7,21 +7,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['action'])) {
         if ($_POST['action'] == 'add') {
             $stmt = $pdo->prepare("
-                INSERT INTO produtos (codigo, ncm, nome, unidade, peso, dimensoes, descricao, categoria, preco_custo, preco_venda, preco_venda_atacado, quantidade, estoque_minimo, tipo_produto) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO produtos (
+                    codigo, ncm, cean, cest, origem, csosn, cfop_interno, cfop_externo, aliquota_icms, 
+                    nome, unidade, peso, dimensoes, descricao, categoria, preco_custo, preco_venda, 
+                    preco_venda_atacado, quantidade, estoque_minimo, tipo_produto
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $_POST['codigo'],
                 $_POST['ncm'],
+                $_POST['cean'] ?: 'SEM GTIN',
+                $_POST['cest'],
+                $_POST['origem'] !== '' ? $_POST['origem'] : 0,
+                $_POST['csosn'] ?: '102',
+                $_POST['cfop_interno'] ?: '5102',
+                $_POST['cfop_externo'] ?: '6102',
+                $_POST['aliquota_icms'] !== '' ? $_POST['aliquota_icms'] : 0,
                 $_POST['nome'],
                 $_POST['unidade'],
                 $_POST['peso'],
                 $_POST['dimensoes'],
                 $_POST['descricao'],
                 $_POST['categoria'],
-                $_POST['preco_custo'],
-                $_POST['preco_venda'],
-                $_POST['preco_venda_atacado'] ?: null,
+                str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_custo'])),
+                str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_venda'])),
+                $_POST['preco_venda_atacado'] ? str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_venda_atacado'])) : null,
                 $_POST['quantidade'],
                 $_POST['estoque_minimo'],
                 $_POST['tipo_produto']
@@ -34,7 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($_POST['action'] == 'edit') {
             $stmt = $pdo->prepare("
                 UPDATE produtos 
-                SET codigo = ?, ncm = ?, nome = ?, unidade = ?, peso = ?, dimensoes = ?, 
+                SET codigo = ?, ncm = ?, cean = ?, cest = ?, origem = ?, csosn = ?, cfop_interno = ?, cfop_externo = ?, aliquota_icms = ?,
+                    nome = ?, unidade = ?, peso = ?, dimensoes = ?, 
                     descricao = ?, categoria = ?, preco_custo = ?, preco_venda = ?, 
                     preco_venda_atacado = ?, quantidade = ?, estoque_minimo = ?, tipo_produto = ? 
                 WHERE id = ?
@@ -42,15 +53,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt->execute([
                 $_POST['codigo'],
                 $_POST['ncm'],
+                $_POST['cean'] ?: 'SEM GTIN',
+                $_POST['cest'],
+                $_POST['origem'] !== '' ? $_POST['origem'] : 0,
+                $_POST['csosn'] ?: '102',
+                $_POST['cfop_interno'] ?: '5102',
+                $_POST['cfop_externo'] ?: '6102',
+                $_POST['aliquota_icms'] !== '' ? $_POST['aliquota_icms'] : 0,
                 $_POST['nome'],
                 $_POST['unidade'],
                 $_POST['peso'],
                 $_POST['dimensoes'],
                 $_POST['descricao'],
                 $_POST['categoria'],
-                $_POST['preco_custo'],
-                $_POST['preco_venda'],
-                $_POST['preco_venda_atacado'] ?: null,
+                str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_custo'])),
+                str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_venda'])),
+                $_POST['preco_venda_atacado'] ? str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_venda_atacado'])) : null,
                 $_POST['quantidade'],
                 $_POST['estoque_minimo'],
                 $_POST['tipo_produto'],
@@ -246,8 +264,16 @@ $categorias = [
                         <input type="text" name="codigo" class="form-control" required style="font-family: 'Roboto Mono';">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">GTIN/EAN (cEAN)</label>
+                        <input type="text" name="cean" class="form-control" placeholder="SEM GTIN">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">NCM (Fiscal)</label>
                         <input type="text" name="ncm" class="form-control" placeholder="8544.x.x">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CEST</label>
+                        <input type="text" name="cest" class="form-control" placeholder="xx.xxx.xx">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Tipo de Produto *</label>
@@ -255,6 +281,33 @@ $categorias = [
                             <option value="simples">Item Simples</option>
                             <option value="composto">Kit / Composto</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="form-row" style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 5px; border-left: 3px solid var(--primary-color);">
+                    <div class="form-group">
+                        <label class="form-label">Origem</label>
+                        <select name="origem" class="form-control">
+                            <option value="0">0 - Nacional</option>
+                            <option value="1">1 - Estrangeira (Imp. Direta)</option>
+                            <option value="2">2 - Estrangeira (Merc. Interno)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CSOSN / CST</label>
+                        <input type="text" name="csosn" class="form-control" placeholder="102, 103, 500...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CFOP Int.</label>
+                        <input type="text" name="cfop_interno" class="form-control" placeholder="5102">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CFOP Ext.</label>
+                        <input type="text" name="cfop_externo" class="form-control" placeholder="6102">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Aliq. ICMS (%)</label>
+                        <input type="number" step="0.01" name="aliquota_icms" class="form-control" placeholder="0.00">
                     </div>
                 </div>
 
@@ -344,8 +397,16 @@ $categorias = [
                         <input type="text" name="codigo" id="edit_codigo" class="form-control" required style="font-family: 'Roboto Mono';">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">GTIN/EAN (cEAN)</label>
+                        <input type="text" name="cean" id="edit_cean" class="form-control" placeholder="SEM GTIN">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">NCM (Fiscal)</label>
                         <input type="text" name="ncm" id="edit_ncm" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CEST</label>
+                        <input type="text" name="cest" id="edit_cest" class="form-control">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Tipo de Produto *</label>
@@ -353,6 +414,33 @@ $categorias = [
                             <option value="simples">Item Simples</option>
                             <option value="composto">Kit / Composto</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="form-row" style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 5px; border-left: 3px solid var(--primary-color);">
+                    <div class="form-group">
+                        <label class="form-label">Origem</label>
+                        <select name="origem" id="edit_origem" class="form-control">
+                            <option value="0">0 - Nacional</option>
+                            <option value="1">1 - Estrangeira (Imp. Direta)</option>
+                            <option value="2">2 - Estrangeira (Merc. Interno)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CSOSN / CST</label>
+                        <input type="text" name="csosn" id="edit_csosn" class="form-control" placeholder="102">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CFOP Int.</label>
+                        <input type="text" name="cfop_interno" id="edit_cfop_interno" class="form-control" placeholder="5102">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CFOP Ext.</label>
+                        <input type="text" name="cfop_externo" id="edit_cfop_externo" class="form-control" placeholder="6102">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Aliq. ICMS (%)</label>
+                        <input type="number" step="0.01" name="aliquota_icms" id="edit_aliquota_icms" class="form-control" placeholder="0.00">
                     </div>
                 </div>
 
@@ -437,8 +525,15 @@ $categorias = [
         function editarProduto(p) {
             document.getElementById('edit_id').value = p.id;
             document.getElementById('edit_codigo').value = p.codigo;
+            document.getElementById('edit_cean').value = p.cean || '';
             document.getElementById('edit_ncm').value = p.ncm || '';
+            document.getElementById('edit_cest').value = p.cest || '';
             document.getElementById('edit_tipo_produto').value = p.tipo_produto || 'simples';
+            document.getElementById('edit_origem').value = p.origem !== null ? p.origem : 0;
+            document.getElementById('edit_csosn').value = p.csosn || '';
+            document.getElementById('edit_cfop_interno').value = p.cfop_interno || '';
+            document.getElementById('edit_cfop_externo').value = p.cfop_externo || '';
+            document.getElementById('edit_aliquota_icms').value = p.aliquota_icms || '';
             document.getElementById('edit_nome').value = p.nome;
             document.getElementById('edit_categoria').value = p.categoria;
             document.getElementById('edit_unidade').value = p.unidade || 'UN';
