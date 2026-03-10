@@ -311,14 +311,11 @@ try {
         .logo-box {
             width: 110px;
             height: 110px;
-            border: 1px dashed #bbb;
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
             font-size: 12px;
-            color: #777;
-            background: #fafafa;
             padding: 8px;
         }
 
