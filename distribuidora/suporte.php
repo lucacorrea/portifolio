@@ -286,7 +286,7 @@ if (!function_exists('e')) {
                                     <div class="support-icon"><i class="lni lni-whatsapp"></i></div>
                                     <div class="support-text">
                                         <h6>Junior de Almeida Praia</h6>
-                                        <p>Suporte rápido via WhatsApp.</p><a href="https://wa.me/5597981053442" target="_blank" class="fw-bold text-primary">(97) 99810-5344</a>
+                                        <p>Suporte rápido via WhatsApp.</p><a href="https://wa.me/5597981053442" target="_blank" class="fw-bold text-primary">(97) 98105-3442</a>
                                     </div>
                                 </div>
                             </div>
@@ -295,7 +295,7 @@ if (!function_exists('e')) {
                                     <div class="support-icon"><i class="lni lni-whatsapp"></i></div>
                                     <div class="support-text">
                                         <h6>Luiz Breno da Frota</h6>
-                                        <p>Suporte rápido via WhatsApp.</p><a href="https://wa.me/5579791434585" target="_blank" class="fw-bold text-primary">(79) 79143-4585</a>
+                                        <p>Suporte rápido via WhatsApp.</p><a href="https://wa.me/5597991434585" target="_blank" class="fw-bold text-primary">(97) 99143-4585</a>
                                     </div>
                                 </div>
                                 <div class="support-item">
