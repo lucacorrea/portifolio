@@ -1712,7 +1712,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
                   <div class="muted mt-2" id="hintNone" style="display:none;">Nenhum dado para o filtro selecionado.</div>
 
-                  <div class="table-footer-nav mb-4">
+                  <div class="table-footer-nav">
                     <p class="text-sm text-gray mb-0" id="infoCount">Mostrando 0 item(ns) nesta página. Total filtrado: 0.</p>
 
                     <div class="pager-box" id="pagerBox">
