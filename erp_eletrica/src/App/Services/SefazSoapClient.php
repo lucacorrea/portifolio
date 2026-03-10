@@ -24,7 +24,7 @@ class SefazSoapClient extends BaseService {
     ];
 
     private $serviceMapping = [
-        'nfe_distribuicao' => ['service' => 'NFeDistribuicaoDFe', 'method' => 'nfeDistribuicaoDFe'],
+        'nfe_distribuicao' => ['service' => 'NFeDistribuicaoDFe', 'method' => 'NFeDistribuicaoDFe'],
         'nfe_evento' => ['service' => 'NFeRecepcaoEvento4', 'method' => 'nfeRecepcaoEvento'],
         'nfce_autorizacao' => ['service' => 'NFeAutorizacao4', 'method' => 'nfeAutorizacaoLote'],
         'sefaz_status' => ['service' => 'NFeStatusServico4', 'method' => 'nfeStatusServicoNF']
@@ -63,9 +63,10 @@ class SefazSoapClient extends BaseService {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
         
-        // Remove empty action to prevent "Not Recognized" errors, SEFAZ will read the envelope body
+        // Restore action with correct case as fallback
+        $action = "http://www.portalfiscal.inf.br/nfe/wsdl/$serviceName/$methodName";
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Content-Type: application/soap+xml; charset=utf-8",
+            "Content-Type: application/soap+xml; charset=utf-8; action=\"$action\"",
             "Content-Length: " . strlen($soapXml)
         ]);
         
