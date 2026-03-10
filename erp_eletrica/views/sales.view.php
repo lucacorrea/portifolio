@@ -152,19 +152,19 @@
                     <label class="form-label small fw-bold text-uppercase text-muted">Tipo de Venda</label>
                     <div class="row g-2">
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="tipo_nota" id="tipo_fiscal" value="fiscal">
-                            <label class="btn btn-outline-light d-block text-start p-3 border" for="tipo_fiscal" style="border-color:#198754 !important;">
-                                <i class="fas fa-file-invoice-dollar me-2 text-success"></i>
-                                <span class="fw-bold text-success">Nota Fiscal</span>
-                                <div class="extra-small text-muted mt-1">Emite NFC-e SEFAZ</div>
+                            <input type="radio" class="btn-check" name="tipo_nota" id="tipo_fiscal" value="fiscal" autocomplete="off">
+                            <label class="btn btn-outline-success d-block text-start p-3 w-100" for="tipo_fiscal">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>
+                                <span class="fw-bold">Nota Fiscal</span>
+                                <div class="extra-small opacity-75 mt-1">Emite NFC-e SEFAZ</div>
                             </label>
                         </div>
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="tipo_nota" id="tipo_nao_fiscal" value="nao_fiscal" checked>
-                            <label class="btn btn-outline-light d-block text-start p-3 border" for="tipo_nao_fiscal">
-                                <i class="fas fa-receipt me-2 text-secondary"></i>
-                                <span class="fw-bold text-secondary">Não Fiscal</span>
-                                <div class="extra-small text-muted mt-1">Só recibo simples</div>
+                            <input type="radio" class="btn-check" name="tipo_nota" id="tipo_nao_fiscal" value="nao_fiscal" autocomplete="off" checked>
+                            <label class="btn btn-outline-secondary d-block text-start p-3 w-100" for="tipo_nao_fiscal">
+                                <i class="fas fa-receipt me-2"></i>
+                                <span class="fw-bold">Não Fiscal</span>
+                                <div class="extra-small opacity-75 mt-1">Só recibo simples</div>
                             </label>
                         </div>
                     </div>
