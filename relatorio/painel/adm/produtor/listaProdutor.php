@@ -149,7 +149,13 @@ try {
     }
 
     if ($action === 'update' && $id > 0) {
+
       $nome = trunc((string)($_POST['nome'] ?? ''), 160);
+      $tipo = trim((string)($_POST['tipo'] ?? 'PRODUTOR RURAL'));
+      $tiposValidos = ['PRODUTOR RURAL', 'FEIRANTE', 'MARRETEIRO'];
+      if (!in_array($tipo, $tiposValidos, true)) {
+        $tipo = 'PRODUTOR RURAL';
+      }
       $contato = trunc((string)($_POST['contato'] ?? ''), 60);
       $documento = trunc(only_digits((string)($_POST['documento'] ?? '')), 30);
       $obs = trunc((string)($_POST['observacao'] ?? ''), 255);
@@ -198,10 +204,11 @@ try {
 
       if ($hasComunidades) {
         $up = $pdo->prepare("UPDATE produtores
-                             SET nome=:nome, contato=:contato, documento=:doc, comunidade_id=:cid, ativo=:ativo, observacao=:obs
-                             WHERE id=:id AND feira_id=:f");
+                       SET nome=:nome, tipo=:tipo, contato=:contato, documento=:doc, comunidade_id=:cid, ativo=:ativo, observacao=:obs
+                       WHERE id=:id AND feira_id=:f");
         $up->execute([
           ':nome' => $nome,
+          ':tipo' => $tipo,
           ':contato' => ($contato !== '' ? $contato : null),
           ':doc' => ($documento !== '' ? $documento : null),
           ':cid' => $comunidade_id,
@@ -212,10 +219,11 @@ try {
         ]);
       } else {
         $up = $pdo->prepare("UPDATE produtores
-                             SET nome=:nome, contato=:contato, documento=:doc, ativo=:ativo, observacao=:obs
-                             WHERE id=:id AND feira_id=:f");
+                       SET nome=:nome, tipo=:tipo, contato=:contato, documento=:doc, ativo=:ativo, observacao=:obs
+                       WHERE id=:id AND feira_id=:f");
         $up->execute([
           ':nome' => $nome,
+          ':tipo' => $tipo,
           ':contato' => ($contato !== '' ? $contato : null),
           ':doc' => ($documento !== '' ? $documento : null),
           ':ativo' => $ativo,
@@ -224,7 +232,6 @@ try {
           ':f' => $FEIRA_ID
         ]);
       }
-
       $_SESSION['flash_ok'] = 'Produtor atualizado com sucesso!';
       header('Location: ' . buildUrl(['p' => $page]));
       exit;
@@ -301,6 +308,7 @@ try {
     $sql = "SELECT
               p.id,
               p.nome,
+              p.tipo,
               p.contato,
               p.documento,
               p.ativo,
@@ -317,6 +325,7 @@ try {
     $sql = "SELECT
               p.id,
               p.nome,
+              p.tipo,
               p.contato,
               p.documento,
               p.ativo,
@@ -638,7 +647,7 @@ try {
                   </a>
                 </li>
 
-                
+
               </ul>
             </div>
           </li>
@@ -669,7 +678,7 @@ try {
             </div>
           </li>
 
-          
+
           <!-- Título DIVERSOS -->
           <li class="nav-item" style="pointer-events:none;">
             <span style="
@@ -717,7 +726,7 @@ try {
         </ul>
       </nav>
 
-        </ul>
+      </ul>
       </nav>
 
       <!-- MAIN -->
@@ -755,9 +764,9 @@ try {
                       <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
                         <button type="submit" class="btn btn-primary"><i class="ti-search mr-1"></i> Pesquisar</button>
                         <a class="btn btn-light" href="<?= h(buildUrl(['q' => null, 'p' => null])) ?>"><i class="ti-close mr-1"></i> Limpar</a>
-                       
+
                       </div>
-                      
+
                     </div>
                   </form>
                 </div>
@@ -781,7 +790,7 @@ try {
                         <i class="ti-list"></i> Imprimir Lista
                       </a>
                     </div>
-                      <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                    <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
                       <i class="ti-plus"></i> Adicionar
                     </a>
                   </div>
@@ -792,6 +801,7 @@ try {
                         <tr>
                           <th style="width:90px;">ID</th>
                           <th>Produtor</th>
+                          <th>Função</th>
                           <th>Comunidade</th>
                           <th>Contato</th>
                           <th>Status</th>
@@ -801,7 +811,7 @@ try {
                       <tbody>
                         <?php if (empty($produtores)): ?>
                           <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Nenhum produtor encontrado.</td>
+                            <td colspan="7" class="text-center text-muted py-4">Nenhum produtor encontrado.</td>
                           </tr>
                         <?php else: ?>
                           <?php foreach ($produtores as $p): ?>
@@ -828,6 +838,7 @@ try {
                               <td><?= h($comunidadeNome) ?></td>
                               <td><?= h($contato) ?></td>
                               <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
+                              <td> <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                               <td>
                                 <div class="acoes-wrap">
 
@@ -839,6 +850,7 @@ try {
                                     data-target="#modalEditProdutor"
                                     data-id="<?= (int)$id ?>"
                                     data-nome="<?= h($p['nome'] ?? '') ?>"
+                                    data-tipo="<?= h((string)($p['tipo'] ?? 'PRODUTOR RURAL')) ?>"
                                     data-contato="<?= h($contato) ?>"
                                     data-documento="<?= h($doc) ?>"
                                     data-observacao="<?= h($obs) ?>"

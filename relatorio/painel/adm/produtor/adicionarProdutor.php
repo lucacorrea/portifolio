@@ -6,6 +6,7 @@ session_start();
 /*
 ✅ 1) Rode 1x no banco:
 ALTER TABLE produtores ADD COLUMN foto VARCHAR(255) DEFAULT NULL AFTER documento;
+ALTER TABLE produtores ADD COLUMN tipo ENUM('PRODUTOR RURAL','FEIRANTE','MARRETEIRO') NOT NULL DEFAULT 'PRODUTOR RURAL' AFTER nome;
 
 ✅ 2) Crie a pasta (se não existir):
 /uploads/produtores
@@ -93,6 +94,7 @@ try {
 /* Valores antigos */
 $old = [
   'nome'          => '',
+  'tipo'          => 'PRODUTOR RURAL',
   'documento'     => '',
   'contato'       => '',
   'comunidade_id' => '',
@@ -106,6 +108,9 @@ $UPLOAD_REL_DIR = 'uploads/produtores';
 $UPLOAD_ABS_DIR = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR) : null;
 $MAX_BASE64_BYTES = 3 * 1024 * 1024; // 3MB em bytes decodificados
 
+/* Tipos válidos */
+$tiposValidos = ['PRODUTOR RURAL', 'FEIRANTE', 'MARRETEIRO'];
+
 /* POST */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $tokenPost = (string)($_POST['csrf_token'] ?? '');
@@ -116,11 +121,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   $old['nome']          = trim((string)($_POST['nome'] ?? ''));
+  $old['tipo']          = trim((string)($_POST['tipo'] ?? 'PRODUTOR RURAL'));
   $old['documento']     = trim((string)($_POST['documento'] ?? ''));
   $old['contato']       = trim((string)($_POST['contato'] ?? ''));
   $old['comunidade_id'] = trim((string)($_POST['comunidade_id'] ?? ''));
   $old['ativo']         = (string)($_POST['ativo'] ?? '1');
   $old['observacao']    = trim((string)($_POST['observacao'] ?? ''));
+
+  if (!in_array($old['tipo'], $tiposValidos, true)) {
+    $old['tipo'] = 'PRODUTOR RURAL';
+  }
 
   if ($old['nome'] === '') {
     $err = 'Informe o nome do produtor.';
@@ -128,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $err = 'Selecione a comunidade do produtor.';
   } else {
     $nome = trunc255($old['nome']);
+    $tipo = $old['tipo'];
     $contato = trunc255($old['contato']);
 
     // documento: salva somente dígitos
@@ -144,7 +155,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_POST['foto_base64'])) {
       $dataUrl = (string)$_POST['foto_base64'];
 
-      // aceita jpeg/png/webp; você pode limitar só jpeg para ficar mais leve
       if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl, $m) !== 1) {
         $err = 'Foto inválida (formato não suportado).';
       } else {
@@ -161,8 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           if (!ensure_dir($UPLOAD_ABS_DIR)) {
             $err = 'Não foi possível criar a pasta de upload.';
           } else {
-            // por padrão salvamos como jpg (mais leve), mesmo que venha png/webp
-            // como o JS gera JPEG, vai cair aqui como jpeg quase sempre.
             $fileName = 'produtor_' . bin2hex(random_bytes(10)) . '.jpg';
             $destAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $fileName;
 
@@ -178,7 +186,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($err === '') {
       try {
-        // Garante que a comunidade existe e é da mesma feira e está ativa
         $chk = $pdo->prepare("SELECT COUNT(*)
                               FROM comunidades
                               WHERE id = :id AND feira_id = :feira AND ativo = 1");
@@ -188,20 +195,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $okCom = (int)$chk->fetchColumn() > 0;
 
         if (!$okCom) {
-          // se salvou foto e deu erro depois, remove arquivo
           if ($fotoDbValue) {
             @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
           }
           $err = 'Comunidade inválida (não encontrada ou inativa).';
         } else {
           $sql = "INSERT INTO produtores
-                    (feira_id, nome, contato, comunidade_id, documento, foto, ativo, observacao)
+                    (feira_id, nome, tipo, contato, comunidade_id, documento, foto, ativo, observacao)
                   VALUES
-                    (:feira_id, :nome, :contato, :comunidade_id, :documento, :foto, :ativo, :observacao)";
+                    (:feira_id, :nome, :tipo, :contato, :comunidade_id, :documento, :foto, :ativo, :observacao)";
           $stmt = $pdo->prepare($sql);
           $stmt->execute([
             ':feira_id'      => $FEIRA_ID,
             ':nome'          => $nome,
+            ':tipo'          => $tipo,
             ':contato'       => ($contato !== '' ? $contato : null),
             ':comunidade_id' => $comunidadeId,
             ':documento'     => $documento,
@@ -215,7 +222,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           exit;
         }
       } catch (Throwable $e) {
-        // se salvou foto e deu erro no banco, remove arquivo
         if ($fotoDbValue && $UPLOAD_ABS_DIR) {
           @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
         }
@@ -361,7 +367,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -383,7 +388,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="container-fluid page-body-wrapper">
 
-      <!-- settings-panel (mantido) -->
       <div id="right-sidebar" class="settings-panel">
         <i class="settings-close ti-close"></i>
         <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
@@ -396,7 +400,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </ul>
       </div>
 
-      <!-- SIDEBAR -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
 
@@ -549,14 +552,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </ul>
       </nav>
 
-      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
 
           <div class="row">
             <div class="col-12 mb-3">
               <h3 class="font-weight-bold">Adicionar Produtor</h3>
-              <h6 class="font-weight-normal mb-0">Cadastro de produtor rural (feirante).</h6>
+              <h6 class="font-weight-normal mb-0">Cadastro de produtor/feirante/marreteiro.</h6>
             </div>
           </div>
 
@@ -594,8 +596,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <form class="pt-4" method="post" action="">
                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-
-                    <!-- ✅ Foto em base64 vai aqui -->
                     <input type="hidden" name="foto_base64" id="foto_base64" value="">
 
                     <div class="form-section">
@@ -616,7 +616,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
                         </div>
 
-                        <!-- ✅ CPF como NUMBER -->
+                        <div class="col-12 col-md-6 col-lg-3 mb-3">
+                          <label>Função <span class="text-danger">*</span></label>
+                          <select name="tipo" class="form-control" required>
+                            <option value="PRODUTOR RURAL" <?= $old['tipo'] === 'PRODUTOR RURAL' ? 'selected' : '' ?>>Produtor Rural</option>
+                            <option value="FEIRANTE" <?= $old['tipo'] === 'FEIRANTE' ? 'selected' : '' ?>>Feirante</option>
+                            <option value="MARRETEIRO" <?= $old['tipo'] === 'MARRETEIRO' ? 'selected' : '' ?>>Marreteiro</option>
+                          </select>
+                          <small class="text-muted help-hint">Informe a função do cadastrado.</small>
+                        </div>
+
                         <div class="col-12 col-md-6 col-lg-3 mb-3">
                           <label>CPF / Documento</label>
                           <input
@@ -642,7 +651,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <small class="text-muted help-hint">Opcional (salvo em <b>produtores.contato</b>).</small>
                         </div>
 
-                        <!-- ✅ CÂMERA DENTRO DO NAVEGADOR (LEVE) -->
                         <div class="col-12 col-lg-6 mb-3">
                           <label>Foto do produtor (câmera)</label>
 
@@ -788,24 +796,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         camOn,
         hasPhoto
       }) {
-        // câmera
         video.style.display = camOn ? 'block' : 'none';
         btnTirar.disabled = !camOn;
-
-        // fechar
         btnFechar.disabled = !camOn;
-
-        // foto
         preview.style.display = hasPhoto ? 'block' : 'none';
         btnRefazer.disabled = !hasPhoto;
-
-        // abrir
         btnAbrir.disabled = camOn;
       }
 
       async function abrirCamera() {
         try {
-          // precisa HTTPS ou localhost
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: {
@@ -845,8 +845,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       function tirarFoto() {
         if (!video.videoWidth || !video.videoHeight) return;
 
-        // ✅ Reduz largura para ficar leve
-        const targetW = 720; // pode baixar pra 600 se quiser mais leve ainda
+        const targetW = 720;
         const ratio = video.videoHeight / video.videoWidth;
         const targetH = Math.round(targetW * ratio);
 
@@ -858,7 +857,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         });
         ctx.drawImage(video, 0, 0, targetW, targetH);
 
-        // ✅ JPEG comprimido (0.65 ~ bem leve)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
 
         preview.src = dataUrl;
@@ -868,7 +866,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           camOn: true,
           hasPhoto: true
         });
-        fecharCamera(); // fecha pra economizar bateria
+        fecharCamera();
       }
 
       function refazerFoto() {
@@ -893,18 +891,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       btnTirar.addEventListener('click', tirarFoto);
       btnRefazer.addEventListener('click', refazerFoto);
 
-      // Se resetar o form, limpa foto também
       btnLimpar.addEventListener('click', function() {
         setTimeout(limparFoto, 0);
       });
 
-      // Estado inicial
       setState({
         camOn: false,
         hasPhoto: false
       });
 
-      // Se sair da página, fecha câmera
       window.addEventListener('beforeunload', fecharCamera);
     })();
   </script>
