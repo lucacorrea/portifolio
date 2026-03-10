@@ -69,19 +69,40 @@ class CaixaController extends BaseController {
             $motivo = $_POST['motivo'];
             $caixaId = $_POST['caixa_id'];
             $authCode = $_POST['auth_code'] ?? null;
+            $authPassword = $_POST['auth_password'] ?? null;
+            $isAdmin = in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master']);
 
-            if ($tipo === 'sangria' && $_SESSION['usuario_nivel'] !== 'admin') {
+            if (!$isAdmin) {
                 $authService = new \App\Services\AuthorizationService();
-                if (!$authService->validateAndUse($authCode, 'sangria', $_SESSION['filial_id'] ?? 1)) {
-                    header('Location: caixa.php?error=Código de autorização inválido ou expirado para sangria.');
+                $userService = new \App\Models\User();
+                $authorized = false;
+
+                // 1. Try One-time Auth Code
+                if ($authCode && ($authService->validateAndUse($authCode, $tipo, $_SESSION['filial_id']) || $authService->validateAndUse($authCode, 'geral', $_SESSION['filial_id']))) {
+                    $authorized = true;
+                } 
+                // 2. Try Admin Password (any admin of the branch)
+                else if ($authPassword) {
+                    $admins = $userService->findAdmins($_SESSION['filial_id']);
+                    foreach ($admins as $adm) {
+                        if (password_verify($authPassword, $adm['senha'])) {
+                            $authorized = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$authorized) {
+                    header('Location: caixa.php?error=Autorização administrativa obrigatória para esta operação.');
                     exit;
                 }
+
                 $audit = new \App\Services\AuditLogService();
-                $audit->record('Uso de código sangria', 'caixa_movimentacoes', null, null, [
+                $audit->record('Autorização de Movimentação de Caixa', 'caixa_movimentacoes', null, null, [
+                    'tipo' => $tipo,
                     'valor' => $valor,
-                    'codigo' => $authCode,
                     'operador' => $_SESSION['usuario_id'],
-                    'ip' => $_SERVER['REMOTE_ADDR']
+                    'metodo' => $authCode ? 'codigo' : 'senha'
                 ]);
             }
 
@@ -149,6 +170,39 @@ class CaixaController extends BaseController {
 
             $this->logAction('fechamento_caixa', 'caixas', $caixaId);
             header('Location: caixa.php?success=Caixa fechado com sucesso.');
+            exit;
+        }
+    }
+
+    public function validate_code() {
+        header('Content-Type: application/json');
+        try {
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $raw = file_get_contents('php://input');
+                $data = json_decode($raw, true);
+                
+                if (!$data) {
+                    echo json_encode(['success' => false, 'error' => 'Dados de entrada inválidos.']);
+                    exit;
+                }
+
+                $code = $data['code'] ?? '';
+                $tipo = $data['tipo'] ?? 'geral';
+                $filialId = $_SESSION['filial_id'] ?? null;
+
+                if (!$filialId) {
+                    echo json_encode(['success' => false, 'error' => 'Sessão expirada. Faça login novamente.']);
+                    exit;
+                }
+
+                $authService = new \App\Services\AuthorizationService();
+                $result = $authService->validateOnly($code, $tipo, $filialId);
+                
+                echo json_encode($result);
+                exit;
+            }
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Erro interno ao validar: ' . $e->getMessage()]);
             exit;
         }
     }

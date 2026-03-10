@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 @date_default_timezone_set('America/Manaus');
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 /* =========================
    CONEXÃO (db(): PDO)
@@ -10,11 +11,15 @@ declare(strict_types=1);
 $possibleConn = [
   __DIR__ . '/assets/conexao.php',
   __DIR__ . '/assets/php/conexao.php',
-  __DIR__ . '/assets/dados/_helpers.php', // se existir (não obrigatório)
+  __DIR__ . '/assets/dados/_helpers.php',
 ];
 foreach ($possibleConn as $f) {
   if (is_file($f)) require_once $f;
 }
+
+// (opcional) helpers do seu projeto
+$helpers = __DIR__ . '/assets/dados/relatorios/__helpers.php';
+if (is_file($helpers)) require_once $helpers;
 
 if (!function_exists('db')) {
   http_response_code(500);
@@ -29,66 +34,170 @@ $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 /* =========================
    HELPERS
 ========================= */
-function e(string $s): string
-{
-  return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+if (!function_exists('e')) {
+  function e(string $s): string
+  {
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  }
 }
+
 function brl($v): string
 {
   return 'R$ ' . number_format((float)$v, 2, ',', '.');
 }
+
 function nint($v): string
 {
   return number_format((float)$v, 0, ',', '.');
 }
+
 function pct(float $cur, float $prev): float
 {
   if ($prev <= 0) return $cur > 0 ? 100.0 : 0.0;
   return (($cur - $prev) / $prev) * 100.0;
 }
-function dt(string $ymd): string
+
+function dtShort(string $ymd): string
 {
   $ts = strtotime($ymd);
   return $ts ? date('d/m', $ts) : $ymd;
 }
+
 function monthPtShort(int $m): string
 {
   static $map = [1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Abr', 5 => 'Mai', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago', 9 => 'Set', 10 => 'Out', 11 => 'Nov', 12 => 'Dez'];
-  return $map[$m] ?? (string)$m;
+  return isset($map[$m]) ? $map[$m] : (string)$m;
 }
+
 function buildMonthKeys(DateTimeImmutable $start, int $months): array
 {
   $keys = [];
   for ($i = 0; $i < $months; $i++) $keys[] = $start->modify("+{$i} months")->format('Y-m');
   return $keys;
 }
+
 function buildMonthLabels(array $keys): array
 {
   $labels = [];
   foreach ($keys as $ym) {
-    [$y, $m] = array_map('intval', explode('-', $ym));
+    $parts = explode('-', $ym);
+    $y = (int)($parts[0] ?? 0);
+    $m = (int)($parts[1] ?? 0);
     $labels[] = monthPtShort($m) . '/' . substr((string)$y, -2);
   }
   return $labels;
 }
+
 function fetchKeyVal(PDO $pdo, string $sql, array $params, string $keyCol, string $valCol): array
 {
   $st = $pdo->prepare($sql);
   $st->execute($params);
   $out = [];
-  while ($r = $st->fetch()) $out[(string)$r[$keyCol]] = $r[$valCol];
+  while ($r = $st->fetch(PDO::FETCH_ASSOC)) $out[(string)$r[$keyCol]] = $r[$valCol];
   return $out;
 }
+
+/**
+ * ✅ CORREÇÃO CRÍTICA:
+ * Seu table_exists antigo com "SHOW TABLES LIKE :t" pode falhar com prepared statements (e virar sempre FALSE),
+ * então a tela nunca buscava venda_itens/top produtos/entradas/saidas.
+ * Aqui usamos information_schema (funciona em prepared statement).
+ */
 function table_exists(PDO $pdo, string $table): bool
 {
+  static $cache = [];
+  if (array_key_exists($table, $cache)) return (bool)$cache[$table];
+
   try {
-    $st = $pdo->prepare("SHOW TABLES LIKE :t");
+    $st = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM information_schema.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = :t
+    ");
     $st->execute([':t' => $table]);
-    return (bool)$st->fetchColumn();
+    $cache[$table] = ((int)$st->fetchColumn() > 0);
+    return (bool)$cache[$table];
   } catch (Throwable $e) {
+    $cache[$table] = false;
     return false;
   }
 }
+
+function pay_text_from_json(?string $json): string
+{
+  $json = trim((string)$json);
+  if ($json === '') return '';
+
+  $d = json_decode($json, true);
+  if (json_last_error() !== JSON_ERROR_NONE || !is_array($d)) return '';
+
+  $lines = [];
+
+  $mode = strtoupper(trim((string)($d['mode'] ?? '')));
+  $method = strtoupper(trim((string)($d['method'] ?? '')));
+  if ($mode !== '')   $lines[] = "Modo: {$mode}";
+  if ($method !== '') $lines[] = "Método: {$method}";
+
+  if (array_key_exists('total', $d)) $lines[] = "Total: " . brl((float)$d['total']);
+  if (array_key_exists('paid', $d))  $lines[] = "Pago: " . brl((float)$d['paid']);
+  if (array_key_exists('troco', $d)) $lines[] = "Troco: " . brl((float)$d['troco']);
+
+  if (isset($d['parts']) && is_array($d['parts']) && count($d['parts']) > 0) {
+    $lines[] = "Partes:";
+    foreach ($d['parts'] as $p) {
+      if (!is_array($p)) continue;
+      $m = strtoupper(trim((string)($p['method'] ?? $p['metodo'] ?? '')));
+      $v = (float)($p['value'] ?? $p['valor'] ?? 0);
+      if ($m === '') $m = '—';
+      $lines[] = "• {$m}: " . brl($v);
+    }
+  }
+
+  if (isset($d['fiado']) && is_array($d['fiado'])) {
+    $hasEntry = (bool)($d['fiado']['has_entry'] ?? false);
+    $entryVal = (float)($d['fiado']['entry_value'] ?? 0);
+    $entryMet = (string)($d['fiado']['entry_method'] ?? '');
+    $debtVal  = (float)($d['fiado']['debt_value'] ?? 0);
+
+    $txt = "Fiado: SIM";
+    if ($hasEntry) $txt .= " (entrada " . brl($entryVal) . ($entryMet ? " • {$entryMet}" : "") . ")";
+    $lines[] = $txt;
+    if ($debtVal > 0) $lines[] = "Restante: " . brl($debtVal);
+  }
+
+  return implode("\n", $lines);
+}
+
+function build_url(array $set = []): string
+{
+  $q = $_GET;
+  foreach ($set as $k => $v) {
+    if ($v === null) unset($q[$k]);
+    else $q[$k] = $v;
+  }
+  $base = 'dashboard.php';
+  return $q ? ($base . '?' . http_build_query($q)) : $base;
+}
+
+$HAS_DEVOL = table_exists($pdo, 'devolucoes');
+$HAS_VENDA_ITENS = table_exists($pdo, 'venda_itens');
+$HAS_SAIDAS = table_exists($pdo, 'saidas');
+$HAS_ENTRADAS = table_exists($pdo, 'entradas');
+$HAS_FIADOS = table_exists($pdo, 'fiados');
+$HAS_FIADOS_PAG = table_exists($pdo, 'fiados_pagamentos');
+
+function exclude_devolvidas_sql(bool $hasDevol, string $alias = 'v'): string
+{
+  if (!$hasDevol) return '1=1';
+  return "NOT EXISTS (
+    SELECT 1 FROM devolucoes d
+    WHERE d.venda_no = {$alias}.id
+      AND d.status <> 'CANCELADO'
+  )";
+}
+
+$EXCL_V = exclude_devolvidas_sql($HAS_DEVOL, 'v');
 
 /* =========================
    ENDPOINTS JSON (MODAIS)
@@ -114,66 +223,67 @@ if ($action !== '') {
         LIMIT 1
       ");
       $st->execute([':id' => $id]);
-      $v = $st->fetch();
+      $v = $st->fetch(PDO::FETCH_ASSOC);
       if (!$v) throw new RuntimeException('Venda não encontrada.');
 
-      // ✅ ITENS VENDIDOS (venda_itens + produtos)
+      // ✅ ITENS (venda_itens) — AGORA VAI (table_exists corrigido)
       $itens = [];
       $itens_total = 0.0;
       $itens_qtd = 0.0;
 
-      if (table_exists($pdo, 'venda_itens')) {
+      if ($GLOBALS['HAS_VENDA_ITENS']) {
+        // não depende de join pra não “sumir” item por qualquer motivo
         $stIt = $pdo->prepare("
           SELECT
             vi.id,
-            vi.venda_id,
-            vi.produto_id,
             vi.codigo,
-            COALESCE(p.nome, vi.nome) AS nome,
+            vi.nome,
             vi.unidade,
             vi.preco_unit,
             vi.qtd,
             vi.subtotal
           FROM venda_itens vi
-          LEFT JOIN produtos p ON p.id = vi.produto_id
           WHERE vi.venda_id = :id
           ORDER BY vi.id ASC
         ");
         $stIt->execute([':id' => $id]);
-        $itens = $stIt->fetchAll() ?: [];
+        $itens = $stIt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         foreach ($itens as $it) {
           $qtd = (float)($it['qtd'] ?? 0);
           $sub = (float)($it['subtotal'] ?? 0);
           $vu  = (float)($it['preco_unit'] ?? 0);
-          if ($sub <= 0 && $qtd > 0) $sub = $vu * $qtd; // fallback
+          if ($sub <= 0 && $qtd > 0) $sub = $vu * $qtd;
           $itens_total += $sub;
           $itens_qtd   += $qtd;
         }
       }
 
-      // devoluções vinculadas (se existir devolucoes)
+      // DEVOLUÇÕES vinculadas
       $devols = [];
-      if (table_exists($pdo, 'devolucoes')) {
+      if ($GLOBALS['HAS_DEVOL']) {
         $st2 = $pdo->prepare("
           SELECT id, data, hora, tipo, produto, qtd, valor, motivo, obs, status
           FROM devolucoes
           WHERE venda_no = :id
-          ORDER BY id DESC
+          ORDER BY data DESC, hora DESC, id DESC
           LIMIT 50
         ");
         $st2->execute([':id' => $id]);
-        $devols = $st2->fetchAll() ?: [];
+        $devols = $st2->fetchAll(PDO::FETCH_ASSOC) ?: [];
       }
+
+      $payText = pay_text_from_json((string)($v['pagamento_json'] ?? ''));
 
       echo json_encode([
         'ok' => true,
         'venda' => $v,
+        'pay_text' => $payText,
         'itens' => $itens,
         'itens_total' => $itens_total,
         'itens_qtd' => $itens_qtd,
         'devolucoes' => $devols
-      ], JSON_UNESCAPED_UNICODE);
+      ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
       exit;
     }
 
@@ -191,18 +301,18 @@ if ($action !== '') {
         LIMIT 1
       ");
       $st->execute([':id' => $id]);
-      $p = $st->fetch();
+      $p = $st->fetch(PDO::FETCH_ASSOC);
       if (!$p) throw new RuntimeException('Produto não encontrado.');
 
-      echo json_encode(['ok' => true, 'produto' => $p], JSON_UNESCAPED_UNICODE);
+      echo json_encode(['ok' => true, 'produto' => $p], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
       exit;
     }
 
-    echo json_encode(['ok' => false, 'error' => 'Ação inválida.'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => false, 'error' => 'Ação inválida.'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
   } catch (Throwable $ex) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => $ex->getMessage()], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => false, 'error' => $ex->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
   }
 }
@@ -224,89 +334,112 @@ $rangeEndStr   = $rangeEnd->format('Y-m-d');
 $yesterday = $today->modify('-1 day')->format('Y-m-d');
 
 /* =========================
-   KPIs (vendas/produtos)
+   KPIs (exclui devolvidas)
 ========================= */
 $st = $pdo->prepare("
   SELECT
     COUNT(*) c,
-    COALESCE(SUM(CASE WHEN pagamento = 'FIADO' THEN 0 ELSE total END), 0) as cash_vendas,
-    COALESCE(SUM(total), 0) as total_vendas
-  FROM vendas
-  WHERE data = :d
+    COALESCE(SUM(CASE WHEN v.pagamento = 'FIADO' THEN 0 ELSE v.total END), 0) as cash_vendas,
+    COALESCE(SUM(v.total), 0) as total_vendas
+  FROM vendas v
+  WHERE v.data = :d
+    AND {$EXCL_V}
 ");
 $st->execute([':d' => $today->format('Y-m-d')]);
-$resToday = $st->fetch();
+$resToday = $st->fetch(PDO::FETCH_ASSOC) ?: ['c' => 0, 'cash_vendas' => 0, 'total_vendas' => 0];
 
-// Pegar entradas de fiados de hoje
-$stEntrada = $pdo->prepare("SELECT COALESCE(SUM(valor_pago),0) FROM fiados WHERE venda_id IN (SELECT id FROM vendas WHERE data = :d)");
-$stEntrada->execute([':d' => $today->format('Y-m-d')]);
-$entradasHoje = (float)$stEntrada->fetchColumn();
+// Entradas de fiados “na venda do dia” (valor_pago em fiados)
+$entradasHoje = 0.0;
+if ($HAS_FIADOS) {
+  $stEntrada = $pdo->prepare("
+    SELECT COALESCE(SUM(f.valor_pago),0)
+    FROM fiados f
+    WHERE f.venda_id IN (
+      SELECT v.id FROM vendas v
+      WHERE v.data = :d AND {$EXCL_V}
+    )
+  ");
+  $stEntrada->execute([':d' => $today->format('Y-m-d')]);
+  $entradasHoje = (float)$stEntrada->fetchColumn();
+}
 
-// Pegar pagamentos de fiados de hoje (tabela fiados_pagamentos)
-$stPagFiado = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE DATE(created_at) = :d");
-$stPagFiado->execute([':d' => $today->format('Y-m-d')]);
-$recFiadoHoje = (float)$stPagFiado->fetchColumn();
+// Pagamentos avulsos fiados (fiados_pagamentos)
+$recFiadoHoje = 0.0;
+if ($HAS_FIADOS_PAG) {
+  $stPagFiado = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE DATE(created_at) = :d");
+  $stPagFiado->execute([':d' => $today->format('Y-m-d')]);
+  $recFiadoHoje = (float)$stPagFiado->fetchColumn();
+}
 
 $kToday = [
-    'c' => (int)$resToday['c'],
-    's' => (float)$resToday['cash_vendas'] + $entradasHoje + $recFiadoHoje,
-    'total_bruto' => (float)$resToday['total_vendas']
+  'c' => (int)$resToday['c'],
+  's' => (float)$resToday['cash_vendas'] + $entradasHoje + $recFiadoHoje,
+  'total_bruto' => (float)$resToday['total_vendas']
 ];
 
 $st->execute([':d' => $yesterday]);
-$kYest = $st->fetch() ?: ['c' => 0, 's' => 0];
+$kYestRow = $st->fetch(PDO::FETCH_ASSOC) ?: ['c' => 0, 'cash_vendas' => 0, 'total_vendas' => 0];
 
 $vendasHoje = (int)$kToday['c'];
-$vendasOntem = (int)$kYest['c'];
+$vendasOntem = (int)($kYestRow['c'] ?? 0);
 $vendasHojePct = pct((float)$vendasHoje, (float)$vendasOntem);
 
-// Faturamento mês atual / mês anterior
+// Faturamento mês atual / mês anterior (cash vendas + fiados pagos/entradas)
 $firstThisMonth = $today->modify('first day of this month')->format('Y-m-d');
 $firstNextMonth = $today->modify('first day of next month')->format('Y-m-d');
 $firstPrevMonth = $today->modify('first day of last month')->format('Y-m-d');
-$firstThisMonth2 = $firstThisMonth;
 
-$st = $pdo->prepare("
-  SELECT
-    COALESCE(SUM(CASE WHEN pagamento = 'FIADO' THEN 0 ELSE total END), 0) as cash_vendas
-  FROM vendas
-  WHERE data >= :ini AND data < :fim
+$stMes = $pdo->prepare("
+  SELECT COALESCE(SUM(CASE WHEN v.pagamento = 'FIADO' THEN 0 ELSE v.total END), 0) as cash_vendas
+  FROM vendas v
+  WHERE v.data >= :ini AND v.data < :fim
+    AND {$EXCL_V}
 ");
-$st->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
-$cashVendasMes = (float)($st->fetch()['cash_vendas'] ?? 0);
+$stMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
+$cashVendasMes = (float)(($stMes->fetch(PDO::FETCH_ASSOC) ?: [])['cash_vendas'] ?? 0);
 
-$stEntMes = $pdo->prepare("SELECT COALESCE(SUM(valor_pago),0) FROM fiados WHERE created_at >= :ini AND created_at < :fim");
-$stEntMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
-$entradasMes = (float)$stEntMes->fetchColumn();
+$entradasMes = 0.0;
+if ($HAS_FIADOS) {
+  $stEntMes = $pdo->prepare("SELECT COALESCE(SUM(valor_pago),0) FROM fiados WHERE created_at >= :ini AND created_at < :fim");
+  $stEntMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
+  $entradasMes = (float)$stEntMes->fetchColumn();
+}
 
-$stPagMes = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE created_at >= :ini AND created_at < :fim");
-$stPagMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
-$recFiadoMes = (float)$stPagMes->fetchColumn();
-
+$recFiadoMes = 0.0;
+if ($HAS_FIADOS_PAG) {
+  $stPagMes = $pdo->prepare("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos WHERE created_at >= :ini AND created_at < :fim");
+  $stPagMes->execute([':ini' => $firstThisMonth, ':fim' => $firstNextMonth]);
+  $recFiadoMes = (float)$stPagMes->fetchColumn();
+}
 $faturMes = $cashVendasMes + $entradasMes + $recFiadoMes;
 
-// Mês Anterior
-$st->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
-$cashVendasPrev = (float)($st->fetch()['cash_vendas'] ?? 0);
+// mês anterior
+$stMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
+$cashVendasPrev = (float)(($stMes->fetch(PDO::FETCH_ASSOC) ?: [])['cash_vendas'] ?? 0);
 
-$stEntMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
-$entradasPrev = (float)$stEntMes->fetchColumn();
+$entradasPrev = 0.0;
+if ($HAS_FIADOS) {
+  $stEntMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
+  $entradasPrev = (float)$stEntMes->fetchColumn();
+}
 
-$stPagMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
-$recFiadoPrev = (float)$stPagMes->fetchColumn();
+$recFiadoPrev = 0.0;
+if ($HAS_FIADOS_PAG) {
+  $stPagMes->execute([':ini' => $firstPrevMonth, ':fim' => $firstThisMonth]);
+  $recFiadoPrev = (float)$stPagMes->fetchColumn();
+}
 
 $faturMesPrev = $cashVendasPrev + $entradasPrev + $recFiadoPrev;
-
 $faturMesPct = pct($faturMes, $faturMesPrev);
 
 // Itens em estoque (snapshot)
 $itensEstoque = 0;
 if (table_exists($pdo, 'produtos')) {
-  $st = $pdo->query("SELECT COALESCE(SUM(estoque),0) s FROM produtos WHERE status = 'ATIVO'");
-  $itensEstoque = (int)($st->fetch()['s'] ?? 0);
+  $stE = $pdo->query("SELECT COALESCE(SUM(estoque),0) s FROM produtos WHERE status = 'ATIVO'");
+  $itensEstoque = (int)(($stE->fetch(PDO::FETCH_ASSOC) ?: [])['s'] ?? 0);
 }
 
-// “Saídas” (movimento) - se existir tabela saidas
+// Perdas (saidas) 30d
 $movDays = 30;
 $movEnd = $today->format('Y-m-d');
 $movStart = $today->modify("-" . ($movDays - 1) . " days")->format('Y-m-d');
@@ -315,27 +448,26 @@ $movPrevStart = $today->modify("-" . (($movDays * 2) - 1) . " days")->format('Y-
 
 $saidas30 = 0.0;
 $saidas30Prev = 0.0;
-if (table_exists($pdo, 'saidas')) {
-  $st = $pdo->prepare("SELECT COALESCE(SUM(qtd),0) s FROM saidas WHERE data BETWEEN :ini AND :fim");
-  $st->execute([':ini' => $movStart, ':fim' => $movEnd]);
-  $saidas30 = (float)($st->fetch()['s'] ?? 0);
+if ($HAS_SAIDAS) {
+  $stS = $pdo->prepare("SELECT COALESCE(SUM(qtd),0) s FROM saidas WHERE data BETWEEN :ini AND :fim");
+  $stS->execute([':ini' => $movStart, ':fim' => $movEnd]);
+  $saidas30 = (float)($stS->fetch(PDO::FETCH_ASSOC)['s'] ?? 0);
 
-  $st->execute([':ini' => $movPrevStart, ':fim' => $movPrevEnd]);
-  $saidas30Prev = (float)($st->fetch()['s'] ?? 0);
+  $stS->execute([':ini' => $movPrevStart, ':fim' => $movPrevEnd]);
+  $saidas30Prev = (float)($stS->fetch(PDO::FETCH_ASSOC)['s'] ?? 0);
 }
 $saidasPct = pct($saidas30, $saidas30Prev);
 
-// Ticket médio hoje / ontem
-$st = $pdo->prepare("SELECT COALESCE(AVG(total),0) a FROM vendas WHERE data = :d");
-$st->execute([':d' => $today->format('Y-m-d')]);
-$tickHoje = (float)($st->fetch()['a'] ?? 0);
-
-$st->execute([':d' => $yesterday]);
-$tickOntem = (float)($st->fetch()['a'] ?? 0);
+// Ticket médio hoje / ontem (exclui devolvidas)
+$stT = $pdo->prepare("SELECT COALESCE(AVG(v.total),0) a FROM vendas v WHERE v.data = :d AND {$EXCL_V}");
+$stT->execute([':d' => $today->format('Y-m-d')]);
+$tickHoje = (float)(($stT->fetch(PDO::FETCH_ASSOC) ?: [])['a'] ?? 0);
+$stT->execute([':d' => $yesterday]);
+$tickOntem = (float)(($stT->fetch(PDO::FETCH_ASSOC) ?: [])['a'] ?? 0);
 $tickPct = pct($tickHoje, $tickOntem);
 
 /* =========================
-   GRÁFICOS (12 meses / 6 meses)
+   GRÁFICOS
 ========================= */
 $start12 = $today->modify('first day of this month')->modify('-11 months');
 $keys12 = buildMonthKeys($start12, 12);
@@ -343,30 +475,47 @@ $labels12 = buildMonthLabels($keys12);
 $start12Str = $start12->format('Y-m-d');
 $end12Str = $today->modify('first day of next month')->format('Y-m-d');
 
-// Chart1: faturamento real 12m (vendas_cash + entradas_fiado + pagamentos_fiados)
+// Chart1: faturamento real 12m
 $cashVendasMap = fetchKeyVal($pdo, "
-   SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(CASE WHEN pagamento='FIADO' THEN 0 ELSE total END),0) s
-   FROM vendas WHERE data >= :ini AND data < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
+   SELECT DATE_FORMAT(v.data,'%Y-%m') ym, COALESCE(SUM(CASE WHEN v.pagamento='FIADO' THEN 0 ELSE v.total END),0) s
+   FROM vendas v
+   WHERE v.data >= :ini AND v.data < :fim
+     AND {$EXCL_V}
+   GROUP BY ym
+", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
 
-$entFiadoMap = fetchKeyVal($pdo, "
-   SELECT DATE_FORMAT(created_at,'%Y-%m') ym, COALESCE(SUM(valor_pago),0) s
-   FROM fiados WHERE created_at >= :ini AND created_at < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
+$entFiadoMap = [];
+if ($HAS_FIADOS) {
+  $entFiadoMap = fetchKeyVal($pdo, "
+     SELECT DATE_FORMAT(created_at,'%Y-%m') ym, COALESCE(SUM(valor_pago),0) s
+     FROM fiados
+     WHERE created_at >= :ini AND created_at < :fim
+     GROUP BY ym
+  ", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
+}
 
-$pagFiadoMap = fetchKeyVal($pdo, "
-   SELECT DATE_FORMAT(created_at,'%Y-%m') ym, COALESCE(SUM(valor),0) s
-   FROM fiados_pagamentos WHERE created_at >= :ini AND created_at < :fim GROUP BY ym", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
+$pagFiadoMap = [];
+if ($HAS_FIADOS_PAG) {
+  $pagFiadoMap = fetchKeyVal($pdo, "
+     SELECT DATE_FORMAT(created_at,'%Y-%m') ym, COALESCE(SUM(valor),0) s
+     FROM fiados_pagamentos
+     WHERE created_at >= :ini AND created_at < :fim
+     GROUP BY ym
+  ", [':ini' => $start12Str, ':fim' => $end12Str], 'ym', 's');
+}
 
 $chart1 = [];
 foreach ($keys12 as $k) {
-    $chart1[] = (float)($cashVendasMap[$k] ?? 0) + (float)($entFiadoMap[$k] ?? 0) + (float)($pagFiadoMap[$k] ?? 0);
+  $chart1[] = (float)($cashVendasMap[$k] ?? 0) + (float)($entFiadoMap[$k] ?? 0) + (float)($pagFiadoMap[$k] ?? 0);
 }
 
-// Chart2: vendas por mês
+// Chart2: vendas por mês (exclui devolvidas)
 $cntMap = fetchKeyVal(
   $pdo,
-  "SELECT DATE_FORMAT(data,'%Y-%m') ym, COUNT(*) c
-   FROM vendas
-   WHERE data >= :ini AND data < :fim
+  "SELECT DATE_FORMAT(v.data,'%Y-%m') ym, COUNT(*) c
+   FROM vendas v
+   WHERE v.data >= :ini AND v.data < :fim
+     AND {$EXCL_V}
    GROUP BY ym
    ORDER BY ym",
   [':ini' => $start12Str, ':fim' => $end12Str],
@@ -376,67 +525,57 @@ $cntMap = fetchKeyVal(
 $chart2 = [];
 foreach ($keys12 as $k) $chart2[] = (int)($cntMap[$k] ?? 0);
 
-// Chart3: Mix (se tiver saidas; senão fallback)
-$topCanals = [];
-if (table_exists($pdo, 'saidas')) {
-  try {
-    $st = $pdo->prepare("
-      SELECT canal, COUNT(DISTINCT pedido) c
-      FROM saidas
-      WHERE data >= :ini AND data < :fim
-      GROUP BY canal
-      ORDER BY c DESC
-      LIMIT 2
-    ");
-    $st->execute([':ini' => $start12Str, ':fim' => $end12Str]);
-    $topCanals = array_values(array_filter(array_map(fn($r) => (string)$r['canal'], $st->fetchAll())));
-  } catch (Throwable $ex) {
-    $topCanals = [];
-  }
-}
-if (count($topCanals) < 2) $topCanals = ['PRESENCIAL', 'DELIVERY'];
-$mixA = $topCanals[0] ?? 'PRESENCIAL';
-$mixB = $topCanals[1] ?? 'DELIVERY';
+/**
+ * ✅ Chart3 (Mix Saídas + Devoluções) — CORRIGIDO PELO SEU BANCO
+ * Saídas = saidas.valor_total (perdas/avarias)
+ * Devoluções = devolucoes.valor (não canceladas)
+ */
+$mixLabelA = 'Saídas (Perdas)';
+$mixLabelB = 'Devoluções';
 
-$mixMap = [];
-if (table_exists($pdo, 'saidas')) {
-  $st = $pdo->prepare("
-    SELECT DATE_FORMAT(data,'%Y-%m') ym, canal, COUNT(DISTINCT pedido) c
-    FROM saidas
-    WHERE data >= :ini AND data < :fim
-    GROUP BY ym, canal
-    ORDER BY ym
-  ");
-  $st->execute([':ini' => $start12Str, ':fim' => $end12Str]);
-  while ($r = $st->fetch()) {
-    $mixMap[(string)$r['ym']][(string)$r['canal']] = (int)$r['c'];
-  }
-}
-$chart3A = [];
-$chart3B = [];
-foreach ($keys12 as $k) {
-  $chart3A[] = (int)($mixMap[$k][$mixA] ?? 0);
-  $chart3B[] = (int)($mixMap[$k][$mixB] ?? 0);
-}
-
-$devMap = [];
-if (table_exists($pdo, 'devolucoes')) {
-  $devMap = fetchKeyVal(
+$lossValMap = [];
+if ($HAS_SAIDAS) {
+  $lossValMap = fetchKeyVal(
     $pdo,
-    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COUNT(*) c
-     FROM devolucoes
-     WHERE data >= :ini AND data < :fim
+    "SELECT DATE_FORMAT(s.data,'%Y-%m') ym, COALESCE(SUM(s.valor_total),0) s
+     FROM saidas s
+     WHERE s.data >= :ini AND s.data < :fim
      GROUP BY ym
      ORDER BY ym",
     [':ini' => $start12Str, ':fim' => $end12Str],
     'ym',
-    'c'
+    's'
   );
 }
-$chart3C = [];
-foreach ($keys12 as $k) $chart3C[] = (int)($devMap[$k] ?? 0);
 
-// Chart4: Entradas x Saídas (6 meses)
+$devolValMap = [];
+if ($HAS_DEVOL) {
+  $devolValMap = fetchKeyVal(
+    $pdo,
+    "SELECT DATE_FORMAT(d.data,'%Y-%m') ym, COALESCE(SUM(d.valor),0) s
+     FROM devolucoes d
+     WHERE d.data >= :ini AND d.data < :fim
+       AND d.status <> 'CANCELADO'
+     GROUP BY ym
+     ORDER BY ym",
+    [':ini' => $start12Str, ':fim' => $end12Str],
+    'ym',
+    's'
+  );
+}
+
+$chart3A = [];
+$chart3B = [];
+foreach ($keys12 as $k) {
+  $chart3A[] = (float)($lossValMap[$k] ?? 0);
+  $chart3B[] = (float)($devolValMap[$k] ?? 0);
+}
+
+/**
+ * ✅ Chart4 (Entradas x Saídas do Estoque) — CORRIGIDO
+ * Entradas = entradas.qtd
+ * Saídas = (venda_itens.qtd em vendas válidas) + (saidas.qtd perdas)
+ */
 $start6 = $today->modify('first day of this month')->modify('-5 months');
 $keys6 = buildMonthKeys($start6, 6);
 $labels6 = buildMonthLabels($keys6);
@@ -444,13 +583,12 @@ $start6Str = $start6->format('Y-m-d');
 $end6Str = $today->modify('first day of next month')->format('Y-m-d');
 
 $entMap = [];
-$saiMap = [];
-if (table_exists($pdo, 'entradas')) {
+if ($HAS_ENTRADAS) {
   $entMap = fetchKeyVal(
     $pdo,
-    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(qtd),0) s
-     FROM entradas
-     WHERE data >= :ini AND data < :fim
+    "SELECT DATE_FORMAT(e.data,'%Y-%m') ym, COALESCE(SUM(e.qtd),0) s
+     FROM entradas e
+     WHERE e.data >= :ini AND e.data < :fim
      GROUP BY ym
      ORDER BY ym",
     [':ini' => $start6Str, ':fim' => $end6Str],
@@ -458,37 +596,60 @@ if (table_exists($pdo, 'entradas')) {
     's'
   );
 }
-if (table_exists($pdo, 'saidas')) {
-  $saiMap = fetchKeyVal(
+
+$lossQtyMap = [];
+if ($HAS_SAIDAS) {
+  $lossQtyMap = fetchKeyVal(
     $pdo,
-    "SELECT DATE_FORMAT(data,'%Y-%m') ym, COALESCE(SUM(qtd),0) s
-     FROM saidas
-     WHERE data >= :ini AND data < :fim
+    "SELECT DATE_FORMAT(s.data,'%Y-%m') ym, COALESCE(SUM(s.qtd),0) s
+     FROM saidas s
+     WHERE s.data >= :ini AND s.data < :fim
      GROUP BY ym
      ORDER BY ym",
     [':ini' => $start6Str, ':fim' => $end6Str],
     'ym',
     's'
   );
+}
+
+$soldQtyMap = [];
+if ($HAS_VENDA_ITENS) {
+  $stSold = $pdo->prepare("
+    SELECT DATE_FORMAT(v.data,'%Y-%m') ym, COALESCE(SUM(vi.qtd),0) s
+    FROM venda_itens vi
+    INNER JOIN vendas v ON v.id = vi.venda_id
+    WHERE v.data >= :ini AND v.data < :fim
+      AND {$EXCL_V}
+    GROUP BY ym
+    ORDER BY ym
+  ");
+  $stSold->execute([':ini' => $start6Str, ':fim' => $end6Str]);
+  while ($r = $stSold->fetch(PDO::FETCH_ASSOC)) {
+    $soldQtyMap[(string)$r['ym']] = $r['s'];
+  }
 }
 
 $chart4Ent = [];
 $chart4Sai = [];
 foreach ($keys6 as $k) {
   $chart4Ent[] = (float)($entMap[$k] ?? 0);
-  $chart4Sai[] = (float)($saiMap[$k] ?? 0);
+  $loss = (float)($lossQtyMap[$k] ?? 0);
+  $sold = (float)($soldQtyMap[$k] ?? 0);
+  $chart4Sai[] = $loss + $sold;
 }
 
-// Chart5: Delivery x Presencial (no período)
-$st = $pdo->prepare("
-  SELECT canal, COUNT(*) c
-  FROM vendas
-  WHERE data BETWEEN :ini AND :fim
-  GROUP BY canal
+// Chart5: Delivery x Presencial (período) (exclui devolvidas)
+$stC = $pdo->prepare("
+  SELECT UPPER(COALESCE(v.canal,'PRESENCIAL')) canal, COUNT(*) c
+  FROM vendas v
+  WHERE v.data BETWEEN :ini AND :fim
+    AND {$EXCL_V}
+  GROUP BY UPPER(COALESCE(v.canal,'PRESENCIAL'))
 ");
-$st->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
+$stC->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
+
 $canalCounts = ['DELIVERY' => 0, 'PRESENCIAL' => 0];
-while ($r = $st->fetch()) {
+while ($r = $stC->fetch(PDO::FETCH_ASSOC)) {
   $k = strtoupper((string)$r['canal']);
   if (!isset($canalCounts[$k])) $canalCounts[$k] = 0;
   $canalCounts[$k] += (int)$r['c'];
@@ -496,19 +657,20 @@ while ($r = $st->fetch()) {
 $deliveryQtd = (int)($canalCounts['DELIVERY'] ?? 0);
 $presencialQtd = (int)($canalCounts['PRESENCIAL'] ?? 0);
 
-// Chart6: pagamentos mais usados (no período)
-$st = $pdo->prepare("
-  SELECT pagamento, COUNT(*) c
-  FROM vendas
-  WHERE data BETWEEN :ini AND :fim
-  GROUP BY pagamento
+// Chart6: pagamentos mais usados (período) (exclui devolvidas)
+$stP = $pdo->prepare("
+  SELECT UPPER(COALESCE(v.pagamento,'DINHEIRO')) pagamento, COUNT(*) c
+  FROM vendas v
+  WHERE v.data BETWEEN :ini AND :fim
+    AND {$EXCL_V}
+  GROUP BY UPPER(COALESCE(v.pagamento,'DINHEIRO'))
   ORDER BY c DESC
   LIMIT 5
 ");
-$st->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
+$stP->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
 $payLabels = [];
 $payData = [];
-while ($r = $st->fetch()) {
+while ($r = $stP->fetch(PDO::FETCH_ASSOC)) {
   $payLabels[] = (string)$r['pagamento'];
   $payData[] = (int)$r['c'];
 }
@@ -518,9 +680,7 @@ if (!$payLabels) {
 }
 
 /* =========================
-   ✅ Chart7: TOP PRODUTOS VENDIDOS (CORRIGIDO)
-   Agora pega de: vendas + venda_itens + produtos
-   E usa COALESCE(v.data, DATE(v.created_at)) pra não falhar.
+   ✅ Chart7: TOP 7 PRODUTOS VENDIDOS (CORRIGIDO)
 ========================= */
 $topDays = (int)($_GET['top'] ?? 7);
 if (!in_array($topDays, [7, 30, 90], true)) $topDays = 7;
@@ -530,22 +690,22 @@ $topEnd = $today->format('Y-m-d');
 $topProdLabels = [];
 $topProdData = [];
 
-if (table_exists($pdo, 'venda_itens')) {
-  $st = $pdo->prepare("
+if ($HAS_VENDA_ITENS) {
+  $stTop = $pdo->prepare("
     SELECT
-      COALESCE(p.nome, vi.nome) AS nome,
+      vi.nome AS nome,
       COALESCE(SUM(vi.qtd),0) AS qtd
     FROM venda_itens vi
     INNER JOIN vendas v ON v.id = vi.venda_id
-    LEFT JOIN produtos p ON p.id = vi.produto_id
-    WHERE COALESCE(v.data, DATE(v.created_at)) BETWEEN :ini AND :fim
-    GROUP BY vi.produto_id, COALESCE(p.nome, vi.nome)
+    WHERE v.data BETWEEN :ini AND :fim
+      AND {$EXCL_V}
+    GROUP BY vi.nome
     ORDER BY qtd DESC, nome ASC
-    LIMIT 10
+    LIMIT 7
   ");
-  $st->execute([':ini' => $topStart, ':fim' => $topEnd]);
+  $stTop->execute([':ini' => $topStart, ':fim' => $topEnd]);
 
-  while ($r = $st->fetch()) {
+  while ($r = $stTop->fetch(PDO::FETCH_ASSOC)) {
     $topProdLabels[] = (string)$r['nome'];
     $topProdData[] = (float)$r['qtd'];
   }
@@ -557,23 +717,44 @@ if (!$topProdLabels) {
 }
 
 /* =========================
-   TABELAS
+   TABELAS (Vendas Recentes com PAGINAÇÃO)
 ========================= */
-// Vendas recentes (período)
-$st = $pdo->prepare("
-  SELECT id, data, cliente, canal, pagamento, total
-  FROM vendas
-  WHERE data BETWEEN :ini AND :fim
-  ORDER BY data DESC, id DESC
-  LIMIT 10
+$perPage = 10;
+$vpage = (int)($_GET['vpage'] ?? 1);
+if ($vpage < 1) $vpage = 1;
+
+$stCnt = $pdo->prepare("
+  SELECT COUNT(*) c
+  FROM vendas v
+  WHERE v.data BETWEEN :ini AND :fim
+    AND {$EXCL_V}
 ");
-$st->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
-$vendasRecentes = $st->fetchAll();
+$stCnt->execute([':ini' => $rangeStartStr, ':fim' => $rangeEndStr]);
+$totalRows = (int)($stCnt->fetchColumn() ?: 0);
+
+$totalPages = max(1, (int)ceil($totalRows / $perPage));
+if ($vpage > $totalPages) $vpage = $totalPages;
+$offset = ($vpage - 1) * $perPage;
+
+$stV = $pdo->prepare("
+  SELECT v.id, v.data, v.cliente, v.canal, v.pagamento, v.total
+  FROM vendas v
+  WHERE v.data BETWEEN :ini AND :fim
+    AND {$EXCL_V}
+  ORDER BY v.data DESC, v.id DESC
+  LIMIT :lim OFFSET :off
+");
+$stV->bindValue(':ini', $rangeStartStr);
+$stV->bindValue(':fim', $rangeEndStr);
+$stV->bindValue(':lim', $perPage, PDO::PARAM_INT);
+$stV->bindValue(':off', $offset, PDO::PARAM_INT);
+$stV->execute();
+$vendasRecentes = $stV->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
 // Estoque baixo
 $estoqueBaixo = [];
 if (table_exists($pdo, 'produtos')) {
-  $st = $pdo->query("
+  $stB = $pdo->query("
     SELECT
       p.id, p.nome, p.estoque, p.minimo,
       COALESCE(c.nome,'-') AS categoria
@@ -583,7 +764,7 @@ if (table_exists($pdo, 'produtos')) {
     ORDER BY (p.minimo - p.estoque) DESC, p.nome ASC
     LIMIT 12
   ");
-  $estoqueBaixo = $st->fetchAll();
+  $estoqueBaixo = $stB->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
 $total12m = array_sum($chart1);
@@ -605,42 +786,63 @@ $total12m = array_sum($chart1);
 
   <style>
     .equal-row {
-      align-items: stretch
+      align-items: stretch;
     }
 
     .equal-row>[class^="col-"],
     .equal-row>[class*=" col-"] {
-      display: flex
+      display: flex;
     }
 
     .icon-card,
     .card-style {
       height: 100%;
-      width: 100%
+      width: 100%;
     }
 
     .card-style {
       display: flex;
-      flex-direction: column
+      flex-direction: column;
     }
 
     .card-style .chart,
     .card-style .table-responsive,
     .card-style .card-body-flex {
-      flex: 1 1 auto
+      flex: 1 1 auto;
     }
 
+    /* padrão charts */
     .chart {
       position: relative;
-      min-height: 320px
+      min-height: 320px;
     }
 
     .chart canvas {
-      height: 100% !important
+      height: 100% !important;
+    }
+
+    /* ✅ manter os dois cards SEM aumentar com 30 dias */
+    .card-fixed-sm {
+      height: 430px;
+      min-height: 430px;
+    }
+
+    .card-fixed-sm .chart {
+      min-height: 220px;
+    }
+
+    .card-fixed-sm .table-responsive {
+      overflow: auto;
+    }
+
+    /* tabela compacta pra caber 10 linhas sem “estourar” */
+    .card-fixed-sm .top-selling-table th,
+    .card-fixed-sm .top-selling-table td {
+      padding: .55rem .60rem !important;
     }
 
     .table-responsive {
-      padding-bottom: 6px
+      padding-bottom: 6px;
     }
 
     .mini-metrics span {
@@ -651,18 +853,35 @@ $total12m = array_sum($chart1);
       border-radius: 999px;
       background: rgba(143, 146, 161, .08);
       font-size: 12px;
-      color: #111827
+      color: #111827;
     }
 
-    .btn-icon {
-      background: transparent;
-      border: 0;
-      padding: 0
+    .pager-box {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .pager-box .page-text {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .pager-box a.btn-disabled {
+      opacity: .45;
+      pointer-events: none;
     }
 
     .modal .table td,
     .modal .table th {
-      vertical-align: middle
+      vertical-align: middle;
+    }
+
+    .text-xs {
+      font-size: 12px;
     }
   </style>
 </head>
@@ -685,10 +904,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item active">
           <a href="dashboard.php" class="active">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8.74999 18.3333C12.2376 18.3333 15.1364 15.8128 15.7244 12.4941C15.8448 11.8143 15.2737 11.25 14.5833 11.25H9.99999C9.30966 11.25 8.74999 10.6903 8.74999 10V5.41666C8.74999 4.7263 8.18563 4.15512 7.50586 4.27556C4.18711 4.86357 1.66666 7.76243 1.66666 11.25C1.66666 15.162 4.83797 18.3333 8.74999 18.3333Z" />
-                <path d="M17.0833 10C17.7737 10 18.3432 9.43708 18.2408 8.75433C17.7005 5.14918 14.8508 2.29947 11.2457 1.75912C10.5629 1.6568 10 2.2263 10 2.91665V9.16666C10 9.62691 10.3731 10 10.8333 10H17.0833Z" />
-              </svg>
+              <i class="lni lni-dashboard"></i>
             </span>
             <span class="text">Dashboard</span>
           </a>
@@ -697,10 +913,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item">
           <a href="vendas.php">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <i class="lni lni-cart"></i>
             </span>
             <span class="text">Vendas</span>
           </a>
@@ -709,9 +922,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.33334 3.35442C3.33334 2.4223 4.07954 1.66666 5.00001 1.66666H15C15.9205 1.66666 16.6667 2.4223 16.6667 3.35442V16.8565C16.6667 17.5519 15.8827 17.9489 15.3333 17.5317L13.8333 16.3924C13.537 16.1673 13.1297 16.1673 12.8333 16.3924L10.5 18.1646C10.2037 18.3896 9.79634 18.3896 9.50001 18.1646L7.16668 16.3924C6.87038 16.1673 6.46298 16.1673 6.16668 16.3924L4.66668 17.5317C4.11731 17.9489 3.33334 17.5519 3.33334 16.8565V3.35442Z" />
-              </svg>
+              <i class="lni lni-layers"></i>
             </span>
             <span class="text">Operações</span>
           </a>
@@ -725,10 +936,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2.49999 5.83331C2.03976 5.83331 1.66666 6.2064 1.66666 6.66665V10.8333C1.66666 13.5948 3.90523 15.8333 6.66666 15.8333H9.99999C12.1856 15.8333 14.0436 14.431 14.7235 12.4772C14.8134 12.4922 14.9058 12.5 15 12.5H16.6667C17.5872 12.5 18.3333 11.7538 18.3333 10.8333V8.33331C18.3333 7.41284 17.5872 6.66665 16.6667 6.66665H15C15 6.2064 14.6269 5.83331 14.1667 5.83331H2.49999Z" />
-                <path d="M2.49999 16.6667C2.03976 16.6667 1.66666 17.0398 1.66666 17.5C1.66666 17.9602 2.03976 18.3334 2.49999 18.3334H14.1667C14.6269 18.3334 15 17.9602 15 17.5C15 17.0398 14.6269 16.6667 14.1667 16.6667H2.49999Z" />
-              </svg>
+              <i class="lni lni-package"></i>
             </span>
             <span class="text">Estoque</span>
           </a>
@@ -744,12 +952,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1.66666 5.41669C1.66666 3.34562 3.34559 1.66669 5.41666 1.66669C7.48772 1.66669 9.16666 3.34562 9.16666 5.41669C9.16666 7.48775 7.48772 9.16669 5.41666 9.16669C3.34559 9.16669 1.66666 7.48775 1.66666 5.41669Z" />
-                <path d="M1.66666 14.5834C1.66666 12.5123 3.34559 10.8334 5.41666 10.8334C7.48772 10.8334 9.16666 12.5123 9.16666 14.5834C9.16666 16.6545 7.48772 18.3334 5.41666 18.3334C3.34559 18.3334 1.66666 16.6545 1.66666 14.5834Z" />
-                <path d="M10.8333 5.41669C10.8333 3.34562 12.5123 1.66669 14.5833 1.66669C16.6544 1.66669 18.3333 3.34562 18.3333 5.41669C18.3333 7.48775 16.6544 9.16669 14.5833 9.16669C12.5123 9.16669 10.8333 7.48775 10.8333 5.41669Z" />
-                <path d="M10.8333 14.5834C10.8333 12.5123 12.5123 10.8334 14.5833 10.8334C16.6544 10.8334 18.3333 12.5123 18.3333 14.5834C18.3333 16.6545 16.6544 18.3334 14.5833 18.3334C12.5123 18.3334 10.8333 16.6545 10.8333 14.5834Z" />
-              </svg>
+              <i class="lni lni-users"></i>
             </span>
             <span class="text">Cadastros</span>
           </a>
@@ -763,9 +966,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item">
           <a href="relatorios.php">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4.16666 3.33335C4.16666 2.41288 4.91285 1.66669 5.83332 1.66669H14.1667C15.0872 1.66669 15.8333 2.41288 15.8333 3.33335V16.6667C15.8333 17.5872 15.0872 18.3334 14.1667 18.3334H5.83332C4.91285 18.3334 4.16666 17.5872 4.16666 16.6667V3.33335Z" />
-              </svg>
+              <i class="lni lni-clipboard"></i>
             </span>
             <span class="text">Relatórios</span>
           </a>
@@ -778,9 +979,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 1.66669C5.39763 1.66669 1.66666 5.39766 1.66666 10C1.66666 14.6024 5.39763 18.3334 10 18.3334C14.6024 18.3334 18.3333 14.6024 18.3333 10C18.3333 5.39766 14.6024 1.66669 10 1.66669Z" />
-              </svg>
+              <i class="lni lni-cog"></i>
             </span>
             <span class="text">Configurações</span>
           </a>
@@ -793,10 +992,7 @@ $total12m = array_sum($chart1);
         <li class="nav-item">
           <a href="suporte.php">
             <span class="icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.8333 2.50008C10.8333 2.03984 10.4602 1.66675 9.99999 1.66675C9.53975 1.66675 9.16666 2.03984 9.16666 2.50008C9.16666 2.96032 9.53975 3.33341 9.99999 3.33341C10.4602 3.33341 10.8333 2.96032 10.8333 2.50008Z" />
-                <path d="M11.4272 2.69637C10.9734 2.56848 10.4947 2.50006 10 2.50006C7.10054 2.50006 4.75003 4.85057 4.75003 7.75006V9.20873C4.75003 9.72814 4.62082 10.2393 4.37404 10.6963L3.36705 12.5611C2.89938 13.4272 3.26806 14.5081 4.16749 14.9078C7.88074 16.5581 12.1193 16.5581 15.8326 14.9078C16.732 14.5081 17.1007 13.4272 16.633 12.5611L15.626 10.6963C15.43 10.3333 15.3081 9.93606 15.2663 9.52773C15.0441 9.56431 14.8159 9.58339 14.5833 9.58339C12.2822 9.58339 10.4167 7.71791 10.4167 5.41673C10.4167 4.37705 10.7975 3.42631 11.4272 2.69637Z" />
-              </svg>
+              <i class="lni lni-whatsapp"></i>
             </span>
             <span class="text">Suporte</span>
           </a>
@@ -807,8 +1003,7 @@ $total12m = array_sum($chart1);
 
   <div class="overlay"></div>
 
-                </ul>
-      <main class="main-wrapper">
+  <main class="main-wrapper">
     <!-- Header -->
     <header class="header">
       <div class="container-fluid">
@@ -816,7 +1011,7 @@ $total12m = array_sum($chart1);
           <div class="col-lg-5 col-md-5 col-6">
             <div class="header-left d-flex align-items-center">
               <div class="menu-toggle-btn mr-15">
-                <button id="menu-toggle" class="main-btn primary-btn btn-hover">
+                <button id="menu-toggle" class="main-btn primary-btn btn-hover" type="button">
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
               </div>
@@ -824,24 +1019,25 @@ $total12m = array_sum($chart1);
             </div>
           </div>
 
-
-                <div class="col-lg-7 col-md-7 col-6">
-                        <div class="header-right">
-                            <div class="profile-box ml-15">
-                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <div class="profile-info">
-                                        <div class="info">
-                                            <div>
-                                                <h6 class="fw-500">Sair</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                            </div>
-                        </div>
+          <div class="col-lg-7 col-md-7 col-6">
+            <div class="header-right">
+              <div class="profile-box ml-15">
+                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
+                  <div class="profile-info">
+                    <div class="info">
+                      <div>
+                        <h6 class="fw-500">Sair</h6>
+                      </div>
                     </div>
+                  </div>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
+                  <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
+                </ul>
+              </div>
             </div>
           </div>
+
         </div>
       </div>
     </header>
@@ -861,10 +1057,10 @@ $total12m = array_sum($chart1);
                     <option value="7" <?= $period === '7' ? 'selected' : ''; ?>>Últimos 7 dias</option>
                     <option value="30" <?= $period === '30' ? 'selected' : ''; ?>>Últimos 30 dias</option>
                   </select>
-                  <span class="text-sm text-gray">(impacta: Delivery x Presencial, Pagamentos, Vendas Recentes)</span>
                 </div>
               </div>
             </div>
+
             <div class="col-md-6">
               <div class="breadcrumb-wrapper">
                 <nav aria-label="breadcrumb">
@@ -875,6 +1071,7 @@ $total12m = array_sum($chart1);
                 </nav>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -922,7 +1119,7 @@ $total12m = array_sum($chart1);
                 <p class="text-sm <?= $cls ?>">
                   <i class="lni <?= ($saidasPct >= 0) ? 'lni-arrow-up' : 'lni-arrow-down' ?>"></i>
                   <?= number_format(abs($saidasPct), 1, ',', '.') ?>%
-                  <span class="text-gray">Saídas (30d)</span>
+                  <span class="text-gray">Perdas (30d)</span>
                 </p>
               </div>
             </div>
@@ -989,10 +1186,10 @@ $total12m = array_sum($chart1);
           </div>
         </div>
 
-        <!-- Entrega x Presencial + Vendas Recentes -->
+        <!-- ✅ Entrega x Presencial + ✅ Vendas Recentes (fixo, não aumenta com 30 dias) -->
         <div class="row equal-row">
           <div class="col-lg-5 mb-30">
-            <div class="card-style">
+            <div class="card-style card-fixed-sm">
               <div class="title d-flex flex-wrap justify-content-between align-items-center">
                 <div class="left">
                   <h6 class="text-medium mb-10">Forma de Entrega</h6>
@@ -1019,7 +1216,7 @@ $total12m = array_sum($chart1);
           </div>
 
           <div class="col-lg-7 mb-30">
-            <div class="card-style">
+            <div class="card-style card-fixed-sm">
               <div class="title d-flex flex-wrap justify-content-between align-items-center">
                 <div class="left">
                   <h6 class="text-medium mb-30">Vendas Recentes (período)</h6>
@@ -1075,7 +1272,7 @@ $total12m = array_sum($chart1);
                         $vendano = '#V-' . str_pad((string)$id, 5, '0', STR_PAD_LEFT);
                         $cli = trim((string)($v['cliente'] ?? ''));
                         if ($cli === '') $cli = '—';
-                        $canal = strtoupper((string)$v['canal']);
+                        $canal = strtoupper((string)($v['canal'] ?? 'PRESENCIAL'));
                         $badge = ($canal === 'DELIVERY') ? 'warning-btn' : 'success-btn';
                         ?>
                         <tr>
@@ -1093,7 +1290,7 @@ $total12m = array_sum($chart1);
                             <p class="text-sm"><?= brl($v['total']) ?></p>
                           </td>
                           <td>
-                            <p class="text-sm"><?= e(dt((string)$v['data'])) ?></p>
+                            <p class="text-sm"><?= e(dtShort((string)$v['data'])) ?></p>
                           </td>
                           <td>
                             <div class="action justify-content-end">
@@ -1109,6 +1306,22 @@ $total12m = array_sum($chart1);
                 </table>
               </div>
 
+              <?php if ($totalPages > 1): ?>
+                <div class="pager-box">
+                  <?php
+                  $prevUrl = build_url(['vpage' => max(1, $vpage - 1)]);
+                  $nextUrl = build_url(['vpage' => min($totalPages, $vpage + 1)]);
+                  ?>
+                  <a class="main-btn light-btn btn-hover btn-sm <?= $vpage <= 1 ? 'btn-disabled' : '' ?>" href="<?= e($prevUrl) ?>" title="Anterior">
+                    <i class="lni lni-chevron-left"></i>
+                  </a>
+                  <span class="page-text">Página <?= (int)$vpage ?>/<?= (int)$totalPages ?></span>
+                  <a class="main-btn light-btn btn-hover btn-sm <?= $vpage >= $totalPages ? 'btn-disabled' : '' ?>" href="<?= e($nextUrl) ?>" title="Próxima">
+                    <i class="lni lni-chevron-right"></i>
+                  </a>
+                </div>
+              <?php endif; ?>
+
             </div>
           </div>
         </div>
@@ -1120,7 +1333,7 @@ $total12m = array_sum($chart1);
               <div class="title d-flex flex-wrap align-items-center justify-content-between">
                 <div class="left">
                   <h6 class="text-medium mb-2">Mix (Saídas) + Devoluções (12m)</h6>
-                  <p class="text-sm text-gray mb-0">Canais (top 2) em <b>saidas</b> + devoluções</p>
+                  <p class="text-sm text-gray mb-0">Saídas = <b>saidas.valor_total</b> • Devoluções = <b>devolucoes.valor</b></p>
                 </div>
                 <div class="right">
                   <div class="select-style-1 mb-2">
@@ -1141,7 +1354,7 @@ $total12m = array_sum($chart1);
               <div class="title d-flex flex-wrap align-items-center justify-content-between">
                 <div class="left">
                   <h6 class="text-medium mb-2">Entradas x Saídas (Estoque)</h6>
-                  <p class="text-sm text-gray mb-0">Somatório de qtd (6 meses)</p>
+                  <p class="text-sm text-gray mb-0">Somatório de qtd (6 meses) • Saídas = Vendas (itens) + Perdas</p>
                 </div>
                 <div class="right">
                   <div class="select-style-1 mb-2">
@@ -1307,6 +1520,7 @@ $total12m = array_sum($chart1);
         </div>
         <div class="modal-body">
           <div id="vendaLoading" class="text-sm text-gray">Carregando...</div>
+
           <div id="vendaBody" style="display:none;">
             <div class="row g-3">
               <div class="col-md-4">
@@ -1344,7 +1558,7 @@ $total12m = array_sum($chart1);
               <div class="col-md-12">
                 <div class="border rounded p-2">
                   <div class="text-xs text-gray">Endereço / Observações</div>
-                  <div class="text-sm" id="vObs">-</div>
+                  <div class="text-sm" id="vObs">—</div>
                 </div>
               </div>
 
@@ -1370,7 +1584,6 @@ $total12m = array_sum($chart1);
 
             <hr class="my-3" />
 
-            <!-- ✅ ITENS DA VENDA -->
             <h6 class="text-medium mb-2">Itens vendidos</h6>
             <div class="table-responsive">
               <table class="table">
@@ -1505,12 +1718,14 @@ $total12m = array_sum($chart1);
   <script src="assets/js/main.js"></script>
 
   <script>
+    // period/top selects (mantém e reseta paginação)
     (function() {
       const sel = document.getElementById('periodSelect');
       if (sel) {
         sel.addEventListener('change', function() {
           const url = new URL(window.location.href);
           url.searchParams.set('period', sel.value);
+          url.searchParams.set('vpage', '1');
           window.location.href = url.toString();
         });
       }
@@ -1525,38 +1740,8 @@ $total12m = array_sum($chart1);
     })();
   </script>
 
-  <!-- ✅ Theme fix + dados do PHP -->
   <script>
-    (function() {
-      const TEXT = "#111827";
-      const GRID = "rgba(17,24,39,.10)";
-      if (!window.Chart) return;
-
-      if (Chart.defaults) {
-        if ("color" in Chart.defaults) Chart.defaults.color = TEXT;
-        if ("borderColor" in Chart.defaults) Chart.defaults.borderColor = GRID;
-
-        if (Chart.defaults.scale) {
-          Chart.defaults.scale.ticks.color = TEXT;
-          Chart.defaults.scale.grid.color = GRID;
-        }
-
-        if (Chart.defaults.plugins?.legend?.labels) {
-          Chart.defaults.plugins.legend.labels.color = TEXT;
-        }
-      }
-
-      if (Chart.defaults?.global) {
-        Chart.defaults.global.defaultFontColor = TEXT;
-      }
-
-      window.__CHART_THEME__ = {
-        TEXT,
-        GRID
-      };
-    })();
-
-    const THEME = window.__CHART_THEME__ || {
+    const THEME = {
       TEXT: "#111827",
       GRID: "rgba(17,24,39,.10)"
     };
@@ -1576,11 +1761,10 @@ $total12m = array_sum($chart1);
     const CHART1_DATA = <?= json_encode($chart1, JSON_UNESCAPED_UNICODE) ?>;
     const CHART2_DATA = <?= json_encode($chart2, JSON_UNESCAPED_UNICODE) ?>;
 
-    const MIX_LABEL_A = <?= json_encode($mixA, JSON_UNESCAPED_UNICODE) ?>;
-    const MIX_LABEL_B = <?= json_encode($mixB, JSON_UNESCAPED_UNICODE) ?>;
+    const MIX_LABEL_A = <?= json_encode($mixLabelA, JSON_UNESCAPED_UNICODE) ?>;
+    const MIX_LABEL_B = <?= json_encode($mixLabelB, JSON_UNESCAPED_UNICODE) ?>;
     const CHART3_A = <?= json_encode($chart3A, JSON_UNESCAPED_UNICODE) ?>;
     const CHART3_B = <?= json_encode($chart3B, JSON_UNESCAPED_UNICODE) ?>;
-    const CHART3_C = <?= json_encode($chart3C, JSON_UNESCAPED_UNICODE) ?>;
 
     const LABELS_6 = <?= json_encode($labels6, JSON_UNESCAPED_UNICODE) ?>;
     const CHART4_ENT = <?= json_encode($chart4Ent, JSON_UNESCAPED_UNICODE) ?>;
@@ -1592,7 +1776,6 @@ $total12m = array_sum($chart1);
     const PAY_LABELS = <?= json_encode($payLabels, JSON_UNESCAPED_UNICODE) ?>;
     const PAY_DATA = <?= json_encode($payData, JSON_UNESCAPED_UNICODE) ?>;
 
-    // ✅ TOP PRODUTOS (venda_itens)
     const TOP_LABELS = <?= json_encode($topProdLabels, JSON_UNESCAPED_UNICODE) ?>;
     const TOP_DATA = <?= json_encode($topProdData, JSON_UNESCAPED_UNICODE) ?>;
   </script>
@@ -1609,11 +1792,6 @@ $total12m = array_sum($chart1);
             backgroundColor: "transparent",
             borderColor: "#365CF5",
             data: CHART1_DATA,
-            pointBackgroundColor: "transparent",
-            pointHoverBackgroundColor: "#365CF5",
-            pointBorderColor: "transparent",
-            pointHoverBorderColor: "#fff",
-            pointHoverBorderWidth: 4,
             borderWidth: 3,
             pointRadius: 3,
             pointHoverRadius: 5,
@@ -1631,29 +1809,8 @@ $total12m = array_sum($chart1);
               intersect: false,
               backgroundColor: "#fbfbfb",
               displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT,
               callbacks: {
                 label: (c) => fmtBRL(c.parsed.y)
-              }
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                color: THEME.GRID
-              },
-              ticks: {
-                color: THEME.TEXT,
-                callback: (v) => (Number(v) / 1000).toFixed(0) + "k"
-              }
-            },
-            x: {
-              grid: {
-                color: THEME.GRID
-              },
-              ticks: {
-                color: THEME.TEXT
               }
             }
           }
@@ -1681,39 +1838,13 @@ $total12m = array_sum($chart1);
           plugins: {
             legend: {
               display: false
-            },
-            tooltip: {
-              backgroundColor: "#F3F6F8",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT,
-              callbacks: {
-                label: (c) => `${c.parsed.y} vendas`
-              }
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
             }
           }
         }
       });
     }
 
+    // ✅ Mix Saídas + Devoluções (valores)
     const ctx3 = document.getElementById("Chart3")?.getContext("2d");
     if (ctx3) {
       new Chart(ctx3, {
@@ -1723,7 +1854,7 @@ $total12m = array_sum($chart1);
           datasets: [{
               label: MIX_LABEL_A,
               backgroundColor: "transparent",
-              borderColor: "#365CF5",
+              borderColor: "#d50100",
               data: CHART3_A,
               tension: 0.35,
               pointRadius: 2
@@ -1731,16 +1862,8 @@ $total12m = array_sum($chart1);
             {
               label: MIX_LABEL_B,
               backgroundColor: "transparent",
-              borderColor: "#9b51e0",
+              borderColor: "#365CF5",
               data: CHART3_B,
-              tension: 0.35,
-              pointRadius: 2
-            },
-            {
-              label: "Devoluções",
-              backgroundColor: "transparent",
-              borderColor: "#f2994a",
-              data: CHART3_C,
               tension: 0.35,
               pointRadius: 2
             }
@@ -1751,37 +1874,14 @@ $total12m = array_sum($chart1);
           maintainAspectRatio: false,
           plugins: {
             legend: {
-              display: true,
-              labels: {
-                color: THEME.TEXT
-              }
+              display: true
             },
             tooltip: {
               intersect: false,
               backgroundColor: "#fbfbfb",
               displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT,
               callbacks: {
-                label: (c) => `${c.dataset.label}: ${c.parsed.y}`
-              }
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            },
-            x: {
-              grid: {
-                color: THEME.GRID
-              },
-              ticks: {
-                color: THEME.TEXT
+                label: (c) => `${c.dataset.label}: ${fmtBRL(c.parsed.y)}`
               }
             }
           }
@@ -1796,52 +1896,22 @@ $total12m = array_sum($chart1);
         data: {
           labels: LABELS_6,
           datasets: [{
-            label: "Entradas",
-            backgroundColor: "#365CF5",
-            borderRadius: 12,
-            data: CHART4_ENT
-          }, {
-            label: "Saídas",
-            backgroundColor: "#d50100",
-            borderRadius: 12,
-            data: CHART4_SAI
-          }]
+              label: "Entradas",
+              backgroundColor: "#365CF5",
+              borderRadius: 12,
+              data: CHART4_ENT
+            },
+            {
+              label: "Saídas",
+              backgroundColor: "#d50100",
+              borderRadius: 12,
+              data: CHART4_SAI
+            }
+          ]
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: true,
-              labels: {
-                color: THEME.TEXT
-              }
-            },
-            tooltip: {
-              backgroundColor: "#F3F6F8",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            }
-          }
+          maintainAspectRatio: false
         }
       });
     }
@@ -1861,17 +1931,6 @@ $total12m = array_sum($chart1);
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              backgroundColor: "#F3F6F8",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT
-            }
-          },
           cutout: "65%"
         }
       });
@@ -1897,37 +1956,13 @@ $total12m = array_sum($chart1);
           plugins: {
             legend: {
               display: false
-            },
-            tooltip: {
-              backgroundColor: "#F3F6F8",
-              displayColors: false,
-              titleColor: THEME.TEXT,
-              bodyColor: THEME.TEXT
-            }
-          },
-          scales: {
-            y: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: THEME.TEXT
-              }
             }
           }
         }
       });
     }
 
-    // ✅ TOP PRODUTOS (compatível Chart.js v2 e v3)
+    // ✅ TOP 7 (horizontal quando possível)
     const ctx7 = document.getElementById("Chart7")?.getContext("2d");
     if (ctx7) {
       const ver = (window.Chart && Chart.version) ? Chart.version : "3.0.0";
@@ -1950,30 +1985,6 @@ $total12m = array_sum($chart1);
         plugins: {
           legend: {
             display: false
-          },
-          tooltip: {
-            backgroundColor: "#F3F6F8",
-            displayColors: false,
-            titleColor: THEME.TEXT,
-            bodyColor: THEME.TEXT
-          }
-        },
-        scales: {
-          x: {
-            grid: {
-              color: THEME.GRID
-            },
-            ticks: {
-              color: THEME.TEXT
-            }
-          },
-          y: {
-            grid: {
-              display: false
-            },
-            ticks: {
-              color: THEME.TEXT
-            }
           }
         }
       };
@@ -1984,26 +1995,13 @@ $total12m = array_sum($chart1);
         legend: {
           display: false
         },
-        tooltips: {
-          backgroundColor: "#F3F6F8",
-          displayColors: false,
-          titleFontColor: THEME.TEXT,
-          bodyFontColor: THEME.TEXT
-        },
         scales: {
           xAxes: [{
             ticks: {
               beginAtZero: true
-            },
-            gridLines: {
-              color: THEME.GRID
             }
           }],
-          yAxes: [{
-            gridLines: {
-              display: false
-            }
-          }]
+          yAxes: [{}]
         }
       };
 
@@ -2034,6 +2032,12 @@ $total12m = array_sum($chart1);
       return (s === null || s === undefined || String(s).trim() === '') ? '—' : String(s);
     }
 
+    function escHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
     async function openVenda(id) {
       document.getElementById('vendaError').style.display = 'none';
       document.getElementById('vendaBody').style.display = 'none';
@@ -2049,28 +2053,34 @@ $total12m = array_sum($chart1);
         const j = await res.json();
         if (!j.ok) throw new Error(j.error || 'Falha ao carregar venda.');
 
-        const v = j.venda;
-        document.getElementById('vId').textContent = '#V-' + String(v.id).padStart(5, '0');
+        const v = j.venda || {};
+        document.getElementById('vId').textContent = '#V-' + String(v.id || id).padStart(5, '0');
         document.getElementById('vData').textContent = safe(v.data);
         document.getElementById('vCanal').textContent = safe(v.canal);
         document.getElementById('vCliente').textContent = safe(v.cliente);
         document.getElementById('vPagamento').textContent = safe(v.pagamento);
         document.getElementById('vSubtotal').textContent = fmtBRL2(v.subtotal);
 
-        const desc = (v.desconto_tipo === 'VALOR') ?
+        const desc = (String(v.desconto_tipo || '').toUpperCase() === 'VALOR') ?
           fmtBRL2(v.desconto_valor) :
-          `${Number(v.desconto_valor||0).toFixed(2).replace('.',',')}%`;
+          `${Number(v.desconto_valor || 0).toFixed(2).replace('.', ',')}%`;
         document.getElementById('vDesconto').textContent = `${desc} (taxa: ${fmtBRL2(v.taxa_entrega)})`;
         document.getElementById('vTotal').textContent = fmtBRL2(v.total);
 
-        const obs = [
-          v.endereco ? `Endereço: ${v.endereco}` : '',
-          v.obs ? `Obs: ${v.obs}` : '',
-          v.pagamento_json ? `Pagamento JSON: ${v.pagamento_json}` : ''
-        ].filter(Boolean).join(' • ');
-        document.getElementById('vObs').textContent = obs || '—';
+        // ✅ Endereço/Obs + Pagamento JSON “limpo”
+        const lines = [];
+        if (v.endereco && String(v.endereco).trim()) lines.push(`<b>Endereço:</b> ${escHtml(String(v.endereco).trim())}`);
+        if (v.obs && String(v.obs).trim()) lines.push(`<b>Obs:</b> ${escHtml(String(v.obs).trim())}`);
 
-        // ✅ ITENS
+        const payText = (j.pay_text && String(j.pay_text).trim()) ? String(j.pay_text) : '';
+        if (payText) {
+          const payHtml = escHtml(payText).replace(/\n/g, "<br>");
+          lines.push(`<b>Pagamento:</b><br>${payHtml}`);
+        }
+
+        document.getElementById('vObs').innerHTML = lines.length ? lines.join("<br>") : '—';
+
+        // ✅ ITENS (AGORA VEM)
         const itBody = document.getElementById('vItensBody');
         const itens = Array.isArray(j.itens) ? j.itens : [];
         document.getElementById('vItensQtd').textContent = String(j.itens_qtd || 0);
@@ -2083,17 +2093,17 @@ $total12m = array_sum($chart1);
             <tr>
               <td>${idx+1}</td>
               <td>
-                <div class="fw-600">${safe(it.nome)}</div>
-                <div class="text-xs text-gray">${safe(it.codigo)} • ${safe(it.unidade)}</div>
+                <div class="fw-600">${escHtml(safe(it.nome))}</div>
+                <div class="text-xs text-gray">${escHtml(safe(it.codigo))} • ${escHtml(safe(it.unidade))}</div>
               </td>
-              <td class="text-end">${safe(it.qtd)}</td>
+              <td class="text-end">${escHtml(safe(it.qtd))}</td>
               <td class="text-end">${fmtBRL2(it.preco_unit)}</td>
               <td class="text-end fw-600">${fmtBRL2(it.subtotal)}</td>
             </tr>
           `).join('');
         }
 
-        // Devoluções
+        // DEVOLUÇÕES
         const tbody = document.getElementById('vDevolBody');
         const devols = Array.isArray(j.devolucoes) ? j.devolucoes : [];
         if (!devols.length) {
@@ -2101,14 +2111,14 @@ $total12m = array_sum($chart1);
         } else {
           tbody.innerHTML = devols.map(d => `
             <tr>
-              <td>${safe(d.id)}</td>
-              <td>${safe(d.data)}</td>
-              <td>${safe(d.hora)}</td>
-              <td>${safe(d.tipo)}</td>
-              <td>${safe(d.produto)}</td>
-              <td>${safe(d.qtd)}</td>
+              <td>${escHtml(safe(d.id))}</td>
+              <td>${escHtml(safe(d.data))}</td>
+              <td>${escHtml(safe(d.hora))}</td>
+              <td>${escHtml(safe(d.tipo))}</td>
+              <td>${escHtml(safe(d.produto))}</td>
+              <td>${escHtml(safe(d.qtd))}</td>
               <td>${fmtBRL2(d.valor)}</td>
-              <td>${safe(d.status)}</td>
+              <td>${escHtml(safe(d.status))}</td>
             </tr>
           `).join('');
         }
@@ -2138,7 +2148,7 @@ $total12m = array_sum($chart1);
         const j = await res.json();
         if (!j.ok) throw new Error(j.error || 'Falha ao carregar produto.');
 
-        const p = j.produto;
+        const p = j.produto || {};
         document.getElementById('pNome').textContent = safe(p.nome);
         document.getElementById('pCodigo').textContent = 'Código: ' + safe(p.codigo);
         document.getElementById('pEstoque').textContent = safe(p.estoque);
@@ -2165,7 +2175,6 @@ $total12m = array_sum($chart1);
         openVenda(btnVenda.getAttribute('data-id'));
         return;
       }
-
       const btnProd = ev.target.closest('.btn-view-produto');
       if (btnProd) {
         ev.preventDefault();
@@ -2177,4 +2186,3 @@ $total12m = array_sum($chart1);
 </body>
 
 </html>
-

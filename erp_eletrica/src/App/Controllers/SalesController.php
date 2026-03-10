@@ -10,8 +10,12 @@ class SalesController extends BaseController {
         $saleModel = new Sale();
         $sales = $saleModel->getRecent();
 
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+
         $this->render('sales', [
             'sales' => $sales,
+            'caixaAberto' => $caixaAberto,
             'title' => 'Ponto de Venda & Checkout',
             'pageTitle' => 'Terminal de Vendas (PDV)'
         ]);
@@ -206,19 +210,7 @@ class SalesController extends BaseController {
                     $entrada = (float)($data['entrada_valor'] ?? 0);
                     $valorDivida = (float)$data['total'] - $entrada;
 
-                    // 1. If there's a down payment, record it in cashier
-                    if ($entrada > 0) {
-                        $cashierModel->recordMovement([
-                            'caixa_id' => $caixaAberto['id'],
-                            'tipo' => 'entrada',
-                            'descricao' => "Entrada Venda #$saleId (Fiado)",
-                            'valor' => $entrada,
-                            'forma_pagamento' => 'dinheiro',
-                            'usuario_id' => $_SESSION['usuario_id']
-                        ]);
-                    }
-
-                    // 2. Create the receivable for the remaining balance
+                    // Create the receivable for the remaining balance
                     $receivableModel = new \App\Models\AccountReceivable();
                     $receivableModel->create([
                         'venda_id' => $saleId,
@@ -253,6 +245,30 @@ class SalesController extends BaseController {
                 }
 
                 $db->commit();
+
+                // Record Cashier Movement for all sales that affect the daily balance
+                $movementModel = new \App\Models\CashierMovement();
+                
+                // 1. Dinheiro / Pix / Cartão / Boleto (Total Entry)
+                // 2. Fiado (Only if there is a down payment)
+                if ($data['pagamento'] !== 'fiado') {
+                    $movementModel->create([
+                        'caixa_id' => $caixaAberto['id'],
+                        'tipo' => 'entrada',
+                        'valor' => $data['total'],
+                        'motivo' => "Venda #$saleId (" . strtoupper($data['pagamento']) . ")",
+                        'operador_id' => $_SESSION['usuario_id']
+                    ]);
+                } else if ($data['pagamento'] === 'fiado' && ($data['entrada_valor'] ?? 0) > 0) {
+                    $movementModel->create([
+                        'caixa_id' => $caixaAberto['id'],
+                        'tipo' => 'entrada',
+                        'valor' => (float)$data['entrada_valor'],
+                        'motivo' => "Entrada Venda #$saleId (Fiado)",
+                        'operador_id' => $_SESSION['usuario_id']
+                    ]);
+                }
+
                 echo json_encode(['success' => true, 'sale_id' => $saleId]);
             } catch (\Exception $e) {
                 $db->rollBack();

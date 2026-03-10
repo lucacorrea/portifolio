@@ -36,17 +36,19 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
 
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'gerente'])): ?>
         <a href="caixa.php" class="nav-link <?= $current_page == 'caixa.php' ? 'active' : '' ?>">
             <i class="fas fa-vault"></i> <span>Controle de Caixa</span>
         </a>
+        <?php endif; ?>
 
-        <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'vendedor'): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'gerente'])): ?>
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
         </a>
         <?php endif; ?>
 
-        <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'gerente'): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'vendedor'])): ?>
         <a href="pre_vendas.php" class="nav-link <?= $current_page == 'pre_vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-file-invoice-dollar"></i> <span>Pré-Venda / Orç.</span>
         </a>
@@ -98,7 +100,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'gerente'])): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão Estratégica</div>
         
         <a href="custos.php" class="nav-link <?= $current_page == 'custos.php' ? 'active' : '' ?>">

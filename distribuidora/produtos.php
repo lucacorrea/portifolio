@@ -1,40 +1,64 @@
 <?php
 
 declare(strict_types=1);
-session_start();
+
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 require_once __DIR__ . '/assets/conexao.php';
 
 function e(string $s): string
 {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
+
 function fmtMoney($v): string
 {
     return 'R$ ' . number_format((float)$v, 2, ',', '.');
 }
 
-if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 $csrf = $_SESSION['csrf_token'];
 
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 
 $pdo = db();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
-// selects
-$categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
-$fornecedores = $pdo->query("SELECT id, nome, status FROM fornecedores ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
+/* =========================
+   SELECTS
+========================= */
+$categorias = $pdo->query("
+    SELECT id, nome, status
+    FROM categorias
+    ORDER BY nome ASC
+")->fetchAll();
 
-// produtos
+$fornecedores = $pdo->query("
+    SELECT id, nome, status
+    FROM fornecedores
+    ORDER BY nome ASC
+")->fetchAll();
+
+/* =========================
+   PRODUTOS
+========================= */
 $produtos = $pdo->query("
-  SELECT p.*,
-         c.nome AS categoria_nome,
-         f.nome AS fornecedor_nome
-  FROM produtos p
-  LEFT JOIN categorias c ON c.id = p.categoria_id
-  LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
-  ORDER BY p.id DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+    SELECT
+        p.*,
+        c.nome AS categoria_nome,
+        f.nome AS fornecedor_nome
+    FROM produtos p
+    LEFT JOIN categorias c ON c.id = p.categoria_id
+    LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
+    ORDER BY p.id DESC
+")->fetchAll();
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -47,14 +71,12 @@ $produtos = $pdo->query("
     <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
     <title>Painel da Distribuidora | Produtos</title>
 
-    <!-- ========== CSS ========= -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="assets/css/lineicons.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" type="text/css" />
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
-        /* dropdown do profile: largura acompanha conteúdo */
         .profile-box .dropdown-menu {
             width: max-content;
             min-width: 260px;
@@ -80,7 +102,6 @@ $produtos = $pdo->query("
             max-width: 100%;
         }
 
-        /* ===== Botões menores ===== */
         .main-btn.btn-compact {
             height: 38px !important;
             padding: 8px 14px !important;
@@ -102,7 +123,6 @@ $produtos = $pdo->query("
             justify-content: center !important;
         }
 
-        /* tabela */
         .table td,
         .table th {
             vertical-align: middle;
@@ -120,7 +140,6 @@ $produtos = $pdo->query("
             min-width: 160px;
         }
 
-        /* ✅ Responsivo com scroll horizontal (SEM texto em pé) */
         .table-responsive {
             -webkit-overflow-scrolling: touch;
         }
@@ -130,15 +149,19 @@ $produtos = $pdo->query("
             min-width: 1180px;
         }
 
-        /* ✅ FORÇAR NOWRAP EM TUDO (não quebra linha) */
         #tbProdutos th,
         #tbProdutos td {
             white-space: nowrap !important;
             word-break: normal !important;
             overflow-wrap: normal !important;
+            text-align: center !important;
         }
 
-        /* badge */
+        #tbProdutos th.col-produto,
+        #tbProdutos td.col-produto {
+            text-align: left !important;
+        }
+
         .badge-soft {
             padding: .35rem .6rem;
             border-radius: 999px;
@@ -179,6 +202,69 @@ $produtos = $pdo->query("
             font-size: 12px;
             color: #64748b;
         }
+
+        .pagination-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            width: 42px;
+            height: 42px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: .2s ease;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: #eef2ff;
+            color: #1e40af;
+            border-color: #c7d2fe;
+        }
+
+        .page-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-weight: 700;
+            color: #475569;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 767.98px) {
+            .pagination-wrap {
+                justify-content: center;
+                width: 100%;
+            }
+
+            #infoCount {
+                text-align: center;
+                width: 100%;
+            }
+
+            .toolbar-actions {
+                justify-content: stretch;
+            }
+        }
     </style>
 </head>
 
@@ -187,7 +273,6 @@ $produtos = $pdo->query("
         <div class="spinner"></div>
     </div>
 
-    <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -197,7 +282,6 @@ $produtos = $pdo->query("
 
         <nav class="sidebar-nav">
             <ul>
-                <!-- Dashboard (sem dropdown) -->
                 <li class="nav-item">
                     <a href="dashboard.php">
                         <span class="icon">
@@ -216,7 +300,8 @@ $produtos = $pdo->query("
                 <li class="nav-item">
                     <a href="vendas.php">
                         <span class="icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
                                 <path d="M1.66666 5C1.66666 3.89543 2.5621 3 3.66666 3H16.3333C17.4379 3 18.3333 3.89543 18.3333 5V15C18.3333 16.1046 17.4379 17 16.3333 17H3.66666C2.5621 17 1.66666 16.1046 1.66666 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                 <path d="M1.66666 5L10 10.8333L18.3333 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
@@ -225,7 +310,6 @@ $produtos = $pdo->query("
                     </a>
                 </li>
 
-                <!-- Operações -->
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes"
                         aria-controls="ddmenu_operacoes" aria-expanded="false">
@@ -245,7 +329,6 @@ $produtos = $pdo->query("
                     </ul>
                 </li>
 
-                <!-- Estoque -->
                 <li class="nav-item nav-item-has-children active">
                     <a href="#0" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque"
                         aria-controls="ddmenu_estoque" aria-expanded="true">
@@ -396,7 +479,6 @@ $produtos = $pdo->query("
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </header>
@@ -414,12 +496,11 @@ $produtos = $pdo->query("
                 </div>
 
                 <?php if ($flash): ?>
-                    <div id="flashBox" class="alert alert-<?= e((string)$flash['type']) ?> flash-auto-hide mt-2">
-                        <?= e((string)$flash['msg']) ?>
+                    <div id="flashBox" class="alert alert-<?= e((string)($flash['type'] ?? 'success')) ?> flash-auto-hide mt-2">
+                        <?= e((string)($flash['msg'] ?? '')) ?>
                     </div>
                 <?php endif; ?>
 
-                <!-- Toolbar -->
                 <div class="card-style mb-30">
                     <div class="row g-3 align-items-end">
                         <div class="col-12 col-md-6 col-lg-3">
@@ -432,7 +513,9 @@ $produtos = $pdo->query("
                             <select class="form-select" id="fCategoria">
                                 <option value="">Todas</option>
                                 <?php foreach ($categorias as $c): ?>
-                                    <option value="<?= (int)$c['id'] ?>"><?= e((string)$c['nome']) ?><?= (strtoupper((string)$c['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
+                                    <option value="<?= (int)$c['id'] ?>">
+                                        <?= e((string)$c['nome']) ?><?= (strtoupper((string)$c['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -448,81 +531,118 @@ $produtos = $pdo->query("
                         </div>
 
                         <div class="col-12 col-md-6 col-lg-3">
-                            <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
+                            <div class="toolbar-actions">
                                 <button class="main-btn primary-btn btn-hover btn-compact" data-bs-toggle="modal"
                                     data-bs-target="#modalProduto" id="btnNovo" type="button">
                                     <i class="lni lni-plus me-1"></i> Novo
                                 </button>
+
                                 <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                                     <i class="lni lni-download me-1"></i> Excel
-                                </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
-                                    <i class="lni lni-printer me-1"></i> PDF
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tabela -->
                 <div class="card-style mb-30">
                     <div class="table-responsive">
                         <table class="table text-nowrap" id="tbProdutos">
                             <thead>
                                 <tr>
                                     <th class="minw-140">Código</th>
-                                    <th>Produto</th>
+                                    <th class="col-produto">Produto</th>
                                     <th class="minw-140">Categoria</th>
                                     <th class="minw-140">Unidade</th>
                                     <th class="minw-140">Preço</th>
                                     <th class="minw-120">Estoque</th>
                                     <th class="minw-120">Mínimo</th>
                                     <th class="minw-140">Status</th>
-                                    <th class="minw-140 text-end">Ações</th>
+                                    <th class="minw-140">Ações</th>
                                 </tr>
                             </thead>
-
                             <tbody>
                                 <?php foreach ($produtos as $p): ?>
                                     <?php
-                                    $id = (int)$p['id'];
-                                    $catId = (int)($p['categoria_id'] ?? 0);
-                                    $forId = (int)($p['fornecedor_id'] ?? 0);
-
-                                    $status = strtoupper((string)($p['status'] ?? 'ATIVO')) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+                                    $id      = (int)($p['id'] ?? 0);
+                                    $catId   = (int)($p['categoria_id'] ?? 0);
+                                    $forId   = (int)($p['fornecedor_id'] ?? 0);
+                                    $codigo  = (string)($p['codigo'] ?? '');
+                                    $nome    = (string)($p['nome'] ?? '');
+                                    $unidade = (string)($p['unidade'] ?? '');
+                                    $preco   = (string)($p['preco'] ?? '0');
                                     $estoque = (int)($p['estoque'] ?? 0);
-                                    $minimo = (int)($p['minimo'] ?? 0);
-                                    $baixo = ($status !== 'INATIVO') && ($estoque < $minimo);
-
-                                    $badge = ($status === 'INATIVO')
-                                        ? '<span class="badge-soft badge-soft-gray">INATIVO</span>'
-                                        : ($baixo ? '<span class="badge-soft badge-soft-warning">BAIXO</span>' : '<span class="badge-soft badge-soft-success">ATIVO</span>');
+                                    $minimo  = (int)($p['minimo'] ?? 0);
+                                    $obs     = (string)($p['obs'] ?? '');
+                                    $status  = strtoupper((string)($p['status'] ?? 'ATIVO')) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
 
                                     $catNome = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
                                     $forNome = trim((string)($p['fornecedor_nome'] ?? '')) ?: '—';
+
+                                    $baixo = ($status !== 'INATIVO') && ($estoque < $minimo);
+
+                                    if ($status === 'INATIVO') {
+                                        $badge = '<span class="badge-soft badge-soft-gray">INATIVO</span>';
+                                    } elseif ($baixo) {
+                                        $badge = '<span class="badge-soft badge-soft-warning">BAIXO</span>';
+                                    } else {
+                                        $badge = '<span class="badge-soft badge-soft-success">ATIVO</span>';
+                                    }
                                     ?>
-                                    <tr data-id="<?= $id ?>" data-nome="<?= e((string)$p['nome']) ?>" data-categoria="<?= $catId ?>" data-status="<?= $status ?>" data-baixo="<?= $baixo ? '1' : '0' ?>">
-                                        <td><?= e((string)$p['codigo']) ?></td>
-                                        <td>
-                                            <div style="font-weight:800;color:#0f172a;line-height:1.1;"><?= e((string)$p['nome']) ?></div>
+                                    <tr
+                                        data-id="<?= $id ?>"
+                                        data-codigo="<?= e($codigo) ?>"
+                                        data-nome="<?= e($nome) ?>"
+                                        data-status="<?= e($status) ?>"
+                                        data-categoria="<?= $catId ?>"
+                                        data-cat-id="<?= $catId ?>"
+                                        data-for-id="<?= $forId ?>"
+                                        data-unidade="<?= e($unidade) ?>"
+                                        data-preco="<?= e($preco) ?>"
+                                        data-estoque="<?= $estoque ?>"
+                                        data-minimo="<?= $minimo ?>"
+                                        data-obs="<?= e($obs) ?>"
+                                        data-baixo="<?= $baixo ? '1' : '0' ?>">
+                                        <td><?= e($codigo) ?></td>
+                                        <td class="col-produto">
+                                            <div style="font-weight:800;color:#0f172a;line-height:1.1;"><?= e($nome) ?></div>
                                             <div class="muted">Fornecedor: <?= e($forNome) ?></div>
                                         </td>
                                         <td><?= e($catNome) ?></td>
-                                        <td><?= e((string)($p['unidade'] ?? '')) ?></td>
-                                        <td><?= e(fmtMoney((string)($p['preco'] ?? '0'))) ?></td>
+                                        <td><?= e($unidade) ?></td>
+                                        <td><?= e(fmtMoney($preco)) ?></td>
                                         <td><?= $estoque ?></td>
                                         <td><?= $minimo ?></td>
                                         <td><?= $badge ?></td>
-                                        <td class="text-end">
-                                            <button class="main-btn light-btn btn-hover icon-btn btnEdit" type="button" title="Editar"><i class="lni lni-pencil"></i></button>
-                                            <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" type="button" title="Excluir"><i class="lni lni-trash-can"></i></button>
+                                        <td>
+                                            <button class="main-btn light-btn btn-hover icon-btn btnEdit" type="button" title="Editar">
+                                                <i class="lni lni-pencil"></i>
+                                            </button>
+                                            <button class="main-btn danger-btn-outline btn-hover icon-btn btnDel" type="button" title="Excluir">
+                                                <i class="lni lni-trash-can"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
-                    <p class="text-sm text-gray mt-2 mb-0" id="infoCount"></p>
+
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mt-3">
+                        <p class="text-sm text-gray mb-0" id="infoCount"></p>
+
+                        <div class="pagination-wrap">
+                            <button type="button" class="page-btn" id="btnPrevPage" aria-label="Página anterior">
+                                <i class="lni lni-chevron-left"></i>
+                            </button>
+
+                            <span class="page-info" id="pageInfo">Página 1/1</span>
+
+                            <button type="button" class="page-btn" id="btnNextPage" aria-label="Próxima página">
+                                <i class="lni lni-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -540,13 +660,11 @@ $produtos = $pdo->query("
         </footer>
     </main>
 
-    <!-- DELETE FORM -->
     <form id="frmDelete" action="assets/dados/produtos/excluirProdutos.php" method="post" style="display:none;">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <input type="hidden" name="id" id="delId" value="">
     </form>
 
-    <!-- Modal Produto -->
     <div class="modal fade" id="modalProduto" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
@@ -559,11 +677,8 @@ $produtos = $pdo->query("
                     <form id="formProduto" action="assets/dados/produtos/adicionarProdutos.php" method="post" enctype="multipart/form-data">
                         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
                         <input type="hidden" name="id" id="pId" value="">
-                        <input type="hidden" name="img_remove" id="imgRemove" value="0">
 
                         <div class="row g-3">
-
-
                             <div class="col-12">
                                 <hr class="my-2">
                             </div>
@@ -591,7 +706,9 @@ $produtos = $pdo->query("
                                 <select class="form-select" id="pCategoria" name="categoria_id" required>
                                     <option value="">Selecione…</option>
                                     <?php foreach ($categorias as $c): ?>
-                                        <option value="<?= (int)$c['id'] ?>"><?= e((string)$c['nome']) ?><?= (strtoupper((string)$c['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
+                                        <option value="<?= (int)$c['id'] ?>">
+                                            <?= e((string)$c['nome']) ?><?= (strtoupper((string)$c['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -601,7 +718,9 @@ $produtos = $pdo->query("
                                 <select class="form-select" id="pFornecedor" name="fornecedor_id" required>
                                     <option value="">Selecione…</option>
                                     <?php foreach ($fornecedores as $f): ?>
-                                        <option value="<?= (int)$f['id'] ?>"><?= e((string)$f['nome']) ?><?= (strtoupper((string)$f['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?></option>
+                                        <option value="<?= (int)$f['id'] ?>">
+                                            <?= e((string)$f['nome']) ?><?= (strtoupper((string)$f['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -610,11 +729,11 @@ $produtos = $pdo->query("
                                 <label class="form-label">Unidade</label>
                                 <select class="form-select" id="pUnidade" name="unidade" required>
                                     <option value="">Selecione…</option>
-                                    <option>Unidade</option>
-                                    <option>Pacote</option>
-                                    <option>Caixa</option>
-                                    <option>Kg</option>
-                                    <option>Litro</option>
+                                    <option value="Unidade">Unidade</option>
+                                    <option value="Pacote">Pacote</option>
+                                    <option value="Caixa">Caixa</option>
+                                    <option value="Kg">Kg</option>
+                                    <option value="Litro">Litro</option>
                                 </select>
                             </div>
 
@@ -633,7 +752,7 @@ $produtos = $pdo->query("
                                 <input type="number" class="form-control" id="pMinimo" name="minimo" min="0" value="0" required />
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-12">
                                 <label class="form-label">Observação</label>
                                 <input type="text" class="form-control" id="pObs" name="obs" placeholder="Opcional" />
                             </div>
@@ -651,82 +770,146 @@ $produtos = $pdo->query("
         </div>
     </div>
 
-    <!-- ========= JS ========= -->
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
 
-    <!-- jsPDF + AutoTable (PDF) -->
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-
     <script>
-        // flash 1.5s
         (function() {
             const box = document.getElementById('flashBox');
             if (!box) return;
+
             setTimeout(() => {
                 box.classList.add('hide');
                 setTimeout(() => box.remove(), 400);
             }, 1500);
         })();
 
-
-
         const tb = document.getElementById('tbProdutos');
+        const tbodyRows = Array.from(tb.querySelectorAll('tbody tr'));
+
         const qProdutos = document.getElementById('qProdutos');
         const qGlobal = document.getElementById('qGlobal');
         const fCategoria = document.getElementById('fCategoria');
         const fStatus = document.getElementById('fStatus');
-        const infoCount = document.getElementById('infoCount');
 
-        function norm(s) {
-            return String(s ?? '').toLowerCase().trim();
+        const infoCount = document.getElementById('infoCount');
+        const pageInfo = document.getElementById('pageInfo');
+        const btnPrevPage = document.getElementById('btnPrevPage');
+        const btnNextPage = document.getElementById('btnNextPage');
+
+        const PER_PAGE = 5;
+        let currentPage = 1;
+
+        function norm(v) {
+            return String(v ?? '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim();
         }
 
-        function aplicarFiltros() {
-            const q = norm(qProdutos.value || qGlobal.value);
-            const cat = String(fCategoria.value || '').trim(); // id
-            const st = fStatus.value;
+        function syncSearch(source, target) {
+            if (target.value !== source.value) {
+                target.value = source.value;
+            }
+        }
 
-            const rows = Array.from(tb.querySelectorAll('tbody tr'));
-            let shown = 0;
+        function getSearchText() {
+            return norm(qProdutos.value);
+        }
 
-            rows.forEach(tr => {
-                const text = norm(tr.innerText);
-                const rCat = String(tr.getAttribute('data-categoria') || '').trim();
-                const rStatus = tr.getAttribute('data-status') || 'ATIVO';
-                const rBaixo = tr.getAttribute('data-baixo') === "1";
+        function rowMatches(tr) {
+            const q = getSearchText();
+            const cat = String(fCategoria.value || '').trim();
+            const st = String(fStatus.value || '').trim();
 
-                let ok = true;
-                if (q && !text.includes(q)) ok = false;
-                if (cat && rCat !== cat) ok = false;
-                if (st === "ATIVO" && rStatus !== "ATIVO") ok = false;
-                if (st === "INATIVO" && rStatus !== "INATIVO") ok = false;
-                if (st === "BAIXO" && !rBaixo) ok = false;
+            const text = norm(tr.innerText);
+            const rCat = String(tr.getAttribute('data-categoria') || '').trim();
+            const rStatus = String(tr.getAttribute('data-status') || 'ATIVO').trim();
+            const rBaixo = tr.getAttribute('data-baixo') === '1';
 
-                tr.style.display = ok ? '' : 'none';
-                if (ok) shown++;
+            if (q && !text.includes(q)) return false;
+            if (cat && rCat !== cat) return false;
+
+            if (st === 'ATIVO' && rStatus !== 'ATIVO') return false;
+            if (st === 'INATIVO' && rStatus !== 'INATIVO') return false;
+            if (st === 'BAIXO' && !rBaixo) return false;
+
+            return true;
+        }
+
+        function getFilteredRows() {
+            return tbodyRows.filter(rowMatches);
+        }
+
+        function renderTable(resetPage = false) {
+            if (resetPage) currentPage = 1;
+
+            const filtered = getFilteredRows();
+            const totalItems = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / PER_PAGE));
+
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            tbodyRows.forEach(tr => {
+                tr.style.display = 'none';
             });
 
-            infoCount.textContent = `Mostrando ${shown} produto(s).`;
+            const start = (currentPage - 1) * PER_PAGE;
+            const end = start + PER_PAGE;
+            const pageRows = filtered.slice(start, end);
+
+            pageRows.forEach(tr => {
+                tr.style.display = '';
+            });
+
+            if (totalItems > 0) {
+                infoCount.textContent = `Mostrando ${pageRows.length} item(ns) nesta página de produtos. Total filtrado: ${totalItems}.`;
+            } else {
+                infoCount.textContent = 'Nenhum produto encontrado.';
+            }
+
+            pageInfo.textContent = `Página ${currentPage}/${totalPages}`;
+            btnPrevPage.disabled = currentPage <= 1 || totalItems === 0;
+            btnNextPage.disabled = currentPage >= totalPages || totalItems === 0;
         }
 
-        qProdutos.addEventListener('input', aplicarFiltros);
-        qGlobal.addEventListener('input', aplicarFiltros);
-        fCategoria.addEventListener('change', aplicarFiltros);
-        fStatus.addEventListener('change', aplicarFiltros);
-        aplicarFiltros();
+        qProdutos.addEventListener('input', function() {
+            syncSearch(qProdutos, qGlobal);
+            renderTable(true);
+        });
 
-        // modal
+        qGlobal.addEventListener('input', function() {
+            syncSearch(qGlobal, qProdutos);
+            renderTable(true);
+        });
+
+        fCategoria.addEventListener('change', function() {
+            renderTable(true);
+        });
+
+        fStatus.addEventListener('change', function() {
+            renderTable(true);
+        });
+
+        btnPrevPage.addEventListener('click', function() {
+            currentPage--;
+            renderTable(false);
+        });
+
+        btnNextPage.addEventListener('click', function() {
+            currentPage++;
+            renderTable(false);
+        });
+
+        renderTable(true);
+
         const modalEl = document.getElementById('modalProduto');
         const modal = new bootstrap.Modal(modalEl);
         const modalTitle = document.getElementById('modalProdutoTitle');
 
         const pId = document.getElementById('pId');
-        const imgRemove = document.getElementById('imgRemove');
-        const previewImg = document.getElementById('previewImg');
-        const pImagem = document.getElementById('pImagem');
-
         const pCodigo = document.getElementById('pCodigo');
         const pNome = document.getElementById('pNome');
         const pStatus = document.getElementById('pStatus');
@@ -738,16 +921,8 @@ $produtos = $pdo->query("
         const pMinimo = document.getElementById('pMinimo');
         const pObs = document.getElementById('pObs');
 
-        function setPreview(src) {
-            previewImg.src = src || DEFAULT_IMG;
-        }
-
         function limparForm() {
             pId.value = '';
-            imgRemove.value = '0';
-            pImagem.value = '';
-            setPreview(DEFAULT_IMG);
-
             pCodigo.value = '';
             pNome.value = '';
             pStatus.value = 'ATIVO';
@@ -755,49 +930,29 @@ $produtos = $pdo->query("
             pFornecedor.value = '';
             pUnidade.value = '';
             pPreco.value = '';
-            pEstoque.value = 0;
-            pMinimo.value = 0;
+            pEstoque.value = '0';
+            pMinimo.value = '0';
             pObs.value = '';
         }
 
-        document.getElementById('btnNovo').addEventListener('click', () => {
+        document.getElementById('btnNovo').addEventListener('click', function() {
             modalTitle.textContent = 'Novo Produto';
             limparForm();
         });
 
-        // preview ao escolher arquivo
-        pImagem.addEventListener('change', () => {
-            const file = pImagem.files && pImagem.files[0];
-            if (!file) return;
-            if (!file.type.startsWith('image/')) {
-                alert('Selecione uma imagem válida.');
-                pImagem.value = '';
-                return;
-            }
-            imgRemove.value = '0';
-            const reader = new FileReader();
-            reader.onload = () => setPreview(String(reader.result || DEFAULT_IMG));
-            reader.readAsDataURL(file);
-        });
-
-        document.getElementById('btnRemoverImagem').addEventListener('click', () => {
-            imgRemove.value = '1';
-            pImagem.value = '';
-            setPreview(DEFAULT_IMG);
-        });
-
-        // editar/excluir
-        tb.addEventListener('click', (e) => {
+        tb.addEventListener('click', function(e) {
             const btnEdit = e.target.closest('.btnEdit');
             const btnDel = e.target.closest('.btnDel');
             const tr = e.target.closest('tr');
+
             if (!tr) return;
 
             if (btnDel) {
-                const id = tr.getAttribute('data-id');
+                const id = tr.getAttribute('data-id') || '';
                 const nome = tr.getAttribute('data-nome') || '';
+
                 if (confirm(`Deseja remover o produto: "${nome}"?`)) {
-                    document.getElementById('delId').value = id || '';
+                    document.getElementById('delId').value = id;
                     document.getElementById('frmDelete').submit();
                 }
                 return;
@@ -805,199 +960,115 @@ $produtos = $pdo->query("
 
             if (btnEdit) {
                 modalTitle.textContent = 'Editar Produto';
-                pId.value = tr.getAttribute('data-id') || '';
 
+                pId.value = tr.getAttribute('data-id') || '';
                 pCodigo.value = tr.getAttribute('data-codigo') || '';
                 pNome.value = tr.getAttribute('data-nome') || '';
                 pStatus.value = tr.getAttribute('data-status') || 'ATIVO';
                 pCategoria.value = tr.getAttribute('data-cat-id') || '';
                 pFornecedor.value = tr.getAttribute('data-for-id') || '';
                 pUnidade.value = tr.getAttribute('data-unidade') || '';
-                pPreco.value = (tr.getAttribute('data-preco') || '0').replace('.', ',');
-                pEstoque.value = tr.getAttribute('data-estoque') || 0;
-                pMinimo.value = tr.getAttribute('data-minimo') || 0;
+                pPreco.value = String(tr.getAttribute('data-preco') || '0').replace('.', ',');
+                pEstoque.value = tr.getAttribute('data-estoque') || '0';
+                pMinimo.value = tr.getAttribute('data-minimo') || '0';
                 pObs.value = tr.getAttribute('data-obs') || '';
 
                 modal.show();
             }
         });
 
-        // ✅ Excel (igual ao seu antigo)
         function exportExcel() {
-            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
+            const filtered = getFilteredRows();
+
+            if (!filtered.length) {
+                alert('Não há produtos para exportar.');
+                return;
+            }
 
             const now = new Date();
-            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+            const dataHora = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
+            const dataArquivo = now.toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
-            const cat = fCategoria.value ? (fCategoria.options[fCategoria.selectedIndex].text) : 'Todas';
-            const st = (fStatus.value || 'Todos');
+            const categoria = fCategoria.value ?
+                fCategoria.options[fCategoria.selectedIndex].text :
+                'Todas';
+
+            const status = fStatus.value || 'Todos';
 
             const header = ['Código', 'Produto', 'Categoria', 'Unidade', 'Preço', 'Estoque', 'Mínimo', 'Status'];
 
-            const body = rows.map(tr => {
+            const body = filtered.map(tr => {
                 return [
-                    tr.children[0].innerText.trim(), // Código
-                    (tr.getAttribute('data-nome') || tr.children[1].innerText.trim()), // Produto (sem "Fornecedor:")
-                    tr.children[2].innerText.trim(), // Categoria (nome)
-                    tr.children[3].innerText.trim(), // Unidade
-                    tr.children[4].innerText.trim(), // Preço
-                    tr.children[5].innerText.trim(), // Estoque
-                    tr.children[6].innerText.trim(), // Mínimo
-                    tr.children[7].innerText.trim() // Status (ATIVO/BAIXO/INATIVO)
+                    tr.children[0].innerText.trim(),
+                    tr.getAttribute('data-nome') || '',
+                    tr.children[2].innerText.trim(),
+                    tr.children[3].innerText.trim(),
+                    tr.children[4].innerText.trim(),
+                    tr.children[5].innerText.trim(),
+                    tr.children[6].innerText.trim(),
+                    tr.children[7].innerText.trim()
                 ];
             });
 
-            const isCenterCol = (idx) => (idx === 3 || idx === 4 || idx === 5 || idx === 6);
+            const isCenterCol = (idx) => idx !== 1;
 
             let html = `
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              table { border: 0.6px solid #999; font-family: Arial; font-size: 12px; }
-              td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
-              th { background: #f1f5f9; font-weight: 700; }
-              .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
-              .muted { color: #555; font-weight: 700; }
-              .center { text-align: center; }
-            </style>
-          </head>
-          <body>
-            <table>
-      `;
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+                        td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; text-align: center; }
+                        th { background: #dbe5f1; font-weight: bold; }
+                        .title { font-size: 16px; font-weight: bold; text-align: center; background: #ddebf7; }
+                        .left { text-align: left; }
+                        .center { text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+            `;
 
             html += `<tr><td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - PRODUTOS</td></tr>`;
-            html += `<tr><td class="muted">Gerado em:</td><td colspan="7">${dt}</td></tr>`;
-            html += `<tr><td class="muted">Categoria:</td><td>${cat}</td><td class="muted">Status:</td><td>${st}</td><td colspan="4"></td></tr>`;
+            html += `<tr><td colspan="8">Gerado em: ${dataHora}</td></tr>`;
+            html += `<tr><td colspan="8">Categoria: ${categoria} | Status: ${status}</td></tr>`;
+            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : 'left'}">${h}</th>`).join('')}</tr>`;
 
-            html += `<tr>${header.map((h, idx) => `<th class="${isCenterCol(idx) ? 'center' : ''}">${h}</th>`).join('')}</tr>`;
-            body.forEach(r => {
-                html += `<tr>${r.map((c, idx) => {
-          const safe = String(c).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-          const cls = isCenterCol(idx) ? 'center' : '';
-          return `<td class="${cls}">${safe}</td>`;
-        }).join('')}</tr>`;
+            body.forEach(row => {
+                html += '<tr>';
+                row.forEach((cell, idx) => {
+                    const safe = String(cell)
+                        .replaceAll('&', '&amp;')
+                        .replaceAll('<', '&lt;')
+                        .replaceAll('>', '&gt;');
+
+                    const cls = isCenterCol(idx) ? 'center' : 'left';
+                    html += `<td class="${cls}">${safe}</td>`;
+                });
+                html += '</tr>';
             });
 
-            html += `</table></body></html>`;
+            html += `
+                    </table>
+                </body>
+                </html>
+            `;
 
             const blob = new Blob(["\ufeff" + html], {
                 type: 'application/vnd.ms-excel;charset=utf-8;'
             });
-            const url = URL.createObjectURL(blob);
 
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'produtos.xls';
+            a.download = `produtos_${dataArquivo}.xls`;
             document.body.appendChild(a);
             a.click();
             a.remove();
             URL.revokeObjectURL(url);
         }
+
         document.getElementById('btnExcel').addEventListener('click', exportExcel);
-
-        // ✅ PDF (igual ao seu antigo)
-        function exportPDF() {
-            if (!window.jspdf || !window.jspdf.jsPDF) {
-                alert('Biblioteca do PDF não carregou.');
-                return;
-            }
-
-            const rows = Array.from(tb.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
-            const now = new Date();
-            const dt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
-
-            const cat = fCategoria.value ? (fCategoria.options[fCategoria.selectedIndex].text) : 'Todas';
-            const st = (fStatus.value || 'Todos');
-
-            const {
-                jsPDF
-            } = window.jspdf;
-            const doc = new jsPDF({
-                orientation: 'landscape',
-                unit: 'pt',
-                format: 'a4'
-            });
-
-            const M = 70;
-
-            doc.setTextColor(0, 0, 0);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
-            doc.text('PAINEL DA DISTRIBUIDORA - PRODUTOS', M, 55);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.text(`Gerado em:  ${dt}`, M, 75);
-            doc.text(`Categoria:  ${cat} | Status:  ${st}`, M, 92);
-
-            const head = [
-                ['Código', 'Produto', 'Categoria', 'Unidade', 'Preço', 'Estoque', 'Mínimo', 'Status']
-            ];
-
-            const body = rows.map(tr => ([
-                tr.children[0].innerText.trim(),
-                (tr.getAttribute('data-nome') || tr.children[1].innerText.trim()),
-                tr.children[2].innerText.trim(),
-                tr.children[3].innerText.trim(),
-                tr.children[4].innerText.trim(),
-                tr.children[5].innerText.trim(),
-                tr.children[6].innerText.trim(),
-                tr.children[7].innerText.trim(),
-            ]));
-
-            doc.autoTable({
-                head,
-                body,
-                startY: 115,
-                margin: {
-                    left: M,
-                    right: M
-                },
-                theme: 'plain',
-                styles: {
-                    font: 'helvetica',
-                    fontSize: 9,
-                    textColor: [17, 24, 39],
-                    cellPadding: {
-                        top: 6,
-                        right: 6,
-                        bottom: 6,
-                        left: 6
-                    },
-                    lineWidth: 0
-                },
-                headStyles: {
-                    fillColor: [241, 245, 249],
-                    textColor: [17, 24, 39],
-                    fontStyle: 'bold',
-                    lineWidth: 0
-                },
-                alternateRowStyles: {
-                    fillColor: [248, 250, 252]
-                },
-                columnStyles: {
-                    3: {
-                        halign: 'center'
-                    },
-                    4: {
-                        halign: 'center'
-                    },
-                    5: {
-                        halign: 'center'
-                    },
-                    6: {
-                        halign: 'center'
-                    }
-                },
-                didParseCell: function(data) {
-                    data.cell.styles.lineWidth = 0;
-                }
-            });
-
-            doc.save('produtos.pdf');
-        }
-        document.getElementById('btnPDF').addEventListener('click', exportPDF);
     </script>
 </body>
 

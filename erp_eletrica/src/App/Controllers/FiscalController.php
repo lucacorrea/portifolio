@@ -81,20 +81,34 @@ class FiscalController extends BaseController {
     }
 
     public function test_connection() {
+        ob_start();
+        ini_set('display_errors', 0);
+        error_reporting(E_ALL);
+        
         $id = $_GET['id'] ?? null;
-        if (!$id) exit(json_encode(['success' => false, 'error' => 'ID da filial não fornecido']));
+        if (!$id) {
+            ob_get_clean();
+            exit(json_encode(['success' => false, 'error' => 'ID da filial não fornecido']));
+        }
 
         // Security check
         if (!($_SESSION['is_matriz'] ?? false) && $id != $_SESSION['filial_id']) {
+            ob_get_clean();
             exit(json_encode(['success' => false, 'error' => 'Acesso negado para esta unidade']));
         }
 
         try {
             $service = new \App\Services\FiscalService();
             $result = $service->testConnection($id);
+            ob_get_clean(); // Discard any warnings/garbage
+            header('Content-Type: application/json');
             echo json_encode($result);
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            @file_put_contents(dirname(__DIR__, 3) . '/storage/last_connection_test_error.txt', $msg . "\n" . $e->getTraceAsString());
+            ob_get_clean();
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => $msg]);
         }
         exit;
     }

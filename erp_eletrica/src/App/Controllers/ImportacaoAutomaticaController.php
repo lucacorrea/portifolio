@@ -61,6 +61,35 @@ class ImportacaoAutomaticaController extends BaseController {
         exit;
     }
 
+    public function manifestar() {
+        try {
+            $id = $_GET['id'] ?? null;
+            if (!$id) throw new \Exception("ID da nota não fornecido.");
+
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT * FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+            $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+            $nota = $stmt->fetch();
+
+            if (!$nota) throw new \Exception("Nota não encontrada.");
+
+            $service = new SefazConsultaService();
+            // Buscar CNPJ da filial para o cabeçalho do evento
+            $stmt = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
+            $stmt->execute([$_SESSION['filial_id'] ?? 1]);
+            $cnpjFilial = $stmt->fetchColumn();
+
+            $service->manifestarNota($cnpjFilial, $nota['chave_acesso']);
+
+            // Após manifestar, precisamos sincronizar novamente para baixar o XML completo (procNFe)
+            // A SEFAZ pode demorar alguns segundos, mas geralmente o próximo 'sincronizar' resolve.
+            echo json_encode(['success' => true, 'message' => 'Manifestação (Ciência da Operação) realizada com sucesso. Sincronize novamente em instantes para baixar os produtos.']);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     public function visualizar_produtos() {
         $id = $_GET['id'] ?? null;
         if (!$id) exit;
@@ -174,5 +203,22 @@ class ImportacaoAutomaticaController extends BaseController {
             }
             exit;
         }
+    }
+
+    public function baixar_xml() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) exit;
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT xml, chave_acesso FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+        $nota = $stmt->fetch();
+
+        if ($nota && !empty($nota['xml'])) {
+            header('Content-Type: text/xml');
+            header('Content-Disposition: attachment; filename="NFe_' . $nota['chave_acesso'] . '.xml"');
+            echo $nota['xml'];
+        }
+        exit;
     }
 }

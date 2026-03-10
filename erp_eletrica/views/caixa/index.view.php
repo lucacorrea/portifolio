@@ -164,9 +164,33 @@
                     <input type="number" step="0.01" name="valor" class="form-control form-control-lg text-center fw-bold" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Motivo / Descrição</label>
-                    <input type="text" name="motivo" class="form-control" placeholder="Ex: Adição de troco, Retirada para almoço..." required>
+                    <label class="form-label fw-bold">Motivo / Descrição (Opcional)</label>
+                    <input type="text" name="motivo" class="form-control" placeholder="Ex: Adição de troco, Retirada para almoço...">
                 </div>
+
+                <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
+                <div class="card bg-light border-0 mt-4">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-shield-alt me-2"></i>Autorização Administrativa</h6>
+                        <p class="extra-small text-muted mb-3">Esta operação exige liberação de um Administrador.</p>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Código de Uso Único</label>
+                            <input type="text" name="auth_code" class="form-control form-control-sm text-center fw-bold" placeholder="000000">
+                            <div class="form-text extra-small text-center mt-1">Obtido na tela de login via "Gerar Código"</div>
+                        </div>
+                        
+                        <div class="text-center my-2">
+                             <span class="badge bg-secondary extra-small">OU</span>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label small fw-bold">Senha do Administrador</label>
+                            <input type="password" name="auth_password" class="form-control form-control-sm text-center" placeholder="••••••••">
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
@@ -216,3 +240,110 @@
     </div>
 </div>
 <?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation for Movement Modal (Sangria/Suprimento)
+    const movementModal = document.getElementById('modalMovimentacao');
+    if (movementModal) {
+        const form = movementModal.querySelector('form');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        const valorInput = form.querySelector('input[name="valor"]');
+        const motivoInput = form.querySelector('input[name="motivo"]');
+        const authCode = form.querySelector('input[name="auth_code"]');
+        const authPass = form.querySelector('input[name="auth_password"]');
+        const isAdmin = <?= in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master']) ? 'true' : 'false' ?>;
+
+        function validateMovement() {
+            let isValid = true;
+            
+            // 1. Basic fields (Valor is still required)
+            if (!valorInput.value || parseFloat(valorInput.value) <= 0) isValid = false;
+
+            // 2. Authorization (if not admin/master)
+            if (!isAdmin) {
+                const codeValue = authCode.value.trim();
+                const passValue = authPass.value.trim();
+
+                if (!codeValue && !passValue) {
+                    isValid = false;
+                    clearError();
+                } else if (codeValue && codeValue.length === 6) {
+                    // Check code validity via AJAX if it's 6 digits
+                    validateCodeAjax(codeValue);
+                    isValid = false; // Stay disabled until AJAX returns success
+                } else if (passValue) {
+                    isValid = true;
+                    clearError();
+                } else {
+                    isValid = false;
+                }
+            }
+
+            btnSubmit.disabled = !isValid;
+            btnSubmit.style.opacity = isValid ? '1' : '0.5';
+            btnSubmit.style.cursor = isValid ? 'pointer' : 'not-allowed';
+        }
+
+        let lastValidatedCode = '';
+        async function validateCodeAjax(code) {
+            if (code === lastValidatedCode) return;
+            lastValidatedCode = code;
+
+            const tipo = form.querySelector('select[name="tipo"]').value;
+            
+            try {
+                const response = await fetch('caixa.php?action=validate_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code, tipo: tipo })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('Código Válido!');
+                    btnSubmit.disabled = false;
+                    btnSubmit.style.opacity = '1';
+                    btnSubmit.style.cursor = 'pointer';
+                } else {
+                    showError(result.error);
+                }
+            } catch (e) {
+                showError('Erro ao validar código.');
+            }
+        }
+
+        function showError(msg) {
+            let errDiv = form.querySelector('#auth-error');
+            if (!errDiv) {
+                errDiv = document.createElement('div');
+                errDiv.id = 'auth-error';
+                errDiv.className = 'text-danger extra-small mt-1 fw-bold text-center';
+                authCode.parentNode.appendChild(errDiv);
+            }
+            errDiv.innerText = msg;
+            errDiv.classList.remove('text-success');
+            errDiv.classList.add('text-danger');
+        }
+
+        function showSuccess(msg) {
+            showError(msg);
+            const errDiv = form.querySelector('#auth-error');
+            errDiv.classList.remove('text-danger');
+            errDiv.classList.add('text-success');
+        }
+
+        function clearError() {
+            const errDiv = form.querySelector('#auth-error');
+            if (errDiv) errDiv.innerText = '';
+        }
+
+        form.addEventListener('input', validateMovement);
+        form.querySelector('select[name="tipo"]').addEventListener('change', () => {
+             lastValidatedCode = ''; // Forces re-validation if type changes
+             validateMovement();
+        });
+        validateMovement(); // Initial check
+    }
+});
+</script>

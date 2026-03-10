@@ -254,6 +254,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </button>
         </form>
 
+        <div class="mt-3 text-center">
+            <a href="gerar_codigo.php" class="text-primary small fw-bold text-decoration-none">
+                <i class="fas fa-key me-1"></i> Gerar Código de Autorização (Admin)
+            </a>
+        </div>
+
         <div style="margin-top: 25px; text-align: center; font-size: 0.75rem; color: #bdc3c7; font-family: 'Roboto Mono', monospace;">
             VERSÃO <?php echo APP_VERSION; ?> | SECURE INDUSTRIAL ACCESS
         </div>

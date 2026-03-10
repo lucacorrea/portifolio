@@ -14,9 +14,10 @@ class FiscalService extends BaseService {
 
     private function getFiscalConfig($branchId) {
         // 1. Load Branch Info
-        $stmt = $this->db->prepare("SELECT * FROM filiais WHERE id = ?");
-        $stmt->execute([$branchId]);
-        $branch = $stmt->fetch();
+        $branch = $this->getBranchData($branchId);
+        if (!$branch) {
+             throw new Exception("Filial ID $branchId não encontrada no sistema.");
+        }
 
         // 2. Load Global Config
         $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
@@ -37,9 +38,9 @@ class FiscalService extends BaseService {
         // Fallback to legacy branch-specific config if global not set
         return [
             'cnpj' => $branch['cnpj'],
-            'certificado_pfx' => $branch['certificado_pfx'],
-            'certificado_senha' => $branch['certificado_senha'],
-            'ambiente' => $branch['ambiente'],
+            'certificado_pfx' => $branch['certificado_pfx'] ?? null,
+            'certificado_senha' => !empty($branch['certificado_senha']) ? base64_decode($branch['certificado_senha']) : '',
+            'ambiente' => $branch['ambiente'] ?? 2,
             'nome' => $branch['nome']
         ];
     }
@@ -105,27 +106,56 @@ class FiscalService extends BaseService {
         return $stmt->fetch();
     }
 
-    private function generateXML($sale, $branch, $type) {
-        // Here we would use a library or manual DOMDocument to build the NFe XML
-        // Mocking a standard SEFAZ structure
-        $now = date('Y-m-d\TH:i:sP');
-        return "<?xml version='1.0' encoding='UTF-8'?><NFe xmlns='http://www.portalfiscal.inf.br/nfe'><infNFe versao='4.00' Id='NFe35...'><ide><cUF>35</cUF><cNF>".rand(10000000,99999999)."</cNF>...</ide></infNFe></NFe>";
+    private function generateXML($sale, $fiscal, $type = 'nfce') {
+        $xmlService = new SefazXmlService();
+        $result = $xmlService->generateNFCe($sale, $fiscal);
+        return $result['xml'];
     }
 
-    private function signXML($xml, $branch) {
-        // Digital signing logic with OpenSSL
-        // This requires the .pfx file to be read with openssl_pkcs12_read
-        return $xml; // Returning original for mock
+    private function signXML($xml, $fiscal) {
+        $signer = new SefazSigner();
+        $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscal['certificado_pfx'];
+        $password = $fiscal['certificado_senha'];
+        
+        return $signer->signXML($xml, $pfxPath, $password);
     }
 
-    private function transmitToSEFAZ($signedXml, $branch, $type) {
-        // In a real scenario, this uses cURL to SEFAZ Web Services
-        // Mocking a successful response for Homologação
+    private function transmitToSEFAZ($signedXml, $fiscal, $type = 'nfce') {
+        $soapClient = new SefazSoapClient();
+        
+        try {
+            $responseXml = $soapClient->call('nfce_autorizacao', $signedXml, $fiscal);
+            return $this->parseSefazResponse($responseXml);
+        } catch (Exception $e) {
+            $this->logAction('sefaz_comm_error', 'vendas', null, null, ['error' => $e->getMessage()]);
+            throw new Exception("Falha na comunicação com a SEFAZ: " . $e->getMessage());
+        }
+    }
+
+    private function parseSefazResponse($xmlStr) {
+        // Remove namespaces for easier parsing in simple cases
+        $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $xmlStr);
+        $xml = simplexml_load_string($cleanXml);
+        
+        // SEFAZ response structure: nfeAutorizacaoLoteResult -> retEnviNFe
+        $ret = $xml->xpath('//retEnviNFe');
+        if (empty($ret)) {
+             throw new Exception("Resposta da SEFAZ em formato desconhecido.");
+        }
+        
+        $data = $ret[0];
+        $cStat = (string)$data->cStat;
+        $xMotivo = (string)$data->xMotivo;
+
+        if ($cStat != '103' && $cStat != '104') { // 103: Lote recebido, 104: Lote processado
+            throw new Exception("SEFAZ Rejeitou: [$cStat] $xMotivo");
+        }
+
         return [
             'status' => 'autorizada',
-            'protocolo' => '135' . rand(100000000, 999999999),
-            'chave' => '35' . date('ym') . str_replace(['.', '/', '-'], '', $branch['cnpj']) . '55001' . str_pad($sale['id'] ?? rand(1,999), 9, '0', STR_PAD_LEFT) . '1' . rand(10000000, 99999999),
-            'xml_path' => 'storage/nfe/xml/' . date('Y-m') . '/nfe_mock.xml'
+            'protocolo' => (string)$data->infRec->nRec ?? 'N/A',
+            'chave' => (string)$data->protNFe->infProt->chNFe ?? 'N/A',
+            'xml_path' => 'storage/nfe/xml/' . date('Y-m') . '/nfe_' . time() . '.xml'
         ];
     }
 
@@ -147,23 +177,59 @@ class FiscalService extends BaseService {
             throw new Exception("Senha do certificado não configurada.");
         }
 
-        // Mocking a SOAP Service Status request
-        // In a real scenario, this would use NFePHP\NFe\Tools::sefazStatus()
-        $delay = usleep(500000); // Simulate network latency
-        
-        $success = (rand(1, 10) > 1); // 90% success rate for mock
-        
-        if ($success) {
-            return [
-                'success' => true,
-                'status' => '107',
-                'motivo' => 'Serviço em Operação',
-                'ambiente' => $branch['ambiente'] == 1 ? 'Produção' : 'Homologação',
-                'verAplic' => 'SP_NFE_PL_009_V4',
-                'timestamp' => date('d/m/Y H:i:s')
-            ];
-        } else {
-            throw new Exception("Erro de Comunicação: O serviço da SEFAZ não respondeu no tempo esperado (Timeout).");
+        // Test actual signing capability to ensure certificate is fully functional
+        try {
+            $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $branch['certificado_pfx'];
+            if (!file_exists($pfxPath)) throw new Exception("Arquivo do certificado não encontrado no servidor.");
+            
+            $pfxContent = file_get_contents($pfxPath);
+            $certs = [];
+            $password = base64_decode($branch['certificado_senha']);
+            
+            if (!openssl_pkcs12_read($pfxContent, $certs, $password)) {
+                throw new Exception("Falha ao ler o certificado digital. Verifique a senha.");
+            }
+
+            // 1. Test signing a dummy string
+            $dataToSign = "test-signature-" . time();
+            $signature = '';
+            if (!openssl_sign($dataToSign, $signature, $certs['pkey'], OPENSSL_ALGO_SHA256)) {
+                throw new Exception("O certificado foi aberto, mas falhou ao assinar dados (Chave privada inválida?).");
+            }
+
+            // 2. Real connectivity check (Status do Serviço)
+            $soapClient = new SefazSoapClient();
+            $fiscal = $this->getFiscalConfig($branchId);
+            
+            // Generate simple XML for Status Inquiry
+            $xml = '<?xml version="1.0" encoding="UTF-8"?><consStatServ xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><tpAmb>' . $fiscal['ambiente'] . '</tpAmb><cUF>35</cUF><xServ>STATUS</xServ></consStatServ>';
+            
+            try {
+                $responseXml = $soapClient->call('sefaz_status', $xml, $fiscal);
+                
+                // Parse response
+                $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $responseXml);
+                $res = simplexml_load_string($cleanXml);
+                $nodes = $res->xpath('//retConsStatServ');
+                $retStatus = !empty($nodes) ? $nodes[0] : $res;
+
+                return [
+                    'success' => true,
+                    'status' => (string)$retStatus->cStat ?: '???',
+                    'motivo' => (string)$retStatus->xMotivo ?: 'Resposta sem motivo',
+                    'ambiente' => ($fiscal['ambiente'] == 1) ? 'Produção' : 'Homologação',
+                    'verAplic' => (string)$retStatus->verAplic ?: '---',
+                    'timestamp' => (string)$retStatus->dhRecbto ?: date('d/m/Y H:i:s'),
+                    'cert_info' => [
+                        'subject' => openssl_x509_parse($certs['cert'])['subject']['CN'] ?? 'Desconhecido',
+                        'validTo' => date('d/m/Y', openssl_x509_parse($certs['cert'])['validTo_time_t'])
+                    ]
+                ];
+            } catch (Exception $e) {
+                throw new Exception("Certificado local OK, mas falha na comunicação SEFAZ: " . $e->getMessage());
+            }
+        } catch (Exception $e) {
+            throw new Exception("Erro no teste do certificado: " . $e->getMessage());
         }
     }
 

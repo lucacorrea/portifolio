@@ -10,8 +10,12 @@ class PreSaleController extends BaseController {
         $model = new PreSale();
         $recent = $model->getRecent();
 
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+
         $this->render('pre_sales', [
             'recent' => $recent,
+            'caixaAberto' => $caixaAberto,
             'title' => 'Terminal de Pré-Venda',
             'pageTitle' => 'Geração de Orçamentos e Fichas'
         ]);
@@ -20,6 +24,15 @@ class PreSaleController extends BaseController {
     public function save() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents('php://input'), true);
+            
+            // Validation: Cashier Open Check
+            $cashierModel = new \App\Models\Cashier();
+            $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+            if (!$caixaAberto) {
+                echo json_encode(['success' => false, 'error' => "É necessário abrir o caixa antes de gerar pré-vendas."]);
+                exit;
+            }
+
             $model = new PreSale();
             $clientModel = new Client();
             

@@ -13,6 +13,8 @@ if ($action === 'abrir') {
     $controller->fechar();
 } elseif ($action === 'movimentar') {
     $controller->registrarMovimentacao();
+} elseif ($action === 'validate_code') {
+    $controller->validate_code();
 } else {
     $controller->index();
 }
