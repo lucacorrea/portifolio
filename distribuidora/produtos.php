@@ -1018,7 +1018,7 @@ $produtos = $pdo->query("
                     <meta charset="utf-8">
                     <style>
                         table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
-                        td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; text-align: center; }
+                        td { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; text-align: center; }
                         th { background: #dbe5f1; font-weight: bold; }
                         .title { font-size: 16px; font-weight: bold; text-align: center; background: #ddebf7; }
                         .left { text-align: left; }

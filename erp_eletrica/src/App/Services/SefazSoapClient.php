@@ -24,10 +24,26 @@ class SefazSoapClient extends BaseService {
     ];
 
     private $serviceMapping = [
-        'nfe_distribuicao' => ['service' => 'NFeDistribuicaoDFe', 'method' => 'NFeDistribuicaoDFe'],
-        'nfe_evento' => ['service' => 'NFeRecepcaoEvento4', 'method' => 'nfeRecepcaoEvento'],
-        'nfce_autorizacao' => ['service' => 'NFeAutorizacao4', 'method' => 'nfeAutorizacaoLote'],
-        'sefaz_status' => ['service' => 'NFeStatusServico4', 'method' => 'nfeStatusServicoNF']
+        'nfe_distribuicao' => [
+            'service' => 'NFeDistribuicaoDFe', 
+            'method' => 'nfeDistribuicaoDFe',
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe' // Não tem suffix de método
+        ],
+        'nfe_evento' => [
+            'service' => 'NFeRecepcaoEvento4', 
+            'method' => 'nfeRecepcaoEvento',
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento'
+        ],
+        'nfce_autorizacao' => [
+            'service' => 'NFeAutorizacao4', 
+            'method' => 'nfeAutorizacaoLote',
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote'
+        ],
+        'sefaz_status' => [
+            'service' => 'NFeStatusServico4', 
+            'method' => 'nfeStatusServicoNF',
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4/nfeStatusServicoNF'
+        ]
     ];
 
     public function call($method, $xml, $fiscal) {
@@ -37,9 +53,10 @@ class SefazSoapClient extends BaseService {
         $url = $this->endpoints[$ambiente][$method] ?? null;
         if (!$url) throw new Exception("Endpoint SEFAZ não encontrado para o método $method no ambiente $ambiente.");
 
-        $mapping = $this->serviceMapping[$method] ?? ['service' => $method, 'method' => $method];
+        $mapping = $this->serviceMapping[$method] ?? ['service' => $method, 'method' => $method, 'action' => "http://www.portalfiscal.inf.br/nfe/wsdl/$method/$method"];
         $serviceName = $mapping['service'];
         $methodName = $mapping['method'];
+        $actionUrl = $mapping['action'];
 
         $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscal['certificado_pfx'];
         $password = $fiscal['certificado_senha']; 
@@ -63,10 +80,9 @@ class SefazSoapClient extends BaseService {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
         
-        // Restore action with correct case as fallback
-        $action = "http://www.portalfiscal.inf.br/nfe/wsdl/$serviceName/$methodName";
+        // Use explicitly defined action for each method
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Content-Type: application/soap+xml; charset=utf-8; action=\"$action\"",
+            "Content-Type: application/soap+xml; charset=utf-8; action=\"$actionUrl\"",
             "Content-Length: " . strlen($soapXml)
         ]);
         
