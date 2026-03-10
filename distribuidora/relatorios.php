@@ -1720,7 +1720,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
                         <i class="lni lni-chevron-left"></i>
                       </button>
 
-                      <span class="page-info" id="pagerText">Página 1/1</span>
+                      <span class="page-info mb-5" id="pagerText">Página 1/1</span>
 
                       <button class="page-btn" id="btnNextPage" type="button" title="Próxima">
                         <i class="lni lni-chevron-right"></i>
