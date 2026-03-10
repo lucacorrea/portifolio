@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 session_start();
-
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/estoque-minimo/_helpers.php';
 
 $pdo = db();
+
+$flash = function_exists('flash_pop') ? flash_pop() : null;
+$csrf  = function_exists('csrf_token') ? csrf_token() : '';
 
 if (!function_exists('e')) {
     function e(string $v): string
@@ -16,23 +18,12 @@ if (!function_exists('e')) {
     }
 }
 
-if (!function_exists('json_out')) {
-    function json_out(array $data, int $code = 200): void
-    {
-        if (function_exists('ob_get_length') && ob_get_length()) {
-            @ob_clean();
-        }
-        http_response_code($code);
-        header('Content-Type: application/json; charset=utf-8');
-        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
-}
-
-$flash = function_exists('flash_pop') ? flash_pop() : null;
-$csrf  = function_exists('csrf_token') ? csrf_token() : '';
-
+/**
+ * IMAGENS:
+ * No banco está assim: "images/arquivo.png"
+ * Como o arquivo está em /assets/dados/produtos/, então para exibir:
+ *   ./assets/dados/produtos/ + images/arquivo.png
+ */
 function produto_img_url(string $img): string
 {
     $img = trim($img);
@@ -43,228 +34,53 @@ function produto_img_url(string $img): string
 
 function calc_status(int $estoque, int $minimo): string
 {
-    if ($estoque <= 0 && $minimo > 0) {
-        return 'CRITICO';
-    }
-    if ($estoque < $minimo) {
-        return 'BAIXO';
-    }
+    if ($estoque <= 0 && $minimo > 0) return 'CRITICO';
+    if ($estoque < $minimo) return 'BAIXO';
     return 'OK';
 }
 
-function badge_html(string $status): string
+function badge_html(string $st): string
 {
-    if ($status === 'CRITICO') {
+    if ($st === 'CRITICO') {
         return '<span class="badge-soft badge-soft-danger">CRÍTICO</span>';
     }
-    if ($status === 'BAIXO') {
+    if ($st === 'BAIXO') {
         return '<span class="badge-soft badge-soft-warning">ABAIXO</span>';
     }
     return '<span class="badge-soft badge-soft-success">OK</span>';
 }
 
-function build_filters_sql(string $q, string $categoria, string $tipo, array &$params): string
+function build_query_string(array $overrides = []): string
 {
-    $where = [];
+    $params = $_GET;
+    unset($params['action']);
 
-    if ($q !== '') {
-        $where[] = "(p.codigo LIKE :q OR p.nome LIKE :q OR COALESCE(c.nome,'') LIKE :q OR COALESCE(p.unidade,'') LIKE :q)";
-        $params[':q'] = '%' . $q . '%';
-    }
-
-    if ($categoria !== '') {
-        $where[] = "COALESCE(c.nome,'') = :categoria";
-        $params[':categoria'] = $categoria;
-    }
-
-    if ($tipo === 'CRITICO') {
-        $where[] = "(COALESCE(p.estoque,0) <= 0 AND COALESCE(p.minimo,0) > 0)";
-    } elseif ($tipo === 'BAIXO') {
-        $where[] = "(COALESCE(p.estoque,0) < COALESCE(p.minimo,0))";
-    }
-
-    return $where ? (' WHERE ' . implode(' AND ', $where)) : '';
-}
-
-function bind_all(PDOStatement $stmt, array $params): void
-{
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
-    }
-}
-
-function fetch_global_kpis(PDO $pdo): array
-{
-    $critico = 0;
-    $baixo   = 0;
-    $ok      = 0;
-
-    try {
-        $rows = $pdo->query("SELECT COALESCE(estoque,0) AS estoque, COALESCE(minimo,0) AS minimo FROM produtos")->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $r) {
-            $status = calc_status((int)$r['estoque'], (int)$r['minimo']);
-            if ($status === 'CRITICO') $critico++;
-            elseif ($status === 'BAIXO') $baixo++;
-            else $ok++;
+    foreach ($overrides as $k => $v) {
+        if ($v === null || $v === '') {
+            unset($params[$k]);
+        } else {
+            $params[$k] = $v;
         }
-    } catch (Throwable $e) {
-        $critico = 0;
-        $baixo   = 0;
-        $ok      = 0;
     }
 
-    return [
-        'critico' => $critico,
-        'baixo'   => $baixo,
-        'ok'      => $ok,
-    ];
+    return http_build_query($params);
 }
 
-function fetch_produtos_filtrados(PDO $pdo, string $q, string $categoria, string $tipo, int $page, int $perPage): array
-{
-    $params = [];
-    $where  = build_filters_sql($q, $categoria, $tipo, $params);
-
-    $sqlCount = "
-        SELECT COUNT(*)
-        FROM produtos p
-        LEFT JOIN categorias c ON c.id = p.categoria_id
-        {$where}
-    ";
-    $stCount = $pdo->prepare($sqlCount);
-    bind_all($stCount, $params);
-    $stCount->execute();
-    $total = (int)$stCount->fetchColumn();
-
-    $totalPages = max(1, (int)ceil($total / max(1, $perPage)));
-    if ($page > $totalPages) $page = $totalPages;
-    if ($page < 1) $page = 1;
-
-    $offset = ($page - 1) * $perPage;
-
-    $sql = "
-        SELECT
-            p.id,
-            p.codigo,
-            p.nome,
-            p.unidade,
-            COALESCE(p.estoque,0) AS estoque,
-            COALESCE(p.minimo,0) AS minimo,
-            p.imagem,
-            COALESCE(c.nome,'—') AS categoria_nome
-        FROM produtos p
-        LEFT JOIN categorias c ON c.id = p.categoria_id
-        {$where}
-        ORDER BY p.id DESC
-        LIMIT :limit OFFSET :offset
-    ";
-    $st = $pdo->prepare($sql);
-    bind_all($st, $params);
-    $st->bindValue(':limit', $perPage, PDO::PARAM_INT);
-    $st->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $st->execute();
-
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-
-    return [
-        'rows'        => $rows,
-        'total'       => $total,
-        'page'        => $page,
-        'per_page'    => $perPage,
-        'total_pages' => $totalPages,
-        'shown'       => count($rows),
-    ];
-}
-
-function fetch_produtos_para_exportar(PDO $pdo, string $q, string $categoria, string $tipo): array
-{
-    $params = [];
-    $where  = build_filters_sql($q, $categoria, $tipo, $params);
-
-    $sql = "
-        SELECT
-            p.id,
-            p.codigo,
-            p.nome,
-            p.unidade,
-            COALESCE(p.estoque,0) AS estoque,
-            COALESCE(p.minimo,0) AS minimo,
-            p.imagem,
-            COALESCE(c.nome,'—') AS categoria_nome
-        FROM produtos p
-        LEFT JOIN categorias c ON c.id = p.categoria_id
-        {$where}
-        ORDER BY p.id DESC
-    ";
-    $st = $pdo->prepare($sql);
-    bind_all($st, $params);
-    $st->execute();
-
-    return $st->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function render_rows_html(array $produtos): string
-{
-    ob_start();
-
-    if (!$produtos) {
-?>
-        <tr>
-            <td colspan="8" class="text-center text-muted py-4">Nenhum item encontrado.</td>
-        </tr>
-    <?php
-        return (string)ob_get_clean();
-    }
-
-    foreach ($produtos as $p):
-        $codigo    = trim((string)($p['codigo'] ?? '')) ?: '—';
-        $nome      = trim((string)($p['nome'] ?? '')) ?: '—';
-        $categoria = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
-        $unidade   = trim((string)($p['unidade'] ?? '')) ?: '—';
-        $estoque   = (int)($p['estoque'] ?? 0);
-        $minimo    = (int)($p['minimo'] ?? 0);
-
-        $status = calc_status($estoque, $minimo);
-        $sug    = max(0, $minimo - $estoque);
-    ?>
-        <tr
-            data-cat="<?= e($categoria) ?>"
-            data-cod="<?= e($codigo) ?>"
-            data-prod="<?= e($nome) ?>"
-            data-estoque="<?= $estoque ?>"
-            data-min="<?= $minimo ?>">
-            <td><?= e($codigo) ?></td>
-            <td><?= e($nome) ?></td>
-            <td><?= e($categoria) ?></td>
-            <td><?= e($unidade) ?></td>
-            <td class="td-center"><?= $estoque ?></td>
-            <td class="td-center"><?= $minimo ?></td>
-            <td class="td-center"><?= badge_html($status) ?></td>
-            <td class="td-center"><?= $status === 'OK' ? '0' : '+' . $sug ?></td>
-        </tr>
-    <?php
-    endforeach;
-
-    return (string)ob_get_clean();
-}
-
-/* =========================
-   PARÂMETROS
-========================= */
-$action    = strtolower(trim((string)($_GET['action'] ?? '')));
+/** =========================
+ * PARÂMETROS
+ * ========================= */
 $q         = trim((string)($_GET['q'] ?? ''));
 $categoria = trim((string)($_GET['categoria'] ?? ''));
 $tipo      = strtoupper(trim((string)($_GET['tipo'] ?? 'BAIXO')));
 $page      = max(1, (int)($_GET['page'] ?? 1));
 $perPage   = max(1, min(100, (int)($_GET['per'] ?? 5)));
+$action    = strtolower(trim((string)($_GET['action'] ?? '')));
 
 if (!in_array($tipo, ['BAIXO', 'CRITICO', 'TODOS'], true)) {
     $tipo = 'BAIXO';
 }
 
-/* =========================
-   CATEGORIAS
-========================= */
+/** categorias (para filtro) */
 $categorias = [];
 try {
     $categorias = $pdo->query("SELECT id, nome, status FROM categorias ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -272,48 +88,89 @@ try {
     $categorias = [];
 }
 
-/* =========================
-   AJAX
-========================= */
-if ($action === 'ajax') {
-    try {
-        $result = fetch_produtos_filtrados($pdo, $q, $categoria, $tipo, $page, $perPage);
-        $kpis   = fetch_global_kpis($pdo);
+/** =========================
+ * WHERE DINÂMICO
+ * ========================= */
+$where = [];
+$params = [];
 
-        json_out([
-            'ok'          => true,
-            'rows_html'   => render_rows_html($result['rows']),
-            'total'       => $result['total'],
-            'shown'       => $result['shown'],
-            'page'        => $result['page'],
-            'per_page'    => $result['per_page'],
-            'total_pages' => $result['total_pages'],
-            'info_text'   => $result['total'] > 0
-                ? "Mostrando {$result['shown']} item(ns) nesta página. Total filtrado: {$result['total']}."
-                : "Nenhum item encontrado.",
-            'page_text'   => "Página {$result['page']}/{$result['total_pages']}",
-            'kpis'        => $kpis,
-        ]);
-    } catch (Throwable $e) {
-        json_out([
-            'ok'  => false,
-            'msg' => 'Falha ao buscar itens do estoque mínimo.',
-        ], 500);
-    }
+if ($q !== '') {
+    $where[] = "(p.codigo LIKE :q OR p.nome LIKE :q OR COALESCE(c.nome,'') LIKE :q OR COALESCE(p.unidade,'') LIKE :q)";
+    $params[':q'] = '%' . $q . '%';
 }
 
-/* =========================
-   EXPORTAR EXCEL
-========================= */
+if ($categoria !== '') {
+    $where[] = "COALESCE(c.nome,'') = :categoria";
+    $params[':categoria'] = $categoria;
+}
+
+if ($tipo === 'CRITICO') {
+    $where[] = "(COALESCE(p.estoque,0) <= 0 AND COALESCE(p.minimo,0) > 0)";
+} elseif ($tipo === 'BAIXO') {
+    $where[] = "(COALESCE(p.estoque,0) < COALESCE(p.minimo,0))";
+}
+
+$whereSql = $where ? (' WHERE ' . implode(' AND ', $where)) : '';
+
+/** =========================
+ * KPIs GERAIS
+ * ========================= */
+$kCrit = 0;
+$kBaixo = 0;
+$kOk = 0;
+
+try {
+    $allKpis = $pdo->query("
+        SELECT COALESCE(estoque,0) AS estoque, COALESCE(minimo,0) AS minimo
+        FROM produtos
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($allKpis as $p) {
+        $estoque = (int)($p['estoque'] ?? 0);
+        $minimo  = (int)($p['minimo'] ?? 0);
+        $st = calc_status($estoque, $minimo);
+
+        if ($st === 'CRITICO') $kCrit++;
+        elseif ($st === 'BAIXO') $kBaixo++;
+        else $kOk++;
+    }
+} catch (Throwable $e) {
+    $kCrit = 0;
+    $kBaixo = 0;
+    $kOk = 0;
+}
+
+/** =========================
+ * EXPORTAR EXCEL
+ * ========================= */
 if ($action === 'excel') {
     try {
-        $rows = fetch_produtos_para_exportar($pdo, $q, $categoria, $tipo);
+        $sqlExcel = "
+            SELECT
+                p.id,
+                p.codigo,
+                p.nome,
+                p.unidade,
+                COALESCE(p.estoque,0) AS estoque,
+                COALESCE(p.minimo,0) AS minimo,
+                p.imagem,
+                COALESCE(c.nome,'—') AS categoria_nome
+            FROM produtos p
+            LEFT JOIN categorias c ON c.id = p.categoria_id
+            {$whereSql}
+            ORDER BY p.id DESC
+        ";
 
-        $now     = new DateTime('now');
-        $dt      = $now->format('d/m/Y H:i:s');
-        $fileDt  = $now->format('Y-m-d_H-i-s');
-        $catText = $categoria !== '' ? $categoria : 'Todas';
-        $busca   = $q !== '' ? $q : '—';
+        $stExcel = $pdo->prepare($sqlExcel);
+        foreach ($params as $k => $v) {
+            $stExcel->bindValue($k, $v, PDO::PARAM_STR);
+        }
+        $stExcel->execute();
+        $rowsExcel = $stExcel->fetchAll(PDO::FETCH_ASSOC);
+
+        $now = new DateTime('now');
+        $dt = $now->format('d/m/Y H:i:s');
+        $fileDt = $now->format('Y-m-d_H-i-s');
 
         header('Content-Type: application/vnd.ms-excel; charset=utf-8');
         header('Content-Disposition: attachment; filename="estoque_minimo_' . $fileDt . '.xls"');
@@ -321,7 +178,7 @@ if ($action === 'excel') {
         header('Expires: 0');
 
         echo "\xEF\xBB\xBF";
-    ?>
+?>
         <html>
 
         <head>
@@ -372,7 +229,7 @@ if ($action === 'excel') {
                     <td colspan="8">Gerado em: <?= e($dt) ?></td>
                 </tr>
                 <tr>
-                    <td colspan="8">Categoria: <?= e($catText) ?> | Filtro: <?= e($tipo) ?> | Busca: <?= e($busca) ?></td>
+                    <td colspan="8">Categoria: <?= e($categoria !== '' ? $categoria : 'Todas') ?> | Filtro: <?= e($tipo) ?> | Busca: <?= e($q !== '' ? $q : '—') ?></td>
                 </tr>
                 <tr>
                     <th class="left">Código</th>
@@ -385,21 +242,21 @@ if ($action === 'excel') {
                     <th class="center">Sugestão</th>
                 </tr>
 
-                <?php if (!$rows): ?>
+                <?php if (!$rowsExcel): ?>
                     <tr>
                         <td colspan="8" class="center">Nenhum item encontrado.</td>
                     </tr>
                 <?php else: ?>
-                    <?php foreach ($rows as $p): ?>
+                    <?php foreach ($rowsExcel as $p): ?>
                         <?php
-                        $codigo    = trim((string)($p['codigo'] ?? '')) ?: '—';
-                        $nome      = trim((string)($p['nome'] ?? '')) ?: '—';
-                        $cat       = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
-                        $unidade   = trim((string)($p['unidade'] ?? '')) ?: '—';
-                        $estoque   = (int)($p['estoque'] ?? 0);
-                        $minimo    = (int)($p['minimo'] ?? 0);
-                        $status    = calc_status($estoque, $minimo);
-                        $sugestao  = $status === 'OK' ? '0' : '+' . max(0, $minimo - $estoque);
+                        $codigo  = trim((string)($p['codigo'] ?? '')) ?: '—';
+                        $nome    = trim((string)($p['nome'] ?? '')) ?: '—';
+                        $cat     = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
+                        $unidade = trim((string)($p['unidade'] ?? '')) ?: '—';
+                        $estoque = (int)($p['estoque'] ?? 0);
+                        $minimo  = (int)($p['minimo'] ?? 0);
+                        $st      = calc_status($estoque, $minimo);
+                        $sug     = max(0, $minimo - $estoque);
                         ?>
                         <tr>
                             <td class="left"><?= e($codigo) ?></td>
@@ -408,8 +265,8 @@ if ($action === 'excel') {
                             <td class="left"><?= e($unidade) ?></td>
                             <td class="center"><?= $estoque ?></td>
                             <td class="center"><?= $minimo ?></td>
-                            <td class="center"><?= e($status) ?></td>
-                            <td class="center"><?= e($sugestao) ?></td>
+                            <td class="center"><?= e($st) ?></td>
+                            <td class="center"><?= $st === 'OK' ? '0' : '+' . $sug ?></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -426,28 +283,71 @@ if ($action === 'excel') {
     }
 }
 
-/* =========================
-   CARGA INICIAL
-========================= */
-$kpis = fetch_global_kpis($pdo);
-
+/** =========================
+ * TOTAL DE REGISTROS
+ * ========================= */
+$total = 0;
 try {
-    $initial = fetch_produtos_filtrados($pdo, '', '', 'BAIXO', 1, $perPage);
+    $sqlCount = "
+        SELECT COUNT(*)
+        FROM produtos p
+        LEFT JOIN categorias c ON c.id = p.categoria_id
+        {$whereSql}
+    ";
+    $stCount = $pdo->prepare($sqlCount);
+    foreach ($params as $k => $v) {
+        $stCount->bindValue($k, $v, PDO::PARAM_STR);
+    }
+    $stCount->execute();
+    $total = (int)$stCount->fetchColumn();
 } catch (Throwable $e) {
-    $initial = [
-        'rows'        => [],
-        'total'       => 0,
-        'page'        => 1,
-        'per_page'    => $perPage,
-        'total_pages' => 1,
-        'shown'       => 0,
-    ];
+    $total = 0;
+}
 
+$totalPages = max(1, (int)ceil($total / $perPage));
+if ($page > $totalPages) $page = $totalPages;
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $perPage;
+
+/** =========================
+ * PRODUTOS PAGINADOS
+ * ========================= */
+$produtos = [];
+try {
+    $sql = "
+        SELECT
+            p.id,
+            p.codigo,
+            p.nome,
+            p.unidade,
+            COALESCE(p.estoque,0) AS estoque,
+            COALESCE(p.minimo,0) AS minimo,
+            p.imagem,
+            COALESCE(c.nome,'—') AS categoria_nome
+        FROM produtos p
+        LEFT JOIN categorias c ON c.id = p.categoria_id
+        {$whereSql}
+        ORDER BY p.id DESC
+        LIMIT :limit OFFSET :offset
+    ";
+
+    $st = $pdo->prepare($sql);
+    foreach ($params as $k => $v) {
+        $st->bindValue($k, $v, PDO::PARAM_STR);
+    }
+    $st->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $st->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $st->execute();
+    $produtos = $st->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $produtos = [];
     if (function_exists('flash_set')) {
-        flash_set('danger', 'Falha ao carregar produtos (verifique a tabela produtos).');
-        $flash = function_exists('flash_pop') ? flash_pop() : null;
+        flash_set('danger', 'Falha ao carregar produtos (verifique tabela produtos).');
+        $flash = flash_pop();
     }
 }
+
+$shown = count($produtos);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -675,17 +575,20 @@ try {
             justify-content: center;
             cursor: pointer;
             transition: .2s ease;
+            text-decoration: none;
         }
 
-        .page-btn:hover:not(:disabled) {
+        .page-btn:hover {
             background: #eef2ff;
             color: #1e40af;
             border-color: #c7d2fe;
         }
 
-        .page-btn:disabled {
+        .page-btn.disabled,
+        .page-btn[aria-disabled="true"] {
             opacity: .45;
             cursor: not-allowed;
+            pointer-events: none;
         }
 
         .page-info {
@@ -886,7 +789,7 @@ try {
 
                             <div class="header-search d-none d-md-flex" style="display: none !important;">
                                 <form action="#" onsubmit="return false;">
-                                    <input type="text" placeholder="Buscar produto..." id="qGlobal" />
+                                    <input type="text" placeholder="Buscar produto..." id="qGlobal" value="<?= e($q) ?>" />
                                     <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                                 </form>
                             </div>
@@ -900,6 +803,7 @@ try {
                             </a>
                         </div>
                     </div>
+
                 </div>
             </div>
         </header>
@@ -917,11 +821,12 @@ try {
                 </div>
 
                 <?php if ($flash): ?>
-                    <div id="flashBox" class="alert alert-<?= e((string)($flash['type'] ?? 'info')) ?> flash-auto-hide mt-2">
-                        <?= e((string)($flash['msg'] ?? '')) ?>
+                    <div id="flashBox" class="alert alert-<?= e((string)$flash['type']) ?> flash-auto-hide mt-2">
+                        <?= e((string)$flash['msg']) ?>
                     </div>
                 <?php endif; ?>
 
+                <!-- KPIs -->
                 <div class="row g-3 mb-30">
                     <div class="col-12 col-md-4">
                         <div class="kpi-card">
@@ -930,11 +835,10 @@ try {
                             </span>
                             <div>
                                 <p class="kpi-title">Crítico (zerado)</p>
-                                <p class="kpi-value" id="kpiCritico"><?= (int)$kpis['critico'] ?></p>
+                                <p class="kpi-value" id="kpiCritico"><?= (int)$kCrit ?></p>
                             </div>
                         </div>
                     </div>
-
                     <div class="col-12 col-md-4">
                         <div class="kpi-card">
                             <span class="kpi-ico" style="background: rgba(245,158,11,.10);">
@@ -942,11 +846,10 @@ try {
                             </span>
                             <div>
                                 <p class="kpi-title">Abaixo do mínimo</p>
-                                <p class="kpi-value" id="kpiBaixo"><?= (int)$kpis['baixo'] ?></p>
+                                <p class="kpi-value" id="kpiBaixo"><?= (int)$kBaixo ?></p>
                             </div>
                         </div>
                     </div>
-
                     <div class="col-12 col-md-4">
                         <div class="kpi-card">
                             <span class="kpi-ico" style="background: rgba(34,197,94,.10);">
@@ -954,59 +857,65 @@ try {
                             </span>
                             <div>
                                 <p class="kpi-title">OK</p>
-                                <p class="kpi-value" id="kpiOk"><?= (int)$kpis['ok'] ?></p>
+                                <p class="kpi-value" id="kpiOk"><?= (int)$kOk ?></p>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- Toolbar -->
                 <div class="card-style mb-30 no-print">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">Pesquisar</label>
-                            <input
-                                type="text"
-                                class="form-control compact"
-                                id="qMinimo"
-                                placeholder="Nome, código, categoria..."
-                                autocomplete="off" />
-                        </div>
+                    <form method="get" id="formFiltros">
+                        <input type="hidden" name="page" id="pageInput" value="1">
+                        <input type="hidden" name="per" value="<?= (int)$perPage ?>">
 
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <label class="form-label">Categoria</label>
-                            <select class="form-select compact" id="fCategoria">
-                                <option value="">Todas</option>
-                                <?php foreach ($categorias as $c): ?>
-                                    <?php
-                                    $nomeCat = trim((string)($c['nome'] ?? ''));
-                                    if ($nomeCat === '') continue;
-                                    ?>
-                                    <option value="<?= e($nomeCat) ?>">
-                                        <?= e($nomeCat) ?><?= strtoupper((string)($c['status'] ?? '')) === 'INATIVO' ? ' (INATIVO)' : '' ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-6 col-lg-4">
+                                <label class="form-label">Pesquisar</label>
+                                <input
+                                    type="text"
+                                    class="form-control compact"
+                                    id="qMinimo"
+                                    name="q"
+                                    value="<?= e($q) ?>"
+                                    placeholder="Nome, código, categoria..." />
+                            </div>
 
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <label class="form-label">Filtro</label>
-                            <select class="form-select compact" id="fTipo">
-                                <option value="BAIXO" selected>Somente abaixo do mínimo</option>
-                                <option value="CRITICO">Somente críticos (zerado)</option>
-                                <option value="TODOS">Mostrar todos</option>
-                            </select>
-                        </div>
+                            <div class="col-12 col-md-6 col-lg-3">
+                                <label class="form-label">Categoria</label>
+                                <select class="form-select compact" id="fCategoria" name="categoria">
+                                    <option value="">Todas</option>
+                                    <?php foreach ($categorias as $c): ?>
+                                        <?php $nomeCat = (string)($c['nome'] ?? '');
+                                        if ($nomeCat === '') continue; ?>
+                                        <option value="<?= e($nomeCat) ?>" <?= $categoria === $nomeCat ? 'selected' : '' ?>>
+                                            <?= e($nomeCat) ?><?= (strtoupper((string)$c['status']) === 'INATIVO' ? ' (INATIVO)' : '') ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
 
-                        <div class="col-12 col-md-6 col-lg-2">
-                            <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
-                                    <i class="lni lni-download me-1"></i> Excel
-                                </button>
+                            <div class="col-12 col-md-6 col-lg-3">
+                                <label class="form-label">Filtro</label>
+                                <select class="form-select compact" id="fTipo" name="tipo">
+                                    <option value="BAIXO" <?= $tipo === 'BAIXO' ? 'selected' : '' ?>>Somente abaixo do mínimo</option>
+                                    <option value="CRITICO" <?= $tipo === 'CRITICO' ? 'selected' : '' ?>>Somente críticos (zerado)</option>
+                                    <option value="TODOS" <?= $tipo === 'TODOS' ? 'selected' : '' ?>>Mostrar todos</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-6 col-lg-2">
+                                <div class="d-grid gap-2 d-sm-flex justify-content-sm-end flex-wrap">
+                                    <button class="main-btn light-btn btn-hover btn-compact" type="submit" name="action" value="excel">
+                                        <i class="lni lni-download me-1"></i> Excel
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </form>
                 </div>
 
+                <!-- Tabela -->
                 <div class="card-style mb-30">
                     <div class="table-responsive">
                         <table class="table text-nowrap" id="tbMinimo">
@@ -1022,34 +931,83 @@ try {
                                     <th class="minw-140 td-center">Sugestão</th>
                                 </tr>
                             </thead>
-                            <tbody id="tbodyMinimo">
-                                <?= render_rows_html($initial['rows']) ?>
+
+                            <tbody>
+                                <?php if (!$produtos): ?>
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">Nenhum item encontrado.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($produtos as $p): ?>
+                                        <?php
+                                        $codigo  = trim((string)($p['codigo'] ?? ''));
+                                        $nome    = trim((string)($p['nome'] ?? ''));
+                                        if ($codigo === '' && $nome === '') continue;
+
+                                        $categoriaLinha = trim((string)($p['categoria_nome'] ?? '')) ?: '—';
+                                        $unidade   = trim((string)($p['unidade'] ?? '')) ?: '—';
+                                        $estoque   = (int)($p['estoque'] ?? 0);
+                                        $minimo    = (int)($p['minimo'] ?? 0);
+
+                                        $st = calc_status($estoque, $minimo);
+                                        $sug = max(0, $minimo - $estoque);
+                                        ?>
+                                        <tr>
+                                            <td><?= e($codigo ?: '—') ?></td>
+                                            <td><?= e($nome ?: '—') ?></td>
+                                            <td><?= e($categoriaLinha) ?></td>
+                                            <td><?= e($unidade) ?></td>
+                                            <td class="td-center"><?= (int)$estoque ?></td>
+                                            <td class="td-center"><?= (int)$minimo ?></td>
+                                            <td class="td-center"><?= badge_html($st) ?></td>
+                                            <td class="td-center"><?= ($st === 'OK') ? '0' : ('+' . (int)$sug) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
 
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mt-3">
                         <p class="text-sm text-gray mb-0" id="infoCount">
-                            <?= $initial['total'] > 0
-                                ? 'Mostrando ' . $initial['shown'] . ' item(ns) nesta página. Total filtrado: ' . $initial['total'] . '.'
-                                : 'Nenhum item encontrado.' ?>
+                            <?php if ($total > 0): ?>
+                                Mostrando <?= (int)$shown ?> item(ns) nesta página. Total filtrado: <?= (int)$total ?>.
+                            <?php else: ?>
+                                Nenhum item encontrado.
+                            <?php endif; ?>
                         </p>
 
                         <div class="pagination-wrap">
-                            <button type="button" class="page-btn" id="btnPrevPage" aria-label="Página anterior" <?= $initial['page'] <= 1 || $initial['total'] <= 0 ? 'disabled' : '' ?>>
-                                <i class="lni lni-chevron-left"></i>
-                            </button>
+                            <?php
+                            $prevQs = build_query_string(['page' => max(1, $page - 1)]);
+                            $nextQs = build_query_string(['page' => min($totalPages, $page + 1)]);
+                            ?>
 
-                            <span class="page-info" id="pageInfo">
-                                Página <?= (int)$initial['page'] ?>/<?= (int)$initial['total_pages'] ?>
-                            </span>
+                            <?php if ($page > 1): ?>
+                                <a href="?<?= e($prevQs) ?>" class="page-btn" aria-label="Página anterior">
+                                    <i class="lni lni-chevron-left"></i>
+                                </a>
+                            <?php else: ?>
+                                <span class="page-btn disabled" aria-disabled="true">
+                                    <i class="lni lni-chevron-left"></i>
+                                </span>
+                            <?php endif; ?>
 
-                            <button type="button" class="page-btn" id="btnNextPage" aria-label="Próxima página" <?= $initial['page'] >= $initial['total_pages'] || $initial['total'] <= 0 ? 'disabled' : '' ?>>
-                                <i class="lni lni-chevron-right"></i>
-                            </button>
+                            <span class="page-info" id="pageInfo">Página <?= (int)$page ?>/<?= (int)$totalPages ?></span>
+
+                            <?php if ($page < $totalPages): ?>
+                                <a href="?<?= e($nextQs) ?>" class="page-btn" aria-label="Próxima página">
+                                    <i class="lni lni-chevron-right"></i>
+                                </a>
+                            <?php else: ?>
+                                <span class="page-btn disabled" aria-disabled="true">
+                                    <i class="lni lni-chevron-right"></i>
+                                </span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
+
             </div>
         </section>
 
@@ -1079,168 +1037,54 @@ try {
             }, 1500);
         })();
 
-        const tbodyMinimo = document.getElementById('tbodyMinimo');
-        const qMinimo = document.getElementById('qMinimo');
-        const qGlobal = document.getElementById('qGlobal');
-        const fCategoria = document.getElementById('fCategoria');
-        const fTipo = document.getElementById('fTipo');
-        const infoCount = document.getElementById('infoCount');
-        const pageInfo = document.getElementById('pageInfo');
-        const btnPrevPage = document.getElementById('btnPrevPage');
-        const btnNextPage = document.getElementById('btnNextPage');
-        const btnExcel = document.getElementById('btnExcel');
+        (function() {
+            const form = document.getElementById('formFiltros');
+            const qMinimo = document.getElementById('qMinimo');
+            const qGlobal = document.getElementById('qGlobal');
+            const fCategoria = document.getElementById('fCategoria');
+            const fTipo = document.getElementById('fTipo');
+            const pageInput = document.getElementById('pageInput');
 
-        const kpiCritico = document.getElementById('kpiCritico');
-        const kpiBaixo = document.getElementById('kpiBaixo');
-        const kpiOk = document.getElementById('kpiOk');
+            if (!form) return;
 
-        const PER_PAGE = <?= (int)$perPage ?>;
-        let currentPage = <?= (int)$initial['page'] ?>;
-        let requestController = null;
-        let debounceTimer = null;
+            let timer = null;
 
-        function syncInputs(source, target) {
-            if (!source || !target) return;
-            if (target.value !== source.value) {
-                target.value = source.value;
+            function submitFiltros() {
+                if (pageInput) pageInput.value = '1';
+                form.submit();
             }
-        }
 
-        function getSearchValue() {
-            const a = (qMinimo?.value || '').trim();
-            const b = (qGlobal?.value || '').trim();
-            return a !== '' ? a : b;
-        }
-
-        function buildAjaxUrl(page = 1) {
-            const params = new URLSearchParams();
-            params.set('action', 'ajax');
-            params.set('q', getSearchValue());
-            params.set('categoria', fCategoria.value || '');
-            params.set('tipo', fTipo.value || 'BAIXO');
-            params.set('page', String(page));
-            params.set('per', String(PER_PAGE));
-            params.set('_ts', String(Date.now()));
-            return window.location.pathname + '?' + params.toString();
-        }
-
-        function buildExcelUrl() {
-            const params = new URLSearchParams();
-            params.set('action', 'excel');
-            params.set('q', getSearchValue());
-            params.set('categoria', fCategoria.value || '');
-            params.set('tipo', fTipo.value || 'BAIXO');
-            return window.location.pathname + '?' + params.toString();
-        }
-
-        function setLoadingState(loading) {
-            qMinimo.disabled = loading;
-            if (qGlobal) qGlobal.disabled = loading;
-            fCategoria.disabled = loading;
-            fTipo.disabled = loading;
-            btnPrevPage.disabled = loading || btnPrevPage.disabled;
-            btnNextPage.disabled = loading || btnNextPage.disabled;
-        }
-
-        async function carregarTabela(resetPage = false) {
-            if (resetPage) currentPage = 1;
-
-            if (requestController) {
-                requestController.abort();
+            function debounceSubmit() {
+                clearTimeout(timer);
+                timer = setTimeout(submitFiltros, 350);
             }
-            requestController = new AbortController();
 
-            setLoadingState(true);
-
-            try {
-                const res = await fetch(buildAjaxUrl(currentPage), {
-                    method: 'GET',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    signal: requestController.signal
+            if (qMinimo) {
+                qMinimo.addEventListener('input', function() {
+                    if (qGlobal && qGlobal.value !== qMinimo.value) {
+                        qGlobal.value = qMinimo.value;
+                    }
+                    debounceSubmit();
                 });
-
-                const data = await res.json();
-
-                if (!res.ok || !data.ok) {
-                    throw new Error(data.msg || 'Falha ao carregar dados.');
-                }
-
-                tbodyMinimo.innerHTML = data.rows_html || '';
-                infoCount.textContent = data.info_text || 'Nenhum item encontrado.';
-                pageInfo.textContent = data.page_text || 'Página 1/1';
-
-                currentPage = Number(data.page || 1);
-
-                btnPrevPage.disabled = Number(data.page || 1) <= 1 || Number(data.total || 0) <= 0;
-                btnNextPage.disabled = Number(data.page || 1) >= Number(data.total_pages || 1) || Number(data.total || 0) <= 0;
-
-                if (data.kpis) {
-                    kpiCritico.textContent = String(data.kpis.critico ?? 0);
-                    kpiBaixo.textContent = String(data.kpis.baixo ?? 0);
-                    kpiOk.textContent = String(data.kpis.ok ?? 0);
-                }
-            } catch (err) {
-                if (err.name === 'AbortError') return;
-
-                tbodyMinimo.innerHTML = `
-                    <tr>
-                        <td colspan="8" class="text-center text-danger py-4">
-                            Erro ao carregar dados do estoque mínimo.
-                        </td>
-                    </tr>
-                `;
-                infoCount.textContent = 'Falha ao carregar resultados.';
-                pageInfo.textContent = 'Página 1/1';
-                btnPrevPage.disabled = true;
-                btnNextPage.disabled = true;
-            } finally {
-                setLoadingState(false);
             }
-        }
 
-        function debounceLoad(resetPage = true) {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                carregarTabela(resetPage);
-            }, 250);
-        }
+            if (qGlobal) {
+                qGlobal.addEventListener('input', function() {
+                    if (qMinimo && qMinimo.value !== qGlobal.value) {
+                        qMinimo.value = qGlobal.value;
+                    }
+                    debounceSubmit();
+                });
+            }
 
-        qMinimo.addEventListener('input', function() {
-            syncInputs(qMinimo, qGlobal);
-            debounceLoad(true);
-        });
+            if (fCategoria) {
+                fCategoria.addEventListener('change', submitFiltros);
+            }
 
-        if (qGlobal) {
-            qGlobal.addEventListener('input', function() {
-                syncInputs(qGlobal, qMinimo);
-                debounceLoad(true);
-            });
-        }
-
-        fCategoria.addEventListener('change', function() {
-            carregarTabela(true);
-        });
-
-        fTipo.addEventListener('change', function() {
-            carregarTabela(true);
-        });
-
-        btnPrevPage.addEventListener('click', function() {
-            if (currentPage <= 1) return;
-            currentPage--;
-            carregarTabela(false);
-        });
-
-        btnNextPage.addEventListener('click', function() {
-            currentPage++;
-            carregarTabela(false);
-        });
-
-        btnExcel.addEventListener('click', function() {
-            window.location.href = buildExcelUrl();
-        });
+            if (fTipo) {
+                fTipo.addEventListener('change', submitFiltros);
+            }
+        })();
     </script>
 </body>
 
