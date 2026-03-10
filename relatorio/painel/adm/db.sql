@@ -1,21 +1,21 @@
-CREATE TABLE `categorias` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `nome` varchar(120) NOT NULL,
-  `ativo` tinyint(1) NOT NULL DEFAULT 1,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+CREATE TABLE categorias (
+  id bigint(20) UNSIGNED NOT NULL,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  nome varchar(120) NOT NULL,
+  ativo tinyint(1) NOT NULL DEFAULT 1,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 
-CREATE TABLE `comunidades` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `nome` varchar(160) NOT NULL,
-  `ativo` tinyint(1) NOT NULL DEFAULT 1,
-  `observacao` varchar(255) DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+CREATE TABLE comunidades (
+  id bigint(20) UNSIGNED NOT NULL,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  nome varchar(160) NOT NULL,
+  ativo tinyint(1) NOT NULL DEFAULT 1,
+  observacao varchar(255) DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 
@@ -56,154 +56,155 @@ CREATE TABLE `comunidades` (
     NULL
   );
 
-CREATE TABLE `fechamento_dia` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `data_ref` date NOT NULL,
-  `qtd_vendas` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `total_dia` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `total_dinheiro` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `total_pix` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `total_cartao` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `total_outros` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `observacao` varchar(255) DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+CREATE TABLE fechamento_dia (
+  id bigint(20) UNSIGNED NOT NULL,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  data_ref date NOT NULL,
+  qtd_vendas int(10) UNSIGNED NOT NULL DEFAULT 0,
+  total_dia decimal(10, 2) NOT NULL DEFAULT 0.00,
+  total_dinheiro decimal(10, 2) NOT NULL DEFAULT 0.00,
+  total_pix decimal(10, 2) NOT NULL DEFAULT 0.00,
+  total_cartao decimal(10, 2) NOT NULL DEFAULT 0.00,
+  total_outros decimal(10, 2) NOT NULL DEFAULT 0.00,
+  observacao varchar(255) DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE `feiras` (
-  `id` tinyint(3) UNSIGNED NOT NULL,
-  `codigo` varchar(30) NOT NULL,
-  `nome` varchar(120) NOT NULL,
-  `ativo` tinyint(1) NOT NULL DEFAULT 1,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+CREATE TABLE feiras (
+  id tinyint(3) UNSIGNED NOT NULL,
+  codigo varchar(30) NOT NULL,
+  nome varchar(120) NOT NULL,
+  ativo tinyint(1) NOT NULL DEFAULT 1,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE `perfis` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `codigo` varchar(50) NOT NULL,
-  `nome` varchar(100) NOT NULL,
-  `descricao` varchar(255) DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp()
+CREATE TABLE perfis (
+  id bigint(20) UNSIGNED NOT NULL,
+  codigo varchar(50) NOT NULL,
+  nome varchar(100) NOT NULL,
+  descricao varchar(255) DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE `produtores` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `nome` varchar(160) NOT NULL,
-  `contato` varchar(60) DEFAULT NULL,
-  `comunidade_id` bigint(20) UNSIGNED NOT NULL,
-  `documento` varchar(30) DEFAULT NULL,
-  `ativo` tinyint(1) NOT NULL DEFAULT 1,
-  `observacao` varchar(255) DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-
-
-CREATE TABLE `produtos` (
-  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `nome` varchar(160) NOT NULL,
-  `categoria_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `unidade_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `ativo` tinyint(1) NOT NULL DEFAULT 1,
-  `observacao` varchar(255) DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-
-CREATE TABLE `unidades` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `nome` varchar(80) NOT NULL,
-  `sigla` varchar(20) DEFAULT NULL,
-  `ativo` tinyint(1) NOT NULL DEFAULT 1,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE `usuarios` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `nome` varchar(150) NOT NULL,
-  `email` varchar(190) NOT NULL,
-  `senha_hash` varchar(255) NOT NULL,
-  `ativo` tinyint(1) NOT NULL DEFAULT 1,
-  `ultimo_login_em` datetime DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE `usuario_perfis` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `usuario_id` bigint(20) UNSIGNED NOT NULL,
-  `perfil_id` bigint(20) UNSIGNED NOT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE `vendas` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `data_hora` datetime NOT NULL DEFAULT current_timestamp(),
-  `forma_pagamento` varchar(20) NOT NULL,
-  `total` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `status` varchar(20) NOT NULL DEFAULT 'ABERTA',
-  `observacao` varchar(255) DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-CREATE TABLE `venda_itens` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `venda_id` bigint(20) UNSIGNED NOT NULL,
-  `produto_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `descricao_livre` varchar(160) DEFAULT NULL,
-  `quantidade` decimal(10, 3) NOT NULL DEFAULT 1.000,
-  `valor_unitario` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `subtotal` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `observacao` varchar(255) DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
-
-CREATE TABLE `redefinir_senha_tokens` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `usuario_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `email` varchar(190) NOT NULL,
-  `token_hash` varchar(255) NOT NULL,
-  `codigo` varchar(10) NOT NULL,
-  `expira_em` datetime NOT NULL,
-  `usado_em` datetime DEFAULT NULL,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp()
+CREATE TABLE produtores (
+  id bigint(20) UNSIGNED NOT NULL,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  nome varchar(160) NOT NULL,
+  tipo enum('FEIRANTE','PRODUTOR RURAL','MARRETEIRO') NOT NULL DEFAULT 'PRODUTOR RURAL',
+  contato varchar(60) DEFAULT NULL,
+  comunidade_id bigint(20) UNSIGNED NOT NULL,
+  documento varchar(30) DEFAULT NULL,
+  foto varchar(255) DEFAULT NULL,
+  ativo tinyint(1) NOT NULL DEFAULT 1,
+  observacao varchar(255) DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `config_relatorio` (
-  `id` bigint(20) UNSIGNED AUTO_INCREMENT NOT NULL PRIMARY KEY,
-  `feira_id` tinyint(3) UNSIGNED NOT NULL,
-  `titulo_feira` varchar(160) NOT NULL DEFAULT '',
-  `subtitulo_feira` varchar(160) DEFAULT NULL,
-  `municipio` varchar(100) NOT NULL DEFAULT '',
-  `estado` char(2) NOT NULL DEFAULT '',
-  `secretaria` varchar(200) DEFAULT NULL,
-  `logotipo_prefeitura` varchar(255) DEFAULT NULL,
-  `logotipo_feira` varchar(255) DEFAULT NULL,
-  `incluir_introducao` tinyint(1) NOT NULL DEFAULT 1,
-  `texto_introducao` text DEFAULT NULL,
-  `incluir_produtos_comercializados` tinyint(1) NOT NULL DEFAULT 1,
-  `incluir_conclusao` tinyint(1) NOT NULL DEFAULT 1,
-  `texto_conclusao` text DEFAULT NULL,
-  `assinatura_nome` varchar(160) DEFAULT NULL,
-  `assinatura_cargo` varchar(160) DEFAULT NULL,
-  `mostrar_graficos` tinyint(1) NOT NULL DEFAULT 1,
-  `mostrar_por_categoria` tinyint(1) NOT NULL DEFAULT 1,
-  `mostrar_por_feirante` tinyint(1) NOT NULL DEFAULT 1,
-  `produtos_detalhados` tinyint(1) NOT NULL DEFAULT 1,
-  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
-  `atualizado_em` datetime DEFAULT NULL ON UPDATE current_timestamp()
+
+CREATE TABLE produtos (
+  id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  nome varchar(160) NOT NULL,
+  categoria_id bigint(20) UNSIGNED DEFAULT NULL,
+  unidade_id bigint(20) UNSIGNED DEFAULT NULL,
+  ativo tinyint(1) NOT NULL DEFAULT 1,
+  observacao varchar(255) DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+
+CREATE TABLE unidades (
+  id bigint(20) UNSIGNED NOT NULL,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  nome varchar(80) NOT NULL,
+  sigla varchar(20) DEFAULT NULL,
+  ativo tinyint(1) NOT NULL DEFAULT 1,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE usuarios (
+  id bigint(20) UNSIGNED NOT NULL,
+  nome varchar(150) NOT NULL,
+  email varchar(190) NOT NULL,
+  senha_hash varchar(255) NOT NULL,
+  ativo tinyint(1) NOT NULL DEFAULT 1,
+  ultimo_login_em datetime DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE usuario_perfis (
+  id bigint(20) UNSIGNED NOT NULL,
+  usuario_id bigint(20) UNSIGNED NOT NULL,
+  perfil_id bigint(20) UNSIGNED NOT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE vendas (
+  id bigint(20) UNSIGNED NOT NULL,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  data_hora datetime NOT NULL DEFAULT current_timestamp(),
+  forma_pagamento varchar(20) NOT NULL,
+  total decimal(10, 2) NOT NULL DEFAULT 0.00,
+  status varchar(20) NOT NULL DEFAULT 'ABERTA',
+  observacao varchar(255) DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE venda_itens (
+  id bigint(20) UNSIGNED NOT NULL,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  venda_id bigint(20) UNSIGNED NOT NULL,
+  produto_id bigint(20) UNSIGNED DEFAULT NULL,
+  descricao_livre varchar(160) DEFAULT NULL,
+  quantidade decimal(10, 3) NOT NULL DEFAULT 1.000,
+  valor_unitario decimal(10, 2) NOT NULL DEFAULT 0.00,
+  subtotal decimal(10, 2) NOT NULL DEFAULT 0.00,
+  observacao varchar(255) DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+
+CREATE TABLE redefinir_senha_tokens (
+  id bigint(20) UNSIGNED NOT NULL,
+  usuario_id bigint(20) UNSIGNED DEFAULT NULL,
+  email varchar(190) NOT NULL,
+  token_hash varchar(255) NOT NULL,
+  codigo varchar(10) NOT NULL,
+  expira_em datetime NOT NULL,
+  usado_em datetime DEFAULT NULL,
+  criado_em datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE config_relatorio (
+  id bigint(20) UNSIGNED AUTO_INCREMENT NOT NULL PRIMARY KEY,
+  feira_id tinyint(3) UNSIGNED NOT NULL,
+  titulo_feira varchar(160) NOT NULL DEFAULT '',
+  subtitulo_feira varchar(160) DEFAULT NULL,
+  municipio varchar(100) NOT NULL DEFAULT '',
+  estado char(2) NOT NULL DEFAULT '',
+  secretaria varchar(200) DEFAULT NULL,
+  logotipo_prefeitura varchar(255) DEFAULT NULL,
+  logotipo_feira varchar(255) DEFAULT NULL,
+  incluir_introducao tinyint(1) NOT NULL DEFAULT 1,
+  texto_introducao text DEFAULT NULL,
+  incluir_produtos_comercializados tinyint(1) NOT NULL DEFAULT 1,
+  incluir_conclusao tinyint(1) NOT NULL DEFAULT 1,
+  texto_conclusao text DEFAULT NULL,
+  assinatura_nome varchar(160) DEFAULT NULL,
+  assinatura_cargo varchar(160) DEFAULT NULL,
+  mostrar_graficos tinyint(1) NOT NULL DEFAULT 1,
+  mostrar_por_categoria tinyint(1) NOT NULL DEFAULT 1,
+  mostrar_por_feirante tinyint(1) NOT NULL DEFAULT 1,
+  produtos_detalhados tinyint(1) NOT NULL DEFAULT 1,
+  criado_em datetime NOT NULL DEFAULT current_timestamp(),
+  atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE romaneio_dia (
