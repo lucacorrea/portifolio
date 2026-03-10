@@ -1,3 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+@date_default_timezone_set('America/Manaus');
+if (session_status() !== PHP_SESSION_ACTIVE) {
+  session_start();
+}
+
+$helpers = __DIR__ . '/assets/dados/_helpers.php';
+if (is_file($helpers)) {
+  require_once $helpers;
+}
+
+/* =========================
+   FALLBACKS
+========================= */
+if (!function_exists('e')) {
+  function e(string $value): string
+  {
+    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  }
+}
+
+if (!function_exists('csrf_token')) {
+  function csrf_token(): string
+  {
+    if (empty($_SESSION['_csrf_token'])) {
+      $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return (string) $_SESSION['_csrf_token'];
+  }
+}
+
+if (!function_exists('csrf_input')) {
+  function csrf_input(): string
+  {
+    return '<input type="hidden" name="_csrf" value="' . e(csrf_token()) . '">';
+  }
+}
+
+/* =========================
+   FLASH / OLD INPUT
+========================= */
+$cadastroErro = (string)($_SESSION['cadastro_erro'] ?? '');
+$cadastroOk   = (string)($_SESSION['cadastro_ok'] ?? '');
+$old          = $_SESSION['cadastro_old'] ?? [];
+
+unset($_SESSION['cadastro_erro'], $_SESSION['cadastro_ok'], $_SESSION['cadastro_old']);
+
+$nomeOld  = is_array($old) ? (string)($old['nome'] ?? '') : '';
+$emailOld = is_array($old) ? (string)($old['email'] ?? '') : '';
+
+$selfUrl = $_SERVER['PHP_SELF'] ?? 'cadastro.php';
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -8,7 +63,6 @@
   <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
   <title>Criar Conta | Painel da Distribuidora PLHB</title>
 
-  <!-- ========== CSS ========= -->
   <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/css/lineicons.css" />
   <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" />
@@ -24,6 +78,12 @@
       --plhb-muted: #6b7280;
       --plhb-border: #e5e7eb;
       --plhb-white: #ffffff;
+      --plhb-danger-bg: #fef2f2;
+      --plhb-danger-border: #fecaca;
+      --plhb-danger-text: #991b1b;
+      --plhb-success-bg: #ecfdf5;
+      --plhb-success-border: #a7f3d0;
+      --plhb-success-text: #065f46;
     }
 
     * {
@@ -284,6 +344,28 @@
       text-decoration: underline;
     }
 
+    .alert-custom {
+      width: 100%;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      line-height: 1.6;
+      border: 1px solid transparent;
+    }
+
+    .alert-danger-custom {
+      background: var(--plhb-danger-bg);
+      border-color: var(--plhb-danger-border);
+      color: var(--plhb-danger-text);
+    }
+
+    .alert-success-custom {
+      background: var(--plhb-success-bg);
+      border-color: var(--plhb-success-border);
+      color: var(--plhb-success-text);
+    }
+
     #preloader {
       position: fixed;
       inset: 0;
@@ -342,18 +424,15 @@
 </head>
 
 <body>
-  <!-- ======== Preloader =========== -->
   <div id="preloader">
     <div class="spinner"></div>
   </div>
 
-  <!-- ======== main-wrapper start =========== -->
   <main class="main-wrapper">
     <section class="signin-section">
       <div class="container-fluid">
         <div class="row g-0 auth-row">
 
-          <!-- LADO ESQUERDO -->
           <div class="col-lg-6 auth-left">
             <div class="auth-cover-content">
               <h1>Crie sua conta</h1>
@@ -369,7 +448,6 @@
             </div>
           </div>
 
-          <!-- LADO DIREITO -->
           <div class="col-lg-6 auth-right">
             <div class="signup-wrapper">
               <div class="form-wrapper">
@@ -384,7 +462,18 @@
                   <strong>Painel da Distribuidora PLHB</strong>.
                 </p>
 
+                <?php if ($cadastroErro !== ''): ?>
+                  <div class="alert-custom alert-danger-custom"><?= e($cadastroErro) ?></div>
+                <?php endif; ?>
+
+                <?php if ($cadastroOk !== ''): ?>
+                  <div class="alert-custom alert-success-custom"><?= e($cadastroOk) ?></div>
+                <?php endif; ?>
+
                 <form action="./assets/auth/processarCadastro.php" method="post" autocomplete="on">
+                  <?= csrf_input(); ?>
+                  <input type="hidden" name="redirect_back" value="<?= e($selfUrl) ?>">
+
                   <div class="row">
                     <div class="col-12">
                       <div class="input-style-1">
@@ -393,6 +482,7 @@
                           type="text"
                           id="nome"
                           name="nome"
+                          value="<?= e($nomeOld) ?>"
                           placeholder="Digite seu nome completo"
                           required />
                       </div>
@@ -405,6 +495,7 @@
                           type="email"
                           id="email"
                           name="email"
+                          value="<?= e($emailOld) ?>"
                           placeholder="Digite seu e-mail"
                           autocomplete="email"
                           required />
@@ -474,15 +565,12 @@
               </div>
             </div>
           </div>
-          <!-- fim col -->
 
         </div>
       </div>
     </section>
   </main>
-  <!-- ======== main-wrapper end =========== -->
 
-  <!-- ========= JS ========= -->
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script>
     window.addEventListener('load', function() {
