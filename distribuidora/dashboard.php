@@ -916,7 +916,6 @@ $total12m = array_sum($chart1);
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
-      <img src="assets/images/logo/logo.svg" alt="logo" />
       <span class="d-none d-md-inline text-sm fw-600">DISTRIBUIDORA PLHB</span>
       </a>
     </div>
