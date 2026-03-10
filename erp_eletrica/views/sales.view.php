@@ -1045,49 +1045,57 @@ async function processarCheckout() {
 
 function showSuccessModal(saleId, total, tipoNota) {
     const isFiscal = tipoNota === 'fiscal';
-    const nfceBtn = isFiscal ? `
-        <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" onclick="issueNFCe(${saleId})">
-            <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Nota Fiscal)
-        </button>` : '';
     const tipoLabel = isFiscal
         ? '<span class="badge bg-success mb-3"><i class="fas fa-file-invoice-dollar me-1"></i>Venda Fiscal</span>'
-        : '<span class="badge bg-secondary mb-3"><i class="fas fa-receipt me-1"></i>Venda Não Fiscal</span>';
+        : '<span class="badge bg-secondary mb-3"><i class="fas fa-receipt me-1"></i>Venda N\u00e3o Fiscal</span>';
+
+    const btnPrint = isFiscal
+        ? `<button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
+               <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Nota Fiscal)
+           </button>`
+        : `<button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm" onclick="imprimirRecibo(${saleId})">
+               <i class="fas fa-print me-2"></i>IMPRIMIR RECIBO
+           </button>`;
 
     const modalHtml = `
         <div class="modal fade" id="modalSuccess" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-body text-center p-5">
-                        <div class="mb-4">
-                            <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
+                        <div class="mb-3">
+                            <i class="fas fa-check-circle text-success" style="font-size: 4.5rem;"></i>
                         </div>
                         ${tipoLabel}
                         <h3 class="fw-bold mb-2">Venda Finalizada!</h3>
-                        <p class="text-muted mb-4">A venda <strong>#${saleId}</strong> foi registrada com sucesso no valor de <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong>.</p>
-                        
+                        <p class="text-muted mb-4">Venda <strong>#${saleId}</strong> — <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong></p>
                         <div class="d-grid gap-2">
-                            ${nfceBtn}
-                            <button class="btn btn-outline-secondary fw-bold py-3" onclick="alert('Impressão térmica em desenvolvimento')">
-                                <i class="fas fa-print me-2"></i>Imprimir Recibo Simples
-                            </button>
-                            <button class="btn btn-link text-muted mt-2" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
+                            ${btnPrint}
+                            <button class="btn btn-link text-muted mt-1" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     `;
-    
+
     const existing = document.getElementById('modalSuccess');
     if (existing) existing.remove();
-    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('modalSuccess'));
     modal.show();
+
+    // For non-fiscal: auto-open print window
+    if (!isFiscal) {
+        setTimeout(() => imprimirRecibo(saleId), 400);
+    }
+}
+
+function imprimirRecibo(saleId) {
+    window.open('recibo_venda.php?id=' + saleId, '_blank', 'width=480,height=700,toolbar=0,menubar=0,location=0');
 }
 
 async function issueNFCe(saleId) {
-    const btn = event.currentTarget;
+    const btn = document.getElementById('btnNFCeModal') || event.currentTarget;
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Comunicando SEFAZ...';
@@ -1098,20 +1106,26 @@ async function issueNFCe(saleId) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: saleId })
         });
-        
+
         const result = await res.json();
         if (result.success) {
-            btn.className = 'btn btn-success btn-lg fw-bold py-3';
-            btn.innerHTML = '<i class="fas fa-check me-2"></i>NFC-e AUTORIZADA!';
-            alert('NFC-e Autorizada com sucesso! Protocolo: ' + result.protocolo);
-            // In a real scenario, we would trigger PDF download/print here
+            btn.className = 'btn btn-success btn-lg fw-bold py-3 w-100';
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>NFC-e AUTORIZADA! Abrindo DANFE...';
+            // Open DANFE print page (same as acainhadinhos)
+            const chave = result.chave || '';
+            const url = chave
+                ? `danfe_nfce.php?venda_id=${saleId}&chave=${chave}`
+                : `danfe_nfce.php?venda_id=${saleId}`;
+            setTimeout(() => {
+                window.open(url, '_blank', 'width=480,height=700,toolbar=0,menubar=0,location=0');
+            }, 400);
         } else {
             alert('Erro SEFAZ: ' + result.error);
             btn.disabled = false;
             btn.innerHTML = originalHtml;
         }
     } catch (e) {
-        alert('Erro de comunicação: ' + e.message);
+        alert('Erro de comunica\u00e7\u00e3o: ' + e.message);
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
