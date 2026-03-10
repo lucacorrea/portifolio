@@ -23,26 +23,34 @@ class SefazSoapClient extends BaseService {
         ]
     ];
 
+    private $methodMapping = [
+        'nfe_distribuicao' => 'nfeDistribuicaoDFe',
+        'nfe_evento' => 'nfeRecepcaoEvento4',
+        'nfce_autorizacao' => 'nfeAutorizacaoLote',
+        'sefaz_status' => 'nfeStatusServico4'
+    ];
+
     public function call($method, $xml, $fiscal) {
         $ambiente = ($fiscal['ambiente'] == 1 || $fiscal['ambiente'] == 'producao') ? 'producao' : 'homologacao';
         $url = $this->endpoints[$ambiente][$method] ?? null;
         if (!$url) throw new Exception("Endpoint SEFAZ não encontrado para o método $method no ambiente $ambiente.");
 
-        $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscal['certificado_pfx'];
-        $password = $fiscal['certificado_senha']; // Already decoded in FiscalService or needs decode? 
-        // Note: FiscalService should provide the raw password for CURL or we handle it here.
+        $wsdlMethod = $this->methodMapping[$method] ?? $method;
 
-        // Prepare temporary PEM files for CURL as it doesn't support PFX directly easily without complexity
+        $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscal['certificado_pfx'];
+        $password = $fiscal['certificado_senha']; 
+
+        // Prepare temporary PEM files for CURL
         $pemCert = $this->extractPem($pfxPath, $password);
         
-        $soapXml = $this->wrapSoap($xml, $method);
+        $soapXml = $this->wrapSoap($xml, $wsdlMethod);
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Content-Type: application/soap+xml; charset=utf-8",
+            "Content-Type: application/soap+xml; charset=utf-8; action=\"http://www.portalfiscal.inf.br/nfe/wsdl/$wsdlMethod\"",
             "Content-Length: " . strlen($soapXml)
         ]);
         
@@ -67,14 +75,14 @@ class SefazSoapClient extends BaseService {
         return $response;
     }
 
-    private function wrapSoap($xml, $method) {
+    private function wrapSoap($xml, $wsdlMethod) {
         // Simple SOAP 1.2 wrapper for SEFAZ 4.0
         return '<?xml version="1.0" encoding="utf-8"?>
         <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
           <soap12:Body>
-            <' . $method . ' xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/' . $method . '">
+            <' . $wsdlMethod . ' xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/' . $wsdlMethod . '">
               <nfeDadosMsg>' . $xml . '</nfeDadosMsg>
-            </' . $method . '>
+            </' . $wsdlMethod . '>
           </soap12:Body>
         </soap12:Envelope>';
     }
