@@ -54,12 +54,15 @@ class SefazSoapClient extends BaseService {
 
         $response = curl_exec($ch);
         $error = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         // Cleanup temp file
         @unlink($pemCert['file']);
 
         if ($error) throw new Exception("Erro de conexão SEFAZ (CURL): $error");
+        if ($httpCode >= 400) throw new Exception("Erro HTTP SEFAZ: $httpCode. Verifique a conectividade e o certificado.");
+        if (empty($response)) throw new Exception("Resposta vazia da SEFAZ. O servidor pode estar indisponível ou recusou a conexão.");
 
         return $response;
     }

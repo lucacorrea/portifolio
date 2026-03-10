@@ -122,17 +122,36 @@ class SefazConsultaService extends BaseService {
     }
 
     private function processarRetorno($xmlStr) {
-        $xml = simplexml_load_string($xmlStr);
-        $xml->registerXPathNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        if (empty($xmlStr)) {
+            throw new Exception("SEFAZ retornou uma resposta vazia.");
+        }
+
+        // Remove namespaces for easier parsing (strips soap:, nfe:, etc)
+        $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $xmlStr);
+        $xml = simplexml_load_string($cleanXml);
         
-        $status = (string)$xml->cStat;
+        if (!$xml) {
+            throw new Exception("Falha ao ler resposta da SEFAZ (XML inválido).");
+        }
+
+        // O nó de retorno retDistDFeInt pode estar dentro do envelope SOAP
+        $nodes = $xml->xpath('//retDistDFeInt');
+        if (empty($nodes)) {
+             // Caso não esteja em SOAP (raro), tentamos o root
+             $retDist = $xml;
+        } else {
+             $retDist = $nodes[0];
+        }
+        
+        $status = (string)$retDist->cStat;
         if ($status != '138' && $status != '137') {
-            throw new Exception("SEFAZ retornou erro: " . (string)$xml->xMotivo);
+            $motivo = (string)$retDist->xMotivo ?: 'Erro desconhecido';
+            throw new Exception("SEFAZ retornou erro: [$status] $motivo");
         }
 
         $docs = [];
-        if (isset($xml->loteDistDFeInt->docZip)) {
-            foreach ($xml->loteDistDFeInt->docZip as $docZip) {
+        if (isset($retDist->loteDistDFeInt->docZip)) {
+            foreach ($retDist->loteDistDFeInt->docZip as $docZip) {
                 // O conteúdo vem gzipped e codificado em base64
                 $decoded = base64_decode((string)$docZip);
                 $content = @gzdecode($decoded);
