@@ -103,7 +103,9 @@ class SefazSoapClient extends BaseService {
         // Cleanup temp file
         @unlink($pemCert['file']);
 
-        if ($error) throw new Exception("Erro de conexão SEFAZ (CURL): [Code $httpCode] $error");
+        if ($error) {
+            throw new Exception("Erro de conexão SEFAZ CURL: $error");
+        }
         
         // DEBUG: Gravar retorno se falhar
         if ($httpCode >= 400 && defined('DEBUG') && DEBUG) {
@@ -111,13 +113,13 @@ class SefazSoapClient extends BaseService {
             @file_put_contents($logPath, "HTTP $httpCode\n\n$response");
         }
 
-        if ($httpCode >= 400) {
+        if ($httpCode >= 400 || empty($response)) {
              $motivo = $this->extractSoapFault($response);
-             if ($motivo) throw new Exception("Erro SEFAZ: $motivo");
-             throw new Exception("Erro HTTP SEFAZ: $httpCode. O servidor rejeitou a requisição. Verifique se o ambiente de " . ($ambiente == 'producao' ? 'Produção' : 'Homologação') . " está configurado corretamente no certificado.");
+             if ($motivo) {
+                 throw new Exception("Rejeição SEFAZ: $motivo");
+             }
+             throw new Exception("Erro HTTP $httpCode. O servidor da SEFAZ rejeitou a requisição. O certificado e a senha estão corretos, mas o conteúdo ou o Mapeamento da SEFAZ pode estar inválido.");
         }
-        
-        if (empty($response)) throw new Exception("Resposta vazia da SEFAZ. O servidor pode estar indisponível ou recusou a conexão.");
 
         return $response;
     }

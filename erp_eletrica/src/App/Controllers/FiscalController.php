@@ -103,12 +103,19 @@ class FiscalController extends BaseController {
             ob_get_clean(); // Discard any warnings/garbage
             header('Content-Type: application/json');
             echo json_encode($result);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $msg = $e->getMessage();
-            @file_put_contents(dirname(__DIR__, 3) . '/storage/last_connection_test_error.txt', $msg . "\n" . $e->getTraceAsString());
-            ob_get_clean();
+            @file_put_contents(dirname(__DIR__, 3) . '/storage/last_connection_test_error.txt', "Type: " . get_class($e) . "\nMessage: " . $msg . "\nLine: " . $e->getLine() . "\n" . $e->getTraceAsString());
+            $ob = ob_get_clean();
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => $msg]);
+            
+            // Format for UI
+            $safeMsg = "CRASH: {$msg} (Linha {$e->getLine()})";
+            if (!empty(trim($ob))) {
+                $safeMsg .= " | Output Sujo: " . substr(strip_tags($ob), 0, 100);
+            }
+            
+            echo json_encode(['success' => false, 'error' => $safeMsg]);
         }
         exit;
     }

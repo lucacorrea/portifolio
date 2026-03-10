@@ -65,6 +65,13 @@ $offset = ($page - 1) * $perPage;
 $qRaw = trim((string)($_GET['q'] ?? ''));
 $qDigits = only_digits($qRaw);
 
+/* Filtro de tipo */
+$tipoRaw = trim((string)($_GET['tipo'] ?? 'TODOS'));
+$tiposValidos = ['TODOS', 'PRODUTOR RURAL', 'FEIRANTE', 'MARRETEIRO'];
+if (!in_array($tipoRaw, $tiposValidos, true)) {
+  $tipoRaw = 'TODOS';
+}
+
 $cleanErr = function (string $m): string {
   $m = preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $m) ?? $m;
   $m = preg_replace('/\(SQL:\s*.*\)$/', '', $m) ?? $m;
@@ -94,15 +101,28 @@ try {
   $tblC = $pdo->query("SHOW TABLES LIKE 'comunidades'")->fetchColumn();
   $hasComunidades = (bool)$tblC;
 
+  $colTipo = $pdo->query("SHOW COLUMNS FROM produtores LIKE 'tipo'")->fetch(PDO::FETCH_ASSOC);
+  $hasTipo = (bool)$colTipo;
+
   /* ===== WHERE ===== */
   $where = ["p.feira_id = :feira"];
   $params = [':feira' => $FEIRA_ID];
+
+  if ($hasTipo && $tipoRaw !== 'TODOS') {
+    $where[] = "p.tipo = :tipo";
+    $params[':tipo'] = $tipoRaw;
+  }
 
   if ($qRaw !== '') {
     $parts = [];
 
     $params[':q_nome'] = '%' . $qRaw . '%';
     $parts[] = "p.nome LIKE :q_nome";
+
+    if ($hasTipo) {
+      $params[':q_tipo_busca'] = '%' . $qRaw . '%';
+      $parts[] = "p.tipo LIKE :q_tipo_busca";
+    }
 
     $params[':q_contato'] = '%' . $qRaw . '%';
     $parts[] = "p.contato LIKE :q_contato";
@@ -146,7 +166,12 @@ try {
 
   foreach ($params as $k => $v) {
     if ($k === ':feira') continue;
-    $stCount->bindValue($k, (string)$v, PDO::PARAM_STR);
+
+    if ($k === ':tipo') {
+      $stCount->bindValue($k, (string)$v, PDO::PARAM_STR);
+    } else {
+      $stCount->bindValue($k, (string)$v, PDO::PARAM_STR);
+    }
   }
 
   $stCount->execute();
@@ -159,10 +184,13 @@ try {
   }
 
   /* ===== SELECT ===== */
+  $campoTipo = $hasTipo ? "p.tipo" : "'PRODUTOR RURAL' AS tipo";
+
   if ($hasComunidades) {
     $sql = "SELECT
               p.id,
               p.nome,
+              {$campoTipo},
               p.contato,
               p.documento,
               p.ativo,
@@ -179,6 +207,7 @@ try {
     $sql = "SELECT
               p.id,
               p.nome,
+              {$campoTipo},
               p.contato,
               p.documento,
               p.ativo,
@@ -235,11 +264,6 @@ try {
     .table td, .table th {
       vertical-align: middle;
     }
-    .badge-soft {
-      background: #eef4ff;
-      color: #2952a3;
-      border: 1px solid #dbe7ff;
-    }
     .acoes-topo {
       gap: .5rem;
     }
@@ -252,6 +276,9 @@ try {
     }
     .status-col {
       width: 110px;
+    }
+    .tipo-col {
+      min-width: 160px;
     }
     .muted-mini {
       font-size: .86rem;
@@ -305,7 +332,7 @@ try {
 
         <form method="get" class="toolbar-box mb-3">
           <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-8 col-lg-9">
+            <div class="col-12 col-md-6 col-lg-6">
               <label for="q" class="form-label mb-1">Buscar produtor</label>
               <input
                 type="text"
@@ -315,15 +342,27 @@ try {
                 value="<?= h($qRaw) ?>"
                 placeholder="Digite nome, contato, CPF ou comunidade">
             </div>
-            <div class="col-6 col-md-2 col-lg-1">
+
+            <div class="col-12 col-md-3 col-lg-3">
+              <label for="tipo" class="form-label mb-1">Tipo</label>
+              <select name="tipo" id="tipo" class="form-select">
+                <option value="TODOS" <?= $tipoRaw === 'TODOS' ? 'selected' : '' ?>>Todos</option>
+                <option value="PRODUTOR RURAL" <?= $tipoRaw === 'PRODUTOR RURAL' ? 'selected' : '' ?>>Produtor Rural</option>
+                <option value="FEIRANTE" <?= $tipoRaw === 'FEIRANTE' ? 'selected' : '' ?>>Feirante</option>
+                <option value="MARRETEIRO" <?= $tipoRaw === 'MARRETEIRO' ? 'selected' : '' ?>>Marreteiro</option>
+              </select>
+            </div>
+
+            <div class="col-6 col-md-1 col-lg-1">
               <label class="form-label mb-1 d-none d-md-block">&nbsp;</label>
               <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-search me-1"></i>Buscar
               </button>
             </div>
+
             <div class="col-6 col-md-2 col-lg-2">
               <label class="form-label mb-1 d-none d-md-block">&nbsp;</label>
-              <a href="<?= h(buildUrl(['q' => null, 'p' => null])) ?>" class="btn btn-outline-secondary w-100">
+              <a href="<?= h(buildUrl(['q' => null, 'tipo' => null, 'p' => null])) ?>" class="btn btn-outline-secondary w-100">
                 <i class="bi bi-x-circle me-1"></i>Limpar
               </a>
             </div>
@@ -333,6 +372,8 @@ try {
         <form method="post" action="./imprimirProdutores.php" id="formImpressao">
           <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
           <input type="hidden" name="feira_id" value="<?= (int)$FEIRA_ID ?>">
+          <input type="hidden" name="q" value="<?= h($qRaw) ?>">
+          <input type="hidden" name="tipo" value="<?= h($tipoRaw) ?>">
 
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <div class="d-flex flex-wrap gap-2">
@@ -362,6 +403,7 @@ try {
                     <input type="checkbox" class="form-check-input" id="checkAllVisiveis">
                   </th>
                   <th class="nome-col">Produtor</th>
+                  <th class="tipo-col">Tipo</th>
                   <th>Contato</th>
                   <th>Documento</th>
                   <th>Comunidade</th>
@@ -371,7 +413,7 @@ try {
               <tbody>
                 <?php if (!$produtores): ?>
                   <tr>
-                    <td colspan="6" class="text-center py-4 text-muted">
+                    <td colspan="7" class="text-center py-4 text-muted">
                       Nenhum produtor encontrado.
                     </td>
                   </tr>
@@ -393,6 +435,7 @@ try {
                         <?php endif; ?>
                       </td>
 
+                      <td><?= h((string)($p['tipo'] ?? 'PRODUTOR RURAL')) ?></td>
                       <td><?= h((string)($p['contato'] ?? '')) ?></td>
                       <td><?= h((string)($p['documento'] ?? '')) ?></td>
                       <td><?= h((string)($p['comunidade'] ?? '')) ?></td>

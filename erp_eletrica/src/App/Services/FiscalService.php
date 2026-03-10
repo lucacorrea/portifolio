@@ -201,17 +201,32 @@ class FiscalService extends BaseService {
             $soapClient = new SefazSoapClient();
             $fiscal = $this->getFiscalConfig($branchId);
             
-            // Generate simple XML for Status Inquiry
-            $xml = '<?xml version="1.0" encoding="UTF-8"?><consStatServ xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><tpAmb>' . $fiscal['ambiente'] . '</tpAmb><cUF>35</cUF><xServ>STATUS</xServ></consStatServ>';
+            // Generate exact XML schema for NfeStatusServico4
+            $uf = "35"; // SP by default for this project
+            if (isset($branch['uf'])) {
+                $estados = ['RO'=>'11','AC'=>'12','AM'=>'13','RR'=>'14','PA'=>'15','AP'=>'16','TO'=>'17','MA'=>'21','PI'=>'22','CE'=>'23','RN'=>'24','PB'=>'25','PE'=>'26','AL'=>'27','SE'=>'28','BA'=>'29','MG'=>'31','ES'=>'32','RJ'=>'33','SP'=>'35','PR'=>'41','SC'=>'42','RS'=>'43','MS'=>'50','MT'=>'51','GO'=>'52','DF'=>'53'];
+                $uf = $estados[$branch['uf']] ?? '35';
+            }
+
+            $xml = '<consStatServ xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><tpAmb>' . $fiscal['ambiente'] . '</tpAmb><cUF>' . $uf . '</cUF><xServ>STATUS</xServ></consStatServ>';
             
             try {
                 $responseXml = $soapClient->call('sefaz_status', $xml, $fiscal);
                 
-                // Parse response
+                // Parse response safely
                 $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $responseXml);
-                $res = simplexml_load_string($cleanXml);
+                $res = @simplexml_load_string($cleanXml);
+                
+                if (!$res) {
+                     throw new Exception("Falha ao ler XML de resposta da SEFAZ.");
+                }
+
                 $nodes = $res->xpath('//retConsStatServ');
-                $retStatus = !empty($nodes) ? $nodes[0] : $res;
+                $retStatus = !empty($nodes) ? $nodes[0] : null;
+
+                if (!$retStatus) {
+                     throw new Exception("Estrutura retConsStatServ não encontrada.");
+                }
 
                 return [
                     'success' => true,
@@ -221,8 +236,8 @@ class FiscalService extends BaseService {
                     'verAplic' => (string)$retStatus->verAplic ?: '---',
                     'timestamp' => (string)$retStatus->dhRecbto ?: date('d/m/Y H:i:s'),
                     'cert_info' => [
-                        'subject' => openssl_x509_parse($certs['cert'])['subject']['CN'] ?? 'Desconhecido',
-                        'validTo' => date('d/m/Y', openssl_x509_parse($certs['cert'])['validTo_time_t'])
+                        'subject' => isset($certs['cert']) && openssl_x509_parse($certs['cert']) ? (openssl_x509_parse($certs['cert'])['subject']['CN'] ?? 'Desconhecido') : 'Desconhecido',
+                        'validTo' => isset($certs['cert']) && openssl_x509_parse($certs['cert']) ? date('d/m/Y', openssl_x509_parse($certs['cert'])['validTo_time_t'] ?? time()) : '---'
                     ]
                 ];
             } catch (Exception $e) {
