@@ -30,14 +30,25 @@ class BranchController extends BaseController {
 
             $model = new \App\Models\Filial();
 
-            // Handle Certificate Upload
+            // Handle Certificate Upload exactly like acainhadinhos
             if (isset($_FILES['certificado']) && $_FILES['certificado']['error'] == 0) {
-                $pfxContent = file_get_contents($_FILES['certificado']['tmp_name']);
-                $senha = $data['certificado_senha'] ?? '';
-                $certs = [];
                 
-                if (!openssl_pkcs12_read($pfxContent, $certs, $senha)) {
-                    $this->redirect('filiais.php?msg=Erro: Senha incorreta ou arquivo de certificado inválido');
+                $senha = $data['certificado_senha'] ?? '';
+                if ($senha === '') {
+                    $this->redirect('filiais.php?msg=Erro: Informe a senha do certificado para validar o novo arquivo.');
+                    return;
+                }
+
+                $pfxContent = file_get_contents($_FILES['certificado']['tmp_name']);
+                
+                // NFePHP validation exactly as in acainhadinhos
+                require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+                
+                try {
+                    $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $senha);
+                    unset($certificate); // Validated successfully
+                } catch (\Exception $e) {
+                    $this->redirect('filiais.php?msg=Erro: Certificado inválido ou senha incorreta: ' . urlencode($e->getMessage()));
                     return;
                 }
 
@@ -51,9 +62,9 @@ class BranchController extends BaseController {
                 }
             }
 
-            // Unificar padrão de senha (Base64) para consistência entre Global e Filial
-            if (!empty($data['certificado_senha'])) {
-                $data['certificado_senha'] = base64_encode($data['certificado_senha']);
+            // Explicity DO NOT base64 encode the password, just like Açaidinhos
+            if (empty($data['certificado_senha'])) {
+                 unset($data['certificado_senha']); // Do not update blank passwords if they are empty
             }
 
             $model->save($data);
