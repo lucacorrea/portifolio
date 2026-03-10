@@ -31,6 +31,8 @@ class SefazSoapClient extends BaseService {
     ];
 
     public function call($method, $xml, $fiscal) {
+        if (!extension_loaded('curl')) throw new Exception("Extensão CURL não está carregada no PHP.");
+
         $ambiente = ($fiscal['ambiente'] == 1 || $fiscal['ambiente'] == 'producao') ? 'producao' : 'homologacao';
         $url = $this->endpoints[$ambiente][$method] ?? null;
         if (!$url) throw new Exception("Endpoint SEFAZ não encontrado para o método $method no ambiente $ambiente.");
@@ -44,6 +46,11 @@ class SefazSoapClient extends BaseService {
         $pemCert = $this->extractPem($pfxPath, $password);
         
         $soapXml = $this->wrapSoap($xml, $wsdlMethod);
+
+        // DEBUG: Gravar último XML enviado para inspeção se DEBUG estiver ativo
+        if (defined('DEBUG') && DEBUG) {
+            file_put_contents(dirname(__DIR__, 3) . '/storage/last_sefaz_request.xml', $soapXml);
+        }
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -59,6 +66,8 @@ class SefazSoapClient extends BaseService {
         curl_setopt($ch, CURLOPT_SSLKEY, $pemCert['file']);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);
         $error = curl_error($ch);
@@ -68,8 +77,14 @@ class SefazSoapClient extends BaseService {
         // Cleanup temp file
         @unlink($pemCert['file']);
 
-        if ($error) throw new Exception("Erro de conexão SEFAZ (CURL): $error");
-        if ($httpCode >= 400) throw new Exception("Erro HTTP SEFAZ: $httpCode. Verifique a conectividade e o certificado.");
+        if ($error) throw new Exception("Erro de conexão SEFAZ (CURL): [Code $httpCode] $error");
+        
+        // DEBUG: Gravar retorno se falhar com 500
+        if ($httpCode >= 400 && defined('DEBUG') && DEBUG) {
+            file_put_contents(dirname(__DIR__, 3) . '/storage/last_sefaz_error_response.txt', "HTTP $httpCode\n\n$response");
+        }
+
+        if ($httpCode >= 400) throw new Exception("Erro HTTP SEFAZ: $httpCode. O servidor rejeitou a requisição. Verifique os dados do certificado e se o ambiente está correto.");
         if (empty($response)) throw new Exception("Resposta vazia da SEFAZ. O servidor pode estar indisponível ou recusou a conexão.");
 
         return $response;
