@@ -482,13 +482,66 @@ function selectNcm(code) {
     document.getElementById('ncmDropdown').style.display = 'none';
 }
 
-// Close Dropdown if clicked outside
+// Close Dropdowns if clicked outside
 document.addEventListener('click', function(event) {
     const ncmGroup = document.querySelector('#edit_ncm').parentElement;
     if (!ncmGroup.contains(event.target)) {
         document.getElementById('ncmDropdown').style.display = 'none';
     }
+    const cestGroup = document.querySelector('#edit_cest').parentElement;
+    if (!cestGroup.contains(event.target)) {
+        document.getElementById('cestDropdown').style.display = 'none';
+    }
 });
+
+// CEST Search Logic (local database via api/cest_search.php)
+let cestDebounceTimer;
+
+function searchCestInline(term) {
+    const dropdown = document.getElementById('cestDropdown');
+    const loader = document.getElementById('cestLoader');
+
+    if (term.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    clearTimeout(cestDebounceTimer);
+    cestDebounceTimer = setTimeout(() => {
+        loader.style.display = 'block';
+
+        fetch(`api/cest_search.php?search=${encodeURIComponent(term)}`)
+            .then(r => r.ok ? r.json() : [])
+            .then(data => {
+                dropdown.innerHTML = '';
+                if (data && data.length > 0) {
+                    data.forEach(item => {
+                        dropdown.innerHTML += `
+                            <li class="list-group-item list-group-item-action p-2" onclick="selectCest('${item.codigo}')" style="cursor:pointer;">
+                                <div class="fw-bold text-success font-monospace small">${item.codigo}</div>
+                                <div class="text-muted text-truncate" style="font-size:0.78rem;" title="${item.descricao}">${item.descricao}</div>
+                            </li>
+                        `;
+                    });
+                } else {
+                    dropdown.innerHTML = '<li class="list-group-item text-muted small">Nenhum CEST encontrado. Consulte a tabela SEFAZ.</li>';
+                }
+                dropdown.style.display = 'block';
+            })
+            .catch(() => {
+                dropdown.innerHTML = '<li class="list-group-item text-danger small">Erro ao buscar CEST.</li>';
+                dropdown.style.display = 'block';
+            })
+            .finally(() => {
+                loader.style.display = 'none';
+            });
+    }, 400);
+}
+
+function selectCest(code) {
+    document.getElementById('edit_cest').value = code;
+    document.getElementById('cestDropdown').style.display = 'none';
+}
 
 function updateFormVisibility() {
     const unidade = document.getElementById('edit_unidade').value;
