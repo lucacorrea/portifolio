@@ -32,56 +32,80 @@ class Product extends BaseModel {
     }
 
     public function save($data) {
+        // Detect which optional columns exist (forward/backward compat)
+        $hasCean          = $this->columnExists('cean');
+        $hasCest          = $this->columnExists('cest');
+        $hasOrigem        = $this->columnExists('origem');
+        $hasCsosn         = $this->columnExists('csosn');
+        $hasCfopInterno   = $this->columnExists('cfop_interno');
+        $hasCfopExterno   = $this->columnExists('cfop_externo');
+        $hasAliquota      = $this->columnExists('aliquota_icms');
+        $hasPeso          = $this->columnExists('peso');
+        $hasDimensoes     = $this->columnExists('dimensoes');
+        $hasTipoProduto   = $this->columnExists('tipo_produto');
+        $hasPrecoVenda2   = $this->columnExists('preco_venda_2');
+        $hasPrecoVenda3   = $this->columnExists('preco_venda_3');
+        $hasPrecoAtacado  = $this->columnExists('preco_venda_atacado');
+        $hasImagens       = $this->columnExists('imagens');
+
         if (!empty($data['id'])) {
-            $sql = "UPDATE {$this->table} SET 
-                    codigo = ?, ncm = ?, cean = ?, cest = ?, origem = ?, csosn = ?, 
-                    cfop_interno = ?, cfop_externo = ?, aliquota_icms = ?,
-                    nome = ?, unidade = ?, categoria = ?, tipo_produto = ?,
-                    peso = ?, dimensoes = ?, descricao = ?,
-                    preco_custo = ?, preco_venda = ?, preco_venda_2 = ?, preco_venda_3 = ?, preco_venda_atacado = ?, 
-                    estoque_minimo = ? ";
+            // --- UPDATE ---
+            $sets   = ['codigo = ?', 'ncm = ?', 'nome = ?', 'unidade = ?', 'categoria = ?',
+                       'preco_custo = ?', 'preco_venda = ?', 'estoque_minimo = ?'];
             $params = [
-                $data['codigo'], $data['ncm'], $data['cean'] ?? 'SEM GTIN', $data['cest'], $data['origem'], $data['csosn'],
-                $data['cfop_interno'], $data['cfop_externo'], $data['aliquota_icms'],
-                $data['nome'], $data['unidade'], $data['categoria'], $data['tipo_produto'] ?? 'simples',
-                $data['peso'] ?? null, $data['dimensoes'] ?? null, $data['descricao'] ?? null,
-                $data['preco_custo'], $data['preco_venda'], 
-                $data['preco_venda_2'] === '' ? null : $data['preco_venda_2'], 
-                $data['preco_venda_3'] === '' ? null : $data['preco_venda_3'], 
-                $data['preco_venda_atacado'] === '' ? null : $data['preco_venda_atacado'],
-                $data['estoque_minimo']
+                $data['codigo'], $data['ncm'] ?? null, $data['nome'], $data['unidade'],
+                $data['categoria'], $data['preco_custo'], $data['preco_venda'], $data['estoque_minimo'],
             ];
 
-            if (isset($data['imagens'])) {
-                $sql .= ", imagens = ? ";
-                $params[] = $data['imagens'];
-            }
+            if ($hasCean)        { $sets[] = 'cean = ?';          $params[] = $data['cean'] ?? 'SEM GTIN'; }
+            if ($hasCest)        { $sets[] = 'cest = ?';          $params[] = $data['cest'] ?? null; }
+            if ($hasOrigem)      { $sets[] = 'origem = ?';        $params[] = $data['origem'] ?? 0; }
+            if ($hasCsosn)       { $sets[] = 'csosn = ?';         $params[] = $data['csosn'] ?? '102'; }
+            if ($hasCfopInterno) { $sets[] = 'cfop_interno = ?';  $params[] = $data['cfop_interno'] ?? '5102'; }
+            if ($hasCfopExterno) { $sets[] = 'cfop_externo = ?';  $params[] = $data['cfop_externo'] ?? '6102'; }
+            if ($hasAliquota)    { $sets[] = 'aliquota_icms = ?'; $params[] = $data['aliquota_icms'] ?? 0; }
+            if ($hasPeso)        { $sets[] = 'peso = ?';          $params[] = $data['peso'] ?? null; }
+            if ($hasDimensoes)   { $sets[] = 'dimensoes = ?';     $params[] = $data['dimensoes'] ?? null; }
+            if ($hasTipoProduto) { $sets[] = 'tipo_produto = ?';  $params[] = $data['tipo_produto'] ?? 'simples'; }
+            if ($hasPrecoVenda2) { $sets[] = 'preco_venda_2 = ?'; $params[] = ($data['preco_venda_2'] ?? '') === '' ? null : $data['preco_venda_2']; }
+            if ($hasPrecoVenda3) { $sets[] = 'preco_venda_3 = ?'; $params[] = ($data['preco_venda_3'] ?? '') === '' ? null : $data['preco_venda_3']; }
+            if ($hasPrecoAtacado){ $sets[] = 'preco_venda_atacado = ?'; $params[] = ($data['preco_venda_atacado'] ?? '') === '' ? null : $data['preco_venda_atacado']; }
+            if ($hasImagens && isset($data['imagens'])) { $sets[] = 'imagens = ?'; $params[] = $data['imagens']; }
+            if ($this->columnExists('descricao')) { $sets[] = 'descricao = ?'; $params[] = $data['descricao'] ?? null; }
 
-            $sql .= " WHERE id = ?";
             $params[] = $data['id'];
-            return $this->query($sql, $params);
+            return $this->query("UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = ?", $params);
+
         } else {
-            $sql = "INSERT INTO {$this->table} (
-                        codigo, ncm, cean, cest, origem, csosn, 
-                        cfop_interno, cfop_externo, aliquota_icms,
-                        nome, unidade, categoria, tipo_produto, peso, dimensoes, descricao,
-                        preco_custo, preco_venda, preco_venda_2, preco_venda_3, preco_venda_atacado, 
-                        quantidade, estoque_minimo, filial_id, imagens
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            return $this->query($sql, [
-                $data['codigo'], $data['ncm'], $data['cean'] ?? 'SEM GTIN', $data['cest'] ?? null, $data['origem'] ?? 0, 
-                $data['csosn'] ?? '102', $data['cfop_interno'] ?? '5102', 
-                $data['cfop_externo'] ?? '6102', $data['aliquota_icms'] ?? 0,
-                $data['nome'], $data['unidade'], $data['categoria'], $data['tipo_produto'] ?? 'simples',
-                $data['peso'] ?? null, $data['dimensoes'] ?? null, $data['descricao'] ?? null,
-                $data['preco_custo'], $data['preco_venda'], 
-                $data['preco_venda_2'] === '' ? null : $data['preco_venda_2'], 
-                $data['preco_venda_3'] === '' ? null : $data['preco_venda_3'], 
-                $data['preco_venda_atacado'] === '' ? null : $data['preco_venda_atacado'],
-                $data['quantidade'] ?? 0,
-                $data['estoque_minimo'], 
-                $data['filial_id'] ?? 1, $data['imagens'] ?? null
-            ]);
+            // --- INSERT ---
+            $cols   = ['codigo', 'ncm', 'nome', 'unidade', 'categoria',
+                       'preco_custo', 'preco_venda', 'quantidade', 'estoque_minimo', 'filial_id'];
+            $params = [
+                $data['codigo'], $data['ncm'] ?? null, $data['nome'], $data['unidade'],
+                $data['categoria'], $data['preco_custo'], $data['preco_venda'],
+                $data['quantidade'] ?? 0, $data['estoque_minimo'], $data['filial_id'] ?? 1,
+            ];
+
+            if ($hasCean)        { $cols[] = 'cean';          $params[] = $data['cean'] ?? 'SEM GTIN'; }
+            if ($hasCest)        { $cols[] = 'cest';          $params[] = $data['cest'] ?? null; }
+            if ($hasOrigem)      { $cols[] = 'origem';        $params[] = $data['origem'] ?? 0; }
+            if ($hasCsosn)       { $cols[] = 'csosn';         $params[] = $data['csosn'] ?? '102'; }
+            if ($hasCfopInterno) { $cols[] = 'cfop_interno';  $params[] = $data['cfop_interno'] ?? '5102'; }
+            if ($hasCfopExterno) { $cols[] = 'cfop_externo';  $params[] = $data['cfop_externo'] ?? '6102'; }
+            if ($hasAliquota)    { $cols[] = 'aliquota_icms'; $params[] = $data['aliquota_icms'] ?? 0; }
+            if ($hasPeso)        { $cols[] = 'peso';          $params[] = $data['peso'] ?? null; }
+            if ($hasDimensoes)   { $cols[] = 'dimensoes';     $params[] = $data['dimensoes'] ?? null; }
+            if ($hasTipoProduto) { $cols[] = 'tipo_produto';  $params[] = $data['tipo_produto'] ?? 'simples'; }
+            if ($hasPrecoVenda2) { $cols[] = 'preco_venda_2'; $params[] = ($data['preco_venda_2'] ?? '') === '' ? null : $data['preco_venda_2']; }
+            if ($hasPrecoVenda3) { $cols[] = 'preco_venda_3'; $params[] = ($data['preco_venda_3'] ?? '') === '' ? null : $data['preco_venda_3']; }
+            if ($hasPrecoAtacado){ $cols[] = 'preco_venda_atacado'; $params[] = ($data['preco_venda_atacado'] ?? '') === '' ? null : $data['preco_venda_atacado']; }
+            if ($hasImagens)     { $cols[] = 'imagens';       $params[] = $data['imagens'] ?? null; }
+            if ($this->columnExists('descricao')) { $cols[] = 'descricao'; $params[] = $data['descricao'] ?? null; }
+
+            $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+            $colList      = implode(', ', $cols);
+
+            return $this->query("INSERT INTO {$this->table} ($colList) VALUES ($placeholders)", $params);
         }
     }
 }
