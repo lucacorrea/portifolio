@@ -1729,7 +1729,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
                   </div>
                 </div>
 
-                <div class="box-tot mt-3">
+                <div class="box-tot mt-5">
                   <div class="tot-row"><span>Linhas</span><span id="tRows">0</span></div>
                   <div class="tot-row"><span>Vendido</span><span id="tSum" style="font-weight:900;">—</span></div>
                   <div class="tot-row" id="rowSumRec" style="display:none;"><span>Recebido (Caixa)</span><span id="tSumRec" style="font-weight:1000;color:#0b5ed7;">—</span></div>
