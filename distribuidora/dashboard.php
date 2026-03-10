@@ -883,6 +883,27 @@ $total12m = array_sum($chart1);
     .text-xs {
       font-size: 12px;
     }
+
+    .logout-btn {
+      padding: 8px 14px !important;
+      min-width: 88px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none !important;
+    }
+
+    .logout-btn i {
+      font-size: 16px;
+    }
+
+    .header-right {
+      height: 100%;
+    }
   </style>
 </head>
 
