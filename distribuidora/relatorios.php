@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-
-
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
@@ -176,7 +174,6 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q,
     $params[':dtFim'] = $dtFim;
   }
 
-  // Excluir devolvidas
   $where[] = "NOT EXISTS (
     SELECT 1 FROM devolucoes d
     WHERE d.venda_no = v.id
@@ -196,14 +193,12 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q,
 
   $whereSql = count($where) ? ("WHERE " . implode(" AND ", $where)) : "";
 
-  // recebidos (se existir tabela fiados)
   $hasFiados = table_exists($pdo, 'fiados');
 
   $recebExpr = $hasFiados
     ? "CASE WHEN UPPER(v.pagamento) = 'FIADO' THEN COALESCE((SELECT f.valor_pago FROM fiados f WHERE f.venda_id = v.id LIMIT 1), 0) ELSE v.total END"
     : "v.total";
 
-  // COUNT + SUM (do filtro todo)
   $sqlAgg = "
     SELECT
       COUNT(*) AS cnt,
@@ -220,7 +215,6 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q,
   $page = $meta['page'];
   $offset = $meta['offset'];
 
-  // DADOS da página
   $sql = "
     SELECT
       v.id, v.data, v.cliente, v.canal,
@@ -280,11 +274,6 @@ function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q,
   ];
 }
 
-/**
- * Vendas (Itens) — CORRIGIDO:
- * Agora usa venda_itens + vendas (pois SAIDAS no seu banco é perda/avaria e não tem pedido/cliente/canal/pagamento).
- * Também exclui devolvidas (status <> CANCELADO).
- */
 function report_vendas_itens(PDO $pdo, string $dtIni, string $dtFim, string $q, int $page, int $per): array
 {
   $where = [];
@@ -299,7 +288,6 @@ function report_vendas_itens(PDO $pdo, string $dtIni, string $dtFim, string $q, 
     $params[':dtFim'] = $dtFim;
   }
 
-  // Excluir vendas devolvidas
   $where[] = "NOT EXISTS (
     SELECT 1 FROM devolucoes d
     WHERE d.venda_no = v.id
@@ -320,7 +308,6 @@ function report_vendas_itens(PDO $pdo, string $dtIni, string $dtFim, string $q, 
 
   $whereSql = count($where) ? ("WHERE " . implode(" AND ", $where)) : "";
 
-  // COUNT + SUM
   $sqlAgg = "
     SELECT
       COUNT(*) AS cnt,
@@ -337,7 +324,6 @@ function report_vendas_itens(PDO $pdo, string $dtIni, string $dtFim, string $q, 
   $page = $meta['page'];
   $offset = $meta['offset'];
 
-  // DADOS (página)
   $sql = "
     SELECT
       v.id AS venda_id,
@@ -346,7 +332,6 @@ function report_vendas_itens(PDO $pdo, string $dtIni, string $dtFim, string $q, 
       v.canal,
       v.pagamento_mode,
       v.pagamento,
-
       vi.codigo,
       vi.nome AS produto,
       vi.unidade,
@@ -422,7 +407,6 @@ function report_produtos(PDO $pdo, string $q, int $page, int $per): array
 
   $whereSql = count($where) ? ("WHERE " . implode(" AND ", $where)) : "";
 
-  // COUNT + SUM
   $sqlAgg = "
     SELECT
       COUNT(*) AS cnt,
@@ -757,10 +741,6 @@ function report_entradas(PDO $pdo, string $dtIni, string $dtFim, string $q, int 
   ];
 }
 
-/**
- * SAÍDAS — CORRIGIDO pro seu banco:
- * saidas = perdas/avarias etc (tipo, motivo, valor_unit, valor_total...).
- */
 function report_saidas(PDO $pdo, string $dtIni, string $dtFim, string $q, int $page, int $per): array
 {
   $where = [];
@@ -871,8 +851,7 @@ function build_report(PDO $pdo, string $tipo, string $dtIni, string $dtFim, stri
 }
 
 /* =========================
-   AJAX endpoint: fetch (COM PAGINAÇÃO)
-   relatorios.php?action=fetch&tipo=...&page=1&per=50
+   AJAX endpoint: fetch
 ========================= */
 if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
   header('Content-Type: application/json; charset=utf-8');
@@ -886,7 +865,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
     $q     = (string)($_GET['q'] ?? '');
 
     $page  = clamp_int($_GET['page'] ?? 1, 1, 999999, 1);
-    $per   = clamp_int($_GET['per'] ?? 50, 10, 200, 50);
+    $per   = clamp_int($_GET['per'] ?? 10, 10, 200, 10);
 
     $rep = build_report($pdo, $tipo, $dtIni, $dtFim, $q, $page, $per);
 
@@ -899,7 +878,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
 }
 
 /* =========================
-   AJAX endpoint: suggest (autocomplete) — CORRIGIDO
+   AJAX endpoint: suggest
 ========================= */
 if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
   header('Content-Type: application/json; charset=utf-8');
@@ -920,7 +899,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     $out = [];
 
     if ($tipo === 'VENDAS_RESUMO') {
-      // IDs + Clientes (não devolvidas)
       $params = [];
       $where = [];
       if ($dtIni !== '') {
@@ -933,7 +911,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       }
       $where[] = "NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')";
       $whereId = $where;
-      $whereCli = $where;
 
       $wId = $whereId;
       $wId[] = add_like_or(["CAST(v.id AS CHAR)"], $q, $params, 'sv1');
@@ -952,7 +929,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
         $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
       }
 
-      // clientes
       $params2 = [];
       $where2 = [];
       if ($dtIni !== '') {
@@ -981,7 +957,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
         $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
       }
     } elseif ($tipo === 'VENDAS_ITENS') {
-      // sugere produto/código, cliente, venda_id (via venda_itens + vendas)
       $params = [];
       $where = [];
       if ($dtIni !== '') {
@@ -1086,7 +1061,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
         $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
       }
     } elseif ($tipo === 'SAIDAS') {
-      // SAIDAS = perdas: sugere tipo/motivo/produto
       $params = [];
       $w = [];
       if ($dtIni !== '') {
@@ -1116,7 +1090,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       }
     }
 
-    // normaliza (remove vazios e corta 10)
     $final = [];
     foreach ($out as $it) {
       $label = trim((string)($it['label'] ?? ''));
@@ -1308,8 +1281,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 10px;
+      gap: 8px;
       margin-top: 12px;
+      flex-wrap: wrap;
     }
 
     .pager-box .page-text {
@@ -1321,6 +1295,43 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     .btn-disabled {
       opacity: .45;
       pointer-events: none;
+    }
+
+    .pager-pages {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .page-num {
+      min-width: 36px;
+      height: 36px;
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 10px;
+      background: #fff;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: .15s ease;
+    }
+
+    .page-num:hover {
+      background: rgba(239, 246, 255, .8);
+      border-color: rgba(37, 99, 235, .25);
+      color: #0b5ed7;
+    }
+
+    .page-num.active {
+      background: #0b5ed7;
+      border-color: #0b5ed7;
+      color: #fff;
     }
 
     .box-tot {
@@ -1442,7 +1453,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     <div class="spinner"></div>
   </div>
 
-  <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="d-flex align-items-center gap-2">
@@ -1518,7 +1528,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
         <li class="nav-item"><a href="suporte.php"><span class="icon"><i class="lni lni-whatsapp"></i></span><span class="text">Suporte</span></a></li>
       </ul>
     </nav>
-    
   </aside>
 
   <div class="overlay"></div>
@@ -1628,9 +1637,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
                   <button class="main-btn primary-btn btn-hover btn-compact" id="btnGerar" type="button">
                     <i class="lni lni-play me-1"></i> Gerar
                   </button>
-                  <button class="main-btn light-btn btn-hover btn-compact" id="btnPDF" type="button">
-                    <i class="lni lni-printer me-1"></i> PDF
-                  </button>
                   <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                     <i class="lni lni-download me-1"></i> Excel
                   </button>
@@ -1711,15 +1717,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
                   <div class="muted mt-2" id="hintNone" style="display:none;">Nenhum dado para o filtro selecionado.</div>
 
-                  <!-- Paginação (igual inventário) -->
                   <div class="pager-box mb-2" id="pagerBox" style="display:none;">
                     <button class="main-btn light-btn btn-hover btn-compact" id="btnPrevPage" type="button" title="Anterior">
                       <i class="lni lni-chevron-left"></i>
                     </button>
-                    <span class="page-text" id="pagerText">Página 1/1</span>
+
+                    <div class="pager-pages" id="pagerPages"></div>
+
                     <button class="main-btn light-btn btn-hover btn-compact" id="btnNextPage" type="button" title="Próxima">
                       <i class="lni lni-chevron-right"></i>
                     </button>
+
+                    <span class="page-text" id="pagerText">Página 1/1</span>
                   </div>
                 </div>
 
@@ -1758,9 +1767,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-
   <script>
     function safeText(s) {
       return String(s ?? "")
@@ -1796,7 +1802,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     const dlRelSug = document.getElementById("dlRelSug");
 
     const btnGerar = document.getElementById("btnGerar");
-    const btnPDF = document.getElementById("btnPDF");
     const btnExcel = document.getElementById("btnExcel");
     const btnLimpar = document.getElementById("btnLimpar");
 
@@ -1817,11 +1822,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     const btnPrevPage = document.getElementById("btnPrevPage");
     const btnNextPage = document.getElementById("btnNextPage");
     const pagerText = document.getElementById("pagerText");
+    const pagerPages = document.getElementById("pagerPages");
 
     qRel.setAttribute("list", "dlRelSug");
     qGlobal.setAttribute("list", "dlGlobalSug");
 
-    // paginação
     const PER = 10;
     let PAGE = 1;
 
@@ -1878,6 +1883,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
       if (pages <= 1) {
         pagerBox.style.display = "none";
+        pagerPages.innerHTML = "";
         return;
       }
 
@@ -1886,6 +1892,24 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
       btnPrevPage.classList.toggle("btn-disabled", page <= 1);
       btnNextPage.classList.toggle("btn-disabled", page >= pages);
+
+      const start = Math.floor((page - 1) / 10) * 10 + 1;
+      const end = Math.min(start + 9, pages);
+
+      let html = "";
+      for (let i = start; i <= end; i++) {
+        html += `<button type="button" class="page-num ${i === page ? 'active' : ''}" data-page="${i}">${i}</button>`;
+      }
+      pagerPages.innerHTML = html;
+
+      pagerPages.querySelectorAll(".page-num").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const p = Number(btn.getAttribute("data-page") || "1");
+          if (p === PAGE) return;
+          PAGE = p;
+          debouncedGerar();
+        });
+      });
     }
 
     function renderTable(rep) {
@@ -1976,7 +2000,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       setInfo("CARREGANDO...", true);
       try {
         const rep = await fetchReport();
-        // sincroniza PAGE caso backend ajuste (ex.: page > pages)
         PAGE = Number(rep.page || PAGE);
         renderTable(rep);
       } catch (e) {
@@ -2033,38 +2056,46 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       const center = new Set((rep.centerCols || []).map(n => Number(n)));
 
       let html = `
-        <html><head><meta charset="utf-8">
-        <style>
-          table { border: 0.6px solid #999; font-family: Arial; font-size: 12px; }
-          td, th { border: 1px solid #999; padding: 6px 8px; vertical-align: middle; }
-          th { background: #f1f5f9; font-weight: 700; }
-          .title { font-size: 16px; font-weight: 700; background: #eef2ff; text-align: center; }
-          .muted { color: #555; font-weight: 700; }
-          .right { text-align: right; }
-          .center { text-align: center; }
-          .spacer td { border: none; padding: 4px; }
-        </style></head><body><table>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+              td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; }
+              th { background: #dbe5f1; font-weight: bold; }
+              .title { font-size: 16px; font-weight: bold; text-align: center; background: #ddebf7; }
+              .left { text-align: left; }
+              .center { text-align: center; }
+              .right { text-align: right; }
+            </style>
+          </head>
+          <body>
+            <table>
       `;
 
       const colN = rep.head.length;
 
       html += `<tr><td class="title" colspan="${colN}">PAINEL DA DISTRIBUIDORA - ${safeText(String(rep.title || "RELATÓRIO").toUpperCase())}</td></tr>`;
-      html += `<tr><td class="muted">Gerado em:</td><td colspan="${colN - 1}">${safeText(dt)}</td></tr>`;
-      html += `<tr><td class="muted">Período:</td><td colspan="${colN - 1}">${safeText(periodo)}</td></tr>`;
-      html += `<tr><td class="muted">Somatório:</td><td colspan="${colN - 1}">${safeText(rep.sum_text || "—")}</td></tr>`;
+      html += `<tr><td colspan="${colN}">Gerado em: ${safeText(dt)}</td></tr>`;
+      html += `<tr><td colspan="${colN}">Período: ${safeText(periodo)}</td></tr>`;
+      html += `<tr><td colspan="${colN}">Página: ${safeText(String(rep.page || 1))}/${safeText(String(rep.pages || 1))} | Total de linhas filtradas: ${safeText(String(rep.total_rows || 0))}</td></tr>`;
+      html += `<tr><td colspan="${colN}">${safeText(rep.sum_label || "Somatório")}: ${safeText(rep.sum_text || "—")}</td></tr>`;
       if (rep.sum_rec_text) {
-        html += `<tr><td class="muted">Recebido (Caixa):</td><td colspan="${colN - 1}">${safeText(rep.sum_rec_text)}</td></tr>`;
+        html += `<tr><td colspan="${colN}">Recebido (Caixa): ${safeText(rep.sum_rec_text)}</td></tr>`;
       }
-      html += `<tr class="spacer"><td colspan="${colN}"></td></tr>`;
 
       html += `<tr>${rep.head.map((h, idx) => {
-        const cls = right.has(idx) ? "right" : (center.has(idx) ? "center" : "");
+        let cls = "left";
+        if (right.has(idx)) cls = "right";
+        else if (center.has(idx)) cls = "center";
         return `<th class="${cls}">${safeText(h)}</th>`;
       }).join("")}</tr>`;
 
       (rep.body || []).forEach(row => {
         html += `<tr>${(row || []).map((c, idx) => {
-          const cls = right.has(idx) ? "right" : (center.has(idx) ? "center" : "");
+          let cls = "left";
+          if (right.has(idx)) cls = "right";
+          else if (center.has(idx)) cls = "center";
           return `<td class="${cls}">${safeText(c)}</td>`;
         }).join("")}</tr>`;
       });
@@ -2084,93 +2115,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       URL.revokeObjectURL(url);
     }
 
-    function exportPDF() {
-      const rep = CURRENT;
-      if (!rep || !rep.head || !rep.body) {
-        alert("Gere um relatório primeiro.");
-        return;
-      }
-      if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert("Biblioteca do PDF não carregou.");
-        return;
-      }
-
-      const now = new Date();
-      const dt = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR");
-      const periodo = pillPeriod.textContent.replace("Período:", "").trim() || "—";
-
-      const right = new Set((rep.rightCols || []).map(n => Number(n)));
-      const center = new Set((rep.centerCols || []).map(n => Number(n)));
-
-      const {
-        jsPDF
-      } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "landscape",
-        unit: "pt",
-        format: "a4"
-      });
-
-      const M = 70;
-      doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text(`PAINEL DA DISTRIBUIDORA - ${String(rep.title || "RELATÓRIO").toUpperCase()}`, M, 55);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`Gerado em: ${dt}`, M, 75);
-      doc.text(`Período: ${periodo}`, M, 92);
-      doc.text(`Somatório: ${rep.sum_text || "—"}`, M, 108);
-      if (rep.sum_rec_text) doc.text(`Recebido (Caixa): ${rep.sum_rec_text}`, M, 122);
-
-      doc.autoTable({
-        head: [rep.head],
-        body: rep.body,
-        startY: 130,
-        margin: {
-          left: M,
-          right: M
-        },
-        theme: "plain",
-        styles: {
-          font: "helvetica",
-          fontSize: 9,
-          textColor: [17, 24, 39],
-          cellPadding: {
-            top: 6,
-            right: 6,
-            bottom: 6,
-            left: 6
-          },
-          lineWidth: 0
-        },
-        headStyles: {
-          fillColor: [241, 245, 249],
-          textColor: [17, 24, 39],
-          fontStyle: "bold",
-          lineWidth: 0
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252]
-        },
-        didParseCell: function(data) {
-          const col = data.column.index;
-          if (right.has(col)) data.cell.styles.halign = "right";
-          if (center.has(col)) data.cell.styles.halign = "center";
-          data.cell.styles.lineWidth = 0;
-        }
-      });
-
-      doc.save(`relatorio_${String(rep.title || "relatorio").toLowerCase().replace(/\s+/g, "_")}_pag${rep.page || 1}.pdf`);
-    }
-
-    // paginação
     btnPrevPage.addEventListener("click", () => {
       if ((CURRENT.page || 1) <= 1) return;
       PAGE = (CURRENT.page || 1) - 1;
       debouncedGerar();
     });
+
     btnNextPage.addEventListener("click", () => {
       if ((CURRENT.page || 1) >= (CURRENT.pages || 1)) return;
       PAGE = (CURRENT.page || 1) + 1;
@@ -2181,8 +2131,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       PAGE = 1;
       debouncedGerar();
     });
+
     btnExcel.addEventListener("click", exportExcel);
-    btnPDF.addEventListener("click", exportPDF);
 
     btnLimpar.addEventListener("click", () => {
       rTipo.value = "VENDAS_RESUMO";
@@ -2213,7 +2163,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       });
     });
 
-    // init
     debouncedGerar();
   </script>
 </body>
