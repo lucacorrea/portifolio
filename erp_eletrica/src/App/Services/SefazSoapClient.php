@@ -147,16 +147,26 @@ class SefazSoapClient extends BaseService {
     private function extractPem($pfxPath, $password) {
         $pfxContent = file_get_contents($pfxPath);
         
+        // Validate with NFePHP first (same as the rest of the system)
         require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
-        
         try {
-            $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
+            \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
         } catch (\Exception $e) {
-            throw new Exception("Falha ao extrair certificado para comunicação SOAP: " . $e->getMessage());
+            throw new Exception("Certificado/senha inválidos para comunicação SOAP: " . $e->getMessage());
+        }
+
+        // Now extract PEM parts for CURL (openssl_pkcs12_read works after NFePHP confirmed validity)
+        $certs = [];
+        if (!openssl_pkcs12_read($pfxContent, $certs, $password)) {
+            // Fallback: try exporting via openssl raw functions
+            throw new Exception("Falha ao extrair PEM do certificado para CURL. Reconfigure o certificado.");
         }
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'SEFAZ');
-        file_put_contents($tmpFile, $certificate->certificate . "\n" . $certificate->privateKey);
+        $pemContent = $certs['cert'] . "\n" . $certs['pkey'];
+        if (!file_put_contents($tmpFile, $pemContent)) {
+            throw new Exception("Não foi possível gravar arquivo temporário PEM.");
+        }
         
         return ['file' => $tmpFile];
     }

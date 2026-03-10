@@ -12,7 +12,7 @@ class FiscalService extends BaseService {
         $this->db = Database::getInstance()->getConnection();
     }
 
-    private function getFiscalConfig($branchId) {
+    public function getFiscalConfig($branchId) {
         // 1. Load Branch Info
         $branch = $this->getBranchData($branchId);
         if (!$branch) {
