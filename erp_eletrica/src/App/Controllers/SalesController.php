@@ -231,6 +231,8 @@ class SalesController extends BaseController {
                     'forma_pagamento'     => $data['pagamento'],
                     'autorizado_por'      => $supervisorId,
                     'tipo_nota'           => $tipoNota,
+                    'valor_recebido'      => isset($data['valor_recebido']) ? (float)$data['valor_recebido'] : null,
+                    'troco'               => isset($data['troco']) ? (float)$data['troco'] : null,
                 ];
 
                 $saleId = $saleModel->create($saleData);

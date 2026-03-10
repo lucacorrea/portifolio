@@ -1,6 +1,8 @@
 <?php
 // recibo_venda.php — Recibo Não Fiscal (estilo bobina 80mm)
 // Uso: recibo_venda.php?id=<venda_id>
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 session_start();
 if (empty($_SESSION['usuario_id'])) { http_response_code(403); exit('Acesso negado.'); }
 
@@ -11,14 +13,19 @@ if (!$vendaId) { exit('ID inválido.'); }
 
 $db = \App\Config\Database::getInstance()->getConnection();
 
-// Fetch sale
+// Fetch sale — column names fixed: logradouro, municipio, numero, bairro
 $stmt = $db->prepare("
     SELECT v.*, 
-           COALESCE(c.nome, 'Consumidor Final') as cliente_nome,
+           COALESCE(c.nome, v.nome_cliente_avulso, 'Consumidor Final') as cliente_nome,
            c.cpf_cnpj,
            u.nome as vendedor_nome,
-           f.nome as filial_nome, f.cnpj as filial_cnpj, f.endereco as filial_endereco,
-           f.telefone as filial_telefone, f.cidade as filial_cidade, f.uf as filial_uf
+           f.nome as filial_nome,
+           f.cnpj as filial_cnpj,
+           CONCAT_WS(', ', f.logradouro, f.numero, f.bairro) as filial_endereco,
+           f.municipio as filial_cidade,
+           f.uf as filial_uf,
+           f.telefone as filial_telefone,
+           f.razao_social as filial_razao
     FROM vendas v
     LEFT JOIN clientes c ON v.cliente_id = c.id
     LEFT JOIN usuarios u ON v.usuario_id = u.id
@@ -46,9 +53,17 @@ $paymentMap = [
     'cartao_debito'  => 'Cartão de Débito',
     'boleto'         => 'Boleto',
     'fiado'          => 'A Prazo (Fiado)',
+    'credito'        => 'Crédito',
+    'debito'         => 'Débito',
 ];
 $formaPag = $paymentMap[$venda['forma_pagamento']] ?? strtoupper($venda['forma_pagamento']);
 $dataVenda = date('d/m/Y H:i', strtotime($venda['data_venda'] ?? $venda['created_at'] ?? 'now'));
+
+// Compute troco: if payment is dinheiro and valor_recebido > valor_total
+$valorTotal   = (float)($venda['valor_total'] ?? 0);
+$valorRecebido = isset($venda['valor_recebido']) ? (float)$venda['valor_recebido'] : null;
+$troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinheiro' && $valorRecebido > $valorTotal)
+                 ? ($valorRecebido - $valorTotal) : 0;
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -346,18 +361,30 @@ $dataVenda = date('d/m/Y H:i', strtotime($venda['data_venda'] ?? $venda['created
                     <td class="left"><b>QTDE DE ITENS</b></td>
                     <td class="right"><?= count($itens) ?></td>
                 </tr>
+                <?php if ($venda['desconto_total'] > 0): ?>
                 <tr>
-                    <td class="left" style="font-size:14px;"><b>VALOR TOTAL R$</b></td>
-                    <td class="right" style="font-size:14px;"><b><?= number_format($venda['valor_total'],2,',','.') ?></b></td>
+                    <td class="left">DESCONTO</td>
+                    <td class="right">- R$ <?= number_format($venda['desconto_total'],2,',','.') ?></td>
                 </tr>
-                <?php if ($venda['desconto_total'] > 0): ?><tr>
-                        <td class="left"><b>DESCONTO</b></td>
-                        <td class="right">- <?= number_format($venda['desconto_total'],2,',','.') ?></td>
-                    </tr><?php endif; ?>
+                <?php endif; ?>
+                <tr style="border-top:1px dashed #000">
+                    <td class="left" style="font-size:14px;padding-top:4px"><b>TOTAL R$</b></td>
+                    <td class="right" style="font-size:14px;padding-top:4px"><b><?= number_format($valorTotal,2,',','.') ?></b></td>
+                </tr>
                 <tr>
                     <td class="left"><b>FORMA DE PAGAMENTO</b></td>
                     <td class="right"><?= htmlspecialchars($formaPag) ?></td>
                 </tr>
+                <?php if ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinheiro'): ?>
+                <tr>
+                    <td class="left">VL. RECEBIDO R$</td>
+                    <td class="right"><?= number_format($valorRecebido,2,',','.') ?></td>
+                </tr>
+                <tr>
+                    <td class="left"><b>TROCO R$</b></td>
+                    <td class="right"><b><?= number_format($troco,2,',','.') ?></b></td>
+                </tr>
+                <?php endif; ?>
             </tbody>
         </table>
 

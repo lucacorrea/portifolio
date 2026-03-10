@@ -5,8 +5,9 @@ class Sale extends BaseModel {
     protected $table = 'vendas';
 
     public function create($data) {
-        $hasAvulso    = $this->columnExists('nome_cliente_avulso');
-        $hasTipoNota  = $this->columnExists('tipo_nota');
+        $hasAvulso      = $this->columnExists('nome_cliente_avulso');
+        $hasTipoNota    = $this->columnExists('tipo_nota');
+        $hasValorRecebido = $this->columnExists('valor_recebido');
 
         $cols   = ['cliente_id', 'usuario_id', 'filial_id', 'valor_total', 'desconto_total', 'autorizado_por', 'forma_pagamento', 'status'];
         $params = [
@@ -28,6 +29,13 @@ class Sale extends BaseModel {
         if ($hasTipoNota) {
             $cols[]   = 'tipo_nota';
             $params[] = $data['tipo_nota'] ?? 'nao_fiscal';
+        }
+
+        if ($hasValorRecebido) {
+            $cols[]   = 'valor_recebido';
+            $params[] = isset($data['valor_recebido']) ? (float)$data['valor_recebido'] : null;
+            $cols[]   = 'troco';
+            $params[] = isset($data['troco']) ? (float)$data['troco'] : null;
         }
 
         $placeholders = implode(', ', array_fill(0, count($cols), '?'));
