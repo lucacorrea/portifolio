@@ -160,97 +160,83 @@ class FiscalService extends BaseService {
     }
 
     /**
-     * Simulates a connectivity test with SEFAZ WebServices
+     * Tests SEFAZ connectivity using NFePHP Tools - exactly like Açaidinhos does.
      */
     public function testConnection($branchId) {
-        $branch = $this->getBranchData($branchId);
-        $fiscal = $this->getFiscalConfig($branchId);
-        
+        $branch   = $this->getBranchData($branchId);
+        $fiscal   = $this->getFiscalConfig($branchId);
+
         if (empty($branch['cnpj'])) {
             throw new Exception("CNPJ não configurado para esta filial.");
         }
-        
         if (empty($fiscal['certificado_pfx'])) {
-            throw new Exception("Certificado Digital (.pfx) não configurado (nem globalmente nem na filial).");
+            throw new Exception("Certificado não configurado (nem globalmente nem na filial).");
         }
-
         if (empty($fiscal['certificado_senha'])) {
             throw new Exception("Senha do certificado não configurada.");
         }
 
-        // Test actual signing capability to ensure certificate is fully functional
-        try {
-            $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscal['certificado_pfx'];
-            if (!file_exists($pfxPath)) throw new Exception("Arquivo do certificado não encontrado no servidor.");
-            
-            $pfxContent = file_get_contents($pfxPath);
-            $password = $fiscal['certificado_senha'];
-            
-            require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
-            
-            try {
-                $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
-            } catch (\Exception $e) {
-                throw new Exception("Falha ao ler o certificado digital NFePHP: " . $e->getMessage());
-            }
+        $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscal['certificado_pfx'];
+        if (!file_exists($pfxPath)) {
+            throw new Exception("Arquivo do certificado não encontrado no servidor.");
+        }
 
-            // 1. Check if the certificate is valid
-            if ($certificate->isExpired()) {
-                throw new Exception("O certificado digital está expirado desde " . $certificate->getValidTo()->format('d/m/Y H:i:s'));
-            }
-            
-            // To pass the cert to the array formatting below, we extract them:
-            $certs = [
-                'cert' => $certificate->certificate,
-                'pkey' => $certificate->privateKey
+        require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+
+        // Step 1: Load certificate – exactly like Açaidinhos
+        $pfxContent  = file_get_contents($pfxPath);
+        $password    = $fiscal['certificado_senha'];
+
+        try {
+            $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
+        } catch (\Exception $e) {
+            throw new Exception("Falha ao ler o certificado digital: " . $e->getMessage());
+        }
+
+        if ($certificate->isExpired()) {
+            throw new Exception("O certificado digital está expirado em: " . $certificate->getValidTo()->format('d/m/Y H:i:s'));
+        }
+
+        // Step 2: Build Config JSON for NFePHP Tools – exactly like Açaidinhos' nfce_config.php
+        $siglaUF   = $branch['uf'] ?? 'SP';
+        $tpAmb     = (int)($fiscal['ambiente'] ?? 2);
+        $configArray = [
+            'atualizacao' => date('Y-m-d H:i:s'),
+            'tpAmb'       => $tpAmb,
+            'razaosocial' => $branch['nome'] ?? 'ERP',
+            'siglaUF'     => $siglaUF,
+            'cnpj'        => preg_replace('/\D/', '', $branch['cnpj']),
+            'schemes'     => 'PL_009_V4',
+            'versao'      => '4.00',
+            'urlChave'    => '',
+            'urlQRCode'   => '',
+            'CSC'         => $branch['csc_token'] ?? '',
+            'CSCid'       => str_pad($branch['csc_id'] ?? '', 6, '0', STR_PAD_LEFT),
+            'proxyConf'   => ['proxyIp' => '', 'proxyPort' => '', 'proxyUser' => '', 'proxyPass' => ''],
+        ];
+        $configJson = json_encode($configArray, JSON_UNESCAPED_UNICODE);
+
+        // Step 3: Use NFePHP Tools exactly like Açaidinhos status.php
+        try {
+            $tools = new \NFePHP\NFe\Tools($configJson, $certificate);
+            $tools->model('65'); // NFC-e model
+
+            $xml = $tools->sefazStatus();
+
+            // Step 4: Standardize response – exactly like Açaidinhos
+            $std = new \NFePHP\NFe\Common\Standardize();
+            $std = $std->toStd($xml);
+
+            return [
+                'success'   => true,
+                'status'    => (string)($std->cStat ?? '???'),
+                'motivo'    => (string)($std->xMotivo ?? 'Resposta sem motivo'),
+                'ambiente'  => $tpAmb == 1 ? 'Produção' : 'Homologação',
+                'verAplic'  => (string)($std->verAplic ?? '---'),
+                'timestamp' => (string)($std->dhRecbto ?? date('d/m/Y H:i:s')),
             ];
 
-            // 2. Real connectivity check (Status do Serviço)
-            $soapClient = new SefazSoapClient();
-            
-            // Generate exact XML schema for NfeStatusServico4
-            $uf = "35"; // SP by default for this project
-            if (isset($branch['uf'])) {
-                $estados = ['RO'=>'11','AC'=>'12','AM'=>'13','RR'=>'14','PA'=>'15','AP'=>'16','TO'=>'17','MA'=>'21','PI'=>'22','CE'=>'23','RN'=>'24','PB'=>'25','PE'=>'26','AL'=>'27','SE'=>'28','BA'=>'29','MG'=>'31','ES'=>'32','RJ'=>'33','SP'=>'35','PR'=>'41','SC'=>'42','RS'=>'43','MS'=>'50','MT'=>'51','GO'=>'52','DF'=>'53'];
-                $uf = $estados[$branch['uf']] ?? '35';
-            }
-
-            $xml = '<consStatServ xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><tpAmb>' . $fiscal['ambiente'] . '</tpAmb><cUF>' . $uf . '</cUF><xServ>STATUS</xServ></consStatServ>';
-            
-            try {
-                $responseXml = $soapClient->call('sefaz_status', $xml, $fiscal);
-                
-                // Parse response safely
-                $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $responseXml);
-                $res = @simplexml_load_string($cleanXml);
-                
-                if (!$res) {
-                     throw new Exception("Falha ao ler XML de resposta da SEFAZ.");
-                }
-
-                $nodes = $res->xpath('//retConsStatServ');
-                $retStatus = !empty($nodes) ? $nodes[0] : null;
-
-                if (!$retStatus) {
-                     throw new Exception("Estrutura retConsStatServ não encontrada.");
-                }
-
-                return [
-                    'success' => true,
-                    'status' => (string)$retStatus->cStat ?: '???',
-                    'motivo' => (string)$retStatus->xMotivo ?: 'Resposta sem motivo',
-                    'ambiente' => ($fiscal['ambiente'] == 1) ? 'Produção' : 'Homologação',
-                    'verAplic' => (string)$retStatus->verAplic ?: '---',
-                    'timestamp' => (string)$retStatus->dhRecbto ?: date('d/m/Y H:i:s'),
-                    'cert_info' => [
-                        'subject' => isset($certs['cert']) && openssl_x509_parse($certs['cert']) ? (openssl_x509_parse($certs['cert'])['subject']['CN'] ?? 'Desconhecido') : 'Desconhecido',
-                        'validTo' => isset($certs['cert']) && openssl_x509_parse($certs['cert']) ? date('d/m/Y', openssl_x509_parse($certs['cert'])['validTo_time_t'] ?? time()) : '---'
-                    ]
-                ];
-            } catch (Exception $e) {
-                throw new Exception("Certificado local OK, mas falha na comunicação SEFAZ: " . $e->getMessage());
-            }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw new Exception("Erro no teste do certificado: " . $e->getMessage());
         }
     }
