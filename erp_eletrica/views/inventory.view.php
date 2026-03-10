@@ -283,9 +283,13 @@
                         <label class="form-label small fw-bold">GTIN/EAN (cEAN)</label>
                         <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="SEM GTIN">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 position-relative">
                         <label class="form-label small fw-bold">CEST</label>
-                        <input type="text" name="cest" id="edit_cest" class="form-control shadow-sm">
+                        <div class="input-group input-group-sm shadow-sm">
+                            <input type="text" name="cest" id="edit_cest" class="form-control" placeholder="Digite cód. ou descrição..." autocomplete="off" onkeyup="searchCestInline(this.value)">
+                            <span class="input-group-text bg-white" id="cestLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary" style="font-size:0.75rem;"></i></span>
+                        </div>
+                        <ul id="cestDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto; background-color:#fff; border:1px solid #dee2e6; border-top:none; border-radius:0 0 6px 6px;"></ul>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Origem da Mercadoria</label>
