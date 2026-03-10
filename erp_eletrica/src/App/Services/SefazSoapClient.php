@@ -23,11 +23,11 @@ class SefazSoapClient extends BaseService {
         ]
     ];
 
-    private $methodMapping = [
-        'nfe_distribuicao' => 'nfeDistribuicaoDFe',
-        'nfe_evento' => 'nfeRecepcaoEvento4',
-        'nfce_autorizacao' => 'nfeAutorizacaoLote',
-        'sefaz_status' => 'nfeStatusServico4'
+    private $serviceMapping = [
+        'nfe_distribuicao' => ['service' => 'NFeDistribuicaoDFe', 'method' => 'nfeDistribuicaoDFe'],
+        'nfe_evento' => ['service' => 'NFeRecepcaoEvento4', 'method' => 'nfeRecepcaoEvento4'],
+        'nfce_autorizacao' => ['service' => 'NFeAutorizacao4', 'method' => 'nfeAutorizacaoLote'],
+        'sefaz_status' => ['service' => 'NFeStatusServico4', 'method' => 'nfeStatusServico4']
     ];
 
     public function call($method, $xml, $fiscal) {
@@ -37,7 +37,9 @@ class SefazSoapClient extends BaseService {
         $url = $this->endpoints[$ambiente][$method] ?? null;
         if (!$url) throw new Exception("Endpoint SEFAZ não encontrado para o método $method no ambiente $ambiente.");
 
-        $wsdlMethod = $this->methodMapping[$method] ?? $method;
+        $mapping = $this->serviceMapping[$method] ?? ['service' => $method, 'method' => $method];
+        $serviceName = $mapping['service'];
+        $methodName = $mapping['method'];
 
         $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscal['certificado_pfx'];
         $password = $fiscal['certificado_senha']; 
@@ -45,19 +47,25 @@ class SefazSoapClient extends BaseService {
         // Prepare temporary PEM files for CURL
         $pemCert = $this->extractPem($pfxPath, $password);
         
-        $soapXml = $this->wrapSoap($xml, $wsdlMethod);
+        // SEFAZ 4.00: O conteúdo de nfeDadosMsg NÃO deve ter a declaração XML
+        $xmlBody = preg_replace('/^<\?xml[^>]*\?>/i', '', trim($xml));
+        
+        $soapXml = $this->wrapSoap($xmlBody, $serviceName, $methodName);
 
-        // DEBUG: Gravar último XML enviado para inspeção se DEBUG estiver ativo
+        // DEBUG: Gravar último XML enviado para inspeção
         if (defined('DEBUG') && DEBUG) {
-            file_put_contents(dirname(__DIR__, 3) . '/storage/last_sefaz_request.xml', $soapXml);
+            $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_request.xml';
+            @file_put_contents($logPath, $soapXml);
         }
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
+        
+        $action = "http://www.portalfiscal.inf.br/nfe/wsdl/$serviceName/$methodName";
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Content-Type: application/soap+xml; charset=utf-8; action=\"http://www.portalfiscal.inf.br/nfe/wsdl/$wsdlMethod\"",
+            "Content-Type: application/soap+xml; charset=utf-8; action=\"$action\"",
             "Content-Length: " . strlen($soapXml)
         ]);
         
@@ -66,6 +74,7 @@ class SefazSoapClient extends BaseService {
         curl_setopt($ch, CURLOPT_SSLKEY, $pemCert['file']);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2); 
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
@@ -79,27 +88,44 @@ class SefazSoapClient extends BaseService {
 
         if ($error) throw new Exception("Erro de conexão SEFAZ (CURL): [Code $httpCode] $error");
         
-        // DEBUG: Gravar retorno se falhar com 500
+        // DEBUG: Gravar retorno se falhar
         if ($httpCode >= 400 && defined('DEBUG') && DEBUG) {
-            file_put_contents(dirname(__DIR__, 3) . '/storage/last_sefaz_error_response.txt', "HTTP $httpCode\n\n$response");
+            $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_error_response.txt';
+            @file_put_contents($logPath, "HTTP $httpCode\nAction: $action\n\n$response");
         }
 
-        if ($httpCode >= 400) throw new Exception("Erro HTTP SEFAZ: $httpCode. O servidor rejeitou a requisição. Verifique os dados do certificado e se o ambiente está correto.");
+        if ($httpCode >= 400) {
+             $motivo = $this->extractSoapFault($response);
+             if ($motivo) throw new Exception("Erro SEFAZ: $motivo");
+             throw new Exception("Erro HTTP SEFAZ: $httpCode. O servidor rejeitou a requisição. Verifique se o ambiente de " . ($ambiente == 'producao' ? 'Produção' : 'Homologação') . " está configurado corretamente no certificado.");
+        }
+        
         if (empty($response)) throw new Exception("Resposta vazia da SEFAZ. O servidor pode estar indisponível ou recusou a conexão.");
 
         return $response;
     }
 
-    private function wrapSoap($xml, $wsdlMethod) {
-        // Simple SOAP 1.2 wrapper for SEFAZ 4.0
+    private function wrapSoap($xml, $serviceName, $methodName) {
         return '<?xml version="1.0" encoding="utf-8"?>
         <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
           <soap12:Body>
-            <' . $wsdlMethod . ' xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/' . $wsdlMethod . '">
+            <' . $methodName . ' xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName . '">
               <nfeDadosMsg>' . $xml . '</nfeDadosMsg>
-            </' . $wsdlMethod . '>
+            </' . $methodName . '>
           </soap12:Body>
         </soap12:Envelope>';
+    }
+
+    private function extractSoapFault($response) {
+        if (empty($response)) return null;
+        try {
+            $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $response);
+            $xml = @simplexml_load_string($cleanXml);
+            if ($xml && isset($xml->Body->Fault)) {
+                return (string)($xml->Body->Fault->Reason->Text ?? $xml->Body->Fault->faultstring);
+            }
+        } catch (Exception $e) {}
+        return null;
     }
 
     private function extractPem($pfxPath, $password) {
