@@ -277,7 +277,7 @@
                             <input type="text" name="ncm" class="form-control" id="edit_ncm" placeholder="Digite cód. ou nome..." autocomplete="off" onkeyup="searchNcmInline(this.value)">
                             <span class="input-group-text bg-white" id="ncmLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary" style="font-size:0.75rem;"></i></span>
                         </div>
-                        <ul id="ncmDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto;"></ul>
+                        <ul id="ncmDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto; background-color:#fff; border:1px solid #dee2e6; border-top:none; border-radius:0 0 6px 6px;"></ul>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">GTIN/EAN (cEAN)</label>
