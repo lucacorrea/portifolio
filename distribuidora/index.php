@@ -382,7 +382,7 @@
                   <strong>Painel da Distribuidora PLHB</strong>.
                 </p>
 
-                <form action="#" method="post" autocomplete="on">
+                <form action="./assets/auth/processarLogin.php" method="post" autocomplete="on">
                   <div class="row">
                     <div class="col-12">
                       <div class="input-style-1">
