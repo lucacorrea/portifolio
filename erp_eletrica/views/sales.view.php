@@ -994,6 +994,16 @@ async function processarCheckout() {
     const payment = document.querySelector('input[name="payment"]:checked').value;
     const entrada = parseFloat(document.getElementById('entradaValor')?.value) || 0;
 
+    // Troco / valor recebido (only relevant for dinheiro)
+    let valorRecebido = null;
+    let troco = 0;
+    if (payment === 'dinheiro') {
+        const valorRecebidoEl = document.getElementById('valorRecebidoDinheiro');
+        valorRecebido = valorRecebidoEl ? (parseFloat(valorRecebidoEl.value) || total) : total;
+        if (valorRecebido < total) valorRecebido = total; // ensure at least total
+        troco = valorRecebido - total;
+    }
+
     if (payment === 'fiado' && entrada >= total) {
         alert('O valor da entrada não pode ser maior ou igual ao total da venda a prazo. Se o cliente vai pagar tudo agora, selecione outro método de pagamento.');
         return;
@@ -1008,6 +1018,8 @@ async function processarCheckout() {
         items: cart,
         pagamento: payment,
         entrada_valor: entrada,
+        valor_recebido: valorRecebido,
+        troco: troco,
         cliente_id: selectedCustomerId,
         nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
         pv_id: currentPvId,
@@ -1028,7 +1040,7 @@ async function processarCheckout() {
         const modalEntrada = bootstrap.Modal.getInstance(document.getElementById('modalEntrada'));
         if (modalEntrada) modalEntrada.hide();
 
-        showSuccessModal(result.sale_id, data.total, result.tipo_nota || data.tipo_nota);
+        showSuccessModal(result.sale_id, data.total, result.tipo_nota || data.tipo_nota, troco, valorRecebido);
         cart = [];
         currentPvId = null;
         isAuthorized = false;
@@ -1043,11 +1055,19 @@ async function processarCheckout() {
     }
 }
 
-function showSuccessModal(saleId, total, tipoNota) {
+function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = null) {
     const isFiscal = tipoNota === 'fiscal';
     const tipoLabel = isFiscal
         ? '<span class="badge bg-success mb-3"><i class="fas fa-file-invoice-dollar me-1"></i>Venda Fiscal</span>'
-        : '<span class="badge bg-secondary mb-3"><i class="fas fa-receipt me-1"></i>Venda N\u00e3o Fiscal</span>';
+        : '<span class="badge bg-secondary mb-3"><i class="fas fa-receipt me-1"></i>Venda Não Fiscal</span>';
+
+    // Troco block (Açaidinhos style - show prominently in green for dinheiro)
+    const trocoBlock = (troco > 0)
+        ? `<div class="alert alert-success py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
+               <span class="fw-bold"><i class="fas fa-coins me-1"></i>TROCO</span>
+               <span class="fw-bold fs-4">R$ ${troco.toFixed(2).replace('.', ',')}</span>
+           </div>`
+        : '';
 
     const btnPrint = isFiscal
         ? `<button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
@@ -1067,7 +1087,8 @@ function showSuccessModal(saleId, total, tipoNota) {
                         </div>
                         ${tipoLabel}
                         <h3 class="fw-bold mb-2">Venda Finalizada!</h3>
-                        <p class="text-muted mb-4">Venda <strong>#${saleId}</strong> — <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong></p>
+                        <p class="text-muted mb-3">Venda <strong>#${saleId}</strong> — <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong></p>
+                        ${trocoBlock}
                         <div class="d-grid gap-2">
                             ${btnPrint}
                             <button class="btn btn-link text-muted mt-1" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
