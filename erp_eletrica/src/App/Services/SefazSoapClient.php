@@ -89,7 +89,7 @@ class SefazSoapClient extends BaseService {
         // mTLS Authentication
         curl_setopt($ch, CURLOPT_SSLCERT, $pemCert['file']);
         curl_setopt($ch, CURLOPT_SSLKEY, $pemCert['file']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2); 
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
