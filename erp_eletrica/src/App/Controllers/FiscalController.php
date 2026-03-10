@@ -93,7 +93,7 @@ class FiscalController extends BaseController {
             $service = new \App\Services\FiscalService();
             $result = $service->testConnection($id);
             echo json_encode($result);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;
