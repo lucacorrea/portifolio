@@ -645,7 +645,7 @@ function fmtMoney($v): string
     .logout-btn {
       padding: 8px 14px !important;
       min-width: 88px;
-      height: 42px;
+      height: 48px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
