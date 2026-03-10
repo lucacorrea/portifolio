@@ -70,7 +70,7 @@
     <?php endif; ?>
 
     <!-- Histórico de Caixas -->
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 ">
         <div class="card-header bg-white py-3">
             <h6 class="mb-0 fw-bold text-secondary">Histórico de Sessões</h6>
         </div>
