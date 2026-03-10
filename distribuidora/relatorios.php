@@ -99,9 +99,6 @@ function like_q(string $q): string
   return '%' . $q . '%';
 }
 
-/**
- * Monta um OR com LIKE usando placeholders ÚNICOS (evita HY093).
- */
 function add_like_or(array $fields, string $q, array &$params, string $prefix = 'q'): string
 {
   $q = like_q($q);
@@ -157,9 +154,6 @@ function table_exists(PDO $pdo, string $table): bool
    Builders (SQL -> report) + PAGINAÇÃO
 ========================= */
 
-/**
- * REGRA: se a venda tiver devolução (status <> CANCELADO), NÃO aparece em Vendas.
- */
 function report_vendas_resumo(PDO $pdo, string $dtIni, string $dtFim, string $q, int $page, int $per): array
 {
   $where = [];
@@ -321,7 +315,6 @@ function report_vendas_itens(PDO $pdo, string $dtIni, string $dtFim, string $q, 
   $agg = $stAgg->fetch(PDO::FETCH_ASSOC) ?: ['cnt' => 0, 'sum_total' => 0];
 
   $meta = paginate_meta((int)$agg['cnt'], $page, $per);
-  $page = $meta['page'];
   $offset = $meta['offset'];
 
   $sql = "
@@ -1277,61 +1270,54 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       min-height: 260px;
     }
 
+    .table-footer-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
     .pager-box {
       display: flex;
       align-items: center;
+      gap: 14px;
       justify-content: flex-end;
-      gap: 8px;
-      margin-top: 12px;
       flex-wrap: wrap;
     }
 
-    .pager-box .page-text {
-      font-size: 12px;
-      color: #64748b;
-      font-weight: 900;
-    }
-
-    .btn-disabled {
-      opacity: .45;
-      pointer-events: none;
-    }
-
-    .pager-pages {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .page-num {
-      min-width: 36px;
-      height: 36px;
-      border: 1px solid rgba(148, 163, 184, .25);
-      border-radius: 10px;
-      background: #fff;
-      color: #334155;
-      font-size: 12px;
-      font-weight: 900;
-      padding: 0 10px;
+    .page-btn {
+      width: 42px;
+      height: 42px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #475569;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: .15s ease;
+      transition: .2s ease;
     }
 
-    .page-num:hover {
-      background: rgba(239, 246, 255, .8);
-      border-color: rgba(37, 99, 235, .25);
-      color: #0b5ed7;
+    .page-btn:hover:not(:disabled) {
+      background: #eef2ff;
+      color: #1e40af;
+      border-color: #c7d2fe;
     }
 
-    .page-num.active {
-      background: #0b5ed7;
-      border-color: #0b5ed7;
-      color: #fff;
+    .page-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .page-info {
+      font-weight: 900;
+      color: #475569;
+      min-width: 90px;
+      text-align: center;
+      font-size: 12px;
     }
 
     .box-tot {
@@ -1443,6 +1429,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
       .filters-actions {
         justify-content: flex-start;
+      }
+
+      .table-footer-nav {
+        justify-content: center;
+      }
+
+      #infoCount {
+        text-align: center;
+        width: 100%;
       }
     }
   </style>
@@ -1717,18 +1712,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
                   <div class="muted mt-2" id="hintNone" style="display:none;">Nenhum dado para o filtro selecionado.</div>
 
-                  <div class="pager-box mb-2" id="pagerBox" style="display:none;">
-                    <button class="main-btn light-btn btn-hover btn-compact" id="btnPrevPage" type="button" title="Anterior">
-                      <i class="lni lni-chevron-left"></i>
-                    </button>
+                  <div class="table-footer-nav">
+                    <p class="text-sm text-gray mb-0" id="infoCount">Mostrando 0 item(ns) nesta página. Total filtrado: 0.</p>
 
-                    <div class="pager-pages" id="pagerPages"></div>
+                    <div class="pager-box" id="pagerBox">
+                      <button class="page-btn" id="btnPrevPage" type="button" title="Anterior">
+                        <i class="lni lni-chevron-left"></i>
+                      </button>
 
-                    <button class="main-btn light-btn btn-hover btn-compact" id="btnNextPage" type="button" title="Próxima">
-                      <i class="lni lni-chevron-right"></i>
-                    </button>
+                      <span class="page-info" id="pagerText">Página 1/1</span>
 
-                    <span class="page-text" id="pagerText">Página 1/1</span>
+                      <button class="page-btn" id="btnNextPage" type="button" title="Próxima">
+                        <i class="lni lni-chevron-right"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1822,7 +1819,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     const btnPrevPage = document.getElementById("btnPrevPage");
     const btnNextPage = document.getElementById("btnNextPage");
     const pagerText = document.getElementById("pagerText");
-    const pagerPages = document.getElementById("pagerPages");
+    const infoCount = document.getElementById("infoCount");
 
     qRel.setAttribute("list", "dlRelSug");
     qGlobal.setAttribute("list", "dlGlobalSug");
@@ -1881,35 +1878,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       const pages = Number(rep.pages || 1);
       const page = Number(rep.page || 1);
 
-      if (pages <= 1) {
-        pagerBox.style.display = "none";
-        pagerPages.innerHTML = "";
-        return;
-      }
-
       pagerBox.style.display = "flex";
       pagerText.textContent = `Página ${page}/${pages}`;
 
-      btnPrevPage.classList.toggle("btn-disabled", page <= 1);
-      btnNextPage.classList.toggle("btn-disabled", page >= pages);
-
-      const start = Math.floor((page - 1) / 10) * 10 + 1;
-      const end = Math.min(start + 9, pages);
-
-      let html = "";
-      for (let i = start; i <= end; i++) {
-        html += `<button type="button" class="page-num ${i === page ? 'active' : ''}" data-page="${i}">${i}</button>`;
-      }
-      pagerPages.innerHTML = html;
-
-      pagerPages.querySelectorAll(".page-num").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const p = Number(btn.getAttribute("data-page") || "1");
-          if (p === PAGE) return;
-          PAGE = p;
-          debouncedGerar();
-        });
-      });
+      btnPrevPage.disabled = page <= 1;
+      btnNextPage.disabled = page >= pages;
     }
 
     function renderTable(rep) {
@@ -1938,6 +1911,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       hintNone.style.display = pageCount ? "none" : "block";
 
       pillCount.innerHTML = `<i class="lni lni-checkmark-circle"></i> ${pageCount} linhas (de ${totalRows})`;
+      infoCount.textContent = `Mostrando ${pageCount} item(ns) nesta página do relatório. Total filtrado: ${totalRows}.`;
       tRows.textContent = `${pageCount} / ${totalRows}`;
 
       const sumText = rep.sum_text || "—";
