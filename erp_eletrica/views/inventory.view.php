@@ -183,7 +183,7 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Código Interno</label>
-                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo">
+                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono'; background-color: #f1f3f5;" value="<?php echo 'PRD' . str_pad((int)(\App\Config\Database::getInstance()->getConnection())->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>" readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">NCM</label>
@@ -229,10 +229,14 @@
 
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Informações Fiscais (SEFAZ)</h6></div>
                     <div class="col-md-4">
+                        <label class="form-label small fw-bold">GTIN/EAN (cEAN)</label>
+                        <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="SEM GTIN">
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label small fw-bold">CEST</label>
                         <input type="text" name="cest" id="edit_cest" class="form-control shadow-sm">
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-4">
                         <label class="form-label small fw-bold">Origem da Mercadoria</label>
                         <select name="origem" id="edit_origem" class="form-select shadow-sm">
                             <option value="0">0 - Nacional</option>
@@ -327,6 +331,7 @@ function editProduct(product) {
     document.getElementById('edit_estoque_minimo').value = product.estoque_minimo;
     
     // Fiscal Fields
+    document.getElementById('edit_cean').value = product.cean || '';
     document.getElementById('edit_cest').value = product.cest || '';
     document.getElementById('edit_origem').value = product.origem || 0;
     document.getElementById('edit_csosn').value = product.csosn || '102';

@@ -34,12 +34,12 @@ class Product extends BaseModel {
     public function save($data) {
         if (!empty($data['id'])) {
             $sql = "UPDATE {$this->table} SET 
-                    codigo = ?, ncm = ?, cest = ?, origem = ?, csosn = ?, 
+                    codigo = ?, ncm = ?, cean = ?, cest = ?, origem = ?, csosn = ?, 
                     cfop_interno = ?, cfop_externo = ?, aliquota_icms = ?,
                     nome = ?, unidade = ?, categoria = ?, 
                     preco_custo = ?, preco_venda = ?, estoque_minimo = ? ";
             $params = [
-                $data['codigo'], $data['ncm'], $data['cest'], $data['origem'], $data['csosn'],
+                $data['codigo'], $data['ncm'], $data['cean'] ?? 'SEM GTIN', $data['cest'], $data['origem'], $data['csosn'],
                 $data['cfop_interno'], $data['cfop_externo'], $data['aliquota_icms'],
                 $data['nome'], $data['unidade'], $data['categoria'],
                 $data['preco_custo'], $data['preco_venda'], $data['estoque_minimo']
@@ -55,13 +55,13 @@ class Product extends BaseModel {
             return $this->query($sql, $params);
         } else {
             $sql = "INSERT INTO {$this->table} (
-                        codigo, ncm, cest, origem, csosn, 
+                        codigo, ncm, cean, cest, origem, csosn, 
                         cfop_interno, cfop_externo, aliquota_icms,
                         nome, unidade, categoria, preco_custo, preco_venda, 
                         estoque_minimo, filial_id, imagens
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             return $this->query($sql, [
-                $data['codigo'], $data['ncm'], $data['cest'] ?? null, $data['origem'] ?? 0, 
+                $data['codigo'], $data['ncm'], $data['cean'] ?? 'SEM GTIN', $data['cest'] ?? null, $data['origem'] ?? 0, 
                 $data['csosn'] ?? '102', $data['cfop_interno'] ?? '5102', 
                 $data['cfop_externo'] ?? '6102', $data['aliquota_icms'] ?? 0,
                 $data['nome'], $data['unidade'], $data['categoria'],
