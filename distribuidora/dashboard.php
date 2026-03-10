@@ -915,7 +915,6 @@ $total12m = array_sum($chart1);
       text-align: center;
     }
 
-
     .brand-name {
       display: block;
       font-size: 18px;
@@ -940,6 +939,7 @@ $total12m = array_sum($chart1);
         <span class="brand-name">DISTRIBUIDORA<br>PLHB</span>
       </a>
     </div>
+
     <nav class="sidebar-nav">
       <ul>
         <li class="nav-item active">

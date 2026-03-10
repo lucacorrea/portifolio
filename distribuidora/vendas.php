@@ -663,6 +663,16 @@ function fmtMoney($v): string
       height: 100%;
     }
 
+    .brand-name {
+      display: block;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 600;
+      color: #1e2a78;
+      white-space: normal;
+      word-break: break-word;
+    }
+
     @media (max-width: 991.98px) {
       .pay-grid {
         grid-template-columns: 1fr;
@@ -687,8 +697,8 @@ function fmtMoney($v): string
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
-      <a href="dashboard.php" class="d-flex align-items-center gap-2">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
+      <a href="dashboard.php" class="brand-vertical">
+        <span class="brand-name">DISTRIBUIDORA<br>PLHB</span>
       </a>
     </div>
 
