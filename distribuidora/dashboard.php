@@ -916,7 +916,6 @@ $total12m = array_sum($chart1);
     }
 
     .brand-vertical img {
-      max-width: 100px;
       height: auto;
       display: block;
     }
