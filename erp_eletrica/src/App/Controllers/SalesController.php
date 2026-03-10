@@ -121,6 +121,40 @@ class SalesController extends BaseController {
             $productModel = new Product();
             $db = \App\Config\Database::getInstance()->getConnection();
 
+            // --- Fiscal sanitizer helpers (same approach as acainhadinhos) ---
+            $saneNCM = function(?string $v): string {
+                $v = preg_replace('/\D+/', '', (string)$v);
+                if (in_array($v, ['', '0', '00', '00000000', '000', '000000'], true)) return '21069090';
+                if (preg_match('/^([0-9]{2}|[0-9]{8})$/', $v)) return $v;
+                return '21069090';
+            };
+            $saneCFOP = function(?string $v): string {
+                $v = preg_replace('/\D+/', '', (string)$v);
+                if (in_array($v, ['', '0', '00', '000', '0000'], true)) return '5102';
+                if (preg_match('/^[123567][0-9]{3}$/', $v)) return $v;
+                return '5102';
+            };
+            $saneEAN = function(?string $v): string {
+                $d = preg_replace('/\D+/', '', (string)$v);
+                if ($d === '' || !in_array(strlen($d), [8, 12, 13, 14], true)) return 'SEM GTIN';
+                return $d;
+            };
+            $saneUN = function(?string $v): string {
+                $v = strtoupper(trim((string)$v));
+                return ($v === '') ? 'UN' : $v;
+            };
+            $saneOrigem = function($v): int {
+                return preg_match('/^[0-8]$/', (string)$v) ? (int)$v : 0;
+            };
+            $saneCSOSN = function($v): string {
+                $v = (string)$v;
+                return preg_match('/^(101|102|103|300|400|500|900)$/', $v) ? $v : '102';
+            };
+            $saneCEST = function(?string $v): ?string {
+                $v = preg_replace('/\D+/', '', (string)$v);
+                return ($v === '' || $v === '0000000') ? null : $v;
+            };
+
             try {
                 $db->beginTransaction();
 
@@ -132,37 +166,33 @@ class SalesController extends BaseController {
                 }
 
                 // Validation: Discount Limit
-                $maxDiscount = 100; // Default if column missing
+                $maxDiscount = 100;
                 try {
                     $stmtUser = $db->prepare("SELECT desconto_maximo FROM usuarios WHERE id = ?");
                     $stmtUser->execute([$_SESSION['usuario_id']]);
                     $maxDiscount = $stmtUser->fetchColumn();
-                    if ($maxDiscount === false) $maxDiscount = 0; // User not found
+                    if ($maxDiscount === false) $maxDiscount = 0;
                 } catch (\PDOException $e) {
-                    // Column might be missing on server, allow discount for now to avoid blocking sales
                     $maxDiscount = 100;
                 }
-                
+
                 $requestedDiscount = $data['discount_percent'] ?? 0;
                 $supervisorId = null;
                 $authCode = $data['auth_code'] ?? null;
 
-                // Re-validation for Non-Admins with Discount
                 if ($requestedDiscount > 0 && $_SESSION['usuario_nivel'] !== 'admin') {
                     $isValid = false;
 
-                    // Option 1: Temporary Code
                     if ($authCode) {
                         $authService = new \App\Services\AuthorizationService();
                         if ($authService->validateAndUse($authCode, 'desconto', $_SESSION['filial_id'] ?? 1)) {
                             $isValid = true;
-                            $supervisorId = 0; // System flagged
+                            $supervisorId = 0;
                             $audit = new \App\Services\AuditLogService();
                             $audit->record('Uso de código de desconto', 'vendas', null, null, $authCode);
                         }
                     }
 
-                    // Option 2: Direct Supervisor Credentials (legacy/fallback)
                     if (!$isValid) {
                         $supervisorId = $data['supervisor_id'] ?? null;
                         $supervisorCredential = $data['supervisor_credential'] ?? null;
@@ -188,19 +218,23 @@ class SalesController extends BaseController {
                     }
                 }
 
+                // tipo_nota: 'fiscal' or 'nao_fiscal'
+                $tipoNota = (isset($data['tipo_nota']) && $data['tipo_nota'] === 'fiscal') ? 'fiscal' : 'nao_fiscal';
+
                 $saleData = [
-                    'cliente_id' => $data['cliente_id'] ?? null,
+                    'cliente_id'          => $data['cliente_id'] ?? null,
                     'nome_cliente_avulso' => $data['nome_cliente_avulso'] ?? null,
-                    'usuario_id' => $_SESSION['usuario_id'],
-                    'filial_id' => $_SESSION['filial_id'] ?? 1,
-                    'valor_total' => $data['total'],
-                    'desconto_total' => ($data['subtotal'] * ($data['discount_percent'] / 100)),
-                    'forma_pagamento' => $data['pagamento'],
-                    'autorizado_por' => $supervisorId
+                    'usuario_id'          => $_SESSION['usuario_id'],
+                    'filial_id'           => $_SESSION['filial_id'] ?? 1,
+                    'valor_total'         => $data['total'],
+                    'desconto_total'      => ($data['subtotal'] * ($data['discount_percent'] / 100)),
+                    'forma_pagamento'     => $data['pagamento'],
+                    'autorizado_por'      => $supervisorId,
+                    'tipo_nota'           => $tipoNota,
                 ];
 
                 $saleId = $saleModel->create($saleData);
-                
+
                 // Automatic accounts receivable for 'fiado'
                 if ($data['pagamento'] === 'fiado') {
                     if (empty($data['cliente_id'])) {
@@ -210,24 +244,23 @@ class SalesController extends BaseController {
                     $entrada = (float)($data['entrada_valor'] ?? 0);
                     $valorDivida = (float)$data['total'] - $entrada;
 
-                    // Create the receivable for the remaining balance
                     $receivableModel = new \App\Models\AccountReceivable();
                     $receivableModel->create([
-                        'venda_id' => $saleId,
-                        'cliente_id' => $data['cliente_id'],
-                        'valor' => $data['total'],
-                        'valor_pago' => $entrada,
-                        'saldo' => $valorDivida,
-                        'status' => 'pendente',
+                        'venda_id'        => $saleId,
+                        'cliente_id'      => $data['cliente_id'],
+                        'valor'           => $data['total'],
+                        'valor_pago'      => $entrada,
+                        'saldo'           => $valorDivida,
+                        'status'          => 'pendente',
                         'data_vencimento' => date('Y-m-d', strtotime('+30 days')),
-                        'filial_id' => $_SESSION['filial_id'] ?? 1
+                        'filial_id'       => $_SESSION['filial_id'] ?? 1,
                     ]);
-                    
+
                     $audit = new \App\Services\AuditLogService();
                     $audit->record('Venda fiado criada', 'vendas', $saleId, null, json_encode([
-                        'total' => $data['total'],
-                        'entrada' => $entrada,
-                        'saldo_devedor' => $valorDivida
+                        'total'        => $data['total'],
+                        'entrada'      => $entrada,
+                        'saldo_devedor'=> $valorDivida,
                     ]));
                 }
 
@@ -237,39 +270,69 @@ class SalesController extends BaseController {
                     $pvModel->markAsFinalized($data['pv_id']);
                 }
 
+                // Check which fiscal columns exist in vendas_itens
+                $stmtCols = $db->query("DESCRIBE vendas_itens");
+                $existingCols = array_column($stmtCols->fetchAll(\PDO::FETCH_ASSOC), 'Field');
+                $hasFiscalCols = in_array('ncm', $existingCols);
+
                 foreach ($data['items'] as $item) {
-                    $db->prepare("INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)")
-                       ->execute([$saleId, $item['id'], $item['qty'], $item['price']]);
+                    // For fiscal sales, pull fiscal data from the produto record
+                    if ($tipoNota === 'fiscal' && $hasFiscalCols) {
+                        $stmtProd = $db->prepare(
+                            "SELECT ncm, cean, cest, cfop, csosn, origem, unidade FROM produtos WHERE id = ? LIMIT 1"
+                        );
+                        $stmtProd->execute([$item['id']]);
+                        $prod = $stmtProd->fetch(\PDO::FETCH_ASSOC) ?: [];
+
+                        $db->prepare(
+                            "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, ncm, cean, cest, cfop, origem, csosn, unidade)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        )->execute([
+                            $saleId,
+                            $item['id'],
+                            $item['qty'],
+                            $item['price'],
+                            $saneNCM($prod['ncm']  ?? null),
+                            $saneEAN($prod['cean'] ?? null),
+                            $saneCEST($prod['cest'] ?? null),
+                            $saneCFOP($prod['cfop'] ?? null),
+                            $saneOrigem($prod['origem'] ?? 0),
+                            $saneCSOSN($prod['csosn'] ?? null),
+                            $saneUN($prod['unidade'] ?? null),
+                        ]);
+                    } else {
+                        // Non-fiscal: simple insert (original behaviour)
+                        $db->prepare("INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)")
+                           ->execute([$saleId, $item['id'], $item['qty'], $item['price']]);
+                    }
 
                     $productModel->updateStock($item['id'], $item['qty'], 'saida');
                 }
 
                 $db->commit();
 
-                // Record Cashier Movement for all sales that affect the daily balance
+                // Record Cashier Movement
                 $movementModel = new \App\Models\CashierMovement();
-                
-                // 1. Dinheiro / Pix / Cartão / Boleto (Total Entry)
-                // 2. Fiado (Only if there is a down payment)
+
                 if ($data['pagamento'] !== 'fiado') {
                     $movementModel->create([
-                        'caixa_id' => $caixaAberto['id'],
-                        'tipo' => 'entrada',
-                        'valor' => $data['total'],
-                        'motivo' => "Venda #$saleId (" . strtoupper($data['pagamento']) . ")",
-                        'operador_id' => $_SESSION['usuario_id']
+                        'caixa_id'    => $caixaAberto['id'],
+                        'tipo'        => 'entrada',
+                        'valor'       => $data['total'],
+                        'motivo'      => "Venda #$saleId (" . strtoupper($data['pagamento']) . ")",
+                        'operador_id' => $_SESSION['usuario_id'],
                     ]);
                 } else if ($data['pagamento'] === 'fiado' && ($data['entrada_valor'] ?? 0) > 0) {
                     $movementModel->create([
-                        'caixa_id' => $caixaAberto['id'],
-                        'tipo' => 'entrada',
-                        'valor' => (float)$data['entrada_valor'],
-                        'motivo' => "Entrada Venda #$saleId (Fiado)",
-                        'operador_id' => $_SESSION['usuario_id']
+                        'caixa_id'    => $caixaAberto['id'],
+                        'tipo'        => 'entrada',
+                        'valor'       => (float)$data['entrada_valor'],
+                        'motivo'      => "Entrada Venda #$saleId (Fiado)",
+                        'operador_id' => $_SESSION['usuario_id'],
                     ]);
                 }
 
-                echo json_encode(['success' => true, 'sale_id' => $saleId]);
+                echo json_encode(['success' => true, 'sale_id' => $saleId, 'tipo_nota' => $tipoNota]);
             } catch (\Exception $e) {
                 $db->rollBack();
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -277,6 +340,7 @@ class SalesController extends BaseController {
             exit;
         }
     }
+
 
     public function list_recent() {
         $page = $_GET['page'] ?? 1;
