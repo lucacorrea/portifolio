@@ -25,9 +25,9 @@ class SefazSoapClient extends BaseService {
 
     private $serviceMapping = [
         'nfe_distribuicao' => ['service' => 'NFeDistribuicaoDFe', 'method' => 'nfeDistribuicaoDFe'],
-        'nfe_evento' => ['service' => 'NFeRecepcaoEvento4', 'method' => 'nfeRecepcaoEvento4'],
+        'nfe_evento' => ['service' => 'NFeRecepcaoEvento4', 'method' => 'nfeRecepcaoEvento'],
         'nfce_autorizacao' => ['service' => 'NFeAutorizacao4', 'method' => 'nfeAutorizacaoLote'],
-        'sefaz_status' => ['service' => 'NFeStatusServico4', 'method' => 'nfeStatusServico4']
+        'sefaz_status' => ['service' => 'NFeStatusServico4', 'method' => 'nfeStatusServicoNF']
     ];
 
     public function call($method, $xml, $fiscal) {
@@ -63,9 +63,9 @@ class SefazSoapClient extends BaseService {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
         
-        $action = "http://www.portalfiscal.inf.br/nfe/wsdl/$serviceName/$methodName";
+        // Remove empty action to prevent "Not Recognized" errors, SEFAZ will read the envelope body
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Content-Type: application/soap+xml; charset=utf-8; action=\"$action\"",
+            "Content-Type: application/soap+xml; charset=utf-8",
             "Content-Length: " . strlen($soapXml)
         ]);
         
@@ -91,7 +91,7 @@ class SefazSoapClient extends BaseService {
         // DEBUG: Gravar retorno se falhar
         if ($httpCode >= 400 && defined('DEBUG') && DEBUG) {
             $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_error_response.txt';
-            @file_put_contents($logPath, "HTTP $httpCode\nAction: $action\n\n$response");
+            @file_put_contents($logPath, "HTTP $httpCode\n\n$response");
         }
 
         if ($httpCode >= 400) {
