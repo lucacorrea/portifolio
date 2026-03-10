@@ -250,6 +250,47 @@ $produtos = $pdo->query("
             justify-content: flex-end;
         }
 
+        .logout-btn {
+            padding: 8px 14px !important;
+            min-width: 88px;
+            height: 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none !important;
+        }
+
+        .logout-btn i {
+            font-size: 16px;
+        }
+
+        .header-right {
+            height: 100%;
+        }
+
+        .brand-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .brand-name {
+            display: block;
+            font-size: 18px;
+            line-height: 1.2;
+            font-weight: 600;
+            color: #1e2a78;
+            white-space: normal;
+            word-break: break-word;
+        }
+
         @media (max-width: 767.98px) {
             .pagination-wrap {
                 justify-content: center;
@@ -275,8 +316,8 @@ $produtos = $pdo->query("
 
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="dashboard.php" class="d-flex align-items-center gap-2">
-                <img src="assets/images/logo/logo.svg" alt="logo" />
+            <a href="dashboard.php" class="brand-vertical">
+                <span class="brand-name">DISTRIBUIDORA<br>PLHB</span>
             </a>
         </div>
 
