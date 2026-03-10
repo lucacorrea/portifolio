@@ -468,7 +468,7 @@
                 <div class="bottom-info">
                   <p>
                     Já possui uma conta?
-                    <a href="signin.html">Entrar no sistema</a>
+                    <a href="index.php">Entrar no sistema</a>
                   </p>
                 </div>
               </div>
