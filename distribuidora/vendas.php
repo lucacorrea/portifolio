@@ -675,7 +675,7 @@ function fmtMoney($v): string
 
     .brand-name {
       display: block;
-      font-size: 12px;
+      font-size: 18px;
       line-height: 1.2;
       font-weight: 600;
       color: #1e2a78;
