@@ -216,6 +216,46 @@
                             <option value="ML">Mililitro (ML)</option>
                         </select>
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Tipo de Produto *</label>
+                        <select name="tipo_produto" class="form-select shadow-sm" id="edit_tipo_produto" required>
+                            <option value="simples">Material Simples</option>
+                            <option value="composto">Kit / Composto</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Quantidade (Estoque) *</label>
+                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required id="edit_quantidade" value="0">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">Categoria</label>
+                        <select name="categoria" class="form-select shadow-sm" id="edit_categoria">
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat ?>"><?= $cat ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço de Custo (R$)</label>
+                        <input type="number" step="0.01" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço Venda (Normal)</label>
+                        <input type="number" step="0.01" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço 2</label>
+                        <input type="number" step="0.01" name="preco_venda_2" class="form-control shadow-sm" id="edit_preco_venda_2">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço 3</label>
+                        <input type="number" step="0.01" name="preco_venda_3" class="form-control shadow-sm" id="edit_preco_venda_3">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Preço Atacado (R$)</label>
+                        <input type="number" step="0.01" name="preco_venda_atacado" class="form-control shadow-sm text-success" id="edit_preco_venda_atacado">
+                    </div>
                     <div class="col-md-4" id="div_estoque_minimo">
                         <label class="form-label small fw-bold">Estoque Mínimo (Alerta)</label>
                         <input type="number" name="estoque_minimo" class="form-control shadow-sm text-danger" id="edit_estoque_minimo">
@@ -240,13 +280,10 @@
 
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Informações Fiscais (SEFAZ)</h6></div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">NCM</label>
-                        <div class="input-group input-group-sm shadow-sm position-relative">
-                            <input type="text" name="ncm" class="form-control z-index-1" id="edit_ncm" placeholder="Digite Cod. ou Nm." onkeyup="searchNcmInline(this.value)">
-                            <span class="input-group-text bg-white" id="ncmLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary"></i></span>
-                            <button class="btn btn-outline-secondary" type="button" onclick="searchNcmInline(document.getElementById('edit_ncm').value, true)">
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
+                        <label class="form-label small fw-bold">NCM (BrasilAPI)</label>
+                        <div class="position-relative">
+                            <input type="text" name="ncm" class="form-control shadow-sm z-index-1" id="edit_ncm" placeholder="Ex: 8517 ou celular" onkeyup="searchNcmInline(this.value)">
+                            <span class="position-absolute" id="ncmLoader" style="display:none; right: 10px; top: 8px; z-index: 5;"><i class="fas fa-spinner fa-spin text-primary"></i></span>
                             <ul id="ncmDropdown" class="dropdown-menu w-100 shadow" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 250px; overflow-y: auto;">
                                 <!-- NCMs ajax -->
                             </ul>
@@ -459,20 +496,5 @@ document.addEventListener('click', function(event) {
     }
 });
 
-function updateFormVisibility() {
-    const tipo = document.getElementById('edit_tipo_produto').value;
-    const isService = (tipo === 'servico');
-    
-    // Elements to hide if it's a service/virtual good
-    document.getElementById('div_quantidade').style.display = isService ? 'none' : 'block';
-    document.getElementById('div_estoque_minimo').style.display = isService ? 'none' : 'block';
-    document.getElementById('div_peso').style.display = isService ? 'none' : 'block';
-    document.getElementById('div_dimensoes').style.display = isService ? 'none' : 'block';
-    
-    // Always sync hidden quantity if service so it defaults to 0 safely
-    if (isService) {
-        document.getElementById('edit_quantidade').value = 0;
-        document.getElementById('edit_estoque_minimo').value = 0;
-    }
-}
+// Removed updateFormVisibility since user only registers materials.
 </script>
