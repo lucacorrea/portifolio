@@ -147,6 +147,28 @@
                     </div>
                 </div>
 
+                <!-- Fiscal Toggle -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-uppercase text-muted">Tipo de Venda</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="tipo_nota" id="tipo_fiscal" value="fiscal">
+                            <label class="btn btn-outline-light d-block text-start p-3 border" for="tipo_fiscal" style="border-color:#198754 !important;">
+                                <i class="fas fa-file-invoice-dollar me-2 text-success"></i>
+                                <span class="fw-bold text-success">Nota Fiscal</span>
+                                <div class="extra-small text-muted mt-1">Emite NFC-e SEFAZ</div>
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="tipo_nota" id="tipo_nao_fiscal" value="nao_fiscal" checked>
+                            <label class="btn btn-outline-light d-block text-start p-3 border" for="tipo_nao_fiscal">
+                                <i class="fas fa-receipt me-2 text-secondary"></i>
+                                <span class="fw-bold text-secondary">Não Fiscal</span>
+                                <div class="extra-small text-muted mt-1">Só recibo simples</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="bg-light p-4 rounded-3 border mb-4">
                     <div class="d-flex justify-content-between mb-2">
@@ -977,6 +999,8 @@ async function processarCheckout() {
         return;
     }
 
+    const tipoNota = document.querySelector('input[name="tipo_nota"]:checked')?.value || 'nao_fiscal';
+
     const data = {
         subtotal: subtotal,
         discount_percent: discountPercent,
@@ -988,7 +1012,8 @@ async function processarCheckout() {
         nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
         pv_id: currentPvId,
         supervisor_id: authSupervisorId,
-        supervisor_credential: authSupervisorCredential
+        supervisor_credential: authSupervisorCredential,
+        tipo_nota: tipoNota
     };
 
     const res = await fetch('vendas.php?action=checkout', {
@@ -1003,7 +1028,7 @@ async function processarCheckout() {
         const modalEntrada = bootstrap.Modal.getInstance(document.getElementById('modalEntrada'));
         if (modalEntrada) modalEntrada.hide();
 
-        showSuccessModal(result.sale_id, data.total);
+        showSuccessModal(result.sale_id, data.total, result.tipo_nota || data.tipo_nota);
         cart = [];
         currentPvId = null;
         isAuthorized = false;
@@ -1018,7 +1043,16 @@ async function processarCheckout() {
     }
 }
 
-function showSuccessModal(saleId, total) {
+function showSuccessModal(saleId, total, tipoNota) {
+    const isFiscal = tipoNota === 'fiscal';
+    const nfceBtn = isFiscal ? `
+        <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" onclick="issueNFCe(${saleId})">
+            <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Nota Fiscal)
+        </button>` : '';
+    const tipoLabel = isFiscal
+        ? '<span class="badge bg-success mb-3"><i class="fas fa-file-invoice-dollar me-1"></i>Venda Fiscal</span>'
+        : '<span class="badge bg-secondary mb-3"><i class="fas fa-receipt me-1"></i>Venda Não Fiscal</span>';
+
     const modalHtml = `
         <div class="modal fade" id="modalSuccess" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -1027,17 +1061,16 @@ function showSuccessModal(saleId, total) {
                         <div class="mb-4">
                             <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
                         </div>
+                        ${tipoLabel}
                         <h3 class="fw-bold mb-2">Venda Finalizada!</h3>
                         <p class="text-muted mb-4">A venda <strong>#${saleId}</strong> foi registrada com sucesso no valor de <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong>.</p>
                         
                         <div class="d-grid gap-2">
-                            <button class="btn btn-primary btn-lg fw-bold py-3" onclick="issueNFCe(${saleId})">
-                                <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Cupom Fiscal)
-                            </button>
+                            ${nfceBtn}
                             <button class="btn btn-outline-secondary fw-bold py-3" onclick="alert('Impressão térmica em desenvolvimento')">
                                 <i class="fas fa-print me-2"></i>Imprimir Recibo Simples
                             </button>
-                            <button class="btn btn-link text-muted mt-3" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
+                            <button class="btn btn-link text-muted mt-2" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
                         </div>
                     </div>
                 </div>
