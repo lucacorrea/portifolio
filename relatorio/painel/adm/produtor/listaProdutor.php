@@ -778,7 +778,7 @@ try {
                         Total: <?= (int)$totalRows ?> — Página <?= (int)$page ?> de <?= (int)$totalPages ?>.
                       </p>
                       <a href="selecionarFeirante.php" class="btn btn-outline-info btn-sm mt-2">
-                        <i class="ti-hand-point-right"></i> Imprimir Lista
+                        <i class="ti-list"></i> Imprimir Lista
                       </a>
                     </div>
                       <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
