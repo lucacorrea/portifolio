@@ -107,11 +107,9 @@ class SefazSoapClient extends BaseService {
             throw new Exception("Erro de conexão SEFAZ CURL: $error");
         }
         
-        // DEBUG: Gravar retorno se falhar
-        if ($httpCode >= 400 && defined('DEBUG') && DEBUG) {
-            $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_error_response.txt';
-            @file_put_contents($logPath, "HTTP $httpCode\n\n$response");
-        }
+        // DEBUG OVERRIDE: Forçar log de todos os retornos para identificar malformação XML
+        $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_response.xml';
+        @file_put_contents($logPath, "HTTP CODE: $httpCode\n\n=== RESPONSE ===\n$response");
 
         if ($httpCode >= 400 || empty($response)) {
              $motivo = $this->extractSoapFault($response);
