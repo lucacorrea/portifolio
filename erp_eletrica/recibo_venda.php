@@ -14,7 +14,7 @@ $db = \App\Config\Database::getInstance()->getConnection();
 // Fetch sale
 $stmt = $db->prepare("
     SELECT v.*, 
-           COALESCE(c.nome, v.nome_cliente_avulso, 'Consumidor Final') as cliente_nome,
+           COALESCE(c.nome, 'Consumidor Final') as cliente_nome,
            c.cpf_cnpj,
            u.nome as vendedor_nome,
            f.nome as filial_nome, f.cnpj as filial_cnpj, f.endereco as filial_endereco,

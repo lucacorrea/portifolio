@@ -274,32 +274,40 @@ class SalesController extends BaseController {
                 $stmtCols = $db->query("DESCRIBE vendas_itens");
                 $existingCols = array_column($stmtCols->fetchAll(\PDO::FETCH_ASSOC), 'Field');
                 $hasFiscalCols = in_array('ncm', $existingCols);
+                $hasCfop = in_array('cfop', $existingCols);
 
                 foreach ($data['items'] as $item) {
-                    // For fiscal sales, pull fiscal data from the produto record
-                    if ($tipoNota === 'fiscal' && $hasFiscalCols) {
-                        $stmtProd = $db->prepare(
-                            "SELECT ncm, cean, cest, cfop, csosn, origem, unidade FROM produtos WHERE id = ? LIMIT 1"
-                        );
-                        $stmtProd->execute([$item['id']]);
-                        $prod = $stmtProd->fetch(\PDO::FETCH_ASSOC) ?: [];
+                     // Get product data regardless
+                    $stmtProd = $db->prepare("SELECT * FROM produtos WHERE id = ? LIMIT 1");
+                    $stmtProd->execute([$item['id']]);
+                    $prod = $stmtProd->fetch(\PDO::FETCH_ASSOC) ?: [];
 
-                        $db->prepare(
-                            "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, ncm, cean, cest, cfop, origem, csosn, unidade)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                        )->execute([
-                            $saleId,
-                            $item['id'],
-                            $item['qty'],
-                            $item['price'],
-                            $saneNCM($prod['ncm']  ?? null),
-                            $saneEAN($prod['cean'] ?? null),
-                            $saneCEST($prod['cest'] ?? null),
-                            $saneCFOP($prod['cfop'] ?? null),
-                            $saneOrigem($prod['origem'] ?? 0),
-                            $saneCSOSN($prod['csosn'] ?? null),
-                            $saneUN($prod['unidade'] ?? null),
-                        ]);
+                    if ($tipoNota === 'fiscal' && $hasFiscalCols) {
+                        $ncm = $saneNCM($prod['ncm']  ?? null);
+                        $ean = $saneEAN($prod['cean'] ?? null);
+                        $cest = $saneCEST($prod['cest'] ?? null);
+                        $origem = $saneOrigem($prod['origem'] ?? 0);
+                        $csosn = $saneCSOSN($prod['csosn'] ?? null);
+                        $unidade = $saneUN($prod['unidade'] ?? null);
+
+                        if ($hasCfop) {
+                            $cfop = $saneCFOP($prod['cfop'] ?? null);
+                            $db->prepare(
+                                "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, ncm, cean, cest, cfop, origem, csosn, unidade)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                            )->execute([
+                                $saleId, $item['id'], $item['qty'], $item['price'],
+                                $ncm, $ean, $cest, $cfop, $origem, $csosn, $unidade
+                            ]);
+                        } else {
+                            $db->prepare(
+                                "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, ncm, cean, cest, origem, csosn, unidade)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                            )->execute([
+                                $saleId, $item['id'], $item['qty'], $item['price'],
+                                $ncm, $ean, $cest, $origem, $csosn, $unidade
+                            ]);
+                        }
                     } else {
                         // Non-fiscal: simple insert (original behaviour)
                         $db->prepare("INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)")
