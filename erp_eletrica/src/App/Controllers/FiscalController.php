@@ -150,7 +150,7 @@ class FiscalController extends BaseController {
         ];
 
         // 2. Storage Tests
-        $storageDir = dirname(__DIR__, 4) . '/storage';
+        $storageDir = dirname(__DIR__, 3) . '/storage';
         $certDir = $storageDir . '/certificados';
         $storage = [
             'storage_exists' => is_dir($storageDir),
