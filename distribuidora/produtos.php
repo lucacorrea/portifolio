@@ -420,7 +420,7 @@ $produtos = $pdo->query("
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
-                            <div class="header-search d-none d-md-flex">
+                            <div class="header-search d-none d-md-flex hidden">
                                 <form action="#" onsubmit="return false;">
                                     <input type="text" placeholder="Buscar produto..." id="qGlobal" />
                                     <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
