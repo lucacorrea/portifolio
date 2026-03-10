@@ -90,7 +90,7 @@ class FiscalService extends BaseService {
 
         $items = $this->db->prepare("
             SELECT vi.*, p.nome, p.ncm, p.cest, p.unidade, p.origem, p.csosn, p.cfop_interno, p.aliquota_icms
-            FROM venda_itens vi
+            FROM vendas_itens vi
             JOIN produtos p ON vi.produto_id = p.id
             WHERE vi.venda_id = ?
         ");

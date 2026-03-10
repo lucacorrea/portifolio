@@ -288,13 +288,13 @@ $dataVenda = date('d/m/Y H:i', strtotime($venda['data_venda'] ?? $venda['created
         <header class="center">
             <h2><?= htmlspecialchars($venda['filial_nome'] ?? 'ERP Elétrica') ?></h2>
             <div class="small">
-                <?php if ($venda['filial_cnpj']): ?>CNPJ: <?= htmlspecialchars($venda['filial_cnpj']) ?><br><?php endif; ?>
-                <?php if ($venda['filial_endereco']): ?>
+                <?php if (!empty($venda['filial_cnpj'])): ?>CNPJ: <?= htmlspecialchars($venda['filial_cnpj']) ?><br><?php endif; ?>
+                <?php if (!empty($venda['filial_endereco'])): ?>
                     <?= htmlspecialchars($venda['filial_endereco']) ?>
-                    <?php if($venda['filial_cidade']): ?> - <?= htmlspecialchars($venda['filial_cidade']) ?>/<?= htmlspecialchars($venda['filial_uf']) ?><?php endif; ?>
+                    <?php if(!empty($venda['filial_cidade'])): ?> - <?= htmlspecialchars($venda['filial_cidade']) ?>/<?= htmlspecialchars($venda['filial_uf'] ?? '') ?><?php endif; ?>
                     <br>
                 <?php endif; ?>
-                <?php if ($venda['filial_telefone']): ?>Tel: <?= htmlspecialchars($venda['filial_telefone']) ?><?php endif; ?>
+                <?php if (!empty($venda['filial_telefone'])): ?>Tel: <?= htmlspecialchars($venda['filial_telefone']) ?><?php endif; ?>
             </div>
             <div class="hr"></div>
             <div class="center"><span class="badge-nf">DOCUMENTO NÃO FISCAL</span></div>
