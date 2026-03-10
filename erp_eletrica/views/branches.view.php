@@ -72,49 +72,77 @@
                 <input type="hidden" name="id" id="branch_id">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold">Nome da Unidade</label>
+                        <label class="form-label small fw-bold">Nome Fantasia (Apelido)</label>
                         <input type="text" name="nome" id="branch_nome" class="form-control shadow-sm" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold">Ambiente SEFAZ</label>
-                        <select name="ambiente" id="branch_ambiente" class="form-select shadow-sm">
-                            <option value="2">Homologação (Testes)</option>
-                            <option value="1">Produção (Real)</option>
-                        </select>
+                        <label class="form-label small fw-bold">Razão Social (Contrato Social)</label>
+                        <input type="text" name="razao_social" id="branch_razao_social" class="form-control shadow-sm text-uppercase" required>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <label class="form-label small fw-bold">CNPJ</label>
                         <input type="text" name="cnpj" id="branch_cnpj" class="form-control shadow-sm" placeholder="00.000.000/0000-00">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <label class="form-label small fw-bold">Inscrição Estadual</label>
                         <input type="text" name="inscricao_estadual" id="branch_ie" class="form-control shadow-sm">
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Ambiente SEFAZ</label>
+                        <select name="ambiente" id="branch_ambiente" class="form-select shadow-sm">
+                            <option value="2">Homologação</option>
+                            <option value="1">Produção</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Regime (CRT)</label>
+                        <select name="crt" id="branch_crt" class="form-select shadow-sm">
+                            <option value="1">1 - Simples Nacional</option>
+                            <option value="2">2 - Simples Excesso</option>
+                            <option value="3">3 - Regime Normal</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mt-2">
+                        <label class="form-label small fw-bold">Telefone da Unidade</label>
+                        <input type="text" name="telefone" id="branch_telefone" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-6 mt-2">
+                        <label class="form-label small fw-bold">E-mail de Contato (NFE)</label>
+                        <input type="email" name="email" id="branch_email" class="form-control shadow-sm">
+                    </div>
                     
-                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Endereço Fiscal</h6></div>
-                    <div class="col-md-8">
-                        <label class="form-label small fw-bold">Logradouro</label>
-                        <input type="text" name="logradouro" id="branch_logradouro" class="form-control shadow-sm" placeholder="Av / Rua / Travessa">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Número</label>
-                        <input type="text" name="numero" id="branch_numero" class="form-control shadow-sm">
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label small fw-bold">Bairro</label>
-                        <input type="text" name="bairro" id="branch_bairro" class="form-control shadow-sm">
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label small fw-bold">Município</label>
-                        <input type="text" name="municipio" id="branch_municipio" class="form-control shadow-sm">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small fw-bold">UF</label>
-                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2">
-                    </div>
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Endereço Fiscal (Identico a SEFAZ)</h6></div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">CEP</label>
                         <input type="text" name="cep" id="branch_cep" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label small fw-bold">Logradouro</label>
+                        <input type="text" name="logradouro" id="branch_logradouro" class="form-control shadow-sm" placeholder="Av / Rua / Travessa">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Nº</label>
+                        <input type="text" name="numero" id="branch_numero" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Complemento</label>
+                        <input type="text" name="complemento" id="branch_complemento" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Bairro</label>
+                        <input type="text" name="bairro" id="branch_bairro" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Município</label>
+                        <input type="text" name="municipio" id="branch_municipio" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label small fw-bold">UF</label>
+                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-danger">Cód IBGE Mun.</label>
+                        <input type="text" name="codigo_municipio" id="branch_codigo_municipio" class="form-control shadow-sm border-danger" placeholder="ex: 3550308">
                     </div>
 
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Integração NFC-e (SEFAZ)</h6></div>
@@ -150,13 +178,19 @@ function newBranch() {
     const modal = new bootstrap.Modal(document.getElementById('branchModal'));
     document.getElementById('branch_id').value = '';
     document.getElementById('branch_nome').value = '';
+    document.getElementById('branch_razao_social').value = '';
     document.getElementById('branch_ambiente').value = 2;
+    document.getElementById('branch_crt').value = 1;
     document.getElementById('branch_cnpj').value = '';
     document.getElementById('branch_ie').value = '';
+    document.getElementById('branch_telefone').value = '';
+    document.getElementById('branch_email').value = '';
     document.getElementById('branch_logradouro').value = '';
     document.getElementById('branch_numero').value = '';
+    document.getElementById('branch_complemento').value = '';
     document.getElementById('branch_bairro').value = '';
     document.getElementById('branch_municipio').value = '';
+    document.getElementById('branch_codigo_municipio').value = '';
     document.getElementById('branch_uf').value = '';
     document.getElementById('branch_cep').value = '';
     document.getElementById('branch_csc_id').value = '';
@@ -170,13 +204,19 @@ function editBranch(branch) {
     const modal = new bootstrap.Modal(document.getElementById('branchModal'));
     document.getElementById('branch_id').value = branch.id;
     document.getElementById('branch_nome').value = branch.nome;
+    document.getElementById('branch_razao_social').value = branch.razao_social || '';
     document.getElementById('branch_ambiente').value = branch.ambiente || 2;
+    document.getElementById('branch_crt').value = branch.crt || 1;
     document.getElementById('branch_cnpj').value = branch.cnpj || '';
     document.getElementById('branch_ie').value = branch.inscricao_estadual || '';
+    document.getElementById('branch_telefone').value = branch.telefone || '';
+    document.getElementById('branch_email').value = branch.email || '';
     document.getElementById('branch_logradouro').value = branch.logradouro || '';
     document.getElementById('branch_numero').value = branch.numero || '';
+    document.getElementById('branch_complemento').value = branch.complemento || '';
     document.getElementById('branch_bairro').value = branch.bairro || '';
     document.getElementById('branch_municipio').value = branch.municipio || '';
+    document.getElementById('branch_codigo_municipio').value = branch.codigo_municipio || '';
     document.getElementById('branch_uf').value = branch.uf || '';
     document.getElementById('branch_cep').value = branch.cep || '';
     document.getElementById('branch_csc_id').value = branch.csc_id || '';
