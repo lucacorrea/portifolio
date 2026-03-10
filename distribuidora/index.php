@@ -1,5 +1,97 @@
+<?php
+
+declare(strict_types=1);
+
+@date_default_timezone_set('America/Manaus');
+
+if (session_status() !== PHP_SESSION_ACTIVE) {
+  session_start();
+}
+
+$helpers = __DIR__ . '/assets/dados/_helpers.php';
+if (is_file($helpers)) {
+  require_once $helpers;
+}
+
+/* =========================
+   FALLBACKS
+========================= */
+if (!function_exists('e')) {
+  function e(string $value): string
+  {
+    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  }
+}
+
+if (!function_exists('csrf_token')) {
+  function csrf_token(): string
+  {
+    if (empty($_SESSION['_csrf_token'])) {
+      $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return (string) $_SESSION['_csrf_token'];
+  }
+}
+
+if (!function_exists('csrf_input')) {
+  function csrf_input(): string
+  {
+    return '<input type="hidden" name="_csrf" value="' . e(csrf_token()) . '">';
+  }
+}
+
+if (!function_exists('flash_pop')) {
+  function flash_pop(string $key, string $default = ''): string
+  {
+    $value = $_SESSION['_flash'][$key] ?? $default;
+    unset($_SESSION['_flash'][$key]);
+    return is_string($value) ? $value : $default;
+  }
+}
+
+if (!function_exists('old')) {
+  function old(string $key, string $default = ''): string
+  {
+    $data = $_SESSION['_old'] ?? [];
+    if (!is_array($data)) return $default;
+    $value = $data[$key] ?? $default;
+    return is_scalar($value) ? (string)$value : $default;
+  }
+}
+
+if (!function_exists('old_clear')) {
+  function old_clear(): void
+  {
+    unset($_SESSION['_old']);
+  }
+}
+
+/* =========================
+   SE JÁ ESTIVER LOGADO
+========================= */
+if (function_exists('auth_check') && auth_check()) {
+  header('Location: dashboard.php');
+  exit;
+}
+
+/* =========================
+   FLASH / OLD
+========================= */
+$loginErro = flash_pop('auth_erro');
+$loginOk   = flash_pop('auth_ok');
+
+$emailOld = old('email');
+old_clear();
+
+$emailCookie = isset($_COOKIE['plhb_login_email']) && is_string($_COOKIE['plhb_login_email'])
+  ? trim($_COOKIE['plhb_login_email'])
+  : '';
+
+$emailValue = $emailOld !== '' ? $emailOld : $emailCookie;
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -7,7 +99,6 @@
   <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
   <title>Entrar | Painel da Distribuidora PLHB</title>
 
-  <!-- ========== CSS ========= -->
   <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/css/lineicons.css" />
   <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" />
@@ -22,6 +113,12 @@
       --plhb-muted: #6b7280;
       --plhb-border: #e5e7eb;
       --plhb-bg: #f3f4f6;
+      --plhb-danger-bg: #fef2f2;
+      --plhb-danger-border: #fecaca;
+      --plhb-danger-text: #991b1b;
+      --plhb-success-bg: #ecfdf5;
+      --plhb-success-border: #a7f3d0;
+      --plhb-success-text: #065f46;
     }
 
     * {
@@ -42,7 +139,6 @@
       overflow-x: hidden;
     }
 
-    /* Corrige comportamento do PlainAdmin em páginas sem sidebar */
     .main-wrapper {
       margin-left: 0 !important;
       padding: 0 !important;
@@ -280,6 +376,28 @@
       color: var(--plhb-text);
     }
 
+    .alert-custom {
+      width: 100%;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      line-height: 1.6;
+      border: 1px solid transparent;
+    }
+
+    .alert-danger-custom {
+      background: var(--plhb-danger-bg);
+      border-color: var(--plhb-danger-border);
+      color: var(--plhb-danger-text);
+    }
+
+    .alert-success-custom {
+      background: var(--plhb-success-bg);
+      border-color: var(--plhb-success-border);
+      color: var(--plhb-success-text);
+    }
+
     #preloader {
       position: fixed;
       inset: 0;
@@ -340,19 +458,16 @@
     }
   </style>
 </head>
+
 <body>
-  <!-- ======== Preloader =========== -->
   <div id="preloader">
     <div class="spinner"></div>
   </div>
-  <!-- ======== Preloader =========== -->
 
   <main class="main-wrapper">
-    <!-- ========== signin-section start ========== -->
     <section class="signin-section">
       <div class="container-fluid">
         <div class="row g-0 auth-row">
-          <!-- LADO ESQUERDO -->
           <div class="col-lg-6 auth-left">
             <div class="auth-cover-content">
               <h1>Seja Bem-Vindo</h1>
@@ -367,7 +482,6 @@
             </div>
           </div>
 
-          <!-- LADO DIREITO -->
           <div class="col-lg-6 auth-right">
             <div class="signin-wrapper">
               <div class="form-wrapper">
@@ -382,7 +496,18 @@
                   <strong>Painel da Distribuidora PLHB</strong>.
                 </p>
 
+                <?php if ($loginErro !== ''): ?>
+                  <div class="alert-custom alert-danger-custom"><?= e($loginErro) ?></div>
+                <?php endif; ?>
+
+                <?php if ($loginOk !== ''): ?>
+                  <div class="alert-custom alert-success-custom"><?= e($loginOk) ?></div>
+                <?php endif; ?>
+
                 <form action="./assets/auth/processarLogin.php" method="post" autocomplete="on">
+                  <?= csrf_input(); ?>
+                  <input type="hidden" name="redirect_back" value="../../index.php">
+
                   <div class="row">
                     <div class="col-12">
                       <div class="input-style-1">
@@ -391,10 +516,10 @@
                           type="email"
                           id="email"
                           name="email"
+                          value="<?= e($emailValue) ?>"
                           placeholder="Digite seu e-mail"
                           autocomplete="email"
-                          required
-                        />
+                          required />
                       </div>
                     </div>
 
@@ -407,8 +532,7 @@
                           name="senha"
                           placeholder="Digite sua senha"
                           autocomplete="current-password"
-                          required
-                        />
+                          required />
                       </div>
                     </div>
 
@@ -420,7 +544,7 @@
                           value="1"
                           id="lembrar"
                           name="lembrar"
-                        />
+                          <?= $emailCookie !== '' ? 'checked' : '' ?> />
                         <label class="form-check-label" for="lembrar">
                           Lembrar de mim
                         </label>
@@ -454,23 +578,22 @@
         </div>
       </div>
     </section>
-    <!-- ========== signin-section end ========== -->
   </main>
 
-  <!-- ========= JS ========= -->
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script>
-    window.addEventListener('load', function () {
+    window.addEventListener('load', function() {
       var preloader = document.getElementById('preloader');
       if (preloader) {
         preloader.style.opacity = '0';
         preloader.style.visibility = 'hidden';
         preloader.style.transition = 'all 0.3s ease';
-        setTimeout(function () {
+        setTimeout(function() {
           preloader.style.display = 'none';
         }, 300);
       }
     });
   </script>
 </body>
+
 </html>
