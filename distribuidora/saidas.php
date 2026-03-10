@@ -314,8 +314,8 @@ $saidas = $pdo->query("
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="dashboard.php" class="d-flex align-items-center gap-2">
-                <img src="assets/images/logo/logo.svg" alt="logo" />
+            <a href="dashboard.php" class="brand-vertical">
+                <span class="brand-name">DISTRIBUIDORA<br>PLHB</span>
             </a>
         </div>
 
