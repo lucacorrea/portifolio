@@ -1008,31 +1008,24 @@ $total12m = array_sum($chart1);
     <header class="header">
       <div class="container-fluid">
         <div class="row">
-          <div class="col-lg-5 col-md-5 col-6">
+            <div class="col-lg-5 col-md-5 col-6">
             <div class="header-left d-flex align-items-center">
               <div class="menu-toggle-btn mr-15">
-                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
-                  <i class="lni lni-chevron-left me-2"></i> Menu
-                </button>
+              <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
+                <i class="lni lni-chevron-left me-2"></i> Menu
+              </button>
               </div>
-
             </div>
-          </div>
-          <div class="col-lg-7 col-md-7 col-6">
-            <div class="header-right">
+            </div>
+            <div class="col-lg-7 col-md-7 col-6">
+            <div class="header-right d-flex align-items-center justify-content-end">
               <div class="profile-box ml-15">
-                <a class="btn btn-sm btn-primary color-white" href="#">
-                  <div class="profile-info">
-                    <div class="info">
-                      <div>
-                        <h6 class="fw-500"><i class="lni lni-chevron-left me-2"></i> Sair</h6>
-                      </div>
-                    </div>
-                  </div>
-                </a>
+              <a class="main-btn primary-btn btn-hover btn-compact" href="#">
+                <i class="lni lni-chevron-right me-2"></i> Sair
+              </a>
               </div>
             </div>
-          </div>
+            </div>
 
         </div>
       </div>
