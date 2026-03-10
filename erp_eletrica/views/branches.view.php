@@ -79,11 +79,16 @@
                         <label class="form-label small fw-bold">Razão Social (Contrato Social)</label>
                         <input type="text" name="razao_social" id="branch_razao_social" class="form-control shadow-sm text-uppercase" required>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-5">
                         <label class="form-label small fw-bold">CNPJ</label>
-                        <input type="text" name="cnpj" id="branch_cnpj" class="form-control shadow-sm" placeholder="00.000.000/0000-00">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="cnpj" id="branch_cnpj" class="form-control shadow-sm" placeholder="00.000.000/0000-00" onkeyup="mascaraCNPJ(this)">
+                            <button type="button" class="btn btn-outline-primary fw-bold" onclick="consultarCNPJ()">
+                                <i class="fas fa-search me-1"></i> Buscar Dados
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label small fw-bold">Inscrição Estadual</label>
                         <input type="text" name="inscricao_estadual" id="branch_ie" class="form-control shadow-sm">
                     </div>
@@ -145,23 +150,73 @@
                         <input type="text" name="codigo_municipio" id="branch_codigo_municipio" class="form-control shadow-sm border-danger" placeholder="ex: 3550308">
                     </div>
 
-                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Integração NFC-e (SEFAZ)</h6></div>
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Configurações Avançadas (NF-e / NFC-e)</h6></div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Tipo de Emissão</label>
+                        <select name="tipo_emissao" id="branch_tipo_emissao" class="form-select shadow-sm">
+                            <option value="Normal">Normal</option>
+                            <option value="Contingencia SVC-AN">Contingência SVC-AN</option>
+                            <option value="Contingencia SVC-RS">Contingência SVC-RS</option>
+                            <option value="Contingencia Offline">Contingência Offline (NFC-e)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Finalidade da Emissão</label>
+                        <select name="finalidade_emissao" id="branch_finalidade_emissao" class="form-select shadow-sm">
+                            <option value="Normal">Normal</option>
+                            <option value="Complementar">Complementar</option>
+                            <option value="Ajuste">Ajuste</option>
+                            <option value="Devolucao">Devolução</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Indicador de Presença</label>
+                        <select name="indicador_presenca" id="branch_indicador_presenca" class="form-select shadow-sm">
+                            <option value="Operacao presencial">Operação Presencial</option>
+                            <option value="Operacao pela internet">Operação pela internet</option>
+                            <option value="Operacao teleatendimento">Teleatendimento</option>
+                            <option value="NFC-e em operacao com entrega a domicilio">Entrega a domicílio</option>
+                            <option value="Nao se aplica (Nota complementar, etc)">Não se aplica</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Tipo Impressão DANFE</label>
+                        <select name="tipo_impressao_danfe" id="branch_tipo_impressao_danfe" class="form-select shadow-sm">
+                            <option value="NFC-e">NFC-e (Bobina)</option>
+                            <option value="Retrato">Retrato (A4)</option>
+                            <option value="Paisagem">Paisagem (A4)</option>
+                            <option value="Simplificado">Simplificado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mt-3">
+                        <label class="form-label small fw-bold">Série da NFC-e</label>
+                        <input type="number" name="serie_nfce" id="branch_serie_nfce" class="form-control shadow-sm" value="1">
+                        <div class="extra-small text-muted mt-1">Geralmente 1.</div>
+                    </div>
+                    <div class="col-md-3 mt-3">
+                        <label class="form-label small fw-bold">Último número NFC-e</label>
+                        <input type="number" name="ultimo_numero_nfce" id="branch_ultimo_numero_nfce" class="form-control shadow-sm" value="0">
+                        <div class="extra-small text-muted mt-1">Prox. número será este + 1.</div>
+                    </div>
+
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Credenciais e Certificado Digital</h6></div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">CSC ID</label>
                         <input type="text" name="csc_id" id="branch_csc_id" class="form-control shadow-sm" placeholder="000001">
+                        <div class="extra-small text-muted mt-1">Obrigatório p/ geração QR Code.</div>
                     </div>
                     <div class="col-md-8">
                         <label class="form-label small fw-bold">CSC Token</label>
-                        <input type="text" name="csc_token" id="branch_csc_token" class="form-control shadow-sm">
+                        <input type="text" name="csc_token" id="branch_csc_token" class="form-control shadow-sm" placeholder="A074385C-E888-485A-99A9-...">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 mt-3">
                         <label class="form-label small fw-bold">Certificado Digital (A1 .pfx)</label>
                         <input type="file" name="certificado" class="form-control shadow-sm">
-                        <div id="cert_info" class="extra-small text-muted mt-1"></div>
+                        <div id="cert_info" class="extra-small text-success mt-1 fw-bold"></div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 mt-3">
                         <label class="form-label small fw-bold">Senha do Certificado</label>
-                        <input type="password" name="certificado_senha" id="branch_cert_senha" class="form-control shadow-sm">
+                        <input type="password" name="certificado_senha" id="branch_cert_senha" class="form-control shadow-sm" placeholder="Deixe em branco para manter">
                     </div>
                 </div>
             </div>
@@ -183,6 +238,15 @@ function newBranch() {
     document.getElementById('branch_crt').value = 1;
     document.getElementById('branch_cnpj').value = '';
     document.getElementById('branch_ie').value = '';
+    
+    // Novas Configs NFCe Default Defaults
+    document.getElementById('branch_tipo_emissao').value = 'Normal';
+    document.getElementById('branch_finalidade_emissao').value = 'Normal';
+    document.getElementById('branch_indicador_presenca').value = 'Operacao presencial';
+    document.getElementById('branch_tipo_impressao_danfe').value = 'NFC-e';
+    document.getElementById('branch_serie_nfce').value = 1;
+    document.getElementById('branch_ultimo_numero_nfce').value = 0;
+
     document.getElementById('branch_telefone').value = '';
     document.getElementById('branch_email').value = '';
     document.getElementById('branch_logradouro').value = '';
@@ -209,6 +273,15 @@ function editBranch(branch) {
     document.getElementById('branch_crt').value = branch.crt || 1;
     document.getElementById('branch_cnpj').value = branch.cnpj || '';
     document.getElementById('branch_ie').value = branch.inscricao_estadual || '';
+
+    // Advanced NFce Configs
+    document.getElementById('branch_tipo_emissao').value = branch.tipo_emissao || 'Normal';
+    document.getElementById('branch_finalidade_emissao').value = branch.finalidade_emissao || 'Normal';
+    document.getElementById('branch_indicador_presenca').value = branch.indicador_presenca || 'Operacao presencial';
+    document.getElementById('branch_tipo_impressao_danfe').value = branch.tipo_impressao_danfe || 'NFC-e';
+    document.getElementById('branch_serie_nfce').value = branch.serie_nfce || 1;
+    document.getElementById('branch_ultimo_numero_nfce').value = branch.ultimo_numero_nfce || 0;
+
     document.getElementById('branch_telefone').value = branch.telefone || '';
     document.getElementById('branch_email').value = branch.email || '';
     document.getElementById('branch_logradouro').value = branch.logradouro || '';
@@ -226,5 +299,63 @@ function editBranch(branch) {
     document.getElementById('cert_info').innerText = branch.certificado_pfx ? 'Certificado atual: ' + branch.certificado_pfx : 'Nenhum certificado carregado';
     
     modal.show();
+}
+
+function mascaraCNPJ(input) {
+    let v = input.value.replace(/\D/g, "");
+    if (v.length > 14) v = v.substring(0, 14);
+    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+    v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+    v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    input.value = v;
+}
+
+async function consultarCNPJ() {
+    const cnpjInput = document.getElementById('branch_cnpj');
+    const cnpj = cnpjInput.value.replace(/\D/g, '');
+    const btn = cnpjInput.nextElementSibling;
+    const originalText = btn.innerHTML;
+    
+    if (cnpj.length !== 14) {
+        alert('Por favor, informe um CNPJ válido com 14 dígitos.');
+        return;
+    }
+
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        if (!response.ok) {
+            throw new Error('Falha na consulta. CNPJ rejeitado ou limitação de API.');
+        }
+        
+        const data = await response.json();
+        
+        // Auto-Fill Fields
+        document.getElementById('branch_razao_social').value = data.razao_social || '';
+        document.getElementById('branch_nome').value = data.nome_fantasia || data.razao_social || '';
+        document.getElementById('branch_telefone').value = data.ddd_telefone_1 || '';
+        document.getElementById('branch_email').value = data.email || '';
+        
+        document.getElementById('branch_cep').value = data.cep || '';
+        document.getElementById('branch_logradouro').value = data.logradouro || '';
+        document.getElementById('branch_numero').value = data.numero || '';
+        document.getElementById('branch_complemento').value = data.complemento || '';
+        document.getElementById('branch_bairro').value = data.bairro || '';
+        document.getElementById('branch_municipio').value = data.municipio || '';
+        document.getElementById('branch_uf').value = data.uf || '';
+        document.getElementById('branch_codigo_municipio').value = data.codigo_municipio || '';
+        
+        // Flash success
+        btn.innerHTML = '<i class="fas fa-check text-success"></i> Sucesso!';
+        setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+        
+    } catch (error) {
+        alert('Erro ao buscar CNPJ: ' + error.message);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 }
 </script>
