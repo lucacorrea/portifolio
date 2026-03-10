@@ -774,13 +774,12 @@ try {
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
                       <h4 class="card-title mb-0">Lista de Produtores</h4>
-                       <a href="selecionarFeirante.php" class="btn btn-outline-info btn-sm">
-                        <i class="ti-hand-point-right"></i> Imprimir Lista
-                      </a>
                       <p class="card-description mb-0">
                         Total: <?= (int)$totalRows ?> — Página <?= (int)$page ?> de <?= (int)$totalPages ?>.
                       </p>
-                     
+                      <a href="selecionarFeirante.php" class="btn btn-outline-info btn-sm mt-2">
+                        <i class="ti-list"></i> Imprimir Lista
+                      </a>
                     </div>
                       <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
                       <i class="ti-plus"></i> Adicionar
