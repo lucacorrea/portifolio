@@ -260,8 +260,8 @@ $categorias = [
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Código (SKU) *</label>
-                        <input type="text" name="codigo" class="form-control" required style="font-family: 'Roboto Mono';">
+                        <label class="form-label">Código Interno (SKU) *</label>
+                        <input type="text" name="codigo" class="form-control" required style="font-family: 'Roboto Mono'; background-color: #f1f3f5;" value="<?php echo 'PRD' . str_pad((int)$pdo->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>" readonly>
                     </div>
                     <div class="form-group">
                         <label class="form-label">GTIN/EAN (cEAN)</label>
@@ -393,8 +393,8 @@ $categorias = [
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Código (SKU) *</label>
-                        <input type="text" name="codigo" id="edit_codigo" class="form-control" required style="font-family: 'Roboto Mono';">
+                        <label class="form-label">Código Interno (SKU) *</label>
+                        <input type="text" name="codigo" id="edit_codigo" class="form-control" required style="font-family: 'Roboto Mono'; background-color: #f1f3f5;" readonly>
                     </div>
                     <div class="form-group">
                         <label class="form-label">GTIN/EAN (cEAN)</label>
