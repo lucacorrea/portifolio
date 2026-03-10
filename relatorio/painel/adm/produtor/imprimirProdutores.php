@@ -490,7 +490,7 @@ try {
                 width: 100%;
                 min-width: 100%;
                 border-right: 0;
-                border-bottom: 1px solid #ddd;
+                zoom: 130%;
             }
         }
 
@@ -515,7 +515,7 @@ try {
             }
 
             .logo-box {
-                border: 1px solid #bbb;
+                
                 color: transparent;
             }
         }
