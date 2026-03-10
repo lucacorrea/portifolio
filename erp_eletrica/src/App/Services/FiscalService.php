@@ -29,7 +29,7 @@ class FiscalService extends BaseService {
             return [
                 'cnpj' => $branch['cnpj'],
                 'certificado_pfx' => $global['certificado_path'],
-                'certificado_senha' => base64_decode($global['certificado_senha']), // Decrypt
+                'certificado_senha' => $global['certificado_senha'], // Plaintext
                 'ambiente' => $global['ambiente'] == 'producao' ? 1 : 2,
                 'nome' => $branch['nome']
             ];
@@ -39,7 +39,7 @@ class FiscalService extends BaseService {
         return [
             'cnpj' => $branch['cnpj'],
             'certificado_pfx' => $branch['certificado_pfx'] ?? null,
-            'certificado_senha' => !empty($branch['certificado_senha']) ? base64_decode($branch['certificado_senha']) : '',
+            'certificado_senha' => $branch['certificado_senha'] ?? '',
             'ambiente' => $branch['ambiente'] ?? 2,
             'nome' => $branch['nome']
         ];
@@ -164,26 +164,27 @@ class FiscalService extends BaseService {
      */
     public function testConnection($branchId) {
         $branch = $this->getBranchData($branchId);
+        $fiscal = $this->getFiscalConfig($branchId);
         
         if (empty($branch['cnpj'])) {
             throw new Exception("CNPJ não configurado para esta filial.");
         }
         
-        if (empty($branch['certificado_pfx'])) {
-            throw new Exception("Certificado Digital (.pfx) não enviado.");
+        if (empty($fiscal['certificado_pfx'])) {
+            throw new Exception("Certificado Digital (.pfx) não configurado (nem globalmente nem na filial).");
         }
 
-        if (empty($branch['certificado_senha'])) {
+        if (empty($fiscal['certificado_senha'])) {
             throw new Exception("Senha do certificado não configurada.");
         }
 
         // Test actual signing capability to ensure certificate is fully functional
         try {
-            $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $branch['certificado_pfx'];
+            $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscal['certificado_pfx'];
             if (!file_exists($pfxPath)) throw new Exception("Arquivo do certificado não encontrado no servidor.");
             
             $pfxContent = file_get_contents($pfxPath);
-            $password = $branch['certificado_senha'];
+            $password = $fiscal['certificado_senha'];
             
             require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
             
@@ -206,7 +207,6 @@ class FiscalService extends BaseService {
 
             // 2. Real connectivity check (Status do Serviço)
             $soapClient = new SefazSoapClient();
-            $fiscal = $this->getFiscalConfig($branchId);
             
             // Generate exact XML schema for NfeStatusServico4
             $uf = "35"; // SP by default for this project
