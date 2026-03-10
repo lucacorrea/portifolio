@@ -915,10 +915,6 @@ $total12m = array_sum($chart1);
       text-align: center;
     }
 
-    .brand-vertical img {
-      height: auto;
-      display: block;
-    }
 
     .brand-name {
       display: block;
@@ -941,7 +937,6 @@ $total12m = array_sum($chart1);
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="brand-vertical">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
         <span class="brand-name">DISTRIBUIDORA<br>PLHB</span>
       </a>
     </div>
