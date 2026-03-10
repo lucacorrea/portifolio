@@ -508,7 +508,7 @@ try {
             }
 
             .container {
-                max-width: 50%;
+                max-width: 100%;
                 margin: 0;
                 padding: 0;
             }
