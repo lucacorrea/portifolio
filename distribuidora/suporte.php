@@ -264,7 +264,7 @@ if (!function_exists('e')) {
                 </div>
             </div>
         </header>
-        
+
         <section class="section">
             <div class="container-fluid p-4">
                 <div class="card-style">
@@ -278,49 +278,38 @@ if (!function_exists('e')) {
                                 <div class="support-item">
                                     <div class="support-icon"><i class="lni lni-whatsapp"></i></div>
                                     <div class="support-text">
-                                        <h6>WhatsApp</h6>
-                                        <p>Suporte rápido via mensagens.</p><a href="https://wa.me/5500000000000" target="_blank" class="fw-bold text-primary">(00) 00000-0000</a>
+                                        <h6>Lucas de Souza Correa</h6>
+                                        <p>Suporte rápido via WhatsApp.</p><a href="https://wa.me/5592991515710" target="_blank" class="fw-bold text-primary">(92) 99151-5710</a>
+                                    </div>
+                                </div>
+                                <div class="support-item">
+                                    <div class="support-icon"><i class="lni lni-whatsapp"></i></div>
+                                    <div class="support-text">
+                                        <h6>Junior de Almeida Praia</h6>
+                                        <p>Suporte rápido via WhatsApp.</p><a href="https://wa.me/5597981053442" target="_blank" class="fw-bold text-primary">(97) 99810-5344</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="support-item">
+                                    <div class="support-icon"><i class="lni lni-whatsapp"></i></div>
+                                    <div class="support-text">
+                                        <h6>Luiz Breno da Frota</h6>
+                                        <p>Suporte rápido via WhatsApp.</p><a href="https://wa.me/5579791434585" target="_blank" class="fw-bold text-primary">(79) 79143-4585</a>
                                     </div>
                                 </div>
                                 <div class="support-item">
                                     <div class="support-icon"><i class="lni lni-envelope"></i></div>
                                     <div class="support-text">
                                         <h6>E-mail</h6>
-                                        <p>Para solicitações mais complexas.</p><a href="mailto:suporte@exemplo.com" class="fw-bold text-primary">suporte@exemplo.com</a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="support-item">
-                                    <div class="support-icon"><i class="lni lni-phone"></i></div>
-                                    <div class="support-text">
-                                        <h6>Telefone</h6>
-                                        <p>Atendimento em horário comercial.</p><span class="fw-bold text-primary">(00) 0000-0000</span>
-                                    </div>
-                                </div>
-                                <div class="support-item">
-                                    <div class="support-icon"><i class="lni lni-world"></i></div>
-                                    <div class="support-text">
-                                        <h6>Base de Conhecimento</h6>
-                                        <p>Acesse nossos manuais e tutoriais.</p><a href="#" class="fw-bold text-primary">Acessar Documentação</a>
+                                        <p>Para solicitações mais complexas.</p><a href="mailto:suportecodegeek@gmail.com" class="fw-bold text-primary">suportecodegeek@gmail.com</a>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="card-style">
-                    <div class="head">
-                        <h5>Horário de Atendimento</h5>
-                    </div>
-                    <div class="body">
-                        <ul class="list-unstyled mb-0">
-                            <li class="d-flex justify-content-between mb-2"><span>Segunda a Sexta</span><span class="fw-bold">08:00 às 18:00</span></li>
-                            <li class="d-flex justify-content-between mb-2"><span>Sábado</span><span class="fw-bold">08:00 às 12:00</span></li>
-                            <li class="d-flex justify-content-between"><span>Domingos e Feriados</span><span class="text-danger fw-bold">Fechado</span></li>
-                        </ul>
-                    </div>
-                </div>
+
             </div>
         </section>
     </main>
