@@ -187,7 +187,12 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">NCM</label>
-                        <input type="text" name="ncm" class="form-control shadow-sm" id="edit_ncm">
+                        <div class="input-group input-group-sm mb-3 shadow-sm">
+                            <input type="text" name="ncm" class="form-control" id="edit_ncm">
+                            <button class="btn btn-outline-secondary" type="button" onclick="openNcmSearch()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="col-md-12">
                         <label class="form-label small fw-bold">Nome / Descrição do Material</label>
@@ -307,6 +312,49 @@
     </div>
 </div>
 
+<!-- NCM Search Modal -->
+<div class="modal fade" id="ncmSearchModal" tabindex="-1" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Buscar NCM</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="input-group mb-3 custom-search-group">
+                    <input type="text" id="ncmSearchInput" class="form-control" placeholder="Buscar por código (ex: 8517) ou descrição (ex: celular)..." onkeyup="if(event.key === 'Enter') searchNcm()">
+                    <button class="btn btn-primary" type="button" onclick="searchNcm()" id="ncmSearchBtn">
+                        <i class="fas fa-search me-2"></i>Pesquisar
+                    </button>
+                </div>
+                
+                <div id="ncmLoading" class="text-center d-none my-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Buscando...</span>
+                    </div>
+                    <div class="mt-2 text-muted small">Consultando Tabela SEFAZ (BrasilAPI)...</div>
+                </div>
+
+                <div class="table-responsive d-none mt-3" id="ncmResultsContainer">
+                    <table class="table table-hover table-sm align-middle" style="font-size: 0.85rem;">
+                        <thead class="bg-light">
+                            <tr>
+                                <th width="15%">Código</th>
+                                <th width="75%">Descrição</th>
+                                <th width="10%">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ncmResultsBody">
+                            <!-- Results inject here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="ncmError" class="alert alert-danger d-none mt-3 small"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Stock Movement Modal -->
 <div class="modal fade" id="movementModal" tabindex="-1">
     <div class="modal-dialog">
@@ -396,7 +444,7 @@ function deleteProduct(id) {
     }
 }
 
-// Client-side search logic
+// Client-side Inventory search logic
 document.getElementById('productSearch').addEventListener('keyup', function() {
     let value = this.value.toLowerCase();
     let rows = document.querySelectorAll('#inventoryTable tbody tr');
@@ -406,4 +454,79 @@ document.getElementById('productSearch').addEventListener('keyup', function() {
         row.style.display = text.includes(value) ? '' : 'none';
     });
 });
+
+// NCM Search Logic
+let ncmModal;
+function openNcmSearch() {
+    if (!ncmModal) {
+        ncmModal = new bootstrap.Modal(document.getElementById('ncmSearchModal'));
+    }
+    document.getElementById('ncmSearchInput').value = '';
+    document.getElementById('ncmResultsContainer').classList.add('d-none');
+    document.getElementById('ncmError').classList.add('d-none');
+    ncmModal.show();
+    setTimeout(() => document.getElementById('ncmSearchInput').focus(), 500);
+}
+
+function searchNcm() {
+    const term = document.getElementById('ncmSearchInput').value.trim();
+    if (term.length < 3) {
+        alert('Digite pelo menos 3 caracteres para pesquisar.');
+        return;
+    }
+
+    const btn = document.getElementById('ncmSearchBtn');
+    const loading = document.getElementById('ncmLoading');
+    const container = document.getElementById('ncmResultsContainer');
+    const tbody = document.getElementById('ncmResultsBody');
+    const errorDiv = document.getElementById('ncmError');
+
+    btn.disabled = true;
+    loading.classList.remove('d-none');
+    container.classList.add('d-none');
+    errorDiv.classList.add('d-none');
+    tbody.innerHTML = '';
+
+    fetch(`api/ncm_search.php?search=${encodeURIComponent(term)}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Falha na consulta à API.');
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.length > 0) {
+                // Remove format dots for saving, but show them in UI
+                data.forEach(item => {
+                    const cleanCode = item.codigo.replace(/\./g, '');
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="fw-bold font-monospace text-primary">${item.codigo}</td>
+                            <td class="text-truncate" style="max-width: 400px;" title="${item.descricao}">${item.descricao}</td>
+                            <td>
+                                <button class="btn btn-sm btn-success py-0 px-2 fw-bold" onclick="selectNcm('${cleanCode}')">
+                                    Usar
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                container.classList.remove('d-none');
+            } else {
+                errorDiv.innerHTML = 'Nenhum NCM encontrado para esta pesquisa.';
+                errorDiv.classList.remove('d-none');
+            }
+        })
+        .catch(err => {
+            errorDiv.innerHTML = 'Erro ao buscar NCM: ' + err.message + ' Tente pesquisar por código ou descrição mais exata.';
+            errorDiv.classList.remove('d-none');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            loading.classList.add('d-none');
+        });
+}
+
+function selectNcm(code) {
+    document.getElementById('edit_ncm').value = code;
+    ncmModal.hide();
+}
 </script>
