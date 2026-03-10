@@ -185,22 +185,13 @@
                         <label class="form-label small fw-bold">Código Interno</label>
                         <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono'; background-color: #f1f3f5;" value="<?php echo 'PRD' . str_pad((int)(\App\Config\Database::getInstance()->getConnection())->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>" readonly>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">NCM</label>
-                        <div class="input-group input-group-sm mb-3 shadow-sm">
-                            <input type="text" name="ncm" class="form-control" id="edit_ncm">
-                            <button class="btn btn-outline-secondary" type="button" onclick="openNcmSearch()">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-12">
-                        <label class="form-label small fw-bold">Nome / Descrição do Material</label>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
                         <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">Unidade</label>
-                        <select name="unidade" class="form-select shadow-sm" id="edit_unidade" onchange="updateFormVisibility()">
+                        <label class="form-label small fw-bold">Unidade de Medida *</label>
+                        <select name="unidade" class="form-select shadow-sm" id="edit_unidade" required onchange="updateFormVisibility()">
                             <option value="UN">Unidade (UN)</option>
                             <option value="MT">Metro (MT)</option>
                             <option value="CX">Caixa (CX)</option>
@@ -217,17 +208,6 @@
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">Tipo de Produto *</label>
-                        <select name="tipo_produto" class="form-select shadow-sm" id="edit_tipo_produto" required>
-                            <option value="simples">Material Simples</option>
-                            <option value="composto">Kit / Composto</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Quantidade (Estoque) *</label>
-                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required id="edit_quantidade" value="0">
-                    </div>
-                    <div class="col-md-8">
                         <label class="form-label small fw-bold">Categoria</label>
                         <select name="categoria" class="form-select shadow-sm" id="edit_categoria">
                             <?php foreach ($categories as $cat): ?>
@@ -235,59 +215,69 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço de Custo (R$)</label>
-                        <input type="number" step="0.01" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço Venda (Normal)</label>
-                        <input type="number" step="0.01" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço 2</label>
-                        <input type="number" step="0.01" name="preco_venda_2" class="form-control shadow-sm" id="edit_preco_venda_2">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço 3</label>
-                        <input type="number" step="0.01" name="preco_venda_3" class="form-control shadow-sm" id="edit_preco_venda_3">
-                    </div>
-                    
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">Preço Atacado (R$)</label>
-                        <input type="number" step="0.01" name="preco_venda_atacado" class="form-control shadow-sm text-success" id="edit_preco_venda_atacado">
-                    </div>
-                    <div class="col-md-4" id="div_estoque_minimo">
-                        <label class="form-label small fw-bold">Estoque Mínimo (Alerta)</label>
-                        <input type="number" name="estoque_minimo" class="form-control shadow-sm text-danger" id="edit_estoque_minimo">
-                    </div>
-                    <div class="col-md-4" id="div_foto">
-                        <label class="form-label small fw-bold">Foto do Produto</label>
-                        <input type="file" name="foto" class="form-control shadow-sm">
+                        <label class="form-label small fw-bold">Tipo de Material</label>
+                        <select name="tipo_produto" class="form-select shadow-sm" id="edit_tipo_produto" onchange="updateFormVisibility()">
+                            <option value="simples">Item Simples</option>
+                            <option value="composto">Kit / Composto</option>
+                            <option value="consumo">Material de Consumo</option>
+                        </select>
                     </div>
 
+                    <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-success small border-bottom pb-2"><i class="fas fa-tag me-1"></i>Preços</h6></div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço de Custo (R$) *</label>
+                        <input type="number" step="0.01" min="0" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço Venda Normal (R$) *</label>
+                        <input type="number" step="0.01" min="0" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço 2 (R$)</label>
+                        <input type="number" step="0.01" min="0" name="preco_venda_2" class="form-control shadow-sm" id="edit_preco_venda_2" placeholder="Opcional">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço 3 (R$)</label>
+                        <input type="number" step="0.01" min="0" name="preco_venda_3" class="form-control shadow-sm" id="edit_preco_venda_3" placeholder="Opcional">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Preço Atacado (R$)</label>
+                        <input type="number" step="0.01" min="0" name="preco_venda_atacado" class="form-control shadow-sm" id="edit_preco_venda_atacado" placeholder="Opcional">
+                    </div>
+
+                    <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-warning small border-bottom pb-2"><i class="fas fa-boxes me-1"></i>Estoque</h6></div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Quantidade Inicial *</label>
+                        <input type="number" step="0.01" min="0" name="quantidade" class="form-control shadow-sm" required id="edit_quantidade" value="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Estoque Mínimo (Alerta)</label>
+                        <input type="number" min="0" name="estoque_minimo" class="form-control shadow-sm" id="edit_estoque_minimo" value="0">
+                    </div>
+
+                    <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-secondary small border-bottom pb-2"><i class="fas fa-ruler-combined me-1"></i>Logística <small class="text-muted fw-normal">(mostrado conforme unidade)</small></h6></div>
                     <div class="col-md-4" id="div_peso">
                         <label class="form-label small fw-bold">Peso Bruto (KG)</label>
-                        <input type="number" step="0.001" name="peso" class="form-control shadow-sm" id="edit_peso">
+                        <input type="number" step="0.001" min="0" name="peso" class="form-control shadow-sm" id="edit_peso">
                     </div>
                     <div class="col-md-4" id="div_dimensoes">
                         <label class="form-label small fw-bold">Dimensões (CxLxA)</label>
-                        <input type="text" name="dimensoes" class="form-control shadow-sm" id="edit_dimensoes" placeholder="10x15x5cm">
+                        <input type="text" name="dimensoes" class="form-control shadow-sm" id="edit_dimensoes" placeholder="Ex: 10x15x5cm">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Especificações Técnicas</label>
-                        <input type="text" name="descricao" class="form-control shadow-sm" id="edit_descricao">
+                        <input type="text" name="descricao" class="form-control shadow-sm" id="edit_descricao" placeholder="Ex: 2,5mm² 750V">
                     </div>
 
-                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Informações Fiscais (SEFAZ)</h6></div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">NCM (BrasilAPI)</label>
-                        <div class="position-relative">
-                            <input type="text" name="ncm" class="form-control shadow-sm z-index-1" id="edit_ncm" placeholder="Ex: 8517 ou celular" onkeyup="searchNcmInline(this.value)">
-                            <span class="position-absolute" id="ncmLoader" style="display:none; right: 10px; top: 8px; z-index: 5;"><i class="fas fa-spinner fa-spin text-primary"></i></span>
-                            <ul id="ncmDropdown" class="dropdown-menu w-100 shadow" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 250px; overflow-y: auto;">
-                                <!-- NCMs ajax -->
-                            </ul>
+                    <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-primary small border-bottom pb-2"><i class="fas fa-file-invoice me-1"></i>Informações Fiscais (SEFAZ)</h6></div>
+                    <div class="col-md-4 position-relative">
+                        <label class="form-label small fw-bold">NCM</label>
+                        <div class="input-group input-group-sm shadow-sm">
+                            <input type="text" name="ncm" class="form-control" id="edit_ncm" placeholder="Digite cód. ou nome..." autocomplete="off" onkeyup="searchNcmInline(this.value)">
+                            <span class="input-group-text bg-white" id="ncmLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary" style="font-size:0.75rem;"></i></span>
                         </div>
+                        <ul id="ncmDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto;"></ul>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">GTIN/EAN (cEAN)</label>
@@ -496,5 +486,15 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// Removed updateFormVisibility since user only registers materials.
+function updateFormVisibility() {
+    const unidade = document.getElementById('edit_unidade').value;
+    
+    // For liquid/weight units, hide the physical dimensions and weight fields
+    // since they're not relevant (e.g., you don't have "width" for a liquid)
+    const liquidUnits = ['KG', 'GR', 'L', 'ML'];
+    const hideDimensions = liquidUnits.includes(unidade);
+    
+    document.getElementById('div_peso').style.display = hideDimensions ? 'none' : '';
+    document.getElementById('div_dimensoes').style.display = hideDimensions ? 'none' : '';
+}
 </script>
