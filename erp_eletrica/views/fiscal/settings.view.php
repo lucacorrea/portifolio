@@ -3,13 +3,20 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <div class="d-flex align-items-center mb-4">
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 me-3">
-                        <i class="fas fa-server fs-4"></i>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 me-3">
+                            <i class="fas fa-server fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-1">Central de Transmissão SEFAZ</h5>
+                            <p class="text-muted small mb-0">Gerencie certificados digitais e credenciais para emissão de NF-e e NFC-e.</p>
+                        </div>
                     </div>
                     <div>
-                        <h5 class="fw-bold mb-1">Central de Transmissão SEFAZ</h5>
-                        <p class="text-muted small mb-0">Gerencie certificados digitais e credenciais para emissão de NF-e e NFC-e.</p>
+                        <a href="fiscal.php?action=diagnostic" class="btn btn-warning fw-bold shadow-sm">
+                            <i class="fas fa-stethoscope me-2"></i>DIAGNÓSTICO COMPLETO
+                        </a>
                     </div>
                 </div>
 

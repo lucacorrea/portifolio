@@ -85,6 +85,10 @@ class SefazConsultaService extends BaseService {
      */
     public function consultarNotas($cnpjDestinario, $ultNSU = '0') {
         $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
+        if (empty($cnpj) || strlen($cnpj) !== 14) {
+            throw new Exception("CNPJ inválido ou não configurado (" . htmlspecialchars($cnpjDestinario) . "). Verifique os dados da sua filial utilizando o botão 'Diagnóstico Completo' na aba Fiscal > Configurações.");
+        }
+        
         $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2; 
 
         // Preparamos o XML de solicitação seguindo NT 2014.002

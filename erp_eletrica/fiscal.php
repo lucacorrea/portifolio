@@ -15,6 +15,10 @@ switch ($action) {
         \App\Services\AuthService::checkPermission('fiscal', 'configurar');
         $controller->settings();
         break;
+    case 'diagnostic':
+        \App\Services\AuthService::checkPermission('fiscal', 'configurar');
+        $controller->diagnostic();
+        break;
     default:
         \App\Services\AuthService::checkPermission('fiscal', 'emitir_nota');
         $controller->index();
