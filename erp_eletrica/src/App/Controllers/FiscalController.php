@@ -92,8 +92,12 @@ class FiscalController extends BaseController {
         try {
             $service = new \App\Services\FiscalService();
             $result = $service->testConnection($id);
+            ob_clean(); // Make sure no HTML or PHP warnings break the JSON
+            header('Content-Type: application/json');
             echo json_encode($result);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
+            ob_clean();
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;

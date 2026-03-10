@@ -102,7 +102,7 @@ class SefazConsultaService extends BaseService {
         
         $xml->appendChild($distDFeInt);
         $distDFeInt->appendChild($xml->createElement('tpAmb', $ambiente));
-        $distDFeInt->appendChild($xml->createElement('cUFAutor', '35')); // Geralmente 91 para AN, mas SP usa 35
+        $distDFeInt->appendChild($xml->createElement('cUFAutor', '91')); // Ambiente Nacional é obrigatório para DistDFe
         $distDFeInt->appendChild($xml->createElement('CNPJ', $cnpj));
         
         $dist = $xml->createElement('distNSU');

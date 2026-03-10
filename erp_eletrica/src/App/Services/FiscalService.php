@@ -14,9 +14,10 @@ class FiscalService extends BaseService {
 
     private function getFiscalConfig($branchId) {
         // 1. Load Branch Info
-        $stmt = $this->db->prepare("SELECT * FROM filiais WHERE id = ?");
-        $stmt->execute([$branchId]);
-        $branch = $stmt->fetch();
+        $branch = $this->getBranchData($branchId);
+        if (!$branch) {
+             throw new Exception("Filial ID $branchId não encontrada no sistema.");
+        }
 
         // 2. Load Global Config
         $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
@@ -37,9 +38,9 @@ class FiscalService extends BaseService {
         // Fallback to legacy branch-specific config if global not set
         return [
             'cnpj' => $branch['cnpj'],
-            'certificado_pfx' => $branch['certificado_pfx'],
+            'certificado_pfx' => $branch['certificado_pfx'] ?? null,
             'certificado_senha' => !empty($branch['certificado_senha']) ? base64_decode($branch['certificado_senha']) : '',
-            'ambiente' => $branch['ambiente'],
+            'ambiente' => $branch['ambiente'] ?? 2,
             'nome' => $branch['nome']
         ];
     }
@@ -189,25 +190,44 @@ class FiscalService extends BaseService {
                 throw new Exception("Falha ao ler o certificado digital. Verifique a senha.");
             }
 
-            // Test signing a dummy string
+            // 1. Test signing a dummy string
             $dataToSign = "test-signature-" . time();
             $signature = '';
             if (!openssl_sign($dataToSign, $signature, $certs['pkey'], OPENSSL_ALGO_SHA256)) {
                 throw new Exception("O certificado foi aberto, mas falhou ao assinar dados (Chave privada inválida?).");
             }
+
+            // 2. Real connectivity check (Status do Serviço)
+            $soapClient = new SefazSoapClient();
+            $fiscal = $this->getFiscalConfig($branchId);
             
-            return [
-                'success' => true,
-                'status' => '107',
-                'motivo' => 'Certificado Válido e Operacional',
-                'ambiente' => ($branch['ambiente'] == 1 || $branch['ambiente'] == 'producao') ? 'Produção' : 'Homologação',
-                'verAplic' => 'ERP_ELET_V1',
-                'timestamp' => date('d/m/Y H:i:s'),
-                'cert_info' => [
-                    'subject' => openssl_x509_parse($certs['cert'])['subject']['CN'] ?? 'Desconhecido',
-                    'validTo' => date('d/m/Y', openssl_x509_parse($certs['cert'])['validTo_time_t'])
-                ]
-            ];
+            // Generate simple XML for Status Inquiry
+            $xml = '<?xml version="1.0" encoding="UTF-8"?><consStatServ xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><tpAmb>' . $fiscal['ambiente'] . '</tpAmb><cUF>35</cUF><xServ>STATUS</xServ></consStatServ>';
+            
+            try {
+                $responseXml = $soapClient->call('sefaz_status', $xml, $fiscal);
+                
+                // Parse response
+                $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $responseXml);
+                $res = simplexml_load_string($cleanXml);
+                $nodes = $res->xpath('//retConsStatServ');
+                $retStatus = !empty($nodes) ? $nodes[0] : $res;
+
+                return [
+                    'success' => true,
+                    'status' => (string)$retStatus->cStat ?: '???',
+                    'motivo' => (string)$retStatus->xMotivo ?: 'Resposta sem motivo',
+                    'ambiente' => ($fiscal['ambiente'] == 1) ? 'Produção' : 'Homologação',
+                    'verAplic' => (string)$retStatus->verAplic ?: '---',
+                    'timestamp' => (string)$retStatus->dhRecbto ?: date('d/m/Y H:i:s'),
+                    'cert_info' => [
+                        'subject' => openssl_x509_parse($certs['cert'])['subject']['CN'] ?? 'Desconhecido',
+                        'validTo' => date('d/m/Y', openssl_x509_parse($certs['cert'])['validTo_time_t'])
+                    ]
+                ];
+            } catch (Exception $e) {
+                throw new Exception("Certificado local OK, mas falha na comunicação SEFAZ: " . $e->getMessage());
+            }
         } catch (Exception $e) {
             throw new Exception("Erro no teste do certificado: " . $e->getMessage());
         }
