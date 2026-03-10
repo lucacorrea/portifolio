@@ -1716,9 +1716,9 @@ $flash = flash_pop();
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav show">
-            <li><a href="vendidos.php" class="active">Vendidos</a></li>
+            <li><a href="vendidos.php">Vendidos</a></li>
             <li><a href="fiados.php">À Prazo</a></li>
-            <li><a href="devolucoes.php">Devoluções</a></li>
+            <li><a href="devolucoes.php" class="active">Devoluções</a></li>
           </ul>
         </li>
 
@@ -1793,7 +1793,7 @@ $flash = flash_pop();
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
               </div>
-              <div class="header-search d-none d-md-flex">
+              <div class="header-search d-none d-md-flex" style="display: none !important;">
                 <form action="#">
                   <input type="text" placeholder="Buscar devolução..." id="qGlobal" />
                   <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
