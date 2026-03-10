@@ -3,17 +3,16 @@
 declare(strict_types=1);
 session_start();
 
-/* =========================
+/* ======================
    SEGURANÇA
-========================= */
+====================== */
+
 if (empty($_SESSION['usuario_logado'])) {
     header('Location: ../../../index.php');
     exit;
 }
 
 $perfis = $_SESSION['perfis'] ?? [];
-if (!is_array($perfis)) $perfis = [$perfis];
-
 if (!in_array('ADMIN', $perfis, true)) {
     header('Location: ../../operador/index.php');
     exit;
@@ -21,24 +20,19 @@ if (!in_array('ADMIN', $perfis, true)) {
 
 require '../../../assets/php/conexao.php';
 
-/* =========================
-   HELPERS
-========================= */
-
-function h($s): string
+function h($s)
 {
     return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
-function only_digits(string $s): string
+function only_digits($s)
 {
-    $out = preg_replace('/\D+/', '', $s);
-    return $out !== null ? $out : '';
+    return preg_replace('/\D+/', '', $s);
 }
 
-function formatCpf(?string $cpf): string
+function cpf_format($cpf)
 {
-    $cpf = only_digits((string)$cpf);
+    $cpf = only_digits($cpf);
 
     if ($cpf === '' || strlen($cpf) !== 11) {
         return 'CPF não informado';
@@ -50,175 +44,86 @@ function formatCpf(?string $cpf): string
         substr($cpf, 9, 2);
 }
 
-function fotoSrc(?string $foto): string
+function foto_path($foto)
 {
-    $foto = trim((string)$foto);
-
-    if ($foto === '') {
-        return '';
-    }
-
-    if (
-        stripos($foto, 'http://') === 0 ||
-        stripos($foto, 'https://') === 0
-    ) {
-        return $foto;
-    }
+    if (!$foto) return '';
 
     return '../../../' . ltrim($foto, '/');
 }
 
-/* =========================
+/* ======================
    FEIRA
-========================= */
+====================== */
 
 $FEIRA_ID = 1;
 
-$dirLower = strtolower((string)__DIR__);
+$dir = strtolower(__DIR__);
 
-if (strpos($dirLower, 'alternativa') !== false) {
+if (strpos($dir, 'alternativa') !== false) {
     $FEIRA_ID = 2;
 }
 
-if (strpos($dirLower, 'produtor') !== false) {
-    $FEIRA_ID = 1;
+/* ======================
+   CONEXÃO
+====================== */
+
+$pdo = db();
+
+/* ======================
+   FILTRO
+====================== */
+
+$tipo = $_GET['tipo'] ?? 'TODOS';
+
+$where = "WHERE p.feira_id = :feira";
+$params = [':feira' => $FEIRA_ID];
+
+if ($tipo !== 'TODOS') {
+    $where .= " AND p.tipo = :tipo";
+    $params[':tipo'] = $tipo;
 }
 
-/* =========================
-   CSRF
-========================= */
+/* ======================
+   QUERY
+====================== */
 
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+$sql = "
+
+SELECT
+p.id,
+p.nome,
+p.tipo,
+p.contato,
+p.documento,
+p.foto,
+p.ativo,
+p.observacao,
+c.nome comunidade
+
+FROM produtores p
+
+LEFT JOIN comunidades c
+ON c.id = p.comunidade_id
+
+$where
+
+ORDER BY p.nome ASC
+
+";
+
+$stmt = $pdo->prepare($sql);
+
+foreach ($params as $k => $v) {
+    $stmt->bindValue($k, $v);
 }
 
-$csrf = (string)$_SESSION['csrf_token'];
+$stmt->execute();
 
-/* =========================
-   DADOS
-========================= */
-
-$produtores = [];
-$err = '';
-$errDetail = '';
-
-try {
-
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new RuntimeException('Acesso inválido.');
-    }
-
-    $tokenPost = (string)($_POST['csrf_token'] ?? '');
-
-    if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
-        throw new RuntimeException('Falha de segurança (CSRF).');
-    }
-
-    $pdo = db();
-
-    $modo = (string)($_POST['modo'] ?? '');
-
-    $where = ["p.feira_id = :feira"];
-    $params = [':feira' => $FEIRA_ID];
-
-    /* =========================
-     SELECIONADOS
-  ========================= */
-
-    if ($modo === 'selecionados') {
-
-        $ids = $_POST['produtores'] ?? [];
-
-        if (!is_array($ids) || !$ids) {
-            throw new RuntimeException('Selecione pelo menos um produtor.');
-        }
-
-        $ids = array_map('intval', $ids);
-        $ids = array_filter($ids);
-
-        $in = [];
-
-        foreach ($ids as $i => $id) {
-            $ph = ':id' . $i;
-            $in[] = $ph;
-            $params[$ph] = $id;
-        }
-
-        $where[] = 'p.id IN (' . implode(',', $in) . ')';
-    }
-
-    /* =========================
-     TODOS
-  ========================= */
-
-    if ($modo === 'todos') {
-
-        $q = trim((string)($_POST['q'] ?? ''));
-
-        if ($q !== '') {
-
-            $params[':q'] = '%' . $q . '%';
-
-            $where[] = '(p.nome LIKE :q)';
-        }
-    }
-
-    $whereSql = 'WHERE ' . implode(' AND ', $where);
-
-    /* =========================
-     CONSULTA
-  ========================= */
-
-    $sql = "
-
-  SELECT
-      p.id,
-      p.nome,
-      p.contato,
-      p.documento,
-      p.foto,
-      p.ativo,
-      p.observacao,
-      c.nome AS comunidade
-
-  FROM produtores p
-
-  LEFT JOIN comunidades c
-  ON c.id = p.comunidade_id
-
-  $whereSql
-
-  ORDER BY p.nome ASC
-
-  ";
-
-    $stmt = $pdo->prepare($sql);
-
-    foreach ($params as $k => $v) {
-
-        if (strpos($k, ':id') === 0) {
-            $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
-        } else {
-            $stmt->bindValue($k, $v);
-        }
-    }
-
-    $stmt->execute();
-
-    $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    if (!$produtores) {
-        throw new RuntimeException('Nenhum produtor encontrado.');
-    }
-} catch (Throwable $e) {
-
-    $err = 'Erro ao gerar impressão.';
-    $errDetail = $e->getMessage();
-}
+$produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 
 <head>
 
@@ -233,16 +138,15 @@ try {
         }
 
         .topo {
-            padding: 15px;
+            padding: 10px;
             text-align: right;
         }
 
         .btn {
-            padding: 10px 14px;
-            border-radius: 6px;
-            border: 1px solid #333;
+            padding: 8px 12px;
             background: #333;
             color: #fff;
+            border: 0;
             cursor: pointer;
         }
 
@@ -253,8 +157,39 @@ try {
             padding: 20px;
         }
 
-        h1 {
-            margin: 0 0 10px 0;
+        .cabecalho {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .l1 {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .l2 {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .l3 {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .l4 {
+            font-size: 12px;
+        }
+
+        .titulo {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .filtro {
+            margin-bottom: 15px;
         }
 
         .grid {
@@ -298,12 +233,12 @@ try {
         .nome {
             font-size: 18px;
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .linha {
             font-size: 14px;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .label {
@@ -326,7 +261,8 @@ try {
 
         @media print {
 
-            .topo {
+            .topo,
+            .filtro {
                 display: none;
             }
 
@@ -341,115 +277,146 @@ try {
 
 <body>
 
-    <?php if ($err): ?>
+    <div class="topo">
+        <button onclick="window.print()" class="btn">Imprimir</button>
+    </div>
 
-        <div style="padding:20px;color:red">
+    <div class="container">
 
-            <strong><?= h($err) ?></strong><br>
-            <?= h($errDetail) ?>
+        <div class="cabecalho">
 
-        </div>
-
-    <?php else: ?>
-
-        <div class="topo">
-
-            <button onclick="window.print()" class="btn">
-                Imprimir
-            </button>
+            <div class="l1">ESTADO DO AMAZONAS</div>
+            <div class="l2">PREFEITURA MUNICIPAL DE COARI</div>
+            <div class="l3">SECRETARIA MUNICIPAL DE TERRAS E HABITAÇÃO</div>
+            <div class="l4">Rua Rio Aroã, nº 127C – Bairro Santa Efigênia – Coari – AM – CEP: 69460-000</div>
 
         </div>
 
-        <div class="container">
+        <hr>
 
-            <h1>Lista de Produtores</h1>
+        <div class="titulo">
+            LISTA DE PRODUTORES DA FEIRA
+        </div>
 
-            <p>Total: <strong><?= count($produtores) ?></strong></p>
+        <div class="filtro">
 
-            <div class="grid">
+            <form method="get">
 
-                <?php foreach ($produtores as $p): ?>
+                <select name="tipo">
 
-                    <?php
-                    $foto = fotoSrc($p['foto'] ?? '');
-                    ?>
+                    <option value="TODOS" <?= ($tipo == 'TODOS' ? 'selected' : '') ?>>
+                        Todos
+                    </option>
 
-                    <div class="card">
+                    <option value="PRODUTOR RURAL" <?= ($tipo == 'PRODUTOR RURAL' ? 'selected' : '') ?>>
+                        Produtor Rural
+                    </option>
 
-                        <div class="foto">
+                    <option value="FEIRANTE" <?= ($tipo == 'FEIRANTE' ? 'selected' : '') ?>>
+                        Feirante
+                    </option>
 
-                            <?php if ($foto): ?>
+                    <option value="MARRETEIRO" <?= ($tipo == 'MARRETEIRO' ? 'selected' : '') ?>>
+                        Marreteiro
+                    </option>
 
-                                <img src="<?= h($foto) ?>">
+                </select>
 
-                            <?php else: ?>
+                <button type="submit">Filtrar</button>
 
-                                <div class="semfoto">Sem foto</div>
+            </form>
 
-                            <?php endif; ?>
+        </div>
 
-                        </div>
+        <p>Total: <strong><?= count($produtores) ?></strong></p>
 
-                        <div class="info">
+        <div class="grid">
 
-                            <div class="nome">
-                                <?= h($p['nome']) ?>
-                            </div>
+            <?php foreach ($produtores as $p): ?>
 
-                            <div class="linha">
-                                <span class="label">CPF:</span>
-                                <?= h(formatCpf($p['documento'])) ?>
-                            </div>
+                <?php $foto = foto_path($p['foto'] ?? ''); ?>
 
-                            <div class="linha">
-                                <span class="label">Contato:</span>
-                                <?= h($p['contato'] ?: 'Não informado') ?>
-                            </div>
+                <div class="card">
 
-                            <div class="linha">
-                                <span class="label">Comunidade:</span>
-                                <?= h($p['comunidade'] ?: 'Não informada') ?>
-                            </div>
+                    <div class="foto">
 
-                            <div class="linha">
-                                <span class="label">Status:</span>
+                        <?php if ($foto): ?>
 
-                                <?php if ($p['ativo']): ?>
-                                    <span class="status ativo">Ativo</span>
-                                <?php else: ?>
-                                    <span class="status inativo">Inativo</span>
-                                <?php endif; ?>
+                            <img src="<?= h($foto) ?>">
 
-                            </div>
+                        <?php else: ?>
 
-                            <?php if (!empty($p['observacao'])): ?>
+                            <div class="semfoto">Sem foto</div>
 
-                                <div class="linha">
-                                    <span class="label">Obs:</span>
-                                    <?= h($p['observacao']) ?>
-                                </div>
-
-                            <?php endif; ?>
-
-                        </div>
+                        <?php endif; ?>
 
                     </div>
 
-                <?php endforeach; ?>
+                    <div class="info">
 
-            </div>
+                        <div class="nome">
+                            <?= h($p['nome']) ?>
+                        </div>
+
+                        <div class="linha">
+                            <span class="label">Tipo:</span>
+                            <?= h($p['tipo']) ?>
+                        </div>
+
+                        <div class="linha">
+                            <span class="label">CPF:</span>
+                            <?= h(cpf_format($p['documento'])) ?>
+                        </div>
+
+                        <div class="linha">
+                            <span class="label">Contato:</span>
+                            <?= h($p['contato'] ?: 'Não informado') ?>
+                        </div>
+
+                        <div class="linha">
+                            <span class="label">Comunidade:</span>
+                            <?= h($p['comunidade'] ?: 'Não informada') ?>
+                        </div>
+
+                        <div class="linha">
+                            <span class="label">Status:</span>
+
+                            <?php if ($p['ativo']): ?>
+                                <span class="status ativo">Ativo</span>
+                            <?php else: ?>
+                                <span class="status inativo">Inativo</span>
+                            <?php endif; ?>
+
+                        </div>
+
+                        <?php if (!empty($p['observacao'])): ?>
+
+                            <div class="linha">
+                                <span class="label">Obs:</span>
+                                <?= h($p['observacao']) ?>
+                            </div>
+
+                        <?php endif; ?>
+
+                    </div>
+
+                </div>
+
+            <?php endforeach; ?>
 
         </div>
 
-        <script>
-            window.onload = function() {
-                setTimeout(function() {
-                    window.print();
-                }, 400);
-            }
-        </script>
+    </div>
 
-    <?php endif; ?>
+    <script>
+        window.onload = function() {
+
+            setTimeout(function() {
+                window.print();
+            }, 400);
+
+        }
+    </script>
 
 </body>
 
