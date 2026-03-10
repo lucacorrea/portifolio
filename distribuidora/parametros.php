@@ -175,15 +175,15 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
                     </ul>
                 </li>
 
-                <li class="nav-item nav-item-has-children active">
+                <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
                         <span class="icon">
                             <i class="lni lni-users"></i>
                         </span>
                         <span class="text">Cadastros</span>
                     </a>
-                    <ul id="ddmenu_cadastros" class="collapse dropdown-nav show">
-                        <li><a href="clientes.php" class="active">Clientes</a></li>
+                    <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
+                        <li><a href="clientes.php">Clientes</a></li>
                         <li><a href="fornecedores.php">Fornecedores</a></li>
                         <li><a href="categorias.php">Categorias</a></li>
                     </ul>
@@ -202,16 +202,16 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
                     <hr />
                 </span>
 
-                <li class="nav-item nav-item-has-children">
+                <li class="nav-item nav-item-has-children active">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
                         <span class="icon">
                             <i class="lni lni-cog"></i>
                         </span>
                         <span class="text">Configurações</span>
                     </a>
-                    <ul id="ddmenu_config" class="collapse dropdown-nav">
+                    <ul id="ddmenu_config" class="collapse dropdown-nav show">
                         <li><a href="usuarios.php">Usuários e Permissões</a></li>
-                        <li><a href="parametros.php">Parâmetros do Sistema</a></li>
+                        <li><a href="parametros.php" class="active">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
 
