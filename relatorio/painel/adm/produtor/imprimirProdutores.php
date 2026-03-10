@@ -490,6 +490,7 @@ try {
                 width: 100%;
                 min-width: 100%;
                 border-right: 0;
+                zoom: 130%;
             }
         }
 
