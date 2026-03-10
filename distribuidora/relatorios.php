@@ -1712,7 +1712,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
                   <div class="muted mt-2" id="hintNone" style="display:none;">Nenhum dado para o filtro selecionado.</div>
 
-                  <div class="table-footer-nav">
+                  <div class="table-footer-nav mb-4">
                     <p class="text-sm text-gray mb-0" id="infoCount">Mostrando 0 item(ns) nesta página. Total filtrado: 0.</p>
 
                     <div class="pager-box" id="pagerBox">
@@ -1720,7 +1720,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
                         <i class="lni lni-chevron-left"></i>
                       </button>
 
-                      <span class="page-info mb-5" id="pagerText">Página 1/1</span>
+                      <span class="page-info" id="pagerText">Página 1/1</span>
 
                       <button class="page-btn" id="btnNextPage" type="button" title="Próxima">
                         <i class="lni lni-chevron-right"></i>
