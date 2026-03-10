@@ -1096,39 +1096,18 @@ function imprimirRecibo(saleId) {
 
 async function issueNFCe(saleId) {
     const btn = document.getElementById('btnNFCeModal') || event.currentTarget;
-    const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Comunicando SEFAZ...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Aberta central de emissão SEFAZ...';
 
-    try {
-        const res = await fetch('vendas.php?action=issue_nfce', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: saleId })
-        });
-
-        const result = await res.json();
-        if (result.success) {
-            btn.className = 'btn btn-success btn-lg fw-bold py-3 w-100';
-            btn.innerHTML = '<i class="fas fa-check me-2"></i>NFC-e AUTORIZADA! Abrindo DANFE...';
-            // Open DANFE print page (same as acainhadinhos)
-            const chave = result.chave || '';
-            const url = chave
-                ? `danfe_nfce.php?venda_id=${saleId}&chave=${chave}`
-                : `danfe_nfce.php?venda_id=${saleId}`;
-            setTimeout(() => {
-                window.open(url, '_blank', 'width=480,height=700,toolbar=0,menubar=0,location=0');
-            }, 400);
-        } else {
-            alert('Erro SEFAZ: ' + result.error);
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
-    } catch (e) {
-        alert('Erro de comunica\u00e7\u00e3o: ' + e.message);
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-    }
+    // Open emitir.php directly which handles the Sefaz XML+SOAP and then redirects to the final DANFE.
+    // This replicates the original robust behaviour fully.
+    const url = `nfce/emitir.php?venda_id=${saleId}`;
+    window.open(url, '_blank', 'width=800,height=900,toolbar=0,menubar=0,location=0');
+    
+    setTimeout(() => {
+        btn.innerHTML = '<i class="fas fa-check me-2"></i>Emitindo em nova janela...';
+        btn.className = 'btn btn-outline-success btn-lg fw-bold py-3 w-100';
+    }, 1500);
 }
 
 // Keyboard Hotkeys
