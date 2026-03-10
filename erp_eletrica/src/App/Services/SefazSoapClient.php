@@ -123,14 +123,15 @@ class SefazSoapClient extends BaseService {
     }
 
     private function wrapSoap($xml, $serviceName, $methodName) {
+        // SEFAZ 4.00 requires the namespace to be on nfeDadosMsg, and the method name to be namespace-free or prefixed with the exact matching ns
         return '<?xml version="1.0" encoding="utf-8"?>
-        <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-          <soap12:Body>
-            <' . $methodName . ' xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName . '">
-              <nfeDadosMsg>' . $xml . '</nfeDadosMsg>
-            </' . $methodName . '>
-          </soap12:Body>
-        </soap12:Envelope>';
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <' . $methodName . '>
+      <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName . '">' . $xml . '</nfeDadosMsg>
+    </' . $methodName . '>
+  </soap12:Body>
+</soap12:Envelope>';
     }
 
     private function extractSoapFault($response) {
