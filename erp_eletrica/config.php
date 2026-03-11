@@ -2,6 +2,11 @@
 // ERP Elétrica - Core Configuration
 define('DEBUG', true);
 require_once 'autoloader.php';
+// Include NFePHP Vendor Autoloader
+$vendorAutoload = __DIR__ . '/src/App/Services/vendor/autoload.php';
+if (file_exists($vendorAutoload)) {
+    require_once $vendorAutoload;
+}
 require_once __DIR__ . '/src/App/Config/Helpers.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
