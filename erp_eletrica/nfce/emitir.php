@@ -142,8 +142,8 @@ if (!$payload && isset($_POST['payload'])) {
 $itens = json_decode($_POST['itens'] ?? '[]', true) ?: ($payload['itens'] ?? []);
 
 /* Se ainda não houver itens, tenta buscar pelo venda_id no banco */
-if (!$itens && isset($_GET['venda_id'])) {
-  $venda_id = (int)$_GET['venda_id'];
+$venda_id = (int)($_GET['venda_id'] ?? $payload['venda_id'] ?? $_POST['venda_id'] ?? 0);
+if (!$itens && $venda_id) {
 
   /* Carrega conexão (mesmos candidatos do vendaRapidaSubmit.php) */
   $__candidates = [
@@ -576,9 +576,9 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
    $empresaId = $_POST['empresa_id'] ?? ($_GET['id'] ?? '');
   // ======= SEM AUTO-PRINT: só mostra link para abrir/imprimir =======
   // ======= AGORA: redireciona direto para o DANFE =======
-  $danfeUrl = '../../../nfce/danfe_nfce.php?chave=' . urlencode($chave)
+  $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
      . '&venda_id=' . urlencode((string)$vendaId)
-     . '&id=' . urlencode($empresaId); // mesmo diretório
+     . '&id=' . urlencode($empresaId);
   // limpa qualquer saída anterior para poder enviar headers
   while (ob_get_level() > 0) { ob_end_clean(); }
   if (!headers_sent()) {
@@ -672,7 +672,8 @@ $st->execute([
     }
     
     // ======= AGORA: redireciona direto para o DANFE =======
-    $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave);
+    $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
+       . '&venda_id=' . urlencode((string)$vendaId);
     while (ob_get_level() > 0) { ob_end_clean(); }
     if (!headers_sent()) {
       header('Location: ' . $danfeUrl);
