@@ -97,7 +97,7 @@ function u_render_rows(array $rows): string
                 </button>
             </td>
         </tr>
-<?php
+    <?php
     }
 
     return (string)ob_get_clean();
@@ -109,7 +109,7 @@ function u_render_pager(int $page, int $lastPage): string
     $nextDisabled = $page >= $lastPage ? 'disabled' : '';
 
     ob_start();
-?>
+    ?>
     <div class="pager-box">
         <button type="button" class="pager-btn" data-page="<?= max(1, $page - 1) ?>" <?= $prevDisabled ?>>
             <i class="lni lni-chevron-left"></i>
@@ -503,6 +503,29 @@ $flashErr = u_take_flash('flash_err');
         </header>
 
         <section class="section">
+
+            <div class="title-wrapper pt-30">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="title">
+                            <h2>Usuários</h2>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="breadcrumb-wrapper">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb">
+                                    <li class="breadcrumb-item"><a href="#">Configurações</a></li>
+                                    <li class="breadcrumb-item active" aria-current="page">Usuários</li>
+                                </ol>
+                            </nav>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             <div class="container-fluid p-4">
                 <?php if ($flashOk): ?>
                     <div class="alert alert-success flash-auto-hide" style="border-radius:14px;"><?= u_e($flashOk) ?></div>
