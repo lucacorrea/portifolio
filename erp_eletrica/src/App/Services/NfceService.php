@@ -118,7 +118,7 @@ class NfceService extends BaseService {
             ];
             $configJson = json_encode($config);
 
-            $pfxPath = dirname(__DIR__, 3) . '/storage/certificados/' . $fiscal['certificado_path'];
+            $pfxPath = dirname(__DIR__, 3) . '/storage/certificados/' . ($fiscal['certificado_path'] ?? $fiscal['certificado_pfx']);
             if (!file_exists($pfxPath)) throw new Exception("Certificado não encontrado em: $pfxPath");
             
             $pfx = file_get_contents($pfxPath);
@@ -127,7 +127,7 @@ class NfceService extends BaseService {
             $tools = new \NFePHP\NFe\Tools($configJson, $cert);
             $tools->model('65');
 
-            // 4. Generate XML using SefazXmlService (already in the project, lets use it or adapt)
+            // 4. Generate XML using SefazXmlService
             $xmlService = new SefazXmlService();
             // Map items for SefazXmlService
             $mappedItems = [];
@@ -151,7 +151,7 @@ class NfceService extends BaseService {
                 'forma_pagamento' => $venda['forma_pagamento']
             ];
 
-            // Real XML generation (simplified or via existing service)
+            // Real XML generation
             $resXml = $xmlService->generateNFCe($saleData, $fiscal);
             $nfeAss = $tools->signNFe($resXml['xml']);
             
@@ -172,6 +172,52 @@ class NfceService extends BaseService {
             }
 
             throw new Exception("Falha na autorização: " . ($stdEnv->xMotivo ?? 'Erro desconhecido'));
+
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    public function testConnection($empresaId) {
+        try {
+            $fiscal = $this->getConfig($empresaId);
+            
+            $config = [
+                'atualizacao' => date('Y-m-d H:i:s'),
+                'tpAmb'       => (int)($fiscal['ambiente'] ?? 2),
+                'razaosocial' => $fiscal['razao_social'] ?? '',
+                'siglaUF'     => $fiscal['uf'] ?? 'RN',
+                'cnpj'        => preg_replace('/\D/', '', $fiscal['cnpj'] ?? ''),
+                'schemes'     => 'PL_009_V4',
+                'versao'      => '4.00',
+                'urlChave'    => '',
+                'urlQRCode'   => '',
+                'CSC'         => $fiscal['csc'] ?? '',
+                'CSCid'       => $fiscal['csc_id'] ?? '',
+            ];
+            $configJson = json_encode($config);
+
+            $pfxPath = dirname(__DIR__, 3) . '/storage/certificados/' . ($fiscal['certificado_path'] ?? $fiscal['certificado_pfx']);
+            if (!file_exists($pfxPath)) throw new Exception("Certificado não encontrado em: $pfxPath");
+            
+            $pfx = file_get_contents($pfxPath);
+            $cert = Certificate::readPfx($pfx, base64_decode($fiscal['certificado_senha']));
+            
+            $tools = new \NFePHP\NFe\Tools($configJson, $cert);
+            $tools->model('65');
+
+            $xml = $tools->sefazStatus();
+            $std = new \NFePHP\NFe\Common\Standardize();
+            $res = $std->toStd($xml);
+
+            return [
+                'success' => true,
+                'status' => $res->cStat,
+                'motivo' => $res->xMotivo,
+                'ambiente' => ($fiscal['ambiente'] == 1) ? 'Produção' : 'Homologação',
+                'verAplic' => $res->verAplic ?? '---',
+                'timestamp' => $res->dhRecbto ?? date('d/m/Y H:i:s')
+            ];
 
         } catch (Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
