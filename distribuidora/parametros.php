@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/assets/auth/auth.php';
-auth_require('index.php');
-
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/parametros/_helpers.php';
+
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
 
 require_db_or_die();
 $pdo = db();
