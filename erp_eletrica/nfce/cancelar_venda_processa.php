@@ -36,10 +36,10 @@ function redirVendaRapida($empresaId, $ok, $modelo, $msg = '')
     echo "<script>
         alert('{$status}: {$msgJs}');
         if (window.opener || window.history.length === 1) {
-            window.close();
             if (window.opener && !window.opener.closed) {
                 window.opener.location.reload();
             }
+            window.close();
         } else {
             window.location.href = '../vendas.php?id={$empresaIdJs}';
         }
