@@ -80,7 +80,7 @@
                             </div>
                             <div class="mb-3 col-md-6">
                                 <label class="form-label" for="codigo_municipio">Código do Município (IBGE)</label>
-                                <input type="text" class="form-control" name="codigo_municipio" id="codigo_municipio" value="<?= $config['codigo_municipio'] ?? '' ?>" required maxlength="7" pattern="[0-9]{7}">
+                                <input type="text" class="form-control" name="codigo_municipio" id="codigo_municipio" value="<?= $config['codigo_municipio'] ?? '' ?>" required maxlength="7" pattern="[0-9]{7}" oninput="autoFillUf(this)">
                                 <small class="text-muted">Código de 7 dígitos do IBGE para o município.</small>
                             </div>
                             <div class="mb-3 col-md-6">
@@ -187,10 +187,24 @@ const MAP_UF_IBGE = {
     "RO": 11, "AC": 12, "AM": 13, "RR": 14, "PA": 15, "AP": 16, "TO": 17, "MA": 21, "PI": 22, "CE": 23, "RN": 24, "PB": 25, "PE": 26, "AL": 27, "SE": 28, "BA": 29, "MG": 31, "ES": 32, "RJ": 33, "SP": 35, "PR": 41, "SC": 42, "RS": 43, "MS": 50, "MT": 51, "GO": 52, "DF": 53
 };
 
+const MAP_IBGE_UF = Object.fromEntries(Object.entries(MAP_UF_IBGE).map(([k, v]) => [v, k]));
+
 function updateIbge() {
     const uf = document.getElementById('uf').value;
     const cod = MAP_UF_IBGE[uf] || '';
     document.getElementById('codigo_uf').value = cod;
+}
+
+function autoFillUf(input) {
+    const val = input.value.replace(/\D/g, '');
+    if (val.length >= 2) {
+        const codUf = val.substring(0, 2);
+        const uf = MAP_IBGE_UF[codUf];
+        if (uf) {
+            document.getElementById('uf').value = uf;
+            document.getElementById('codigo_uf').value = codUf;
+        }
+    }
 }
 
 function maskCnpj(i) {
