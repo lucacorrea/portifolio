@@ -142,22 +142,29 @@ if (!$payload && isset($_POST['payload'])) {
 $itens = json_decode($_POST['itens'] ?? '[]', true) ?: ($payload['itens'] ?? []);
 
 /* Se ainda não houver itens, tenta buscar pelo venda_id no banco */
-if (!$itens && isset($_GET['venda_id'])) {
-  $venda_id = (int)$_GET['venda_id'];
+$venda_id = (int)($_GET['venda_id'] ?? $payload['venda_id'] ?? $_POST['venda_id'] ?? 0);
+if (!$itens && $venda_id) {
 
   /* Carrega conexão (mesmos candidatos do vendaRapidaSubmit.php) */
   $__candidates = [
-  __DIR__ . '/../../assets/php/conexao.php',
-  __DIR__ . '/../../ERP/assets/php/conexao.php',
-  __DIR__ . '/../dashboard/php/conexao.php',
-  $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
-  $_SERVER['DOCUMENT_ROOT'] . '/ERP/assets/php/conexao.php',
+    __DIR__ . '/../config.php',
+    __DIR__ . '/../../assets/php/conexao.php',
+    __DIR__ . '/../../ERP/assets/php/conexao.php',
+    __DIR__ . '/../dashboard/php/conexao.php',
+    $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
+    $_SERVER['DOCUMENT_ROOT'] . '/ERP/assets/php/conexao.php',
   ];
   $__found = false;
   foreach ($__candidates as $__p) {
-    if (is_file($__p)) { require_once $__p; $__found = true; break; }
+    if (is_file($__p)) {
+      require_once $__p;
+      if (isset($pdo) && $pdo instanceof PDO) {
+        $__found = true;
+        break;
+      }
+    }
   }
-if ($__found && isset($pdo) && $pdo instanceof PDO) {
+if (isset($pdo) && $pdo instanceof PDO) {
   try {
     // Busca itens diretamente da nova tabela vendas_itens
     $st = $pdo->prepare("SELECT vi.produto_id, p.nome AS produto_nome, vi.quantidade, vi.preco_unitario, p.unidade, p.ncm, p.cfop_interno AS cfop
@@ -240,8 +247,22 @@ if (empty($cpf) && !empty($vendaRow['cpf_cliente'])) {
 /* ===== Certificado A1 ===== */
 $pfx = @file_get_contents(PFX_PATH);
 if ($pfx === false) die('Não encontrei o PFX em: '.e(PFX_PATH));
-try { $cert = Certificate::readPfx($pfx, PFX_PASSWORD); }
-catch (Throwable $e) { die('<pre>Falha ao abrir certificado: '.$e->getMessage().'</pre>'); }
+try {
+  $cert = Certificate::readPfx($pfx, PFX_PASSWORD);
+} catch (Throwable $e) {
+  // Fallback: tenta com trim (caso o config.php não tenha pego ou hajam espaços fantasmas)
+  try {
+     $cert = Certificate::readPfx($pfx, trim(PFX_PASSWORD));
+  } catch (Throwable $e2) {
+     $msg = "Falha ao abrir certificado!\n";
+     $msg .= "Erro: " . $e->getMessage() . "\n";
+     $msg .= "Comprimento Senha: " . strlen(PFX_PASSWORD) . " caracteres\n";
+     $msg .= "Senha Hex: " . bin2hex(PFX_PASSWORD) . "\n";
+     $msg .= "ID Solicitado: " . (defined('NFCE_RESOLVED_ID') ? NFCE_RESOLVED_ID : 'não definido') . "\n";
+     $msg .= "Tabela de Origem: " . (defined('NFCE_TABLE_SOURCE') ? NFCE_TABLE_SOURCE : 'desconhecida') . "\n";
+     die('<pre>'.e($msg).'</pre>');
+  }
+}
 
 /* ===== Tools ===== */
 $tools = new Tools($configJson, $cert);
@@ -569,9 +590,9 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
    $empresaId = $_POST['empresa_id'] ?? ($_GET['id'] ?? '');
   // ======= SEM AUTO-PRINT: só mostra link para abrir/imprimir =======
   // ======= AGORA: redireciona direto para o DANFE =======
-  $danfeUrl = '../../../nfce/danfe_nfce.php?chave=' . urlencode($chave)
+  $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
      . '&venda_id=' . urlencode((string)$vendaId)
-     . '&id=' . urlencode($empresaId); // mesmo diretório
+     . '&id=' . urlencode($empresaId);
   // limpa qualquer saída anterior para poder enviar headers
   while (ob_get_level() > 0) { ob_end_clean(); }
   if (!headers_sent()) {
@@ -665,7 +686,8 @@ $st->execute([
     }
     
     // ======= AGORA: redireciona direto para o DANFE =======
-    $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave);
+    $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
+       . '&venda_id=' . urlencode((string)$vendaId);
     while (ob_get_level() > 0) { ob_end_clean(); }
     if (!headers_sent()) {
       header('Location: ' . $danfeUrl);

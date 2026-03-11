@@ -78,11 +78,11 @@ function resolve_cert_path(?string $fileFromDb, array &$attempts = []): ?string 
     // Nome simples — usar somente o basename
     $base = basename($fileFromDb);
     $candidates = [
-      $docroot . '/storage/certificados/' . $base,
-      __DIR__   . '/../storage/certificados/' . $base,
       $docroot . '/assets/img/certificado/' . $base,
       $docroot . '/public_html/assets/img/certificado/' . $base,
       __DIR__   . '/../../assets/img/certificado/' . $base,
+      $docroot . '/storage/certificados/' . $base,
+      __DIR__   . '/../storage/certificados/' . $base,
       __DIR__   . '/../certificados/' . $base,
       __DIR__   . '/' . $base,
     ];
@@ -112,51 +112,80 @@ if (isset($_GET['id']) && $_GET['id'] !== '') {
 } elseif (isset($_SESSION['filial_id'])) {
   $empresaId = (string)$_SESSION['filial_id'];
 }
+
 if (!$empresaId) {
-  // Default to 1 if missing in ERP context
   $empresaId = '1';
 }
 
-// ========== Lê filiais (Mapeado do ERP Eletrica) ==========
-$st = $pdo->prepare("
-  SELECT 
-    id AS empresa_id, 
-    cnpj, 
-    razao_social, 
-    nome AS nome_fantasia, 
-    inscricao_estadual, 
-    '' AS inscricao_municipal,
-    cep, 
-    logradouro, 
-    numero AS numero_endereco, 
-    complemento, 
-    bairro, 
-    municipio AS cidade, 
-    uf, 
-    codigo_municipio AS codigo_uf,
-    codigo_municipio,
-    telefone, 
-    certificado_pfx AS certificado_digital, 
-    certificado_senha AS senha_certificado, 
-    ambiente, 
-    crt AS regime_tributario, 
-    csc_token AS csc, 
-    csc_id,
-    '1' AS serie_nfce,
-    '1' AS tipo_emissao,
-    '1' AS finalidade,
-    '1' AS ind_pres,
-    '1' AS tipo_impressao
-    FROM filiais
-   WHERE id = :emp
-   LIMIT 1
-");
-$st->execute([':emp' => $empresaId]);
-$row = $st->fetch(PDO::FETCH_ASSOC);
+// ========== Lê Configuração (Preferência: integracao_nfce Fallback: filiais) ==========
+$row = null;
+$tableSource = 'desconhecida';
+
+// Prepara variantes de ID (ex: 125, filial_125, principal_125)
+$idVariants = [ $empresaId ];
+if (is_numeric($empresaId)) {
+    $idVariants[] = 'filial_' . $empresaId;
+    $idVariants[] = 'unidade_' . $empresaId;
+    $idVariants[] = 'principal_' . $empresaId;
+}
+
+// 1. Tenta integracao_nfce (Tabela original do Açaidinhos) - Tenta todas as variantes
+foreach ($idVariants as $idv) {
+    try {
+        $st = $pdo->prepare("
+          SELECT empresa_id, cnpj, razao_social, nome_fantasia, inscricao_estadual, inscricao_municipal,
+                 cep, logradouro, numero_endereco, complemento, bairro, cidade, uf, codigo_uf, codigo_municipio,
+                 telefone, certificado_digital, senha_certificado, ambiente, regime_tributario, csc, csc_id,
+                 serie_nfce, tipo_emissao, finalidade, ind_pres, tipo_impressao
+            FROM integracao_nfce
+           WHERE empresa_id = :emp
+           LIMIT 1
+        ");
+        $st->execute([':emp' => $idv]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $tableSource = "integracao_nfce (Busca: $idv)";
+            break;
+        }
+    } catch (Throwable $e) { }
+}
+
+// 2. Tenta filiais (Tabela do ERP Eletrica) se não achou em integracao_nfce
+if (!$row) {
+    foreach ($idVariants as $idv) {
+        $cleanId = preg_replace('/[^0-9]/', '', $idv);
+        if (!$cleanId) continue;
+        
+        try {
+            $st = $pdo->prepare("
+              SELECT 
+                id AS empresa_id, cnpj, razao_social, nome AS nome_fantasia, inscricao_estadual, '' AS inscricao_municipal,
+                cep, logradouro, numero AS numero_endereco, complemento, bairro, municipio AS cidade, uf, 
+                codigo_municipio AS codigo_uf, codigo_municipio, telefone, certificado_pfx AS certificado_digital, 
+                certificado_senha AS senha_certificado, ambiente, crt AS regime_tributario, csc_token AS csc, csc_id,
+                '1' AS serie_nfce, '1' AS tipo_emissao, '1' AS finalidade, '1' AS ind_pres, '1' AS tipo_impressao
+                FROM filiais
+               WHERE id = :emp
+               LIMIT 1
+            ");
+            $st->execute([':emp' => $cleanId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $tableSource = "filiais (ID: $cleanId)";
+                break;
+            }
+        } catch (Throwable $e) { }
+    }
+}
+
 if (!$row) {
   http_response_code(404);
-  die('Config NFC-e: não há registro em filiais para a filial_id=' . $empresaId);
+  $tried = implode(', ', $idVariants);
+  die("Config NFC-e: não há registro em integracao_nfce ou filiais para: $tried");
 }
+define('NFCE_TABLE_SOURCE', $tableSource);
+define('NFCE_RESOLVED_ID', $empresaId);
+
 // ========== Normalização de ambiente (tpAmb) ==========
 function map_tp_amb($v) {
   $v = trim((string)$v);
@@ -175,15 +204,15 @@ $NFC_SERIE= (string)($row['serie_nfce'] ?? '');
 
 if ($ID_TOKEN === '' || $CSC === '') {
   http_response_code(422);
-  die('Config NFC-e: CSC e/ou ID_TOKEN ausentes no banco.');
+  die('Config NFC-e: CSC e/ou ID_TOKEN ausentes no banco. Origem: ' . NFCE_TABLE_SOURCE);
 }
 if ($NFC_SERIE === '') {
   http_response_code(422);
-  die('Config NFC-e: Série da NFC-e ausente no banco.');
+  die('Config NFC-e: Série da NFC-e ausente no banco. Origem: ' . NFCE_TABLE_SOURCE);
 }
 if ($TP_AMB === '') {
   http_response_code(422);
-  die('Config NFC-e: Ambiente (1=produção, 2=homologação) ausente no banco.');
+  die('Config NFC-e: Ambiente (1=produção, 2=homologação) ausente no banco. Origem: ' . NFCE_TABLE_SOURCE);
 }
 
 
@@ -217,8 +246,21 @@ if (!$COD_UF && $EMIT_CMUN) {
 }
 $COD_UF = (string)$COD_UF;
 
-// Certificado
-$PFX_PASSWORD = (string)($row['senha_certificado'] ?? '');
+// Certificado - Limpeza agressiva e DECODE Base64 (Açaidinhos/Hostinger pattern)
+$raw_pass = (string)($row['senha_certificado'] ?? '');
+$clean_pass = preg_replace('/[\s\x00-\x1F\x7F-\xFF]/', '', $raw_pass);
+
+// Tenta decodificar se parecer Base64 (6+ caracteres, alfanumérico + / + = + +)
+// e se a decodificação resultar em algo plausível (ex: somente números se for o caso do user)
+$decoded = @base64_decode($clean_pass, true);
+if ($decoded !== false && preg_match('/^[a-zA-Z0-9+\/=]+$/', $clean_pass)) {
+    // Se o decode for bem sucedido, usamos ele. 
+    // Macete: se o decode resultar em algo muito curto (como 6 dígitos), é quase certeza que era b64.
+    $PFX_PASSWORD = $decoded;
+} else {
+    $PFX_PASSWORD = $clean_pass;
+}
+
 $PFX_FROM_DB  = $row['certificado_digital'] ?? null;
 $attempts = [];
 $PFX_PATH     = resolve_cert_path($PFX_FROM_DB, $attempts);

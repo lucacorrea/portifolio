@@ -9,7 +9,10 @@ header('Content-Type: text/html; charset=utf-8');
 
 /* ===================== Atualiza venda (chave/status) ===================== */
 try {
-  require_once __DIR__ . '/../assets/php/conexao.php';
+  $__found = false;
+  foreach ([__DIR__ . '/../config.php', __DIR__ . '/../assets/php/conexao.php'] as $__p) {
+    if (is_file($__p)) { require_once $__p; $__found = true; break; }
+  }
 
   // Empresa/venda vindos da URL ou sessão
   $empresaId = isset($_GET['id']) ? trim((string)$_GET['id']) : (string)($_SESSION['empresa_id'] ?? '');
@@ -72,9 +75,23 @@ if (!empty($_GET['arq'])) {
 } else {
   die('Informe ?chave=... ou ?arq=procNFCe_....xml');
 }
-if (!is_file($file)) die('Arquivo não encontrado: ' . htmlspecialchars($file));
+$xml = null;
+if (is_file($file)) {
+  $xml = file_get_contents($file);
+} else {
+  // Fallback: tenta obter XML do banco (nfce_emitidas.xml_nfeproc)
+  if (!empty($chaveReq) && isset($pdo) && $pdo instanceof PDO) {
+    try {
+      $st = $pdo->prepare("SELECT xml_nfeproc FROM nfce_emitidas WHERE chave = :ch LIMIT 1");
+      $st->execute([':ch' => $chaveReq]);
+      $xml = $st->fetchColumn();
+    } catch (Throwable $e) {}
+  }
+}
 
-$xml = file_get_contents($file);
+if (!$xml) {
+  die('Arquivo não encontrado e sem cópia no banco: ' . htmlspecialchars($file));
+}
 $dom = new DOMDocument();
 $dom->loadXML($xml);
 
