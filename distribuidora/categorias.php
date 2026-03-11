@@ -405,20 +405,26 @@ function badgeStatus(string $st): string
 
     <section class="section">
       <div class="container-fluid">
+
         <div class="title-wrapper pt-30">
           <div class="row align-items-center">
-            <div class="col-md-8">
+            <div class="col-md-6">
               <div class="title">
                 <h2>Categorias</h2>
-                <div class="muted">Cadastro no banco (processos em <b>assets/dados/categorias</b>).</div>
               </div>
             </div>
-            <div class="col-md-4 text-md-end">
-              <button class="main-btn primary-btn btn-hover btn-compact" id="btnNovo" type="button"
-                data-bs-toggle="modal" data-bs-target="#mdCategoria">
-                <i class="lni lni-plus me-1"></i> Nova categoria
-              </button>
+
+            <div class="col-md-6">
+              <div class="breadcrumb-wrapper">
+                <nav aria-label="breadcrumb">
+                  <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#">Cadastros</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Categorias</li>
+                  </ol>
+                </nav>
+              </div>
             </div>
+
           </div>
         </div>
 
