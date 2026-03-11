@@ -3,6 +3,9 @@
 declare(strict_types=1);
 session_start();
 
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
+
 require_once __DIR__ . '/assets/conexao.php';
 
 function e(string $s): string
