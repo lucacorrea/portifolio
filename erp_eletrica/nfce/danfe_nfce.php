@@ -626,9 +626,9 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         window.print();
       });
 
-      // Botão VOLTAR -> ../frentedeloja/caixa/vendaRapida.php?id=<empresaId>
+      // Botão VOLTAR -> ../vendas.php?id=<empresaId>
       document.getElementById('btn-back').addEventListener('click', function() {
-        var url = '../frentedeloja/caixa/vendaRapida.php?id=' + encodeURIComponent(empresaId);
+        var url = '../vendas.php?id=' + encodeURIComponent(empresaId);
         window.location.href = url;
       });
 

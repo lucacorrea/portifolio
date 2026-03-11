@@ -33,7 +33,7 @@ function redirVendaRapida($empresaId, $ok, $modelo, $msg = '')
     $status    = $ok ? 'ok' : 'erro';
     $qs = "id={$empresaId}&cancel={$status}&modelo={$modelo}";
     if ($msg !== '') $qs .= '&msg=' . urlencode($msg);
-    header("Location: ../frentedeloja/caixa/vendaRapida.php?{$qs}");
+    header("Location: ../vendas.php?{$qs}");
     exit;
 }
 
@@ -120,56 +120,7 @@ function carregarVendaPorChave(PDO $pdo, string $empresa_id, string $chave): ?ar
     $v = $st->fetch(PDO::FETCH_ASSOC);
     return $v ?: null;
 }
-function latestAberturaId(PDO $pdo, string $empresa_id, ?int $numeroCaixa = null): ?int
-{
-    if ($numeroCaixa !== null) {
-        $sql = "SELECT id FROM aberturas
-                 WHERE empresa_id = :emp AND status = 'aberto' AND numero_caixa = :cx
-                 ORDER BY id DESC LIMIT 1";
-        $st  = $pdo->prepare($sql);
-        $st->execute([':emp' => $empresa_id, ':cx' => $numeroCaixa]);
-        $id = $st->fetchColumn();
-        if ($id) return (int)$id;
-    }
-    // fallback: abertura aberta mais recente da empresa (qualquer caixa)
-    $sql = "SELECT id FROM aberturas
-             WHERE empresa_id = :emp AND status = 'aberto'
-             ORDER BY id DESC LIMIT 1";
-    $st  = $pdo->prepare($sql);
-    $st->execute([':emp' => $empresa_id]);
-    $id = $st->fetchColumn();
-    return $id ? (int)$id : null;
-}
-function atualizarAberturaPorVenda(PDO $pdo, array $venda, ?int $numeroCaixaInput = null): void
-{
-    $valorVenda   = (float)($venda['valor_total'] ?? 0);
-    $empresa_id   = (string)$venda['empresa_id'];
-    $aberturaId   = array_key_exists('abertura_id', $venda) ? ($venda['abertura_id'] ?? null) : null;
-
-    if ($valorVenda <= 0 || !$empresa_id) return;
-
-    // 1) Se temos abertura_id, atualiza diretamente
-    if ($aberturaId) {
-        $sql = "UPDATE aberturas
-                   SET valor_total = GREATEST(0, valor_total - :v),
-                       quantidade_vendas = GREATEST(0, quantidade_vendas - 1)
-                 WHERE id = :id AND empresa_id = :emp";
-        $st  = $pdo->prepare($sql);
-        $st->execute([':v' => $valorVenda, ':id' => $aberturaId, ':emp' => $empresa_id]);
-        return;
-    }
-
-    // 2) Senão, tenta a abertura aberta mais recente (por número de caixa se informado na requisição)
-    $aid = latestAberturaId($pdo, $empresa_id, $numeroCaixaInput);
-    if ($aid) {
-        $sql = "UPDATE aberturas
-                   SET valor_total = GREATEST(0, valor_total - :v),
-                       quantidade_vendas = GREATEST(0, quantidade_vendas - 1)
-                 WHERE id = :id AND empresa_id = :emp";
-        $st  = $pdo->prepare($sql);
-        $st->execute([':v' => $valorVenda, ':id' => $aid, ':emp' => $empresa_id]);
-    }
-}
+// Funções de abertura/caixa removidas (não utilizadas neste ERP)
 
 /* ========= Descobrir venda / empresa / chave ========= */
 $venda = null;
@@ -230,8 +181,57 @@ if ($modelo === 'por_chave') {
 /* ========= Integração SEFAZ (placeholder) ========= */
 function runCancel($modelo, $empresa_id, $chave, $motivo, $chaveSubstituta)
 {
-    // implemente aqui os eventos 110111 / 110112 conforme seu emissor
-    return true;
+    try {
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) require_once __DIR__ . '/vendor/autoload.php';
+        
+        // Define constants for config.php by providing $_GET['id']
+        $_GET['id'] = $empresa_id;
+        if (file_exists(__DIR__ . '/config.php')) require_once __DIR__ . '/config.php';
+        
+        $config = require __DIR__ . '/nfce_config.php';
+        $configJson = json_encode($config);
+        
+        $pfxContent = file_get_contents(PFX_PATH);
+        $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, PFX_PASSWORD);
+        
+        $tools = new \NFePHP\NFe\Tools($configJson, $certificate);
+        $tools->model('65');
+
+        $xJust = $motivo ?: 'Cancelamento de venda por solicitacao do cliente';
+        if (strlen($xJust) < 15) $xJust = str_pad($xJust, 15, '.');
+
+        if ($modelo === 'por_substituicao') {
+            $nProt = ''; // Will try to find protocol from database if not provided
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $st = $db->prepare("SELECT protocolo FROM nfce_emitidas WHERE chave = ? LIMIT 1");
+            $st->execute([$chave]);
+            $nProt = $st->fetchColumn() ?: '';
+            
+            $response = $tools->sefazCancelSubst($chave, $nProt, $chaveSubstituta, $xJust);
+        } else if ($modelo === 'por_chave') {
+            $nProt = '';
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $st = $db->prepare("SELECT protocolo FROM nfce_emitidas WHERE chave = ? LIMIT 1");
+            $st->execute([$chave]);
+            $nProt = $st->fetchColumn() ?: '';
+            
+            $response = $tools->sefazCancela($chave, $xJust, $nProt);
+        } else {
+            // Interno
+            return true;
+        }
+
+        $std = new \NFePHP\NFe\Common\Standardize();
+        $res = $std->toStd($response);
+        
+        $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
+        // 135: Evento registrado e vinculado a NF-e, 136: Evento registrado, mas nao vinculado a NF-e
+        return in_array($cStat, ['135', '136', '155']); 
+        
+    } catch (\Exception $e) {
+        error_log("Erro no cancelamento SEFAZ: " . $e->getMessage());
+        return false;
+    }
 }
 $ok = runCancel($modelo, $empresa_id, $chave, $motivo, $chaveSubstituta);
 if (!$ok) {
@@ -245,50 +245,34 @@ try {
     // 1) Itens da venda → repor estoque
     $selItens = $pdo->prepare("
         SELECT produto_id, quantidade
-          FROM itens_venda
+          FROM vendas_itens
          WHERE venda_id = :id
     ");
     $selItens->execute([':id' => $venda['id']]);
     $itens = $selItens->fetchAll(PDO::FETCH_ASSOC);
 
     if ($itens) {
-        // trava e repõe
-        $lockEst = $pdo->prepare("
-            SELECT id, empresa_id
-              FROM estoque
-             WHERE id = :id
-             FOR UPDATE
-        ");
         $updEst = $pdo->prepare("
-            UPDATE estoque
-               SET quantidade_produto = quantidade_produto + :qtd
-             WHERE id = :id AND empresa_id = :emp
+            UPDATE produtos
+               SET quantidade = quantidade + :qtd
+             WHERE id = :id
         ");
         foreach ($itens as $it) {
             $pid = (int)$it['produto_id'];
             $qtd = (float)$it['quantidade'];
-
-            $lockEst->execute([':id' => $pid]);
-            $row = $lockEst->fetch(PDO::FETCH_ASSOC);
-            if (!$row) {
-                throw new RuntimeException("Produto {$pid} não encontrado no estoque para devolução.");
-            }
-            if ((string)$row['empresa_id'] !== (string)$empresa_id) {
-                throw new RuntimeException("Produto {$pid} pertence a outra empresa.");
-            }
-            $updEst->execute([':qtd' => $qtd, ':id' => $pid, ':emp' => $empresa_id]);
+            $updEst->execute([':qtd' => $qtd, ':id' => $pid]);
         }
     }
 
-    // 2) Ajustar abertura (valor_total e quantidade_vendas)
-    atualizarAberturaPorVenda($pdo, $venda, $numero_caixa_in);
+    // 2) Ajustar abertura (valor_total e quantidade_vendas) - N/A no ERP atual, ignorado
+    // atualizarAberturaPorVenda($pdo, $venda, $numero_caixa_in);
 
-    // 3) Apagar itens e a venda
-    $di = $pdo->prepare("DELETE FROM itens_venda WHERE venda_id = :id");
-    $di->execute([':id' => $venda['id']]);
+    // 3) Marcar como cancelada (vendas e nfce_emitidas)
+    $stmtV = $pdo->prepare("UPDATE vendas SET status = 'cancelada', status_nfce = 'cancelada' WHERE id = :id AND empresa_id = :emp");
+    $stmtV->execute([':id' => $venda['id'], ':emp' => $empresa_id]);
 
-    $dv = $pdo->prepare("DELETE FROM vendas WHERE id = :id AND empresa_id = :emp");
-    $dv->execute([':id' => $venda['id'], ':emp' => $empresa_id]);
+    $stmtN = $pdo->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado' WHERE venda_id = :id AND empresa_id = :emp");
+    $stmtN->execute([':id' => $venda['id'], ':emp' => $empresa_id]);
 
     $pdo->commit();
 } catch (Throwable $e) {
