@@ -257,8 +257,9 @@ try {
      $msg = "Falha ao abrir certificado!\n";
      $msg .= "Erro: " . $e->getMessage() . "\n";
      $msg .= "Comprimento Senha: " . strlen(PFX_PASSWORD) . " caracteres\n";
-     $msg .= "Senha Hex (primeiros/últimos 2): " . bin2hex(substr(PFX_PASSWORD, 0, 2)) . "..." . bin2hex(substr(PFX_PASSWORD, -2)) . "\n";
-     $msg .= "Origem dos Dados: " . (defined('NFCE_TABLE_SOURCE') ? NFCE_TABLE_SOURCE : 'desconhecida') . "\n";
+     $msg .= "Senha Hex: " . bin2hex(PFX_PASSWORD) . "\n";
+     $msg .= "ID Solicitado: " . (defined('NFCE_RESOLVED_ID') ? NFCE_RESOLVED_ID : 'não definido') . "\n";
+     $msg .= "Tabela de Origem: " . (defined('NFCE_TABLE_SOURCE') ? NFCE_TABLE_SOURCE : 'desconhecida') . "\n";
      die('<pre>'.e($msg).'</pre>');
   }
 }
