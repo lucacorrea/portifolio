@@ -6,7 +6,7 @@ error_reporting(E_ALL);
 session_start();
 if (empty($_SESSION['usuario_id'])) { http_response_code(403); exit('Acesso negado.'); }
 
-require_once __DIR__ . '/autoloader.php';
+require_once __DIR__ . '/config.php';
 
 $vendaId = (int)($_GET['id'] ?? 0);
 if (!$vendaId) { exit('ID inválido.'); }
