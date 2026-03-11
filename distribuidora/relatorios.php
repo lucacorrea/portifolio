@@ -1,14 +1,13 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
-declare(strict_types=1);
 
-require_once __DIR__ . '/assets/auth/auth.php';
-auth_require('index.php');
+declare(strict_types=1);
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
+// Helpers (csrf/flash/etc)
+$helpers = __DIR__ . '/assets/dados/relatorios/__helpers.php';
+if (is_file($helpers)) require_once $helpers;
 
 // Conexão PDO (precisa existir db():PDO)
 $con = __DIR__ . '/assets/conexao.php';
