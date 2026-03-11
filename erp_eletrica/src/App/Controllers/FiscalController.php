@@ -124,6 +124,25 @@ class FiscalController extends BaseController {
         // ... code remains same ...
     }
 
+    public function emitir_nfce() {
+        $vendaId = $_GET['venda_id'] ?? null;
+        $empresaId = $_SESSION['filial_id'] ?? ($_GET['empresa_id'] ?? null);
+
+        if (!$vendaId || !$empresaId) {
+            $this->redirect('vendas.php?error=' . urlencode('Venda ou Empresa não identificada.'));
+            return;
+        }
+
+        $service = new \App\Services\NfceService();
+        $res = $service->processNfce($vendaId, $empresaId);
+
+        if ($res['success']) {
+            $this->redirect('danfe.php?chave=' . $res['chave']);
+        } else {
+            $this->redirect('vendas.php?error=' . urlencode($res['error']));
+        }
+    }
+
     public function adicionar_nfce() {
         $id = $_GET['id'] ?? null;
         $isGlobal = isset($_GET['global']);
@@ -188,37 +207,29 @@ class FiscalController extends BaseController {
     }
 
     public function danfe_nfce() {
-        $id = $_GET['id'] ?? null;
-        if (!$id) die("ID da Nota Fiscal não fornecido.");
+        $chave = $_GET['chave'] ?? null;
+        if (!$chave) die("Chave da Nota Fiscal não fornecida.");
 
-        $stmt = $this->db->prepare("SELECT * FROM notas_fiscais WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->db->prepare("SELECT * FROM nfce_emitidas WHERE chave = ? LIMIT 1");
+        $stmt->execute([$chave]);
         $nf = $stmt->fetch();
 
-        if (!$nf) die("Nota Fiscal não encontrada.");
-
-        // In erp_eletrica, we might store the path or the raw XML content.
-        // For now, mirroring the Acaidinhos port which prefers reading from file if path exists
-        $xmlContent = null;
-        if (!empty($nf['xml_path'])) {
-            $fullPath = dirname(__DIR__, 3) . '/' . $nf['xml_path'];
-            if (file_exists($fullPath)) {
-                $xmlContent = file_get_contents($fullPath);
-            }
-        }
-
-        if (!$xmlContent && !empty($nf['protocolo'])) {
-             // Mock/Example XML if file missing but record exists (for demonstration)
-             // In production, the XML must exist.
-             $xmlContent = $this->generateMockXmlForDanfe($nf);
+        if (!$nf) {
+            // Tentativa fallback na tabela antiga se existir
+            $stmt = $this->db->prepare("SELECT * FROM notas_fiscais WHERE chave_acesso = ? LIMIT 1");
+            $stmt->execute([$chave]);
+            $nf = $stmt->fetch();
+            $xmlContent = $nf ? ($nf['xml_conteudo'] ?? null) : null;
+        } else {
+            $xmlContent = $nf['xml_nfeproc'];
         }
 
         if (!$xmlContent) die("XML da Nota Fiscal não encontrado.");
 
         $this->render('fiscal/danfe_nfce', [
             'xml' => $xmlContent,
-            'title' => 'DANFE NFC-e - ' . $nf['chave_acesso']
-        ], false); // false to not render main template/layout
+            'title' => 'DANFE NFC-e - ' . $chave
+        ], false); 
     }
 
     private function generateMockXmlForDanfe($nf) {

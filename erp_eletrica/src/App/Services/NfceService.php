@@ -84,13 +84,131 @@ class NfceService extends BaseService {
     }
     
     /**
-     * Ports the simulation/emission logic from api_nfce.php
+     * Ports the simulation/emission logic from acainhadinhos
      */
     public function processNfce($vendaId, $empresaId) {
-        // This will be implemented to use NFePHP for real emission
-        // For now, mirroring the Acaidinhos logic of simulation or direct NFePHP call
-        $fiscal = $this->getConfig($empresaId);
-        // ... implementation follows ...
-        return ['success' => true, 'message' => 'NFC-e processada'];
+        try {
+            // 1. Load Fiscal Config
+            $fiscal = $this->getConfig($empresaId);
+            
+            // 2. Load Sale Data
+            $stV = $this->db->prepare("SELECT * FROM vendas WHERE id = ?");
+            $stV->execute([$vendaId]);
+            $venda = $stV->fetch();
+            if (!$venda) throw new Exception("Venda não encontrada: $vendaId");
+
+            $stI = $this->db->prepare("SELECT * FROM itens_venda WHERE venda_id = ?");
+            $stI->execute([$vendaId]);
+            $itens = $stI->fetchAll();
+            if (empty($itens)) throw new Exception("Venda sem itens: $vendaId");
+
+            // 3. Setup NFePHP Tools
+            $config = [
+                'atualizacao' => date('Y-m-d H:i:s'),
+                'tpAmb'       => (int)($fiscal['ambiente'] ?? 2),
+                'razaosocial' => $fiscal['razao_social'] ?? '',
+                'siglaUF'     => $fiscal['uf'] ?? 'RN',
+                'cnpj'        => preg_replace('/\D/', '', $fiscal['cnpj'] ?? ''),
+                'schemes'     => 'PL_009_V4',
+                'versao'      => '4.00',
+                'urlChave'    => '',
+                'urlQRCode'   => '',
+                'CSC'         => $fiscal['csc'] ?? '',
+                'CSCid'       => $fiscal['csc_id'] ?? '',
+            ];
+            $configJson = json_encode($config);
+
+            $pfxPath = dirname(__DIR__, 3) . '/storage/certificados/' . $fiscal['certificado_path'];
+            if (!file_exists($pfxPath)) throw new Exception("Certificado não encontrado em: $pfxPath");
+            
+            $pfx = file_get_contents($pfxPath);
+            $cert = Certificate::readPfx($pfx, base64_decode($fiscal['certificado_senha']));
+            
+            $tools = new \NFePHP\NFe\Tools($configJson, $cert);
+            $tools->model('65');
+
+            // 4. Generate XML using SefazXmlService (already in the project, lets use it or adapt)
+            $xmlService = new SefazXmlService();
+            // Map items for SefazXmlService
+            $mappedItems = [];
+            foreach ($itens as $it) {
+                $mappedItems[] = [
+                    'produto_id' => $it['produto_id'],
+                    'nome' => $it['produto_nome'],
+                    'quantidade' => $it['quantidade'],
+                    'preco_unitario' => $it['preco_unitario'],
+                    'unidade' => $it['unidade'] ?? 'UN',
+                    'ncm' => $it['ncm'] ?? '21069090',
+                    'cfop_interno' => $it['cfop'] ?? '5102',
+                    'origem' => $it['origem'] ?? '0'
+                ];
+            }
+            
+            $saleData = [
+                'id' => $vendaId,
+                'items' => $mappedItems,
+                'valor_total' => $venda['valor_total'],
+                'forma_pagamento' => $venda['forma_pagamento']
+            ];
+
+            // Real XML generation (simplified or via existing service)
+            $resXml = $xmlService->generateNFCe($saleData, $fiscal);
+            $nfeAss = $tools->signNFe($resXml['xml']);
+            
+            // 5. Send to SEFAZ
+            $respEnv = $tools->sefazEnviaLote([$nfeAss], mt_rand(1, 999999), 1);
+            $stEnv = new \NFePHP\NFe\Common\Standardize();
+            $stdEnv = $stEnv->toStd($respEnv);
+
+            if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
+                 if (preg_match('~(<protNFe[^>]*>.*?</protNFe>)~s', $respEnv, $mProt)) {
+                    $proc = '<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">' . preg_replace('/<\?xml.*?\?>/','', $nfeAss) . $mProt[1] . '</nfeProc>';
+                    
+                    // Save to nfce_emitidas
+                    $this->saveEmission($vendaId, $empresaId, $fiscal, $resXml['chave'], $stdEnv, $proc, $nfeAss, $respEnv, $venda);
+                    
+                    return ['success' => true, 'chave' => $resXml['chave'], 'protocolo' => $stdEnv->protNFe->infProt->nProt ?? null];
+                 }
+            }
+
+            throw new Exception("Falha na autorização: " . ($stdEnv->xMotivo ?? 'Erro desconhecido'));
+
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    private function saveEmission($vendaId, $empresaId, $fiscal, $chave, $std, $xmlProc, $xmlEnv, $xmlRet, $venda) {
+        $st = $this->db->prepare("
+            INSERT INTO nfce_emitidas
+              (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem,
+               xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco)
+            VALUES
+              (:emp, :venda, :amb, :serie, :num, :chave, :prot, :stat, :msg, :proc, :env, :ret, :total, :troco)
+            ON DUPLICATE KEY UPDATE 
+              protocolo = VALUES(protocolo), status_sefaz = VALUES(status_sefaz), mensagem = VALUES(mensagem),
+              xml_nfeproc = VALUES(xml_nfeproc), created_at = NOW()
+        ");
+        
+        $st->execute([
+            ':emp' => $empresaId,
+            ':venda' => $vendaId,
+            ':amb' => $fiscal['ambiente'] ?? 2,
+            ':serie' => $fiscal['serie_nfce'] ?? 1,
+            ':num' => $vendaId, // Simplification: using vendaId as number for now
+            ':chave' => $chave,
+            ':prot' => $std->protNFe->infProt->nProt ?? null,
+            ':stat' => $std->cStat,
+            ':msg' => $std->xMotivo,
+            ':proc' => $xmlProc,
+            ':env' => $xmlEnv,
+            ':ret' => $xmlRet,
+            ':total' => $venda['valor_total'],
+            ':troco' => $venda['troco'] ?? 0
+        ]);
+        
+        // Update sales table
+        $up = $this->db->prepare("UPDATE vendas SET chave_nfce = ?, status_nfce = 'autorizada' WHERE id = ?");
+        $up->execute([$chave, $vendaId]);
     }
 }
