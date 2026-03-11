@@ -6,6 +6,10 @@ require_once __DIR__ . '/assets/auth/auth.php';
 auth_require('index.php');
 
 
+if (function_exists('ob_start')) {
+  @ob_start();
+}
+
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/vendas/_helpers.php';
 
