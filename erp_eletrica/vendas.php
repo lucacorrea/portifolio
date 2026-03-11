@@ -19,7 +19,6 @@ switch ($action) {
     case 'checkout':
     case 'authorize_discount':
     case 'update_client_quick':
-    case 'issue_nfce':
         \App\Services\AuthService::checkPermission('vendas', 'criar');
         $controller->$action();
         break;

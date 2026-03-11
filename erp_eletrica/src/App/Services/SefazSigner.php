@@ -10,17 +10,9 @@ class SefazSigner extends BaseService {
         if (!file_exists($pfxPath)) throw new Exception("Arquivo de certificado não encontrado: $pfxPath");
         
         $pfxContent = file_get_contents($pfxPath);
-        
-        require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
-        
-        try {
-            $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
-            $certs = [
-                'cert' => $certificate->certificate,
-                'pkey' => $certificate->privateKey
-            ];
-        } catch (\Exception $e) {
-            throw new Exception("Falha ao ler o certificado digital NFePHP: " . $e->getMessage());
+        $certs = [];
+        if (!openssl_pkcs12_read($pfxContent, $certs, $password)) {
+            throw new Exception("Falha ao ler o certificado digital para assinatura.");
         }
 
         $dom = new DOMDocument();

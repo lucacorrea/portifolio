@@ -80,7 +80,7 @@
 
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
-        <div class="card border-0 glass-card  h-100 d-flex flex-column" style="border: 1px solid rgba(0, 86, 179, 0.2) !important;">
+        <div class="card border-0 glass-card shadow-lg h-100 d-flex flex-column" style="border: 1px solid rgba(0, 86, 179, 0.2) !important;">
             <div class="card-header bg-erp-primary text-white py-3 border-0">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Checkout SaaS</h5>
             </div>
@@ -147,28 +147,6 @@
                     </div>
                 </div>
 
-                <!-- Fiscal Toggle -->
-                <div class="mb-4">
-                    <label class="form-label small fw-bold text-uppercase text-muted">Tipo de Venda</label>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <input type="radio" class="btn-check" name="tipo_nota" id="tipo_fiscal" value="fiscal" autocomplete="off">
-                            <label class="btn btn-outline-success d-block text-start p-3 w-100" for="tipo_fiscal">
-                                <i class="fas fa-file-invoice-dollar me-2"></i>
-                                <span class="fw-bold">Nota Fiscal</span>
-                                <div class="extra-small opacity-75 mt-1">Emite NFC-e SEFAZ</div>
-                            </label>
-                        </div>
-                        <div class="col-6">
-                            <input type="radio" class="btn-check" name="tipo_nota" id="tipo_nao_fiscal" value="nao_fiscal" autocomplete="off" checked>
-                            <label class="btn btn-outline-secondary d-block text-start p-3 w-100" for="tipo_nao_fiscal">
-                                <i class="fas fa-receipt me-2"></i>
-                                <span class="fw-bold">Não Fiscal</span>
-                                <div class="extra-small opacity-75 mt-1">Só recibo simples</div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="bg-light p-4 rounded-3 border mb-4">
                     <div class="d-flex justify-content-between mb-2">
@@ -994,22 +972,10 @@ async function processarCheckout() {
     const payment = document.querySelector('input[name="payment"]:checked').value;
     const entrada = parseFloat(document.getElementById('entradaValor')?.value) || 0;
 
-    // Troco / valor recebido (only relevant for dinheiro)
-    let valorRecebido = null;
-    let troco = 0;
-    if (payment === 'dinheiro') {
-        const valorRecebidoEl = document.getElementById('valorRecebidoDinheiro');
-        valorRecebido = valorRecebidoEl ? (parseFloat(valorRecebidoEl.value) || total) : total;
-        if (valorRecebido < total) valorRecebido = total; // ensure at least total
-        troco = valorRecebido - total;
-    }
-
     if (payment === 'fiado' && entrada >= total) {
         alert('O valor da entrada não pode ser maior ou igual ao total da venda a prazo. Se o cliente vai pagar tudo agora, selecione outro método de pagamento.');
         return;
     }
-
-    const tipoNota = document.querySelector('input[name="tipo_nota"]:checked')?.value || 'nao_fiscal';
 
     const data = {
         subtotal: subtotal,
@@ -1018,14 +984,11 @@ async function processarCheckout() {
         items: cart,
         pagamento: payment,
         entrada_valor: entrada,
-        valor_recebido: valorRecebido,
-        troco: troco,
         cliente_id: selectedCustomerId,
         nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
         pv_id: currentPvId,
         supervisor_id: authSupervisorId,
-        supervisor_credential: authSupervisorCredential,
-        tipo_nota: tipoNota
+        supervisor_credential: authSupervisorCredential
     };
 
     const res = await fetch('vendas.php?action=checkout', {
@@ -1040,7 +1003,7 @@ async function processarCheckout() {
         const modalEntrada = bootstrap.Modal.getInstance(document.getElementById('modalEntrada'));
         if (modalEntrada) modalEntrada.hide();
 
-        showSuccessModal(result.sale_id, data.total, result.tipo_nota || data.tipo_nota, troco, valorRecebido);
+        showSuccessModal(result.sale_id, data.total);
         cart = [];
         currentPvId = null;
         isAuthorized = false;
@@ -1055,80 +1018,70 @@ async function processarCheckout() {
     }
 }
 
-function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = null) {
-    const isFiscal = tipoNota === 'fiscal';
-    const tipoLabel = isFiscal
-        ? '<span class="badge bg-success mb-3"><i class="fas fa-file-invoice-dollar me-1"></i>Venda Fiscal</span>'
-        : '<span class="badge bg-secondary mb-3"><i class="fas fa-receipt me-1"></i>Venda Não Fiscal</span>';
-
-    // Troco block (Açaidinhos style - show prominently in green for dinheiro)
-    const trocoBlock = (troco > 0)
-        ? `<div class="alert alert-success py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
-               <span class="fw-bold"><i class="fas fa-coins me-1"></i>TROCO</span>
-               <span class="fw-bold fs-4">R$ ${troco.toFixed(2).replace('.', ',')}</span>
-           </div>`
-        : '';
-
-    const btnPrint = isFiscal
-        ? `<button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
-               <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Nota Fiscal)
-           </button>`
-        : `<button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm" onclick="imprimirRecibo(${saleId})">
-               <i class="fas fa-print me-2"></i>IMPRIMIR RECIBO
-           </button>`;
-
+function showSuccessModal(saleId, total) {
     const modalHtml = `
         <div class="modal fade" id="modalSuccess" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-body text-center p-5">
-                        <div class="mb-3">
-                            <i class="fas fa-check-circle text-success" style="font-size: 4.5rem;"></i>
+                        <div class="mb-4">
+                            <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
                         </div>
-                        ${tipoLabel}
                         <h3 class="fw-bold mb-2">Venda Finalizada!</h3>
-                        <p class="text-muted mb-3">Venda <strong>#${saleId}</strong> — <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong></p>
-                        ${trocoBlock}
+                        <p class="text-muted mb-4">A venda <strong>#${saleId}</strong> foi registrada com sucesso no valor de <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong>.</p>
+                        
                         <div class="d-grid gap-2">
-                            ${btnPrint}
-                            <button class="btn btn-link text-muted mt-1" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
+                            <button class="btn btn-primary btn-lg fw-bold py-3" onclick="issueNFCe(${saleId})">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Cupom Fiscal)
+                            </button>
+                            <button class="btn btn-outline-secondary fw-bold py-3" onclick="alert('Impressão térmica em desenvolvimento')">
+                                <i class="fas fa-print me-2"></i>Imprimir Recibo Simples
+                            </button>
+                            <button class="btn btn-link text-muted mt-3" data-bs-dismiss="modal">Fechar e Nova Venda (ESC)</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     `;
-
+    
     const existing = document.getElementById('modalSuccess');
     if (existing) existing.remove();
+    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('modalSuccess'));
     modal.show();
-
-    // For non-fiscal: auto-open print window
-    if (!isFiscal) {
-        setTimeout(() => imprimirRecibo(saleId), 400);
-    }
-}
-
-function imprimirRecibo(saleId) {
-    window.open('recibo_venda.php?id=' + saleId, '_blank', 'width=480,height=700,toolbar=0,menubar=0,location=0');
 }
 
 async function issueNFCe(saleId) {
-    const btn = document.getElementById('btnNFCeModal') || event.currentTarget;
+    const btn = event.currentTarget;
+    const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Aberta central de emissão SEFAZ...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Comunicando SEFAZ...';
 
-    // Open emitir.php directly which handles the Sefaz XML+SOAP and then redirects to the final DANFE.
-    // This replicates the original robust behaviour fully.
-    const url = `nfce/emitir.php?venda_id=${saleId}`;
-    window.open(url, '_blank', 'width=800,height=900,toolbar=0,menubar=0,location=0');
-    
-    setTimeout(() => {
-        btn.innerHTML = '<i class="fas fa-check me-2"></i>Emitindo em nova janela...';
-        btn.className = 'btn btn-outline-success btn-lg fw-bold py-3 w-100';
-    }, 1500);
+    try {
+        const res = await fetch('vendas.php?action=issue_nfce', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: saleId })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            btn.className = 'btn btn-success btn-lg fw-bold py-3';
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>NFC-e AUTORIZADA!';
+            alert('NFC-e Autorizada com sucesso! Protocolo: ' + result.protocolo);
+            // In a real scenario, we would trigger PDF download/print here
+        } else {
+            alert('Erro SEFAZ: ' + result.error);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    } catch (e) {
+        alert('Erro de comunicação: ' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
 }
 
 // Keyboard Hotkeys
