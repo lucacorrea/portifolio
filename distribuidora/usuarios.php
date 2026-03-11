@@ -3,59 +3,266 @@
 declare(strict_types=1);
 
 @date_default_timezone_set('America/Manaus');
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+require_once __DIR__ . '/assets/auth/auth.php';
+if (function_exists('auth_require')) {
+    auth_require('index.php');
+}
 
 require_once __DIR__ . '/assets/conexao.php';
-require_once __DIR__ . '/assets/dados/usuarios/_helpers.php';
 
-require_db_or_die();
+$helpersUsuarios = __DIR__ . '/assets/dados/usuarios/_helpers.php';
+$helpersGlobal   = __DIR__ . '/assets/dados/_helpers.php';
+
+if (is_file($helpersUsuarios)) {
+    require_once $helpersUsuarios;
+} elseif (is_file($helpersGlobal)) {
+    require_once $helpersGlobal;
+}
+
+/* =========================
+   FALLBACKS
+========================= */
+if (!function_exists('e')) {
+    function e(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+}
+
+if (!function_exists('csrf_token')) {
+    function csrf_token(): string
+    {
+        if (empty($_SESSION['_csrf']) || !is_string($_SESSION['_csrf'])) {
+            $_SESSION['_csrf'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['_csrf'];
+    }
+}
+
 $pdo = db();
 
 /* =========================
-   JSON OUT (local)
+   HELPERS LOCAIS
 ========================= */
-function json_out(array $payload, int $code = 200): void
+function users_get_str(string $key, string $default = ''): string
+{
+    $value = $_GET[$key] ?? $default;
+    return is_string($value) ? trim($value) : $default;
+}
+
+function users_get_int(string $key, int $default = 1): int
+{
+    $value = $_GET[$key] ?? $default;
+    return is_numeric($value) ? max(1, (int)$value) : $default;
+}
+
+function users_json_out(array $payload, int $code = 200): void
 {
     http_response_code($code);
     header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+function users_flash_take(string $key): ?string
+{
+    if (isset($_SESSION[$key]) && is_string($_SESSION[$key])) {
+        $msg = $_SESSION[$key];
+        unset($_SESSION[$key]);
+        return $msg;
+    }
+
+    if (isset($_SESSION['_flash'][$key]) && is_string($_SESSION['_flash'][$key])) {
+        $msg = $_SESSION['_flash'][$key];
+        unset($_SESSION['_flash'][$key]);
+        return $msg;
+    }
+
+    return null;
+}
+
+function users_fmt_date(?string $date): string
+{
+    $date = trim((string)$date);
+    if ($date === '') {
+        return '-';
+    }
+
+    $ts = strtotime($date);
+    if ($ts === false) {
+        return '-';
+    }
+
+    return date('d/m/Y H:i', $ts);
+}
+
+function users_fetch_page(PDO $pdo, string $q, int $page, int $perPage): array
+{
+    $where = ' WHERE 1=1 ';
+    $params = [];
+
+    if ($q !== '') {
+        $where .= " AND (nome LIKE :q OR email LIKE :q OR CAST(id AS CHAR) LIKE :q) ";
+        $params[':q'] = '%' . $q . '%';
+    }
+
+    $sqlCount = "SELECT COUNT(*) FROM usuarios {$where}";
+    $stCount = $pdo->prepare($sqlCount);
+    $stCount->execute($params);
+    $total = (int)$stCount->fetchColumn();
+
+    $lastPage = max(1, (int)ceil($total / $perPage));
+    $page = min(max(1, $page), $lastPage);
+    $offset = ($page - 1) * $perPage;
+
+    $sql = "SELECT id, nome, email, status, created_at
+            FROM usuarios
+            {$where}
+            ORDER BY id DESC
+            LIMIT :limit OFFSET :offset";
+    $st = $pdo->prepare($sql);
+
+    foreach ($params as $k => $v) {
+        $st->bindValue($k, $v, PDO::PARAM_STR);
+    }
+
+    $st->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $st->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $st->execute();
+
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $from = $total > 0 ? ($offset + 1) : 0;
+    $to   = $total > 0 ? min($offset + $perPage, $total) : 0;
+
+    return [
+        'rows'      => $rows,
+        'total'     => $total,
+        'page'      => $page,
+        'per_page'  => $perPage,
+        'last_page' => $lastPage,
+        'from'      => $from,
+        'to'        => $to,
+        'q'         => $q,
+    ];
+}
+
+function users_render_rows(array $rows): string
+{
+    ob_start();
+
+    if (!$rows) {
+        echo '<tr><td colspan="6" class="text-center text-muted py-4">Nenhum usuário encontrado.</td></tr>';
+        return (string)ob_get_clean();
+    }
+
+    foreach ($rows as $r) {
+        $id        = (int)($r['id'] ?? 0);
+        $nome      = (string)($r['nome'] ?? '');
+        $email     = (string)($r['email'] ?? '');
+        $status    = (string)($r['status'] ?? 'ATIVO');
+        $createdAt = users_fmt_date((string)($r['created_at'] ?? ''));
+        $statusCls = strtoupper($status) === 'ATIVO' ? 'ok' : 'warn';
+?>
+        <tr>
+            <td><?= $id ?></td>
+            <td class="fw-bold"><?= e($nome) ?></td>
+            <td><?= e($email) ?></td>
+            <td><span class="pill <?= $statusCls ?>"><?= e($status) ?></span></td>
+            <td><?= e($createdAt) ?></td>
+            <td class="text-end">
+                <button
+                    type="button"
+                    class="main-btn primary-btn btn-hover btn-action btnEditar"
+                    data-id="<?= $id ?>"
+                    data-nome="<?= e($nome) ?>"
+                    data-email="<?= e($email) ?>"
+                    data-status="<?= e($status) ?>">
+                    <i class="lni lni-pencil"></i>
+                </button>
+
+                <button
+                    type="button"
+                    class="main-btn danger-btn-outline btn-hover btn-action btnExcluir"
+                    data-id="<?= $id ?>"
+                    data-nome="<?= e($nome) ?>">
+                    <i class="lni lni-trash-can"></i>
+                </button>
+            </td>
+        </tr>
+    <?php
+    }
+
+    return (string)ob_get_clean();
+}
+
+function users_render_pager(array $data): string
+{
+    $page = (int)$data['page'];
+    $last = (int)$data['last_page'];
+
+    $prevDisabled = $page <= 1 ? 'disabled' : '';
+    $nextDisabled = $page >= $last ? 'disabled' : '';
+
+    ob_start();
+    ?>
+    <div class="pager-box">
+        <button type="button" class="pager-btn" data-page="<?= max(1, $page - 1) ?>" <?= $prevDisabled ?>>
+            <i class="lni lni-chevron-left"></i>
+        </button>
+
+        <div class="pager-text">Página <?= $page ?>/<?= $last ?></div>
+
+        <button type="button" class="pager-btn" data-page="<?= min($last, $page + 1) ?>" <?= $nextDisabled ?>>
+            <i class="lni lni-chevron-right"></i>
+        </button>
+    </div>
+<?php
+    return (string)ob_get_clean();
 }
 
 /* =========================
    AJAX ENDPOINT
 ========================= */
-$action = strtolower(get_str('action', ''));
+$action = strtolower(users_get_str('action', ''));
 if ($action === 'ajax') {
     try {
-        $q = trim(get_str('q', ''));
-        $params = [];
-        $where = " WHERE 1=1 ";
+        $q = users_get_str('q', '');
+        $page = users_get_int('page', 1);
+        $perPage = 10;
 
-        if ($q !== '') {
-            $where .= " AND (nome LIKE :q OR email LIKE :q) ";
-            $params['q'] = '%' . $q . '%';
-        }
+        $data = users_fetch_page($pdo, $q, $page, $perPage);
 
-        $sql = "SELECT id, nome, email, perfil, status, created_at FROM usuarios $where ORDER BY id DESC";
-        $st = $pdo->prepare($sql);
-        $st->execute($params);
-        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        json_out(['ok' => true, 'rows' => $rows]);
+        users_json_out([
+            'ok'         => true,
+            'tbody_html' => users_render_rows($data['rows']),
+            'info_text'  => "Mostrando {$data['from']}-{$data['to']} de {$data['total']}",
+            'pager_html' => users_render_pager($data),
+        ]);
     } catch (Throwable $e) {
-        json_out(['ok' => false, 'msg' => 'Erro: ' . $e->getMessage()], 500);
+        users_json_out([
+            'ok'  => false,
+            'msg' => 'Erro ao carregar usuários: ' . $e->getMessage(),
+        ], 500);
     }
 }
 
+/* =========================
+   PRIMEIRA CARGA
+========================= */
+$q = '';
+$page = 1;
+$perPage = 10;
+$data = users_fetch_page($pdo, $q, $page, $perPage);
+
 $csrf = csrf_token();
-$return_to = (string)($_SERVER['REQUEST_URI'] ?? url_here('usuarios.php'));
-
-$flashOk  = flash_pop('flash_ok');
-$flashErr = flash_pop('flash_err');
-
-$sql = "SELECT id, nome, email, perfil, status, created_at FROM usuarios ORDER BY id DESC";
-$rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+$flashOk  = users_flash_take('flash_ok');
+$flashErr = users_flash_take('flash_err');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -68,8 +275,8 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
     <title>Painel da Distribuidora | Usuários</title>
 
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="assets/css/lineicons.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" type="text/css" />
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
@@ -131,7 +338,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         #tbUsers {
             width: 100%;
-            min-width: 800px;
+            min-width: 900px;
         }
 
         #tbUsers thead th {
@@ -200,6 +407,67 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             white-space: normal;
             word-break: break-word;
         }
+
+        .footer-table {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .footer-info {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .pager-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pager-btn {
+            width: 42px;
+            height: 42px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #64748b;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .pager-btn:hover:not(:disabled) {
+            background: #eef2ff;
+            color: #4338ca;
+        }
+
+        .pager-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+        .pager-text {
+            font-size: 14px;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        @media (max-width: 768px) {
+            .footer-table {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .pager-box {
+                justify-content: flex-end;
+            }
+        }
     </style>
 </head>
 
@@ -208,7 +476,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         <div class="spinner"></div>
     </div>
 
-    <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="brand-vertical">
@@ -218,29 +485,12 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         <nav class="sidebar-nav">
             <ul>
-                <li class="nav-item">
-                    <a href="dashboard.php">
-                        <span class="icon">
-                            <i class="lni lni-dashboard"></i>
-                        </span>
-                        <span class="text">Dashboard</span>
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    <a href="vendas.php">
-                        <span class="icon">
-                            <i class="lni lni-cart"></i>
-                        </span>
-                        <span class="text">Vendas</span>
-                    </a>
-                </li>
+                <li class="nav-item"><a href="dashboard.php"><span class="icon"><i class="lni lni-dashboard"></i></span><span class="text">Dashboard</span></a></li>
+                <li class="nav-item"><a href="vendas.php"><span class="icon"><i class="lni lni-cart"></i></span><span class="text">Vendas</span></a></li>
 
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-layers"></i>
-                        </span>
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes">
+                        <span class="icon"><i class="lni lni-layers"></i></span>
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
@@ -251,10 +501,8 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                 </li>
 
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-package"></i>
-                        </span>
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque">
+                        <span class="icon"><i class="lni lni-package"></i></span>
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -267,10 +515,8 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                 </li>
 
                 <li class="nav-item nav-item-has-children">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-users"></i>
-                        </span>
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros">
+                        <span class="icon"><i class="lni lni-users"></i></span>
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
@@ -280,40 +526,24 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                     </ul>
                 </li>
 
-                <li class="nav-item">
-                    <a href="relatorios.php">
-                        <span class="icon">
-                            <i class="lni lni-clipboard"></i>
-                        </span>
-                        <span class="text">Relatórios</span>
-                    </a>
-                </li>
+                <li class="nav-item"><a href="relatorios.php"><span class="icon"><i class="lni lni-clipboard"></i></span><span class="text">Relatórios</span></a></li>
 
                 <span class="divider">
                     <hr />
                 </span>
 
                 <li class="nav-item nav-item-has-children active">
-                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-cog"></i>
-                        </span>
+                    <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config">
+                        <span class="icon"><i class="lni lni-cog"></i></span>
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav show">
-                        <li><a href="usuarios.php" class="active">Usuários e Permissões</a></li>
+                        <li><a href="usuarios.php" class="active">Usuários</a></li>
                         <li><a href="parametros.php">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
 
-                <li class="nav-item">
-                    <a href="suporte.php">
-                        <span class="icon">
-                            <i class="lni lni-whatsapp"></i>
-                        </span>
-                        <span class="text">Suporte</span>
-                    </a>
-                </li>
+                <li class="nav-item"><a href="suporte.php"><span class="icon"><i class="lni lni-whatsapp"></i></span><span class="text">Suporte</span></a></li>
             </ul>
         </nav>
     </aside>
@@ -321,7 +551,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
     <div class="overlay"></div>
 
     <main class="main-wrapper">
-        <!-- Header -->
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -332,13 +561,12 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
-                            <div class="header-search d-none d-md-flex"></div>
                         </div>
                     </div>
 
                     <div class="col-lg-7 col-md-7 col-6">
                         <div class="header-right d-flex justify-content-end align-items-center">
-                            <a href="logout.php" class="main-btn primary-btn btn-hover logout-btn">
+                            <a href="assets/auth/logout.php" class="main-btn primary-btn btn-hover logout-btn">
                                 <i class="lni lni-exit me-1"></i> Sair
                             </a>
                         </div>
@@ -349,23 +577,30 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         <section class="section">
             <div class="container-fluid p-4">
-                <?php if ($flashOk): ?><div class="alert alert-success" style="border-radius:14px;"><?= e($flashOk) ?></div><?php endif; ?>
-                <?php if ($flashErr): ?><div class="alert alert-danger" style="border-radius:14px;"><?= e($flashErr) ?></div><?php endif; ?>
+                <?php if ($flashOk): ?>
+                    <div class="alert alert-success" style="border-radius:14px;"><?= e($flashOk) ?></div>
+                <?php endif; ?>
+
+                <?php if ($flashErr): ?>
+                    <div class="alert alert-danger" style="border-radius:14px;"><?= e($flashErr) ?></div>
+                <?php endif; ?>
 
                 <div class="card-style mb-3">
                     <div class="head">
                         <div>
-                            <h5 class="mb-0">Usuários e Permissões</h5>
+                            <h5 class="mb-0">Usuários</h5>
                             <div class="muted">Gerencie quem acessa o sistema</div>
                         </div>
-                        <button type="button" class="main-btn primary-btn btn-hover" id="btnNovo"><i class="lni lni-plus me-1"></i> Novo Usuário</button>
+                        <button type="button" class="main-btn primary-btn btn-hover" id="btnNovo">
+                            <i class="lni lni-plus me-1"></i> Novo Usuário
+                        </button>
                     </div>
                     <div class="body">
-                        <input type="text" class="form-control" id="q" placeholder="Buscar por nome ou email..." autocomplete="off">
+                        <input type="text" class="form-control" id="q" placeholder="Buscar por ID, nome ou email..." autocomplete="off">
                     </div>
                 </div>
 
-                <div class="cardx">
+                <div class="card-style">
                     <div class="body">
                         <div class="table-wrap">
                             <table class="table table-hover mb-0" id="tbUsers">
@@ -374,36 +609,25 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                                         <th>ID</th>
                                         <th>Nome</th>
                                         <th>Email</th>
-                                        <th>Perfil</th>
                                         <th>Status</th>
+                                        <th>Cadastro</th>
                                         <th class="text-end">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbody">
-                                    <?php foreach ($rows as $r): ?>
-                                        <tr>
-                                            <td><?= $r['id'] ?></td>
-                                            <td class="fw-bold"><?= e((string)$r['nome']) ?></td>
-                                            <td><?= e((string)$r['email']) ?></td>
-                                            <td><span class="pill primary"><?= $r['perfil'] ?></span></td>
-                                            <td><span class="pill <?= strtoupper($r['status']) === 'ATIVO' ? 'ok' : 'warn' ?>"><?= $r['status'] ?></span></td>
-                                            <td class="text-end">
-                                                <button type="button" class="main-btn primary-btn btn-hover btn-action btnEditar"
-                                                    data-id="<?= $r['id'] ?>"
-                                                    data-nome="<?= e((string)$r['nome']) ?>"
-                                                    data-email="<?= e((string)$r['email']) ?>"
-                                                    data-perfil="<?= $r['perfil'] ?>"
-                                                    data-status="<?= $r['status'] ?>">
-                                                    <i class="lni lni-pencil"></i>
-                                                </button>
-                                                <button type="button" class="main-btn danger-btn-outline btn-hover btn-action btnExcluir" data-id="<?= $r['id'] ?>" data-nome="<?= e((string)$r['nome']) ?>">
-                                                    <i class="lni lni-trash-can"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
+                                    <?= users_render_rows($data['rows']) ?>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <div class="footer-table">
+                            <div class="footer-info" id="footerInfo">
+                                Mostrando <?= $data['from'] ?>-<?= $data['to'] ?> de <?= $data['total'] ?>
+                            </div>
+
+                            <div id="pagerArea">
+                                <?= users_render_pager($data) ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -420,19 +644,29 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                         <h5 class="modal-title" id="fmTitulo">Novo Usuário</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
+
                     <div class="modal-body">
-                        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                        <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
                         <input type="hidden" name="id" id="fmId" value="">
-                        <div class="mb-3"><label class="form-label">Nome</label><input type="text" class="form-control" name="nome" id="fmNome" required></div>
-                        <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email" id="fmEmail" required></div>
-                        <div class="mb-3"><label class="form-label">Senha <small class="text-muted">(Deixe em branco para manter a atual se estiver editando)</small></label><input type="password" class="form-control" name="senha" id="fmSenha"></div>
+
                         <div class="mb-3">
-                            <label class="form-label">Perfil</label>
-                            <select class="form-select" name="perfil" id="fmPerfil">
-                                <option value="VENDEDOR">Vendedor</option>
-                                <option value="ADMIN">Administrador</option>
-                            </select>
+                            <label class="form-label">Nome</label>
+                            <input type="text" class="form-control" name="nome" id="fmNome" required>
                         </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" id="fmEmail" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Senha
+                                <small class="text-muted">(deixe em branco para manter a atual ao editar)</small>
+                            </label>
+                            <input type="password" class="form-control" name="senha" id="fmSenha">
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">Status</label>
                             <select class="form-select" name="status" id="fmStatus">
@@ -441,6 +675,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                             </select>
                         </div>
                     </div>
+
                     <div class="modal-footer">
                         <button class="main-btn primary-btn btn-hover" type="submit">Salvar</button>
                         <button class="main-btn light-btn btn-hover" type="button" data-bs-dismiss="modal">Cancelar</button>
@@ -450,56 +685,102 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         </div>
     </div>
 
-    <!-- EXCLUIR FORM -->
+    <!-- EXCLUIR -->
     <form id="formExcluir" method="post" action="assets/dados/usuarios/excluirUsuarios.php" style="display:none;">
-        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
         <input type="hidden" name="id" id="delId">
     </form>
 
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
     <script>
-        const modal = new bootstrap.Modal(document.getElementById('mdForm'));
+        const modalEl = document.getElementById('mdForm');
+        const modal = new bootstrap.Modal(modalEl);
+        const tbody = document.getElementById('tbody');
+        const footerInfo = document.getElementById('footerInfo');
+        const pagerArea = document.getElementById('pagerArea');
+        const inputQ = document.getElementById('q');
+        let timer = null;
+        let currentPage = 1;
+
+        function bindRowActions() {
+            document.querySelectorAll('.btnEditar').forEach(btn => {
+                btn.onclick = () => {
+                    document.getElementById('fmTitulo').textContent = 'Editar Usuário';
+                    document.getElementById('fmId').value = btn.dataset.id || '';
+                    document.getElementById('fmNome').value = btn.dataset.nome || '';
+                    document.getElementById('fmEmail').value = btn.dataset.email || '';
+                    document.getElementById('fmSenha').value = '';
+                    document.getElementById('fmStatus').value = btn.dataset.status || 'ATIVO';
+                    modal.show();
+                };
+            });
+
+            document.querySelectorAll('.btnExcluir').forEach(btn => {
+                btn.onclick = () => {
+                    if (confirm('Deseja excluir o usuário ' + (btn.dataset.nome || '') + '?')) {
+                        document.getElementById('delId').value = btn.dataset.id || '';
+                        document.getElementById('formExcluir').submit();
+                    }
+                };
+            });
+        }
+
+        function loadUsers(page = 1) {
+            currentPage = page;
+            const q = inputQ.value || '';
+            const url = `usuarios.php?action=ajax&q=${encodeURIComponent(q)}&page=${page}`;
+
+            fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (!res.ok) {
+                        alert(res.msg || 'Erro ao carregar usuários.');
+                        return;
+                    }
+
+                    tbody.innerHTML = res.tbody_html || '';
+                    footerInfo.textContent = res.info_text || '';
+                    pagerArea.innerHTML = res.pager_html || '';
+                    bindRowActions();
+                    bindPager();
+                })
+                .catch(() => {
+                    alert('Erro ao carregar usuários.');
+                });
+        }
+
+        function bindPager() {
+            pagerArea.querySelectorAll('.pager-btn[data-page]').forEach(btn => {
+                btn.onclick = () => {
+                    if (btn.disabled) return;
+                    const page = parseInt(btn.getAttribute('data-page') || '1', 10);
+                    loadUsers(page);
+                };
+            });
+        }
+
         document.getElementById('btnNovo').addEventListener('click', () => {
             document.getElementById('fmTitulo').textContent = 'Novo Usuário';
             document.getElementById('fmId').value = '';
             document.getElementById('fmNome').value = '';
             document.getElementById('fmEmail').value = '';
             document.getElementById('fmSenha').value = '';
-            document.getElementById('fmPerfil').value = 'VENDEDOR';
             document.getElementById('fmStatus').value = 'ATIVO';
             modal.show();
         });
 
-        document.querySelectorAll('.btnEditar').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('fmTitulo').textContent = 'Editar Usuário';
-                document.getElementById('fmId').value = btn.dataset.id;
-                document.getElementById('fmNome').value = btn.dataset.nome;
-                document.getElementById('fmEmail').value = btn.dataset.email;
-                document.getElementById('fmSenha').value = '';
-                document.getElementById('fmPerfil').value = btn.dataset.perfil;
-                document.getElementById('fmStatus').value = btn.dataset.status;
-                modal.show();
-            });
+        inputQ.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => loadUsers(1), 250);
         });
 
-        document.querySelectorAll('.btnExcluir').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (confirm('Deseja excluir o usuário ' + btn.dataset.nome + '?')) {
-                    document.getElementById('delId').value = btn.dataset.id;
-                    document.getElementById('formExcluir').submit();
-                }
-            });
-        });
-
-        document.getElementById('q').addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase();
-            document.querySelectorAll('#tbody tr').forEach(tr => {
-                const text = tr.innerText.toLowerCase();
-                tr.style.display = text.includes(q) ? '' : 'none';
-            });
-        });
+        bindRowActions();
+        bindPager();
     </script>
 </body>
 
