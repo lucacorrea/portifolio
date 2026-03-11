@@ -246,9 +246,21 @@ if (!$COD_UF && $EMIT_CMUN) {
 }
 $COD_UF = (string)$COD_UF;
 
-// Certificado - Limpeza agressiva de senha (mata espaços, tabs, newlines e caracteres invisíveis)
+// Certificado - Limpeza agressiva e DECODE Base64 (Açaidinhos/Hostinger pattern)
 $raw_pass = (string)($row['senha_certificado'] ?? '');
-$PFX_PASSWORD = preg_replace('/[\s\x00-\x1F\x7F-\xFF]/', '', $raw_pass);
+$clean_pass = preg_replace('/[\s\x00-\x1F\x7F-\xFF]/', '', $raw_pass);
+
+// Tenta decodificar se parecer Base64 (6+ caracteres, alfanumérico + / + = + +)
+// e se a decodificação resultar em algo plausível (ex: somente números se for o caso do user)
+$decoded = @base64_decode($clean_pass, true);
+if ($decoded !== false && preg_match('/^[a-zA-Z0-9+\/=]+$/', $clean_pass)) {
+    // Se o decode for bem sucedido, usamos ele. 
+    // Macete: se o decode resultar em algo muito curto (como 6 dígitos), é quase certeza que era b64.
+    $PFX_PASSWORD = $decoded;
+} else {
+    $PFX_PASSWORD = $clean_pass;
+}
+
 $PFX_FROM_DB  = $row['certificado_digital'] ?? null;
 $attempts = [];
 $PFX_PATH     = resolve_cert_path($PFX_FROM_DB, $attempts);
