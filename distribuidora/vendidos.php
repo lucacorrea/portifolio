@@ -786,6 +786,7 @@ if ($action === 'excel') {
                 border-collapse: collapse;
                 table-layout: fixed;
                 width: 100%;
+                text-align: center !important;
             }
 
             .tbl-meta,
@@ -794,9 +795,6 @@ if ($action === 'excel') {
                 border: 1px solid #000;
             }
 
-            th, td{
-                text-align: center !important;
-            }
 
             .tbl-meta td {
                 border: 1px solid #000;
