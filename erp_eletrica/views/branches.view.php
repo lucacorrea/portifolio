@@ -141,9 +141,48 @@
                         <label class="form-label small fw-bold">Município</label>
                         <input type="text" name="municipio" id="branch_municipio" class="form-control shadow-sm">
                     </div>
-                    <div class="col-md-1">
+                    <div class="col-md-2">
                         <label class="form-label small fw-bold">UF</label>
-                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2" oninput="this.value = this.value.toUpperCase(); atualizarCodigoUF();" onchange="atualizarCodigoUF()">
+                        <select name="uf" id="branch_uf" class="form-select shadow-sm" onchange="atualizarCodigoUF()">
+                            <option value="">Selecione...</option>
+                            <optgroup label="Norte">
+                                <option value="AC">Acre (AC)</option>
+                                <option value="AM">Amazonas (AM)</option>
+                                <option value="AP">Amapá (AP)</option>
+                                <option value="PA">Pará (PA)</option>
+                                <option value="RO">Rondônia (RO)</option>
+                                <option value="RR">Roraima (RR)</option>
+                                <option value="TO">Tocantins (TO)</option>
+                            </optgroup>
+                            <optgroup label="Nordeste">
+                                <option value="AL">Alagoas (AL)</option>
+                                <option value="BA">Bahia (BA)</option>
+                                <option value="CE">Ceará (CE)</option>
+                                <option value="MA">Maranhão (MA)</option>
+                                <option value="PB">Paraíba (PB)</option>
+                                <option value="PE">Pernambuco (PE)</option>
+                                <option value="PI">Piauí (PI)</option>
+                                <option value="RN">Rio Grande do Norte (RN)</option>
+                                <option value="SE">Sergipe (SE)</option>
+                            </optgroup>
+                            <optgroup label="Centro-Oeste">
+                                <option value="DF">Distrito Federal (DF)</option>
+                                <option value="GO">Goiás (GO)</option>
+                                <option value="MT">Mato Grosso (MT)</option>
+                                <option value="MS">Mato Grosso do Sul (MS)</option>
+                            </optgroup>
+                            <optgroup label="Sudeste">
+                                <option value="ES">Espírito Santo (ES)</option>
+                                <option value="MG">Minas Gerais (MG)</option>
+                                <option value="RJ">Rio de Janeiro (RJ)</option>
+                                <option value="SP">São Paulo (SP)</option>
+                            </optgroup>
+                            <optgroup label="Sul">
+                                <option value="PR">Paraná (PR)</option>
+                                <option value="RS">Rio Grande do Sul (RS)</option>
+                                <option value="SC">Santa Catarina (SC)</option>
+                            </optgroup>
+                        </select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Código UF</label>

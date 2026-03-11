@@ -30,7 +30,7 @@ class NfceService extends BaseService {
         // The 27 fields from Açaí system
         $fields = [
             'cnpj', 'razao_social', 'nome_fantasia', 'inscricao_estadual', 'inscricao_municipal',
-            'cep', 'logradouro', 'numero_endereco', 'complemento', 'bairro', 'cidade', 'uf',
+            'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'uf',
             'codigo_uf', 'codigo_municipio', 'telefone', 'certificado_path', 'certificado_senha',
             'ambiente', 'regime_tributario', 'serie_nfce', 'ultimo_numero_nfce', 'csc', 'csc_id',
             'tipo_emissao', 'finalidade', 'ind_pres', 'tipo_impressao'

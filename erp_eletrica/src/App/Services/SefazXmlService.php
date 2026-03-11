@@ -17,7 +17,8 @@ class SefazXmlService extends BaseService {
         $infNFe = $dom->createElement('infNFe');
         
         // ID: NFe + cUF(2) + AAMM(4) + CNPJ(14) + mod(2) + serie(3) + nNF(9) + tpEmis(1) + cNF(8) + cDV(1)
-        $cUF = str_pad($fiscal['codigo_uf'] ?? '35', 2, '0', STR_PAD_LEFT);
+        $cUF = substr(preg_replace('/\D/', '', $fiscal['codigo_uf'] ?? '35'), 0, 2);
+        $cUF = str_pad($cUF, 2, '0', STR_PAD_LEFT);
         $tpAmb = ($fiscal['ambiente'] == 1) ? '1' : '2';
         $mod = "65"; // NFC-e
         $serie = str_pad($fiscal['serie_nfce'] ?? '1', 3, '0', STR_PAD_LEFT);
