@@ -504,29 +504,30 @@ $flashErr = u_take_flash('flash_err');
 
         <section class="section">
 
-            <div class="title-wrapper pt-30">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <div class="title">
-                            <h2>Usuários</h2>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="breadcrumb-wrapper">
-                            <nav aria-label="breadcrumb">
-                                <ol class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="#">Configurações</a></li>
-                                    <li class="breadcrumb-item active" aria-current="page">Usuários</li>
-                                </ol>
-                            </nav>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
             <div class="container-fluid p-4">
+
+                <div class="title-wrapper pt-30">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="title">
+                                <h2>Usuários</h2>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Configurações</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Usuários</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
                 <?php if ($flashOk): ?>
                     <div class="alert alert-success flash-auto-hide" style="border-radius:14px;"><?= u_e($flashOk) ?></div>
                 <?php endif; ?>

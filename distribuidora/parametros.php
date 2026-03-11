@@ -259,30 +259,30 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
         </header>
 
         <section class="section">
-
-            <div class="title-wrapper pt-30">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <div class="title">
-                            <h2>Parâmetros do Sistema</h2>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="breadcrumb-wrapper">
-                            <nav aria-label="breadcrumb">
-                                <ol class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="#">Configurações</a></li>
-                                    <li class="breadcrumb-item active" aria-current="page">Parâmetros do Sistema</li>
-                                </ol>
-                            </nav>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
             <div class="container-fluid p-4">
+
+                <div class="title-wrapper pt-30">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="title">
+                                <h2>Parâmetros do Sistema</h2>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Configurações</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Parâmetros do Sistema</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
                 <?php if ($flashOk): ?><div class="alert alert-success"><?= e($flashOk) ?></div><?php endif; ?>
                 <?php if ($flashErr): ?><div class="alert alert-danger"><?= e($flashErr) ?></div><?php endif; ?>
                 <div class="card-style mb-3">
