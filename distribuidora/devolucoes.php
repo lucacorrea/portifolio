@@ -1714,6 +1714,10 @@ $flash = flash_pop();
       text-overflow: ellipsis;
     }
 
+    th, td{
+      text-align: center !important;
+    }
+
     .suggest .s {
       font-size: 12px;
       color: #64748b;
