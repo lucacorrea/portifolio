@@ -8,27 +8,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </div>
     
     <nav class="nav flex-column sidebar-menu">
-        <?php if (($_SESSION['usuario_nivel'] ?? '') === 'master'): ?>
-        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#masterSubmenu">
-            <i class="fas fa-crown text-warning"></i>
-            <span>Painel Master Global</span>
-            <i class="fas fa-chevron-down ms-auto small opacity-50"></i>
-        </a>
-        <div class="collapse ps-3 <?= strpos($_SERVER['PHP_SELF'], 'master.php') !== false ? 'show' : '' ?>" id="masterSubmenu">
-            <nav class="nav flex-column">
-                <a class="nav-link extra-small py-1" href="master.php">
-                    <i class="fas fa-chart-pie me-1 extra-small"></i> Sumário Global
-                </a>
-                <a class="nav-link extra-small py-1" href="master.php?action=dre">
-                    <i class="fas fa-file-invoice-dollar me-1 extra-small"></i> DRE Consolidado
-                </a>
-                <a class="nav-link extra-small py-1" href="master.php?action=permissions">
-                    <i class="fas fa-user-shield me-1 extra-small"></i> Permissões RBAC
-                </a>
-            </nav>
-        </div>
-        <div class="sidebar-divider my-2 opacity-25"></div>
-        <?php endif; ?>
 
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
         <a href="index.php" class="nav-link <?= ($current_page == 'index.php' || $current_page == '') ? 'active' : '' ?>">
@@ -36,19 +15,19 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'gerente'])): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'gerente'])): ?>
         <a href="caixa.php" class="nav-link <?= $current_page == 'caixa.php' ? 'active' : '' ?>">
             <i class="fas fa-vault"></i> <span>Controle de Caixa</span>
         </a>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'gerente'])): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'gerente'])): ?>
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
         </a>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'vendedor'])): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'vendedor'])): ?>
         <a href="pre_vendas.php" class="nav-link <?= $current_page == 'pre_vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-file-invoice-dollar"></i> <span>Pré-Venda / Orç.</span>
         </a>
@@ -100,7 +79,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão Estratégica</div>
         
         <a href="custos.php" class="nav-link <?= $current_page == 'custos.php' ? 'active' : '' ?>">
@@ -111,7 +90,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master'])): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
         
         <a href="filiais.php" class="nav-link <?= $current_page == 'filiais.php' ? 'active' : '' ?>">
