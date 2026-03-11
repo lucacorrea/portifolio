@@ -1256,6 +1256,9 @@ $initialTotais = $initial['totais'];
             width: 120px;
         }
 
+        .col-cliente {
+            width: 210px;
+        }
 
         .col-canal {
             width: 110px;
