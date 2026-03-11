@@ -9,15 +9,17 @@ require_once 'config.php';
 use App\Services\MigrationService;
 
 try {
-    echo "Iniciando verificação de tabelas fiscais...\n";
+    echo "<h1>Sincronização de Tabelas Fiscais</h1>";
+    echo "<p>Iniciando verificação...</p>";
     
     $migrationService = new MigrationService();
     $migrationService->run();
     
-    echo "Sucesso: Todas as migrações (incluindo nfce_emitidas) foram aplicadas!\n";
-    echo "Você já pode realizar vendas e emissões de NFC-e normalmente.\n";
+    echo "<h3 style='color: green;'>Sucesso: Todas as tabelas fiscais (incluindo nfce_emitidas) foram criadas/atualizadas!</h3>";
+    echo "<p>Você já pode fechar esta aba e continuar usando o sistema normalmente.</p>";
     
 } catch (Exception $e) {
-    echo "Erro ao aplicar migrações: " . $e->getMessage() . "\n";
+    echo "<h3 style='color: red;'>Erro ao aplicar migrações:</h3>";
+    echo "<pre>" . $e->getMessage() . "</pre>";
     exit(1);
 }
