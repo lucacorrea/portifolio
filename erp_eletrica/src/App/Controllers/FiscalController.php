@@ -104,7 +104,68 @@ class FiscalController extends BaseController {
     }
 
     public function diagnostic() {
-        // ... code remains same ...
+        $selectedBranchId = $_GET['id'] ?? ($_SESSION['filial_id'] ?? null);
+        
+        // 1. Get Branches
+        $stmt = $this->db->query("SELECT * FROM filiais ORDER BY principal DESC");
+        $branches = $stmt->fetchAll();
+        
+        if (!$selectedBranchId && !empty($branches)) {
+            $selectedBranchId = $branches[0]['id'];
+        }
+
+        $branch = null;
+        foreach($branches as $b) {
+            if ($b['id'] == $selectedBranchId) {
+                $branch = $b;
+                break;
+            }
+        }
+
+        // 2. Database Status Validation
+        $dbStatus = [
+            'has_cnpj' => !empty($branch['cnpj']),
+            'valid_cnpj' => strlen(preg_replace('/\D/', '', $branch['cnpj'] ?? '')) === 14,
+            'has_ie' => !empty($branch['inscricao_estadual']),
+            'has_cep' => strlen(preg_replace('/\D/', '', $branch['cep'] ?? '')) === 8,
+            'has_uf' => strlen($branch['uf'] ?? '') === 2,
+            'has_ibge' => !empty($branch['codigo_municipio'])
+        ];
+
+        // 3. Environment status
+        $env = [
+            'php_version' => PHP_VERSION,
+            'curl_loaded' => extension_loaded('curl'),
+            'openssl_loaded' => extension_loaded('openssl'),
+            'soap_loaded' => extension_loaded('soap'),
+            'dom_loaded' => extension_loaded('dom'),
+            'simplexml_loaded' => extension_loaded('simplexml')
+        ];
+
+        // 4. Storage check
+        $storageDir = dirname(__DIR__, 3) . '/storage';
+        $certDir = $storageDir . '/certificados';
+        
+        $storage = [
+            'storage_writable' => is_writable($storageDir),
+            'cert_dir_writable' => is_dir($certDir) && is_writable($certDir)
+        ];
+
+        // 5. Global config
+        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
+        $globalConfig = $stmt->fetch();
+
+        $this->render('fiscal/diagnostic', [
+            'branches' => $branches,
+            'selectedBranchId' => $selectedBranchId,
+            'branch' => $branch,
+            'dbStatus' => $dbStatus,
+            'env' => $env,
+            'storage' => $storage,
+            'globalConfig' => $globalConfig,
+            'title' => 'Diagnóstico SEFAZ',
+            'pageTitle' => 'Diagnóstico de Conectividade'
+        ]);
     }
 
     public function emitir_nfce() {
