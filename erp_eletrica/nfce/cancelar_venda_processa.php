@@ -28,12 +28,23 @@ function onlyDigits($s)
 }
 function redirVendaRapida($empresaId, $ok, $modelo, $msg = '')
 {
-    $empresaId = urlencode((string)$empresaId);
-    $modelo    = urlencode((string)$modelo);
-    $status    = $ok ? 'ok' : 'erro';
-    $qs = "id={$empresaId}&cancel={$status}&modelo={$modelo}";
-    if ($msg !== '') $qs .= '&msg=' . urlencode($msg);
-    header("Location: ../vendas.php?{$qs}");
+    $status = $ok ? 'Sucesso' : 'Aviso';
+    $msgJs = addslashes($msg);
+    $empresaIdJs = rawurlencode((string)$empresaId);
+    
+    echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Resultado do Cancelamento</title></head><body>";
+    echo "<script>
+        alert('{$status}: {$msgJs}');
+        if (window.opener || window.history.length === 1) {
+            window.close();
+            if (window.opener && !window.opener.closed) {
+                window.opener.location.reload();
+            }
+        } else {
+            window.location.href = '../vendas.php?id={$empresaIdJs}';
+        }
+    </script>";
+    echo "</body></html>";
     exit;
 }
 
