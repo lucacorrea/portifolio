@@ -536,7 +536,7 @@ $flashErr = users_flash_take('flash_err');
 
                     <div class="col-lg-7 col-md-7 col-6">
                         <div class="header-right d-flex justify-content-end align-items-center">
-                            <a href="assets/auth/logout.php" class="main-btn primary-btn btn-hover logout-btn">
+                            <a href="logout.php" class="main-btn primary-btn btn-hover logout-btn">
                                 <i class="lni lni-exit me-1"></i> Sair
                             </a>
                         </div>
