@@ -1,9 +1,8 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
-declare(strict_types=1);
 
 
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
 
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
@@ -16,14 +15,15 @@ if (is_file($helpers)) require_once $helpers;
 $con = __DIR__ . '/assets/conexao.php';
 if (is_file($con)) require_once $con;
 
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+declare(strict_types=1);
+
 if (!function_exists('db')) {
   http_response_code(500);
   echo "ERRO: função db():PDO não encontrada. Verifique /assets/conexao.php";
   exit;
 }
-
-require_once __DIR__ . '/assets/auth/auth.php';
-auth_require('index.php');
 
 // fallback de escape, se seu __helpers não tiver
 if (!function_exists('e')) {
