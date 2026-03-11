@@ -635,6 +635,17 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         <section class="section">
             <div class="container-fluid page-pad">
 
+                <div class="title-wrapper pt-30">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="title">
+                                <h2>Gestão de Vendas</h2>
+                                <p class="text-muted">Listagem e filtros de vendas</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <?php if ($flashOk): ?>
                     <div class="alert alert-success" style="border-radius:14px;" data-autohide="1"><?= e($flashOk) ?></div>
                 <?php endif; ?>
