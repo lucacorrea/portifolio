@@ -795,7 +795,7 @@ if ($action === 'excel') {
             }
 
             th, td{
-                text-align: center;
+                text-align: center !important;
             }
 
             .tbl-meta td {
