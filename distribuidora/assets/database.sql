@@ -168,6 +168,29 @@ CREATE INDEX idx_clientes_nome ON clientes (nome);
 CREATE INDEX idx_clientes_telefone ON clientes (telefone);
 
 
+CREATE TABLE IF NOT EXISTS fiados (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  venda_id INT NOT NULL,
+  cliente_id  INT NOT NULL,
+  valor_total DECIMAL(10,2) NOT NULL,
+  valor_pago DECIMAL(10,2) DEFAULT 0.00,
+  valor_restante DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'ABERTO',
+  data_vencimento DATE DEFAULT NULL,
+  created_at DATETIME DEFAULT current_timestamp(),
+  updated_at DATETIME DEFAULT current_timestamp() ON UPDATE current_timestamp()
+);
+
+
+CREATE TABLE IF NOT EXISTS fiados_pagamentos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  fiado_id INT NOT NULL,
+  valor DECIMAL(10,2) NOT NULL,
+  metodo VARCHAR(50) NOT NULL,
+  created_at DATETIME DEFAULT current_timestamp()
+);
+
+
 CREATE TABLE IF NOT EXISTS devolucoes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   venda_no INT NULL,

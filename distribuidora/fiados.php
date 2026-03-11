@@ -109,7 +109,7 @@ function render_rows_html(array $rows): string
         $id             = (int) ($f['id'] ?? 0);
         $vendaId        = (int) ($f['venda_id'] ?? 0);
         $cliente        = (string) ($f['cliente_nome'] ?? '');
-        $createdAt      = (string) ($f['created_at'] ?? '');
+        $createdAt      = (string) ($f['data_ref'] ?? $f['created_at'] ?? '');
         $valorTotal     = (float) ($f['valor_total'] ?? 0);
         $valorPago      = (float) ($f['valor_pago'] ?? 0);
         $valorRestante  = (float) ($f['valor_restante'] ?? 0);
@@ -158,17 +158,17 @@ function get_fiados_page(PDO $pdo, array $filters): array
     $bind  = [];
 
     if ($di !== '') {
-        $where[] = 'DATE(f.created_at) >= :di';
+        $where[] = 'DATE(COALESCE(v.created_at, f.created_at)) >= :di';
         $bind[':di'] = $di;
     }
 
     if ($df !== '') {
-        $where[] = 'DATE(f.created_at) <= :df';
+        $where[] = 'DATE(COALESCE(v.created_at, f.created_at)) <= :df';
         $bind[':df'] = $df;
     }
 
     if ($canal !== '' && $canal !== 'TODOS') {
-        $where[] = 'UPPER(COALESCE(f.canal, "")) = :canal';
+        $where[] = 'UPPER(COALESCE(v.canal, "")) = :canal';
         $bind[':canal'] = $canal;
     }
 
@@ -180,17 +180,25 @@ function get_fiados_page(PDO $pdo, array $filters): array
     if ($q !== '') {
         $where[] = '(
             CAST(f.venda_id AS CHAR) LIKE :q
-            OR COALESCE(f.cliente_nome, "") LIKE :q
+            OR CAST(f.cliente_id AS CHAR) LIKE :q
+            OR COALESCE(c.nome, "") LIKE :q
             OR COALESCE(f.status, "") LIKE :q
-            OR COALESCE(f.canal, "") LIKE :q
-            OR DATE_FORMAT(f.created_at, "%d/%m/%Y %H:%i:%s") LIKE :q
+            OR COALESCE(v.canal, "") LIKE :q
+            OR DATE_FORMAT(COALESCE(v.created_at, f.created_at), "%d/%m/%Y %H:%i:%s") LIKE :q
         )';
         $bind[':q'] = '%' . $q . '%';
     }
 
     $whereSql = implode(' AND ', $where);
 
-    $sqlCount = "SELECT COUNT(*) FROM fiados f WHERE {$whereSql}";
+    $sqlCount = "
+        SELECT COUNT(*)
+        FROM fiados f
+        LEFT JOIN clientes c ON c.id = f.cliente_id
+        LEFT JOIN vendas v ON v.id = f.venda_id
+        WHERE {$whereSql}
+    ";
+
     $stmtCount = $pdo->prepare($sqlCount);
     foreach ($bind as $k => $v) {
         $stmtCount->bindValue($k, $v);
@@ -209,16 +217,21 @@ function get_fiados_page(PDO $pdo, array $filters): array
         SELECT
             f.id,
             f.venda_id,
-            COALESCE(f.cliente_nome, '') AS cliente_nome,
+            f.cliente_id,
+            COALESCE(c.nome, v.cliente, CONCAT('Cliente #', f.cliente_id)) AS cliente_nome,
             COALESCE(f.valor_total, 0) AS valor_total,
             COALESCE(f.valor_pago, 0) AS valor_pago,
             COALESCE(f.valor_restante, 0) AS valor_restante,
             COALESCE(f.status, 'ABERTO') AS status,
-            COALESCE(f.canal, '') AS canal,
-            f.created_at
+            COALESCE(v.canal, 'PRESENCIAL') AS canal,
+            COALESCE(v.created_at, f.created_at) AS data_ref,
+            f.created_at,
+            f.updated_at
         FROM fiados f
+        LEFT JOIN clientes c ON c.id = f.cliente_id
+        LEFT JOIN vendas v ON v.id = f.venda_id
         WHERE {$whereSql}
-        ORDER BY f.created_at DESC, f.id DESC
+        ORDER BY COALESCE(v.created_at, f.created_at) DESC, f.id DESC
         LIMIT :offset, :per
     ";
 
@@ -338,10 +351,7 @@ try {
             --text-soft: #64748b;
         }
 
-        body {
-            overflow-x: hidden;
-        }
-
+        body,
         .main-wrapper,
         .section,
         .header {
@@ -946,6 +956,7 @@ try {
         </section>
     </main>
 
+    <!-- mantém seus modais -->
     <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
@@ -1155,9 +1166,7 @@ try {
                 $pgSummary.textContent = r.summary || '—';
                 setPagerUI();
             } catch (e) {
-                if (e.name === 'AbortError') {
-                    return;
-                }
+                if (e.name === 'AbortError') return;
 
                 $body.innerHTML = `<tr><td colspan="8" class="text-center p-5">Erro ao carregar: ${String(e.message || e)}</td></tr>`;
                 STATE.page = 1;
