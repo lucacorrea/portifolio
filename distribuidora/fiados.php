@@ -1188,7 +1188,8 @@ $flashErr = fi_flash_take('flash_err');
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="title">
-                                <h2>À Prazo</h2>
+                                <h2>Gestão de Vendas À Prazo</h2>
+                                <p class="text-muted">Listagem, filtros automáticos, pesquisa no tbody e recebimentos (AVS)</p>
                             </div>
                         </div>
 
@@ -1213,17 +1214,6 @@ $flashErr = fi_flash_take('flash_err');
                 <?php if ($flashErr): ?>
                     <div class="alert alert-danger flash-auto-hide mt-3" style="border-radius:14px;"><?= fi_e($flashErr) ?></div>
                 <?php endif; ?>
-
-                <div class="title-wrapper pt-30">
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <div class="title">
-                                <h2>Gestão de Vendas À Prazo</h2>
-                                <p class="text-muted">Listagem, filtros automáticos, pesquisa no tbody e recebimentos (AVS)</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="summary-grid">
                     <div class="summary-card total">
