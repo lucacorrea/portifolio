@@ -694,6 +694,10 @@ try {
             border-spacing: 0;
         }
 
+        th, td{
+            text-align: center !important;
+        }
+
         .table-custom thead th {
             font-size: 13px;
             font-weight: 800;
