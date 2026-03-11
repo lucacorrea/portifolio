@@ -1183,6 +1183,29 @@ $flashErr = fi_flash_take('flash_err');
 
         <section class="section">
             <div class="container-fluid">
+
+                <div class="title-wrapper pt-30">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="title">
+                                <h2>À Prazo</h2>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Operações</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">À Prazo</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
                 <?php if ($flashOk): ?>
                     <div class="alert alert-success flash-auto-hide mt-3" style="border-radius:14px;"><?= fi_e($flashOk) ?></div>
                 <?php endif; ?>
