@@ -794,11 +794,14 @@ if ($action === 'excel') {
                 border: 1px solid #000;
             }
 
+            th, td{
+                text-align: center;
+            }
+
             .tbl-meta td {
                 border: 1px solid #000;
                 padding: 6px;
                 font-size: 11pt;
-                vertical-align: middle;
             }
 
             th,
@@ -806,7 +809,6 @@ if ($action === 'excel') {
                 border: 0.6px solid #000;
                 padding: 6px;
                 font-size: 11pt;
-                vertical-align: middle;
             }
 
             .title {
