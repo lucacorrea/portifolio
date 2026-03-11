@@ -1286,6 +1286,10 @@ $initialTotais = $initial['totais'];
             white-space: nowrap;
         }
 
+        th, td{
+            text-align: center;
+        }
+
         .td-nowrap {
             white-space: nowrap;
             text-align: center;
