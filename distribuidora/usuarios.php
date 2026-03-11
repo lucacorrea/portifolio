@@ -97,7 +97,7 @@ function u_render_rows(array $rows): string
                 </button>
             </td>
         </tr>
-    <?php
+<?php
     }
 
     return (string)ob_get_clean();
@@ -109,7 +109,7 @@ function u_render_pager(int $page, int $lastPage): string
     $nextDisabled = $page >= $lastPage ? 'disabled' : '';
 
     ob_start();
-    ?>
+?>
     <div class="pager-box">
         <button type="button" class="pager-btn" data-page="<?= max(1, $page - 1) ?>" <?= $prevDisabled ?>>
             <i class="lni lni-chevron-left"></i>
@@ -353,10 +353,10 @@ $flashErr = u_take_flash('flash_err');
         }
 
         #btnNovo {
-            height: 42px !important;
-            min-height: 42px !important;
-            padding: 0 16px !important;
-            font-size: 14px !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 0 14px !important;
+            font-size: 13px !important;
             border-radius: 10px !important;
             display: inline-flex;
             align-items: center;
@@ -365,11 +365,11 @@ $flashErr = u_take_flash('flash_err');
         }
 
         .btn-modal-action {
-            height: 42px !important;
-            min-height: 42px !important;
-            min-width: 110px !important;
-            padding: 0 16px !important;
-            font-size: 14px !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            min-width: 100px !important;
+            padding: 0 14px !important;
+            font-size: 13px !important;
             border-radius: 10px !important;
             display: inline-flex;
             align-items: center;
@@ -616,195 +616,218 @@ $flashErr = u_take_flash('flash_err');
         <input type="hidden" name="id" id="delId">
     </form>
 
-    <script>
-        const allRows = <?= json_encode($allRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-        const perPage = 10;
-
-        const modalEl = document.getElementById('mdForm');
-        const modal = new bootstrap.Modal(modalEl);
-        const tbody = document.getElementById('tbody');
-        const footerInfo = document.getElementById('footerInfo');
-        const pagerArea = document.getElementById('pagerArea');
-        const inputQ = document.getElementById('q');
-
-        let currentPage = 1;
-        let timer = null;
-
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#039;');
-        }
-
-        function filterRows(query) {
-            const q = String(query || '').trim().toLowerCase();
-            if (!q) return [...allRows];
-
-            return allRows.filter(row => {
-                const haystack = [
-                    row.id,
-                    row.nome,
-                    row.email,
-                    row.status,
-                    row.created_at_fmt
-                ].join(' ').toLowerCase();
-
-                return haystack.includes(q);
-            });
-        }
-
-        function renderRows(rows) {
-            if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Nenhum usuário encontrado.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = rows.map(row => {
-                const statusCls = String(row.status || '').toUpperCase() === 'ATIVO' ? 'ok' : 'warn';
-
-                return `
-                    <tr>
-                        <td>${escapeHtml(row.id)}</td>
-                        <td class="fw-bold">${escapeHtml(row.nome)}</td>
-                        <td>${escapeHtml(row.email)}</td>
-                        <td><span class="pill ${statusCls}">${escapeHtml(row.status)}</span></td>
-                        <td>${escapeHtml(row.created_at_fmt)}</td>
-                        <td class="text-end">
-                            <button
-                                type="button"
-                                class="main-btn primary-btn btn-hover btn-action btnEditar"
-                                data-id="${escapeHtml(row.id)}"
-                                data-nome="${escapeHtml(row.nome)}"
-                                data-email="${escapeHtml(row.email)}"
-                                data-status="${escapeHtml(row.status)}">
-                                <i class="lni lni-pencil"></i>
-                            </button>
-
-                            <button
-                                type="button"
-                                class="main-btn danger-btn-outline btn-hover btn-action btnExcluir"
-                                data-id="${escapeHtml(row.id)}"
-                                data-nome="${escapeHtml(row.nome)}">
-                                <i class="lni lni-trash-can"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function renderPager(page, lastPage) {
-            const prevDisabled = page <= 1 ? 'disabled' : '';
-            const nextDisabled = page >= lastPage ? 'disabled' : '';
-
-            pagerArea.innerHTML = `
-                <div class="pager-box">
-                    <button type="button" class="pager-btn" data-page="${Math.max(1, page - 1)}" ${prevDisabled}>
-                        <i class="lni lni-chevron-left"></i>
-                    </button>
-
-                    <div class="pager-text">Página ${page}/${lastPage}</div>
-
-                    <button type="button" class="pager-btn" data-page="${Math.min(lastPage, page + 1)}" ${nextDisabled}>
-                        <i class="lni lni-chevron-right"></i>
-                    </button>
-                </div>
-            `;
-        }
-
-        function bindRowActions() {
-            document.querySelectorAll('.btnEditar').forEach(btn => {
-                btn.onclick = () => {
-                    document.getElementById('fmTitulo').textContent = 'Editar Usuário';
-                    document.getElementById('fmId').value = btn.dataset.id || '';
-                    document.getElementById('fmNome').value = btn.dataset.nome || '';
-                    document.getElementById('fmEmail').value = btn.dataset.email || '';
-                    document.getElementById('fmSenha').value = '';
-                    document.getElementById('fmStatus').value = btn.dataset.status || 'ATIVO';
-                    modal.show();
-                };
-            });
-
-            document.querySelectorAll('.btnExcluir').forEach(btn => {
-                btn.onclick = () => {
-                    if (confirm('Deseja excluir o usuário ' + (btn.dataset.nome || '') + '?')) {
-                        document.getElementById('delId').value = btn.dataset.id || '';
-                        document.getElementById('formExcluir').submit();
-                    }
-                };
-            });
-        }
-
-        function bindPager(filteredRows) {
-            const lastPage = Math.max(1, Math.ceil(filteredRows.length / perPage));
-
-            pagerArea.querySelectorAll('.pager-btn[data-page]').forEach(btn => {
-                btn.onclick = () => {
-                    if (btn.disabled) return;
-                    const page = parseInt(btn.getAttribute('data-page') || '1', 10);
-                    loadUsers(page);
-                };
-            });
-
-            if (currentPage > lastPage) {
-                currentPage = lastPage;
-            }
-        }
-
-        function loadUsers(page = 1) {
-            const q = inputQ.value || '';
-            const filtered = filterRows(q);
-
-            const total = filtered.length;
-            const lastPage = Math.max(1, Math.ceil(total / perPage));
-            currentPage = Math.min(Math.max(1, page), lastPage);
-
-            const offset = (currentPage - 1) * perPage;
-            const pagedRows = filtered.slice(offset, offset + perPage);
-
-            const from = total > 0 ? offset + 1 : 0;
-            const to = total > 0 ? Math.min(offset + perPage, total) : 0;
-
-            renderRows(pagedRows);
-            renderPager(currentPage, lastPage);
-            footerInfo.textContent = `Mostrando ${from}-${to} de ${total}`;
-            bindRowActions();
-            bindPager(filtered);
-        }
-
-        document.getElementById('btnNovo').addEventListener('click', () => {
-            document.getElementById('fmTitulo').textContent = 'Novo Usuário';
-            document.getElementById('fmId').value = '';
-            document.getElementById('fmNome').value = '';
-            document.getElementById('fmEmail').value = '';
-            document.getElementById('fmSenha').value = '';
-            document.getElementById('fmStatus').value = 'ATIVO';
-            modal.show();
-        });
-
-        inputQ.addEventListener('input', () => {
-            clearTimeout(timer);
-            timer = setTimeout(() => loadUsers(1), 180);
-        });
-
-        document.querySelectorAll('.flash-auto-hide').forEach(el => {
-            setTimeout(() => {
-                el.classList.add('hide-now');
-                setTimeout(() => {
-                    el.remove();
-                }, 350);
-            }, 1600);
-        });
-
-        bindRowActions();
-        bindPager(allRows);
-    </script>
-
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const allRows = <?= json_encode($allRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+            const perPage = 10;
+
+            const modalEl = document.getElementById('mdForm');
+            const tbody = document.getElementById('tbody');
+            const footerInfo = document.getElementById('footerInfo');
+            const pagerArea = document.getElementById('pagerArea');
+            const inputQ = document.getElementById('q');
+            const btnNovo = document.getElementById('btnNovo');
+            const formExcluir = document.getElementById('formExcluir');
+            const delId = document.getElementById('delId');
+
+            const fmTitulo = document.getElementById('fmTitulo');
+            const fmId = document.getElementById('fmId');
+            const fmNome = document.getElementById('fmNome');
+            const fmEmail = document.getElementById('fmEmail');
+            const fmSenha = document.getElementById('fmSenha');
+            const fmStatus = document.getElementById('fmStatus');
+
+            let currentPage = 1;
+            let timer = null;
+            let modal = null;
+
+            if (window.bootstrap && modalEl) {
+                modal = new bootstrap.Modal(modalEl);
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function filterRows(query) {
+                const q = String(query || '').trim().toLowerCase();
+                if (!q) return [...allRows];
+
+                return allRows.filter(row => {
+                    const haystack = [
+                        row.id,
+                        row.nome,
+                        row.email,
+                        row.status,
+                        row.created_at_fmt
+                    ].join(' ').toLowerCase();
+
+                    return haystack.includes(q);
+                });
+            }
+
+            function renderRows(rows) {
+                if (!rows.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Nenhum usuário encontrado.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = rows.map(row => {
+                    const statusCls = String(row.status || '').toUpperCase() === 'ATIVO' ? 'ok' : 'warn';
+
+                    return `
+                        <tr>
+                            <td>${escapeHtml(row.id)}</td>
+                            <td class="fw-bold">${escapeHtml(row.nome)}</td>
+                            <td>${escapeHtml(row.email)}</td>
+                            <td><span class="pill ${statusCls}">${escapeHtml(row.status)}</span></td>
+                            <td>${escapeHtml(row.created_at_fmt)}</td>
+                            <td class="text-end">
+                                <button
+                                    type="button"
+                                    class="main-btn primary-btn btn-hover btn-action btnEditar"
+                                    data-id="${escapeHtml(row.id)}"
+                                    data-nome="${escapeHtml(row.nome)}"
+                                    data-email="${escapeHtml(row.email)}"
+                                    data-status="${escapeHtml(row.status)}">
+                                    <i class="lni lni-pencil"></i>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="main-btn danger-btn-outline btn-hover btn-action btnExcluir"
+                                    data-id="${escapeHtml(row.id)}"
+                                    data-nome="${escapeHtml(row.nome)}">
+                                    <i class="lni lni-trash-can"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            function renderPager(page, lastPage) {
+                const prevDisabled = page <= 1 ? 'disabled' : '';
+                const nextDisabled = page >= lastPage ? 'disabled' : '';
+
+                pagerArea.innerHTML = `
+                    <div class="pager-box">
+                        <button type="button" class="pager-btn" data-page="${Math.max(1, page - 1)}" ${prevDisabled}>
+                            <i class="lni lni-chevron-left"></i>
+                        </button>
+
+                        <div class="pager-text">Página ${page}/${lastPage}</div>
+
+                        <button type="button" class="pager-btn" data-page="${Math.min(lastPage, page + 1)}" ${nextDisabled}>
+                            <i class="lni lni-chevron-right"></i>
+                        </button>
+                    </div>
+                `;
+            }
+
+            function openNewModal() {
+                fmTitulo.textContent = 'Novo Usuário';
+                fmId.value = '';
+                fmNome.value = '';
+                fmEmail.value = '';
+                fmSenha.value = '';
+                fmStatus.value = 'ATIVO';
+
+                if (modal) {
+                    modal.show();
+                }
+            }
+
+            function bindRowActions() {
+                document.querySelectorAll('.btnEditar').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        fmTitulo.textContent = 'Editar Usuário';
+                        fmId.value = this.dataset.id || '';
+                        fmNome.value = this.dataset.nome || '';
+                        fmEmail.value = this.dataset.email || '';
+                        fmSenha.value = '';
+                        fmStatus.value = this.dataset.status || 'ATIVO';
+
+                        if (modal) {
+                            modal.show();
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.btnExcluir').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        if (confirm('Deseja excluir o usuário ' + (this.dataset.nome || '') + '?')) {
+                            delId.value = this.dataset.id || '';
+                            formExcluir.submit();
+                        }
+                    });
+                });
+            }
+
+            function bindPager() {
+                pagerArea.querySelectorAll('.pager-btn[data-page]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        if (this.disabled) return;
+                        const page = parseInt(this.getAttribute('data-page') || '1', 10);
+                        loadUsers(page);
+                    });
+                });
+            }
+
+            function loadUsers(page = 1) {
+                const q = inputQ.value || '';
+                const filtered = filterRows(q);
+
+                const total = filtered.length;
+                const lastPage = Math.max(1, Math.ceil(total / perPage));
+                currentPage = Math.min(Math.max(1, page), lastPage);
+
+                const offset = (currentPage - 1) * perPage;
+                const pagedRows = filtered.slice(offset, offset + perPage);
+
+                const from = total > 0 ? offset + 1 : 0;
+                const to = total > 0 ? Math.min(offset + perPage, total) : 0;
+
+                renderRows(pagedRows);
+                renderPager(currentPage, lastPage);
+                footerInfo.textContent = `Mostrando ${from}-${to} de ${total}`;
+
+                bindRowActions();
+                bindPager();
+            }
+
+            if (btnNovo) {
+                btnNovo.addEventListener('click', openNewModal);
+            }
+
+            if (inputQ) {
+                inputQ.addEventListener('input', function() {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => loadUsers(1), 180);
+                });
+            }
+
+            document.querySelectorAll('.flash-auto-hide').forEach(el => {
+                setTimeout(() => {
+                    el.classList.add('hide-now');
+                    setTimeout(() => {
+                        el.remove();
+                    }, 350);
+                }, 1600);
+            });
+
+            bindRowActions();
+            bindPager();
+        });
+    </script>
 </body>
 
 </html>
