@@ -271,7 +271,7 @@ if (!function_exists('e')) {
         <section class="section">
             <div class="container-fluid p-4">
 
-                <div class="title-wrapper pt-30">
+                <div class="title-wrapper pt-10">
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="title">
