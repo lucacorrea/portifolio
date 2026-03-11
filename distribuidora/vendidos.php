@@ -1247,36 +1247,7 @@ $initialTotais = $initial['totais'];
             font-size: 26px;
             letter-spacing: .2px;
         }
-
-        .col-id {
-            width: 70px;
-        }
-
-        .col-data {
-            width: 120px;
-        }
-
-
-        .col-canal {
-            width: 110px;
-        }
-
-        .col-pag {
-            width: 120px;
-        }
-
-        .col-itens {
-            width: 270px;
-        }
-
-        .col-num {
-            width: 110px;
-        }
-
-        .col-acoes {
-            width: 170px;
-        }
-
+        
         .td-money {
             text-align: center;
             font-weight: 900;
