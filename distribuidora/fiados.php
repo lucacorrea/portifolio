@@ -106,6 +106,11 @@ if (!function_exists('brl')) {
             color: #ef4444;
         }
 
+        th, td{
+            text-align: center;
+            width: auto !important;
+        }
+
         .btn-pay {
             border-radius: 8px;
             padding: 5px 10px;
