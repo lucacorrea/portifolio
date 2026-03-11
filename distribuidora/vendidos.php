@@ -1266,13 +1266,13 @@ $initialTotais = $initial['totais'];
         .td-clip {
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
+            white-space: nowrap ;
             display: block;
             max-width: 100%;
         }
 
         th, td{
-            text-align: center;
+            text-align: ;
         }
 
         .badge-soft {
