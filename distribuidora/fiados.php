@@ -9,11 +9,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+@date_default_timezone_set('America/Manaus');
+
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
-
-@date_default_timezone_set('America/Manaus');
 
 /* =========================
    INCLUDES
@@ -22,6 +22,7 @@ $paths = [
     __DIR__ . '/assets/conexao.php',
     __DIR__ . '/assets/dados/vendas/_helpers.php',
 ];
+
 foreach ($paths as $p) {
     if (is_file($p)) {
         require_once $p;
@@ -29,7 +30,7 @@ foreach ($paths as $p) {
 }
 
 if (!function_exists('db')) {
-    die('Erro Crítico: Função db() não encontrada. Verifique se assets/conexao.php existe.');
+    die('Erro Crítico: função db() não encontrada. Verifique /assets/conexao.php');
 }
 
 $pdo = db();
@@ -48,9 +49,9 @@ if (!function_exists('csrf_token')) {
 }
 
 if (!function_exists('e')) {
-    function e($s): string
+    function e($value): string
     {
-        return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }
 
@@ -61,12 +62,12 @@ if (!function_exists('brl')) {
     }
 }
 
-function json_out(array $data, int $status = 200): void
+function json_out(array $payload, int $status = 200): void
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=UTF-8');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -91,10 +92,21 @@ function status_class(string $status): string
     return $s === 'PAGO' ? 'status-pago' : 'status-aberto';
 }
 
-function get_filter_value(string $key, string $default = ''): string
+function get_str(string $key, string $default = ''): string
 {
     $v = $_GET[$key] ?? $default;
     return is_string($v) ? trim($v) : $default;
+}
+
+function body_json(): array
+{
+    $raw = file_get_contents('php://input');
+    if (!is_string($raw) || trim($raw) === '') {
+        return [];
+    }
+
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : [];
 }
 
 function render_rows_html(array $rows): string
@@ -105,33 +117,34 @@ function render_rows_html(array $rows): string
 
     $html = '';
 
-    foreach ($rows as $f) {
-        $id             = (int) ($f['id'] ?? 0);
-        $vendaId        = (int) ($f['venda_id'] ?? 0);
-        $cliente        = (string) ($f['cliente_nome'] ?? '');
-        $createdAt      = (string) ($f['data_ref'] ?? $f['created_at'] ?? '');
-        $valorTotal     = (float) ($f['valor_total'] ?? 0);
-        $valorPago      = (float) ($f['valor_pago'] ?? 0);
-        $valorRestante  = (float) ($f['valor_restante'] ?? 0);
-        $status         = strtoupper((string) ($f['status'] ?? 'ABERTO'));
-        $clienteJs      = json_encode($cliente, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    foreach ($rows as $r) {
+        $fiadoId       = (int)($r['id'] ?? 0);
+        $vendaId       = (int)($r['venda_id'] ?? 0);
+        $clienteNome   = (string)($r['cliente_nome'] ?? '');
+        $dataRef       = (string)($r['data_ref'] ?? $r['created_at'] ?? '');
+        $valorTotal    = (float)($r['valor_total'] ?? 0);
+        $valorPago     = (float)($r['valor_pago'] ?? 0);
+        $valorRestante = (float)($r['valor_restante'] ?? 0);
+        $status        = strtoupper((string)($r['status'] ?? 'ABERTO'));
+
+        $clienteJs = json_encode($clienteNome, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $html .= '<tr>';
         $html .= '  <td><b>#' . $vendaId . '</b></td>';
-        $html .= '  <td class="date-col">' . e(fmt_dt($createdAt)) . '</td>';
-        $html .= '  <td class="client-col">' . e($cliente) . '</td>';
+        $html .= '  <td class="date-col">' . e(fmt_dt($dataRef)) . '</td>';
+        $html .= '  <td class="client-col">' . e($clienteNome) . '</td>';
         $html .= '  <td class="money-col val-total">' . e(brl($valorTotal)) . '</td>';
         $html .= '  <td class="money-col text-success">' . e(brl($valorPago)) . '</td>';
         $html .= '  <td class="money-col val-restante">' . e(brl($valorRestante)) . '</td>';
         $html .= '  <td class="status-col"><span class="status-badge ' . e(status_class($status)) . '">' . e($status) . '</span></td>';
         $html .= '  <td class="actions-col text-end">';
         $html .= '      <div class="actions-wrap">';
-        $html .= '          <button type="button" class="btn btn-light btn-pay" onclick="showDetails(' . $id . ')">';
+        $html .= '          <button type="button" class="btn btn-light btn-pay" onclick="showDetails(' . $fiadoId . ')">';
         $html .= '              <i class="lni lni-eye"></i> Detalhes';
         $html .= '          </button>';
 
         if ($status === 'ABERTO' && $valorRestante > 0) {
-            $html .= '      <button type="button" class="btn btn-success btn-pay text-white" onclick="openPay(' . $id . ', ' . $clienteJs . ', ' . json_encode($valorRestante) . ')">';
+            $html .= '      <button type="button" class="btn btn-success btn-pay text-white" onclick="openPay(' . $fiadoId . ', ' . $clienteJs . ', ' . json_encode($valorRestante) . ')">';
             $html .= '          <i class="lni lni-reply"></i> Pagar';
             $html .= '      </button>';
         }
@@ -144,52 +157,74 @@ function render_rows_html(array $rows): string
     return $html;
 }
 
-function get_fiados_page(PDO $pdo, array $filters): array
+function build_fiados_where(array $filters, array &$params): string
 {
-    $page   = max(1, (int) ($filters['page'] ?? 1));
-    $per    = max(1, min(100, (int) ($filters['per'] ?? 10)));
-    $di     = trim((string) ($filters['di'] ?? ''));
-    $df     = trim((string) ($filters['df'] ?? ''));
-    $canal  = strtoupper(trim((string) ($filters['canal'] ?? 'TODOS')));
-    $status = strtoupper(trim((string) ($filters['status'] ?? 'TODOS')));
-    $q      = trim((string) ($filters['q'] ?? ''));
-
     $where = ['1=1'];
-    $bind  = [];
+
+    $di     = trim((string)($filters['di'] ?? ''));
+    $df     = trim((string)($filters['df'] ?? ''));
+    $canal  = strtoupper(trim((string)($filters['canal'] ?? 'TODOS')));
+    $status = strtoupper(trim((string)($filters['status'] ?? 'TODOS')));
+    $q      = trim((string)($filters['q'] ?? ''));
 
     if ($di !== '') {
-        $where[] = 'DATE(COALESCE(v.created_at, f.created_at)) >= :di';
-        $bind[':di'] = $di;
+        $where[] = 'DATE(COALESCE(v.created_at, f.created_at)) >= ?';
+        $params[] = $di;
     }
 
     if ($df !== '') {
-        $where[] = 'DATE(COALESCE(v.created_at, f.created_at)) <= :df';
-        $bind[':df'] = $df;
+        $where[] = 'DATE(COALESCE(v.created_at, f.created_at)) <= ?';
+        $params[] = $df;
     }
 
     if ($canal !== '' && $canal !== 'TODOS') {
-        $where[] = 'UPPER(COALESCE(v.canal, "")) = :canal';
-        $bind[':canal'] = $canal;
+        $where[] = 'UPPER(COALESCE(v.canal, "")) = ?';
+        $params[] = $canal;
     }
 
     if ($status !== '' && $status !== 'TODOS') {
-        $where[] = 'UPPER(COALESCE(f.status, "")) = :status';
-        $bind[':status'] = $status;
+        $where[] = 'UPPER(COALESCE(f.status, "")) = ?';
+        $params[] = $status;
     }
 
     if ($q !== '') {
+        $like = '%' . $q . '%';
+
         $where[] = '(
-            CAST(f.venda_id AS CHAR) LIKE :q
-            OR CAST(f.cliente_id AS CHAR) LIKE :q
-            OR COALESCE(c.nome, "") LIKE :q
-            OR COALESCE(f.status, "") LIKE :q
-            OR COALESCE(v.canal, "") LIKE :q
-            OR DATE_FORMAT(COALESCE(v.created_at, f.created_at), "%d/%m/%Y %H:%i:%s") LIKE :q
+            CAST(f.venda_id AS CHAR) LIKE ?
+            OR CAST(f.cliente_id AS CHAR) LIKE ?
+            OR COALESCE(c.nome, "") LIKE ?
+            OR COALESCE(v.cliente, "") LIKE ?
+            OR COALESCE(f.status, "") LIKE ?
+            OR COALESCE(v.canal, "") LIKE ?
+            OR DATE_FORMAT(COALESCE(v.created_at, f.created_at), "%d/%m/%Y %H:%i:%s") LIKE ?
+            OR CAST(COALESCE(f.valor_total, 0) AS CHAR) LIKE ?
+            OR CAST(COALESCE(f.valor_pago, 0) AS CHAR) LIKE ?
+            OR CAST(COALESCE(f.valor_restante, 0) AS CHAR) LIKE ?
         )';
-        $bind[':q'] = '%' . $q . '%';
+
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
     }
 
-    $whereSql = implode(' AND ', $where);
+    return implode(' AND ', $where);
+}
+
+function get_fiados_page(PDO $pdo, array $filters): array
+{
+    $page = max(1, (int)($filters['page'] ?? 1));
+    $per  = max(1, min(100, (int)($filters['per'] ?? 10)));
+
+    $paramsCount = [];
+    $whereSql = build_fiados_where($filters, $paramsCount);
 
     $sqlCount = "
         SELECT COUNT(*)
@@ -200,18 +235,18 @@ function get_fiados_page(PDO $pdo, array $filters): array
     ";
 
     $stmtCount = $pdo->prepare($sqlCount);
-    foreach ($bind as $k => $v) {
-        $stmtCount->bindValue($k, $v);
-    }
-    $stmtCount->execute();
-    $totalRows = (int) $stmtCount->fetchColumn();
+    $stmtCount->execute($paramsCount);
+    $totalRows = (int)$stmtCount->fetchColumn();
 
-    $totalPages = max(1, (int) ceil($totalRows / $per));
+    $totalPages = max(1, (int)ceil($totalRows / $per));
     if ($page > $totalPages) {
         $page = $totalPages;
     }
 
     $offset = ($page - 1) * $per;
+
+    $paramsRows = [];
+    $whereSqlRows = build_fiados_where($filters, $paramsRows);
 
     $sql = "
         SELECT
@@ -230,19 +265,13 @@ function get_fiados_page(PDO $pdo, array $filters): array
         FROM fiados f
         LEFT JOIN clientes c ON c.id = f.cliente_id
         LEFT JOIN vendas v ON v.id = f.venda_id
-        WHERE {$whereSql}
+        WHERE {$whereSqlRows}
         ORDER BY COALESCE(v.created_at, f.created_at) DESC, f.id DESC
-        LIMIT :offset, :per
+        LIMIT {$offset}, {$per}
     ";
 
     $stmt = $pdo->prepare($sql);
-    foreach ($bind as $k => $v) {
-        $stmt->bindValue($k, $v);
-    }
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $stmt->bindValue(':per', $per, PDO::PARAM_INT);
-    $stmt->execute();
-
+    $stmt->execute($paramsRows);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $shownFrom = $totalRows > 0 ? ($offset + 1) : 0;
@@ -260,18 +289,20 @@ function get_fiados_page(PDO $pdo, array $filters): array
 }
 
 /* =========================
-   AJAX LISTAGEM
+   AJAX: LISTAGEM
 ========================= */
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'list') {
+$action = strtolower(get_str('action'));
+
+if ($action === 'ajax_list') {
     try {
         $result = get_fiados_page($pdo, [
-            'di'     => get_filter_value('di'),
-            'df'     => get_filter_value('df'),
-            'canal'  => get_filter_value('canal', 'TODOS'),
-            'status' => get_filter_value('status', 'TODOS'),
-            'q'      => get_filter_value('q'),
-            'page'   => (int) ($_GET['page'] ?? 1),
-            'per'    => (int) ($_GET['per'] ?? 10),
+            'di'     => get_str('di'),
+            'df'     => get_str('df'),
+            'canal'  => get_str('canal', 'TODOS'),
+            'status' => get_str('status', 'TODOS'),
+            'q'      => get_str('q'),
+            'page'   => (int)($_GET['page'] ?? 1),
+            'per'    => (int)($_GET['per'] ?? 10),
         ]);
 
         json_out([
@@ -296,19 +327,188 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'list') {
 }
 
 /* =========================
-   CARGA INICIAL EM PHP
+   AJAX: DETALHES
+========================= */
+if ($action === 'get_details') {
+    try {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            throw new RuntimeException('ID inválido.');
+        }
+
+        $sqlFiado = "
+            SELECT
+                f.id,
+                f.venda_id,
+                f.cliente_id,
+                COALESCE(c.nome, v.cliente, CONCAT('Cliente #', f.cliente_id)) AS cliente_nome,
+                COALESCE(f.valor_total, 0) AS valor_total,
+                COALESCE(f.valor_pago, 0) AS valor_pago,
+                COALESCE(f.valor_restante, 0) AS valor_restante,
+                COALESCE(f.status, 'ABERTO') AS status,
+                COALESCE(v.canal, 'PRESENCIAL') AS canal,
+                COALESCE(v.created_at, f.created_at) AS data_ref
+            FROM fiados f
+            LEFT JOIN clientes c ON c.id = f.cliente_id
+            LEFT JOIN vendas v ON v.id = f.venda_id
+            WHERE f.id = ?
+            LIMIT 1
+        ";
+        $stmtFiado = $pdo->prepare($sqlFiado);
+        $stmtFiado->execute([$id]);
+        $fiado = $stmtFiado->fetch(PDO::FETCH_ASSOC);
+
+        if (!$fiado) {
+            throw new RuntimeException('Fiado não encontrado.');
+        }
+
+        $stmtItens = $pdo->prepare("
+            SELECT
+                nome,
+                qtd,
+                unidade,
+                preco_unit,
+                subtotal
+            FROM venda_itens
+            WHERE venda_id = ?
+            ORDER BY id ASC
+        ");
+        $stmtItens->execute([(int)$fiado['venda_id']]);
+        $items = $stmtItens->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $stmtPag = $pdo->prepare("
+            SELECT
+                created_at,
+                metodo,
+                valor
+            FROM fiados_pagamentos
+            WHERE fiado_id = ?
+            ORDER BY created_at DESC, id DESC
+        ");
+        $stmtPag->execute([$id]);
+        $payments = $stmtPag->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        json_out([
+            'ok'       => true,
+            'fiado'    => $fiado,
+            'items'    => $items,
+            'payments' => $payments,
+        ]);
+    } catch (Throwable $e) {
+        json_out([
+            'ok'  => false,
+            'msg' => 'Erro ao buscar detalhes: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+/* =========================
+   AJAX: PAGAMENTO
+========================= */
+if ($action === 'pay') {
+    try {
+        $data = body_json();
+
+        $id = (int)($data['id'] ?? 0);
+        $valor = (float)($data['valor'] ?? 0);
+        $metodo = strtoupper(trim((string)($data['metodo'] ?? 'DINHEIRO')));
+
+        if ($id <= 0) {
+            throw new RuntimeException('ID inválido.');
+        }
+
+        if ($valor <= 0) {
+            throw new RuntimeException('Informe um valor válido.');
+        }
+
+        $metodosPermitidos = ['DINHEIRO', 'PIX', 'CARTAO', 'BOLETO'];
+        if (!in_array($metodo, $metodosPermitidos, true)) {
+            $metodo = 'DINHEIRO';
+        }
+
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("
+            SELECT
+                id,
+                venda_id,
+                valor_total,
+                valor_pago,
+                valor_restante,
+                status
+            FROM fiados
+            WHERE id = ?
+            LIMIT 1
+            FOR UPDATE
+        ");
+        $stmt->execute([$id]);
+        $fiado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$fiado) {
+            throw new RuntimeException('Fiado não encontrado.');
+        }
+
+        $statusAtual = strtoupper((string)($fiado['status'] ?? 'ABERTO'));
+        $restanteAtual = (float)($fiado['valor_restante'] ?? 0);
+        $pagoAtual = (float)($fiado['valor_pago'] ?? 0);
+
+        if ($statusAtual === 'PAGO' || $restanteAtual <= 0) {
+            throw new RuntimeException('Este fiado já está quitado.');
+        }
+
+        if ($valor > $restanteAtual) {
+            throw new RuntimeException('O valor informado é maior que o saldo devedor.');
+        }
+
+        $stmtIns = $pdo->prepare("
+            INSERT INTO fiados_pagamentos (fiado_id, valor, metodo, created_at)
+            VALUES (?, ?, ?, NOW())
+        ");
+        $stmtIns->execute([$id, $valor, $metodo]);
+
+        $novoPago = $pagoAtual + $valor;
+        $novoRestante = $restanteAtual - $valor;
+        if ($novoRestante < 0) {
+            $novoRestante = 0;
+        }
+
+        $novoStatus = $novoRestante <= 0.00001 ? 'PAGO' : 'ABERTO';
+
+        $stmtUp = $pdo->prepare("
+            UPDATE fiados
+            SET
+                valor_pago = ?,
+                valor_restante = ?,
+                status = ?,
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+        $stmtUp->execute([$novoPago, $novoRestante, $novoStatus, $id]);
+
+        $pdo->commit();
+
+        json_out([
+            'ok'  => true,
+            'msg' => $novoStatus === 'PAGO'
+                ? 'Pagamento registrado e fiado quitado com sucesso.'
+                : 'Pagamento registrado com sucesso.',
+        ]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        json_out([
+            'ok'  => false,
+            'msg' => 'Erro ao registrar pagamento: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+/* =========================
+   CARGA INICIAL
 ========================= */
 $csrf = csrf_token();
-
-$filters = [
-    'di'     => '',
-    'df'     => '',
-    'canal'  => 'TODOS',
-    'status' => 'TODOS',
-    'q'      => '',
-    'page'   => 1,
-    'per'    => 10,
-];
 
 $initialError = '';
 $initialData = [
@@ -322,7 +522,15 @@ $initialData = [
 ];
 
 try {
-    $initialData = get_fiados_page($pdo, $filters);
+    $initialData = get_fiados_page($pdo, [
+        'di'     => '',
+        'df'     => '',
+        'canal'  => 'TODOS',
+        'status' => 'TODOS',
+        'q'      => '',
+        'page'   => 1,
+        'per'    => 10,
+    ]);
 } catch (Throwable $e) {
     $initialError = $e->getMessage();
 }
@@ -381,13 +589,6 @@ try {
             padding: clamp(14px, 2vw, 22px);
         }
 
-        .filter-note {
-            font-size: 12px;
-            color: var(--text-soft);
-            font-weight: 700;
-            margin-top: 2px;
-        }
-
         .form-label {
             margin-bottom: 8px;
             font-weight: 700;
@@ -399,6 +600,27 @@ try {
         .form-select {
             min-height: 46px;
             border-radius: 12px;
+        }
+
+        .filter-note {
+            font-size: 12px;
+            color: var(--text-soft);
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .auto-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #2563eb;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 999px;
+            padding: 7px 12px;
+            white-space: nowrap;
         }
 
         .status-badge {
@@ -613,20 +835,6 @@ try {
 
         .filters-row>[class*="col-"] {
             min-width: 0;
-        }
-
-        .auto-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            color: #2563eb;
-            background: #eff6ff;
-            border: 1px solid #dbeafe;
-            border-radius: 999px;
-            padding: 7px 12px;
-            white-space: nowrap;
         }
 
         @media (max-width: 991.98px) {
@@ -851,7 +1059,7 @@ try {
                         </div>
                         <div class="col-lg-4 col-md-5 text-md-end">
                             <span class="auto-pill">
-                                <i class="lni lni-reload"></i> Filtros com atualização automática
+                                <i class="lni lni-reload"></i> Busca automática via AJAX
                             </span>
                         </div>
                     </div>
@@ -862,12 +1070,12 @@ try {
                         <form id="filterForm" class="row g-3 align-items-end filters-row" onsubmit="return false;">
                             <div class="col-12 col-sm-6 col-lg-2">
                                 <label class="form-label" for="fDi">Data Inicial</label>
-                                <input type="date" class="form-control" id="fDi" value="">
+                                <input type="date" class="form-control" id="fDi">
                             </div>
 
                             <div class="col-12 col-sm-6 col-lg-2">
                                 <label class="form-label" for="fDf">Data Final</label>
-                                <input type="date" class="form-control" id="fDf" value="">
+                                <input type="date" class="form-control" id="fDf">
                             </div>
 
                             <div class="col-12 col-sm-6 col-lg-2">
@@ -889,9 +1097,9 @@ try {
                             </div>
 
                             <div class="col-12 col-lg-4">
-                                <label class="form-label" for="fSearch">Cliente / Venda # / Status / Canal</label>
-                                <input type="text" class="form-control" id="fSearch" placeholder="Digite para pesquisar...">
-                                <div class="filter-note">Ao digitar ou selecionar, a tabela é atualizada automaticamente.</div>
+                                <label class="form-label" for="fSearch">Pesquisar na tabela</label>
+                                <input type="text" class="form-control" id="fSearch" placeholder="Venda, cliente, canal, status, data, valores...">
+                                <div class="filter-note">Conforme digita ou altera filtros, a tabela é atualizada automaticamente.</div>
                             </div>
                         </form>
                     </div>
@@ -937,7 +1145,7 @@ try {
                             </div>
 
                             <div class="pager-actions">
-                                <a href="#0" id="pgPrev" class="main-btn light-btn btn-hover btn-sm <?= $initialData['page'] <= 1 ? 'btn-disabled' : '' ?>" title="Anterior">
+                                <a href="#0" id="pgPrev" class="main-btn light-btn btn-hover btn-sm <?= $initialData['page'] <= 1 ? 'btn-disabled' : '' ?>">
                                     <i class="lni lni-chevron-left"></i>
                                 </a>
 
@@ -945,7 +1153,7 @@ try {
                                     <?= e('Página ' . $initialData['page'] . '/' . $initialData['totalPages']) ?>
                                 </span>
 
-                                <a href="#0" id="pgNext" class="main-btn light-btn btn-hover btn-sm <?= $initialData['page'] >= $initialData['totalPages'] ? 'btn-disabled' : '' ?>" title="Próxima">
+                                <a href="#0" id="pgNext" class="main-btn light-btn btn-hover btn-sm <?= $initialData['page'] >= $initialData['totalPages'] ? 'btn-disabled' : '' ?>">
                                     <i class="lni lni-chevron-right"></i>
                                 </a>
                             </div>
@@ -956,7 +1164,6 @@ try {
         </section>
     </main>
 
-    <!-- mantém seus modais -->
     <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
@@ -1038,6 +1245,7 @@ try {
                                 <option value="DINHEIRO">Dinheiro</option>
                                 <option value="PIX">Pix</option>
                                 <option value="CARTAO">Cartão</option>
+                                <option value="BOLETO">Boleto</option>
                             </select>
                         </div>
 
@@ -1053,17 +1261,15 @@ try {
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
     <script>
-        const DETAILS_API = 'assets/dados/fiados_api.php';
-        const LIST_API = window.location.pathname + '?ajax=list';
-
+        const PAGE_API = 'fiados.php';
         const modalDetalhes = new bootstrap.Modal(document.getElementById('modalDetalhes'));
         const modalPagamento = new bootstrap.Modal(document.getElementById('modalPagamento'));
 
         const STATE = {
-            per: <?= (int) $initialData['per'] ?>,
-            page: <?= (int) $initialData['page'] ?>,
-            totalPages: <?= (int) $initialData['totalPages'] ?>,
-            totalRows: <?= (int) $initialData['totalRows'] ?>,
+            page: <?= (int)$initialData['page'] ?>,
+            per: <?= (int)$initialData['per'] ?>,
+            totalPages: <?= (int)$initialData['totalPages'] ?>,
+            totalRows: <?= (int)$initialData['totalRows'] ?>,
         };
 
         const $body = document.getElementById('fiadosTableBody');
@@ -1107,15 +1313,16 @@ try {
         }
 
         function debounce(fn, delay = 350) {
-            let timer = null;
+            let t = null;
             return (...args) => {
-                clearTimeout(timer);
-                timer = setTimeout(() => fn(...args), delay);
+                clearTimeout(t);
+                t = setTimeout(() => fn(...args), delay);
             };
         }
 
         function currentParams(resetPage = false) {
             return {
+                action: 'ajax_list',
                 di: $fDi.value || '',
                 df: $fDf.value || '',
                 canal: $fCanal.value || 'TODOS',
@@ -1133,17 +1340,16 @@ try {
 
             listController = new AbortController();
 
-            const params = currentParams(resetPage);
             if (resetPage) {
                 STATE.page = 1;
             }
 
             $body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Carregando...</td></tr>';
 
-            const qs = new URLSearchParams(params);
+            const qs = new URLSearchParams(currentParams(resetPage));
 
             try {
-                const res = await fetch(`${LIST_API}&${qs.toString()}`, {
+                const res = await fetch(`${PAGE_API}?${qs.toString()}`, {
                     signal: listController.signal,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
@@ -1153,10 +1359,10 @@ try {
                 const r = await res.json();
 
                 if (!r.ok) {
-                    throw new Error(r.msg || 'Falha ao carregar listagem.');
+                    throw new Error(r.msg || 'Falha ao carregar fiados.');
                 }
 
-                $body.innerHTML = r.rows_html || '<tr><td colspan="8" class="text-center p-5">Nenhum registro encontrado.</td></tr>';
+                $body.innerHTML = r.rows_html || '<tr><td colspan="8" class="text-center p-5">Nenhum resultado encontrado.</td></tr>';
 
                 STATE.page = parseInt(r.page || 1, 10);
                 STATE.per = parseInt(r.per || 10, 10);
@@ -1206,7 +1412,8 @@ try {
 
         async function showDetails(id) {
             try {
-                const r = await fetch(`${DETAILS_API}?action=get_details&id=${id}`).then(res => res.json());
+                const res = await fetch(`${PAGE_API}?action=get_details&id=${encodeURIComponent(id)}`);
+                const r = await res.json();
 
                 if (!r.ok) {
                     throw new Error(r.msg || 'Falha ao buscar detalhes.');
@@ -1265,13 +1472,13 @@ try {
             e.preventDefault();
 
             const id = document.getElementById('payFiadoId').value;
+            const metodo = document.getElementById('payMetodo').value;
             const valorRaw = document.getElementById('payValor').value
                 .replace(/\./g, '')
                 .replace(',', '.')
                 .replace(/[^\d.]/g, '');
 
             const valor = parseFloat(valorRaw);
-            const metodo = document.getElementById('payMetodo').value;
 
             if (isNaN(valor) || valor <= 0) {
                 alert('Informe um valor válido.');
@@ -1279,7 +1486,7 @@ try {
             }
 
             try {
-                const r = await fetch(`${DETAILS_API}?action=pay`, {
+                const res = await fetch(`${PAGE_API}?action=pay`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1289,13 +1496,15 @@ try {
                         valor,
                         metodo
                     })
-                }).then(res => res.json());
+                });
+
+                const r = await res.json();
 
                 if (!r.ok) {
-                    throw new Error(r.msg || 'Falha ao pagar.');
+                    throw new Error(r.msg || 'Falha ao registrar pagamento.');
                 }
 
-                alert(r.msg || 'Pagamento registrado!');
+                alert(r.msg || 'Pagamento registrado com sucesso.');
                 modalPagamento.hide();
                 loadList(false);
             } catch (e) {
