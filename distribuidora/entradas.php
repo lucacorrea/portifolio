@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
+
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/entradas/_helpers.php';
 
