@@ -2797,13 +2797,12 @@ $flash = flash_pop();
             <i class="lni lni-chevron-left"></i>
           </button>
 
-          <button class="page-btn page-current" type="button" disabled>${CUR_PAGE}</button>
+          <span class="page-text">Página ${CUR_PAGE}/${TOTAL_PAGES}</span>
 
           <button class="page-btn" id="pgNext" ${CUR_PAGE >= TOTAL_PAGES ? 'disabled' : ''} aria-label="Próxima página">
             <i class="lni lni-chevron-right"></i>
           </button>
 
-          <span class="page-text">Página ${CUR_PAGE}/${TOTAL_PAGES}</span>
         </div>
       `;
 
