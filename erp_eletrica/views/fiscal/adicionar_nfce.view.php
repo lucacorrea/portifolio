@@ -75,8 +75,8 @@
                             </div>
                             <div class="mb-3 col-md-3">
                                 <label class="form-label" for="codigo_uf">Código UF (IBGE)</label>
-                                <input type="number" class="form-control" name="codigo_uf" id="codigo_uf" value="<?= $config['codigo_uf'] ?? '' ?>" readonly placeholder="Ex.: 35 p/ SP">
-                                <small class="text-muted">Preenchido automaticamente pela UF.</small>
+                                <input type="number" class="form-control" name="codigo_uf" id="codigo_uf" value="<?= $config['codigo_uf'] ?? '' ?>" placeholder="Ex.: 35 p/ SP">
+                                <small class="text-muted">Preenchido automaticamente ao digitar o município ou selecionar UF.</small>
                             </div>
                             <div class="mb-3 col-md-6">
                                 <label class="form-label" for="codigo_municipio">Código do Município (IBGE)</label>
@@ -201,8 +201,10 @@ function autoFillUf(input) {
         const codUf = val.substring(0, 2);
         const uf = MAP_IBGE_UF[codUf];
         if (uf) {
-            document.getElementById('uf').value = uf;
-            document.getElementById('codigo_uf').value = codUf;
+            const ufEl = document.getElementById('uf');
+            const codUfEl = document.getElementById('codigo_uf');
+            if (ufEl.value !== uf) ufEl.value = uf;
+            if (codUfEl.value !== codUf) codUfEl.value = codUf;
         }
     }
 }
