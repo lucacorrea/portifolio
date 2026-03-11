@@ -6,6 +6,7 @@ require_once __DIR__ . '/assets/auth/auth.php';
 auth_require('index.php');
 
 @date_default_timezone_set('America/Manaus');
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
@@ -71,9 +72,14 @@ function fi_get_int(string $key, int $default = 0): int
     return isset($_GET[$key]) ? (int)$_GET[$key] : $default;
 }
 
-function fi_post_str(string $key, string $default = ''): string
+function fi_read_json_input(): array
 {
-    return isset($_POST[$key]) ? trim((string)$_POST[$key]) : $default;
+    $raw = file_get_contents('php://input');
+    if (!$raw) {
+        return [];
+    }
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : [];
 }
 
 function fi_flash_set(string $key, string $msg): void
@@ -91,46 +97,34 @@ function fi_flash_take(string $key): ?string
     return $msg;
 }
 
-function fi_redirect(string $url): void
-{
-    header('Location: ' . $url);
-    exit;
-}
-
 function fi_fmt_datetime(?string $d): string
 {
     $d = trim((string)$d);
-    if ($d === '') return '—';
+    if ($d === '') {
+        return '—';
+    }
+
     $ts = strtotime($d);
-    if ($ts === false) return '—';
+    if ($ts === false) {
+        return '—';
+    }
+
     return date('d/m/Y H:i:s', $ts);
 }
 
 function fi_fmt_date(?string $d): string
 {
     $d = trim((string)$d);
-    if ($d === '') return '—';
+    if ($d === '') {
+        return '—';
+    }
+
     $ts = strtotime($d);
-    if ($ts === false) return '—';
+    if ($ts === false) {
+        return '—';
+    }
+
     return date('d/m/Y', $ts);
-}
-
-function fi_parse_money_to_float(string $v): float
-{
-    $v = trim($v);
-    if ($v === '') return 0.0;
-    $v = preg_replace('/[^\d,.\-]/', '', $v);
-    $v = str_replace('.', '', $v);
-    $v = str_replace(',', '.', $v);
-    return is_numeric($v) ? (float)$v : 0.0;
-}
-
-function fi_read_json_input(): array
-{
-    $raw = file_get_contents('php://input');
-    if (!$raw) return [];
-    $data = json_decode($raw, true);
-    return is_array($data) ? $data : [];
 }
 
 function fi_sql_parts(): array
@@ -151,16 +145,62 @@ function fi_sql_parts(): array
             ON pg.fiado_id = f.id
     ";
 
-    $exprPago = "GREATEST(COALESCE(f.valor_pago,0), COALESCE(pg.soma_pago,0))";
-    $exprRestante = "GREATEST(COALESCE(f.valor_total,0) - {$exprPago}, 0)";
-    $exprStatus = "CASE WHEN {$exprRestante} <= 0.00001 OR UPPER(COALESCE(f.status,'')) = 'PAGO' THEN 'PAGO' ELSE 'ABERTO' END";
+    $exprPago = "
+        CASE
+            WHEN COALESCE(pg.soma_pago,0) > COALESCE(f.valor_pago,0)
+                THEN COALESCE(pg.soma_pago,0)
+            ELSE COALESCE(f.valor_pago,0)
+        END
+    ";
+
+    $exprRestante = "
+        CASE
+            WHEN (COALESCE(f.valor_total,0) - ({$exprPago})) > 0
+                THEN (COALESCE(f.valor_total,0) - ({$exprPago}))
+            ELSE 0
+        END
+    ";
+
+    /* sem comparar string de coluna com parâmetro para evitar erro de collation */
+    $statusNumExpr = "
+        CASE
+            WHEN ({$exprRestante}) <= 0.00001 THEN 2
+            ELSE 1
+        END
+    ";
+
+    $statusTextExpr = "
+        CASE
+            WHEN ({$statusNumExpr}) = 2 THEN 'PAGO'
+            ELSE 'ABERTO'
+        END
+    ";
+
+    /* DELIVERY em HEX = 44454C4956455259 */
+    $canalNumExpr = "
+        CASE
+            WHEN HEX(UPPER(COALESCE(v.canal,''))) = '44454C4956455259' THEN 2
+            ELSE 1
+        END
+    ";
+
+    $canalTextExpr = "
+        CASE
+            WHEN ({$canalNumExpr}) = 2 THEN 'DELIVERY'
+            ELSE 'PRESENCIAL'
+        END
+    ";
+
     $exprDataRef = "COALESCE(v.created_at, f.created_at)";
 
     return [
         'from' => $from,
         'expr_pago' => $exprPago,
         'expr_restante' => $exprRestante,
-        'expr_status' => $exprStatus,
+        'status_num_expr' => $statusNumExpr,
+        'status_text_expr' => $statusTextExpr,
+        'canal_num_expr' => $canalNumExpr,
+        'canal_text_expr' => $canalTextExpr,
         'expr_data_ref' => $exprDataRef,
     ];
 }
@@ -173,7 +213,6 @@ function fi_build_where(array &$params, array $parts): string
     $df = fi_get_str('df');
     $canal = strtoupper(fi_get_str('canal', 'TODOS'));
     $status = strtoupper(fi_get_str('status', 'TODOS'));
-    $q = fi_get_str('q');
 
     if ($di !== '') {
         $where .= " AND DATE({$parts['expr_data_ref']}) >= :di ";
@@ -185,91 +224,150 @@ function fi_build_where(array &$params, array $parts): string
         $params[':df'] = $df;
     }
 
-    if ($canal !== '' && $canal !== 'TODOS') {
-        $where .= " AND UPPER(COALESCE(v.canal,'')) = :canal ";
-        $params[':canal'] = $canal;
+    if ($canal === 'PRESENCIAL') {
+        $where .= " AND ({$parts['canal_num_expr']}) = 1 ";
+    } elseif ($canal === 'DELIVERY') {
+        $where .= " AND ({$parts['canal_num_expr']}) = 2 ";
     }
 
-    if ($status !== '' && $status !== 'TODOS') {
-        $where .= " AND {$parts['expr_status']} = :status ";
-        $params[':status'] = $status;
-    }
-
-    if ($q !== '') {
-        $params[':q1'] = '%' . $q . '%';
-        $params[':q2'] = '%' . $q . '%';
-        $params[':q3'] = '%' . $q . '%';
-        $params[':q4'] = '%' . $q . '%';
-        $params[':q5'] = '%' . $q . '%';
-        $params[':q6'] = '%' . $q . '%';
-        $params[':q7'] = '%' . $q . '%';
-        $params[':q8'] = '%' . $q . '%';
-        $params[':q9'] = '%' . $q . '%';
-        $params[':q10'] = '%' . $q . '%';
-        $params[':q11'] = '%' . $q . '%';
-
-        $where .= "
-            AND (
-                CAST(f.id AS CHAR) LIKE :q1
-                OR CAST(f.venda_id AS CHAR) LIKE :q2
-                OR COALESCE(c.nome,'') LIKE :q3
-                OR COALESCE(v.cliente,'') LIKE :q4
-                OR COALESCE(v.canal,'') LIKE :q5
-                OR COALESCE(v.pagamento,'') LIKE :q6
-                OR CAST(COALESCE(f.valor_total,0) AS CHAR) LIKE :q7
-                OR CAST({$parts['expr_pago']} AS CHAR) LIKE :q8
-                OR CAST({$parts['expr_restante']} AS CHAR) LIKE :q9
-                OR {$parts['expr_status']} LIKE :q10
-                OR EXISTS (
-                    SELECT 1
-                    FROM venda_itens vi
-                    WHERE vi.venda_id = f.venda_id
-                      AND (
-                        COALESCE(vi.nome,'') LIKE :q11
-                        OR COALESCE(vi.codigo,'') LIKE :q11
-                      )
-                )
-            )
-        ";
+    if ($status === 'ABERTO') {
+        $where .= " AND ({$parts['status_num_expr']}) = 1 ";
+    } elseif ($status === 'PAGO') {
+        $where .= " AND ({$parts['status_num_expr']}) = 2 ";
     }
 
     return $where;
 }
 
-function fi_fetch_result(PDO $pdo, int $page, int $per, bool $forExport = false): array
+function fi_attach_items_text(PDO $pdo, array &$rows): void
+{
+    if (!$rows) {
+        return;
+    }
+
+    $vendaIds = [];
+    foreach ($rows as $r) {
+        $id = (int)($r['venda_id'] ?? 0);
+        if ($id > 0) {
+            $vendaIds[] = $id;
+        }
+    }
+
+    $vendaIds = array_values(array_unique($vendaIds));
+    if (!$vendaIds) {
+        foreach ($rows as &$r) {
+            $r['itens_txt'] = '';
+            $r['search_blob'] = fi_build_search_blob($r, '');
+        }
+        unset($r);
+        return;
+    }
+
+    $in = implode(',', array_fill(0, count($vendaIds), '?'));
+
+    $sql = "
+        SELECT
+            venda_id,
+            GROUP_CONCAT(CONCAT_WS(' ', COALESCE(codigo,''), COALESCE(nome,''), COALESCE(unidade,'')) SEPARATOR ' | ') AS itens_txt
+        FROM venda_itens
+        WHERE venda_id IN ($in)
+        GROUP BY venda_id
+    ";
+    $st = $pdo->prepare($sql);
+    $st->execute($vendaIds);
+    $tmp = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $map = [];
+    foreach ($tmp as $r) {
+        $map[(int)$r['venda_id']] = (string)($r['itens_txt'] ?? '');
+    }
+
+    foreach ($rows as &$r) {
+        $itensTxt = $map[(int)($r['venda_id'] ?? 0)] ?? '';
+        $r['itens_txt'] = $itensTxt;
+        $r['search_blob'] = fi_build_search_blob($r, $itensTxt);
+    }
+    unset($r);
+}
+
+function fi_build_search_blob(array $row, string $itensTxt): string
+{
+    $valorTotal = (float)($row['valor_total'] ?? 0);
+    $valorPago = (float)($row['valor_pago'] ?? 0);
+    $valorRestante = (float)($row['valor_restante'] ?? 0);
+
+    $parts = [
+        (string)($row['id'] ?? ''),
+        (string)($row['venda_id'] ?? ''),
+        (string)($row['cliente_nome'] ?? ''),
+        (string)($row['canal'] ?? ''),
+        (string)($row['status'] ?? ''),
+        (string)($row['pagamento'] ?? ''),
+        (string)($row['created_at'] ?? ''),
+        fi_fmt_datetime((string)($row['created_at'] ?? '')),
+        (string)($row['data_vencimento'] ?? ''),
+        fi_fmt_date((string)($row['data_vencimento'] ?? '')),
+        (string)($row['endereco'] ?? ''),
+        (string)($row['obs'] ?? ''),
+        number_format($valorTotal, 2, '.', ''),
+        number_format($valorPago, 2, '.', ''),
+        number_format($valorRestante, 2, '.', ''),
+        fi_brl($valorTotal),
+        fi_brl($valorPago),
+        fi_brl($valorRestante),
+        $itensTxt,
+    ];
+
+    return implode(' | ', $parts);
+}
+
+function fi_apply_search_filter(array $rows, string $q): array
+{
+    $q = trim($q);
+    if ($q === '') {
+        return $rows;
+    }
+
+    $qNeedle = function_exists('mb_strtolower') ? mb_strtolower($q, 'UTF-8') : strtolower($q);
+
+    $filtered = [];
+    foreach ($rows as $r) {
+        $hay = (string)($r['search_blob'] ?? '');
+        $hay = function_exists('mb_strtolower') ? mb_strtolower($hay, 'UTF-8') : strtolower($hay);
+
+        if (strpos($hay, $qNeedle) !== false) {
+            $filtered[] = $r;
+        }
+    }
+
+    return $filtered;
+}
+
+function fi_compute_totals_from_rows(array $rows): array
+{
+    $sumTotal = 0.0;
+    $sumPago = 0.0;
+    $sumRestante = 0.0;
+
+    foreach ($rows as $r) {
+        $sumTotal += (float)($r['valor_total'] ?? 0);
+        $sumPago += (float)($r['valor_pago'] ?? 0);
+        $sumRestante += (float)($r['valor_restante'] ?? 0);
+    }
+
+    return [
+        'qtd' => count($rows),
+        'total_venda' => $sumTotal,
+        'total_pago' => $sumPago,
+        'total_restante' => $sumRestante,
+    ];
+}
+
+function fi_fetch_result(PDO $pdo): array
 {
     $parts = fi_sql_parts();
     $params = [];
     $where = fi_build_where($params, $parts);
-
-    $sqlTot = "
-        SELECT
-            COUNT(*) AS qtd,
-            COALESCE(SUM(f.valor_total),0) AS total_venda,
-            COALESCE(SUM({$parts['expr_pago']}),0) AS total_pago,
-            COALESCE(SUM({$parts['expr_restante']}),0) AS total_restante
-        {$parts['from']}
-        {$where}
-    ";
-    $stTot = $pdo->prepare($sqlTot);
-    $stTot->execute($params);
-    $tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: [
-        'qtd' => 0,
-        'total_venda' => 0,
-        'total_pago' => 0,
-        'total_restante' => 0,
-    ];
-
-    $page = max(1, $page);
-    $per = in_array($per, [10, 20, 30, 40, 50, 100], true) ? $per : 10;
-
-    $limitSql = '';
-    $offset = 0;
-
-    if (!$forExport) {
-        $offset = ($page - 1) * $per;
-        $limitSql = " LIMIT {$offset}, {$per} ";
-    }
 
     $sql = "
         SELECT
@@ -279,24 +377,24 @@ function fi_fetch_result(PDO $pdo, int $page, int $per, bool $forExport = false)
             f.valor_total,
             {$parts['expr_pago']} AS valor_pago_real,
             {$parts['expr_restante']} AS valor_restante_real,
-            {$parts['expr_status']} AS status_real,
+            {$parts['status_text_expr']} AS status_real,
             f.data_vencimento,
             f.created_at AS fiado_created_at,
 
             v.created_at AS venda_created_at,
             v.data AS venda_data,
-            v.cliente AS venda_cliente,
-            v.canal,
+            {$parts['canal_text_expr']} AS canal_normalizado,
             v.pagamento,
             v.endereco,
             v.obs,
+            v.cliente AS venda_cliente,
 
             c.nome AS cliente_nome
         {$parts['from']}
         {$where}
         ORDER BY {$parts['expr_data_ref']} DESC, f.id DESC
-        {$limitSql}
     ";
+
     $st = $pdo->prepare($sql);
     $st->execute($params);
     $rowsRaw = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -304,47 +402,32 @@ function fi_fetch_result(PDO $pdo, int $page, int $per, bool $forExport = false)
     $rows = [];
     foreach ($rowsRaw as $r) {
         $cliente = trim((string)($r['cliente_nome'] ?: $r['venda_cliente'] ?: '—'));
+        $createdAt = (string)($r['venda_created_at'] ?? $r['fiado_created_at'] ?? '');
 
         $rows[] = [
-            'id'             => (int)($r['id'] ?? 0),
-            'venda_id'       => (int)($r['venda_id'] ?? 0),
-            'cliente_nome'   => $cliente,
-            'canal'          => (string)($r['canal'] ?? 'PRESENCIAL'),
-            'pagamento'      => (string)($r['pagamento'] ?? ''),
-            'valor_total'    => (float)($r['valor_total'] ?? 0),
-            'valor_pago'     => (float)($r['valor_pago_real'] ?? 0),
-            'valor_restante' => (float)($r['valor_restante_real'] ?? 0),
-            'status'         => (string)($r['status_real'] ?? 'ABERTO'),
+            'id'              => (int)($r['id'] ?? 0),
+            'venda_id'        => (int)($r['venda_id'] ?? 0),
+            'cliente_nome'    => $cliente,
+            'canal'           => (string)($r['canal_normalizado'] ?? 'PRESENCIAL'),
+            'pagamento'       => (string)($r['pagamento'] ?? ''),
+            'valor_total'     => (float)($r['valor_total'] ?? 0),
+            'valor_pago'      => (float)($r['valor_pago_real'] ?? 0),
+            'valor_restante'  => (float)($r['valor_restante_real'] ?? 0),
+            'status'          => (string)($r['status_real'] ?? 'ABERTO'),
             'data_vencimento' => (string)($r['data_vencimento'] ?? ''),
-            'created_at'     => (string)($r['venda_created_at'] ?? $r['fiado_created_at'] ?? ''),
-            'endereco'       => (string)($r['endereco'] ?? ''),
-            'obs'            => (string)($r['obs'] ?? ''),
+            'created_at'      => $createdAt,
+            'created_at_fmt'  => fi_fmt_datetime($createdAt),
+            'vencimento_fmt'  => fi_fmt_date((string)($r['data_vencimento'] ?? '')),
+            'endereco'        => (string)($r['endereco'] ?? ''),
+            'obs'             => (string)($r['obs'] ?? ''),
         ];
     }
 
-    $totalRows = (int)($tot['qtd'] ?? 0);
-    $totalPages = max(1, (int)ceil($totalRows / max(1, $per)));
-
-    if (!$forExport && $page > $totalPages) {
-        return fi_fetch_result($pdo, $totalPages, $per, false);
-    }
+    fi_attach_items_text($pdo, $rows);
 
     return [
-        'meta' => [
-            'page'      => $forExport ? 1 : $page,
-            'per'       => $forExport ? $totalRows : $per,
-            'total'     => $totalRows,
-            'pages'     => $forExport ? 1 : $totalPages,
-            'from'      => $forExport ? ($totalRows > 0 ? 1 : 0) : ($totalRows > 0 ? $offset + 1 : 0),
-            'to'        => $forExport ? $totalRows : ($totalRows > 0 ? min($offset + $per, $totalRows) : 0),
-        ],
-        'totais' => [
-            'qtd'            => $totalRows,
-            'total_venda'    => (float)($tot['total_venda'] ?? 0),
-            'total_pago'     => (float)($tot['total_pago'] ?? 0),
-            'total_restante' => (float)($tot['total_restante'] ?? 0),
-        ],
-        'data' => $rows,
+        'rows' => $rows,
+        'totais' => fi_compute_totals_from_rows($rows),
     ];
 }
 
@@ -360,17 +443,16 @@ function fi_fetch_details(PDO $pdo, int $fiadoId): ?array
             f.valor_total,
             {$parts['expr_pago']} AS valor_pago_real,
             {$parts['expr_restante']} AS valor_restante_real,
-            {$parts['expr_status']} AS status_real,
+            {$parts['status_text_expr']} AS status_real,
             f.data_vencimento,
             f.created_at AS fiado_created_at,
 
             v.created_at AS venda_created_at,
-            v.data AS venda_data,
-            v.cliente AS venda_cliente,
-            v.canal,
+            {$parts['canal_text_expr']} AS canal_normalizado,
             v.pagamento,
             v.endereco,
             v.obs,
+            v.cliente AS venda_cliente,
 
             c.nome AS cliente_nome
         {$parts['from']}
@@ -405,19 +487,19 @@ function fi_fetch_details(PDO $pdo, int $fiadoId): ?array
 
     return [
         'fiado' => [
-            'id'             => (int)($fiado['id'] ?? 0),
-            'venda_id'       => (int)($fiado['venda_id'] ?? 0),
-            'cliente_nome'   => trim((string)($fiado['cliente_nome'] ?: $fiado['venda_cliente'] ?: '—')),
-            'canal'          => (string)($fiado['canal'] ?? ''),
-            'pagamento'      => (string)($fiado['pagamento'] ?? ''),
-            'valor_total'    => (float)($fiado['valor_total'] ?? 0),
-            'valor_pago'     => (float)($fiado['valor_pago_real'] ?? 0),
-            'valor_restante' => (float)($fiado['valor_restante_real'] ?? 0),
-            'status'         => (string)($fiado['status_real'] ?? 'ABERTO'),
+            'id'              => (int)($fiado['id'] ?? 0),
+            'venda_id'        => (int)($fiado['venda_id'] ?? 0),
+            'cliente_nome'    => trim((string)($fiado['cliente_nome'] ?: $fiado['venda_cliente'] ?: '—')),
+            'canal'           => (string)($fiado['canal_normalizado'] ?? ''),
+            'pagamento'       => (string)($fiado['pagamento'] ?? ''),
+            'valor_total'     => (float)($fiado['valor_total'] ?? 0),
+            'valor_pago'      => (float)($fiado['valor_pago_real'] ?? 0),
+            'valor_restante'  => (float)($fiado['valor_restante_real'] ?? 0),
+            'status'          => (string)($fiado['status_real'] ?? 'ABERTO'),
             'data_vencimento' => (string)($fiado['data_vencimento'] ?? ''),
-            'created_at'     => (string)($fiado['venda_created_at'] ?? $fiado['fiado_created_at'] ?? ''),
-            'endereco'       => (string)($fiado['endereco'] ?? ''),
-            'obs'            => (string)($fiado['obs'] ?? ''),
+            'created_at'      => (string)($fiado['venda_created_at'] ?? $fiado['fiado_created_at'] ?? ''),
+            'endereco'        => (string)($fiado['endereco'] ?? ''),
+            'obs'             => (string)($fiado['obs'] ?? ''),
         ],
         'items' => $items,
         'payments' => $payments,
@@ -431,10 +513,12 @@ $action = strtolower(fi_get_str('action'));
 
 if ($action === 'fetch') {
     try {
-        $page = max(1, fi_get_int('page', 1));
-        $per  = fi_get_int('per', 10);
-        $result = fi_fetch_result($pdo, $page, $per, false);
-        fi_json_out(['ok' => true] + $result);
+        $result = fi_fetch_result($pdo);
+        fi_json_out([
+            'ok' => true,
+            'rows' => $result['rows'],
+            'totais' => $result['totais'],
+        ]);
     } catch (Throwable $e) {
         fi_json_out([
             'ok' => false,
@@ -574,16 +658,22 @@ if ($action === 'pay' && strtoupper($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
 }
 
 if ($action === 'excel') {
-    $result = fi_fetch_result($pdo, 1, 100000, true);
-    $rows = $result['data'];
-    $totais = $result['totais'];
+    $result = fi_fetch_result($pdo);
+    $rows = $result['rows'];
+
+    $q = fi_get_str('q');
+    if ($q !== '') {
+        $rows = fi_apply_search_filter($rows, $q);
+    }
+
+    $totais = fi_compute_totals_from_rows($rows);
 
     $agora  = date('d/m/Y H:i:s');
     $di     = fi_get_str('di') ?: '—';
     $df     = fi_get_str('df') ?: '—';
     $canal  = fi_get_str('canal', 'TODOS');
     $status = fi_get_str('status', 'TODOS');
-    $q      = fi_get_str('q') ?: '—';
+    $busca  = $q ?: '—';
 
     $fname = 'relatorio_fiados_' . date('Ymd_His') . '.xls';
 
@@ -594,7 +684,7 @@ if ($action === 'excel') {
     header('Expires: 0');
 
     echo "\xEF\xBB\xBF";
-?>
+    ?>
     <html xmlns:o="urn:schemas-microsoft-com:office:office"
         xmlns:x="urn:schemas-microsoft-com:office:excel"
         xmlns="http://www.w3.org/TR/REC-html40">
@@ -662,7 +752,7 @@ if ($action === 'excel') {
                 <td colspan="8">Gerado em: <?= fi_e($agora) ?></td>
             </tr>
             <tr>
-                <td colspan="8">Período: <?= fi_e($di) ?> até <?= fi_e($df) ?> | Canal: <?= fi_e($canal) ?> | Status: <?= fi_e($status) ?> | Busca: <?= fi_e($q) ?></td>
+                <td colspan="8">Período: <?= fi_e($di) ?> até <?= fi_e($df) ?> | Canal: <?= fi_e($canal) ?> | Status: <?= fi_e($status) ?> | Busca: <?= fi_e($busca) ?></td>
             </tr>
             <tr>
                 <td colspan="8">
@@ -714,14 +804,24 @@ if ($action === 'excel') {
     </body>
 
     </html>
-<?php
+    <?php
     exit;
 }
 
 /* =========================================================
    PRIMEIRA CARGA
 ========================================================= */
-$initial = fi_fetch_result($pdo, 1, 10, false);
+$initial = fi_fetch_result($pdo);
+$initialRowsAll = $initial['rows'];
+$initialFiltered = $initialRowsAll;
+$initialPage = 1;
+$initialPer = 10;
+$initialTotal = count($initialFiltered);
+$initialPages = max(1, (int)ceil($initialTotal / $initialPer));
+$initialFrom = $initialTotal > 0 ? 1 : 0;
+$initialTo = $initialTotal > 0 ? min($initialPer, $initialTotal) : 0;
+$initialRowsPage = array_slice($initialFiltered, 0, $initialPer);
+
 $csrf = fi_csrf_token();
 $flashOk  = fi_flash_take('flash_ok');
 $flashErr = fi_flash_take('flash_err');
@@ -1105,7 +1205,7 @@ $flashErr = fi_flash_take('flash_err');
                         <div class="col-md-6">
                             <div class="title">
                                 <h2>Gestão de Vendas À Prazo</h2>
-                                <p class="text-muted">Listagem, filtros automáticos, status e recebimentos (AVS)</p>
+                                <p class="text-muted">Listagem, filtros automáticos, pesquisa no tbody e recebimentos (AVS)</p>
                             </div>
                         </div>
                     </div>
@@ -1174,7 +1274,7 @@ $flashErr = fi_flash_take('flash_err');
                             </div>
                         </div>
                         <div class="mini-muted mt-3">
-                            Os filtros são aplicados automaticamente, sem precisar clicar em botão.
+                            Data, canal e status fazem busca AJAX. O campo de pesquisa filtra no próprio tbody, como na sua outra tela.
                         </div>
                     </div>
                 </div>
@@ -1196,15 +1296,15 @@ $flashErr = fi_flash_take('flash_err');
                                     </tr>
                                 </thead>
                                 <tbody id="fiadosTableBody">
-                                    <?php if (!$initial['data']): ?>
+                                    <?php if (!$initialRowsPage): ?>
                                         <tr>
                                             <td colspan="8" class="text-center p-5">Nenhuma venda à prazo encontrada.</td>
                                         </tr>
                                     <?php else: ?>
-                                        <?php foreach ($initial['data'] as $f): ?>
+                                        <?php foreach ($initialRowsPage as $f): ?>
                                             <tr>
                                                 <td class="ps-4 td-left"><b>#<?= (int)$f['venda_id'] ?></b></td>
-                                                <td><?= fi_e(fi_fmt_datetime((string)$f['created_at'])) ?></td>
+                                                <td><?= fi_e((string)$f['created_at_fmt']) ?></td>
                                                 <td class="td-left">
                                                     <div><?= fi_e((string)$f['cliente_nome']) ?></div>
                                                     <?php if (!empty($f['endereco'])): ?>
@@ -1224,7 +1324,7 @@ $flashErr = fi_flash_take('flash_err');
                                                         <i class="lni lni-eye"></i> Detalhes
                                                     </button>
                                                     <?php if (strtoupper((string)$f['status']) === 'ABERTO'): ?>
-                                                        <button class="btn btn-success btn-pay text-white ms-1" onclick="openPay(<?= (int)$f['id'] ?>, '<?= fi_e(addslashes((string)$f['cliente_nome'])) ?>', <?= (float)$f['valor_restante'] ?>)">
+                                                        <button class="btn btn-success btn-pay text-white ms-1" onclick="openPay(<?= (int)$f['id'] ?>, <?= json_encode((string)$f['cliente_nome'], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= (float)$f['valor_restante'] ?>)">
                                                             <i class="lni lni-reply"></i> Pagar
                                                         </button>
                                                     <?php endif; ?>
@@ -1238,16 +1338,16 @@ $flashErr = fi_flash_take('flash_err');
 
                         <div class="pager-box">
                             <div class="pager-left" id="pgSummary">
-                                Mostrando <?= (int)$initial['meta']['from'] ?>-<?= (int)$initial['meta']['to'] ?> de <?= (int)$initial['meta']['total'] ?>
+                                Mostrando <?= $initialFrom ?>-<?= $initialTo ?> de <?= $initialTotal ?>
                             </div>
 
-                            <a href="#0" id="pgPrev" class="main-btn light-btn btn-hover btn-sm <?= ((int)$initial['meta']['page'] <= 1) ? 'btn-disabled' : '' ?>" title="Anterior">
+                            <a href="#0" id="pgPrev" class="main-btn light-btn btn-hover btn-sm <?= ($initialPage <= 1) ? 'btn-disabled' : '' ?>" title="Anterior">
                                 <i class="lni lni-chevron-left"></i>
                             </a>
 
-                            <span class="page-text" id="pgInfo">Página <?= (int)$initial['meta']['page'] ?>/<?= (int)$initial['meta']['pages'] ?></span>
+                            <span class="page-text" id="pgInfo">Página <?= $initialPage ?>/<?= $initialPages ?></span>
 
-                            <a href="#0" id="pgNext" class="main-btn light-btn btn-hover btn-sm <?= ((int)$initial['meta']['page'] >= (int)$initial['meta']['pages']) ? 'btn-disabled' : '' ?>" title="Próxima">
+                            <a href="#0" id="pgNext" class="main-btn light-btn btn-hover btn-sm <?= ($initialPage >= $initialPages) ? 'btn-disabled' : '' ?>" title="Próxima">
                                 <i class="lni lni-chevron-right"></i>
                             </a>
                         </div>
@@ -1369,10 +1469,12 @@ $flashErr = fi_flash_take('flash_err');
 
         const STATE = {
             per: 10,
-            page: <?= (int)$initial['meta']['page'] ?>,
-            totalPages: <?= (int)$initial['meta']['pages'] ?>,
-            totalRows: <?= (int)$initial['meta']['total'] ?>,
-            timer: null
+            page: 1,
+            totalPages: <?= $initialPages ?>,
+            totalRows: <?= $initialTotal ?>,
+            timerRemote: null,
+            timerLocal: null,
+            rowsAll: <?= json_encode($initialRowsAll, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>
         };
 
         const $body = document.getElementById('fiadosTableBody');
@@ -1388,15 +1490,6 @@ $flashErr = fi_flash_take('flash_err');
             });
         }
 
-        function toDT(s) {
-            try {
-                const d = new Date(String(s));
-                return isNaN(d.getTime()) ? String(s) : d.toLocaleString('pt-BR');
-            } catch (e) {
-                return String(s);
-            }
-        }
-
         function esc(s) {
             return String(s ?? '').replace(/[&<>"']/g, (m) => ({
                 '&': '&amp;',
@@ -1404,31 +1497,58 @@ $flashErr = fi_flash_take('flash_err');
                 '>': '&gt;',
                 '"': '&quot;',
                 "'": '&#039;'
-            } [m]));
+            }[m]));
         }
 
-        function qsBuild(extra = {}) {
-            const p = new URLSearchParams({
-                action: extra.action || 'fetch',
-                di: document.getElementById('fDi').value,
-                df: document.getElementById('fDf').value,
-                canal: document.getElementById('fCanal').value,
-                status: document.getElementById('fStatus').value,
-                q: document.getElementById('fSearch').value,
-                page: String(extra.page ?? STATE.page),
-                per: String(extra.per ?? STATE.per),
-            });
-
-            Object.keys(extra).forEach((k) => {
-                if (!['action', 'page', 'per'].includes(k)) {
-                    p.set(k, extra[k]);
-                }
-            });
-
-            return p;
+        function searchNeedle() {
+            return String(document.getElementById('fSearch').value || '').trim().toLowerCase();
         }
 
-        function setPagerUI() {
+        function getFilteredLocalRows() {
+            const q = searchNeedle();
+            if (!q) {
+                return [...STATE.rowsAll];
+            }
+
+            return STATE.rowsAll.filter(row => {
+                const hay = String(row.search_blob || '').toLowerCase();
+                return hay.includes(q);
+            });
+        }
+
+        function computeTotals(rows) {
+            let totalVenda = 0;
+            let totalPago = 0;
+            let totalRestante = 0;
+
+            rows.forEach(r => {
+                totalVenda += Number(r.valor_total || 0);
+                totalPago += Number(r.valor_pago || 0);
+                totalRestante += Number(r.valor_restante || 0);
+            });
+
+            return {
+                totalVenda,
+                totalPago,
+                totalRestante
+            };
+        }
+
+        function updateCards(rows) {
+            const totals = computeTotals(rows);
+            document.getElementById('sumTotal').textContent = brlJs(totals.totalVenda);
+            document.getElementById('sumPago').textContent = brlJs(totals.totalPago);
+            document.getElementById('sumRestante').textContent = brlJs(totals.totalRestante);
+        }
+
+        function setPagerUI(totalRows) {
+            STATE.totalRows = totalRows;
+            STATE.totalPages = Math.max(1, Math.ceil(totalRows / STATE.per));
+
+            if (STATE.page > STATE.totalPages) {
+                STATE.page = STATE.totalPages;
+            }
+
             $pgInfo.textContent = `Página ${STATE.page}/${STATE.totalPages}`;
 
             const canPrev = STATE.page > 1;
@@ -1438,50 +1558,78 @@ $flashErr = fi_flash_take('flash_err');
             $pgNext.classList.toggle('btn-disabled', !canNext);
         }
 
-        function renderRows(rows) {
-            if (!rows || rows.length === 0) {
+        function renderRowsPage() {
+            const rowsFiltered = getFilteredLocalRows();
+            updateCards(rowsFiltered);
+            setPagerUI(rowsFiltered.length);
+
+            const start = (STATE.page - 1) * STATE.per;
+            const end = start + STATE.per;
+            const rowsPage = rowsFiltered.slice(start, end);
+
+            if (!rowsPage.length) {
                 $body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Nenhuma venda à prazo encontrada.</td></tr>';
+                $pgSummary.textContent = 'Mostrando 0-0 de 0';
                 return;
             }
 
-            $body.innerHTML = rows.map(f => `
+            $body.innerHTML = rowsPage.map(f => `
                 <tr>
                     <td class="ps-4 td-left"><b>#${f.venda_id}</b></td>
-                    <td>${toDT(f.created_at)}</td>
+                    <td>${esc(f.created_at_fmt || '')}</td>
                     <td class="td-left">
-                        <div>${esc(f.cliente_nome ?? '')}</div>
+                        <div>${esc(f.cliente_nome || '')}</div>
                         ${f.endereco ? `<div class="mini-muted">${esc(f.endereco)}</div>` : ``}
                     </td>
                     <td><span class="val-total">${brlJs(f.valor_total)}</span></td>
                     <td><span class="text-success">${brlJs(f.valor_pago)}</span></td>
                     <td><span class="val-restante">${brlJs(f.valor_restante)}</span></td>
                     <td>
-                        <span class="status-badge status-${String(f.status || '').toLowerCase()}">${esc(f.status)}</span>
+                        <span class="status-badge ${String(f.status || '') === 'PAGO' ? 'status-pago' : 'status-aberto'}">${esc(f.status || '')}</span>
                     </td>
                     <td class="td-right pe-4">
                         <button class="btn btn-light btn-pay" onclick="showDetails(${f.id})">
                             <i class="lni lni-eye"></i> Detalhes
                         </button>
                         ${String(f.status || '') === 'ABERTO' ? `
-                            <button class="btn btn-success btn-pay text-white ms-1" onclick="openPay(${f.id}, '${String(f.cliente_nome ?? '').replace(/'/g, "\\'")}', ${Number(f.valor_restante || 0)})">
+                            <button class="btn btn-success btn-pay text-white ms-1" onclick="openPay(${f.id}, ${JSON.stringify(String(f.cliente_nome || ''))}, ${Number(f.valor_restante || 0)})">
                                 <i class="lni lni-reply"></i> Pagar
                             </button>
                         ` : ''}
                     </td>
                 </tr>
             `).join('');
+
+            const shownFrom = rowsFiltered.length ? start + 1 : 0;
+            const shownTo = rowsFiltered.length ? Math.min(end, rowsFiltered.length) : 0;
+            $pgSummary.textContent = `Mostrando ${shownFrom}-${shownTo} de ${rowsFiltered.length}`;
         }
 
-        async function loadFiados(resetPage = false) {
-            try {
-                if (resetPage) STATE.page = 1;
+        function buildRemoteQs(extra = {}) {
+            const p = new URLSearchParams({
+                action: extra.action || 'fetch',
+                di: document.getElementById('fDi').value,
+                df: document.getElementById('fDf').value,
+                canal: document.getElementById('fCanal').value,
+                status: document.getElementById('fStatus').value,
+                q: document.getElementById('fSearch').value
+            });
 
+            Object.keys(extra).forEach((k) => {
+                if (k !== 'action') {
+                    p.set(k, extra[k]);
+                }
+            });
+
+            return p;
+        }
+
+        async function loadFiadosRemote() {
+            try {
                 $body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Carregando...</td></tr>';
 
-                const qs = qsBuild({
-                    action: 'fetch',
-                    page: STATE.page,
-                    per: STATE.per
+                const qs = buildRemoteQs({
+                    action: 'fetch'
                 });
 
                 const r = await fetch(`${API}?${qs.toString()}`, {
@@ -1490,32 +1638,17 @@ $flashErr = fi_flash_take('flash_err');
                     }
                 }).then(res => res.json());
 
-                if (!r.ok) throw new Error(r.msg || 'Falha ao carregar fiados.');
+                if (!r.ok) {
+                    throw new Error(r.msg || 'Falha ao carregar fiados.');
+                }
 
-                STATE.page = Number(r.meta.page || 1);
-                STATE.per = Number(r.meta.per || 10);
-                STATE.totalRows = Number(r.meta.total || 0);
-                STATE.totalPages = Number(r.meta.pages || 1);
-
-                renderRows(Array.isArray(r.data) ? r.data : []);
-                setPagerUI();
-
-                $pgSummary.textContent = STATE.totalRows ?
-                    `Mostrando ${r.meta.from}-${r.meta.to} de ${STATE.totalRows}` :
-                    '—';
-
-                document.getElementById('sumTotal').textContent = brlJs(r.totais.total_venda || 0);
-                document.getElementById('sumPago').textContent = brlJs(r.totais.total_pago || 0);
-                document.getElementById('sumRestante').textContent = brlJs(r.totais.total_restante || 0);
-
+                STATE.rowsAll = Array.isArray(r.rows) ? r.rows : [];
+                STATE.page = 1;
+                renderRowsPage();
             } catch (e) {
                 alert('Erro ao carregar dados: ' + (e.message || e));
-                $body.innerHTML = '<tr><td colspan="8" class="text-center p-5">Erro ao carregar.</td></tr>';
-                STATE.totalRows = 0;
-                STATE.totalPages = 1;
-                STATE.page = 1;
-                setPagerUI();
-                $pgSummary.textContent = '—';
+                STATE.rowsAll = [];
+                renderRowsPage();
             }
         }
 
@@ -1527,17 +1660,19 @@ $flashErr = fi_flash_take('flash_err');
                     }
                 }).then(res => res.json());
 
-                if (!r.ok) throw new Error(r.msg || 'Falha ao buscar detalhes.');
+                if (!r.ok) {
+                    throw new Error(r.msg || 'Falha ao buscar detalhes.');
+                }
 
                 const f = r.fiado || {};
                 document.getElementById('detVendaId').innerText = f.venda_id ?? '';
                 document.getElementById('detCliente').innerText = f.cliente_nome ?? '';
                 document.getElementById('detCanal').innerText = f.canal ?? '';
                 document.getElementById('detPagamento').innerText = f.pagamento ?? '';
-                document.getElementById('detVencimento').innerText = f.data_vencimento ? toDT(f.data_vencimento) : '—';
+                document.getElementById('detVencimento').innerText = f.data_vencimento ? esc(f.data_vencimento) : '—';
                 document.getElementById('detEndereco').innerText = f.endereco ?? '—';
                 document.getElementById('detObs').innerText = f.obs ?? '—';
-                document.getElementById('detCreated').innerText = toDT(f.created_at ?? '');
+                document.getElementById('detCreated').innerText = f.created_at ? esc(f.created_at) : '—';
                 document.getElementById('detTotal').innerText = brlJs(f.valor_total);
                 document.getElementById('detPago').innerText = brlJs(f.valor_pago);
                 document.getElementById('detRestante').innerText = brlJs(f.valor_restante);
@@ -1556,7 +1691,7 @@ $flashErr = fi_flash_take('flash_err');
                 const pays = Array.isArray(r.payments) ? r.payments : [];
                 document.getElementById('detPaysBody').innerHTML = pays.length ? pays.map(p => `
                     <tr>
-                        <td>${toDT(p.created_at)}</td>
+                        <td>${esc(p.created_at ?? '')}</td>
                         <td>${esc(p.metodo ?? '')}</td>
                         <td class="text-end">${brlJs(p.valor)}</td>
                     </tr>
@@ -1608,34 +1743,45 @@ $flashErr = fi_flash_take('flash_err');
                     })
                 }).then(res => res.json());
 
-                if (!r.ok) throw new Error(r.msg || 'Falha ao pagar.');
+                if (!r.ok) {
+                    throw new Error(r.msg || 'Falha ao pagar.');
+                }
 
                 alert(r.msg || 'Pagamento registrado!');
                 modalPagamento.hide();
-                loadFiados(false);
+                await loadFiadosRemote();
             } catch (e) {
                 alert(e.message || e);
             }
         });
 
-        function triggerAutoSearch() {
-            clearTimeout(STATE.timer);
-            STATE.timer = setTimeout(() => {
-                loadFiados(true);
+        function triggerRemoteFilters() {
+            clearTimeout(STATE.timerRemote);
+            STATE.timerRemote = setTimeout(() => {
+                loadFiadosRemote();
             }, 300);
         }
 
-        document.getElementById('fDi').addEventListener('change', triggerAutoSearch);
-        document.getElementById('fDf').addEventListener('change', triggerAutoSearch);
-        document.getElementById('fCanal').addEventListener('change', triggerAutoSearch);
-        document.getElementById('fStatus').addEventListener('change', triggerAutoSearch);
-        document.getElementById('fSearch').addEventListener('input', triggerAutoSearch);
+        function triggerLocalSearch() {
+            clearTimeout(STATE.timerLocal);
+            STATE.timerLocal = setTimeout(() => {
+                STATE.page = 1;
+                renderRowsPage();
+            }, 120);
+        }
 
+        document.getElementById('fDi').addEventListener('change', triggerRemoteFilters);
+        document.getElementById('fDf').addEventListener('change', triggerRemoteFilters);
+        document.getElementById('fCanal').addEventListener('change', triggerRemoteFilters);
+        document.getElementById('fStatus').addEventListener('change', triggerRemoteFilters);
+
+        document.getElementById('fSearch').addEventListener('input', triggerLocalSearch);
         document.getElementById('fSearch').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                clearTimeout(STATE.timer);
-                loadFiados(true);
+                clearTimeout(STATE.timerLocal);
+                STATE.page = 1;
+                renderRowsPage();
             }
         });
 
@@ -1645,14 +1791,12 @@ $flashErr = fi_flash_take('flash_err');
             document.getElementById('fCanal').value = 'TODOS';
             document.getElementById('fStatus').value = 'TODOS';
             document.getElementById('fSearch').value = '';
-            loadFiados(true);
+            loadFiadosRemote();
         });
 
         document.getElementById('btnExcel').addEventListener('click', () => {
-            const qs = qsBuild({
-                action: 'excel',
-                page: 1,
-                per: STATE.per
+            const qs = buildRemoteQs({
+                action: 'excel'
             });
             window.location.href = `${API}?${qs.toString()}`;
         });
@@ -1661,14 +1805,14 @@ $flashErr = fi_flash_take('flash_err');
             e.preventDefault();
             if (STATE.page <= 1) return;
             STATE.page--;
-            loadFiados(false);
+            renderRowsPage();
         });
 
         $pgNext.addEventListener('click', (e) => {
             e.preventDefault();
             if (STATE.page >= STATE.totalPages) return;
             STATE.page++;
-            loadFiados(false);
+            renderRowsPage();
         });
 
         document.getElementById('payValor').addEventListener('input', function() {
@@ -1687,7 +1831,9 @@ $flashErr = fi_flash_take('flash_err');
 
         window.showDetails = showDetails;
         window.openPay = openPay;
-        window.onload = () => loadFiados(true);
+        window.onload = () => {
+            renderRowsPage();
+        };
     </script>
 </body>
 
