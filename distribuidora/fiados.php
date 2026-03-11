@@ -1189,7 +1189,7 @@ $flashErr = fi_flash_take('flash_err');
                         <div class="col-md-6">
                             <div class="title">
                                 <h2>Gestão de Vendas À Prazo</h2>
-                                <p class="text-muted">Listagem, filtros automáticos, pesquisa no tbody e recebimentos (AVS)</p>
+                                <p class="text-muted">Listagem, filtros automáticos, pesquisa na tabela e recebimentos (AVS)</p>
                             </div>
                         </div>
 
