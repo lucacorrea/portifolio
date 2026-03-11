@@ -497,6 +497,7 @@ try {
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -511,12 +512,29 @@ try {
   <link rel="shortcut icon" href="../../../images/3.png" />
 
   <style>
-    ul .nav-link:hover { color: blue !important; }
-    .nav-link { color: black !important; }
-    .sidebar .sub-menu .nav-item .nav-link { margin-left: -35px !important; }
-    .sidebar .sub-menu li { list-style: none !important; }
-    .toolbar-card .form-control { height: 42px; }
-    .toolbar-card .btn { height: 42px; }
+    ul .nav-link:hover {
+      color: blue !important;
+    }
+
+    .nav-link {
+      color: black !important;
+    }
+
+    .sidebar .sub-menu .nav-item .nav-link {
+      margin-left: -35px !important;
+    }
+
+    .sidebar .sub-menu li {
+      list-style: none !important;
+    }
+
+    .toolbar-card .form-control {
+      height: 42px;
+    }
+
+    .toolbar-card .btn {
+      height: 42px;
+    }
 
     .sig-flash-wrap {
       position: fixed;
@@ -541,21 +559,62 @@ try {
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
     }
 
-    .sig-toast--success { background: #f1fff6 !important; border-left-color: #22c55e !important; }
-    .sig-toast--danger { background: #fff1f2 !important; border-left-color: #ef4444 !important; }
-    .sig-toast__row { display: flex; align-items: flex-start; gap: 10px; }
-    .sig-toast__icon i { font-size: 16px; margin-top: 2px; }
-    .sig-toast__title { font-weight: 800; margin-bottom: 1px; line-height: 1.1; }
-    .sig-toast__text { margin: 0; line-height: 1.25; }
-    .sig-toast .close { opacity: .55; font-size: 18px; line-height: 1; padding: 0 6px; }
-    .sig-toast .close:hover { opacity: 1; }
+    .sig-toast--success {
+      background: #f1fff6 !important;
+      border-left-color: #22c55e !important;
+    }
+
+    .sig-toast--danger {
+      background: #fff1f2 !important;
+      border-left-color: #ef4444 !important;
+    }
+
+    .sig-toast__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .sig-toast__icon i {
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .sig-toast__title {
+      font-weight: 800;
+      margin-bottom: 1px;
+      line-height: 1.1;
+    }
+
+    .sig-toast__text {
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    .sig-toast .close {
+      opacity: .55;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 6px;
+    }
+
+    .sig-toast .close:hover {
+      opacity: 1;
+    }
 
     @keyframes sigToastIn {
-      to { opacity: 1; transform: translateX(0); }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
 
     @keyframes sigToastOut {
-      to { opacity: 0; transform: translateX(12px); visibility: hidden; }
+      to {
+        opacity: 0;
+        transform: translateX(12px);
+        visibility: hidden;
+      }
     }
 
     .acoes-wrap {
@@ -591,13 +650,30 @@ try {
       font-size: 13px;
     }
 
-    .sig-pager .pagination { margin: 0; }
-    .sig-pager .page-link { border-radius: 10px !important; }
+    .sig-pager .pagination {
+      margin: 0;
+    }
 
-    .modal .form-control { min-height: 42px; height: auto; }
-    .modal .btn { min-height: 42px; }
-    .modal .modal-header { border-bottom: 1px solid rgba(0, 0, 0, .06); }
-    .modal .modal-footer { border-top: 1px solid rgba(0, 0, 0, .06); }
+    .sig-pager .page-link {
+      border-radius: 10px !important;
+    }
+
+    .modal .form-control {
+      min-height: 42px;
+      height: auto;
+    }
+
+    .modal .btn {
+      min-height: 42px;
+    }
+
+    .modal .modal-header {
+      border-bottom: 1px solid rgba(0, 0, 0, .06);
+    }
+
+    .modal .modal-footer {
+      border-top: 1px solid rgba(0, 0, 0, .06);
+    }
 
     .edit-photo-box {
       border: 1px solid rgba(0, 0, 0, .08);
@@ -644,6 +720,96 @@ try {
       color: #64748b;
       text-align: center;
       padding: 12px;
+    }
+
+    .modal-content {
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .modal-header,
+    .modal-footer {
+      padding: 16px 20px;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .modal .form-control {
+      min-height: 44px;
+      border-radius: 10px;
+    }
+
+    .modal textarea.form-control {
+      min-height: 110px;
+    }
+
+    .modal label {
+      margin-bottom: 6px;
+    }
+
+    .font-weight-semibold {
+      font-weight: 600;
+    }
+
+    .edit-photo-box {
+      border: 1px solid rgba(0, 0, 0, .08);
+      border-radius: 14px;
+      padding: 10px;
+      background: #f8f9fa;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #edit_cameraVideo,
+    #edit_fotoPreview,
+    #edit_fotoAtual {
+      width: 100%;
+      border-radius: 10px;
+      background: #111;
+    }
+
+    #edit_cameraVideo {
+      display: none;
+    }
+
+    #edit_fotoPreview {
+      display: none;
+    }
+
+    .foto-atual-wrap {
+      width: 100%;
+      text-align: center;
+    }
+
+    .foto-atual-wrap img {
+      width: 100%;
+      max-height: 280px;
+      object-fit: cover;
+      border: 1px solid #ddd;
+    }
+
+    .sem-foto-box {
+      width: 100%;
+      min-height: 250px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      text-align: center;
+      padding: 12px;
+    }
+
+    @media (max-width: 991.98px) {
+      .modal-body {
+        padding: 15px;
+      }
     }
   </style>
 </head>
@@ -1012,150 +1178,189 @@ try {
 
   <!-- ===================== MODAL EDITAR PRODUTOR ===================== -->
   <div class="modal fade" id="modalEditProdutor" tabindex="-1" role="dialog" aria-labelledby="modalEditProdutorLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
-      <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+      <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" class="modal-content border-0 shadow-lg">
         <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="id" id="edit_id" value="">
         <input type="hidden" name="foto_base64" id="edit_foto_base64" value="">
         <input type="hidden" name="remover_foto" id="edit_remover_foto" value="0">
 
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalEditProdutorLabel">
-            <i class="ti-pencil"></i> Editar Produtor
-          </h5>
+        <div class="modal-header bg-white border-bottom">
+          <div>
+            <h5 class="modal-title font-weight-bold mb-1" id="modalEditProdutorLabel">
+              <i class="ti-pencil mr-2"></i>Editar Produtor
+            </h5>
+            <small class="text-muted">Atualize dados, função, comunidade e foto.</small>
+          </div>
+
           <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
 
-        <div class="modal-body">
+        <div class="modal-body bg-light">
 
           <div class="row">
-            <div class="col-lg-8">
+            <!-- COLUNA ESQUERDA -->
+            <div class="col-lg-8 mb-3 mb-lg-0">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
 
-              <div class="row">
-                <div class="col-md-5 mb-3">
-                  <label>Nome <span class="text-danger">*</span></label>
-                  <input type="text" name="nome" id="edit_nome" class="form-control" required>
-                  <small class="text-muted">Até 160 caracteres.</small>
-                </div>
+                  <h6 class="font-weight-bold text-dark mb-3">
+                    <i class="ti-id-badge mr-2"></i>Dados principais
+                  </h6>
 
-                <div class="col-md-3 mb-3">
-                  <label>Função <span class="text-danger">*</span></label>
-                  <select name="tipo" id="edit_tipo" class="form-control" required>
-                    <option value="PRODUTOR RURAL">Produtor Rural</option>
-                    <option value="FEIRANTE">Feirante</option>
-                    <option value="MARRETEIRO">Marreteiro</option>
-                  </select>
-                  <small class="text-muted">Informe a função.</small>
-                </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="font-weight-semibold">Nome <span class="text-danger">*</span></label>
+                      <input type="text" name="nome" id="edit_nome" class="form-control" required>
+                      <small class="text-muted">Até 160 caracteres.</small>
+                    </div>
 
-                <div class="col-md-2 mb-3">
-                  <label>CPF / Documento</label>
-                  <input type="text" name="documento" id="edit_documento" class="form-control" placeholder="Somente números">
-                  <small class="text-muted">Opcional.</small>
-                </div>
+                    <div class="col-md-3 mb-3">
+                      <label class="font-weight-semibold">Função <span class="text-danger">*</span></label>
+                      <select name="tipo" id="edit_tipo" class="form-control" required>
+                        <option value="PRODUTOR RURAL">Produtor Rural</option>
+                        <option value="FEIRANTE">Feirante</option>
+                        <option value="MARRETEIRO">Marreteiro</option>
+                      </select>
+                      <small class="text-muted">Tipo do cadastro.</small>
+                    </div>
 
-                <div class="col-md-2 mb-3">
-                  <label>Contato</label>
-                  <input type="text" name="contato" id="edit_contato" class="form-control" placeholder="Ex.: 9299...">
-                  <small class="text-muted">Opcional.</small>
-                </div>
-              </div>
-
-              <div class="row">
-                <?php if (!empty($comunidades)): ?>
-                  <div class="col-md-6 mb-3">
-                    <label>Comunidade <span class="text-danger">*</span></label>
-                    <select name="comunidade_id" id="edit_comunidade_id" class="form-control" required>
-                      <option value="">Selecione</option>
-                      <?php foreach ($comunidades as $c): ?>
-                        <option value="<?= (int)$c['id'] ?>"><?= h($c['nome']) ?></option>
-                      <?php endforeach; ?>
-                    </select>
-                    <small class="text-muted">Somente comunidades ativas.</small>
+                    <div class="col-md-3 mb-3">
+                      <label class="font-weight-semibold">Status</label>
+                      <select name="ativo" id="edit_ativo" class="form-control">
+                        <option value="1">Ativo</option>
+                        <option value="0">Inativo</option>
+                      </select>
+                      <small class="text-muted">Situação atual.</small>
+                    </div>
                   </div>
-                <?php else: ?>
-                  <div class="col-md-6 mb-3">
-                    <label>Comunidade</label>
-                    <input type="text" class="form-control" value="Tabela comunidades não encontrada" disabled>
-                    <small class="text-muted">Cadastre comunidades para habilitar este campo.</small>
+
+                  <div class="row">
+                    <div class="col-md-4 mb-3">
+                      <label class="font-weight-semibold">CPF / Documento</label>
+                      <input type="text" name="documento" id="edit_documento" class="form-control" placeholder="Somente números">
+                      <small class="text-muted">Opcional.</small>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                      <label class="font-weight-semibold">Contato</label>
+                      <input type="text" name="contato" id="edit_contato" class="form-control" placeholder="Ex.: 9299...">
+                      <small class="text-muted">Telefone ou WhatsApp.</small>
+                    </div>
+
+                    <?php if (!empty($comunidades)): ?>
+                      <div class="col-md-4 mb-3">
+                        <label class="font-weight-semibold">Comunidade <span class="text-danger">*</span></label>
+                        <select name="comunidade_id" id="edit_comunidade_id" class="form-control" required>
+                          <option value="">Selecione</option>
+                          <?php foreach ($comunidades as $c): ?>
+                            <option value="<?= (int)$c['id'] ?>"><?= h($c['nome']) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Somente comunidades ativas.</small>
+                      </div>
+                    <?php else: ?>
+                      <div class="col-md-4 mb-3">
+                        <label class="font-weight-semibold">Comunidade</label>
+                        <input type="text" class="form-control" value="Tabela comunidades não encontrada" disabled>
+                        <small class="text-muted">Cadastre comunidades para habilitar.</small>
+                      </div>
+                    <?php endif; ?>
                   </div>
-                <?php endif; ?>
 
-                <div class="col-md-3 mb-3">
-                  <label>Status</label>
-                  <select name="ativo" id="edit_ativo" class="form-control">
-                    <option value="1">Ativo</option>
-                    <option value="0">Inativo</option>
-                  </select>
+                  <div class="row">
+                    <div class="col-12 mb-2">
+                      <label class="font-weight-semibold">Observação</label>
+                      <textarea name="observacao" id="edit_observacao" class="form-control" rows="5" placeholder="Ex.: produtor de farinha, entrega na sexta..."></textarea>
+                      <small class="text-muted">Até 255 caracteres.</small>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-
-              <div class="row">
-                <div class="col-md-12 mb-2">
-                  <label>Observação</label>
-                  <textarea name="observacao" id="edit_observacao" class="form-control" rows="4" placeholder="Ex.: produtor de farinha..."></textarea>
-                  <small class="text-muted">Até 255 caracteres.</small>
-                </div>
-              </div>
-
             </div>
 
+            <!-- COLUNA DIREITA -->
             <div class="col-lg-4">
-              <label class="d-block">Foto do produtor</label>
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
 
-              <div class="edit-photo-box">
-                <video id="edit_cameraVideo" autoplay playsinline></video>
-                <canvas id="edit_cameraCanvas" style="display:none;"></canvas>
+                  <h6 class="font-weight-bold text-dark mb-3">
+                    <i class="ti-camera mr-2"></i>Foto do produtor
+                  </h6>
 
-                <div id="edit_fotoAtual_wrap" class="foto-atual-wrap">
-                  <img id="edit_fotoAtual" src="" alt="Foto atual" style="display:none;">
-                  <div id="edit_semFotoAtual" class="sem-foto-box">Sem foto cadastrada</div>
+                  <div class="edit-photo-box">
+                    <video id="edit_cameraVideo" autoplay playsinline></video>
+                    <canvas id="edit_cameraCanvas" style="display:none;"></canvas>
+
+                    <div id="edit_fotoAtual_wrap" class="foto-atual-wrap">
+                      <img id="edit_fotoAtual" src="" alt="Foto atual" style="display:none;">
+                      <div id="edit_semFotoAtual" class="sem-foto-box">Sem foto cadastrada</div>
+                    </div>
+
+                    <img id="edit_fotoPreview" alt="Prévia da nova foto">
+                  </div>
+
+                  <div class="row mt-3">
+                    <div class="col-12 mb-2">
+                      <button type="button" class="btn btn-outline-secondary btn-block btn-sm" id="edit_btnAbrirCam">
+                        <i class="ti-camera mr-1"></i> Abrir Câmera
+                      </button>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <button type="button" class="btn btn-primary btn-block btn-sm" id="edit_btnTirarFoto" disabled>
+                        <i class="ti-image mr-1"></i> Tirar
+                      </button>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <button type="button" class="btn btn-light btn-block btn-sm" id="edit_btnRefazer" disabled>
+                        <i class="ti-reload mr-1"></i> Refazer
+                      </button>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <button type="button" class="btn btn-danger btn-block btn-sm" id="edit_btnFecharCam" disabled>
+                        <i class="ti-close mr-1"></i> Fechar
+                      </button>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <button type="button" class="btn btn-outline-danger btn-block btn-sm" id="edit_btnRemoverFoto">
+                        <i class="ti-trash mr-1"></i> Remover
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="alert alert-light border mt-3 mb-0 py-2 px-3">
+                    <small class="text-muted mb-0 d-block">
+                      Você pode manter a foto atual, remover ou tirar uma nova foto.
+                    </small>
+                  </div>
+
                 </div>
-
-                <img id="edit_fotoPreview" alt="Prévia da nova foto">
               </div>
-
-              <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
-                <button type="button" class="btn btn-secondary btn-sm" id="edit_btnAbrirCam">
-                  <i class="ti-camera mr-1"></i> Abrir Câmera
-                </button>
-
-                <button type="button" class="btn btn-primary btn-sm" id="edit_btnTirarFoto" disabled>
-                  <i class="ti-image mr-1"></i> Tirar Foto
-                </button>
-
-                <button type="button" class="btn btn-light btn-sm" id="edit_btnRefazer" disabled>
-                  <i class="ti-reload mr-1"></i> Refazer
-                </button>
-
-                <button type="button" class="btn btn-danger btn-sm" id="edit_btnFecharCam" disabled>
-                  <i class="ti-close mr-1"></i> Fechar
-                </button>
-
-                <button type="button" class="btn btn-outline-danger btn-sm" id="edit_btnRemoverFoto">
-                  <i class="ti-trash mr-1"></i> Remover Foto
-                </button>
-              </div>
-
-              <small class="text-muted d-block mt-2">
-                Você pode manter a foto atual, remover ou tirar uma nova foto.
-              </small>
             </div>
           </div>
 
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-dismiss="modal"><i class="ti-close mr-1"></i> Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar alterações</button>
+        <div class="modal-footer bg-white border-top d-flex justify-content-between">
+          <button type="button" class="btn btn-light" data-dismiss="modal">
+            <i class="ti-close mr-1"></i> Cancelar
+          </button>
+
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="ti-save mr-1"></i> Salvar alterações
+          </button>
         </div>
       </form>
     </div>
   </div>
-
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
   <script src="../../../js/off-canvas.js"></script>
@@ -1209,7 +1414,11 @@ try {
       async function abrirCamera() {
         try {
           editStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } },
+            video: {
+              facingMode: {
+                ideal: 'environment'
+              }
+            },
             audio: false
           });
 
@@ -1254,7 +1463,9 @@ try {
         canvas.width = targetW;
         canvas.height = targetH;
 
-        const ctx = canvas.getContext('2d', { alpha: false });
+        const ctx = canvas.getContext('2d', {
+          alpha: false
+        });
         ctx.drawImage(video, 0, 0, targetW, targetH);
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
@@ -1374,4 +1585,5 @@ try {
     })();
   </script>
 </body>
+
 </html>
