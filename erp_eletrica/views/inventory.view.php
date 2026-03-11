@@ -183,31 +183,26 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Código Interno</label>
-                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono'; background-color: #f1f3f5;" value="<?php echo 'PRD' . str_pad((int)(\App\Config\Database::getInstance()->getConnection())->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>" readonly>
+                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo">
                     </div>
-                    <div class="col-md-8">
-                        <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">NCM</label>
+                        <input type="text" name="ncm" class="form-control shadow-sm" id="edit_ncm">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold">Nome / Descrição do Material</label>
                         <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">Unidade de Medida *</label>
-                        <select name="unidade" class="form-select shadow-sm" id="edit_unidade" required onchange="updateFormVisibility()">
+                        <label class="form-label small fw-bold">Unidade</label>
+                        <select name="unidade" class="form-select shadow-sm" id="edit_unidade">
                             <option value="UN">Unidade (UN)</option>
                             <option value="MT">Metro (MT)</option>
                             <option value="CX">Caixa (CX)</option>
                             <option value="PCT">Pacote (PCT)</option>
-                            <option value="RL">Rolo (RL)</option>
-                            <option value="PC">Peça (PC)</option>
-                            <option value="CJ">Conjunto (CJ)</option>
-                            <option value="PR">Par (PR)</option>
-                            <option value="CTL">Cartela (CTL)</option>
-                            <option value="KG">Quilograma (KG)</option>
-                            <option value="GR">Grama (GR)</option>
-                            <option value="L">Litro (L)</option>
-                            <option value="ML">Mililitro (ML)</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-8">
                         <label class="form-label small fw-bold">Categoria</label>
                         <select name="categoria" class="form-select shadow-sm" id="edit_categoria">
                             <?php foreach ($categories as $cat): ?>
@@ -215,83 +210,29 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Tipo de Material</label>
-                        <select name="tipo_produto" class="form-select shadow-sm" id="edit_tipo_produto" onchange="updateFormVisibility()">
-                            <option value="simples">Item Simples</option>
-                            <option value="composto">Kit / Composto</option>
-                            <option value="consumo">Material de Consumo</option>
-                        </select>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Preço de Custo (R$)</label>
+                        <input type="number" step="0.01" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
                     </div>
-
-                    <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-success small border-bottom pb-2"><i class="fas fa-tag me-1"></i>Preços</h6></div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço de Custo (R$) *</label>
-                        <input type="number" step="0.01" min="0" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Preço de Venda (R$)</label>
+                        <input type="number" step="0.01" name="preco_venda" class="form-control shadow-sm" required id="edit_preco_venda">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço Venda Normal (R$) *</label>
-                        <input type="number" step="0.01" min="0" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço 2 (R$)</label>
-                        <input type="number" step="0.01" min="0" name="preco_venda_2" class="form-control shadow-sm" id="edit_preco_venda_2" placeholder="Opcional">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço 3 (R$)</label>
-                        <input type="number" step="0.01" min="0" name="preco_venda_3" class="form-control shadow-sm" id="edit_preco_venda_3" placeholder="Opcional">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Preço Atacado (R$)</label>
-                        <input type="number" step="0.01" min="0" name="preco_venda_atacado" class="form-control shadow-sm" id="edit_preco_venda_atacado" placeholder="Opcional">
-                    </div>
-
-                    <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-warning small border-bottom pb-2"><i class="fas fa-boxes me-1"></i>Estoque</h6></div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Quantidade Inicial *</label>
-                        <input type="number" step="0.01" min="0" name="quantidade" class="form-control shadow-sm" required id="edit_quantidade" value="0">
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label small fw-bold">Estoque Mínimo (Alerta)</label>
-                        <input type="number" min="0" name="estoque_minimo" class="form-control shadow-sm" id="edit_estoque_minimo" value="0">
+                        <input type="number" name="estoque_minimo" class="form-control shadow-sm" id="edit_estoque_minimo">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Foto do Produto</label>
+                        <input type="file" name="foto" class="form-control shadow-sm">
                     </div>
 
-                    <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-secondary small border-bottom pb-2"><i class="fas fa-ruler-combined me-1"></i>Logística <small class="text-muted fw-normal">(mostrado conforme unidade)</small></h6></div>
-                    <div class="col-md-4" id="div_peso">
-                        <label class="form-label small fw-bold">Peso Bruto (KG)</label>
-                        <input type="number" step="0.001" min="0" name="peso" class="form-control shadow-sm" id="edit_peso">
-                    </div>
-                    <div class="col-md-4" id="div_dimensoes">
-                        <label class="form-label small fw-bold">Dimensões (CxLxA)</label>
-                        <input type="text" name="dimensoes" class="form-control shadow-sm" id="edit_dimensoes" placeholder="Ex: 10x15x5cm">
-                    </div>
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Informações Fiscais (SEFAZ)</h6></div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">Especificações Técnicas</label>
-                        <input type="text" name="descricao" class="form-control shadow-sm" id="edit_descricao" placeholder="Ex: 2,5mm² 750V">
-                    </div>
-
-                    <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-primary small border-bottom pb-2"><i class="fas fa-file-invoice me-1"></i>Informações Fiscais (SEFAZ)</h6></div>
-                    <div class="col-md-4 position-relative">
-                        <label class="form-label small fw-bold">NCM</label>
-                        <div class="input-group input-group-sm shadow-sm">
-                            <input type="text" name="ncm" class="form-control" id="edit_ncm" placeholder="Digite cód. ou nome..." autocomplete="off" onkeyup="searchNcmInline(this.value)">
-                            <span class="input-group-text bg-white" id="ncmLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary" style="font-size:0.75rem;"></i></span>
-                        </div>
-                        <ul id="ncmDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto; background-color:#fff; border:1px solid #dee2e6; border-top:none; border-radius:0 0 6px 6px;"></ul>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">GTIN/EAN (cEAN)</label>
-                        <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="SEM GTIN">
-                    </div>
-                    <div class="col-md-4 position-relative">
                         <label class="form-label small fw-bold">CEST</label>
-                        <div class="input-group input-group-sm shadow-sm">
-                            <input type="text" name="cest" id="edit_cest" class="form-control" placeholder="Digite cód. ou descrição..." autocomplete="off" onkeyup="searchCestInline(this.value)">
-                            <span class="input-group-text bg-white" id="cestLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary" style="font-size:0.75rem;"></i></span>
-                        </div>
-                        <ul id="cestDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto; background-color:#fff; border:1px solid #dee2e6; border-top:none; border-radius:0 0 6px 6px;"></ul>
+                        <input type="text" name="cest" id="edit_cest" class="form-control shadow-sm">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-8">
                         <label class="form-label small fw-bold">Origem da Mercadoria</label>
                         <select name="origem" id="edit_origem" class="form-select shadow-sm">
                             <option value="0">0 - Nacional</option>
@@ -324,8 +265,6 @@
         </form>
     </div>
 </div>
-
-<!-- Removes old modal block completely -->
 
 <!-- Stock Movement Modal -->
 <div class="modal fade" id="movementModal" tabindex="-1">
@@ -383,22 +322,11 @@ function editProduct(product) {
     document.getElementById('edit_nome').value = product.nome;
     document.getElementById('edit_unidade').value = product.unidade;
     document.getElementById('edit_categoria').value = product.categoria;
-    document.getElementById('edit_tipo_produto').value = product.tipo_produto || 'simples';
-    document.getElementById('edit_quantidade').value = product.quantidade || 0;
-    
-    document.getElementById('edit_peso').value = product.peso || '';
-    document.getElementById('edit_dimensoes').value = product.dimensoes || '';
-    document.getElementById('edit_descricao').value = product.descricao || '';
-    
     document.getElementById('edit_preco_custo').value = product.preco_custo;
     document.getElementById('edit_preco_venda').value = product.preco_venda;
-    document.getElementById('edit_preco_venda_2').value = product.preco_venda_2 || '';
-    document.getElementById('edit_preco_venda_3').value = product.preco_venda_3 || '';
-    document.getElementById('edit_preco_venda_atacado').value = product.preco_venda_atacado || '';
     document.getElementById('edit_estoque_minimo').value = product.estoque_minimo;
     
     // Fiscal Fields
-    document.getElementById('edit_cean').value = product.cean || '';
     document.getElementById('edit_cest').value = product.cest || '';
     document.getElementById('edit_origem').value = product.origem || 0;
     document.getElementById('edit_csosn').value = product.csosn || '102';
@@ -416,7 +344,7 @@ function deleteProduct(id) {
     }
 }
 
-// Client-side Inventory search logic
+// Client-side search logic
 document.getElementById('productSearch').addEventListener('keyup', function() {
     let value = this.value.toLowerCase();
     let rows = document.querySelectorAll('#inventoryTable tbody tr');
@@ -426,132 +354,4 @@ document.getElementById('productSearch').addEventListener('keyup', function() {
         row.style.display = text.includes(value) ? '' : 'none';
     });
 });
-
-// NCM Search Logic with Inline Dropdown Autocomplete
-let ncmDebounceTimer;
-
-function searchNcmInline(term, force = false) {
-    const dropdown = document.getElementById('ncmDropdown');
-    const loader = document.getElementById('ncmLoader');
-    
-    if (term.length < 3 && !force) {
-        dropdown.style.display = 'none';
-        return;
-    }
-
-    clearTimeout(ncmDebounceTimer);
-    ncmDebounceTimer = setTimeout(() => {
-        loader.style.display = 'block';
-        
-        fetch(`api/ncm_search.php?search=${encodeURIComponent(term)}`)
-            .then(response => {
-                if (!response.ok) throw new Error('API Falhou');
-                return response.json();
-            })
-            .then(data => {
-                dropdown.innerHTML = '';
-                if (data && data.length > 0) {
-                    data.forEach(item => {
-                        const cleanCode = item.codigo.replace(/\./g, '');
-                        dropdown.innerHTML += `
-                            <li>
-                                <a class="dropdown-item py-2" href="javascript:void(0)" onclick="selectNcm('${cleanCode}')">
-                                    <div class="fw-bold text-primary font-monospace small">${item.codigo}</div>
-                                    <div class="text-truncate text-muted" style="max-width: 300px; font-size: 0.80rem;" title="${item.descricao}">${item.descricao}</div>
-                                </a>
-                            </li>
-                        `;
-                    });
-                } else {
-                    dropdown.innerHTML = '<li><span class="dropdown-item text-muted small">Nenhum NCM encontrado.</span></li>';
-                }
-                dropdown.style.display = 'block';
-            })
-            .catch(err => {
-                dropdown.innerHTML = '<li><span class="dropdown-item text-danger small">Erro na busca.</span></li>';
-                dropdown.style.display = 'block';
-            })
-            .finally(() => {
-                loader.style.display = 'none';
-            });
-    }, 500); // 500ms debounce
-}
-
-function selectNcm(code) {
-    document.getElementById('edit_ncm').value = code;
-    document.getElementById('ncmDropdown').style.display = 'none';
-}
-
-// Close Dropdowns if clicked outside
-document.addEventListener('click', function(event) {
-    const ncmGroup = document.querySelector('#edit_ncm').parentElement;
-    if (!ncmGroup.contains(event.target)) {
-        document.getElementById('ncmDropdown').style.display = 'none';
-    }
-    const cestGroup = document.querySelector('#edit_cest').parentElement;
-    if (!cestGroup.contains(event.target)) {
-        document.getElementById('cestDropdown').style.display = 'none';
-    }
-});
-
-// CEST Search Logic (local database via api/cest_search.php)
-let cestDebounceTimer;
-
-function searchCestInline(term) {
-    const dropdown = document.getElementById('cestDropdown');
-    const loader = document.getElementById('cestLoader');
-
-    if (term.length < 2) {
-        dropdown.style.display = 'none';
-        return;
-    }
-
-    clearTimeout(cestDebounceTimer);
-    cestDebounceTimer = setTimeout(() => {
-        loader.style.display = 'block';
-
-        fetch(`api/cest_search.php?search=${encodeURIComponent(term)}`)
-            .then(r => r.ok ? r.json() : [])
-            .then(data => {
-                dropdown.innerHTML = '';
-                if (data && data.length > 0) {
-                    data.forEach(item => {
-                        dropdown.innerHTML += `
-                            <li class="list-group-item list-group-item-action p-2" onclick="selectCest('${item.codigo}')" style="cursor:pointer;">
-                                <div class="fw-bold text-success font-monospace small">${item.codigo}</div>
-                                <div class="text-muted text-truncate" style="font-size:0.78rem;" title="${item.descricao}">${item.descricao}</div>
-                            </li>
-                        `;
-                    });
-                } else {
-                    dropdown.innerHTML = '<li class="list-group-item text-muted small">Nenhum CEST encontrado. Consulte a tabela SEFAZ.</li>';
-                }
-                dropdown.style.display = 'block';
-            })
-            .catch(() => {
-                dropdown.innerHTML = '<li class="list-group-item text-danger small">Erro ao buscar CEST.</li>';
-                dropdown.style.display = 'block';
-            })
-            .finally(() => {
-                loader.style.display = 'none';
-            });
-    }, 400);
-}
-
-function selectCest(code) {
-    document.getElementById('edit_cest').value = code;
-    document.getElementById('cestDropdown').style.display = 'none';
-}
-
-function updateFormVisibility() {
-    const unidade = document.getElementById('edit_unidade').value;
-    
-    // For liquid/weight units, hide the physical dimensions and weight fields
-    // since they're not relevant (e.g., you don't have "width" for a liquid)
-    const liquidUnits = ['KG', 'GR', 'L', 'ML'];
-    const hideDimensions = liquidUnits.includes(unidade);
-    
-    document.getElementById('div_peso').style.display = hideDimensions ? 'none' : '';
-    document.getElementById('div_dimensoes').style.display = hideDimensions ? 'none' : '';
-}
 </script>

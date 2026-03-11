@@ -22,7 +22,7 @@ class SefazConsultaService extends BaseService {
         
         // Ensure password is raw
         if (!empty($this->config['certificado_senha'])) {
-             $this->config['certificado_senha_raw'] = $this->config['certificado_senha'];
+             $this->config['certificado_senha_raw'] = base64_decode($this->config['certificado_senha']);
         }
     }
 
