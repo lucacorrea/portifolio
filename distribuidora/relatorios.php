@@ -10,7 +10,7 @@ auth_require('index.php');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 // Helpers (csrf/flash/etc)
-$helpers = __DIR__ . '/assets/dados/relatorios/__helpers.php';
+$helpers = __DIR__ . '/assets/dados/relatorios/_helpers.php';
 if (is_file($helpers)) require_once $helpers;
 
 // Conexão PDO (precisa existir db():PDO)
