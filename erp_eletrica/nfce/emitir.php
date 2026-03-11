@@ -147,17 +147,24 @@ if (!$itens && isset($_GET['venda_id'])) {
 
   /* Carrega conexão (mesmos candidatos do vendaRapidaSubmit.php) */
   $__candidates = [
-  __DIR__ . '/../../assets/php/conexao.php',
-  __DIR__ . '/../../ERP/assets/php/conexao.php',
-  __DIR__ . '/../dashboard/php/conexao.php',
-  $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
-  $_SERVER['DOCUMENT_ROOT'] . '/ERP/assets/php/conexao.php',
+    __DIR__ . '/../config.php',
+    __DIR__ . '/../../assets/php/conexao.php',
+    __DIR__ . '/../../ERP/assets/php/conexao.php',
+    __DIR__ . '/../dashboard/php/conexao.php',
+    $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
+    $_SERVER['DOCUMENT_ROOT'] . '/ERP/assets/php/conexao.php',
   ];
   $__found = false;
   foreach ($__candidates as $__p) {
-    if (is_file($__p)) { require_once $__p; $__found = true; break; }
+    if (is_file($__p)) {
+      require_once $__p;
+      if (isset($pdo) && $pdo instanceof PDO) {
+        $__found = true;
+        break;
+      }
+    }
   }
-if ($__found && isset($pdo) && $pdo instanceof PDO) {
+if (isset($pdo) && $pdo instanceof PDO) {
   try {
     // Busca itens diretamente da nova tabela vendas_itens
     $st = $pdo->prepare("SELECT vi.produto_id, p.nome AS produto_nome, vi.quantidade, vi.preco_unitario, p.unidade, p.ncm, p.cfop_interno AS cfop
