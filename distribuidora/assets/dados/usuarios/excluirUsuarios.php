@@ -12,9 +12,6 @@ require_once __DIR__ . '/../../conexao.php';
 
 $pdo = db();
 
-/* =========================
-   HELPERS LOCAIS
-========================= */
 function users_redirect_to(string $url): void
 {
     header('Location: ' . $url);

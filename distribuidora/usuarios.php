@@ -14,14 +14,14 @@ require_once __DIR__ . '/assets/conexao.php';
 $pdo = db();
 
 /* =========================
-   HELPERS LOCAIS (PREFIXADOS)
+   HELPERS LOCAIS
 ========================= */
-function users_e(string $value): string
+function u_e(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function users_csrf_token(): string
+function u_csrf_token(): string
 {
     if (empty($_SESSION['_csrf']) || !is_string($_SESSION['_csrf'])) {
         $_SESSION['_csrf'] = bin2hex(random_bytes(32));
@@ -29,28 +29,7 @@ function users_csrf_token(): string
     return $_SESSION['_csrf'];
 }
 
-function users_get_str(string $key, string $default = ''): string
-{
-    $value = $_GET[$key] ?? $default;
-    return is_string($value) ? trim($value) : $default;
-}
-
-function users_get_int(string $key, int $default = 1): int
-{
-    $value = $_GET[$key] ?? $default;
-    return is_numeric($value) ? max(1, (int)$value) : $default;
-}
-
-function users_json_out(array $payload, int $code = 200): void
-{
-    http_response_code($code);
-    header('Content-Type: application/json; charset=UTF-8');
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
-function users_flash_take(string $key): ?string
+function u_take_flash(string $key): ?string
 {
     if (isset($_SESSION[$key]) && is_string($_SESSION[$key])) {
         $msg = $_SESSION[$key];
@@ -60,7 +39,7 @@ function users_flash_take(string $key): ?string
     return null;
 }
 
-function users_fmt_date(?string $date): string
+function u_fmt_date(?string $date): string
 {
     $date = trim((string)$date);
     if ($date === '') {
@@ -75,57 +54,7 @@ function users_fmt_date(?string $date): string
     return date('d/m/Y H:i', $ts);
 }
 
-function users_fetch_page(PDO $pdo, string $q, int $page, int $perPage): array
-{
-    $where = ' WHERE 1=1 ';
-    $params = [];
-
-    if ($q !== '') {
-        $where .= " AND (CAST(id AS CHAR) LIKE :q OR nome LIKE :q OR email LIKE :q) ";
-        $params[':q'] = '%' . $q . '%';
-    }
-
-    $sqlCount = "SELECT COUNT(*) FROM usuarios {$where}";
-    $stCount = $pdo->prepare($sqlCount);
-    $stCount->execute($params);
-    $total = (int)$stCount->fetchColumn();
-
-    $lastPage = max(1, (int)ceil($total / $perPage));
-    $page = min(max(1, $page), $lastPage);
-    $offset = ($page - 1) * $perPage;
-
-    $sql = "SELECT id, nome, email, status, created_at
-            FROM usuarios
-            {$where}
-            ORDER BY id DESC
-            LIMIT :limite OFFSET :offset";
-    $st = $pdo->prepare($sql);
-
-    foreach ($params as $k => $v) {
-        $st->bindValue($k, $v, PDO::PARAM_STR);
-    }
-
-    $st->bindValue(':limite', $perPage, PDO::PARAM_INT);
-    $st->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $st->execute();
-
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-    $from = $total > 0 ? ($offset + 1) : 0;
-    $to = $total > 0 ? min($offset + $perPage, $total) : 0;
-
-    return [
-        'rows'      => $rows,
-        'total'     => $total,
-        'page'      => $page,
-        'per_page'  => $perPage,
-        'last_page' => $lastPage,
-        'from'      => $from,
-        'to'        => $to,
-    ];
-}
-
-function users_render_rows(array $rows): string
+function u_render_rows(array $rows): string
 {
     ob_start();
 
@@ -139,23 +68,23 @@ function users_render_rows(array $rows): string
         $nome      = (string)($r['nome'] ?? '');
         $email     = (string)($r['email'] ?? '');
         $status    = (string)($r['status'] ?? 'ATIVO');
-        $createdAt = users_fmt_date((string)($r['created_at'] ?? ''));
+        $createdAt = (string)($r['created_at_fmt'] ?? '-');
         $statusCls = strtoupper($status) === 'ATIVO' ? 'ok' : 'warn';
 ?>
         <tr>
             <td><?= $id ?></td>
-            <td class="fw-bold"><?= users_e($nome) ?></td>
-            <td><?= users_e($email) ?></td>
-            <td><span class="pill <?= $statusCls ?>"><?= users_e($status) ?></span></td>
-            <td><?= users_e($createdAt) ?></td>
+            <td class="fw-bold"><?= u_e($nome) ?></td>
+            <td><?= u_e($email) ?></td>
+            <td><span class="pill <?= $statusCls ?>"><?= u_e($status) ?></span></td>
+            <td><?= u_e($createdAt) ?></td>
             <td class="text-end">
                 <button
                     type="button"
                     class="main-btn primary-btn btn-hover btn-action btnEditar"
                     data-id="<?= $id ?>"
-                    data-nome="<?= users_e($nome) ?>"
-                    data-email="<?= users_e($email) ?>"
-                    data-status="<?= users_e($status) ?>">
+                    data-nome="<?= u_e($nome) ?>"
+                    data-email="<?= u_e($email) ?>"
+                    data-status="<?= u_e($status) ?>">
                     <i class="lni lni-pencil"></i>
                 </button>
 
@@ -163,7 +92,7 @@ function users_render_rows(array $rows): string
                     type="button"
                     class="main-btn danger-btn-outline btn-hover btn-action btnExcluir"
                     data-id="<?= $id ?>"
-                    data-nome="<?= users_e($nome) ?>">
+                    data-nome="<?= u_e($nome) ?>">
                     <i class="lni lni-trash-can"></i>
                 </button>
             </td>
@@ -174,13 +103,10 @@ function users_render_rows(array $rows): string
     return (string)ob_get_clean();
 }
 
-function users_render_pager(array $data): string
+function u_render_pager(int $page, int $lastPage): string
 {
-    $page = (int)$data['page'];
-    $last = (int)$data['last_page'];
-
     $prevDisabled = $page <= 1 ? 'disabled' : '';
-    $nextDisabled = $page >= $last ? 'disabled' : '';
+    $nextDisabled = $page >= $lastPage ? 'disabled' : '';
 
     ob_start();
     ?>
@@ -189,9 +115,9 @@ function users_render_pager(array $data): string
             <i class="lni lni-chevron-left"></i>
         </button>
 
-        <div class="pager-text">Página <?= $page ?>/<?= $last ?></div>
+        <div class="pager-text">Página <?= $page ?>/<?= $lastPage ?></div>
 
-        <button type="button" class="pager-btn" data-page="<?= min($last, $page + 1) ?>" <?= $nextDisabled ?>>
+        <button type="button" class="pager-btn" data-page="<?= min($lastPage, $page + 1) ?>" <?= $nextDisabled ?>>
             <i class="lni lni-chevron-right"></i>
         </button>
     </div>
@@ -200,39 +126,35 @@ function users_render_pager(array $data): string
 }
 
 /* =========================
-   AJAX
+   DADOS
 ========================= */
-$action = strtolower(users_get_str('action', ''));
-if ($action === 'ajax') {
-    try {
-        $q = users_get_str('q', '');
-        $page = users_get_int('page', 1);
-        $perPage = 10;
+$sql = "SELECT id, nome, email, status, created_at
+        FROM usuarios
+        ORDER BY id DESC";
+$allRowsRaw = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        $data = users_fetch_page($pdo, $q, $page, $perPage);
-
-        users_json_out([
-            'ok'         => true,
-            'tbody_html' => users_render_rows($data['rows']),
-            'info_text'  => "Mostrando {$data['from']}-{$data['to']} de {$data['total']}",
-            'pager_html' => users_render_pager($data),
-        ]);
-    } catch (Throwable $e) {
-        users_json_out([
-            'ok'  => false,
-            'msg' => 'Erro ao carregar usuários: ' . $e->getMessage(),
-        ], 500);
-    }
+$allRows = [];
+foreach ($allRowsRaw as $r) {
+    $allRows[] = [
+        'id'             => (int)($r['id'] ?? 0),
+        'nome'           => (string)($r['nome'] ?? ''),
+        'email'          => (string)($r['email'] ?? ''),
+        'status'         => (string)($r['status'] ?? 'ATIVO'),
+        'created_at'     => (string)($r['created_at'] ?? ''),
+        'created_at_fmt' => u_fmt_date((string)($r['created_at'] ?? '')),
+    ];
 }
 
-/* =========================
-   PRIMEIRA CARGA
-========================= */
-$data = users_fetch_page($pdo, '', 1, 10);
+$perPage = 10;
+$total = count($allRows);
+$lastPage = max(1, (int)ceil($total / $perPage));
+$firstRows = array_slice($allRows, 0, $perPage);
+$from = $total > 0 ? 1 : 0;
+$to = min($perPage, $total);
 
-$csrf = users_csrf_token();
-$flashOk  = users_flash_take('flash_ok');
-$flashErr = users_flash_take('flash_err');
+$csrf = u_csrf_token();
+$flashOk  = u_take_flash('flash_ok');
+$flashErr = u_take_flash('flash_err');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -329,18 +251,20 @@ $flashErr = users_flash_take('flash_err');
 
         .btn-action {
             height: 36px !important;
-            padding: 8px 12px !important;
+            min-width: 36px !important;
+            padding: 8px 10px !important;
             font-size: 13px !important;
             border-radius: 10px !important;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
         }
 
         .logout-btn {
             padding: 8px 14px !important;
             min-width: 88px;
-            height: 46px;
+            height: 42px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -426,6 +350,39 @@ $flashErr = users_flash_take('flash_err');
             font-size: 14px;
             font-weight: 700;
             color: #475569;
+        }
+
+        #btnNovo {
+            height: 42px !important;
+            min-height: 42px !important;
+            padding: 0 16px !important;
+            font-size: 14px !important;
+            border-radius: 10px !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-modal-action {
+            height: 42px !important;
+            min-height: 42px !important;
+            min-width: 110px !important;
+            padding: 0 16px !important;
+            font-size: 14px !important;
+            border-radius: 10px !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flash-auto-hide {
+            transition: opacity .35s ease, transform .35s ease;
+        }
+
+        .flash-auto-hide.hide-now {
+            opacity: 0;
+            transform: translateY(-8px);
         }
 
         @media (max-width: 768px) {
@@ -536,7 +493,7 @@ $flashErr = users_flash_take('flash_err');
 
                     <div class="col-lg-7 col-md-7 col-6">
                         <div class="header-right d-flex justify-content-end align-items-center">
-                            <a href="logout.php" class="main-btn primary-btn btn-hover logout-btn">
+                            <a href="assets/auth/logout.php" class="main-btn primary-btn btn-hover logout-btn">
                                 <i class="lni lni-exit me-1"></i> Sair
                             </a>
                         </div>
@@ -548,11 +505,11 @@ $flashErr = users_flash_take('flash_err');
         <section class="section">
             <div class="container-fluid p-4">
                 <?php if ($flashOk): ?>
-                    <div class="alert alert-success" style="border-radius:14px;"><?= users_e($flashOk) ?></div>
+                    <div class="alert alert-success flash-auto-hide" style="border-radius:14px;"><?= u_e($flashOk) ?></div>
                 <?php endif; ?>
 
                 <?php if ($flashErr): ?>
-                    <div class="alert alert-danger" style="border-radius:14px;"><?= users_e($flashErr) ?></div>
+                    <div class="alert alert-danger flash-auto-hide" style="border-radius:14px;"><?= u_e($flashErr) ?></div>
                 <?php endif; ?>
 
                 <div class="card-style mb-3">
@@ -562,7 +519,7 @@ $flashErr = users_flash_take('flash_err');
                             <div class="muted">Gerencie quem acessa o sistema</div>
                         </div>
                         <button type="button" class="main-btn primary-btn btn-hover" id="btnNovo">
-                            <i class="lni lni-plus me-1"></i> Novo Usuário
+                            <i class="lni lni-plus"></i> Novo Usuário
                         </button>
                     </div>
                     <div class="body">
@@ -585,18 +542,18 @@ $flashErr = users_flash_take('flash_err');
                                     </tr>
                                 </thead>
                                 <tbody id="tbody">
-                                    <?= users_render_rows($data['rows']) ?>
+                                    <?= u_render_rows($firstRows) ?>
                                 </tbody>
                             </table>
                         </div>
 
                         <div class="footer-table">
                             <div class="footer-info" id="footerInfo">
-                                Mostrando <?= $data['from'] ?>-<?= $data['to'] ?> de <?= $data['total'] ?>
+                                Mostrando <?= $from ?>-<?= $to ?> de <?= $total ?>
                             </div>
 
                             <div id="pagerArea">
-                                <?= users_render_pager($data) ?>
+                                <?= u_render_pager(1, $lastPage) ?>
                             </div>
                         </div>
                     </div>
@@ -615,7 +572,7 @@ $flashErr = users_flash_take('flash_err');
                     </div>
 
                     <div class="modal-body">
-                        <input type="hidden" name="csrf" value="<?= users_e($csrf) ?>">
+                        <input type="hidden" name="csrf" value="<?= u_e($csrf) ?>">
                         <input type="hidden" name="id" id="fmId" value="">
 
                         <div class="mb-3">
@@ -646,8 +603,8 @@ $flashErr = users_flash_take('flash_err');
                     </div>
 
                     <div class="modal-footer">
-                        <button class="main-btn primary-btn btn-hover" type="submit">Salvar</button>
-                        <button class="main-btn light-btn btn-hover" type="button" data-bs-dismiss="modal">Cancelar</button>
+                        <button class="main-btn primary-btn btn-hover btn-modal-action" type="submit">Salvar</button>
+                        <button class="main-btn light-btn btn-hover btn-modal-action" type="button" data-bs-dismiss="modal">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -655,20 +612,108 @@ $flashErr = users_flash_take('flash_err');
     </div>
 
     <form id="formExcluir" method="post" action="assets/dados/usuarios/excluirUsuarios.php" style="display:none;">
-        <input type="hidden" name="csrf" value="<?= users_e($csrf) ?>">
+        <input type="hidden" name="csrf" value="<?= u_e($csrf) ?>">
         <input type="hidden" name="id" id="delId">
     </form>
 
-    <script src="assets/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/main.js"></script>
     <script>
+        const allRows = <?= json_encode($allRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        const perPage = 10;
+
         const modalEl = document.getElementById('mdForm');
         const modal = new bootstrap.Modal(modalEl);
         const tbody = document.getElementById('tbody');
         const footerInfo = document.getElementById('footerInfo');
         const pagerArea = document.getElementById('pagerArea');
         const inputQ = document.getElementById('q');
+
+        let currentPage = 1;
         let timer = null;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function filterRows(query) {
+            const q = String(query || '').trim().toLowerCase();
+            if (!q) return [...allRows];
+
+            return allRows.filter(row => {
+                const haystack = [
+                    row.id,
+                    row.nome,
+                    row.email,
+                    row.status,
+                    row.created_at_fmt
+                ].join(' ').toLowerCase();
+
+                return haystack.includes(q);
+            });
+        }
+
+        function renderRows(rows) {
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Nenhum usuário encontrado.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rows.map(row => {
+                const statusCls = String(row.status || '').toUpperCase() === 'ATIVO' ? 'ok' : 'warn';
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(row.id)}</td>
+                        <td class="fw-bold">${escapeHtml(row.nome)}</td>
+                        <td>${escapeHtml(row.email)}</td>
+                        <td><span class="pill ${statusCls}">${escapeHtml(row.status)}</span></td>
+                        <td>${escapeHtml(row.created_at_fmt)}</td>
+                        <td class="text-end">
+                            <button
+                                type="button"
+                                class="main-btn primary-btn btn-hover btn-action btnEditar"
+                                data-id="${escapeHtml(row.id)}"
+                                data-nome="${escapeHtml(row.nome)}"
+                                data-email="${escapeHtml(row.email)}"
+                                data-status="${escapeHtml(row.status)}">
+                                <i class="lni lni-pencil"></i>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="main-btn danger-btn-outline btn-hover btn-action btnExcluir"
+                                data-id="${escapeHtml(row.id)}"
+                                data-nome="${escapeHtml(row.nome)}">
+                                <i class="lni lni-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderPager(page, lastPage) {
+            const prevDisabled = page <= 1 ? 'disabled' : '';
+            const nextDisabled = page >= lastPage ? 'disabled' : '';
+
+            pagerArea.innerHTML = `
+                <div class="pager-box">
+                    <button type="button" class="pager-btn" data-page="${Math.max(1, page - 1)}" ${prevDisabled}>
+                        <i class="lni lni-chevron-left"></i>
+                    </button>
+
+                    <div class="pager-text">Página ${page}/${lastPage}</div>
+
+                    <button type="button" class="pager-btn" data-page="${Math.min(lastPage, page + 1)}" ${nextDisabled}>
+                        <i class="lni lni-chevron-right"></i>
+                    </button>
+                </div>
+            `;
+        }
 
         function bindRowActions() {
             document.querySelectorAll('.btnEditar').forEach(btn => {
@@ -693,7 +738,9 @@ $flashErr = users_flash_take('flash_err');
             });
         }
 
-        function bindPager() {
+        function bindPager(filteredRows) {
+            const lastPage = Math.max(1, Math.ceil(filteredRows.length / perPage));
+
             pagerArea.querySelectorAll('.pager-btn[data-page]').forEach(btn => {
                 btn.onclick = () => {
                     if (btn.disabled) return;
@@ -701,33 +748,31 @@ $flashErr = users_flash_take('flash_err');
                     loadUsers(page);
                 };
             });
+
+            if (currentPage > lastPage) {
+                currentPage = lastPage;
+            }
         }
 
         function loadUsers(page = 1) {
             const q = inputQ.value || '';
-            const url = `usuarios.php?action=ajax&q=${encodeURIComponent(q)}&page=${page}`;
+            const filtered = filterRows(q);
 
-            fetch(url, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(r => r.json())
-                .then(res => {
-                    if (!res.ok) {
-                        alert(res.msg || 'Erro ao carregar usuários.');
-                        return;
-                    }
+            const total = filtered.length;
+            const lastPage = Math.max(1, Math.ceil(total / perPage));
+            currentPage = Math.min(Math.max(1, page), lastPage);
 
-                    tbody.innerHTML = res.tbody_html || '';
-                    footerInfo.textContent = res.info_text || '';
-                    pagerArea.innerHTML = res.pager_html || '';
-                    bindRowActions();
-                    bindPager();
-                })
-                .catch(() => {
-                    alert('Erro ao carregar usuários.');
-                });
+            const offset = (currentPage - 1) * perPage;
+            const pagedRows = filtered.slice(offset, offset + perPage);
+
+            const from = total > 0 ? offset + 1 : 0;
+            const to = total > 0 ? Math.min(offset + perPage, total) : 0;
+
+            renderRows(pagedRows);
+            renderPager(currentPage, lastPage);
+            footerInfo.textContent = `Mostrando ${from}-${to} de ${total}`;
+            bindRowActions();
+            bindPager(filtered);
         }
 
         document.getElementById('btnNovo').addEventListener('click', () => {
@@ -742,12 +787,24 @@ $flashErr = users_flash_take('flash_err');
 
         inputQ.addEventListener('input', () => {
             clearTimeout(timer);
-            timer = setTimeout(() => loadUsers(1), 250);
+            timer = setTimeout(() => loadUsers(1), 180);
+        });
+
+        document.querySelectorAll('.flash-auto-hide').forEach(el => {
+            setTimeout(() => {
+                el.classList.add('hide-now');
+                setTimeout(() => {
+                    el.remove();
+                }, 350);
+            }, 1600);
         });
 
         bindRowActions();
-        bindPager();
+        bindPager(allRows);
     </script>
+
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/main.js"></script>
 </body>
 
 </html>
