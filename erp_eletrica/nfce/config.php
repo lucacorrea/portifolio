@@ -78,11 +78,11 @@ function resolve_cert_path(?string $fileFromDb, array &$attempts = []): ?string 
     // Nome simples — usar somente o basename
     $base = basename($fileFromDb);
     $candidates = [
-      $docroot . '/storage/certificados/' . $base,
-      __DIR__   . '/../storage/certificados/' . $base,
       $docroot . '/assets/img/certificado/' . $base,
       $docroot . '/public_html/assets/img/certificado/' . $base,
       __DIR__   . '/../../assets/img/certificado/' . $base,
+      $docroot . '/storage/certificados/' . $base,
+      __DIR__   . '/../storage/certificados/' . $base,
       __DIR__   . '/../certificados/' . $base,
       __DIR__   . '/' . $base,
     ];
@@ -218,7 +218,7 @@ if (!$COD_UF && $EMIT_CMUN) {
 $COD_UF = (string)$COD_UF;
 
 // Certificado
-$PFX_PASSWORD = (string)($row['senha_certificado'] ?? '');
+$PFX_PASSWORD = trim((string)($row['senha_certificado'] ?? ''));
 $PFX_FROM_DB  = $row['certificado_digital'] ?? null;
 $attempts = [];
 $PFX_PATH     = resolve_cert_path($PFX_FROM_DB, $attempts);

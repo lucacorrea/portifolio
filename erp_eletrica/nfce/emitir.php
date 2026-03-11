@@ -247,8 +247,21 @@ if (empty($cpf) && !empty($vendaRow['cpf_cliente'])) {
 /* ===== Certificado A1 ===== */
 $pfx = @file_get_contents(PFX_PATH);
 if ($pfx === false) die('Não encontrei o PFX em: '.e(PFX_PATH));
-try { $cert = Certificate::readPfx($pfx, PFX_PASSWORD); }
-catch (Throwable $e) { die('<pre>Falha ao abrir certificado: '.$e->getMessage().'</pre>'); }
+try {
+  $cert = Certificate::readPfx($pfx, PFX_PASSWORD);
+} catch (Throwable $e) {
+  // Fallback: tenta com trim (caso o config.php não tenha pego ou hajam espaços fantasmas)
+  try {
+     $cert = Certificate::readPfx($pfx, trim(PFX_PASSWORD));
+  } catch (Throwable $e2) {
+     $msg = "Falha ao abrir certificado!\n";
+     $msg .= "Erro: " . $e->getMessage() . "\n";
+     $msg .= "Caminho: " . PFX_PATH . "\n";
+     $msg .= "Tamanho PFX: " . strlen($pfx) . " bytes\n";
+     $msg .= "Comprimento Senha: " . strlen(PFX_PASSWORD) . " caracteres\n";
+     die('<pre>'.e($msg).'</pre>');
+  }
+}
 
 /* ===== Tools ===== */
 $tools = new Tools($configJson, $cert);
