@@ -1,109 +1,174 @@
 <?php
 declare(strict_types=1);
 
-@date_default_timezone_set('America/Manaus');
-
 if (session_status() !== PHP_SESSION_ACTIVE) {
-  session_start();
+    session_start();
 }
 
-/* =========================
-   BASICS
- ========================= */
+/*
+|--------------------------------------------------------------------------
+| Carrega o helper global
+|--------------------------------------------------------------------------
+*/
+$globalHelper = __DIR__ . '/../_helpers.php';
+if (is_file($globalHelper)) {
+    require_once $globalHelper;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Fallbacks mínimos
+|--------------------------------------------------------------------------
+| Só cria se ainda não existirem.
+*/
+
 if (!function_exists('e')) {
-  function e(string $v): string {
-    return htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-  }
+    function e(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
 }
 
-function require_db_or_die(): void {
-  if (!function_exists('db')) {
-    http_response_code(500);
-    echo "ERRO: função db():PDO não encontrada. Verifique assets/conexao.php";
-    exit;
-  }
+if (!function_exists('require_db_or_die')) {
+    function require_db_or_die(): PDO
+    {
+        if (!function_exists('db')) {
+            http_response_code(500);
+            exit('Função db(): PDO não encontrada.');
+        }
+
+        $pdo = db();
+
+        if (!$pdo instanceof PDO) {
+            http_response_code(500);
+            exit('Conexão inválida.');
+        }
+
+        return $pdo;
+    }
 }
 
-/* =========================
-   REQUEST
- ========================= */
-function is_post(): bool {
-  return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
+/*
+|--------------------------------------------------------------------------
+| Helpers específicos do módulo de usuários
+|--------------------------------------------------------------------------
+*/
+
+if (!function_exists('users_set_flash')) {
+    function users_set_flash(string $key, string $msg): void
+    {
+        $_SESSION[$key] = $msg;
+    }
 }
 
-function get_str(string $k, string $def = ''): string {
-  return isset($_GET[$k]) ? trim((string)$_GET[$k]) : $def;
+if (!function_exists('users_take_flash')) {
+    function users_take_flash(string $key): ?string
+    {
+        if (!isset($_SESSION[$key]) || !is_string($_SESSION[$key])) {
+            return null;
+        }
+
+        $msg = $_SESSION[$key];
+        unset($_SESSION[$key]);
+
+        return $msg;
+    }
 }
 
-function get_int(string $k, int $def = 0): int {
-  $v = isset($_GET[$k]) ? (int)$_GET[$k] : $def;
-  return $v > 0 ? $v : $def;
+if (!function_exists('users_get_str')) {
+    function users_get_str(string $key, string $default = ''): string
+    {
+        $value = $_GET[$key] ?? $default;
+        return is_string($value) ? trim($value) : $default;
+    }
 }
 
-function post_str(string $k, string $def = ''): string {
-  return isset($_POST[$k]) ? trim((string)$_POST[$k]) : $def;
+if (!function_exists('users_post_str')) {
+    function users_post_str(string $key, string $default = ''): string
+    {
+        $value = $_POST[$key] ?? $default;
+        return is_string($value) ? trim($value) : $default;
+    }
 }
 
-function post_int(string $k, int $def = 0): int {
-  $v = isset($_POST[$k]) ? (int)$_POST[$k] : $def;
-  return $v > 0 ? $v : $def;
+if (!function_exists('users_post_int')) {
+    function users_post_int(string $key, int $default = 0): int
+    {
+        $value = $_POST[$key] ?? $default;
+        return is_numeric($value) ? (int)$value : $default;
+    }
 }
 
-/* =========================
-   URL BASE
- ========================= */
-function base_path(): string {
-  $dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-  return $dir === '' ? '' : $dir;
+if (!function_exists('users_get_int')) {
+    function users_get_int(string $key, int $default = 1): int
+    {
+        $value = $_GET[$key] ?? $default;
+        return is_numeric($value) ? max(1, (int)$value) : $default;
+    }
 }
 
-function url_here(string $file): string {
-  return base_path() . '/' . ltrim($file, '/');
+if (!function_exists('users_csrf_validate')) {
+    function users_csrf_validate(string $field = 'csrf', string $sessionKey = '_csrf'): bool
+    {
+        $posted = (string)($_POST[$field] ?? '');
+        $sess   = (string)($_SESSION[$sessionKey] ?? '');
+
+        return $posted !== '' && $sess !== '' && hash_equals($sess, $posted);
+    }
 }
 
-/* =========================
-   REDIRECT + FLASH
- ========================= */
-function redirect(string $to): void {
-  header('Location: ' . $to);
-  exit;
+if (!function_exists('users_hash_password')) {
+    function users_hash_password(string $senha): array
+    {
+        $salt = bin2hex(random_bytes(32));
+        $hash = hash('sha256', $salt . '|' . $senha);
+
+        return [
+            'salt' => $salt,
+            'hash' => $hash,
+        ];
+    }
 }
 
-function flash_set(string $key, string $msg): void {
-  $_SESSION[$key] = $msg;
+if (!function_exists('users_verify_password')) {
+    function users_verify_password(string $senha, string $salt, string $hash): bool
+    {
+        $calc = hash('sha256', $salt . '|' . $senha);
+        return hash_equals($hash, $calc);
+    }
 }
 
-function flash_pop(string $key): string {
-  $v = (string)($_SESSION[$key] ?? '');
-  unset($_SESSION[$key]);
-  return $v;
+if (!function_exists('users_fmt_date')) {
+    function users_fmt_date(?string $date): string
+    {
+        $date = trim((string)$date);
+
+        if ($date === '') {
+            return '-';
+        }
+
+        $ts = strtotime($date);
+        if ($ts === false) {
+            return '-';
+        }
+
+        return date('d/m/Y H:i', $ts);
+    }
 }
 
-/* =========================
-   CSRF
- ========================= */
-function csrf_token(): string {
-  if (empty($_SESSION['_csrf'])) {
-    $_SESSION['_csrf'] = bin2hex(random_bytes(16));
-  }
-  return (string)$_SESSION['_csrf'];
+if (!function_exists('users_json_out')) {
+    function users_json_out(array $payload, int $code = 200): void
+    {
+        http_response_code($code);
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+
+        echo json_encode(
+            $payload,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        exit;
+    }
 }
 
-function safe_return_to(string $uri): string {
-  $u = trim($uri);
-  if ($u === '') return url_here('../../../usuarios.php');
-  if (str_contains($u, "\n") || str_contains($u, "\r")) return url_here('usuarios.php');
-  if (!str_starts_with($u, '/')) return url_here('../../../usuarios.php');
-  return $u;
-}
-
-function csrf_validate_or_die(): void {
-  $t = (string)($_POST['_csrf'] ?? '');
-  $sess = (string)($_SESSION['_csrf'] ?? '');
-  if ($t === '' || $sess === '' || !hash_equals($sess, $t)) {
-    flash_set('flash_err', 'CSRF inválido. Atualize a página e tente novamente.');
-    $ret = safe_return_to(post_str('return_to', url_here('usuarios.php')));
-    redirect($ret);
-  }
-}
 ?>
