@@ -639,10 +639,21 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="title">
-                                <h2>Gestão de Vendas</h2>
-                                <p class="text-muted">Listagem e filtros de vendas</p>
+                                <h2>Clientes</h2>
                             </div>
                         </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Cadastros</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Clientes</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
