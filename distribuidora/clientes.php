@@ -635,7 +635,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         <section class="section">
             <div class="container-fluid page-pad">
 
-                <div class="title-wrapper pt-30">
+                <div class="title-wrapper pt-10">
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="title">
