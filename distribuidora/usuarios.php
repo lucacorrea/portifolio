@@ -3,9 +3,6 @@
 declare(strict_types=1);
 
 @date_default_timezone_set('America/Manaus');
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
 
 require_once __DIR__ . '/assets/auth/auth.php';
 if (function_exists('auth_require')) {
@@ -14,40 +11,24 @@ if (function_exists('auth_require')) {
 
 require_once __DIR__ . '/assets/conexao.php';
 
-$helpersUsuarios = __DIR__ . '/assets/dados/usuarios/_helpers.php';
-$helpersGlobal   = __DIR__ . '/assets/dados/_helpers.php';
-
-if (is_file($helpersUsuarios)) {
-    require_once $helpersUsuarios;
-} elseif (is_file($helpersGlobal)) {
-    require_once $helpersGlobal;
-}
-
-/* =========================
-   FALLBACKS
-========================= */
-if (!function_exists('e')) {
-    function e(string $value): string
-    {
-        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-    }
-}
-
-if (!function_exists('csrf_token')) {
-    function csrf_token(): string
-    {
-        if (empty($_SESSION['_csrf']) || !is_string($_SESSION['_csrf'])) {
-            $_SESSION['_csrf'] = bin2hex(random_bytes(32));
-        }
-        return $_SESSION['_csrf'];
-    }
-}
-
 $pdo = db();
 
 /* =========================
-   HELPERS LOCAIS
+   HELPERS LOCAIS (PREFIXADOS)
 ========================= */
+function users_e(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function users_csrf_token(): string
+{
+    if (empty($_SESSION['_csrf']) || !is_string($_SESSION['_csrf'])) {
+        $_SESSION['_csrf'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['_csrf'];
+}
+
 function users_get_str(string $key, string $default = ''): string
 {
     $value = $_GET[$key] ?? $default;
@@ -76,13 +57,6 @@ function users_flash_take(string $key): ?string
         unset($_SESSION[$key]);
         return $msg;
     }
-
-    if (isset($_SESSION['_flash'][$key]) && is_string($_SESSION['_flash'][$key])) {
-        $msg = $_SESSION['_flash'][$key];
-        unset($_SESSION['_flash'][$key]);
-        return $msg;
-    }
-
     return null;
 }
 
@@ -107,7 +81,7 @@ function users_fetch_page(PDO $pdo, string $q, int $page, int $perPage): array
     $params = [];
 
     if ($q !== '') {
-        $where .= " AND (nome LIKE :q OR email LIKE :q OR CAST(id AS CHAR) LIKE :q) ";
+        $where .= " AND (CAST(id AS CHAR) LIKE :q OR nome LIKE :q OR email LIKE :q) ";
         $params[':q'] = '%' . $q . '%';
     }
 
@@ -124,21 +98,21 @@ function users_fetch_page(PDO $pdo, string $q, int $page, int $perPage): array
             FROM usuarios
             {$where}
             ORDER BY id DESC
-            LIMIT :limit OFFSET :offset";
+            LIMIT :limite OFFSET :offset";
     $st = $pdo->prepare($sql);
 
     foreach ($params as $k => $v) {
         $st->bindValue($k, $v, PDO::PARAM_STR);
     }
 
-    $st->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $st->bindValue(':limite', $perPage, PDO::PARAM_INT);
     $st->bindValue(':offset', $offset, PDO::PARAM_INT);
     $st->execute();
 
     $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $from = $total > 0 ? ($offset + 1) : 0;
-    $to   = $total > 0 ? min($offset + $perPage, $total) : 0;
+    $to = $total > 0 ? min($offset + $perPage, $total) : 0;
 
     return [
         'rows'      => $rows,
@@ -148,7 +122,6 @@ function users_fetch_page(PDO $pdo, string $q, int $page, int $perPage): array
         'last_page' => $lastPage,
         'from'      => $from,
         'to'        => $to,
-        'q'         => $q,
     ];
 }
 
@@ -171,18 +144,18 @@ function users_render_rows(array $rows): string
 ?>
         <tr>
             <td><?= $id ?></td>
-            <td class="fw-bold"><?= e($nome) ?></td>
-            <td><?= e($email) ?></td>
-            <td><span class="pill <?= $statusCls ?>"><?= e($status) ?></span></td>
-            <td><?= e($createdAt) ?></td>
+            <td class="fw-bold"><?= users_e($nome) ?></td>
+            <td><?= users_e($email) ?></td>
+            <td><span class="pill <?= $statusCls ?>"><?= users_e($status) ?></span></td>
+            <td><?= users_e($createdAt) ?></td>
             <td class="text-end">
                 <button
                     type="button"
                     class="main-btn primary-btn btn-hover btn-action btnEditar"
                     data-id="<?= $id ?>"
-                    data-nome="<?= e($nome) ?>"
-                    data-email="<?= e($email) ?>"
-                    data-status="<?= e($status) ?>">
+                    data-nome="<?= users_e($nome) ?>"
+                    data-email="<?= users_e($email) ?>"
+                    data-status="<?= users_e($status) ?>">
                     <i class="lni lni-pencil"></i>
                 </button>
 
@@ -190,7 +163,7 @@ function users_render_rows(array $rows): string
                     type="button"
                     class="main-btn danger-btn-outline btn-hover btn-action btnExcluir"
                     data-id="<?= $id ?>"
-                    data-nome="<?= e($nome) ?>">
+                    data-nome="<?= users_e($nome) ?>">
                     <i class="lni lni-trash-can"></i>
                 </button>
             </td>
@@ -227,7 +200,7 @@ function users_render_pager(array $data): string
 }
 
 /* =========================
-   AJAX ENDPOINT
+   AJAX
 ========================= */
 $action = strtolower(users_get_str('action', ''));
 if ($action === 'ajax') {
@@ -255,12 +228,9 @@ if ($action === 'ajax') {
 /* =========================
    PRIMEIRA CARGA
 ========================= */
-$q = '';
-$page = 1;
-$perPage = 10;
-$data = users_fetch_page($pdo, $q, $page, $perPage);
+$data = users_fetch_page($pdo, '', 1, 10);
 
-$csrf = csrf_token();
+$csrf = users_csrf_token();
 $flashOk  = users_flash_take('flash_ok');
 $flashErr = users_flash_take('flash_err');
 ?>
@@ -578,11 +548,11 @@ $flashErr = users_flash_take('flash_err');
         <section class="section">
             <div class="container-fluid p-4">
                 <?php if ($flashOk): ?>
-                    <div class="alert alert-success" style="border-radius:14px;"><?= e($flashOk) ?></div>
+                    <div class="alert alert-success" style="border-radius:14px;"><?= users_e($flashOk) ?></div>
                 <?php endif; ?>
 
                 <?php if ($flashErr): ?>
-                    <div class="alert alert-danger" style="border-radius:14px;"><?= e($flashErr) ?></div>
+                    <div class="alert alert-danger" style="border-radius:14px;"><?= users_e($flashErr) ?></div>
                 <?php endif; ?>
 
                 <div class="card-style mb-3">
@@ -635,7 +605,6 @@ $flashErr = users_flash_take('flash_err');
         </section>
     </main>
 
-    <!-- MODAL FORM -->
     <div class="modal fade" id="mdForm" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content" style="border-radius:16px;">
@@ -646,7 +615,7 @@ $flashErr = users_flash_take('flash_err');
                     </div>
 
                     <div class="modal-body">
-                        <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+                        <input type="hidden" name="csrf" value="<?= users_e($csrf) ?>">
                         <input type="hidden" name="id" id="fmId" value="">
 
                         <div class="mb-3">
@@ -685,9 +654,8 @@ $flashErr = users_flash_take('flash_err');
         </div>
     </div>
 
-    <!-- EXCLUIR -->
     <form id="formExcluir" method="post" action="assets/dados/usuarios/excluirUsuarios.php" style="display:none;">
-        <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+        <input type="hidden" name="csrf" value="<?= users_e($csrf) ?>">
         <input type="hidden" name="id" id="delId">
     </form>
 
@@ -701,7 +669,6 @@ $flashErr = users_flash_take('flash_err');
         const pagerArea = document.getElementById('pagerArea');
         const inputQ = document.getElementById('q');
         let timer = null;
-        let currentPage = 1;
 
         function bindRowActions() {
             document.querySelectorAll('.btnEditar').forEach(btn => {
@@ -726,8 +693,17 @@ $flashErr = users_flash_take('flash_err');
             });
         }
 
+        function bindPager() {
+            pagerArea.querySelectorAll('.pager-btn[data-page]').forEach(btn => {
+                btn.onclick = () => {
+                    if (btn.disabled) return;
+                    const page = parseInt(btn.getAttribute('data-page') || '1', 10);
+                    loadUsers(page);
+                };
+            });
+        }
+
         function loadUsers(page = 1) {
-            currentPage = page;
             const q = inputQ.value || '';
             const url = `usuarios.php?action=ajax&q=${encodeURIComponent(q)}&page=${page}`;
 
@@ -752,16 +728,6 @@ $flashErr = users_flash_take('flash_err');
                 .catch(() => {
                     alert('Erro ao carregar usuários.');
                 });
-        }
-
-        function bindPager() {
-            pagerArea.querySelectorAll('.pager-btn[data-page]').forEach(btn => {
-                btn.onclick = () => {
-                    if (btn.disabled) return;
-                    const page = parseInt(btn.getAttribute('data-page') || '1', 10);
-                    loadUsers(page);
-                };
-            });
         }
 
         document.getElementById('btnNovo').addEventListener('click', () => {
