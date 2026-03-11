@@ -259,6 +259,7 @@ try {
      $msg .= "Caminho: " . PFX_PATH . "\n";
      $msg .= "Tamanho PFX: " . strlen($pfx) . " bytes\n";
      $msg .= "Comprimento Senha: " . strlen(PFX_PASSWORD) . " caracteres\n";
+     $msg .= "Origem dos Dados: " . (defined('NFCE_TABLE_SOURCE') ? NFCE_TABLE_SOURCE : 'desconhecida') . "\n";
      die('<pre>'.e($msg).'</pre>');
   }
 }

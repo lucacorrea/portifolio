@@ -113,50 +113,58 @@ if (isset($_GET['id']) && $_GET['id'] !== '') {
   $empresaId = (string)$_SESSION['filial_id'];
 }
 if (!$empresaId) {
-  // Default to 1 if missing in ERP context
   $empresaId = '1';
 }
 
-// ========== Lê filiais (Mapeado do ERP Eletrica) ==========
-$st = $pdo->prepare("
-  SELECT 
-    id AS empresa_id, 
-    cnpj, 
-    razao_social, 
-    nome AS nome_fantasia, 
-    inscricao_estadual, 
-    '' AS inscricao_municipal,
-    cep, 
-    logradouro, 
-    numero AS numero_endereco, 
-    complemento, 
-    bairro, 
-    municipio AS cidade, 
-    uf, 
-    codigo_municipio AS codigo_uf,
-    codigo_municipio,
-    telefone, 
-    certificado_pfx AS certificado_digital, 
-    certificado_senha AS senha_certificado, 
-    ambiente, 
-    crt AS regime_tributario, 
-    csc_token AS csc, 
-    csc_id,
-    '1' AS serie_nfce,
-    '1' AS tipo_emissao,
-    '1' AS finalidade,
-    '1' AS ind_pres,
-    '1' AS tipo_impressao
-    FROM filiais
-   WHERE id = :emp
-   LIMIT 1
-");
-$st->execute([':emp' => $empresaId]);
-$row = $st->fetch(PDO::FETCH_ASSOC);
+// ========== Lê Configuração (Preferência: integracao_nfce Fallback: filiais) ==========
+$row = null;
+$tableSource = 'desconhecida';
+
+// 1. Tenta integracao_nfce (Tabela original do Açaidinhos)
+try {
+    $st = $pdo->prepare("
+      SELECT empresa_id, cnpj, razao_social, nome_fantasia, inscricao_estadual, inscricao_municipal,
+             cep, logradouro, numero_endereco, complemento, bairro, cidade, uf, codigo_uf, codigo_municipio,
+             telefone, certificado_digital, senha_certificado, ambiente, regime_tributario, csc, csc_id,
+             serie_nfce, tipo_emissao, finalidade, ind_pres, tipo_impressao
+        FROM integracao_nfce
+       WHERE empresa_id = :emp
+       LIMIT 1
+    ");
+    $st->execute([':emp' => $empresaId]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    if ($row) $tableSource = 'integracao_nfce';
+} catch (Throwable $e) {
+    // Tabela não existe ou erro, segue para filiais
+}
+
+// 2. Tenta filiais (Tabela do ERP Eletrica) se integracao_nfce falhou
+if (!$row) {
+    try {
+        $st = $pdo->prepare("
+          SELECT 
+            id AS empresa_id, cnpj, razao_social, nome AS nome_fantasia, inscricao_estadual, '' AS inscricao_municipal,
+            cep, logradouro, numero AS numero_endereco, complemento, bairro, municipio AS cidade, uf, 
+            codigo_municipio AS codigo_uf, codigo_municipio, telefone, certificado_pfx AS certificado_digital, 
+            certificado_senha AS senha_certificado, ambiente, crt AS regime_tributario, csc_token AS csc, csc_id,
+            '1' AS serie_nfce, '1' AS tipo_emissao, '1' AS finalidade, '1' AS ind_pres, '1' AS tipo_impressao
+            FROM filiais
+           WHERE id = :emp
+           LIMIT 1
+        ");
+        $st->execute([':emp' => $empresaId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row) $tableSource = 'filiais';
+    } catch (Throwable $e) {
+        die('Config NFC-e: Erro ao ler tabelas de configuração (integracao_nfce/filiais).');
+    }
+}
+
 if (!$row) {
   http_response_code(404);
-  die('Config NFC-e: não há registro em filiais para a filial_id=' . $empresaId);
+  die('Config NFC-e: não há registro em integracao_nfce ou filiais para a empresa/filial_id=' . $empresaId);
 }
+define('NFCE_TABLE_SOURCE', $tableSource);
 // ========== Normalização de ambiente (tpAmb) ==========
 function map_tp_amb($v) {
   $v = trim((string)$v);
