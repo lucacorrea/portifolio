@@ -45,11 +45,7 @@ try {
         'inscricao_estadual' => $branch['inscricao_estadual'] ?? '123456789',
         'certificado_pfx' => $global['certificado_path'] ?? 'none.pfx',
         'certificado_senha' => !empty($global['certificado_senha']) ? base64_decode($global['certificado_senha']) : '1234',
-        'ambiente' => ($global['ambiente'] ?? 'homologacao') == 'producao' ? 1 : 2,
-        'codigo_uf' => $branch['codigo_uf'] ?? $global['codigo_uf'] ?? '35',
-        'codigo_municipio' => $branch['codigo_municipio'] ?? $global['codigo_municipio'] ?? '3550308',
-        'uf' => $branch['uf'] ?? $global['uf'] ?? 'SP',
-        'cidade' => $branch['cidade'] ?? $global['cidade'] ?? 'SAO PAULO'
+        'ambiente' => ($global['ambiente'] ?? 'homologacao') == 'producao' ? 1 : 2
     ];
 
     echo "<p>2. Gerando XML Real (NFC-e 4.00)...</p>";

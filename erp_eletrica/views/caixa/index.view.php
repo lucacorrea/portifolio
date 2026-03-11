@@ -26,7 +26,7 @@
     <!-- Resumo do Caixa Aberto -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card border-0  h-100">
                 <div class="card-body">
                     <div class="text-muted small fw-bold text-uppercase mb-2">Abertura</div>
                     <h4 class="mb-0 fw-bold"><?= formatarMoeda($caixaAberto['valor_abertura']) ?></h4>
@@ -37,7 +37,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card border-0 h-100">
                 <div class="card-body">
                     <div class="text-muted small fw-bold text-uppercase mb-2">Vendas (Dinheiro)</div>
                     <h4 class="mb-0 fw-bold text-success">+ <?= formatarMoeda($summary['vendas_dinheiro']) ?></h4>
@@ -45,7 +45,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card border-0  h-100">
                 <div class="card-body">
                     <div class="text-muted small fw-bold text-uppercase mb-2">Movimentações</div>
                     <div class="d-flex justify-content-between">
@@ -57,7 +57,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-primary border-0 shadow h-100 bg-primary text-white">
+            <div class="card border-primary border-0 h-100 bg-primary text-white">
                 <div class="card-body">
                     <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual (Dinheiro)</div>
                     <h3 class="mb-0 fw-bold">
@@ -70,7 +70,7 @@
     <?php endif; ?>
 
     <!-- Histórico de Caixas -->
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 ">
         <div class="card-header bg-white py-3">
             <h6 class="mb-0 fw-bold text-secondary">Histórico de Sessões</h6>
         </div>

@@ -5,36 +5,43 @@ class Sale extends BaseModel {
     protected $table = 'vendas';
 
     public function create($data) {
-        $hasAvulso = $this->columnExists('nome_cliente_avulso');
-        
+        $hasAvulso      = $this->columnExists('nome_cliente_avulso');
+        $hasTipoNota    = $this->columnExists('tipo_nota');
+        $hasValorRecebido = $this->columnExists('valor_recebido');
+
+        $cols   = ['cliente_id', 'usuario_id', 'filial_id', 'valor_total', 'desconto_total', 'autorizado_por', 'forma_pagamento', 'status'];
+        $params = [
+            $data['cliente_id'] ?? null,
+            $data['usuario_id'],
+            $data['filial_id'],
+            $data['valor_total'],
+            $data['desconto_total'] ?? 0,
+            $data['autorizado_por'] ?? null,
+            $data['forma_pagamento'],
+            'concluido'
+        ];
+
         if ($hasAvulso) {
-            $sql = "INSERT INTO {$this->table} (cliente_id, nome_cliente_avulso, usuario_id, filial_id, valor_total, desconto_total, autorizado_por, forma_pagamento, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $params = [
-                $data['cliente_id'] ?? null,
-                $data['nome_cliente_avulso'] ?? null,
-                $data['usuario_id'],
-                $data['filial_id'],
-                $data['valor_total'],
-                $data['desconto_total'] ?? 0,
-                $data['autorizado_por'] ?? null,
-                $data['forma_pagamento'],
-                'concluido'
-            ];
-        } else {
-            $sql = "INSERT INTO {$this->table} (cliente_id, usuario_id, filial_id, valor_total, desconto_total, autorizado_por, forma_pagamento, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            $params = [
-                $data['cliente_id'] ?? null,
-                $data['usuario_id'],
-                $data['filial_id'],
-                $data['valor_total'],
-                $data['desconto_total'] ?? 0,
-                $data['autorizado_por'] ?? null,
-                $data['forma_pagamento'],
-                'concluido'
-            ];
+            array_splice($cols, 1, 0, ['nome_cliente_avulso']);
+            array_splice($params, 1, 0, [$data['nome_cliente_avulso'] ?? null]);
         }
+
+        if ($hasTipoNota) {
+            $cols[]   = 'tipo_nota';
+            $params[] = $data['tipo_nota'] ?? 'nao_fiscal';
+        }
+
+        if ($hasValorRecebido) {
+            $cols[]   = 'valor_recebido';
+            $params[] = isset($data['valor_recebido']) ? (float)$data['valor_recebido'] : null;
+            $cols[]   = 'troco';
+            $params[] = isset($data['troco']) ? (float)$data['troco'] : null;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+        $colList      = implode(', ', $cols);
+
+        $sql = "INSERT INTO {$this->table} ($colList) VALUES ($placeholders)";
         $this->query($sql, $params);
         return $this->db->lastInsertId();
     }
