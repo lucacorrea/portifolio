@@ -6,52 +6,49 @@ require_once __DIR__ . '/assets/auth/auth.php';
 auth_require('index.php');
 
 @date_default_timezone_set('America/Manaus');
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-/* ========= INCLUDES ========= */
-$helpers = __DIR__ . '/assets/dados/_helpers.php';
-if (is_file($helpers)) require_once $helpers;
-
-$con = __DIR__ . '/assets/conexao.php';
-if (is_file($con)) require_once $con;
-
-/* ========= FALLBACKS ========= */
-if (!function_exists('e')) {
-    function e(string $v): string
-    {
-        return htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-    }
-}
-
-if (!function_exists('csrf_token')) {
-    function csrf_token(): string
-    {
-        if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-        if (empty($_SESSION['_csrf'])) $_SESSION['_csrf'] = bin2hex(random_bytes(16));
-        return (string)$_SESSION['_csrf'];
-    }
-}
+require_once __DIR__ . '/assets/conexao.php';
 
 if (!function_exists('db')) {
     http_response_code(500);
-    echo "ERRO: função db():PDO não encontrada. Verifique assets/conexao.php";
+    echo 'ERRO: função db():PDO não encontrada. Verifique assets/conexao.php';
     exit;
 }
 
-/* ========= HELPERS ========= */
-function clean_buffers(): void
+$pdo = db();
+
+/* =========================================================
+   HELPERS LOCAIS
+========================================================= */
+function fi_e(string $v): string
+{
+    return htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function fi_csrf_token(): string
+{
+    if (empty($_SESSION['_csrf']) || !is_string($_SESSION['_csrf'])) {
+        $_SESSION['_csrf'] = bin2hex(random_bytes(16));
+    }
+    return $_SESSION['_csrf'];
+}
+
+function fi_clean_buffers(): void
 {
     while (ob_get_level() > 0) {
         @ob_end_clean();
     }
 }
 
-function json_out(array $payload, int $code = 200): void
+function fi_json_out(array $payload, int $code = 200): void
 {
-    clean_buffers();
+    fi_clean_buffers();
     http_response_code($code);
     header('Content-Type: application/json; charset=UTF-8');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -59,64 +56,142 @@ function json_out(array $payload, int $code = 200): void
     exit;
 }
 
-function get_str(string $k, string $def = ''): string
+function fi_get_str(string $k, string $def = ''): string
 {
     return isset($_GET[$k]) ? trim((string)$_GET[$k]) : $def;
 }
 
-function get_int(string $k, int $def = 0): int
+function fi_get_int(string $k, int $def = 0): int
 {
     return isset($_GET[$k]) ? (int)$_GET[$k] : $def;
 }
 
-function brl(float $v): string
+function fi_post_str(string $k, string $def = ''): string
+{
+    return isset($_POST[$k]) ? trim((string)$_POST[$k]) : $def;
+}
+
+function fi_post_int(string $k, int $def = 0): int
+{
+    return isset($_POST[$k]) ? (int)$_POST[$k] : $def;
+}
+
+function fi_post_float(string $k, float $def = 0.0): float
+{
+    $v = $_POST[$k] ?? $def;
+    if (is_numeric($v)) {
+        return (float)$v;
+    }
+    $s = preg_replace('/[^\d,.\-]/', '', (string)$v);
+    $s = str_replace('.', '', $s);
+    $s = str_replace(',', '.', $s);
+    return is_numeric($s) ? (float)$s : $def;
+}
+
+function fi_brl(float $v): string
 {
     return 'R$ ' . number_format($v, 2, ',', '.');
 }
 
-function table_exists(PDO $pdo, string $table): bool
+function fi_fmt_date(?string $d): string
 {
-    $sql = "SELECT COUNT(*)
-            FROM information_schema.tables
-            WHERE table_schema = DATABASE()
-              AND table_name = :table";
-    $st = $pdo->prepare($sql);
-    $st->execute([':table' => $table]);
-    return (int)$st->fetchColumn() > 0;
+    $d = trim((string)$d);
+    if ($d === '') return '—';
+    $ts = strtotime($d);
+    if ($ts === false) return '—';
+    return date('d/m/Y', $ts);
 }
 
-function column_exists(PDO $pdo, string $table, string $column): bool
+function fi_fmt_datetime(?string $d): string
 {
-    $sql = "SELECT COUNT(*)
-            FROM information_schema.columns
-            WHERE table_schema = DATABASE()
-              AND table_name = :table
-              AND column_name = :column";
-    $st = $pdo->prepare($sql);
-    $st->execute([
-        ':table'  => $table,
-        ':column' => $column
-    ]);
-    return (int)$st->fetchColumn() > 0;
+    $d = trim((string)$d);
+    if ($d === '') return '—';
+    $ts = strtotime($d);
+    if ($ts === false) return '—';
+    return date('d/m/Y H:i', $ts);
 }
 
-function build_where(array &$params): string
+function fi_redirect(string $url): void
+{
+    header('Location: ' . $url);
+    exit;
+}
+
+function fi_flash_set(string $key, string $msg): void
+{
+    $_SESSION[$key] = $msg;
+}
+
+function fi_flash_take(string $key): ?string
+{
+    if (!isset($_SESSION[$key]) || !is_string($_SESSION[$key])) {
+        return null;
+    }
+    $msg = $_SESSION[$key];
+    unset($_SESSION[$key]);
+    return $msg;
+}
+
+function fi_normalize_return_to(string $url, string $fallback = 'fiados.php'): string
+{
+    $url = trim($url);
+    if ($url === '') return $fallback;
+    if (preg_match('~[\r\n]~', $url)) return $fallback;
+    if (preg_match('~^https?://~i', $url)) return $fallback;
+    return $url;
+}
+
+function fi_sql_parts(): array
+{
+    $from = "
+        FROM fiados f
+        LEFT JOIN vendas v
+            ON v.id = f.venda_id
+        LEFT JOIN clientes c
+            ON c.id = f.cliente_id
+        LEFT JOIN (
+            SELECT
+                fp.fiado_id,
+                COALESCE(SUM(fp.valor), 0) AS total_pago
+            FROM fiados_pagamentos fp
+            GROUP BY fp.fiado_id
+        ) pg
+            ON pg.fiado_id = f.id
+    ";
+
+    $basePagoExpr = "COALESCE(f.valor_pago,0)";
+    $sumPagExpr   = "COALESCE(pg.total_pago,0)";
+    $pagoExpr     = "CASE WHEN {$sumPagExpr} > {$basePagoExpr} THEN {$sumPagExpr} ELSE {$basePagoExpr} END";
+    $restanteExpr = "CASE WHEN (COALESCE(f.valor_total,0) - ({$pagoExpr})) > 0 THEN (COALESCE(f.valor_total,0) - ({$pagoExpr})) ELSE 0 END";
+    $statusExpr   = "CASE WHEN {$restanteExpr} <= 0.00001 OR UPPER(COALESCE(f.status,'')) = 'PAGO' THEN 'PAGO' ELSE 'ABERTO' END";
+    $dataRefExpr  = "COALESCE(v.created_at, f.created_at)";
+
+    return [
+        'from'         => $from,
+        'pago_expr'    => $pagoExpr,
+        'restante_expr' => $restanteExpr,
+        'status_expr'  => $statusExpr,
+        'data_ref_expr' => $dataRefExpr,
+    ];
+}
+
+function fi_build_where(array &$params, array $parts): string
 {
     $where = " WHERE 1=1 ";
 
-    $di    = get_str('di');
-    $df    = get_str('df');
-    $canal = strtoupper(get_str('canal', 'TODOS'));
-    $pag   = strtoupper(get_str('pag', 'TODOS'));
-    $q     = get_str('q');
+    $di     = fi_get_str('di');
+    $df     = fi_get_str('df');
+    $canal  = strtoupper(fi_get_str('canal', 'TODOS'));
+    $status = strtoupper(fi_get_str('status', 'TODOS'));
+    $q      = fi_get_str('q');
 
     if ($di !== '') {
-        $where .= " AND DATE(v.data) >= :di ";
+        $where .= " AND DATE({$parts['data_ref_expr']}) >= :di ";
         $params[':di'] = $di;
     }
 
     if ($df !== '') {
-        $where .= " AND DATE(v.data) <= :df ";
+        $where .= " AND DATE({$parts['data_ref_expr']}) <= :df ";
         $params[':df'] = $df;
     }
 
@@ -125,48 +200,41 @@ function build_where(array &$params): string
         $params[':canal'] = $canal;
     }
 
-    if ($pag !== '' && $pag !== 'TODOS') {
-        $where .= " AND UPPER(COALESCE(v.pagamento,'')) = :pag ";
-        $params[':pag'] = $pag;
+    if ($status !== '' && $status !== 'TODOS') {
+        $where .= " AND {$parts['status_expr']} = :status ";
+        $params[':status'] = $status;
     }
 
     if ($q !== '') {
-        $params[':q_id']      = '%' . $q . '%';
-        $params[':q_data']    = '%' . $q . '%';
-        $params[':q_cliente'] = '%' . $q . '%';
-        $params[':q_end']     = '%' . $q . '%';
-        $params[':q_obs']     = '%' . $q . '%';
-        $params[':q_pag']     = '%' . $q . '%';
-        $params[':q_canal']   = '%' . $q . '%';
-        $params[':q_sub']     = '%' . $q . '%';
-        $params[':q_desc']    = '%' . $q . '%';
-        $params[':q_taxa']    = '%' . $q . '%';
-        $params[':q_total']   = '%' . $q . '%';
-        $params[':q_item1']   = '%' . $q . '%';
-        $params[':q_item2']   = '%' . $q . '%';
-        $params[':q_item3']   = '%' . $q . '%';
+        $params[':q1'] = '%' . $q . '%';
+        $params[':q2'] = '%' . $q . '%';
+        $params[':q3'] = '%' . $q . '%';
+        $params[':q4'] = '%' . $q . '%';
+        $params[':q5'] = '%' . $q . '%';
+        $params[':q6'] = '%' . $q . '%';
+        $params[':q7'] = '%' . $q . '%';
+        $params[':q8'] = '%' . $q . '%';
+        $params[':q9'] = '%' . $q . '%';
+        $params[':q10'] = '%' . $q . '%';
 
         $where .= "
             AND (
-                CAST(v.id AS CHAR) LIKE :q_id
-                OR CAST(v.data AS CHAR) LIKE :q_data
-                OR COALESCE(v.cliente,'') LIKE :q_cliente
-                OR COALESCE(v.endereco,'') LIKE :q_end
-                OR COALESCE(v.obs,'') LIKE :q_obs
-                OR COALESCE(v.pagamento,'') LIKE :q_pag
-                OR COALESCE(v.canal,'') LIKE :q_canal
-                OR CAST(COALESCE(v.subtotal,0) AS CHAR) LIKE :q_sub
-                OR CAST(COALESCE(v.desconto_valor,0) AS CHAR) LIKE :q_desc
-                OR CAST(COALESCE(v.taxa_entrega,0) AS CHAR) LIKE :q_taxa
-                OR CAST(COALESCE(v.total,0) AS CHAR) LIKE :q_total
+                CAST(f.id AS CHAR) LIKE :q1
+                OR CAST(f.venda_id AS CHAR) LIKE :q2
+                OR COALESCE(c.nome,'') LIKE :q3
+                OR COALESCE(v.cliente,'') LIKE :q4
+                OR COALESCE(v.canal,'') LIKE :q5
+                OR COALESCE(v.pagamento,'') LIKE :q6
+                OR CAST(COALESCE(f.valor_total,0) AS CHAR) LIKE :q7
+                OR CAST({$parts['pago_expr']} AS CHAR) LIKE :q8
+                OR CAST({$parts['restante_expr']} AS CHAR) LIKE :q9
                 OR EXISTS (
                     SELECT 1
                     FROM venda_itens vi
-                    WHERE vi.venda_id = v.id
+                    WHERE vi.venda_id = f.venda_id
                       AND (
-                          COALESCE(vi.nome,'') LIKE :q_item1
-                          OR COALESCE(vi.codigo,'') LIKE :q_item2
-                          OR COALESCE(vi.unidade,'') LIKE :q_item3
+                          COALESCE(vi.nome,'') LIKE :q10
+                          OR COALESCE(vi.codigo,'') LIKE :q10
                       )
                 )
             )
@@ -176,461 +244,241 @@ function build_where(array &$params): string
     return $where;
 }
 
-function fetch_items_for_sale_ids(array $saleIds): array
+function fi_fetch_rows_result(int $page, int $per, bool $forExport = false): array
 {
-    if (!$saleIds) return [];
+    global $pdo;
 
-    $pdo = db();
-    if (!table_exists($pdo, 'venda_itens')) return [];
-
-    $saleIds = array_values(array_unique(array_map('intval', $saleIds)));
-    if (!$saleIds) return [];
-
-    $in = implode(',', array_fill(0, count($saleIds), '?'));
-
-    $sql = "
-        SELECT
-            vi.venda_id,
-            vi.codigo,
-            vi.nome,
-            vi.unidade,
-            vi.preco_unit,
-            vi.qtd,
-            vi.subtotal
-        FROM venda_itens vi
-        WHERE vi.venda_id IN ($in)
-        ORDER BY vi.venda_id DESC, vi.id ASC
-    ";
-
-    $st = $pdo->prepare($sql);
-    $st->execute($saleIds);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-    $out = [];
-    foreach ($rows as $r) {
-        $vendaId = (int)($r['venda_id'] ?? 0);
-        if ($vendaId <= 0) continue;
-
-        $preco = (float)($r['preco_unit'] ?? 0);
-        $qtd   = (float)($r['qtd'] ?? 0);
-        $sub   = (float)($r['subtotal'] ?? 0);
-        $total = $sub > 0 ? $sub : ($preco * $qtd);
-
-        if (!isset($out[$vendaId])) $out[$vendaId] = [];
-        $out[$vendaId][] = [
-            'codigo' => (string)($r['codigo'] ?? ''),
-            'nome'   => (string)($r['nome'] ?? 'Item'),
-            'qtd'    => $qtd,
-            'un'     => (string)($r['unidade'] ?? ''),
-            'preco'  => $preco,
-            'total'  => $total,
-        ];
-    }
-
-    return $out;
-}
-
-function get_recebido_for_sale(PDO $pdo, int $saleId, string $pagamento, float $totalVenda): float
-{
-    $pagamento = strtoupper(trim($pagamento));
-
-    if ($pagamento !== 'FIADO') {
-        return $totalVenda;
-    }
-
-    if (!table_exists($pdo, 'fiados')) {
-        return 0.0;
-    }
-
-    if (!column_exists($pdo, 'fiados', 'venda_id') || !column_exists($pdo, 'fiados', 'valor_pago')) {
-        return 0.0;
-    }
-
-    $st = $pdo->prepare("SELECT COALESCE(valor_pago,0) FROM fiados WHERE venda_id = ? LIMIT 1");
-    $st->execute([$saleId]);
-    return (float)($st->fetchColumn() ?: 0);
-}
-
-function build_rows_from_sales(array $sales): array
-{
-    $pdo = db();
-
-    $ids = array_map(fn($r) => (int)$r['id'], $sales);
-    $itemsMap = fetch_items_for_sale_ids($ids);
-
-    $rows = [];
-    foreach ($sales as $r) {
-        $id = (int)$r['id'];
-        $itens = $itemsMap[$id] ?? [];
-
-        $itensTotal = 0.0;
-        $itensCount = 0;
-
-        foreach ($itens as $it) {
-            $itensTotal += (float)$it['total'];
-            $itensCount++;
-        }
-
-        $recebido = get_recebido_for_sale(
-            $pdo,
-            $id,
-            (string)($r['pagamento'] ?? ''),
-            (float)($r['total'] ?? 0)
-        );
-
-        $rows[] = [
-            'id'          => $id,
-            'data'        => (string)($r['data'] ?? ''),
-            'created_at'  => (string)($r['created_at'] ?? ''),
-            'cliente'     => (string)($r['cliente'] ?? ''),
-            'canal'       => (string)($r['canal'] ?? ''),
-            'pagamento'   => (string)($r['pagamento'] ?? ''),
-            'subtotal'    => (float)($r['subtotal'] ?? 0),
-            'desconto'    => (float)($r['desconto_valor'] ?? 0),
-            'taxa'        => (float)($r['taxa_entrega'] ?? 0),
-            'total'       => (float)($r['total'] ?? 0),
-            'recebido'    => $recebido,
-            'endereco'    => (string)($r['endereco'] ?? ''),
-            'obs'         => (string)($r['obs'] ?? ''),
-            'itens'       => $itens,
-            'itens_count' => $itensCount,
-            'itens_total' => $itensTotal
-        ];
-    }
-
-    return $rows;
-}
-
-function fetch_one_sale(int $id): ?array
-{
-    $pdo = db();
-
-    $st = $pdo->prepare("SELECT * FROM vendas WHERE id = :id LIMIT 1");
-    $st->execute([':id' => $id]);
-    $v = $st->fetch(PDO::FETCH_ASSOC);
-
-    if (!$v) return null;
-
-    $itemsMap = fetch_items_for_sale_ids([$id]);
-    $itens = $itemsMap[$id] ?? [];
-
-    $itensTotal = 0.0;
-    $itensQtd = 0.0;
-
-    foreach ($itens as $it) {
-        $itensTotal += (float)$it['total'];
-        $itensQtd += (float)($it['qtd'] ?? 0);
-    }
-
-    return [
-        'venda'       => $v,
-        'itens'       => $itens,
-        'itens_total' => $itensTotal,
-        'itens_qtd'   => $itensQtd
-    ];
-}
-
-function sum_recebido_vendas_geral(string $where, array $params): float
-{
-    $pdo = db();
-
-    $sql = "
-        SELECT
-            v.id,
-            v.pagamento,
-            v.total
-        FROM vendas v
-        $where
-    ";
-    $st = $pdo->prepare($sql);
-    $st->execute($params);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-    $sum = 0.0;
-    foreach ($rows as $r) {
-        $sum += get_recebido_for_sale(
-            $pdo,
-            (int)($r['id'] ?? 0),
-            (string)($r['pagamento'] ?? ''),
-            (float)($r['total'] ?? 0)
-        );
-    }
-
-    return $sum;
-}
-
-function sum_fiados_pagamentos_filtrados(PDO $pdo): float
-{
-    $recFiadoExtra = 0.0;
-
-    if (
-        table_exists($pdo, 'fiados_pagamentos')
-        && column_exists($pdo, 'fiados_pagamentos', 'valor')
-        && column_exists($pdo, 'fiados_pagamentos', 'created_at')
-    ) {
-        $di = get_str('di');
-        $df = get_str('df');
-
-        if ($di !== '' && $df !== '') {
-            $stPag = $pdo->prepare("
-                SELECT COALESCE(SUM(valor),0)
-                FROM fiados_pagamentos
-                WHERE DATE(created_at) BETWEEN ? AND ?
-            ");
-            $stPag->execute([$di, $df]);
-            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-        } elseif ($di !== '') {
-            $stPag = $pdo->prepare("
-                SELECT COALESCE(SUM(valor),0)
-                FROM fiados_pagamentos
-                WHERE DATE(created_at) >= ?
-            ");
-            $stPag->execute([$di]);
-            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-        } elseif ($df !== '') {
-            $stPag = $pdo->prepare("
-                SELECT COALESCE(SUM(valor),0)
-                FROM fiados_pagamentos
-                WHERE DATE(created_at) <= ?
-            ");
-            $stPag->execute([$df]);
-            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-        } else {
-            $stPag = $pdo->query("SELECT COALESCE(SUM(valor),0) FROM fiados_pagamentos");
-            $recFiadoExtra = (float)($stPag->fetchColumn() ?: 0);
-        }
-    }
-
-    return $recFiadoExtra;
-}
-
-function fetch_filtered_result(): array
-{
-    $pdo = db();
-
-    $page = max(1, get_int('page', 1));
-    $per  = get_int('per', 10);
-    $per  = in_array($per, [10, 20, 30, 40, 50, 100], true) ? $per : 10;
-    $off  = ($page - 1) * $per;
-
+    $parts = fi_sql_parts();
     $params = [];
-    $where = build_where($params);
+    $where = fi_build_where($params, $parts);
 
     $sqlTot = "
         SELECT
             COUNT(*) AS qtd,
-            COALESCE(SUM(v.subtotal),0) AS subtotal,
-            COALESCE(SUM(v.desconto_valor),0) AS desconto,
-            COALESCE(SUM(v.taxa_entrega),0) AS taxa,
-            COALESCE(SUM(v.total),0) AS total
-        FROM vendas v
-        $where
+            COALESCE(SUM(f.valor_total),0) AS total_venda,
+            COALESCE(SUM({$parts['pago_expr']}),0) AS total_pago,
+            COALESCE(SUM({$parts['restante_expr']}),0) AS total_restante
+        {$parts['from']}
+        {$where}
     ";
     $stTot = $pdo->prepare($sqlTot);
     $stTot->execute($params);
     $tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: [
         'qtd' => 0,
-        'subtotal' => 0,
-        'desconto' => 0,
-        'taxa' => 0,
-        'total' => 0
+        'total_venda' => 0,
+        'total_pago' => 0,
+        'total_restante' => 0,
     ];
+
+    $limitSql = '';
+    $offset = 0;
+    if (!$forExport) {
+        $page = max(1, $page);
+        $per  = in_array($per, [10, 20, 30, 40, 50, 100], true) ? $per : 10;
+        $offset = ($page - 1) * $per;
+        $limitSql = " LIMIT {$offset}, {$per} ";
+    }
 
     $sql = "
         SELECT
-            v.id,
-            v.data,
-            v.cliente,
+            f.id AS fiado_id,
+            f.venda_id,
+            f.cliente_id,
+            f.valor_total,
+            {$parts['pago_expr']} AS valor_pago_real,
+            {$parts['restante_expr']} AS valor_restante_real,
+            {$parts['status_expr']} AS status_real,
+            f.data_vencimento,
+            f.created_at AS fiado_created_at,
+
+            v.data AS venda_data,
+            v.created_at AS venda_created_at,
+            v.cliente AS venda_cliente,
             v.canal,
+            v.pagamento,
             v.endereco,
             v.obs,
-            v.desconto_tipo,
-            v.desconto_valor,
-            v.taxa_entrega,
-            v.subtotal,
-            v.total,
-            v.pagamento_mode,
-            v.pagamento,
-            v.pagamento_json,
-            v.created_at
-        FROM vendas v
-        $where
-        ORDER BY v.id DESC
-        LIMIT $off, $per
+
+            c.nome AS cliente_nome
+        {$parts['from']}
+        {$where}
+        ORDER BY {$parts['data_ref_expr']} DESC, f.id DESC
+        {$limitSql}
     ";
     $st = $pdo->prepare($sql);
     $st->execute($params);
-    $sales = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $rowsRaw = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-    $rows = build_rows_from_sales($sales);
+    $rows = [];
+    foreach ($rowsRaw as $r) {
+        $cliente = trim((string)($r['cliente_nome'] ?: $r['venda_cliente'] ?: '—'));
 
-    $recFiadoExtra = sum_fiados_pagamentos_filtrados($pdo);
-    $recebidoVendasGeral = sum_recebido_vendas_geral($where, $params);
+        $rows[] = [
+            'fiado_id'        => (int)($r['fiado_id'] ?? 0),
+            'venda_id'        => (int)($r['venda_id'] ?? 0),
+            'cliente'         => $cliente,
+            'canal'           => (string)($r['canal'] ?? 'PRESENCIAL'),
+            'pagamento'       => (string)($r['pagamento'] ?? ''),
+            'valor_total'     => (float)($r['valor_total'] ?? 0),
+            'valor_pago'      => (float)($r['valor_pago_real'] ?? 0),
+            'valor_restante'  => (float)($r['valor_restante_real'] ?? 0),
+            'status'          => (string)($r['status_real'] ?? 'ABERTO'),
+            'data_vencimento' => (string)($r['data_vencimento'] ?? ''),
+            'created_at'      => (string)($r['venda_created_at'] ?? $r['fiado_created_at'] ?? ''),
+            'created_at_fmt'  => fi_fmt_datetime((string)($r['venda_created_at'] ?? $r['fiado_created_at'] ?? '')),
+            'vencimento_fmt'  => fi_fmt_date((string)($r['data_vencimento'] ?? '')),
+            'endereco'        => (string)($r['endereco'] ?? ''),
+            'obs'             => (string)($r['obs'] ?? ''),
+        ];
+    }
 
-    $totalCount = (int)($tot['qtd'] ?? 0);
-    $pages = (int)max(1, ceil($totalCount / $per));
+    $total = (int)($tot['qtd'] ?? 0);
+    $pages = max(1, (int)ceil($total / max(1, $per)));
 
     return [
         'meta' => [
-            'page'  => $page,
-            'per'   => $per,
-            'pages' => $pages,
-            'total' => $totalCount,
+            'page'  => $forExport ? 1 : max(1, $page),
+            'per'   => $forExport ? $total : $per,
+            'pages' => $forExport ? 1 : $pages,
+            'total' => $total,
+            'from'  => $forExport ? ($total > 0 ? 1 : 0) : ($total > 0 ? $offset + 1 : 0),
+            'to'    => $forExport ? $total : ($total > 0 ? min($offset + $per, $total) : 0),
         ],
         'totais' => [
-            'qtd'             => $totalCount,
-            'subtotal'        => (float)($tot['subtotal'] ?? 0),
-            'desconto'        => (float)($tot['desconto'] ?? 0),
-            'taxa'            => (float)($tot['taxa'] ?? 0),
-            'total'           => (float)($tot['total'] ?? 0),
-            'recebido_vendas' => $recebidoVendasGeral,
-            'recebido_fiados' => $recFiadoExtra,
-            'caixa_real'      => $recebidoVendasGeral + $recFiadoExtra,
+            'qtd'            => $total,
+            'total_venda'    => (float)($tot['total_venda'] ?? 0),
+            'total_pago'     => (float)($tot['total_pago'] ?? 0),
+            'total_restante' => (float)($tot['total_restante'] ?? 0),
         ],
         'rows' => $rows
     ];
 }
 
-function fetch_initial_result(): array
+function fi_fetch_one(int $fiadoId): ?array
 {
-    $pdo = db();
+    global $pdo;
 
-    $per = 10;
+    $parts = fi_sql_parts();
 
     $sql = "
         SELECT
-            v.id,
-            v.data,
-            v.cliente,
+            f.id AS fiado_id,
+            f.venda_id,
+            f.cliente_id,
+            f.valor_total,
+            {$parts['pago_expr']} AS valor_pago_real,
+            {$parts['restante_expr']} AS valor_restante_real,
+            {$parts['status_expr']} AS status_real,
+            f.data_vencimento,
+            f.created_at AS fiado_created_at,
+
+            v.data AS venda_data,
+            v.created_at AS venda_created_at,
+            v.cliente AS venda_cliente,
             v.canal,
+            v.pagamento,
             v.endereco,
             v.obs,
-            v.desconto_tipo,
-            v.desconto_valor,
-            v.taxa_entrega,
-            v.subtotal,
-            v.total,
-            v.pagamento_mode,
-            v.pagamento,
-            v.pagamento_json,
-            v.created_at
-        FROM vendas v
-        ORDER BY v.id DESC
-        LIMIT 0, $per
+
+            c.nome AS cliente_nome
+        {$parts['from']}
+        WHERE f.id = :id
+        LIMIT 1
     ";
-    $sales = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    $rows = build_rows_from_sales($sales);
+    $st = $pdo->prepare($sql);
+    $st->execute([':id' => $fiadoId]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
 
-    $stTot = $pdo->query("
-        SELECT
-            COUNT(*) AS qtd,
-            COALESCE(SUM(subtotal),0) AS subtotal,
-            COALESCE(SUM(desconto_valor),0) AS desconto,
-            COALESCE(SUM(taxa_entrega),0) AS taxa,
-            COALESCE(SUM(total),0) AS total
-        FROM vendas
+    if (!$row) {
+        return null;
+    }
+
+    $itens = [];
+    $vendaId = (int)($row['venda_id'] ?? 0);
+    if ($vendaId > 0) {
+        $stItens = $pdo->prepare("
+            SELECT nome, codigo, unidade, preco_unit, qtd, subtotal
+            FROM venda_itens
+            WHERE venda_id = :venda_id
+            ORDER BY id ASC
+        ");
+        $stItens->execute([':venda_id' => $vendaId]);
+        $itens = $stItens->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    $pagamentos = [];
+    $stPag = $pdo->prepare("
+        SELECT id, valor, metodo, created_at
+        FROM fiados_pagamentos
+        WHERE fiado_id = :fiado_id
+        ORDER BY created_at DESC, id DESC
     ");
-    $tot = $stTot->fetch(PDO::FETCH_ASSOC) ?: [
-        'qtd' => 0,
-        'subtotal' => 0,
-        'desconto' => 0,
-        'taxa' => 0,
-        'total' => 0
-    ];
-
-    $recebidoVendasGeral = sum_recebido_vendas_geral(" WHERE 1=1 ", []);
-    $recFiadoExtra = sum_fiados_pagamentos_filtrados($pdo);
-
-    $qtd = (int)($tot['qtd'] ?? 0);
-    $pages = (int)max(1, ceil($qtd / $per));
+    $stPag->execute([':fiado_id' => $fiadoId]);
+    $pagamentos = $stPag->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     return [
-        'meta' => [
-            'page'  => 1,
-            'per'   => $per,
-            'pages' => $pages,
-            'total' => $qtd,
+        'fiado' => [
+            'fiado_id'       => (int)($row['fiado_id'] ?? 0),
+            'venda_id'       => (int)($row['venda_id'] ?? 0),
+            'cliente'        => trim((string)($row['cliente_nome'] ?: $row['venda_cliente'] ?: '—')),
+            'canal'          => (string)($row['canal'] ?? 'PRESENCIAL'),
+            'pagamento'      => (string)($row['pagamento'] ?? ''),
+            'valor_total'    => (float)($row['valor_total'] ?? 0),
+            'valor_pago'     => (float)($row['valor_pago_real'] ?? 0),
+            'valor_restante' => (float)($row['valor_restante_real'] ?? 0),
+            'status'         => (string)($row['status_real'] ?? 'ABERTO'),
+            'data_vencimento' => (string)($row['data_vencimento'] ?? ''),
+            'created_at'     => (string)($row['venda_created_at'] ?? $row['fiado_created_at'] ?? ''),
+            'endereco'       => (string)($row['endereco'] ?? ''),
+            'obs'            => (string)($row['obs'] ?? ''),
         ],
-        'totais' => [
-            'qtd'             => $qtd,
-            'subtotal'        => (float)($tot['subtotal'] ?? 0),
-            'desconto'        => (float)($tot['desconto'] ?? 0),
-            'taxa'            => (float)($tot['taxa'] ?? 0),
-            'total'           => (float)($tot['total'] ?? 0),
-            'recebido_vendas' => $recebidoVendasGeral,
-            'recebido_fiados' => $recFiadoExtra,
-            'caixa_real'      => $recebidoVendasGeral + $recFiadoExtra,
-        ],
-        'rows' => $rows
+        'itens' => $itens,
+        'pagamentos' => $pagamentos
     ];
 }
 
-function render_table_rows(array $rows): string
+function fi_render_rows(array $rows): string
 {
     if (!$rows) {
-        return '<tr><td colspan="9" class="muted">Nenhuma venda encontrada.</td></tr>';
+        return '<tr><td colspan="9" class="muted text-center">Nenhum fiado encontrado.</td></tr>';
     }
 
     $html = '';
     foreach ($rows as $r) {
-        $id        = (int)$r['id'];
-        $data      = e((string)$r['data']);
-        $createdAt = e((string)$r['created_at']);
-        $cliente   = e((string)($r['cliente'] ?? '—'));
-        $canal     = strtoupper((string)($r['canal'] ?? ''));
-        $pagamento = e((string)($r['pagamento'] ?? '—'));
-        $endereco  = e((string)($r['endereco'] ?? ''));
-        $total     = brl((float)$r['total']);
-        $recebido  = brl((float)$r['recebido']);
+        $status = strtoupper((string)$r['status']);
+        $statusBadge = $status === 'PAGO'
+            ? '<span class="badge-soft b-done">PAGO</span>'
+            : '<span class="badge-soft b-open">ABERTO</span>';
 
-        $canalBadge = $canal === 'DELIVERY'
+        $canalBadge = strtoupper((string)$r['canal']) === 'DELIVERY'
             ? '<span class="badge-soft b-open">DELIVERY</span>'
             : '<span class="badge-soft b-done">PRESENCIAL</span>';
 
-        $itensHtml = '<span class="muted">—</span>';
-        if (!empty($r['itens'])) {
-            $show = array_slice($r['itens'], 0, 2);
-            $extra = count($r['itens']) - count($show);
-
-            $tmp = '<div class="items-preview">';
-            foreach ($show as $it) {
-                $tmp .= '
-                    <div class="item-line">
-                        <div class="item-name">' . e((string)($it['nome'] ?? 'Item')) . '</div>
-                        <div class="item-meta">
-                            <span>' . e((string)($it['qtd'] ?? 0)) . ' ' . e((string)($it['un'] ?? '')) . '</span>
-                            <span><b>' . brl((float)($it['total'] ?? 0)) . '</b></span>
-                        </div>
-                    </div>
-                ';
-            }
-            if ($extra > 0) {
-                $tmp .= '<div class="item-more">+ ' . $extra . ' item(ns)</div>';
-            }
-            $tmp .= '</div>';
-            $itensHtml = $tmp;
+        $btnPagar = '';
+        if ($status !== 'PAGO' && (float)$r['valor_restante'] > 0) {
+            $btnPagar = '<button class="main-btn success-btn btn-hover btn-action" onclick="openPagamento(' . (int)$r['fiado_id'] . ')"><i class="lni lni-wallet me-1"></i>Pagar</button>';
         }
 
         $html .= '
             <tr>
-                <td class="td-nowrap"><b>#' . $id . '</b></td>
-                <td>
-                    <div class="mini">' . e((string)$data) . '</div>
-                    <div class="muted2">' . e((string)$createdAt) . '</div>
+                <td class="td-nowrap"><b>#' . (int)$r['venda_id'] . '</b></td>
+                <td class="td-nowrap">
+                    <div class="mini">' . fi_e((string)$r['created_at_fmt']) . '</div>
+                    <div class="muted2">Venc.: ' . fi_e((string)$r['vencimento_fmt']) . '</div>
                 </td>
                 <td>
-                    <div class="td-clip mini">' . $cliente . '</div>
-                    ' . ($endereco !== '' ? '<div class="td-clip muted2">' . $endereco . '</div>' : '') . '
+                    <div class="td-clip mini">' . fi_e((string)$r['cliente']) . '</div>
+                    ' . (!empty($r['endereco']) ? '<div class="td-clip muted2">' . fi_e((string)$r['endereco']) . '</div>' : '') . '
                 </td>
                 <td class="td-nowrap">' . $canalBadge . '</td>
-                <td class="td-nowrap"><span class="badge-soft b-open">' . $pagamento . '</span></td>
-                <td>' . $itensHtml . '</td>
-                <td class="td-money">' . $total . '</td>
-                <td class="td-money text-success">' . $recebido . '</td>
+                <td class="td-money">' . fi_brl((float)$r['valor_total']) . '</td>
+                <td class="td-money text-success">' . fi_brl((float)$r['valor_pago']) . '</td>
+                <td class="td-money text-danger">' . fi_brl((float)$r['valor_restante']) . '</td>
+                <td class="td-nowrap">' . $statusBadge . '</td>
                 <td>
                     <div class="actions-wrap">
-                        <button class="main-btn light-btn btn-hover btn-action" onclick="openDetails(' . $id . ')">Detalhes</button>
-                        <button class="main-btn primary-btn btn-hover btn-action" onclick="openCupom(' . $id . ')">Cupom</button>
+                        <button class="main-btn light-btn btn-hover btn-action" onclick="openDetails(' . (int)$r['fiado_id'] . ')"><i class="lni lni-eye me-1"></i>Detalhes</button>
+                        ' . $btnPagar . '
                     </div>
                 </td>
             </tr>
@@ -640,75 +488,166 @@ function render_table_rows(array $rows): string
     return $html;
 }
 
-/* ========= ACTIONS ========= */
-$action = strtolower(get_str('action'));
+/* =========================================================
+   ACTIONS
+========================================================= */
+$action = strtolower(fi_get_str('action'));
 
 if ($action === 'fetch') {
     try {
-        $result = fetch_filtered_result();
-        json_out([
-            'ok' => true,
-            'meta' => $result['meta'],
+        $page = max(1, fi_get_int('page', 1));
+        $per  = fi_get_int('per', 10);
+        $result = fi_fetch_rows_result($page, $per, false);
+
+        fi_json_out([
+            'ok'     => true,
+            'meta'   => $result['meta'],
             'totais' => $result['totais'],
-            'rows' => $result['rows']
+            'rows'   => $result['rows'],
+            'html'   => fi_render_rows($result['rows']),
         ]);
     } catch (Throwable $e) {
-        json_out([
-            'ok' => false,
-            'msg' => 'Erro ao carregar vendas: ' . $e->getMessage()
+        fi_json_out([
+            'ok'  => false,
+            'msg' => 'Erro ao carregar fiados: ' . $e->getMessage()
         ], 500);
     }
 }
 
 if ($action === 'one') {
     try {
-        $id = get_int('id', 0);
+        $id = fi_get_int('id', 0);
         if ($id <= 0) {
-            json_out(['ok' => false, 'msg' => 'ID inválido'], 400);
+            fi_json_out(['ok' => false, 'msg' => 'ID inválido'], 400);
         }
 
-        $one = fetch_one_sale($id);
+        $one = fi_fetch_one($id);
         if (!$one) {
-            json_out(['ok' => false, 'msg' => 'Venda não encontrada'], 404);
+            fi_json_out(['ok' => false, 'msg' => 'Fiado não encontrado'], 404);
         }
 
-        json_out(['ok' => true, 'data' => $one]);
+        fi_json_out(['ok' => true, 'data' => $one]);
     } catch (Throwable $e) {
-        json_out([
-            'ok' => false,
-            'msg' => 'Erro ao abrir detalhes: ' . $e->getMessage()
-        ], 500);
+        fi_json_out(['ok' => false, 'msg' => 'Erro ao abrir detalhes: ' . $e->getMessage()], 500);
     }
 }
 
-if ($action === 'cupom') {
-    $id = get_int('id', 0);
-    if ($id <= 0) {
-        http_response_code(400);
-        echo "ID inválido";
-        exit;
+if ($action === 'pay' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    $csrf = (string)($_POST['_csrf'] ?? '');
+    $sess = (string)($_SESSION['_csrf'] ?? '');
+
+    if ($csrf === '' || $sess === '' || !hash_equals($sess, $csrf)) {
+        fi_flash_set('flash_err', 'CSRF inválido. Atualize a página e tente novamente.');
+        fi_redirect('fiados.php');
     }
 
-    $auto = isset($_GET['auto']) ? (int)$_GET['auto'] : 1;
-    $qs = http_build_query(['id' => $id, 'auto' => $auto]);
-    header('Location: ./assets/dados/vendas/cupom.php?' . $qs);
-    exit;
+    $fiadoId  = fi_post_int('fiado_id', 0);
+    $valor    = fi_post_float('valor', 0);
+    $metodo   = strtoupper(fi_post_str('metodo', 'DINHEIRO'));
+    $returnTo = fi_normalize_return_to(fi_post_str('return_to', 'fiados.php'));
+
+    if ($fiadoId <= 0) {
+        fi_flash_set('flash_err', 'Fiado inválido.');
+        fi_redirect($returnTo);
+    }
+
+    if ($valor <= 0) {
+        fi_flash_set('flash_err', 'Informe um valor de pagamento válido.');
+        fi_redirect($returnTo);
+    }
+
+    $permitidos = ['DINHEIRO', 'PIX', 'CARTAO', 'BOLETO'];
+    if (!in_array($metodo, $permitidos, true)) {
+        $metodo = 'DINHEIRO';
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $one = fi_fetch_one($fiadoId);
+        if (!$one) {
+            throw new RuntimeException('Fiado não encontrado.');
+        }
+
+        $fiado = $one['fiado'];
+        $restanteAtual = (float)($fiado['valor_restante'] ?? 0);
+        $pagoAtual     = (float)($fiado['valor_pago'] ?? 0);
+        $totalAtual    = (float)($fiado['valor_total'] ?? 0);
+
+        if ($restanteAtual <= 0) {
+            throw new RuntimeException('Este fiado já está quitado.');
+        }
+
+        if ($valor > $restanteAtual) {
+            throw new RuntimeException('O valor informado é maior que o restante em aberto.');
+        }
+
+        $stIns = $pdo->prepare("
+            INSERT INTO fiados_pagamentos (fiado_id, valor, metodo, created_at)
+            VALUES (:fiado_id, :valor, :metodo, NOW())
+        ");
+        $stIns->execute([
+            ':fiado_id' => $fiadoId,
+            ':valor'    => $valor,
+            ':metodo'   => $metodo,
+        ]);
+
+        $novoPago = $pagoAtual + $valor;
+        if ($novoPago > $totalAtual) {
+            $novoPago = $totalAtual;
+        }
+
+        $novoRestante = $totalAtual - $novoPago;
+        if ($novoRestante < 0) {
+            $novoRestante = 0;
+        }
+
+        $novoStatus = $novoRestante <= 0.00001 ? 'PAGO' : 'ABERTO';
+
+        $stUp = $pdo->prepare("
+            UPDATE fiados
+            SET valor_pago = :valor_pago,
+                valor_restante = :valor_restante,
+                status = :status,
+                updated_at = NOW()
+            WHERE id = :id
+            LIMIT 1
+        ");
+        $stUp->execute([
+            ':valor_pago'     => $novoPago,
+            ':valor_restante' => $novoRestante,
+            ':status'         => $novoStatus,
+            ':id'             => $fiadoId,
+        ]);
+
+        $pdo->commit();
+
+        fi_flash_set('flash_ok', 'Pagamento lançado com sucesso.');
+        fi_redirect($returnTo);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        fi_flash_set('flash_err', 'Erro ao registrar pagamento: ' . $e->getMessage());
+        fi_redirect($returnTo);
+    }
 }
 
 if ($action === 'excel') {
-    $result = fetch_filtered_result();
+    $result = fi_fetch_rows_result(1, 100000, true);
     $rows = $result['rows'];
+    $totais = $result['totais'];
 
-    $agora = date('d/m/Y H:i');
-    $di = get_str('di') ?: '—';
-    $df = get_str('df') ?: '—';
-    $canal = get_str('canal', 'TODOS');
-    $pag = get_str('pag', 'TODOS');
-    $q = get_str('q') ?: '—';
+    $agora = date('d/m/Y H:i:s');
+    $di = fi_get_str('di') ?: '—';
+    $df = fi_get_str('df') ?: '—';
+    $canal = fi_get_str('canal', 'TODOS');
+    $status = fi_get_str('status', 'TODOS');
+    $q = fi_get_str('q') ?: '—';
 
-    $fname = 'vendidos_' . date('Y-m-d_His') . '.xls';
+    $fname = 'relatorio_fiados_resumo_' . date('Ymd_His') . '.xls';
 
-    clean_buffers();
+    fi_clean_buffers();
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $fname . '"');
     header('Pragma: no-cache');
@@ -722,111 +661,44 @@ if ($action === 'excel') {
 
     <head>
         <meta charset="UTF-8">
-
-        <!--[if gte mso 9]>
-    <xml>
-        <x:ExcelWorkbook>
-            <x:ExcelWorksheets>
-                <x:ExcelWorksheet>
-                    <x:Name>Vendidos</x:Name>
-                    <x:WorksheetOptions>
-                        <x:Selected/>
-                        <x:DisplayGridlines/>
-                        <x:FitToPage/>
-                        <x:DoNotDisplayGridlines/>
-                        <x:Print>
-                            <x:ValidPrinterInfo/>
-                            <x:PaperSizeIndex>9</x:PaperSizeIndex>
-                            <x:Scale>100</x:Scale>
-                            <x:FitWidth>1</x:FitWidth>
-                            <x:FitHeight>999</x:FitHeight>
-                            <x:HorizontalResolution>600</x:HorizontalResolution>
-                            <x:VerticalResolution>600</x:VerticalResolution>
-                        </x:Print>
-                        <x:PageSetup>
-                            <x:Layout x:Orientation="Landscape"/>
-                            <x:Header x:Margin="0.2"/>
-                            <x:Footer x:Margin="0.2"/>
-                            <x:PageMargins
-                                x:Bottom="0.25"
-                                x:Left="0.15"
-                                x:Right="0.15"
-                                x:Top="0.25"/>
-                        </x:PageSetup>
-                        <x:CenterHorizontal/>
-                    </x:WorksheetOptions>
-                </x:ExcelWorksheet>
-            </x:ExcelWorksheets>
-        </x:ExcelWorkbook>
-    </xml>
-    <![endif]-->
-
         <style>
             @page {
-                size: A4 landscape !important;
-                margin: 0.5cm !important;
+                size: A4 landscape;
+                margin: 0.5cm;
             }
 
             html,
             body {
                 margin: 0;
                 padding: 0;
-                width: 100%;
                 font-family: Arial, Helvetica, sans-serif;
                 font-size: 11pt;
-                background: #fff;
-            }
-
-            .page-wrap {
-                width: 100%;
-                margin: 0 auto;
             }
 
             table {
                 border-collapse: collapse;
+                width: 100%;
                 table-layout: fixed;
-                width: 100%;
             }
 
-            .tbl-meta,
-            .tbl-main {
-                width: 100%;
+            td,
+            th {
                 border: 1px solid #000;
-            }
-
-            th, td{
+                padding: 6px;
+                font-size: 11pt;
                 text-align: center;
-            }
-
-            .tbl-meta td {
-                border: 1px solid #000;
-                padding: 6px;
-                font-size: 11pt;
-            }
-
-            th,
-            td {
-                border: 0.6px solid #000;
-                padding: 6px;
-                font-size: 11pt;
             }
 
             .title {
+                background: #dbeafe;
                 font-size: 16pt;
                 font-weight: 700;
                 text-align: center;
-                background: #dbeafe;
-                border: 1px solid #000 !important;
             }
 
             .head {
                 background: #dbeafe;
                 font-weight: 700;
-                text-align: center;
-            }
-
-            .center {
-                text-align: center;
             }
 
             .left {
@@ -834,105 +706,65 @@ if ($action === 'excel') {
             }
 
             .foot {
-                font-weight: 700;
                 background: #eef2ff;
-            }
-
-            .w-id {
-                width: 7%;
-            }
-
-            .w-data {
-                width: 12%;
-            }
-
-            .w-cli {
-                width: 31%;
-            }
-
-            .w-canal {
-                width: 12%;
-            }
-
-            .w-pag {
-                width: 12%;
-            }
-
-            .w-num {
-                width: 6.5%;
+                font-weight: 700;
             }
         </style>
     </head>
 
     <body>
-        <div class="page-wrap">
-            <table class="tbl-meta">
-                <tr>
-                    <td colspan="9" class="title">PAINEL DA DISTRIBUIDORA - VENDIDOS</td>
-                </tr>
-                <tr>
-                    <td colspan="9">Gerado em: <?= e($agora) ?></td>
-                </tr>
-                <tr>
-                    <td colspan="9">
-                        Período: <?= e($di) ?> até <?= e($df) ?> |
-                        Canal: <?= e($canal) ?> |
-                        Pagamento: <?= e($pag) ?> |
-                        Busca: <?= e($q) ?>
-                    </td>
-                </tr>
-            </table>
+        <table>
+            <tr>
+                <td colspan="8" class="title">PAINEL DA DISTRIBUIDORA - FIADOS (RESUMO)</td>
+            </tr>
+            <tr>
+                <td colspan="8">Gerado em: <?= fi_e($agora) ?></td>
+            </tr>
+            <tr>
+                <td colspan="8">Período: <?= fi_e($di) ?> até <?= fi_e($df) ?> | Canal: <?= fi_e($canal) ?> | Status: <?= fi_e($status) ?> | Busca: <?= fi_e($q) ?></td>
+            </tr>
+            <tr>
+                <td colspan="8">Total fiados filtrados: <?= (int)$totais['qtd'] ?> | Total em fiados: <?= fi_e(fi_brl((float)$totais['total_venda'])) ?> | Total pago: <?= fi_e(fi_brl((float)$totais['total_pago'])) ?> | Restante: <?= fi_e(fi_brl((float)$totais['total_restante'])) ?></td>
+            </tr>
+        </table>
 
-            <table class="tbl-main" style="margin-top:6px;">
-                <thead>
+        <table style="margin-top:6px;">
+            <thead>
+                <tr>
+                    <th class="head">Nº Venda</th>
+                    <th class="head">Data/Hora</th>
+                    <th class="head">Cliente</th>
+                    <th class="head">Canal</th>
+                    <th class="head">Total Venda</th>
+                    <th class="head">Total Pago</th>
+                    <th class="head">Restante</th>
+                    <th class="head">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $r): ?>
                     <tr>
-                        <th class="head w-id">ID</th>
-                        <th class="head w-data">Data</th>
-                        <th class="head w-cli">Cliente</th>
-                        <th class="head w-canal">Canal</th>
-                        <th class="head w-pag">Pagamento</th>
-                        <th class="head w-num">Subtotal</th>
-                        <th class="head w-num">Desconto</th>
-                        <th class="head w-num">Entrega</th>
-                        <th class="head w-num">Total</th>
+                        <td>#<?= (int)$r['venda_id'] ?></td>
+                        <td><?= fi_e((string)$r['created_at_fmt']) ?></td>
+                        <td class="left"><?= fi_e((string)$r['cliente']) ?></td>
+                        <td><?= fi_e((string)$r['canal']) ?></td>
+                        <td><?= fi_e(fi_brl((float)$r['valor_total'])) ?></td>
+                        <td><?= fi_e(fi_brl((float)$r['valor_pago'])) ?></td>
+                        <td><?= fi_e(fi_brl((float)$r['valor_restante'])) ?></td>
+                        <td><?= fi_e((string)$r['status']) ?></td>
                     </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $sumSub = 0.0;
-                    $sumDesc = 0.0;
-                    $sumTax = 0.0;
-                    $sumTot = 0.0;
-                    foreach ($rows as $r):
-                        $sumSub += (float)$r['subtotal'];
-                        $sumDesc += (float)$r['desconto'];
-                        $sumTax += (float)$r['taxa'];
-                        $sumTot += (float)$r['total'];
-                    ?>
-                        <tr>
-                            <td class="center"><?= (int)$r['id'] ?></td>
-                            <td class="center"><?= e((string)$r['data']) ?></td>
-                            <td class="left"><?= e((string)($r['cliente'] ?? '')) ?></td>
-                            <td class="center"><?= e((string)($r['canal'] ?? '')) ?></td>
-                            <td class="center"><?= e((string)($r['pagamento'] ?? '')) ?></td>
-                            <td class="center"><?= e(number_format((float)$r['subtotal'], 2, ',', '.')) ?></td>
-                            <td class="center"><?= e(number_format((float)$r['desconto'], 2, ',', '.')) ?></td>
-                            <td class="center"><?= e(number_format((float)$r['taxa'], 2, ',', '.')) ?></td>
-                            <td class="center"><?= e(number_format((float)$r['total'], 2, ',', '.')) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-                <tfoot>
-                    <tr class="foot">
-                        <td colspan="5" class="center">Totais</td>
-                        <td class="center"><?= e(number_format($sumSub, 2, ',', '.')) ?></td>
-                        <td class="center"><?= e(number_format($sumDesc, 2, ',', '.')) ?></td>
-                        <td class="center"><?= e(number_format($sumTax, 2, ',', '.')) ?></td>
-                        <td class="center"><?= e(number_format($sumTot, 2, ',', '.')) ?></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
+                <?php endforeach; ?>
+            </tbody>
+            <tfoot>
+                <tr class="foot">
+                    <td colspan="4">Totais</td>
+                    <td><?= fi_e(fi_brl((float)$totais['total_venda'])) ?></td>
+                    <td><?= fi_e(fi_brl((float)$totais['total_pago'])) ?></td>
+                    <td><?= fi_e(fi_brl((float)$totais['total_restante'])) ?></td>
+                    <td><?= (int)$totais['qtd'] ?> registro(s)</td>
+                </tr>
+            </tfoot>
+        </table>
     </body>
 
     </html>
@@ -940,14 +772,14 @@ if ($action === 'excel') {
     exit;
 }
 
-/* ========= INITIAL PHP RENDER ========= */
-$initial = fetch_initial_result();
-$csrf = csrf_token();
-
-$initialRows   = $initial['rows'];
-$initialMeta   = $initial['meta'];
-$initialTotais = $initial['totais'];
-
+/* =========================================================
+   INITIAL
+========================================================= */
+$initial = fi_fetch_rows_result(1, 10, false);
+$csrf = fi_csrf_token();
+$flashOk  = fi_flash_take('flash_ok');
+$flashErr = fi_flash_take('flash_err');
+$currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -956,14 +788,14 @@ $initialTotais = $initial['totais'];
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="csrf-token" content="<?= e($csrf) ?>">
+    <meta name="csrf-token" content="<?= fi_e($csrf) ?>">
 
     <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
-    <title>Painel da Distribuidora | Vendidos</title>
+    <title>Painel da Distribuidora | À Prazo</title>
 
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="assets/css/lineicons.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" type="text/css" />
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
@@ -976,7 +808,7 @@ $initialTotais = $initial['totais'];
 
         .form-control.compact,
         .form-select.compact {
-            height: 38px;
+            height: 40px;
             padding: 8px 12px;
             font-size: 13px;
         }
@@ -989,7 +821,7 @@ $initialTotais = $initial['totais'];
         }
 
         .cardx .head {
-            padding: 12px 14px;
+            padding: 14px 16px;
             border-bottom: 1px solid rgba(148, 163, 184, .18);
             display: flex;
             align-items: center;
@@ -999,7 +831,7 @@ $initialTotais = $initial['totais'];
         }
 
         .cardx .body {
-            padding: 14px;
+            padding: 16px;
         }
 
         .muted {
@@ -1045,7 +877,7 @@ $initialTotais = $initial['totais'];
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 14px;
             margin-bottom: 14px;
         }
@@ -1082,17 +914,12 @@ $initialTotais = $initial['totais'];
 
         .summary-card.s2 {
             background: #f8fafc;
-            border-left: 4px solid #166534 !important;
+            border-left: 4px solid #166534;
         }
 
         .summary-card.s3 {
-            background: #f8fafc !important;
-            border-left: 4px solid #0369a1;
-        }
-
-        .summary-card.s4 {
-            background: #f8fafc !important;
-            border-left: 4px solid #4338ca;
+            background: #f8fafc;
+            border-left: 4px solid #dc2626;
         }
 
         .summary-card.s1 .val {
@@ -1104,47 +931,21 @@ $initialTotais = $initial['totais'];
         }
 
         .summary-card.s3 .val {
-            color: #0369a1;
-        }
-
-        .summary-card.s4 .val {
-            color: #4338ca;
-        }
-
-        .equal-h>.col-lg-8,
-        .equal-h>.col-lg-4 {
-            display: flex;
-        }
-
-        .cardx.card-table,
-        .cardx.card-tot {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .cardx.card-table .body,
-        .cardx.card-tot .body {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
+            color: #dc2626;
         }
 
         .table-wrap {
-            flex: 1 1 auto;
-            min-height: 0;
             overflow: auto;
             border-radius: 14px;
         }
 
-        #tbDev {
+        #tbFiados {
             width: 100%;
-            min-width: 1140px;
+            min-width: 1220px;
             table-layout: fixed;
         }
 
-        #tbDev thead th {
+        #tbFiados thead th {
             position: sticky;
             top: 0;
             z-index: 2;
@@ -1152,14 +953,15 @@ $initialTotais = $initial['totais'];
             border-bottom: 1px solid rgba(148, 163, 184, .25);
             font-size: 12px;
             color: #0f172a;
-            padding: 10px 10px;
+            padding: 14px 18px;
             white-space: nowrap;
             text-align: center;
+            letter-spacing: .2px;
         }
 
-        #tbDev tbody td {
+        #tbFiados tbody td {
             border-top: 1px solid rgba(148, 163, 184, .18);
-            padding: 10px 10px;
+            padding: 16px 18px;
             font-size: 13px;
             vertical-align: top;
             color: #0f172a;
@@ -1167,13 +969,12 @@ $initialTotais = $initial['totais'];
         }
 
         .page-nav {
-            flex: 0 0 auto;
             display: flex;
             gap: 8px;
             align-items: center;
             justify-content: flex-end;
             flex-wrap: wrap;
-            margin-top: 10px;
+            margin-top: 12px;
             padding-top: 6px;
         }
 
@@ -1198,15 +999,147 @@ $initialTotais = $initial['totais'];
             font-weight: 900;
         }
 
-        .box-tot {
+        .col-venda {
+            width: 90px;
+        }
+
+        .col-data {
+            width: 165px;
+        }
+
+        .col-cliente {
+            width: 270px;
+        }
+
+        .col-canal {
+            width: 130px;
+        }
+
+        .col-num {
+            width: 145px;
+        }
+
+        .col-status {
+            width: 130px;
+        }
+
+        .col-acoes {
+            width: 220px;
+        }
+
+        .td-money {
+            text-align: center;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .td-nowrap {
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .td-clip {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: block;
+            max-width: 100%;
+        }
+
+        .badge-soft {
+            font-weight: 1000;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .b-open {
+            background: rgba(255, 251, 235, .95);
+            color: #92400e;
+            border: 1px solid rgba(245, 158, 11, .25);
+        }
+
+        .b-done {
+            background: rgba(240, 253, 244, .95);
+            color: #166534;
+            border: 1px solid rgba(34, 197, 94, .25);
+        }
+
+        .actions-wrap {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-action {
+            height: 34px !important;
+            padding: 8px 10px !important;
+            font-size: 12px !important;
+            border-radius: 10px !important;
+            white-space: nowrap;
+        }
+
+        .success-btn {
+            background: #16a34a !important;
+            border-color: #16a34a !important;
+            color: #fff !important;
+        }
+
+        .success-btn:hover {
+            background: #15803d !important;
+            border-color: #15803d !important;
+            color: #fff !important;
+        }
+
+        .sale-box {
             border: 1px solid rgba(148, 163, 184, .22);
             border-radius: 14px;
-            background: #fff;
-            padding: 12px;
-            flex: 1;
-            min-height: 0;
+            background: rgba(248, 250, 252, .7);
+            padding: 10px 12px;
+            max-height: 260px;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .sale-row {
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px dashed rgba(148, 163, 184, .35);
+            font-size: 12px;
+        }
+
+        .sale-row:last-child {
+            border-bottom: none;
+        }
+
+        .sale-row .left {
+            min-width: 0;
+        }
+
+        .sale-row .left .nm {
+            font-weight: 900;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 360px;
+        }
+
+        .sale-row .left .cd {
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .sale-row .right {
+            white-space: nowrap;
+            text-align: right;
         }
 
         .tot-row {
@@ -1246,206 +1179,6 @@ $initialTotais = $initial['totais'];
             color: #0b5ed7;
             font-size: 26px;
             letter-spacing: .2px;
-        }
-
-        .col-id {
-            width: 70px;
-        }
-
-        .col-data {
-            width: 120px;
-        }
-
-        .col-cliente {
-            width: 210px;
-        }
-
-        .col-canal {
-            width: 110px;
-        }
-
-        .col-pag {
-            width: 120px;
-        }
-
-        .col-itens {
-            width: 270px;
-        }
-
-        .col-num {
-            width: 110px;
-        }
-
-        .col-acoes {
-            width: 170px;
-        }
-
-        .td-money {
-            text-align: center;
-            font-weight: 900;
-            white-space: nowrap;
-        }
-
-        th, td{
-            text-align: center;
-        }
-
-        .td-nowrap {
-            white-space: nowrap;
-            text-align: center;
-        }
-
-        .td-clip {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            display: block;
-            max-width: 100%;
-        }
-
-        .badge-soft {
-            font-weight: 1000;
-            border-radius: 999px;
-            padding: 6px 10px;
-            font-size: 11px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            white-space: nowrap;
-        }
-
-        .b-open {
-            background: rgba(255, 251, 235, .95);
-            color: #92400e;
-            border: 1px solid rgba(245, 158, 11, .25);
-        }
-
-        .b-done {
-            background: rgba(240, 253, 244, .95);
-            color: #166534;
-            border: 1px solid rgba(34, 197, 94, .25);
-        }
-
-        .items-preview {
-            border: 1px solid rgba(148, 163, 184, .22);
-            border-radius: 12px;
-            padding: 8px 10px;
-            background: rgba(248, 250, 252, .7);
-        }
-
-        .item-line {
-            margin-bottom: 8px;
-        }
-
-        .item-line:last-child {
-            margin-bottom: 0;
-        }
-
-        .item-name {
-            font-weight: 900;
-            font-size: 12px;
-            line-height: 1.2;
-        }
-
-        .item-meta {
-            font-size: 12px;
-            color: #64748b;
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            white-space: nowrap;
-        }
-
-        .item-more {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 6px;
-            font-weight: 900;
-        }
-
-        .actions-wrap {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .btn-action {
-            height: 34px !important;
-            padding: 8px 10px !important;
-            font-size: 12px !important;
-            border-radius: 10px !important;
-            white-space: nowrap;
-        }
-
-        #mdDetalhes .modal-body .row.g-3>.col-md-6 {
-            display: flex;
-        }
-
-        #mdDetalhes .modal-body .row.g-3>.col-md-6>.cardx {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #mdDetalhes .modal-body .row.g-3>.col-md-6>.cardx .body {
-            flex: 1;
-            min-height: 0;
-        }
-
-        .sale-box {
-            border: 1px solid rgba(148, 163, 184, .22);
-            border-radius: 14px;
-            background: rgba(248, 250, 252, .7);
-            padding: 10px 12px;
-            max-height: 260px;
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .sale-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            padding: 8px 0;
-            border-bottom: 1px dashed rgba(148, 163, 184, .35);
-            font-size: 12px;
-        }
-
-        .sale-row:last-child {
-            border-bottom: none;
-        }
-
-        .sale-row .left {
-            min-width: 0;
-        }
-
-        .sale-row .left .nm {
-            font-weight: 900;
-            color: #0f172a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 380px;
-        }
-
-        .sale-row .left .cd {
-            color: #64748b;
-            font-size: 12px;
-        }
-
-        .sale-row .right {
-            white-space: nowrap;
-            text-align: right;
-        }
-
-        .sale-mini {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 6px;
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
         }
 
         .logout-btn {
@@ -1489,20 +1222,18 @@ $initialTotais = $initial['totais'];
             word-break: break-word;
         }
 
+        .flash-auto-hide {
+            transition: opacity .35s ease, transform .35s ease;
+        }
+
+        .flash-auto-hide.hide-now {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
 
         @media(max-width:1199.98px) {
             .summary-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media(max-width:991.98px) {
-            #tbDev {
-                min-width: 980px;
-            }
-
-            .grand .val {
-                font-size: 22px;
             }
         }
 
@@ -1548,8 +1279,8 @@ $initialTotais = $initial['totais'];
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav show">
-                        <li><a href="vendidos.php" class="active">Vendidos</a></li>
-                        <li><a href="fiados.php">À Prazo</a></li>
+                        <li><a href="vendidos.php">Vendidos</a></li>
+                        <li><a href="fiados.php" class="active">À Prazo</a></li>
                         <li><a href="devolucoes.php">Devoluções</a></li>
                     </ul>
                 </li>
@@ -1615,7 +1346,6 @@ $initialTotais = $initial['totais'];
     <div class="overlay"></div>
 
     <main class="main-wrapper">
-        <!-- Header -->
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -1626,13 +1356,12 @@ $initialTotais = $initial['totais'];
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
-                            <div class="header-search d-none d-md-flex"></div>
                         </div>
                     </div>
 
                     <div class="col-lg-7 col-md-7 col-6">
                         <div class="header-right d-flex justify-content-end align-items-center">
-                            <a href="logout.php" class="main-btn primary-btn btn-hover logout-btn">
+                            <a href="assets/auth/logout.php" class="main-btn primary-btn btn-hover logout-btn">
                                 <i class="lni lni-exit me-1"></i> Sair
                             </a>
                         </div>
@@ -1643,12 +1372,20 @@ $initialTotais = $initial['totais'];
 
         <section class="section">
             <div class="container-fluid">
+                <?php if ($flashOk): ?>
+                    <div class="alert alert-success flash-auto-hide mt-3" style="border-radius:14px;"><?= fi_e($flashOk) ?></div>
+                <?php endif; ?>
+
+                <?php if ($flashErr): ?>
+                    <div class="alert alert-danger flash-auto-hide mt-3" style="border-radius:14px;"><?= fi_e($flashErr) ?></div>
+                <?php endif; ?>
+
                 <div class="title-wrapper pt-30">
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="title">
-                                <h2>Gestão de Vendas</h2>
-                                <p class="text-muted">Listagem e filtros de vendas</p>
+                                <h2>Gestão de À Prazo</h2>
+                                <p class="text-muted">Listagem, filtros automáticos e pagamentos</p>
                             </div>
                         </div>
                     </div>
@@ -1658,15 +1395,21 @@ $initialTotais = $initial['totais'];
                     <div class="head">
                         <div>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="pill ok" id="pillCountTop"><?= (int)$initialTotais['qtd'] ?> vendas</span>
+                                <span class="pill ok" id="pillCountTop"><?= (int)$initial['totais']['qtd'] ?> fiados</span>
                                 <span class="muted" id="lblRange">Período: — até —</span>
                             </div>
-                            <div class="muted mt-1">Lista de vendas registradas no PDV (tabela <b>vendas</b>)</div>
+                            <div class="muted mt-1">Os filtros abaixo são aplicados automaticamente, sem precisar clicar em botão.</div>
                         </div>
+
                         <div class="toolbar">
                             <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel">
-                                <i class="lni lni-download me-1"></i> Excel
+                                <i class="lni lni-download me-1"></i> Exportar Excel
                             </button>
+
+                            <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar">
+                                <i class="lni lni-close me-1"></i> Limpar
+                            </button>
+
                             <select id="per" class="form-select compact" style="min-width:190px;">
                                 <option value="10" selected>10 por página</option>
                                 <option value="20">20 por página</option>
@@ -1684,10 +1427,12 @@ $initialTotais = $initial['totais'];
                                 <label class="form-label mini">Data inicial</label>
                                 <input type="date" class="form-control compact" id="di">
                             </div>
+
                             <div class="col-md-2">
                                 <label class="form-label mini">Data final</label>
                                 <input type="date" class="form-control compact" id="df">
                             </div>
+
                             <div class="col-md-2">
                                 <label class="form-label mini">Canal</label>
                                 <select class="form-select compact" id="canal">
@@ -1696,30 +1441,19 @@ $initialTotais = $initial['totais'];
                                     <option value="DELIVERY">Delivery</option>
                                 </select>
                             </div>
+
                             <div class="col-md-2">
-                                <label class="form-label mini">Pagamento</label>
-                                <select class="form-select compact" id="pag">
+                                <label class="form-label mini">Status</label>
+                                <select class="form-select compact" id="status">
                                     <option value="TODOS" selected>Todos</option>
-                                    <option value="DINHEIRO">Dinheiro</option>
-                                    <option value="PIX">PIX</option>
-                                    <option value="CARTAO">Cartão</option>
-                                    <option value="BOLETO">Boleto</option>
-                                    <option value="MULTI">Multi</option>
-                                    <option value="FIADO">Fiado</option>
+                                    <option value="ABERTO">Aberto</option>
+                                    <option value="PAGO">Pago</option>
                                 </select>
                             </div>
+
                             <div class="col-md-4">
                                 <label class="form-label mini">Pesquisar em tudo da tabela</label>
-                                <input type="text" class="form-control compact" id="q" placeholder="ID, cliente, canal, pagamento, itens, total..." autocomplete="off">
-                            </div>
-
-                            <div class="col-12 d-flex gap-2 flex-wrap mt-2">
-                                <button class="main-btn primary-btn btn-hover btn-compact" id="btnFiltrar">
-                                    <i class="lni lni-funnel me-1"></i> Filtrar
-                                </button>
-                                <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar">
-                                    <i class="lni lni-close me-1"></i> Limpar
-                                </button>
+                                <input type="text" class="form-control compact" id="q" placeholder="Venda, cliente, canal, status, itens, valores..." autocomplete="off">
                             </div>
                         </div>
                     </div>
@@ -1727,94 +1461,65 @@ $initialTotais = $initial['totais'];
 
                 <div class="summary-grid">
                     <div class="summary-card s1">
-                        <div class="lbl">Total Vendido (Bruto)</div>
-                        <div class="val" id="txtTotalBruto"><?= e(brl((float)$initialTotais['total'])) ?></div>
+                        <div class="lbl">Total em À Prazo</div>
+                        <div class="val" id="txtTotalVenda"><?= fi_e(fi_brl((float)$initial['totais']['total_venda'])) ?></div>
                     </div>
                     <div class="summary-card s2">
-                        <div class="lbl">Recebido em Vendas</div>
-                        <div class="val" id="txtRecVendas"><?= e(brl((float)$initialTotais['recebido_vendas'])) ?></div>
+                        <div class="lbl">Total Pago</div>
+                        <div class="val" id="txtTotalPago"><?= fi_e(fi_brl((float)$initial['totais']['total_pago'])) ?></div>
                     </div>
                     <div class="summary-card s3">
-                        <div class="lbl">Receb. À Prazo (Dívidas)</div>
-                        <div class="val" id="txtRecFiado"><?= e(brl((float)$initialTotais['recebido_fiados'])) ?></div>
-                    </div>
-                    <div class="summary-card s4">
-                        <div class="lbl">Caixa Real (Total)</div>
-                        <div class="val" id="txtCaixaReal"><?= e(brl((float)$initialTotais['caixa_real'])) ?></div>
+                        <div class="lbl">Total em Aberto</div>
+                        <div class="val" id="txtTotalRestante"><?= fi_e(fi_brl((float)$initial['totais']['total_restante'])) ?></div>
                     </div>
                 </div>
 
-                <div class="row g-3 equal-h">
-                    <div class="col-lg-8">
-                        <div class="cardx card-table">
-                            <div class="head">
-                                <div class="muted"><b>Vendidos</b> • pesquisa AJAX automática em toda a tabela</div>
-                                <div class="toolbar">
-                                    <div class="pill ok" id="pillCountTable"><?= (int)$initialTotais['qtd'] ?> vendas</div>
-                                    <div class="pill" id="pillLoading" style="display:none;">
-                                        <i class="lni lni-spinner-arrow lni-spin"></i> Carregando...
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="body">
-                                <div class="table-wrap">
-                                    <table class="table table-hover mb-0" id="tbDev">
-                                        <thead>
-                                            <tr>
-                                                <th class="col-id">ID</th>
-                                                <th class="col-data">Data</th>
-                                                <th class="col-cliente">Cliente</th>
-                                                <th class="col-canal">Canal</th>
-                                                <th class="col-pag">Pagamento</th>
-                                                <th class="col-itens">Itens</th>
-                                                <th class="col-num">Total</th>
-                                                <th class="col-num">Recebido</th>
-                                                <th class="col-acoes">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tbody">
-                                            <?= render_table_rows($initialRows) ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div class="page-nav">
-                                    <button class="page-btn" id="btnPrev">←</button>
-                                    <span class="page-info" id="pageInfo">Página <?= (int)$initialMeta['page'] ?> / <?= (int)$initialMeta['pages'] ?></span>
-                                    <button class="page-btn" id="btnNext">→</button>
-                                </div>
+                <div class="cardx">
+                    <div class="head">
+                        <div class="muted"><b>À Prazo</b> • pesquisa AJAX automática em toda a tabela</div>
+                        <div class="toolbar">
+                            <div class="pill ok" id="pillCountTable"><?= (int)$initial['totais']['qtd'] ?> fiados</div>
+                            <div class="pill" id="pillLoading" style="display:none;">
+                                <i class="lni lni-spinner-arrow lni-spin"></i> Carregando...
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-lg-4">
-                        <div class="cardx card-tot">
-                            <div class="head">
-                                <div class="fw-1000">Totais do Filtro</div>
-                                <div class="muted">Totais gerais do filtro inteiro, não só da página</div>
-                            </div>
-                            <div class="body">
-                                <div class="box-tot">
-                                    <div class="tot-row"><span>Quantidade</span><span id="tQtd"><?= (int)$initialTotais['qtd'] ?></span></div>
-                                    <div class="tot-row"><span>Subtotal</span><span id="tSub"><?= e(brl((float)$initialTotais['subtotal'])) ?></span></div>
-                                    <div class="tot-row"><span>Desconto</span><span id="tDesc"><?= e(brl((float)$initialTotais['desconto'])) ?></span></div>
-                                    <div class="tot-row"><span>Entrega</span><span id="tTaxa"><?= e(brl((float)$initialTotais['taxa'])) ?></span></div>
-                                    <div class="tot-hr"></div>
-                                    <div class="grand">
-                                        <div class="lbl">TOTAL</div>
-                                        <div class="val" id="tTotal"><?= e(brl((float)$initialTotais['total'])) ?></div>
-                                    </div>
-                                </div>
+                    <div class="body">
+                        <div class="table-wrap">
+                            <table class="table table-hover mb-0" id="tbFiados">
+                                <thead>
+                                    <tr>
+                                        <th class="col-venda">Venda #</th>
+                                        <th class="col-data">Data/Hora</th>
+                                        <th class="col-cliente">Cliente</th>
+                                        <th class="col-canal">Canal</th>
+                                        <th class="col-num">Total Venda</th>
+                                        <th class="col-num">Total Pago</th>
+                                        <th class="col-num">Restante</th>
+                                        <th class="col-status">Status</th>
+                                        <th class="col-acoes">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody">
+                                    <?= fi_render_rows($initial['rows']) ?>
+                                </tbody>
+                            </table>
+                        </div>
 
-                                <div class="muted mt-3">
-                                    <b>Obs.:</b> a pesquisa também procura em <b>venda_itens</b>.
-                                </div>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                            <div class="page-info" id="rangeInfo">
+                                Mostrando <?= (int)$initial['meta']['from'] ?>-<?= (int)$initial['meta']['to'] ?> de <?= (int)$initial['meta']['total'] ?>
+                            </div>
+
+                            <div class="page-nav">
+                                <button class="page-btn" id="btnPrev">←</button>
+                                <span class="page-info" id="pageInfo">Página <?= (int)$initial['meta']['page'] ?> / <?= (int)$initial['meta']['pages'] ?></span>
+                                <button class="page-btn" id="btnNext">→</button>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
         </section>
 
@@ -1825,20 +1530,24 @@ $initialTotais = $initial['totais'];
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content" style="border-radius:16px;">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-1000">Detalhes da Venda</h5>
+                    <h5 class="modal-title fw-1000">Detalhes do À Prazo</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
+
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
                             <div class="cardx">
                                 <div class="head"><b>Dados</b></div>
                                 <div class="body">
-                                    <div class="tot-row"><span>ID</span><span id="dId">—</span></div>
+                                    <div class="tot-row"><span>Fiado</span><span id="dFiado">—</span></div>
+                                    <div class="tot-row"><span>Venda</span><span id="dVenda">—</span></div>
                                     <div class="tot-row"><span>Data/Hora</span><span id="dDt">—</span></div>
                                     <div class="tot-row"><span>Cliente</span><span id="dCli">—</span></div>
                                     <div class="tot-row"><span>Canal</span><span id="dCanal">—</span></div>
                                     <div class="tot-row"><span>Pagamento</span><span id="dPag">—</span></div>
+                                    <div class="tot-row"><span>Vencimento</span><span id="dVenc">—</span></div>
+                                    <div class="tot-row"><span>Status</span><span id="dStatus">—</span></div>
                                     <div class="tot-row"><span>Endereço</span><span id="dEnd">—</span></div>
                                     <div class="tot-row"><span>Obs</span><span id="dObs">—</span></div>
                                 </div>
@@ -1849,41 +1558,86 @@ $initialTotais = $initial['totais'];
                             <div class="cardx">
                                 <div class="head"><b>Totais</b></div>
                                 <div class="body">
-                                    <div class="tot-row"><span>Subtotal</span><span id="dSub">R$ 0,00</span></div>
-                                    <div class="tot-row"><span>Desconto</span><span id="dDesc">R$ 0,00</span></div>
-                                    <div class="tot-row"><span>Entrega</span><span id="dTaxa">R$ 0,00</span></div>
+                                    <div class="tot-row"><span>Total Venda</span><span id="dTotal">R$ 0,00</span></div>
+                                    <div class="tot-row"><span>Total Pago</span><span id="dPago">R$ 0,00</span></div>
+                                    <div class="tot-row"><span>Restante</span><span id="dRestante">R$ 0,00</span></div>
                                     <div class="tot-hr"></div>
                                     <div class="grand">
-                                        <div class="lbl">TOTAL</div>
-                                        <div class="val" id="dTotal">R$ 0,00</div>
+                                        <div class="lbl">STATUS</div>
+                                        <div class="val" id="dStatusBig">—</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-12">
+                        <div class="col-md-6">
                             <div class="cardx">
-                                <div class="head d-flex justify-content-between align-items-center">
-                                    <b>Itens</b>
-                                    <button class="main-btn light-btn btn-hover btn-compact" id="btnCupomModal">
-                                        <i class="lni lni-printer me-1"></i> Cupom
-                                    </button>
-                                </div>
+                                <div class="head"><b>Itens da Venda</b></div>
                                 <div class="body">
                                     <div class="sale-box" id="dItens">—</div>
-                                    <div class="sale-mini">
-                                        <span id="dItensQtd">0 itens</span>
-                                        <span class="td-money" id="dItensTot">R$ 0,00</span>
-                                    </div>
                                 </div>
                             </div>
                         </div>
 
+                        <div class="col-md-6">
+                            <div class="cardx">
+                                <div class="head"><b>Pagamentos</b></div>
+                                <div class="body">
+                                    <div class="sale-box" id="dPagamentos">—</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
                 <div class="modal-footer">
                     <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal">Fechar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="mdPagamento" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="border-radius:16px;">
+                <form method="post" action="fiados.php?action=pay">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-1000">Registrar Pagamento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <input type="hidden" name="_csrf" value="<?= fi_e($csrf) ?>">
+                        <input type="hidden" name="fiado_id" id="pFiadoId" value="">
+                        <input type="hidden" name="return_to" value="<?= $currentReturn ?>">
+
+                        <div class="mb-2 muted">Cliente: <b id="pCliente">—</b></div>
+                        <div class="mb-2 muted">Venda: <b id="pVenda">—</b></div>
+                        <div class="mb-2 muted">Total: <b id="pTotal">R$ 0,00</b></div>
+                        <div class="mb-2 muted">Pago: <b id="pPago">R$ 0,00</b></div>
+                        <div class="mb-3 muted">Restante: <b id="pRestante">R$ 0,00</b></div>
+
+                        <div class="mb-3">
+                            <label class="form-label mini">Valor do pagamento</label>
+                            <input type="text" class="form-control compact" name="valor" id="pValor" placeholder="0,00" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label mini">Método</label>
+                            <select class="form-select compact" name="metodo" id="pMetodo">
+                                <option value="DINHEIRO">Dinheiro</option>
+                                <option value="PIX">PIX</option>
+                                <option value="CARTAO">Cartão</option>
+                                <option value="BOLETO">Boleto</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="main-btn primary-btn btn-hover btn-compact" type="submit">Salvar pagamento</button>
+                        <button class="main-btn light-btn btn-hover btn-compact" type="button" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -1894,13 +1648,11 @@ $initialTotais = $initial['totais'];
     <script>
         const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const el = (id) => document.getElementById(id);
-        const CUPOM_URL = './assets/dados/vendas/cupom.php';
 
         const state = {
-            page: <?= (int)$initialMeta['page'] ?>,
-            pages: <?= (int)$initialMeta['pages'] ?>,
+            page: <?= (int)$initial['meta']['page'] ?>,
+            pages: <?= (int)$initial['meta']['pages'] ?>,
             per: 10,
-            lastCupomId: null,
             searchTimer: null
         };
 
@@ -1915,19 +1667,6 @@ $initialTotais = $initial['totais'];
             }
         }
 
-        function fmtDate(iso) {
-            if (!iso) return '—';
-            const s = String(iso).slice(0, 10);
-            const p = s.split('-');
-            if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
-            return iso;
-        }
-
-        function fmtDateTime(dt) {
-            if (!dt) return '—';
-            return String(dt);
-        }
-
         function escapeHtml(s) {
             return String(s ?? '').replace(/[&<>"']/g, (m) => ({
                 '&': '&amp;',
@@ -1936,15 +1675,6 @@ $initialTotais = $initial['totais'];
                 '"': '&quot;',
                 "'": '&#039;'
             } [m]));
-        }
-
-        function numQ(v) {
-            const n = Number(v || 0);
-            if (Number.isInteger(n)) return String(n);
-            return n.toLocaleString('pt-BR', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 3
-            });
         }
 
         function buildParams() {
@@ -1956,35 +1686,35 @@ $initialTotais = $initial['totais'];
             const di = el('di').value.trim();
             const df = el('df').value.trim();
             const canal = el('canal').value.trim();
-            const pag = el('pag').value.trim();
+            const status = el('status').value.trim();
             const q = el('q').value.trim();
 
             if (di) p.set('di', di);
             if (df) p.set('df', df);
             if (canal) p.set('canal', canal);
-            if (pag) p.set('pag', pag);
+            if (status) p.set('status', status);
             if (q) p.set('q', q);
 
             return p;
         }
 
-        function buildExportUrl(action) {
+        function buildExportUrl() {
             const p = new URLSearchParams();
-            p.set('action', action);
+            p.set('action', 'excel');
 
             const di = el('di').value.trim();
             const df = el('df').value.trim();
             const canal = el('canal').value.trim();
-            const pag = el('pag').value.trim();
+            const status = el('status').value.trim();
             const q = el('q').value.trim();
 
             if (di) p.set('di', di);
             if (df) p.set('df', df);
             if (canal) p.set('canal', canal);
-            if (pag) p.set('pag', pag);
+            if (status) p.set('status', status);
             if (q) p.set('q', q);
 
-            return `vendidos.php?${p.toString()}`;
+            return `fiados.php?${p.toString()}`;
         }
 
         function setLoading(on) {
@@ -1993,58 +1723,44 @@ $initialTotais = $initial['totais'];
 
         function renderRows(rows) {
             if (!rows || !rows.length) {
-                el('tbody').innerHTML = `<tr><td colspan="9" class="muted">Nenhuma venda encontrada com este filtro.</td></tr>`;
+                el('tbody').innerHTML = '<tr><td colspan="9" class="muted text-center">Nenhum fiado encontrado com este filtro.</td></tr>';
                 return;
             }
 
             el('tbody').innerHTML = rows.map(r => {
+                const status = String(r.status || '').toUpperCase();
+                const statusBadge = status === 'PAGO' ?
+                    '<span class="badge-soft b-done">PAGO</span>' :
+                    '<span class="badge-soft b-open">ABERTO</span>';
+
                 const canalBadge = String(r.canal || '').toUpperCase() === 'DELIVERY' ?
-                    `<span class="badge-soft b-open">DELIVERY</span>` :
-                    `<span class="badge-soft b-done">PRESENCIAL</span>`;
+                    '<span class="badge-soft b-open">DELIVERY</span>' :
+                    '<span class="badge-soft b-done">PRESENCIAL</span>';
 
-                const pagBadge = `<span class="badge-soft b-open">${escapeHtml(r.pagamento || '—')}</span>`;
-
-                let itensHtml = `<span class="muted">—</span>`;
-                if (r.itens && r.itens.length) {
-                    const show = r.itens.slice(0, 2);
-                    const extra = r.itens.length - show.length;
-
-                    itensHtml = `
-                        <div class="items-preview">
-                            ${show.map(it => `
-                                <div class="item-line">
-                                    <div class="item-name">${escapeHtml(it.nome || 'Item')}</div>
-                                    <div class="item-meta">
-                                        <span>${numQ(it.qtd)} ${escapeHtml(it.un || '')}</span>
-                                        <span><b>${brl(it.total)}</b></span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                            ${extra > 0 ? `<div class="item-more">+ ${extra} item(ns)</div>` : ``}
-                        </div>
-                    `;
-                }
+                const btnPagar = (status !== 'PAGO' && Number(r.valor_restante || 0) > 0) ?
+                    `<button class="main-btn success-btn btn-hover btn-action" onclick="openPagamento(${Number(r.fiado_id)})"><i class="lni lni-wallet me-1"></i>Pagar</button>` :
+                    '';
 
                 return `
                     <tr>
-                        <td class="td-nowrap"><b>#${r.id}</b></td>
+                        <td class="td-nowrap"><b>#${escapeHtml(r.venda_id)}</b></td>
                         <td class="td-nowrap">
-                            <div class="mini">${fmtDate(r.data)}</div>
-                            <div class="muted2">${fmtDateTime(r.created_at)}</div>
+                            <div class="mini">${escapeHtml(r.created_at_fmt)}</div>
+                            <div class="muted2">Venc.: ${escapeHtml(r.vencimento_fmt)}</div>
                         </td>
                         <td>
                             <div class="td-clip mini">${escapeHtml(r.cliente || '—')}</div>
                             ${r.endereco ? `<div class="td-clip muted2">${escapeHtml(r.endereco)}</div>` : ``}
                         </td>
                         <td class="td-nowrap">${canalBadge}</td>
-                        <td class="td-nowrap">${pagBadge}</td>
-                        <td>${itensHtml}</td>
-                        <td class="td-money">${brl(r.total)}</td>
-                        <td class="td-money text-success">${brl(r.recebido)}</td>
+                        <td class="td-money">${brl(r.valor_total)}</td>
+                        <td class="td-money text-success">${brl(r.valor_pago)}</td>
+                        <td class="td-money text-danger">${brl(r.valor_restante)}</td>
+                        <td class="td-nowrap">${statusBadge}</td>
                         <td>
                             <div class="actions-wrap">
-                                <button class="main-btn light-btn btn-hover btn-action" onclick="openDetails(${r.id})">Detalhes</button>
-                                <button class="main-btn primary-btn btn-hover btn-action" onclick="openCupom(${r.id})">Cupom</button>
+                                <button class="main-btn light-btn btn-hover btn-action" onclick="openDetails(${Number(r.fiado_id)})"><i class="lni lni-eye me-1"></i>Detalhes</button>
+                                ${btnPagar}
                             </div>
                         </td>
                     </tr>
@@ -2052,22 +1768,20 @@ $initialTotais = $initial['totais'];
             }).join('');
         }
 
-        async function searchRows() {
+        async function fetchFiados() {
             setLoading(true);
 
-            const p = buildParams();
-            const url = `vendidos.php?${p.toString()}`;
-
             try {
-                const res = await fetch(url, {
+                const res = await fetch(`fiados.php?${buildParams().toString()}`, {
                     headers: {
-                        'X-CSRF': csrf,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-CSRF': csrf
                     }
                 });
 
                 const text = await res.text();
-                let js;
+                let js = null;
+
                 try {
                     js = JSON.parse(text);
                 } catch (e) {
@@ -2075,38 +1789,33 @@ $initialTotais = $initial['totais'];
                 }
 
                 if (!res.ok || !js.ok) {
-                    throw new Error(js?.msg || 'Falha ao pesquisar');
+                    throw new Error(js?.msg || 'Falha ao carregar dados');
                 }
 
                 state.page = Number(js.meta.page || 1);
                 state.pages = Number(js.meta.pages || 1);
 
-                el('tQtd').textContent = js.totais.qtd;
-                el('tSub').textContent = brl(js.totais.subtotal);
-                el('tDesc').textContent = brl(js.totais.desconto);
-                el('tTaxa').textContent = brl(js.totais.taxa);
-                el('tTotal').textContent = brl(js.totais.total);
+                renderRows(js.rows || []);
 
-                el('txtTotalBruto').textContent = brl(js.totais.total);
-                el('txtRecVendas').textContent = brl(js.totais.recebido_vendas);
-                el('txtRecFiado').textContent = brl(js.totais.recebido_fiados);
-                el('txtCaixaReal').textContent = brl(js.totais.caixa_real);
+                el('txtTotalVenda').textContent = brl(js.totais.total_venda || 0);
+                el('txtTotalPago').textContent = brl(js.totais.total_pago || 0);
+                el('txtTotalRestante').textContent = brl(js.totais.total_restante || 0);
 
-                el('pillCountTop').textContent = `${js.totais.qtd} vendas`;
-                el('pillCountTable').textContent = `${js.totais.qtd} vendas`;
-                el('pageInfo').textContent = `Página ${state.page} / ${state.pages}`;
+                el('pillCountTop').textContent = `${js.totais.qtd} fiados`;
+                el('pillCountTable').textContent = `${js.totais.qtd} fiados`;
+
+                el('rangeInfo').textContent = `Mostrando ${js.meta.from}-${js.meta.to} de ${js.meta.total}`;
+                el('pageInfo').textContent = `Página ${js.meta.page} / ${js.meta.pages}`;
 
                 el('btnPrev').disabled = state.page <= 1;
                 el('btnNext').disabled = state.page >= state.pages;
 
-                const di = el('di').value ? fmtDate(el('di').value) : '—';
-                const df = el('df').value ? fmtDate(el('df').value) : '—';
+                const di = el('di').value ? el('di').value.split('-').reverse().join('/') : '—';
+                const df = el('df').value ? el('df').value.split('-').reverse().join('/') : '—';
                 el('lblRange').textContent = `Período: ${di} até ${df}`;
 
-                renderRows(js.rows || []);
-
             } catch (err) {
-                el('tbody').innerHTML = `<tr><td colspan="9" class="text-danger">Erro: ${escapeHtml(err.message || String(err))}</td></tr>`;
+                el('tbody').innerHTML = `<tr><td colspan="9" class="text-danger text-center">Erro: ${escapeHtml(err.message || String(err))}</td></tr>`;
             } finally {
                 setLoading(false);
             }
@@ -2117,161 +1826,193 @@ $initialTotais = $initial['totais'];
             state.searchTimer = setTimeout(() => {
                 state.page = 1;
                 state.per = Number(el('per').value || 10);
-                searchRows();
-            }, 350);
+                fetchFiados();
+            }, 300);
         }
 
         async function openDetails(id) {
             try {
-                const res = await fetch(`vendidos.php?action=one&id=${id}`, {
+                const res = await fetch(`fiados.php?action=one&id=${id}`, {
                     headers: {
-                        'X-CSRF': csrf,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-CSRF': csrf
                     }
                 });
 
                 const text = await res.text();
-                let js;
+                let js = null;
+
                 try {
                     js = JSON.parse(text);
                 } catch (e) {
-                    throw new Error('Detalhes da venda não vieram em JSON válido.');
+                    throw new Error('Detalhes não vieram em JSON válido.');
                 }
 
                 if (!res.ok || !js.ok) {
                     throw new Error(js?.msg || 'Falha ao abrir detalhes');
                 }
 
-                const v = js.data.venda || {};
+                const fiado = js.data.fiado || {};
                 const itens = js.data.itens || [];
-                state.lastCupomId = Number(v.id || 0);
+                const pagamentos = js.data.pagamentos || [];
 
-                el('dId').textContent = `#${v.id || '—'}`;
-                el('dDt').textContent = `${v.data || '—'} • ${v.created_at || '—'}`;
-                el('dCli').textContent = v.cliente || '—';
-                el('dCanal').textContent = v.canal || '—';
-                el('dPag').textContent = v.pagamento || '—';
-                el('dEnd').textContent = v.endereco || '—';
-                el('dObs').textContent = v.obs || '—';
+                el('dFiado').textContent = `#${fiado.fiado_id || '—'}`;
+                el('dVenda').textContent = `#${fiado.venda_id || '—'}`;
+                el('dDt').textContent = fiado.created_at || '—';
+                el('dCli').textContent = fiado.cliente || '—';
+                el('dCanal').textContent = fiado.canal || '—';
+                el('dPag').textContent = fiado.pagamento || '—';
+                el('dVenc').textContent = fiado.data_vencimento || '—';
+                el('dStatus').textContent = fiado.status || '—';
+                el('dStatusBig').textContent = fiado.status || '—';
+                el('dEnd').textContent = fiado.endereco || '—';
+                el('dObs').textContent = fiado.obs || '—';
 
-                el('dSub').textContent = brl(v.subtotal || 0);
-                el('dDesc').textContent = brl(v.desconto_valor || 0);
-                el('dTaxa').textContent = brl(v.taxa_entrega || 0);
-                el('dTotal').textContent = brl(v.total || 0);
+                el('dTotal').textContent = brl(fiado.valor_total || 0);
+                el('dPago').textContent = brl(fiado.valor_pago || 0);
+                el('dRestante').textContent = brl(fiado.valor_restante || 0);
 
                 if (!itens.length) {
-                    el('dItens').innerHTML = `<span class="muted">Sem itens cadastrados para esta venda.</span>`;
-                    el('dItensQtd').textContent = `0 itens`;
-                    el('dItensTot').textContent = brl(0);
+                    el('dItens').innerHTML = '<span class="muted">Sem itens encontrados para esta venda.</span>';
                 } else {
                     el('dItens').innerHTML = itens.map(it => `
                         <div class="sale-row">
                             <div class="left">
                                 <div class="nm">${escapeHtml(it.nome || 'Item')}</div>
                                 ${it.codigo ? `<div class="cd">${escapeHtml(it.codigo)}</div>` : ``}
-                                <div class="cd">${escapeHtml(it.un || '')} • ${brl(it.preco || 0)}</div>
+                                <div class="cd">${escapeHtml(it.unidade || '')} • ${brl(it.preco_unit || 0)}</div>
                             </div>
                             <div class="right">
-                                <div><b>${numQ(it.qtd)}</b></div>
-                                <div class="muted2">${brl(it.total || 0)}</div>
+                                <div><b>${escapeHtml(it.qtd || 0)}</b></div>
+                                <div class="muted2">${brl(it.subtotal || 0)}</div>
                             </div>
                         </div>
                     `).join('');
+                }
 
-                    el('dItensQtd').textContent = `${itens.length} item(ns)`;
-                    el('dItensTot').textContent = brl(js.data.itens_total || 0);
+                if (!pagamentos.length) {
+                    el('dPagamentos').innerHTML = '<span class="muted">Sem pagamentos lançados.</span>';
+                } else {
+                    el('dPagamentos').innerHTML = pagamentos.map(pg => `
+                        <div class="sale-row">
+                            <div class="left">
+                                <div class="nm">${escapeHtml(pg.metodo || 'Pagamento')}</div>
+                                <div class="cd">${escapeHtml(pg.created_at || '')}</div>
+                            </div>
+                            <div class="right">
+                                <div><b>${brl(pg.valor || 0)}</b></div>
+                            </div>
+                        </div>
+                    `).join('');
                 }
 
                 const modal = new bootstrap.Modal(el('mdDetalhes'));
                 modal.show();
-
             } catch (err) {
                 alert('Erro: ' + (err.message || String(err)));
             }
         }
 
-        function openCupom(id) {
-            window.open(`${CUPOM_URL}?id=${encodeURIComponent(id)}&auto=1`, '_blank');
+        async function openPagamento(id) {
+            try {
+                const res = await fetch(`fiados.php?action=one&id=${id}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF': csrf
+                    }
+                });
+
+                const text = await res.text();
+                let js = null;
+
+                try {
+                    js = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Dados do pagamento inválidos.');
+                }
+
+                if (!res.ok || !js.ok) {
+                    throw new Error(js?.msg || 'Falha ao abrir pagamento');
+                }
+
+                const fiado = js.data.fiado || {};
+
+                el('pFiadoId').value = fiado.fiado_id || '';
+                el('pCliente').textContent = fiado.cliente || '—';
+                el('pVenda').textContent = '#' + (fiado.venda_id || '—');
+                el('pTotal').textContent = brl(fiado.valor_total || 0);
+                el('pPago').textContent = brl(fiado.valor_pago || 0);
+                el('pRestante').textContent = brl(fiado.valor_restante || 0);
+                el('pValor').value = String(Number(fiado.valor_restante || 0).toFixed(2)).replace('.', ',');
+                el('pMetodo').value = 'DINHEIRO';
+
+                const modal = new bootstrap.Modal(el('mdPagamento'));
+                modal.show();
+            } catch (err) {
+                alert('Erro: ' + (err.message || String(err)));
+            }
         }
 
-        el('btnCupomModal').addEventListener('click', () => {
-            if (!state.lastCupomId) return;
-            openCupom(state.lastCupomId);
+        el('btnPrev').addEventListener('click', () => {
+            if (state.page <= 1) return;
+            state.page -= 1;
+            fetchFiados();
         });
 
-        el('btnFiltrar').addEventListener('click', () => {
-            state.page = 1;
+        el('btnNext').addEventListener('click', () => {
+            if (state.page >= state.pages) return;
+            state.page += 1;
+            fetchFiados();
+        });
+
+        el('per').addEventListener('change', () => {
             state.per = Number(el('per').value || 10);
-            searchRows();
+            state.page = 1;
+            fetchFiados();
         });
 
         el('btnLimpar').addEventListener('click', () => {
             el('di').value = '';
             el('df').value = '';
             el('canal').value = 'TODOS';
-            el('pag').value = 'TODOS';
+            el('status').value = 'TODOS';
             el('q').value = '';
             state.page = 1;
             state.per = Number(el('per').value || 10);
-            searchRows();
-        });
-
-        el('btnPrev').addEventListener('click', () => {
-            if (state.page <= 1) return;
-            state.page -= 1;
-            searchRows();
-        });
-
-        el('btnNext').addEventListener('click', () => {
-            if (state.page >= state.pages) return;
-            state.page += 1;
-            searchRows();
-        });
-
-        el('per').addEventListener('change', () => {
-            state.per = Number(el('per').value || 10);
-            state.page = 1;
-            searchRows();
+            fetchFiados();
         });
 
         el('btnExcel').addEventListener('click', () => {
-            window.location.href = buildExportUrl('excel');
+            window.location.href = buildExportUrl();
         });
 
-        el('q').addEventListener('input', () => {
-            triggerAutoSearch();
-        });
-
-        el('di').addEventListener('change', () => {
-            triggerAutoSearch();
-        });
-
-        el('df').addEventListener('change', () => {
-            triggerAutoSearch();
-        });
-
-        el('canal').addEventListener('change', () => {
-            triggerAutoSearch();
-        });
-
-        el('pag').addEventListener('change', () => {
-            triggerAutoSearch();
-        });
+        el('di').addEventListener('change', triggerAutoSearch);
+        el('df').addEventListener('change', triggerAutoSearch);
+        el('canal').addEventListener('change', triggerAutoSearch);
+        el('status').addEventListener('change', triggerAutoSearch);
+        el('q').addEventListener('input', triggerAutoSearch);
 
         el('q').addEventListener('keydown', (ev) => {
             if (ev.key === 'Enter') {
                 ev.preventDefault();
                 clearTimeout(state.searchTimer);
                 state.page = 1;
-                searchRows();
+                fetchFiados();
             }
+        });
+
+        document.querySelectorAll('.flash-auto-hide').forEach(elm => {
+            setTimeout(() => {
+                elm.classList.add('hide-now');
+                setTimeout(() => elm.remove(), 350);
+            }, 1600);
         });
 
         el('btnPrev').disabled = state.page <= 1;
         el('btnNext').disabled = state.page >= state.pages;
 
         window.openDetails = openDetails;
-        window.openCupom = openCupom;
+        window.openPagamento = openPagamento;
     </script>
 </body>
 
