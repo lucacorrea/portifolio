@@ -1519,27 +1519,27 @@ try {
                 document.getElementById('detRestante').innerText = brlJs(f.valor_restante);
 
                 const items = Array.isArray(r.items) ? r.items : [];
-                document.getElementById('detItemsBody').innerHTML = items.length ?
-                    items.map(it => `
+                document.getElementById('detItemsBody').innerHTML = items.length
+                    ? items.map(it => `
                         <tr>
                             <td>${it.nome ?? ''}</td>
                             <td>${it.qtd ?? ''} ${it.unidade ?? ''}</td>
                             <td class="text-end">${brlJs(it.preco_unit)}</td>
                             <td class="text-end">${brlJs(it.subtotal)}</td>
                         </tr>
-                    `).join('') :
-                    '<tr><td colspan="4" class="text-center">Sem itens.</td></tr>';
+                    `).join('')
+                    : '<tr><td colspan="4" class="text-center">Sem itens.</td></tr>';
 
                 const pays = Array.isArray(r.payments) ? r.payments : [];
-                document.getElementById('detPaysBody').innerHTML = pays.length ?
-                    pays.map(p => `
+                document.getElementById('detPaysBody').innerHTML = pays.length
+                    ? pays.map(p => `
                         <tr>
                             <td>${toDT(p.created_at)}</td>
                             <td>${p.metodo ?? ''}</td>
                             <td class="text-end">${brlJs(p.valor)}</td>
                         </tr>
-                    `).join('') :
-                    '<tr><td colspan="3" class="text-center">Nenhum pagamento registrado.</td></tr>';
+                    `).join('')
+                    : '<tr><td colspan="3" class="text-center">Nenhum pagamento registrado.</td></tr>';
 
                 modalDetalhes.show();
             } catch (e) {
