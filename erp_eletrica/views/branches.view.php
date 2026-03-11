@@ -143,11 +143,11 @@
                     </div>
                     <div class="col-md-1">
                         <label class="form-label small fw-bold">UF</label>
-                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2" oninput="this.value = this.value.toUpperCase(); atualizarCodigoUF();">
+                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2" oninput="this.value = this.value.toUpperCase(); atualizarCodigoUF();" onchange="atualizarCodigoUF()">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Código UF</label>
-                        <input type="text" name="codigo_uf" id="branch_codigo_uf" class="form-control shadow-sm bg-light" readonly placeholder="Ex: 35">
+                        <input type="text" name="codigo_uf" id="branch_codigo_uf" class="form-control shadow-sm" placeholder="Ex: 35">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Cód IBGE Mun.</label>
@@ -384,8 +384,10 @@ const MAP_UF_IBGE = {
 };
 
 function atualizarCodigoUF() {
-    const uf = (document.getElementById('branch_uf').value || '').toUpperCase();
+    const uf = (document.getElementById('branch_uf').value || '').trim().toUpperCase();
     const codigo = MAP_UF_IBGE[uf] || '';
-    document.getElementById('branch_codigo_uf').value = codigo;
+    if (codigo) {
+        document.getElementById('branch_codigo_uf').value = codigo;
+    }
 }
 </script>
