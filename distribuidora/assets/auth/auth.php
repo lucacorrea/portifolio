@@ -38,14 +38,6 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-/* =========================================================
-   HELPERS
-========================================================= */
-$helpers = __DIR__ . '/./_helpers.php';
-if (is_file($helpers)) {
-    require_once $helpers;
-}
-
 if (!function_exists('redirect')) {
     function redirect(string $url): void
     {
