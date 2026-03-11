@@ -445,14 +445,26 @@ $saidas = $pdo->query("
 
         <section class="section">
             <div class="container-fluid">
+
                 <div class="title-wrapper pt-30">
                     <div class="row align-items-center">
-                        <div class="col-md-7">
+                        <div class="col-md-6">
                             <div class="title">
-                                <h2>Saídas (Perdas/Avarias/Vencidos)</h2>
-                                <p class="text-sm text-gray mb-0">Registrar produto estragado, vencido, quebrado ou consumo interno (não é venda).</p>
+                                <h2>Saidas</h2>
                             </div>
                         </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Estoque</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Saidas</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
