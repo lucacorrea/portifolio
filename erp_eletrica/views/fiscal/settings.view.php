@@ -28,8 +28,8 @@
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <h6 class="fw-bold mb-0">Configuração de Certificado Global A1</h6>
-                            <a href="fiscal.php?action=adicionar_nfce&global=1" class="btn btn-sm btn-primary fw-bold">
-                                <i class="fas fa-cog me-2"></i>GERENCIAR GLOBAL (27 CAMPOS)
+                            <a href="importar_automatico.php?action=config" class="btn btn-sm btn-primary fw-bold">
+                                <i class="fas fa-cog me-2"></i>GERENCIAR GLOBAL
                             </a>
                         </div>
                         <?php if ($globalConfig && $globalConfig['certificado_path']): ?>
@@ -113,10 +113,7 @@
                                         <button class="btn btn-sm btn-outline-primary fw-bold" onclick="testConnection(<?= $b['id'] ?>)">
                                             <i class="fas fa-plug-circle-check me-2"></i>Testar Conexão
                                         </button>
-                                        <a href="fiscal.php?action=adicionar_nfce&id=<?= $b['id'] ?>" class="btn btn-sm btn-light border" title="Configuração Completa (27 campos)">
-                                            <i class="fas fa-list-check text-primary"></i>
-                                        </a>
-                                        <button class="btn btn-sm btn-light border" title="Editar Unidade" onclick="window.location.href='filiais.php'">
+                                        <button class="btn btn-sm btn-light border" title="Editar Configuração" onclick="window.location.href='filiais.php'">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                     </div>

@@ -70,8 +70,8 @@
                                 <a href="fiscal.php?action=download_xml&id=<?= $nf['id'] ?>" class="btn btn-light border" title="Baixar XML">
                                     <i class="fas fa-code text-primary"></i>
                                 </a>
-                                <button class="btn btn-light border" title="Visualizar DANFE" onclick="window.open('fiscal.php?action=danfe_nfce&id=<?= $nf['id'] ?>', 'danfe', 'width=400,height=600')">
-                                    <i class="fas fa-print text-primary"></i>
+                                <button class="btn btn-light border" title="Visualizar DANFE" onclick="alert('Visualizador de PDF em desenvolvimento')">
+                                    <i class="fas fa-file-pdf text-danger"></i>
                                 </button>
                                 <button class="btn btn-light border text-danger" title="Cancelar Nota" onclick="alert('Solicitação de cancelamento enviada')">
                                     <i class="fas fa-times-circle"></i>

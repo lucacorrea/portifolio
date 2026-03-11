@@ -70,32 +70,27 @@
             </div>
             <div class="modal-body p-4">
                 <input type="hidden" name="id" id="branch_id">
-                <input type="hidden" name="nome" id="branch_nome_hidden">
                 <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Nome Fantasia (Apelido)</label>
+                        <input type="text" name="nome" id="branch_nome" class="form-control shadow-sm" required>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-bold">Razão Social (Contrato Social)</label>
                         <input type="text" name="razao_social" id="branch_razao_social" class="form-control shadow-sm text-uppercase" required>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Nome Fantasia (Apelido)</label>
-                        <input type="text" name="nome_fantasia" id="branch_nome_fantasia" class="form-control shadow-sm" required>
-                    </div>
                     <div class="col-md-5">
                         <label class="form-label small fw-bold">CNPJ</label>
                         <div class="input-group input-group-sm">
-                            <input type="text" name="cnpj" id="branch_cnpj" class="form-control shadow-sm" placeholder="00.000.000/0000-00" onkeyup="maskCnpj(this)">
+                            <input type="text" name="cnpj" id="branch_cnpj" class="form-control shadow-sm" placeholder="00.000.000/0000-00" onkeyup="mascaraCNPJ(this)">
                             <button type="button" class="btn btn-outline-primary fw-bold" onclick="consultarCNPJ()">
-                                <i class="fas fa-search me-1"></i> Buscar
+                                <i class="fas fa-search me-1"></i> Buscar Dados
                             </button>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Inscrição Estadual</label>
                         <input type="text" name="inscricao_estadual" id="branch_ie" class="form-control shadow-sm">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Inscrição Municipal</label>
-                        <input type="text" name="inscricao_municipal" id="branch_im" class="form-control shadow-sm">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Ambiente SEFAZ</label>
@@ -105,26 +100,26 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Regime Tributário</label>
-                        <select name="regime_tributario" id="branch_regime_tributario" class="form-select shadow-sm">
+                        <label class="form-label small fw-bold">Regime (CRT)</label>
+                        <select name="crt" id="branch_crt" class="form-select shadow-sm">
                             <option value="1">1 - Simples Nacional</option>
                             <option value="2">2 - Simples Excesso</option>
                             <option value="3">3 - Regime Normal</option>
                         </select>
                     </div>
-                    <div class="col-md-3 mt-2">
-                        <label class="form-label small fw-bold">Telefone</label>
-                        <input type="text" name="telefone" id="branch_telefone" class="form-control shadow-sm" onkeyup="maskTel(this)">
+                    <div class="col-md-6 mt-2">
+                        <label class="form-label small fw-bold">Telefone da Unidade</label>
+                        <input type="text" name="telefone" id="branch_telefone" class="form-control shadow-sm">
                     </div>
-                    <div class="col-md-3 mt-2">
-                        <label class="form-label small fw-bold">E-mail (NFE)</label>
+                    <div class="col-md-6 mt-2">
+                        <label class="form-label small fw-bold">E-mail de Contato (NFE)</label>
                         <input type="email" name="email" id="branch_email" class="form-control shadow-sm">
                     </div>
                     
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Endereço Fiscal (Identico a SEFAZ)</h6></div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">CEP</label>
-                        <input type="text" name="cep" id="branch_cep" class="form-control shadow-sm" onkeyup="maskCep(this)">
+                        <input type="text" name="cep" id="branch_cep" class="form-control shadow-sm">
                     </div>
                     <div class="col-md-7">
                         <label class="form-label small fw-bold">Logradouro</label>
@@ -132,7 +127,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Nº</label>
-                        <input type="text" name="numero_endereco" id="branch_numero_endereco" class="form-control shadow-sm">
+                        <input type="text" name="numero" id="branch_numero" class="form-control shadow-sm">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Complemento</label>
@@ -143,75 +138,76 @@
                         <input type="text" name="bairro" id="branch_bairro" class="form-control shadow-sm">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Cidade</label>
-                        <input type="text" name="cidade" id="branch_cidade" class="form-control shadow-sm">
+                        <label class="form-label small fw-bold">Município</label>
+                        <input type="text" name="municipio" id="branch_municipio" class="form-control shadow-sm">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <label class="form-label small fw-bold">UF</label>
-                        <select name="uf" id="branch_uf" class="form-select shadow-sm" onchange="updateBranchIbge()">
-                            <option value="">--</option>
-                            <?php 
-                            $ufs = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
-                            foreach($ufs as $uf): ?>
-                            <option value="<?= $uf ?>"><?= $uf ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small fw-bold">Código UF (IBGE)</label>
-                        <input type="text" name="codigo_uf" id="branch_codigo_uf" class="form-control shadow-sm bg-light" readonly>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Código do Município (IBGE)</label>
-                        <input type="text" name="codigo_municipio" id="branch_codigo_municipio" class="form-control shadow-sm" placeholder="ex: 3550308" maxlength="7" pattern="[0-9]{7}">
+                        <label class="form-label small fw-bold text-danger">Cód IBGE Mun.</label>
+                        <input type="text" name="codigo_municipio" id="branch_codigo_municipio" class="form-control shadow-sm border-danger" placeholder="ex: 3550308">
                     </div>
 
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Configurações Avançadas (NF-e / NFC-e)</h6></div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Tipo de Emissão</label>
                         <select name="tipo_emissao" id="branch_tipo_emissao" class="form-select shadow-sm">
-                            <option value="1">1 - Normal</option>
-                            <option value="9">9 - Contingência Offline</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Contingencia SVC-AN">Contingência SVC-AN</option>
+                            <option value="Contingencia SVC-RS">Contingência SVC-RS</option>
+                            <option value="Contingencia Offline">Contingência Offline (NFC-e)</option>
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Finalidade</label>
-                        <select name="finalidade" id="branch_finalidade" class="form-select shadow-sm">
-                            <option value="1">1 - Normal</option>
-                            <option value="2">2 - Complementar</option>
-                            <option value="3">3 - Ajuste</option>
-                            <option value="4">4 - Devolução</option>
+                        <label class="form-label small fw-bold">Finalidade da Emissão</label>
+                        <select name="finalidade_emissao" id="branch_finalidade_emissao" class="form-select shadow-sm">
+                            <option value="Normal">Normal</option>
+                            <option value="Complementar">Complementar</option>
+                            <option value="Ajuste">Ajuste</option>
+                            <option value="Devolucao">Devolução</option>
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Ind. Presença</label>
-                        <select name="ind_pres" id="branch_ind_pres" class="form-select shadow-sm">
-                            <option value="1">1 - Operação Presencial</option>
-                            <option value="4">4 - Entrega a domicílio</option>
+                        <label class="form-label small fw-bold">Indicador de Presença</label>
+                        <select name="indicador_presenca" id="branch_indicador_presenca" class="form-select shadow-sm">
+                            <option value="Operacao presencial">Operação Presencial</option>
+                            <option value="Operacao pela internet">Operação pela internet</option>
+                            <option value="Operacao teleatendimento">Teleatendimento</option>
+                            <option value="NFC-e em operacao com entrega a domicilio">Entrega a domicílio</option>
+                            <option value="Nao se aplica (Nota complementar, etc)">Não se aplica</option>
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Tipo Impressão</label>
-                        <select name="tipo_impressao" id="branch_tipo_impressao" class="form-select shadow-sm">
-                            <option value="4">4 - DANFE NFC-e</option>
-                            <option value="5">5 - DANFE em Mensagem</option>
+                        <label class="form-label small fw-bold">Tipo Impressão DANFE</label>
+                        <select name="tipo_impressao_danfe" id="branch_tipo_impressao_danfe" class="form-select shadow-sm">
+                            <option value="NFC-e">NFC-e (Bobina)</option>
+                            <option value="Retrato">Retrato (A4)</option>
+                            <option value="Paisagem">Paisagem (A4)</option>
+                            <option value="Simplificado">Simplificado</option>
                         </select>
                     </div>
                     <div class="col-md-2 mt-3">
-                        <label class="form-label small fw-bold">Série NFC-e</label>
+                        <label class="form-label small fw-bold">Série da NFC-e</label>
                         <input type="number" name="serie_nfce" id="branch_serie_nfce" class="form-control shadow-sm" value="1">
+                        <div class="extra-small text-muted mt-1">Geralmente 1.</div>
                     </div>
                     <div class="col-md-3 mt-3">
-                        <label class="form-label small fw-bold">Último número</label>
+                        <label class="form-label small fw-bold">Último número NFC-e</label>
                         <input type="number" name="ultimo_numero_nfce" id="branch_ultimo_numero_nfce" class="form-control shadow-sm" value="0">
+                        <div class="extra-small text-muted mt-1">Prox. número será este + 1.</div>
                     </div>
-                    <div class="col-md-3 mt-3">
-                        <label class="form-label small fw-bold">CSC (Token)</label>
-                        <input type="text" name="csc" id="branch_csc" class="form-control shadow-sm" placeholder="AABBCC...">
-                    </div>
-                    <div class="col-md-4 mt-3">
+
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Credenciais e Certificado Digital</h6></div>
+                    <div class="col-md-4">
                         <label class="form-label small fw-bold">CSC ID</label>
                         <input type="text" name="csc_id" id="branch_csc_id" class="form-control shadow-sm" placeholder="000001">
+                        <div class="extra-small text-muted mt-1">Obrigatório p/ geração QR Code.</div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">CSC Token</label>
+                        <input type="text" name="csc_token" id="branch_csc_token" class="form-control shadow-sm" placeholder="A074385C-E888-485A-99A9-...">
                     </div>
                     <div class="col-md-6 mt-3">
                         <label class="form-label small fw-bold">Certificado Digital (A1 .pfx)</label>
@@ -236,35 +232,33 @@
 function newBranch() {
     const modal = new bootstrap.Modal(document.getElementById('branchModal'));
     document.getElementById('branch_id').value = '';
-    document.getElementById('branch_nome_hidden').value = '';
+    document.getElementById('branch_nome').value = '';
     document.getElementById('branch_razao_social').value = '';
-    document.getElementById('branch_nome_fantasia').value = '';
     document.getElementById('branch_ambiente').value = 2;
-    document.getElementById('branch_regime_tributario').value = 1;
+    document.getElementById('branch_crt').value = 1;
     document.getElementById('branch_cnpj').value = '';
     document.getElementById('branch_ie').value = '';
-    document.getElementById('branch_im').value = '';
     
-    document.getElementById('branch_tipo_emissao').value = 1;
-    document.getElementById('branch_finalidade').value = 1;
-    document.getElementById('branch_ind_pres').value = 1;
-    document.getElementById('branch_tipo_impressao').value = 4;
+    // Novas Configs NFCe Default Defaults
+    document.getElementById('branch_tipo_emissao').value = 'Normal';
+    document.getElementById('branch_finalidade_emissao').value = 'Normal';
+    document.getElementById('branch_indicador_presenca').value = 'Operacao presencial';
+    document.getElementById('branch_tipo_impressao_danfe').value = 'NFC-e';
     document.getElementById('branch_serie_nfce').value = 1;
     document.getElementById('branch_ultimo_numero_nfce').value = 0;
 
     document.getElementById('branch_telefone').value = '';
     document.getElementById('branch_email').value = '';
     document.getElementById('branch_logradouro').value = '';
-    document.getElementById('branch_numero_endereco').value = '';
+    document.getElementById('branch_numero').value = '';
     document.getElementById('branch_complemento').value = '';
     document.getElementById('branch_bairro').value = '';
-    document.getElementById('branch_cidade').value = '';
+    document.getElementById('branch_municipio').value = '';
     document.getElementById('branch_codigo_municipio').value = '';
     document.getElementById('branch_uf').value = '';
-    document.getElementById('branch_codigo_uf').value = '';
     document.getElementById('branch_cep').value = '';
-    document.getElementById('branch_csc').value = '';
     document.getElementById('branch_csc_id').value = '';
+    document.getElementById('branch_csc_token').value = '';
     document.getElementById('branch_cert_senha').value = '';
     document.getElementById('cert_info').innerText = 'Novo certificado (.pfx) será carregado';
     modal.show();
@@ -273,77 +267,48 @@ function newBranch() {
 function editBranch(branch) {
     const modal = new bootstrap.Modal(document.getElementById('branchModal'));
     document.getElementById('branch_id').value = branch.id;
-    document.getElementById('branch_nome_hidden').value = branch.nome || '';
+    document.getElementById('branch_nome').value = branch.nome;
     document.getElementById('branch_razao_social').value = branch.razao_social || '';
-    document.getElementById('branch_nome_fantasia').value = branch.nome_fantasia || '';
     document.getElementById('branch_ambiente').value = branch.ambiente || 2;
-    document.getElementById('branch_regime_tributario').value = branch.regime_tributario || 1;
+    document.getElementById('branch_crt').value = branch.crt || 1;
     document.getElementById('branch_cnpj').value = branch.cnpj || '';
     document.getElementById('branch_ie').value = branch.inscricao_estadual || '';
-    document.getElementById('branch_im').value = branch.inscricao_municipal || '';
 
-    document.getElementById('branch_tipo_emissao').value = branch.tipo_emissao || 1;
-    document.getElementById('branch_finalidade').value = branch.finalidade || 1;
-    document.getElementById('branch_ind_pres').value = branch.ind_pres || 1;
-    document.getElementById('branch_tipo_impressao').value = branch.tipo_impressao || 4;
+    // Advanced NFce Configs
+    document.getElementById('branch_tipo_emissao').value = branch.tipo_emissao || 'Normal';
+    document.getElementById('branch_finalidade_emissao').value = branch.finalidade_emissao || 'Normal';
+    document.getElementById('branch_indicador_presenca').value = branch.indicador_presenca || 'Operacao presencial';
+    document.getElementById('branch_tipo_impressao_danfe').value = branch.tipo_impressao_danfe || 'NFC-e';
     document.getElementById('branch_serie_nfce').value = branch.serie_nfce || 1;
     document.getElementById('branch_ultimo_numero_nfce').value = branch.ultimo_numero_nfce || 0;
 
     document.getElementById('branch_telefone').value = branch.telefone || '';
     document.getElementById('branch_email').value = branch.email || '';
     document.getElementById('branch_logradouro').value = branch.logradouro || '';
-    document.getElementById('branch_numero_endereco').value = branch.numero_endereco || branch.numero || '';
+    document.getElementById('branch_numero').value = branch.numero || '';
     document.getElementById('branch_complemento').value = branch.complemento || '';
     document.getElementById('branch_bairro').value = branch.bairro || '';
-    document.getElementById('branch_cidade').value = branch.cidade || branch.municipio || '';
+    document.getElementById('branch_municipio').value = branch.municipio || '';
     document.getElementById('branch_codigo_municipio').value = branch.codigo_municipio || '';
     document.getElementById('branch_uf').value = branch.uf || '';
-    document.getElementById('branch_codigo_uf').value = branch.codigo_uf || '';
     document.getElementById('branch_cep').value = branch.cep || '';
-    document.getElementById('branch_csc').value = branch.csc || branch.csc_token || '';
     document.getElementById('branch_csc_id').value = branch.csc_id || '';
-    document.getElementById('branch_cert_senha').value = ''; // Always empty for security
+    document.getElementById('branch_csc_token').value = branch.csc_token || '';
+    document.getElementById('branch_cert_senha').value = branch.certificado_senha || '';
     
     document.getElementById('cert_info').innerText = branch.certificado_pfx ? 'Certificado atual: ' + branch.certificado_pfx : 'Nenhum certificado carregado';
     
     modal.show();
 }
 
-// Ensure the system name 'nome' stays in sync with 'nome_fantasia'
-document.getElementById('branch_nome_fantasia').addEventListener('input', function() {
-    document.getElementById('branch_nome_hidden').value = this.value;
-});
-
-const MAP_UF_IBGE = {
-    "RO": 11, "AC": 12, "AM": 13, "RR": 14, "PA": 15, "AP": 16, "TO": 17, "MA": 21, "PI": 22, "CE": 23, "RN": 24, "PB": 25, "PE": 26, "AL": 27, "SE": 28, "BA": 29, "MG": 31, "ES": 32, "RJ": 33, "SP": 35, "PR": 41, "SC": 42, "RS": 43, "MS": 50, "MT": 51, "GO": 52, "DF": 53
-};
-
-function updateBranchIbge() {
-    const uf = document.getElementById('branch_uf').value;
-    const cod = MAP_UF_IBGE[uf] || '';
-    document.getElementById('branch_codigo_uf').value = cod;
-}
-
-function maskCnpj(i) {
-    let v = i.value.replace(/\D/g, '').slice(0, 14);
-    if (v.length > 2) v = v.slice(0, 2) + '.' + v.slice(2);
-    if (v.length > 6) v = v.slice(0, 6) + '.' + v.slice(6);
-    if (v.length > 10) v = v.slice(0, 10) + '/' + v.slice(10);
-    if (v.length > 15) v = v.slice(0, 15) + '-' + v.slice(15);
-    i.value = v;
-}
-
-function maskCep(i) {
-    let v = i.value.replace(/\D/g, '').slice(0, 8);
-    if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
-    i.value = v;
-}
-
-function maskTel(i) {
-    let v = i.value.replace(/\D/g, '').slice(0, 11);
-    if (v.length > 2) v = '(' + v.slice(0, 2) + ') ' + v.slice(2);
-    if (v.length > 9) v = v.slice(0, 9) + '-' + v.slice(9);
-    i.value = v;
+function mascaraCNPJ(input) {
+    let v = input.value.replace(/\D/g, "");
+    if (v.length > 14) v = v.substring(0, 14);
+    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+    v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+    v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    input.value = v;
 }
 
 async function consultarCNPJ() {
@@ -357,40 +322,49 @@ async function consultarCNPJ() {
         return;
     }
 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
     btn.disabled = true;
 
     try {
         const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
         if (!response.ok) {
-            throw new Error('Falha na consulta.');
+            throw new Error('Falha na consulta. CNPJ rejeitado ou limitação de API.');
         }
         
         const data = await response.json();
         
+        let ibgeCode = '';
+        if (data.cep) {
+            try {
+                const cepRes = await fetch(`https://brasilapi.com.br/api/cep/v2/${data.cep.replace(/\D/g, '')}`);
+                if (cepRes.ok) {
+                    const cepData = await cepRes.json();
+                    if (cepData.ibge) ibgeCode = cepData.ibge;
+                }
+            } catch(e) {}
+        }
+        
         // Auto-Fill Fields
         document.getElementById('branch_razao_social').value = data.razao_social || '';
-        document.getElementById('branch_nome_fantasia').value = data.nome_fantasia || data.razao_social || '';
-        document.getElementById('branch_nome_hidden').value = data.nome_fantasia || data.razao_social || '';
+        document.getElementById('branch_nome').value = data.nome_fantasia || data.razao_social || '';
         document.getElementById('branch_telefone').value = data.ddd_telefone_1 || '';
         document.getElementById('branch_email').value = data.email || '';
         
         document.getElementById('branch_cep').value = data.cep || '';
         document.getElementById('branch_logradouro').value = data.logradouro || '';
-        document.getElementById('branch_numero_endereco').value = data.numero || '';
+        document.getElementById('branch_numero').value = data.numero || '';
         document.getElementById('branch_complemento').value = data.complemento || '';
         document.getElementById('branch_bairro').value = data.bairro || '';
-        document.getElementById('branch_cidade').value = data.municipio || '';
+        document.getElementById('branch_municipio').value = data.municipio || '';
         document.getElementById('branch_uf').value = data.uf || '';
-        document.getElementById('branch_codigo_municipio').value = data.codigo_municipio || '';
+        document.getElementById('branch_codigo_municipio').value = ibgeCode;
         
-        updateBranchIbge();
-
-        btn.innerHTML = '<i class="fas fa-check text-success"></i> OK';
+        // Flash success
+        btn.innerHTML = '<i class="fas fa-check text-success"></i> Sucesso!';
         setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
         
     } catch (error) {
-        alert('Erro: ' + error.message);
+        alert('Erro ao buscar CNPJ: ' + error.message);
         btn.innerHTML = originalText;
         btn.disabled = false;
     }

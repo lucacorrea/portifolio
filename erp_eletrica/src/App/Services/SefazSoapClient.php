@@ -27,7 +27,7 @@ class SefazSoapClient extends BaseService {
         'nfe_distribuicao' => [
             'service' => 'NFeDistribuicaoDFe', 
             'method' => 'nfeDistribuicaoDFe',
-            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe'
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe' // Não tem suffix de método
         ],
         'nfe_evento' => [
             'service' => 'NFeRecepcaoEvento4', 
@@ -64,18 +64,10 @@ class SefazSoapClient extends BaseService {
         // Prepare temporary PEM files for CURL
         $pemCert = $this->extractPem($pfxPath, $password);
         
-        // Remove declaração XML do miolo
+        // SEFAZ 4.00: O conteúdo de nfeDadosMsg NÃO deve ter a declaração XML
         $xmlBody = preg_replace('/^<\?xml[^>]*\?>/i', '', trim($xml));
         
-        // Exact NfePHP Replica of the wrapper
-        $request = "<nfeDadosMsg xmlns=\"http://www.portalfiscal.inf.br/nfe/wsdl/{$serviceName}\">{$xmlBody}</nfeDadosMsg>";
-        
-        $soapXml = '<?xml version="1.0" encoding="utf-8"?>'
-            . '<env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope">'
-            . '<env:Body>'
-            . $request
-            . '</env:Body>'
-            . '</env:Envelope>';
+        $soapXml = $this->wrapSoap($xmlBody, $serviceName, $methodName);
 
         // DEBUG: Gravar último XML enviado para inspeção
         if (defined('DEBUG') && DEBUG) {
@@ -83,34 +75,25 @@ class SefazSoapClient extends BaseService {
             @file_put_contents($logPath, $soapXml);
         }
 
-        $msgSize = strlen($soapXml);
-        $parameters = [
-             "Content-Type: application/soap+xml;charset=utf-8;action=\"{$actionUrl}\"",
-             "Content-length: {$msgSize}"
-        ];
-
-        // Exact NfePHP Replica of cURL params
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 35);
-        curl_setopt($ch, CURLOPT_HEADER, 0); // Modificado do NFePHP para nAo poluir o responsebody
-        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); // Igual no NFePHP para bypass
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); // Igual no NFePHP para bypass
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
         
-        // SSL Version 6 = TLSv1.2 in modern PHP (CURL_SSLVERSION_TLSv1_2)
-        curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+        // Use explicitly defined action for each method
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/soap+xml; charset=utf-8; action=\"$actionUrl\"",
+            "Content-Length: " . strlen($soapXml)
+        ]);
         
-        // Cert keys
+        // mTLS Authentication
         curl_setopt($ch, CURLOPT_SSLCERT, $pemCert['file']);
         curl_setopt($ch, CURLOPT_SSLKEY, $pemCert['file']);
-        
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $parameters);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2); 
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);
         $error = curl_error($ch);
@@ -133,10 +116,20 @@ class SefazSoapClient extends BaseService {
              if ($motivo) {
                  throw new Exception("Rejeição SEFAZ: $motivo");
              }
-             throw new Exception("Erro HTTP $httpCode. O servidor da SEFAZ rejeitou a requisição. XML recebido: " . htmlspecialchars(substr($response, 0, 500)));
+             throw new Exception("Erro HTTP $httpCode. O servidor da SEFAZ rejeitou a requisição. O certificado e a senha estão corretos, mas o conteúdo ou o Mapeamento da SEFAZ pode estar inválido.");
         }
 
         return $response;
+    }
+
+    private function wrapSoap($xml, $serviceName, $methodName) {
+        // SEFAZ 4.00 requires the namespace to be on nfeDadosMsg, and the method name to be namespace-free or prefixed with the exact matching ns
+        return '<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName . '">' . $xml . '</nfeDadosMsg>
+  </soap12:Body>
+</soap12:Envelope>';
     }
 
     private function extractSoapFault($response) {
@@ -153,13 +146,27 @@ class SefazSoapClient extends BaseService {
 
     private function extractPem($pfxPath, $password) {
         $pfxContent = file_get_contents($pfxPath);
+        
+        // Validate with NFePHP first (same as the rest of the system)
+        require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+        try {
+            \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
+        } catch (\Exception $e) {
+            throw new Exception("Certificado/senha inválidos para comunicação SOAP: " . $e->getMessage());
+        }
+
+        // Now extract PEM parts for CURL (openssl_pkcs12_read works after NFePHP confirmed validity)
         $certs = [];
         if (!openssl_pkcs12_read($pfxContent, $certs, $password)) {
-            throw new Exception("Falha ao extrair certificado para comunicação SOAP.");
+            // Fallback: try exporting via openssl raw functions
+            throw new Exception("Falha ao extrair PEM do certificado para CURL. Reconfigure o certificado.");
         }
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'SEFAZ');
-        file_put_contents($tmpFile, $certs['cert'] . "\n" . $certs['pkey']);
+        $pemContent = $certs['cert'] . "\n" . $certs['pkey'];
+        if (!file_put_contents($tmpFile, $pemContent)) {
+            throw new Exception("Não foi possível gravar arquivo temporário PEM.");
+        }
         
         return ['file' => $tmpFile];
     }

@@ -17,7 +17,7 @@ class SefazXmlService extends BaseService {
         $infNFe = $dom->createElement('infNFe');
         
         // ID: NFe + cUF(2) + AAMM(4) + CNPJ(14) + mod(2) + serie(3) + nNF(9) + tpEmis(1) + cNF(8) + cDV(1)
-        $cUF = $fiscal['codigo_uf'] ?? "35"; 
+        $cUF = "35"; // São Paulo
         $tpAmb = ($fiscal['ambiente'] == 1) ? '1' : '2';
         $mod = "65"; // NFC-e
         $serie = "001";
@@ -48,7 +48,7 @@ class SefazXmlService extends BaseService {
         $ide->appendChild($dom->createElement('dhEmi', $dhEmi));
         $ide->appendChild($dom->createElement('tpNF', '1')); // Saída
         $ide->appendChild($dom->createElement('idDest', '1')); // Interna
-        $ide->appendChild($dom->createElement('cMunFG', $fiscal['codigo_municipio'] ?? '3550308')); 
+        $ide->appendChild($dom->createElement('cMunFG', '3550308')); // São Paulo
         $ide->appendChild($dom->createElement('tpImp', '4')); // DANFE NFC-e
         $ide->appendChild($dom->createElement('tpEmis', $tpEmis));
         $ide->appendChild($dom->createElement('cDV', $cDV));
@@ -67,11 +67,11 @@ class SefazXmlService extends BaseService {
         $enderEmit = $dom->createElement('enderEmit');
         $enderEmit->appendChild($dom->createElement('xLgr', 'Logradouro'));
         $enderEmit->appendChild($dom->createElement('nro', '123'));
-        $enderEmit->appendChild($dom->createElement('xBairro', $this->clearText($fiscal['bairro'] ?? 'Bairro')));
-        $enderEmit->appendChild($dom->createElement('cMun', $fiscal['codigo_municipio'] ?? '3550308'));
-        $enderEmit->appendChild($dom->createElement('xMun', $this->clearText($fiscal['cidade'] ?? 'SAO PAULO')));
-        $enderEmit->appendChild($dom->createElement('UF', $fiscal['uf'] ?? 'SP'));
-        $enderEmit->appendChild($dom->createElement('CEP', preg_replace('/[^0-9]/', '', $fiscal['cep'] ?? '01001000')));
+        $enderEmit->appendChild($dom->createElement('xBairro', 'Bairro'));
+        $enderEmit->appendChild($dom->createElement('cMun', '3550308'));
+        $enderEmit->appendChild($dom->createElement('xMun', 'SAO PAULO'));
+        $enderEmit->appendChild($dom->createElement('UF', 'SP'));
+        $enderEmit->appendChild($dom->createElement('CEP', '01001000'));
         $enderEmit->appendChild($dom->createElement('cPais', '1058'));
         $enderEmit->appendChild($dom->createElement('xPais', 'BRASIL'));
         $emit->appendChild($enderEmit);
