@@ -269,7 +269,7 @@ if (!function_exists('e')) {
         </header>
 
         <section class="section">
-            <div class="container-fluid p-2">
+            <div class="container-fluid p-4">
 
                 <div class="title-wrapper pt-30">
                     <div class="row align-items-center">
