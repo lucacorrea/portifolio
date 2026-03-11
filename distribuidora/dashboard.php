@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
+
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
@@ -17,9 +20,6 @@ foreach ($possibleConn as $f) {
   if (is_file($f)) require_once $f;
 }
 
-// (opcional) helpers do seu projeto
-$helpers = __DIR__ . '/assets/dados/relatorios/__helpers.php';
-if (is_file($helpers)) require_once $helpers;
 
 if (!function_exists('db')) {
   http_response_code(500);
