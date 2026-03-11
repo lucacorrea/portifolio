@@ -794,6 +794,10 @@ if ($action === 'excel') {
                 border: 1px solid #000;
             }
 
+            th, td{
+                text-align: center;
+            }
+
             .tbl-meta td {
                 border: 1px solid #000;
                 padding: 6px;
@@ -1252,6 +1256,27 @@ $initialTotais = $initial['totais'];
             width: 120px;
         }
 
+
+        .col-canal {
+            width: 110px;
+        }
+
+        .col-pag {
+            width: 120px;
+        }
+
+        .col-itens {
+            width: 270px;
+        }
+
+        .col-num {
+            width: 110px;
+        }
+
+        .col-acoes {
+            width: 170px;
+        }
+
         .td-money {
             text-align: center;
             font-weight: 900;
@@ -1266,13 +1291,9 @@ $initialTotais = $initial['totais'];
         .td-clip {
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap ;
+            white-space: nowrap;
             display: block;
             max-width: 100%;
-        }
-
-        th, td{
-            text-align: ;
         }
 
         .badge-soft {
