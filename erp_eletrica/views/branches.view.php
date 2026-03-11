@@ -143,11 +143,15 @@
                     </div>
                     <div class="col-md-1">
                         <label class="form-label small fw-bold">UF</label>
-                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2">
+                        <input type="text" name="uf" id="branch_uf" class="form-control shadow-sm" maxlength="2" oninput="this.value = this.value.toUpperCase(); atualizarCodigoUF();">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small fw-bold text-danger">Cód IBGE Mun.</label>
-                        <input type="text" name="codigo_municipio" id="branch_codigo_municipio" class="form-control shadow-sm border-danger" placeholder="ex: 3550308">
+                        <label class="form-label small fw-bold">Código UF</label>
+                        <input type="text" name="codigo_uf" id="branch_codigo_uf" class="form-control shadow-sm bg-light" readonly placeholder="Ex: 35">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Cód IBGE Mun.</label>
+                        <input type="text" name="codigo_municipio" id="branch_codigo_municipio" class="form-control shadow-sm" placeholder="ex: 3550308">
                     </div>
 
                     <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Configurações Avançadas (NF-e / NFC-e)</h6></div>
@@ -256,6 +260,7 @@ function newBranch() {
     document.getElementById('branch_municipio').value = '';
     document.getElementById('branch_codigo_municipio').value = '';
     document.getElementById('branch_uf').value = '';
+    document.getElementById('branch_codigo_uf').value = '';
     document.getElementById('branch_cep').value = '';
     document.getElementById('branch_csc_id').value = '';
     document.getElementById('branch_csc_token').value = '';
@@ -291,6 +296,7 @@ function editBranch(branch) {
     document.getElementById('branch_municipio').value = branch.municipio || '';
     document.getElementById('branch_codigo_municipio').value = branch.codigo_municipio || '';
     document.getElementById('branch_uf').value = branch.uf || '';
+    document.getElementById('branch_codigo_uf').value = branch.codigo_uf || '';
     document.getElementById('branch_cep').value = branch.cep || '';
     document.getElementById('branch_csc_id').value = branch.csc_id || '';
     document.getElementById('branch_csc_token').value = branch.csc_token || '';
@@ -357,6 +363,7 @@ async function consultarCNPJ() {
         document.getElementById('branch_bairro').value = data.bairro || '';
         document.getElementById('branch_municipio').value = data.municipio || '';
         document.getElementById('branch_uf').value = data.uf || '';
+        atualizarCodigoUF();
         document.getElementById('branch_codigo_municipio').value = ibgeCode;
         
         // Flash success
@@ -368,5 +375,17 @@ async function consultarCNPJ() {
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
+}
+
+const MAP_UF_IBGE = {
+    "RO": 11, "AC": 12, "AM": 13, "RR": 14, "PA": 15, "AP": 16, "TO": 17,
+    "MA": 21, "PI": 22, "CE": 23, "RN": 24, "PB": 25, "PE": 26, "AL": 27, "SE": 28, "BA": 29,
+    "MG": 31, "ES": 32, "RJ": 33, "SP": 35, "PR": 41, "SC": 42, "RS": 43, "MS": 50, "MT": 51, "GO": 52, "DF": 53
+};
+
+function atualizarCodigoUF() {
+    const uf = (document.getElementById('branch_uf').value || '').toUpperCase();
+    const codigo = MAP_UF_IBGE[uf] || '';
+    document.getElementById('branch_codigo_uf').value = codigo;
 }
 </script>

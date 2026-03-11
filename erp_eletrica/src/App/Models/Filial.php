@@ -28,13 +28,13 @@ class Filial extends BaseModel {
             $sql = "UPDATE {$this->table} SET 
                     nome = ?, razao_social = ?, cnpj = ?, inscricao_estadual = ?, crt = ?,
                     tipo_emissao = ?, finalidade_emissao = ?, indicador_presenca = ?, tipo_impressao_danfe = ?, serie_nfce = ?, ultimo_numero_nfce = ?,
-                    logradouro = ?, numero = ?, complemento = ?, bairro = ?, municipio = ?, codigo_municipio = ?, uf = ?, cep = ?,
+                    logradouro = ?, numero = ?, complemento = ?, bairro = ?, municipio = ?, codigo_municipio = ?, uf = ?, codigo_uf = ?, cep = ?,
                     telefone = ?, email = ?,
                     csc_id = ?, csc_token = ?, ambiente = ? ";
             $params = [
                 $data['nome'], $data['razao_social'] ?? null, $data['cnpj'], $data['inscricao_estadual'], $data['crt'] ?? 1,
                 $data['tipo_emissao'] ?? 'Normal', $data['finalidade_emissao'] ?? 'Normal', $data['indicador_presenca'] ?? 'Operacao presencial', $data['tipo_impressao_danfe'] ?? 'NFC-e', $data['serie_nfce'] ?? 1, $data['ultimo_numero_nfce'] ?? 0,
-                $data['logradouro'], $data['numero'], $data['complemento'] ?? null, $data['bairro'], $data['municipio'], $data['codigo_municipio'] ?? null, $data['uf'], $data['cep'],
+                $data['logradouro'], $data['numero'], $data['complemento'] ?? null, $data['bairro'], $data['municipio'], $data['codigo_municipio'] ?? null, $data['uf'], $data['codigo_uf'] ?? null, $data['cep'],
                 $data['telefone'] ?? null, $data['email'] ?? null,
                 $data['csc_id'], $data['csc_token'], $data['ambiente']
             ];
@@ -52,14 +52,14 @@ class Filial extends BaseModel {
             $sql = "INSERT INTO {$this->table} (
                         nome, razao_social, cnpj, inscricao_estadual, crt, 
                         tipo_emissao, finalidade_emissao, indicador_presenca, tipo_impressao_danfe, serie_nfce, ultimo_numero_nfce,
-                        logradouro, numero, complemento, bairro, municipio, codigo_municipio, uf, cep,
+                        logradouro, numero, complemento, bairro, municipio, codigo_municipio, uf, codigo_uf, cep,
                         telefone, email,
                         csc_id, csc_token, ambiente, certificado_pfx, certificado_senha, principal
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             return $this->query($sql, [
                 $data['nome'], $data['razao_social'] ?? null, $data['cnpj'], $data['inscricao_estadual'], $data['crt'] ?? 1,
                 $data['tipo_emissao'] ?? 'Normal', $data['finalidade_emissao'] ?? 'Normal', $data['indicador_presenca'] ?? 'Operacao presencial', $data['tipo_impressao_danfe'] ?? 'NFC-e', $data['serie_nfce'] ?? 1, $data['ultimo_numero_nfce'] ?? 0,
-                $data['logradouro'], $data['numero'], $data['complemento'] ?? null, $data['bairro'], $data['municipio'], $data['codigo_municipio'] ?? null, $data['uf'], $data['cep'],
+                $data['logradouro'], $data['numero'], $data['complemento'] ?? null, $data['bairro'], $data['municipio'], $data['codigo_municipio'] ?? null, $data['uf'], $data['codigo_uf'] ?? null, $data['cep'],
                 $data['telefone'] ?? null,  $data['email'] ?? null,
                 $data['csc_id'], $data['csc_token'], $data['ambiente'] ?? 2,
                 $data['certificado_pfx'] ?? null, $data['certificado_senha'] ?? null,
