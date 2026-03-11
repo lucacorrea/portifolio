@@ -2,14 +2,8 @@
 
 declare(strict_types=1);
 
-/**
- * vendas.php (PDV)
- * - HTML normal
- * - AJAX interno SOMENTE para "ultimasVendas" (refresh dos cupons)
- * - Busca de produtos: SEM AJAX, SEM ENTER pra buscar (filtra LOCAL no JS enquanto digita)
- */
-
-// ✅ BLINDA: evita “JSON quebrado” por warnings/avisos
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
 
 
 if (function_exists('ob_start')) {
