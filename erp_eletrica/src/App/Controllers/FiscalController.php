@@ -81,47 +81,110 @@ class FiscalController extends BaseController {
     }
 
     public function test_connection() {
-        ob_start();
-        ini_set('display_errors', 0);
-        error_reporting(E_ALL);
-        
         $id = $_GET['id'] ?? null;
         if (!$id) {
-            ob_get_clean();
             exit(json_encode(['success' => false, 'error' => 'ID da filial não fornecido']));
         }
 
         // Security check
         if (!($_SESSION['is_matriz'] ?? false) && $id != $_SESSION['filial_id']) {
-            ob_get_clean();
             exit(json_encode(['success' => false, 'error' => 'Acesso negado para esta unidade']));
         }
 
         try {
-            $service = new \App\Services\FiscalService();
+            $service = new \App\Services\NfceService();
             $result = $service->testConnection($id);
-            ob_get_clean(); // Discard any warnings/garbage
             header('Content-Type: application/json');
             echo json_encode($result);
         } catch (\Throwable $e) {
-            $msg = $e->getMessage();
-            @file_put_contents(dirname(__DIR__, 3) . '/storage/last_connection_test_error.txt', "Type: " . get_class($e) . "\nMessage: " . $msg . "\nLine: " . $e->getLine() . "\n" . $e->getTraceAsString());
-            $ob = ob_get_clean();
             header('Content-Type: application/json');
-            
-            // Format for UI
-            $safeMsg = "CRASH: {$msg} (Linha {$e->getLine()})";
-            if (!empty(trim($ob))) {
-                $safeMsg .= " | Output Sujo: " . substr(strip_tags($ob), 0, 100);
-            }
-            
-            echo json_encode(['success' => false, 'error' => $safeMsg]);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;
     }
 
     public function diagnostic() {
-        // ... code remains same ...
+        $selectedBranchId = $_GET['id'] ?? ($_SESSION['filial_id'] ?? null);
+        
+        // 1. Get Branches
+        $stmt = $this->db->query("SELECT * FROM filiais ORDER BY principal DESC");
+        $branches = $stmt->fetchAll();
+        
+        if (!$selectedBranchId && !empty($branches)) {
+            $selectedBranchId = $branches[0]['id'];
+        }
+
+        $branch = null;
+        foreach($branches as $b) {
+            if ($b['id'] == $selectedBranchId) {
+                $branch = $b;
+                break;
+            }
+        }
+
+        // 2. Database Status Validation
+        $dbStatus = [
+            'has_cnpj' => !empty($branch['cnpj']),
+            'valid_cnpj' => strlen(preg_replace('/\D/', '', $branch['cnpj'] ?? '')) === 14,
+            'has_ie' => !empty($branch['inscricao_estadual']),
+            'has_cep' => strlen(preg_replace('/\D/', '', $branch['cep'] ?? '')) === 8,
+            'has_uf' => strlen($branch['uf'] ?? '') === 2,
+            'has_ibge' => !empty($branch['codigo_municipio'])
+        ];
+
+        // 3. Environment status
+        $env = [
+            'php_version' => PHP_VERSION,
+            'curl_loaded' => extension_loaded('curl'),
+            'openssl_loaded' => extension_loaded('openssl'),
+            'soap_loaded' => extension_loaded('soap'),
+            'dom_loaded' => extension_loaded('dom'),
+            'simplexml_loaded' => extension_loaded('simplexml')
+        ];
+
+        // 4. Storage check
+        $storageDir = dirname(__DIR__, 3) . '/storage';
+        $certDir = $storageDir . '/certificados';
+        
+        $storage = [
+            'storage_writable' => is_writable($storageDir),
+            'cert_dir_writable' => is_dir($certDir) && is_writable($certDir)
+        ];
+
+        // 5. Global config
+        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
+        $globalConfig = $stmt->fetch();
+
+        $this->render('fiscal/diagnostic', [
+            'branches' => $branches,
+            'selectedBranchId' => $selectedBranchId,
+            'branch' => $branch,
+            'dbStatus' => $dbStatus,
+            'env' => $env,
+            'storage' => $storage,
+            'globalConfig' => $globalConfig,
+            'title' => 'Diagnóstico SEFAZ',
+            'pageTitle' => 'Diagnóstico de Conectividade'
+        ]);
+    }
+
+    public function emitir_nfce() {
+        $vendaId = $_GET['venda_id'] ?? null;
+        $empresaId = $_SESSION['filial_id'] ?? ($_GET['empresa_id'] ?? null);
+
+        if (!$vendaId || !$empresaId) {
+            $this->redirect('vendas.php?error=' . urlencode('Venda ou Empresa não identificada.'));
+            return;
+        }
+
+        $service = new \App\Services\NfceService();
+        $res = $service->processNfce($vendaId, $empresaId);
+
+        if ($res['success']) {
+            $this->redirect('danfe.php?chave=' . $res['chave']);
+        } else {
+            $this->redirect('vendas.php?error=' . urlencode($res['error']));
+        }
     }
 
     public function adicionar_nfce() {
@@ -188,37 +251,29 @@ class FiscalController extends BaseController {
     }
 
     public function danfe_nfce() {
-        $id = $_GET['id'] ?? null;
-        if (!$id) die("ID da Nota Fiscal não fornecido.");
+        $chave = $_GET['chave'] ?? null;
+        if (!$chave) die("Chave da Nota Fiscal não fornecida.");
 
-        $stmt = $this->db->prepare("SELECT * FROM notas_fiscais WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->db->prepare("SELECT * FROM nfce_emitidas WHERE chave = ? LIMIT 1");
+        $stmt->execute([$chave]);
         $nf = $stmt->fetch();
 
-        if (!$nf) die("Nota Fiscal não encontrada.");
-
-        // In erp_eletrica, we might store the path or the raw XML content.
-        // For now, mirroring the Acaidinhos port which prefers reading from file if path exists
-        $xmlContent = null;
-        if (!empty($nf['xml_path'])) {
-            $fullPath = dirname(__DIR__, 3) . '/' . $nf['xml_path'];
-            if (file_exists($fullPath)) {
-                $xmlContent = file_get_contents($fullPath);
-            }
-        }
-
-        if (!$xmlContent && !empty($nf['protocolo'])) {
-             // Mock/Example XML if file missing but record exists (for demonstration)
-             // In production, the XML must exist.
-             $xmlContent = $this->generateMockXmlForDanfe($nf);
+        if (!$nf) {
+            // Tentativa fallback na tabela antiga se existir
+            $stmt = $this->db->prepare("SELECT * FROM notas_fiscais WHERE chave_acesso = ? LIMIT 1");
+            $stmt->execute([$chave]);
+            $nf = $stmt->fetch();
+            $xmlContent = $nf ? ($nf['xml_conteudo'] ?? null) : null;
+        } else {
+            $xmlContent = $nf['xml_nfeproc'];
         }
 
         if (!$xmlContent) die("XML da Nota Fiscal não encontrado.");
 
         $this->render('fiscal/danfe_nfce', [
             'xml' => $xmlContent,
-            'title' => 'DANFE NFC-e - ' . $nf['chave_acesso']
-        ], false); // false to not render main template/layout
+            'title' => 'DANFE NFC-e - ' . $chave
+        ], false); 
     }
 
     private function generateMockXmlForDanfe($nf) {
