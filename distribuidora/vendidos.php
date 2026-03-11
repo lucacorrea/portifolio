@@ -786,7 +786,6 @@ if ($action === 'excel') {
                 border-collapse: collapse;
                 table-layout: fixed;
                 width: 100%;
-                text-align: center !important;
             }
 
             .tbl-meta,
@@ -794,7 +793,6 @@ if ($action === 'excel') {
                 width: 100%;
                 border: 1px solid #000;
             }
-
 
             .tbl-meta td {
                 border: 1px solid #000;
@@ -1271,6 +1269,10 @@ $initialTotais = $initial['totais'];
             white-space: nowrap;
             display: block;
             max-width: 100%;
+        }
+
+        th, td{
+            text-align: center;
         }
 
         .badge-soft {
