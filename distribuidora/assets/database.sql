@@ -215,3 +215,15 @@ CREATE TABLE IF NOT EXISTS devolucoes (
 CREATE INDEX idx_devol_data   ON devolucoes (data);
 CREATE INDEX idx_devol_status ON devolucoes (status);
 CREATE INDEX idx_devol_venda  ON devolucoes (venda_no);
+
+
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(150) NOT NULL,
+  email VARCHAR(190) NOT NULL UNIQUE,
+  senha_hash CHAR(64) NOT NULL,
+  senha_salt CHAR(64) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ATIVO',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
