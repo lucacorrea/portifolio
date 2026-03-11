@@ -281,7 +281,6 @@ if (!function_exists('e')) {
                     </div>
                 </div>
 
-
                 <div class="card-style">
                     <div class="head">
                         <h5>Canais de Suporte</h5>
