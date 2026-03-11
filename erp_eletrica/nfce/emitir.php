@@ -269,7 +269,7 @@ $tools = new Tools($configJson, $cert);
 $tools->model('65'); // NFC-e
 
 /* ===== CHAVE + Id ===== */
-$cUF    = pad(COD_UF,2);
+$cUF    = pad(substr(preg_replace('/\D/', '', COD_UF), 0, 2), 2);
 $AAMM   = date('ym');
 $CNPJ   = pad(soDig(EMIT_CNPJ),14);
 $mod    = '65';

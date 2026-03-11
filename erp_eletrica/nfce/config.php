@@ -161,7 +161,7 @@ if (!$row) {
               SELECT 
                 id AS empresa_id, cnpj, razao_social, nome AS nome_fantasia, inscricao_estadual, '' AS inscricao_municipal,
                 cep, logradouro, numero AS numero_endereco, complemento, bairro, municipio AS cidade, uf, 
-                codigo_municipio AS codigo_uf, codigo_municipio, telefone, certificado_pfx AS certificado_digital, 
+                codigo_uf, codigo_municipio, telefone, certificado_pfx AS certificado_digital, 
                 certificado_senha AS senha_certificado, ambiente, crt AS regime_tributario, csc_token AS csc, csc_id,
                 '1' AS serie_nfce, '1' AS tipo_emissao, '1' AS finalidade, '1' AS ind_pres, '1' AS tipo_impressao
                 FROM filiais
