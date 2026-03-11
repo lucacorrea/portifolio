@@ -38,7 +38,16 @@ class MigrationService extends BaseService {
                     $stmt->execute([$name]);
                     $this->logAction('migration_run', 'migrations', null, null, ['file' => $name]);
                 } catch (Exception $e) {
-                    error_log("Error running migration {$name}: " . $e->getMessage());
+                    $msg = $e->getMessage();
+                    // Ignora erros de duplicidade (coluna, chave, constraint)
+                    // 1060: Duplicate column, 1061: Duplicate key, 1022: Can't write (duplicate key), 121: Duplicate FK
+                    if (strpos($msg, '1060') !== false || strpos($msg, '1061') !== false || strpos($msg, '1022') !== false || strpos($msg, '121') !== false) {
+                        error_log("Migration {$name} skipped (duplicate/existing): " . $msg);
+                        $stmt = $this->db->prepare("INSERT INTO migrations (migration) VALUES (?)");
+                        $stmt->execute([$name]);
+                        continue;
+                    }
+                    error_log("Error running migration {$name}: " . $msg);
                     throw $e;
                 }
             }
