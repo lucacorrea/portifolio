@@ -11,8 +11,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 @date_default_timezone_set('America/Manaus');
 
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
+if (function_exists('ob_start')) {
+    @ob_start();
+}
+
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
 error_reporting(E_ALL);
 
 /* =========================
@@ -34,6 +38,8 @@ if (!function_exists('db')) {
 }
 
 $pdo = db();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
 /* =========================
    FALLBACKS
@@ -64,9 +70,14 @@ if (!function_exists('brl')) {
 
 function json_out(array $payload, int $status = 200): void
 {
+    if (function_exists('ob_get_length') && ob_get_length()) {
+        @ob_clean();
+    }
+
     http_response_code($status);
     header('Content-Type: application/json; charset=UTF-8');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -109,6 +120,26 @@ function body_json(): array
     return is_array($data) ? $data : [];
 }
 
+function money_like_variants(string $q): array
+{
+    $q = trim($q);
+    if ($q === '') {
+        return [];
+    }
+
+    $variants = [$q];
+
+    $digits = preg_replace('/[^\d,\.]/', '', $q);
+    if ($digits !== '') {
+        $variants[] = $digits;
+        $variants[] = str_replace('.', '', $digits);
+        $variants[] = str_replace(',', '.', str_replace('.', '', $digits));
+        $variants[] = str_replace(',', '', str_replace('.', '', $digits));
+    }
+
+    return array_values(array_unique(array_filter($variants, static fn($v) => trim((string)$v) !== '')));
+}
+
 function render_rows_html(array $rows): string
 {
     if (!$rows) {
@@ -130,7 +161,7 @@ function render_rows_html(array $rows): string
         $clienteJs = json_encode($clienteNome, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $html .= '<tr>';
-        $html .= '  <td><b>#' . $vendaId . '</b></td>';
+        $html .= '  <td class="sale-col"><b>#' . $vendaId . '</b></td>';
         $html .= '  <td class="date-col">' . e(fmt_dt($dataRef)) . '</td>';
         $html .= '  <td class="client-col">' . e($clienteNome) . '</td>';
         $html .= '  <td class="money-col val-total">' . e(brl($valorTotal)) . '</td>';
@@ -139,12 +170,12 @@ function render_rows_html(array $rows): string
         $html .= '  <td class="status-col"><span class="status-badge ' . e(status_class($status)) . '">' . e($status) . '</span></td>';
         $html .= '  <td class="actions-col text-end">';
         $html .= '      <div class="actions-wrap">';
-        $html .= '          <button type="button" class="btn btn-light btn-pay" onclick="showDetails(' . $fiadoId . ')">';
+        $html .= '          <button type="button" class="btn btn-light btn-pay btn-detail" onclick="showDetails(' . $fiadoId . ')">';
         $html .= '              <i class="lni lni-eye"></i> Detalhes';
         $html .= '          </button>';
 
         if ($status === 'ABERTO' && $valorRestante > 0) {
-            $html .= '      <button type="button" class="btn btn-success btn-pay text-white" onclick="openPay(' . $fiadoId . ', ' . $clienteJs . ', ' . json_encode($valorRestante) . ')">';
+            $html .= '      <button type="button" class="btn btn-success btn-pay text-white btn-receive" onclick="openPay(' . $fiadoId . ', ' . $clienteJs . ', ' . json_encode($valorRestante) . ')">';
             $html .= '          <i class="lni lni-reply"></i> Pagar';
             $html .= '      </button>';
         }
@@ -188,31 +219,44 @@ function build_fiados_where(array $filters, array &$params): string
     }
 
     if ($q !== '') {
+        $moneyVariants = money_like_variants($q);
+
+        $block = [];
         $like = '%' . $q . '%';
 
-        $where[] = '(
-            CAST(f.venda_id AS CHAR) LIKE ?
-            OR CAST(f.cliente_id AS CHAR) LIKE ?
-            OR COALESCE(c.nome, "") LIKE ?
-            OR COALESCE(v.cliente, "") LIKE ?
-            OR COALESCE(f.status, "") LIKE ?
-            OR COALESCE(v.canal, "") LIKE ?
-            OR DATE_FORMAT(COALESCE(v.created_at, f.created_at), "%d/%m/%Y %H:%i:%s") LIKE ?
-            OR CAST(COALESCE(f.valor_total, 0) AS CHAR) LIKE ?
-            OR CAST(COALESCE(f.valor_pago, 0) AS CHAR) LIKE ?
-            OR CAST(COALESCE(f.valor_restante, 0) AS CHAR) LIKE ?
-        )';
+        $block[] = 'CAST(f.venda_id AS CHAR) LIKE ?';
+        $params[] = $like;
 
+        $block[] = 'CAST(f.cliente_id AS CHAR) LIKE ?';
         $params[] = $like;
+
+        $block[] = 'COALESCE(c.nome, "") LIKE ?';
         $params[] = $like;
+
+        $block[] = 'COALESCE(v.cliente, "") LIKE ?';
         $params[] = $like;
+
+        $block[] = 'COALESCE(f.status, "") LIKE ?';
         $params[] = $like;
+
+        $block[] = 'COALESCE(v.canal, "") LIKE ?';
         $params[] = $like;
+
+        $block[] = 'DATE_FORMAT(COALESCE(v.created_at, f.created_at), "%d/%m/%Y %H:%i:%s") LIKE ?';
         $params[] = $like;
-        $params[] = $like;
-        $params[] = $like;
-        $params[] = $like;
-        $params[] = $like;
+
+        foreach ($moneyVariants as $mv) {
+            $block[] = 'CAST(COALESCE(f.valor_total, 0) AS CHAR) LIKE ?';
+            $params[] = '%' . $mv . '%';
+
+            $block[] = 'CAST(COALESCE(f.valor_pago, 0) AS CHAR) LIKE ?';
+            $params[] = '%' . $mv . '%';
+
+            $block[] = 'CAST(COALESCE(f.valor_restante, 0) AS CHAR) LIKE ?';
+            $params[] = '%' . $mv . '%';
+        }
+
+        $where[] = '(' . implode(' OR ', $block) . ')';
     }
 
     return implode(' AND ', $where);
@@ -668,12 +712,25 @@ try {
             transition: all .2s;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             white-space: nowrap;
+            min-width: 92px;
+            height: 36px;
         }
 
         .btn-pay i {
             font-size: 13px;
+        }
+
+        .btn-detail {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+        }
+
+        .btn-receive {
+            background: #16a34a;
+            border-color: #16a34a;
         }
 
         .table-shell {
@@ -688,14 +745,10 @@ try {
 
         .table-custom {
             width: 100%;
-            min-width: 980px;
+            min-width: 1120px;
             margin-bottom: 0;
             border-collapse: separate;
             border-spacing: 0;
-        }
-
-        th, td{
-            text-align: center !important;
         }
 
         .table-custom thead th {
@@ -728,13 +781,18 @@ try {
             padding-right: 18px;
         }
 
+        .sale-col {
+            min-width: 96px;
+            white-space: nowrap;
+        }
+
         .date-col {
-            min-width: 165px;
+            min-width: 168px;
             white-space: nowrap;
         }
 
         .client-col {
-            min-width: 210px;
+            min-width: 220px;
             text-align: left !important;
             white-space: normal;
             word-break: break-word;
@@ -746,11 +804,11 @@ try {
         }
 
         .status-col {
-            min-width: 100px;
+            min-width: 104px;
         }
 
         .actions-col {
-            min-width: 190px;
+            min-width: 230px;
         }
 
         .actions-wrap {
@@ -758,7 +816,8 @@ try {
             justify-content: flex-end;
             align-items: center;
             gap: 8px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            white-space: nowrap;
         }
 
         .pager-box {
@@ -843,7 +902,7 @@ try {
 
         @media (max-width: 991.98px) {
             .table-custom {
-                min-width: 900px;
+                min-width: 1080px;
             }
         }
 
@@ -863,7 +922,7 @@ try {
             }
 
             .table-custom {
-                min-width: 820px;
+                min-width: 1040px;
             }
 
             .table-custom th,
@@ -900,6 +959,10 @@ try {
             .pager-actions {
                 margin-left: 0;
             }
+
+            .actions-wrap {
+                flex-wrap: nowrap;
+            }
         }
 
         @media (max-width: 575.98px) {
@@ -915,11 +978,16 @@ try {
             }
 
             .table-custom {
-                min-width: 760px;
+                min-width: 1000px;
             }
 
             .menu-toggle-btn .main-btn {
                 padding: 10px 12px;
+            }
+
+            .btn-pay {
+                min-width: 84px;
+                padding: 6px 10px;
             }
         }
     </style>
@@ -1291,7 +1359,7 @@ try {
         let listController = null;
 
         function brlJs(v) {
-            return parseFloat(v || 0).toLocaleString('pt-BR', {
+            return Number(v || 0).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
             });
@@ -1316,12 +1384,30 @@ try {
             $pgNext.classList.toggle('btn-disabled', !canNext);
         }
 
-        function debounce(fn, delay = 350) {
-            let t = null;
+        function debounce(fn, delay = 300) {
+            let timer = null;
             return (...args) => {
-                clearTimeout(t);
-                t = setTimeout(() => fn(...args), delay);
+                clearTimeout(timer);
+                timer = setTimeout(() => fn(...args), delay);
             };
+        }
+
+        async function fetchJson(url, options = {}) {
+            const res = await fetch(url, options);
+            const text = await res.text();
+
+            let data = null;
+            try {
+                data = JSON.parse(text);
+            } catch (err) {
+                throw new Error(text ? text.substring(0, 400) : 'Resposta inválida do servidor.');
+            }
+
+            if (!res.ok && (!data || typeof data !== 'object')) {
+                throw new Error('Falha na requisição.');
+            }
+
+            return data;
         }
 
         function currentParams(resetPage = false) {
@@ -1353,14 +1439,12 @@ try {
             const qs = new URLSearchParams(currentParams(resetPage));
 
             try {
-                const res = await fetch(`${PAGE_API}?${qs.toString()}`, {
+                const r = await fetchJson(`${PAGE_API}?${qs.toString()}`, {
                     signal: listController.signal,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
-
-                const r = await res.json();
 
                 if (!r.ok) {
                     throw new Error(r.msg || 'Falha ao carregar fiados.');
@@ -1376,7 +1460,9 @@ try {
                 $pgSummary.textContent = r.summary || '—';
                 setPagerUI();
             } catch (e) {
-                if (e.name === 'AbortError') return;
+                if (e.name === 'AbortError') {
+                    return;
+                }
 
                 $body.innerHTML = `<tr><td colspan="8" class="text-center p-5">Erro ao carregar: ${String(e.message || e)}</td></tr>`;
                 STATE.page = 1;
@@ -1387,7 +1473,9 @@ try {
             }
         }
 
-        const debouncedSearch = debounce(() => loadList(true), 350);
+        const debouncedSearch = debounce(() => {
+            loadList(true);
+        }, 250);
 
         [$fDi, $fDf, $fCanal, $fStatus].forEach(el => {
             el.addEventListener('change', () => loadList(true));
@@ -1416,8 +1504,7 @@ try {
 
         async function showDetails(id) {
             try {
-                const res = await fetch(`${PAGE_API}?action=get_details&id=${encodeURIComponent(id)}`);
-                const r = await res.json();
+                const r = await fetchJson(`${PAGE_API}?action=get_details&id=${encodeURIComponent(id)}`);
 
                 if (!r.ok) {
                     throw new Error(r.msg || 'Falha ao buscar detalhes.');
@@ -1465,6 +1552,8 @@ try {
             document.getElementById('payCliente').innerText = cliente;
             document.getElementById('paySaldo').innerText = brlJs(restante);
             document.getElementById('payValor').value = '';
+            document.getElementById('payMetodo').value = 'DINHEIRO';
+
             modalPagamento.show();
 
             setTimeout(() => {
@@ -1490,7 +1579,7 @@ try {
             }
 
             try {
-                const res = await fetch(`${PAGE_API}?action=pay`, {
+                const r = await fetchJson(`${PAGE_API}?action=pay`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1501,8 +1590,6 @@ try {
                         metodo
                     })
                 });
-
-                const r = await res.json();
 
                 if (!r.ok) {
                     throw new Error(r.msg || 'Falha ao registrar pagamento.');
@@ -1518,10 +1605,13 @@ try {
 
         document.getElementById('payValor').addEventListener('input', function() {
             let v = this.value.replace(/\D/g, '');
-            v = (v / 100).toFixed(2).replace('.', ',');
+            v = (Number(v) / 100).toFixed(2).replace('.', ',');
             v = v.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
             this.value = v;
         });
+
+        window.showDetails = showDetails;
+        window.openPay = openPay;
 
         setPagerUI();
     </script>
