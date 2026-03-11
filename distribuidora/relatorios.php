@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-//require_once __DIR__ . '/assets/auth/auth.php';
-//auth_require('index.php');
-
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 // Helpers (csrf/flash/etc)
 $helpers = __DIR__ . '/assets/dados/relatorios/_helpers.php';
 if (is_file($helpers)) require_once $helpers;
+
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
 
 // Conexão PDO (precisa existir db():PDO)
 $con = __DIR__ . '/assets/conexao.php';
