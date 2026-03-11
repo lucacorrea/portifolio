@@ -626,10 +626,14 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         window.print();
       });
 
-      // Botão VOLTAR -> ../vendas.php?id=<empresaId>
+      // Botão VOLTAR -> Fecha a janela (popup) ou volta para vendas.php
       document.getElementById('btn-back').addEventListener('click', function() {
-        var url = '../vendas.php?id=' + encodeURIComponent(empresaId);
-        window.location.href = url;
+        if (window.opener || window.history.length === 1) {
+            window.close();
+        } else {
+            var url = '../vendas.php?id=' + encodeURIComponent(empresaId);
+            window.location.href = url;
+        }
       });
 
       function openCancelUiFallback() {
