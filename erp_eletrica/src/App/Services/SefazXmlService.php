@@ -17,10 +17,10 @@ class SefazXmlService extends BaseService {
         $infNFe = $dom->createElement('infNFe');
         
         // ID: NFe + cUF(2) + AAMM(4) + CNPJ(14) + mod(2) + serie(3) + nNF(9) + tpEmis(1) + cNF(8) + cDV(1)
-        $cUF = "35"; // São Paulo
+        $cUF = str_pad($fiscal['codigo_uf'] ?? '35', 2, '0', STR_PAD_LEFT);
         $tpAmb = ($fiscal['ambiente'] == 1) ? '1' : '2';
         $mod = "65"; // NFC-e
-        $serie = "001";
+        $serie = str_pad($fiscal['serie_nfce'] ?? '1', 3, '0', STR_PAD_LEFT);
         $nNF = str_pad($sale['id'], 9, '0', STR_PAD_LEFT);
         $tpEmis = "1"; // Normal
         $cNF = str_pad(rand(1, 99999999), 8, '0', STR_PAD_LEFT);
@@ -48,7 +48,7 @@ class SefazXmlService extends BaseService {
         $ide->appendChild($dom->createElement('dhEmi', $dhEmi));
         $ide->appendChild($dom->createElement('tpNF', '1')); // Saída
         $ide->appendChild($dom->createElement('idDest', '1')); // Interna
-        $ide->appendChild($dom->createElement('cMunFG', '3550308')); // São Paulo
+        $ide->appendChild($dom->createElement('cMunFG', $fiscal['codigo_municipio'] ?? '3550308'));
         $ide->appendChild($dom->createElement('tpImp', '4')); // DANFE NFC-e
         $ide->appendChild($dom->createElement('tpEmis', $tpEmis));
         $ide->appendChild($dom->createElement('cDV', $cDV));
@@ -63,20 +63,20 @@ class SefazXmlService extends BaseService {
         // 2. emit
         $emit = $dom->createElement('emit');
         $emit->appendChild($dom->createElement('CNPJ', $cnpj));
-        $emit->appendChild($dom->createElement('xNome', $this->clearText($fiscal['nome'])));
+        $emit->appendChild($dom->createElement('xNome', $this->clearText($fiscal['razao_social'] ?? $fiscal['nome'])));
         $enderEmit = $dom->createElement('enderEmit');
-        $enderEmit->appendChild($dom->createElement('xLgr', 'Logradouro'));
-        $enderEmit->appendChild($dom->createElement('nro', '123'));
-        $enderEmit->appendChild($dom->createElement('xBairro', 'Bairro'));
-        $enderEmit->appendChild($dom->createElement('cMun', '3550308'));
-        $enderEmit->appendChild($dom->createElement('xMun', 'SAO PAULO'));
-        $enderEmit->appendChild($dom->createElement('UF', 'SP'));
-        $enderEmit->appendChild($dom->createElement('CEP', '01001000'));
+        $enderEmit->appendChild($dom->createElement('xLgr', $this->clearText($fiscal['logradouro'] ?? 'Logradouro')));
+        $enderEmit->appendChild($dom->createElement('nro', $fiscal['numero'] ?? 'S/N'));
+        $enderEmit->appendChild($dom->createElement('xBairro', $this->clearText($fiscal['bairro'] ?? 'Bairro')));
+        $enderEmit->appendChild($dom->createElement('cMun', $fiscal['codigo_municipio'] ?? '3550308'));
+        $enderEmit->appendChild($dom->createElement('xMun', $this->clearText($fiscal['municipio'] ?? 'SAO PAULO')));
+        $enderEmit->appendChild($dom->createElement('UF', $fiscal['uf'] ?? 'SP'));
+        $enderEmit->appendChild($dom->createElement('CEP', preg_replace('/\D/', '', $fiscal['cep'] ?? '01001000')));
         $enderEmit->appendChild($dom->createElement('cPais', '1058'));
         $enderEmit->appendChild($dom->createElement('xPais', 'BRASIL'));
         $emit->appendChild($enderEmit);
         $emit->appendChild($dom->createElement('IE', preg_replace('/[^0-9]/', '', $fiscal['inscricao_estadual'] ?? '')));
-        $emit->appendChild($dom->createElement('CRT', '1')); // Simples Nacional
+        $emit->appendChild($dom->createElement('CRT', $fiscal['crt'] ?? '1'));
         $infNFe->appendChild($emit);
 
         // 3. det (Items)
