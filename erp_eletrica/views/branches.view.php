@@ -333,6 +333,17 @@ async function consultarCNPJ() {
         
         const data = await response.json();
         
+        let ibgeCode = '';
+        if (data.cep) {
+            try {
+                const cepRes = await fetch(`https://brasilapi.com.br/api/cep/v2/${data.cep.replace(/\D/g, '')}`);
+                if (cepRes.ok) {
+                    const cepData = await cepRes.json();
+                    if (cepData.ibge) ibgeCode = cepData.ibge;
+                }
+            } catch(e) {}
+        }
+        
         // Auto-Fill Fields
         document.getElementById('branch_razao_social').value = data.razao_social || '';
         document.getElementById('branch_nome').value = data.nome_fantasia || data.razao_social || '';
@@ -346,7 +357,7 @@ async function consultarCNPJ() {
         document.getElementById('branch_bairro').value = data.bairro || '';
         document.getElementById('branch_municipio').value = data.municipio || '';
         document.getElementById('branch_uf').value = data.uf || '';
-        document.getElementById('branch_codigo_municipio').value = data.codigo_municipio || '';
+        document.getElementById('branch_codigo_municipio').value = ibgeCode;
         
         // Flash success
         btn.innerHTML = '<i class="fas fa-check text-success"></i> Sucesso!';

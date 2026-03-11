@@ -34,17 +34,21 @@ class SefazConfigController extends BaseController {
             
             $data = [
                 'ambiente' => $ambiente,
-                'certificado_senha' => base64_encode($senha) // Mantendo padrão Base64 para global
+                'certificado_senha' => $senha // Armazenar em formato texto puro, igual às filiais
             ];
 
             // Handle File Upload
             if (isset($_FILES['certificado_pfx']) && $_FILES['certificado_pfx']['error'] == 0) {
                 $pfxContent = file_get_contents($_FILES['certificado_pfx']['tmp_name']);
-                $certs = [];
                 
-                // Validação Real: Tenta ler o certificado com a senha fornecida
-                if (!openssl_pkcs12_read($pfxContent, $certs, $senha)) {
-                    $this->redirect('importar_automatico.php?action=config&msg=Erro: Senha incorreta ou arquivo de certificado inválido');
+                require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+                
+                // Validação Real usando NFePHP
+                try {
+                    $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $senha);
+                    unset($certificate);
+                } catch (\Exception $e) {
+                    $this->redirect('importar_automatico.php?action=config&msg=Erro: Certificado inválido ou senha incorreta: ' . urlencode($e->getMessage()));
                     return;
                 }
 
@@ -63,8 +67,12 @@ class SefazConfigController extends BaseController {
                     $path = dirname(__DIR__, 3) . "/storage/certificados/" . $existing['certificado_path'];
                     if (file_exists($path)) {
                         $pfxContent = file_get_contents($path);
-                        $certs = [];
-                        if (!openssl_pkcs12_read($pfxContent, $certs, $senha)) {
+                        require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+                        
+                        try {
+                            $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $senha);
+                            unset($certificate);
+                        } catch (\Exception $e) {
                             $this->redirect('importar_automatico.php?action=config&msg=Erro: A senha informada não confere com o certificado atual');
                             return;
                         }

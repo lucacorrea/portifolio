@@ -299,6 +299,88 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             opacity: .45;
             pointer-events: none;
         }
+
+        .logout-btn {
+            padding: 8px 14px !important;
+            min-width: 88px;
+            height: 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none !important;
+        }
+
+        .logout-btn i {
+            font-size: 16px;
+        }
+
+        .header-right {
+            height: 100%;
+        }
+
+        .brand-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .brand-name {
+            display: block;
+            font-size: 18px;
+            line-height: 1.2;
+            font-weight: 600;
+            color: #1e2a78;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .logout-btn {
+            padding: 8px 14px !important;
+            min-width: 88px;
+            height: 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none !important;
+        }
+
+        .logout-btn i {
+            font-size: 16px;
+        }
+
+        .header-right {
+            height: 100%;
+        }
+
+        .brand-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .brand-name {
+            display: block;
+            font-size: 18px;
+            line-height: 1.2;
+            font-weight: 600;
+            color: #1e2a78;
+            white-space: normal;
+            word-break: break-word;
+        }
     </style>
 </head>
 
@@ -310,19 +392,31 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
-            <a href="dashboard.php" class="d-flex align-items-center gap-2">
-                <img src="assets/images/logo/logo.svg" alt="logo" />
+            <a href="dashboard.php" class="brand-vertical">
+                <span class="brand-name">DISTRIBUIDORA<br>PLHB</span>
             </a>
         </div>
 
         <nav class="sidebar-nav">
             <ul>
-                <li class="nav-item"><a href="dashboard.php"><span class="icon"><i class="lni lni-dashboard"></i></span><span class="text">Dashboard</span></a></li>
-                <li class="nav-item"><a href="vendas.php"><span class="icon"><i class="lni lni-cart"></i></span><span class="text">Vendas</span></a></li>
+                <li class="nav-item">
+                    <a href="dashboard.php">
+                        <span class="icon"><i class="lni lni-dashboard"></i></span>
+                        <span class="text">Dashboard</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="vendas.php">
+                        <span class="icon"><i class="lni lni-cart"></i></span>
+                        <span class="text">Vendas</span>
+                    </a>
+                </li>
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-                        <span class="icon"><i class="lni lni-layers"></i></span><span class="text">Operações</span>
+                        <span class="icon"><i class="lni lni-layers"></i></span>
+                        <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
                         <li><a href="vendidos.php">Vendidos</a></li>
@@ -333,9 +427,10 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
                 <li class="nav-item nav-item-has-children active">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-                        <span class="icon"><i class="lni lni-package"></i></span><span class="text">Estoque</span>
+                        <span class="icon"><i class="lni lni-package"></i></span>
+                        <span class="text">Estoque</span>
                     </a>
-                    <ul id="ddmenu_estoque" class="collapse show dropdown-nav">
+                    <ul id="ddmenu_estoque" class="collapse dropdown-nav show">
                         <li><a href="produtos.php">Produtos</a></li>
                         <li><a href="inventario.php" class="active">Inventário</a></li>
                         <li><a href="entradas.php">Entradas</a></li>
@@ -346,7 +441,8 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-                        <span class="icon"><i class="lni lni-users"></i></span><span class="text">Cadastros</span>
+                        <span class="icon"><i class="lni lni-users"></i></span>
+                        <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav">
                         <li><a href="clientes.php">Clientes</a></li>
@@ -355,7 +451,12 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                     </ul>
                 </li>
 
-                <li class="nav-item"><a href="relatorios.php"><span class="icon"><i class="lni lni-clipboard"></i></span><span class="text">Relatórios</span></a></li>
+                <li class="nav-item">
+                    <a href="relatorios.php">
+                        <span class="icon"><i class="lni lni-clipboard"></i></span>
+                        <span class="text">Relatórios</span>
+                    </a>
+                </li>
 
                 <span class="divider">
                     <hr />
@@ -363,7 +464,8 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-                        <span class="icon"><i class="lni lni-cog"></i></span><span class="text">Configurações</span>
+                        <span class="icon"><i class="lni lni-cog"></i></span>
+                        <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
                         <li><a href="usuarios.php">Usuários e Permissões</a></li>
@@ -371,7 +473,12 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                     </ul>
                 </li>
 
-                <li class="nav-item"><a href="suporte.php"><span class="icon"><i class="lni lni-whatsapp"></i></span><span class="text">Suporte</span></a></li>
+                <li class="nav-item">
+                    <a href="suporte.php">
+                        <span class="icon"><i class="lni lni-whatsapp"></i></span>
+                        <span class="text">Suporte</span>
+                    </a>
+                </li>
             </ul>
         </nav>
     </aside>
@@ -385,11 +492,11 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                     <div class="col-lg-5 col-md-5 col-6">
                         <div class="header-left d-flex align-items-center">
                             <div class="menu-toggle-btn mr-15">
-                                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
+                                <button id="menu-toggle" class="main-btn primary-btn btn-hover" type="button">
                                     <i class="lni lni-chevron-left me-2"></i> Menu
                                 </button>
                             </div>
-                            <div class="header-search d-none d-md-flex">
+                            <div class="header-search d-none d-md-flex" style="display: none !important;">
                                 <form action="#" onsubmit="return false;">
                                     <input type="text" placeholder="Buscar produto..." id="qGlobal" />
                                     <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
@@ -399,27 +506,10 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                     </div>
 
                     <div class="col-lg-7 col-md-7 col-6">
-                        <div class="header-right">
-                            <div class="profile-box ml-15">
-                                <button class="dropdown-toggle bg-transparent border-0" type="button" id="profile" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <div class="profile-info">
-                                        <div class="info">
-                                            <div class="image"><img src="assets/images/profile/profile-image.png" alt="perfil" /></div>
-                                            <div>
-                                                <h6 class="fw-500">Administrador</h6>
-                                                <p>Distribuidora</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profile">
-                                    <li><a href="perfil.php"><i class="lni lni-user"></i> Meu Perfil</a></li>
-                                    <li><a href="usuarios.php"><i class="lni lni-cog"></i> Usuários</a></li>
-                                    <li class="divider"></li>
-                                    <li><a href="logout.php"><i class="lni lni-exit"></i> Sair</a></li>
-                                </ul>
-                            </div>
+                        <div class="header-right d-flex justify-content-end align-items-center">
+                            <a href="logout.php" class="main-btn primary-btn btn-hover logout-btn">
+                                <i class="lni lni-exit me-1"></i> Sair
+                            </a>
                         </div>
                     </div>
 

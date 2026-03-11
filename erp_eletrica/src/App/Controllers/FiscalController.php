@@ -176,16 +176,82 @@ class FiscalController extends BaseController {
             'has_ibge' => !empty($branchInfo['codigo_municipio']) && strlen($branchInfo['codigo_municipio']) === 7
         ];
 
+        // --- Açaidinhos Status Logic Equivalent ---
+        $fiscalService = new \App\Services\FiscalService();
+        $fiscalConfig = $fiscalService->getFiscalConfig($branchId);
+
+        $tpAmb = $fiscalConfig['ambiente'];
+        if ($tpAmb == 1) {
+            $ambienteStatus = 'Produção';
+            $ambienteClass  = 'bg-label-primary';
+        } elseif ($tpAmb == 2) {
+            $ambienteStatus = 'Homologação';
+            $ambienteClass  = 'bg-label-info';
+        } else {
+            $ambienteStatus = 'Não configurado';
+            $ambienteClass  = 'bg-label-secondary';
+        }
+
+        $certificadoStatus = 'Não informado';
+        $certificadoClass  = 'bg-label-secondary';
+        $pfxPathDisplay = null;
+
+        if (!empty($fiscalConfig['certificado_pfx'])) {
+            $pfxAbs = dirname(__DIR__, 3) . "/storage/certificados/" . $fiscalConfig['certificado_pfx'];
+            $pfxPathDisplay = "storage/certificados/" . $fiscalConfig['certificado_pfx'];
+            if (is_file($pfxAbs)) {
+                if (!empty($fiscalConfig['certificado_senha'])) {
+                    require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+                    try {
+                        $certContent = file_get_contents($pfxAbs);
+                        $cert = \NFePHP\Common\Certificate::readPfx($certContent, $fiscalConfig['certificado_senha']);
+                        $certificadoStatus = 'Válido';
+                        $certificadoClass  = 'bg-label-success';
+                    } catch (\Exception $e) {
+                        $certificadoStatus = 'Arquivo encontrado (senha inválida)';
+                        $certificadoClass  = 'bg-label-danger';
+                    }
+                } else {
+                    $certificadoStatus = 'Arquivo encontrado (sem senha)';
+                    $certificadoClass  = 'bg-label-warning';
+                }
+            } else {
+                $certificadoStatus = 'Arquivo não encontrado';
+                $certificadoClass  = 'bg-label-danger';
+            }
+        }
+
+        $isConfigurado = (
+            in_array($tpAmb, [1, 2], true) &&
+            !empty($fiscalConfig['cnpj']) &&
+            !empty($branchInfo['csc_id']) &&
+            !empty($branchInfo['csc_token']) &&
+            $certificadoStatus === 'Válido'
+        );
+
+        $fonte = ($globalConfig && !empty($globalConfig['certificado_path'])) ? 'Configuração Global' : 'Filial Database';
+
         $this->render('fiscal/diagnostic', [
-            'title' => 'Diagnóstico Profundo SEFAZ',
-            'pageTitle' => 'Diagnóstico do Ambiente Fiscal',
+            'title' => 'Diagnóstico & Status SEFAZ',
+            'pageTitle' => 'Status da Integração',
             'env' => $env,
             'storage' => $storage,
             'dbStatus' => $dbStatus,
             'branch' => $branchInfo,
             'branches' => $branches,
             'globalConfig' => $globalConfig,
-            'selectedBranchId' => $branchId
+            'selectedBranchId' => $branchId,
+            'isConfigurado' => $isConfigurado,
+            'certificadoClass' => $certificadoClass,
+            'certificadoStatus' => $certificadoStatus,
+            'pfxPathDisplay' => $pfxPathDisplay,
+            'ambienteClass' => $ambienteClass,
+            'ambienteStatus' => $ambienteStatus,
+            'cnpjExibe' => $fiscalConfig['cnpj'],
+            'razao' => $branchInfo['nome'] ?? '',
+            'csc' => $branchInfo['csc_token'] ?? '',
+            'idTokenExibe' => str_pad($branchInfo['csc_id'] ?? '', 6, '0', STR_PAD_LEFT),
+            'fonte' => $fonte
         ]);
     }
 }

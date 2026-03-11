@@ -642,6 +642,47 @@ function fmtMoney($v): string
       font-size: 11px;
     }
 
+    .logout-btn {
+      padding: 8px 14px !important;
+      min-width: 88px;
+      height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none !important;
+    }
+
+    .logout-btn i {
+      font-size: 16px;
+    }
+
+    .header-right {
+      height: 100%;
+    }
+
+    .brand-vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .brand-name {
+      display: block;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 600;
+      color: #1e2a78;
+      white-space: normal;
+      word-break: break-word;
+    }
+
     @media (max-width: 991.98px) {
       .pay-grid {
         grid-template-columns: 1fr;
@@ -666,8 +707,8 @@ function fmtMoney($v): string
   <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
-      <a href="dashboard.php" class="d-flex align-items-center gap-2">
-        <img src="assets/images/logo/logo.svg" alt="logo" />
+      <a href="dashboard.php" class="brand-vertical">
+        <span class="brand-name">DISTRIBUIDORA<br>PLHB</span>
       </a>
     </div>
 
@@ -776,35 +817,28 @@ function fmtMoney($v): string
   <div class="overlay"></div>
 
   <main class="main-wrapper">
+    <!-- Header -->
     <header class="header">
       <div class="container-fluid">
         <div class="row">
           <div class="col-lg-5 col-md-5 col-6">
             <div class="header-left d-flex align-items-center">
               <div class="menu-toggle-btn mr-15">
-                <button id="menu-toggle" class="main-btn primary-btn btn-hover btn-compact" type="button">
+                <button id="menu-toggle" class="main-btn primary-btn btn-hover" type="button">
                   <i class="lni lni-chevron-left me-2"></i> Menu
                 </button>
               </div>
-
+              <div class="header-search d-none d-md-flex"></div>
             </div>
           </div>
+
           <div class="col-lg-7 col-md-7 col-6">
-            <div class="header-right">
-              <div class="profile-box ml-15">
-                <a class="btn btn-sm btn-primary color-white" href="#">
-                  <div class="profile-info">
-                    <div class="info">
-                      <div>
-                        <h6 class="fw-500"><i class="lni lni-chevron-left me-2"></i> Sair</h6>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
+            <div class="header-right d-flex justify-content-end align-items-center">
+              <a href="logout.php" class="main-btn primary-btn btn-hover logout-btn">
+                <i class="lni lni-exit me-1"></i> Sair
+              </a>
             </div>
           </div>
-
         </div>
       </div>
     </header>
