@@ -82,11 +82,6 @@ function fi_read_json_input(): array
     return is_array($data) ? $data : [];
 }
 
-function fi_flash_set(string $key, string $msg): void
-{
-    $_SESSION[$key] = $msg;
-}
-
 function fi_flash_take(string $key): ?string
 {
     if (!isset($_SESSION[$key]) || !is_string($_SESSION[$key])) {
@@ -103,12 +98,10 @@ function fi_fmt_datetime(?string $d): string
     if ($d === '') {
         return '—';
     }
-
     $ts = strtotime($d);
     if ($ts === false) {
         return '—';
     }
-
     return date('d/m/Y H:i:s', $ts);
 }
 
@@ -118,12 +111,10 @@ function fi_fmt_date(?string $d): string
     if ($d === '') {
         return '—';
     }
-
     $ts = strtotime($d);
     if ($ts === false) {
         return '—';
     }
-
     return date('d/m/Y', $ts);
 }
 
@@ -161,7 +152,6 @@ function fi_sql_parts(): array
         END
     ";
 
-    /* sem comparar string de coluna com parâmetro para evitar erro de collation */
     $statusNumExpr = "
         CASE
             WHEN ({$exprRestante}) <= 0.00001 THEN 2
@@ -176,7 +166,6 @@ function fi_sql_parts(): array
         END
     ";
 
-    /* DELIVERY em HEX = 44454C4956455259 */
     $canalNumExpr = "
         CASE
             WHEN HEX(UPPER(COALESCE(v.canal,''))) = '44454C4956455259' THEN 2
@@ -239,6 +228,33 @@ function fi_build_where(array &$params, array $parts): string
     return $where;
 }
 
+function fi_build_search_blob(array $row, string $itensTxt): string
+{
+    $parts = [
+        (string)($row['id'] ?? ''),
+        (string)($row['venda_id'] ?? ''),
+        (string)($row['cliente_nome'] ?? ''),
+        (string)($row['canal'] ?? ''),
+        (string)($row['status'] ?? ''),
+        (string)($row['pagamento'] ?? ''),
+        (string)($row['created_at'] ?? ''),
+        (string)($row['created_at_fmt'] ?? ''),
+        (string)($row['data_vencimento'] ?? ''),
+        (string)($row['vencimento_fmt'] ?? ''),
+        (string)($row['endereco'] ?? ''),
+        (string)($row['obs'] ?? ''),
+        fi_brl((float)($row['valor_total'] ?? 0)),
+        fi_brl((float)($row['valor_pago'] ?? 0)),
+        fi_brl((float)($row['valor_restante'] ?? 0)),
+        number_format((float)($row['valor_total'] ?? 0), 2, '.', ''),
+        number_format((float)($row['valor_pago'] ?? 0), 2, '.', ''),
+        number_format((float)($row['valor_restante'] ?? 0), 2, '.', ''),
+        $itensTxt,
+    ];
+
+    return implode(' | ', $parts);
+}
+
 function fi_attach_items_text(PDO $pdo, array &$rows): void
 {
     if (!$rows) {
@@ -290,57 +306,25 @@ function fi_attach_items_text(PDO $pdo, array &$rows): void
     unset($r);
 }
 
-function fi_build_search_blob(array $row, string $itensTxt): string
-{
-    $valorTotal = (float)($row['valor_total'] ?? 0);
-    $valorPago = (float)($row['valor_pago'] ?? 0);
-    $valorRestante = (float)($row['valor_restante'] ?? 0);
-
-    $parts = [
-        (string)($row['id'] ?? ''),
-        (string)($row['venda_id'] ?? ''),
-        (string)($row['cliente_nome'] ?? ''),
-        (string)($row['canal'] ?? ''),
-        (string)($row['status'] ?? ''),
-        (string)($row['pagamento'] ?? ''),
-        (string)($row['created_at'] ?? ''),
-        fi_fmt_datetime((string)($row['created_at'] ?? '')),
-        (string)($row['data_vencimento'] ?? ''),
-        fi_fmt_date((string)($row['data_vencimento'] ?? '')),
-        (string)($row['endereco'] ?? ''),
-        (string)($row['obs'] ?? ''),
-        number_format($valorTotal, 2, '.', ''),
-        number_format($valorPago, 2, '.', ''),
-        number_format($valorRestante, 2, '.', ''),
-        fi_brl($valorTotal),
-        fi_brl($valorPago),
-        fi_brl($valorRestante),
-        $itensTxt,
-    ];
-
-    return implode(' | ', $parts);
-}
-
-function fi_apply_search_filter(array $rows, string $q): array
+function fi_filter_rows_local_search(array $rows, string $q): array
 {
     $q = trim($q);
     if ($q === '') {
         return $rows;
     }
 
-    $qNeedle = function_exists('mb_strtolower') ? mb_strtolower($q, 'UTF-8') : strtolower($q);
+    $needle = function_exists('mb_strtolower') ? mb_strtolower($q, 'UTF-8') : strtolower($q);
+    $out = [];
 
-    $filtered = [];
     foreach ($rows as $r) {
         $hay = (string)($r['search_blob'] ?? '');
         $hay = function_exists('mb_strtolower') ? mb_strtolower($hay, 'UTF-8') : strtolower($hay);
-
-        if (strpos($hay, $qNeedle) !== false) {
-            $filtered[] = $r;
+        if (strpos($hay, $needle) !== false) {
+            $out[] = $r;
         }
     }
 
-    return $filtered;
+    return $out;
 }
 
 function fi_compute_totals_from_rows(array $rows): array
@@ -382,7 +366,6 @@ function fi_fetch_result(PDO $pdo): array
             f.created_at AS fiado_created_at,
 
             v.created_at AS venda_created_at,
-            v.data AS venda_data,
             {$parts['canal_text_expr']} AS canal_normalizado,
             v.pagamento,
             v.endereco,
@@ -663,7 +646,7 @@ if ($action === 'excel') {
 
     $q = fi_get_str('q');
     if ($q !== '') {
-        $rows = fi_apply_search_filter($rows, $q);
+        $rows = fi_filter_rows_local_search($rows, $q);
     }
 
     $totais = fi_compute_totals_from_rows($rows);
@@ -684,7 +667,7 @@ if ($action === 'excel') {
     header('Expires: 0');
 
     echo "\xEF\xBB\xBF";
-    ?>
+?>
     <html xmlns:o="urn:schemas-microsoft-com:office:office"
         xmlns:x="urn:schemas-microsoft-com:office:excel"
         xmlns="http://www.w3.org/TR/REC-html40">
@@ -804,7 +787,7 @@ if ($action === 'excel') {
     </body>
 
     </html>
-    <?php
+<?php
     exit;
 }
 
@@ -813,14 +796,10 @@ if ($action === 'excel') {
 ========================================================= */
 $initial = fi_fetch_result($pdo);
 $initialRowsAll = $initial['rows'];
-$initialFiltered = $initialRowsAll;
-$initialPage = 1;
 $initialPer = 10;
-$initialTotal = count($initialFiltered);
+$initialTotal = count($initialRowsAll);
 $initialPages = max(1, (int)ceil($initialTotal / $initialPer));
-$initialFrom = $initialTotal > 0 ? 1 : 0;
-$initialTo = $initialTotal > 0 ? min($initialPer, $initialTotal) : 0;
-$initialRowsPage = array_slice($initialFiltered, 0, $initialPer);
+$initialRowsPage = array_slice($initialRowsAll, 0, $initialPer);
 
 $csrf = fi_csrf_token();
 $flashOk  = fi_flash_take('flash_ok');
@@ -894,6 +873,7 @@ $flashErr = fi_flash_take('flash_err');
             font-size: 12px;
             font-weight: 700;
             transition: all 0.2s;
+            white-space: nowrap;
         }
 
         .pager-box {
@@ -909,6 +889,7 @@ $flashErr = fi_flash_take('flash_err');
             font-size: 12px;
             color: #64748b;
             font-weight: 800;
+            white-space: nowrap;
         }
 
         .pager-box .btn-disabled {
@@ -921,6 +902,7 @@ $flashErr = fi_flash_take('flash_err');
             font-size: 12px;
             color: #64748b;
             font-weight: 700;
+            white-space: nowrap;
         }
 
         .logout-btn {
@@ -934,6 +916,7 @@ $flashErr = fi_flash_take('flash_err');
             font-size: 14px;
             font-weight: 500;
             text-decoration: none !important;
+            white-space: nowrap;
         }
 
         .logout-btn i {
@@ -972,6 +955,7 @@ $flashErr = fi_flash_take('flash_err');
             font-size: 13px;
             letter-spacing: .1px;
             text-align: center;
+            white-space: nowrap;
         }
 
         .table-custom tbody td {
@@ -980,6 +964,7 @@ $flashErr = fi_flash_take('flash_err');
             border-top: 1px solid rgba(148, 163, 184, 0.12);
             font-size: 14px;
             text-align: center;
+            white-space: nowrap;
         }
 
         .table-custom tbody td.td-left,
@@ -1027,6 +1012,7 @@ $flashErr = fi_flash_take('flash_err');
             font-size: 28px;
             font-weight: 900;
             line-height: 1.1;
+            white-space: nowrap;
         }
 
         .summary-card.total .val {
@@ -1054,6 +1040,11 @@ $flashErr = fi_flash_take('flash_err');
             color: #64748b;
             font-size: 12px;
             line-height: 1.35;
+            white-space: nowrap;
+        }
+
+        .text-nowrap-force {
+            white-space: nowrap !important;
         }
 
         @media (max-width: 991.98px) {
@@ -1274,7 +1265,7 @@ $flashErr = fi_flash_take('flash_err');
                             </div>
                         </div>
                         <div class="mini-muted mt-3">
-                            Data, canal e status fazem busca AJAX. O campo de pesquisa filtra no próprio tbody, como na sua outra tela.
+                            Data, canal e status fazem busca AJAX. O campo de pesquisa filtra no tbody sem quebrar os textos.
                         </div>
                     </div>
                 </div>
@@ -1285,14 +1276,14 @@ $flashErr = fi_flash_take('flash_err');
                             <table class="table table-custom mb-0">
                                 <thead>
                                     <tr>
-                                        <th class="th-left ps-4">Venda #</th>
-                                        <th>Data/Hora</th>
-                                        <th class="th-left">Cliente</th>
-                                        <th>Total Venda</th>
-                                        <th>Total Pago</th>
-                                        <th>Restante</th>
-                                        <th>Status</th>
-                                        <th class="th-right pe-4">Ações</th>
+                                        <th class="th-left ps-4 text-nowrap-force">Venda #</th>
+                                        <th class="text-nowrap-force">Data/Hora</th>
+                                        <th class="th-left text-nowrap-force">Cliente</th>
+                                        <th class="text-nowrap-force">Total Venda</th>
+                                        <th class="text-nowrap-force">Total Pago</th>
+                                        <th class="text-nowrap-force">Restante</th>
+                                        <th class="text-nowrap-force">Status</th>
+                                        <th class="th-right pe-4 text-nowrap-force">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="fiadosTableBody">
@@ -1303,28 +1294,32 @@ $flashErr = fi_flash_take('flash_err');
                                     <?php else: ?>
                                         <?php foreach ($initialRowsPage as $f): ?>
                                             <tr>
-                                                <td class="ps-4 td-left"><b>#<?= (int)$f['venda_id'] ?></b></td>
-                                                <td><?= fi_e((string)$f['created_at_fmt']) ?></td>
-                                                <td class="td-left">
-                                                    <div><?= fi_e((string)$f['cliente_nome']) ?></div>
-                                                    <?php if (!empty($f['endereco'])): ?>
-                                                        <div class="mini-muted"><?= fi_e((string)$f['endereco']) ?></div>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td><span class="val-total"><?= fi_e(fi_brl((float)$f['valor_total'])) ?></span></td>
-                                                <td><span class="text-success"><?= fi_e(fi_brl((float)$f['valor_pago'])) ?></span></td>
-                                                <td><span class="val-restante"><?= fi_e(fi_brl((float)$f['valor_restante'])) ?></span></td>
-                                                <td>
+                                                <td class="ps-4 td-left text-nowrap-force"><b>#<?= (int)$f['venda_id'] ?></b></td>
+                                                <td class="text-nowrap-force"><?= fi_e((string)$f['created_at_fmt']) ?></td>
+                                                <td class="td-left text-nowrap-force"><?= fi_e((string)$f['cliente_nome']) ?></td>
+                                                <td class="text-nowrap-force"><span class="val-total"><?= fi_e(fi_brl((float)$f['valor_total'])) ?></span></td>
+                                                <td class="text-nowrap-force"><span class="text-success"><?= fi_e(fi_brl((float)$f['valor_pago'])) ?></span></td>
+                                                <td class="text-nowrap-force"><span class="val-restante"><?= fi_e(fi_brl((float)$f['valor_restante'])) ?></span></td>
+                                                <td class="text-nowrap-force">
                                                     <span class="status-badge <?= strtoupper((string)$f['status']) === 'PAGO' ? 'status-pago' : 'status-aberto' ?>">
                                                         <?= fi_e((string)$f['status']) ?>
                                                     </span>
                                                 </td>
-                                                <td class="td-right pe-4">
-                                                    <button class="btn btn-light btn-pay" onclick="showDetails(<?= (int)$f['id'] ?>)">
+                                                <td class="td-right pe-4 text-nowrap-force">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-light btn-pay js-detail"
+                                                        data-id="<?= (int)$f['id'] ?>">
                                                         <i class="lni lni-eye"></i> Detalhes
                                                     </button>
+
                                                     <?php if (strtoupper((string)$f['status']) === 'ABERTO'): ?>
-                                                        <button class="btn btn-success btn-pay text-white ms-1" onclick="openPay(<?= (int)$f['id'] ?>, <?= json_encode((string)$f['cliente_nome'], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= (float)$f['valor_restante'] ?>)">
+                                                        <button
+                                                            type="button"
+                                                            class="btn btn-success btn-pay text-white ms-1 js-pay"
+                                                            data-id="<?= (int)$f['id'] ?>"
+                                                            data-cliente="<?= fi_e((string)$f['cliente_nome']) ?>"
+                                                            data-restante="<?= (float)$f['valor_restante'] ?>">
                                                             <i class="lni lni-reply"></i> Pagar
                                                         </button>
                                                     <?php endif; ?>
@@ -1338,16 +1333,16 @@ $flashErr = fi_flash_take('flash_err');
 
                         <div class="pager-box">
                             <div class="pager-left" id="pgSummary">
-                                Mostrando <?= $initialFrom ?>-<?= $initialTo ?> de <?= $initialTotal ?>
+                                Mostrando <?= $initialTotal > 0 ? 1 : 0 ?>-<?= min($initialPer, $initialTotal) ?> de <?= $initialTotal ?>
                             </div>
 
-                            <a href="#0" id="pgPrev" class="main-btn light-btn btn-hover btn-sm <?= ($initialPage <= 1) ? 'btn-disabled' : '' ?>" title="Anterior">
+                            <a href="#0" id="pgPrev" class="main-btn light-btn btn-hover btn-sm <?= ($initialPages <= 1) ? 'btn-disabled' : '' ?>" title="Anterior">
                                 <i class="lni lni-chevron-left"></i>
                             </a>
 
-                            <span class="page-text" id="pgInfo">Página <?= $initialPage ?>/<?= $initialPages ?></span>
+                            <span class="page-text" id="pgInfo">Página 1/<?= $initialPages ?></span>
 
-                            <a href="#0" id="pgNext" class="main-btn light-btn btn-hover btn-sm <?= ($initialPage >= $initialPages) ? 'btn-disabled' : '' ?>" title="Próxima">
+                            <a href="#0" id="pgNext" class="main-btn light-btn btn-hover btn-sm <?= ($initialPages <= 1) ? 'btn-disabled' : '' ?>" title="Próxima">
                                 <i class="lni lni-chevron-right"></i>
                             </a>
                         </div>
@@ -1491,28 +1486,42 @@ $flashErr = fi_flash_take('flash_err');
         }
 
         function esc(s) {
-            return String(s ?? '').replace(/[&<>"']/g, (m) => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            }[m]));
+            return String(s ?? '').replace(/[&<>"']/g, function(m) {
+                return ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                })[m];
+            });
         }
 
-        function searchNeedle() {
+        function buildRemoteQs(extra) {
+            const p = new URLSearchParams({
+                action: (extra && extra.action) ? extra.action : 'fetch',
+                di: document.getElementById('fDi').value,
+                df: document.getElementById('fDf').value,
+                canal: document.getElementById('fCanal').value,
+                status: document.getElementById('fStatus').value,
+                q: document.getElementById('fSearch').value
+            });
+            return p;
+        }
+
+        function currentSearchNeedle() {
             return String(document.getElementById('fSearch').value || '').trim().toLowerCase();
         }
 
         function getFilteredLocalRows() {
-            const q = searchNeedle();
+            const q = currentSearchNeedle();
             if (!q) {
-                return [...STATE.rowsAll];
+                return STATE.rowsAll.slice();
             }
 
-            return STATE.rowsAll.filter(row => {
+            return STATE.rowsAll.filter(function(row) {
                 const hay = String(row.search_blob || '').toLowerCase();
-                return hay.includes(q);
+                return hay.indexOf(q) !== -1;
             });
         }
 
@@ -1521,16 +1530,16 @@ $flashErr = fi_flash_take('flash_err');
             let totalPago = 0;
             let totalRestante = 0;
 
-            rows.forEach(r => {
+            rows.forEach(function(r) {
                 totalVenda += Number(r.valor_total || 0);
                 totalPago += Number(r.valor_pago || 0);
                 totalRestante += Number(r.valor_restante || 0);
             });
 
             return {
-                totalVenda,
-                totalPago,
-                totalRestante
+                totalVenda: totalVenda,
+                totalPago: totalPago,
+                totalRestante: totalRestante
             };
         }
 
@@ -1549,7 +1558,7 @@ $flashErr = fi_flash_take('flash_err');
                 STATE.page = STATE.totalPages;
             }
 
-            $pgInfo.textContent = `Página ${STATE.page}/${STATE.totalPages}`;
+            $pgInfo.textContent = 'Página ' + STATE.page + '/' + STATE.totalPages;
 
             const canPrev = STATE.page > 1;
             const canNext = STATE.page < STATE.totalPages;
@@ -1573,55 +1582,35 @@ $flashErr = fi_flash_take('flash_err');
                 return;
             }
 
-            $body.innerHTML = rowsPage.map(f => `
-                <tr>
-                    <td class="ps-4 td-left"><b>#${f.venda_id}</b></td>
-                    <td>${esc(f.created_at_fmt || '')}</td>
-                    <td class="td-left">
-                        <div>${esc(f.cliente_nome || '')}</div>
-                        ${f.endereco ? `<div class="mini-muted">${esc(f.endereco)}</div>` : ``}
-                    </td>
-                    <td><span class="val-total">${brlJs(f.valor_total)}</span></td>
-                    <td><span class="text-success">${brlJs(f.valor_pago)}</span></td>
-                    <td><span class="val-restante">${brlJs(f.valor_restante)}</span></td>
-                    <td>
-                        <span class="status-badge ${String(f.status || '') === 'PAGO' ? 'status-pago' : 'status-aberto'}">${esc(f.status || '')}</span>
-                    </td>
-                    <td class="td-right pe-4">
-                        <button class="btn btn-light btn-pay" onclick="showDetails(${f.id})">
-                            <i class="lni lni-eye"></i> Detalhes
-                        </button>
-                        ${String(f.status || '') === 'ABERTO' ? `
-                            <button class="btn btn-success btn-pay text-white ms-1" onclick="openPay(${f.id}, ${JSON.stringify(String(f.cliente_nome || ''))}, ${Number(f.valor_restante || 0)})">
-                                <i class="lni lni-reply"></i> Pagar
-                            </button>
-                        ` : ''}
-                    </td>
-                </tr>
-            `).join('');
+            let html = '';
 
-            const shownFrom = rowsFiltered.length ? start + 1 : 0;
-            const shownTo = rowsFiltered.length ? Math.min(end, rowsFiltered.length) : 0;
-            $pgSummary.textContent = `Mostrando ${shownFrom}-${shownTo} de ${rowsFiltered.length}`;
-        }
+            rowsPage.forEach(function(f) {
+                const isPago = String(f.status || '') === 'PAGO';
 
-        function buildRemoteQs(extra = {}) {
-            const p = new URLSearchParams({
-                action: extra.action || 'fetch',
-                di: document.getElementById('fDi').value,
-                df: document.getElementById('fDf').value,
-                canal: document.getElementById('fCanal').value,
-                status: document.getElementById('fStatus').value,
-                q: document.getElementById('fSearch').value
-            });
+                html += '<tr>';
+                html += '<td class="ps-4 td-left text-nowrap-force"><b>#' + esc(f.venda_id) + '</b></td>';
+                html += '<td class="text-nowrap-force">' + esc(f.created_at_fmt || '') + '</td>';
+                html += '<td class="td-left text-nowrap-force">' + esc(f.cliente_nome || '') + '</td>';
+                html += '<td class="text-nowrap-force"><span class="val-total">' + brlJs(f.valor_total) + '</span></td>';
+                html += '<td class="text-nowrap-force"><span class="text-success">' + brlJs(f.valor_pago) + '</span></td>';
+                html += '<td class="text-nowrap-force"><span class="val-restante">' + brlJs(f.valor_restante) + '</span></td>';
+                html += '<td class="text-nowrap-force"><span class="status-badge ' + (isPago ? 'status-pago' : 'status-aberto') + '">' + esc(f.status || '') + '</span></td>';
+                html += '<td class="td-right pe-4 text-nowrap-force">';
+                html += '<button type="button" class="btn btn-light btn-pay js-detail" data-id="' + esc(f.id) + '"><i class="lni lni-eye"></i> Detalhes</button>';
 
-            Object.keys(extra).forEach((k) => {
-                if (k !== 'action') {
-                    p.set(k, extra[k]);
+                if (!isPago) {
+                    html += ' <button type="button" class="btn btn-success btn-pay text-white ms-1 js-pay" data-id="' + esc(f.id) + '" data-cliente="' + esc(f.cliente_nome || '') + '" data-restante="' + esc(f.valor_restante) + '"><i class="lni lni-reply"></i> Pagar</button>';
                 }
+
+                html += '</td>';
+                html += '</tr>';
             });
 
-            return p;
+            $body.innerHTML = html;
+
+            const shownFrom = rowsFiltered.length ? (start + 1) : 0;
+            const shownTo = rowsFiltered.length ? Math.min(end, rowsFiltered.length) : 0;
+            $pgSummary.textContent = 'Mostrando ' + shownFrom + '-' + shownTo + ' de ' + rowsFiltered.length;
         }
 
         async function loadFiadosRemote() {
@@ -1632,11 +1621,13 @@ $flashErr = fi_flash_take('flash_err');
                     action: 'fetch'
                 });
 
-                const r = await fetch(`${API}?${qs.toString()}`, {
+                const r = await fetch(API + '?' + qs.toString(), {
                     headers: {
                         'Accept': 'application/json'
                     }
-                }).then(res => res.json());
+                }).then(function(res) {
+                    return res.json();
+                });
 
                 if (!r.ok) {
                     throw new Error(r.msg || 'Falha ao carregar fiados.');
@@ -1654,48 +1645,58 @@ $flashErr = fi_flash_take('flash_err');
 
         async function showDetails(id) {
             try {
-                const r = await fetch(`${API}?action=get_details&id=${id}`, {
+                const r = await fetch(API + '?action=get_details&id=' + encodeURIComponent(id), {
                     headers: {
                         'Accept': 'application/json'
                     }
-                }).then(res => res.json());
+                }).then(function(res) {
+                    return res.json();
+                });
 
                 if (!r.ok) {
                     throw new Error(r.msg || 'Falha ao buscar detalhes.');
                 }
 
                 const f = r.fiado || {};
-                document.getElementById('detVendaId').innerText = f.venda_id ?? '';
-                document.getElementById('detCliente').innerText = f.cliente_nome ?? '';
-                document.getElementById('detCanal').innerText = f.canal ?? '';
-                document.getElementById('detPagamento').innerText = f.pagamento ?? '';
-                document.getElementById('detVencimento').innerText = f.data_vencimento ? esc(f.data_vencimento) : '—';
-                document.getElementById('detEndereco').innerText = f.endereco ?? '—';
-                document.getElementById('detObs').innerText = f.obs ?? '—';
-                document.getElementById('detCreated').innerText = f.created_at ? esc(f.created_at) : '—';
+                document.getElementById('detVendaId').innerText = f.venda_id || '';
+                document.getElementById('detCliente').innerText = f.cliente_nome || '';
+                document.getElementById('detCanal').innerText = f.canal || '';
+                document.getElementById('detPagamento').innerText = f.pagamento || '';
+                document.getElementById('detVencimento').innerText = f.data_vencimento || '—';
+                document.getElementById('detEndereco').innerText = f.endereco || '—';
+                document.getElementById('detObs').innerText = f.obs || '—';
+                document.getElementById('detCreated').innerText = f.created_at || '—';
                 document.getElementById('detTotal').innerText = brlJs(f.valor_total);
                 document.getElementById('detPago').innerText = brlJs(f.valor_pago);
                 document.getElementById('detRestante').innerText = brlJs(f.valor_restante);
-                document.getElementById('detStatus').innerText = f.status ?? '';
+                document.getElementById('detStatus').innerText = f.status || '';
 
                 const items = Array.isArray(r.items) ? r.items : [];
-                document.getElementById('detItemsBody').innerHTML = items.length ? items.map(it => `
-                    <tr>
-                        <td>${esc(it.nome ?? '')}</td>
-                        <td>${esc(it.qtd ?? '')} ${esc(it.unidade ?? '')}</td>
-                        <td class="text-end">${brlJs(it.preco_unit)}</td>
-                        <td class="text-end">${brlJs(it.subtotal)}</td>
-                    </tr>
-                `).join('') : '<tr><td colspan="4" class="text-center">Sem itens.</td></tr>';
+                if (items.length) {
+                    document.getElementById('detItemsBody').innerHTML = items.map(function(it) {
+                        return '<tr>' +
+                            '<td>' + esc(it.nome || '') + '</td>' +
+                            '<td>' + esc(it.qtd || '') + ' ' + esc(it.unidade || '') + '</td>' +
+                            '<td class="text-end">' + brlJs(it.preco_unit) + '</td>' +
+                            '<td class="text-end">' + brlJs(it.subtotal) + '</td>' +
+                            '</tr>';
+                    }).join('');
+                } else {
+                    document.getElementById('detItemsBody').innerHTML = '<tr><td colspan="4" class="text-center">Sem itens.</td></tr>';
+                }
 
                 const pays = Array.isArray(r.payments) ? r.payments : [];
-                document.getElementById('detPaysBody').innerHTML = pays.length ? pays.map(p => `
-                    <tr>
-                        <td>${esc(p.created_at ?? '')}</td>
-                        <td>${esc(p.metodo ?? '')}</td>
-                        <td class="text-end">${brlJs(p.valor)}</td>
-                    </tr>
-                `).join('') : '<tr><td colspan="3" class="text-center">Nenhum pagamento registrado.</td></tr>';
+                if (pays.length) {
+                    document.getElementById('detPaysBody').innerHTML = pays.map(function(p) {
+                        return '<tr>' +
+                            '<td>' + esc(p.created_at || '') + '</td>' +
+                            '<td>' + esc(p.metodo || '') + '</td>' +
+                            '<td class="text-end">' + brlJs(p.valor) + '</td>' +
+                            '</tr>';
+                    }).join('');
+                } else {
+                    document.getElementById('detPaysBody').innerHTML = '<tr><td colspan="3" class="text-center">Nenhum pagamento registrado.</td></tr>';
+                }
 
                 modalDetalhes.show();
             } catch (e) {
@@ -1709,10 +1710,12 @@ $flashErr = fi_flash_take('flash_err');
             document.getElementById('paySaldo').innerText = brlJs(restante);
             document.getElementById('payValor').value = '';
             modalPagamento.show();
-            setTimeout(() => document.getElementById('payValor').focus(), 250);
+            setTimeout(function() {
+                document.getElementById('payValor').focus();
+            }, 250);
         }
 
-        document.getElementById('payForm').addEventListener('submit', async (e) => {
+        document.getElementById('payForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const id = document.getElementById('payFiadoId').value;
@@ -1729,7 +1732,7 @@ $flashErr = fi_flash_take('flash_err');
             }
 
             try {
-                const r = await fetch(`${API}?action=pay`, {
+                const r = await fetch(API + '?action=pay', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1737,11 +1740,13 @@ $flashErr = fi_flash_take('flash_err');
                         'X-CSRF-Token': csrf
                     },
                     body: JSON.stringify({
-                        id,
-                        valor,
-                        metodo
+                        id: id,
+                        valor: valor,
+                        metodo: metodo
                     })
-                }).then(res => res.json());
+                }).then(function(res) {
+                    return res.json();
+                });
 
                 if (!r.ok) {
                     throw new Error(r.msg || 'Falha ao pagar.');
@@ -1757,14 +1762,14 @@ $flashErr = fi_flash_take('flash_err');
 
         function triggerRemoteFilters() {
             clearTimeout(STATE.timerRemote);
-            STATE.timerRemote = setTimeout(() => {
+            STATE.timerRemote = setTimeout(function() {
                 loadFiadosRemote();
             }, 300);
         }
 
         function triggerLocalSearch() {
             clearTimeout(STATE.timerLocal);
-            STATE.timerLocal = setTimeout(() => {
+            STATE.timerLocal = setTimeout(function() {
                 STATE.page = 1;
                 renderRowsPage();
             }, 120);
@@ -1776,7 +1781,7 @@ $flashErr = fi_flash_take('flash_err');
         document.getElementById('fStatus').addEventListener('change', triggerRemoteFilters);
 
         document.getElementById('fSearch').addEventListener('input', triggerLocalSearch);
-        document.getElementById('fSearch').addEventListener('keydown', (e) => {
+        document.getElementById('fSearch').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 clearTimeout(STATE.timerLocal);
@@ -1785,7 +1790,7 @@ $flashErr = fi_flash_take('flash_err');
             }
         });
 
-        document.getElementById('btnClear').addEventListener('click', () => {
+        document.getElementById('btnClear').addEventListener('click', function() {
             document.getElementById('fDi').value = '';
             document.getElementById('fDf').value = '';
             document.getElementById('fCanal').value = 'TODOS';
@@ -1794,21 +1799,21 @@ $flashErr = fi_flash_take('flash_err');
             loadFiadosRemote();
         });
 
-        document.getElementById('btnExcel').addEventListener('click', () => {
+        document.getElementById('btnExcel').addEventListener('click', function() {
             const qs = buildRemoteQs({
                 action: 'excel'
             });
-            window.location.href = `${API}?${qs.toString()}`;
+            window.location.href = API + '?' + qs.toString();
         });
 
-        $pgPrev.addEventListener('click', (e) => {
+        $pgPrev.addEventListener('click', function(e) {
             e.preventDefault();
             if (STATE.page <= 1) return;
             STATE.page--;
             renderRowsPage();
         });
 
-        $pgNext.addEventListener('click', (e) => {
+        $pgNext.addEventListener('click', function(e) {
             e.preventDefault();
             if (STATE.page >= STATE.totalPages) return;
             STATE.page++;
@@ -1822,16 +1827,33 @@ $flashErr = fi_flash_take('flash_err');
             this.value = v;
         });
 
-        document.querySelectorAll('.flash-auto-hide').forEach(el => {
-            setTimeout(() => {
+        $body.addEventListener('click', function(e) {
+            const btnDetail = e.target.closest('.js-detail');
+            if (btnDetail) {
+                showDetails(btnDetail.getAttribute('data-id'));
+                return;
+            }
+
+            const btnPay = e.target.closest('.js-pay');
+            if (btnPay) {
+                openPay(
+                    btnPay.getAttribute('data-id'),
+                    btnPay.getAttribute('data-cliente') || '',
+                    parseFloat(btnPay.getAttribute('data-restante') || '0')
+                );
+            }
+        });
+
+        document.querySelectorAll('.flash-auto-hide').forEach(function(el) {
+            setTimeout(function() {
                 el.classList.add('hide-now');
-                setTimeout(() => el.remove(), 350);
+                setTimeout(function() {
+                    el.remove();
+                }, 350);
             }, 1600);
         });
 
-        window.showDetails = showDetails;
-        window.openPay = openPay;
-        window.onload = () => {
+        window.onload = function() {
             renderRowsPage();
         };
     </script>
