@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 require_once __DIR__ . '/assets/auth/auth.php';
@@ -169,9 +168,9 @@ function fi_sql_parts(): array
     return [
         'from'         => $from,
         'pago_expr'    => $pagoExpr,
-        'restante_expr' => $restanteExpr,
+        'restante_expr'=> $restanteExpr,
         'status_expr'  => $statusExpr,
-        'data_ref_expr' => $dataRefExpr,
+        'data_ref_expr'=> $dataRefExpr,
     ];
 }
 
@@ -427,7 +426,7 @@ function fi_fetch_one(int $fiadoId): ?array
             'valor_pago'     => (float)($row['valor_pago_real'] ?? 0),
             'valor_restante' => (float)($row['valor_restante_real'] ?? 0),
             'status'         => (string)($row['status_real'] ?? 'ABERTO'),
-            'data_vencimento' => (string)($row['data_vencimento'] ?? ''),
+            'data_vencimento'=> (string)($row['data_vencimento'] ?? ''),
             'created_at'     => (string)($row['venda_created_at'] ?? $row['fiado_created_at'] ?? ''),
             'endereco'       => (string)($row['endereco'] ?? ''),
             'obs'            => (string)($row['obs'] ?? ''),
@@ -654,78 +653,29 @@ if ($action === 'excel') {
     header('Expires: 0');
 
     echo "\xEF\xBB\xBF";
-?>
+    ?>
     <html xmlns:o="urn:schemas-microsoft-com:office:office"
-        xmlns:x="urn:schemas-microsoft-com:office:excel"
-        xmlns="http://www.w3.org/TR/REC-html40">
-
+          xmlns:x="urn:schemas-microsoft-com:office:excel"
+          xmlns="http://www.w3.org/TR/REC-html40">
     <head>
         <meta charset="UTF-8">
         <style>
-            @page {
-                size: A4 landscape;
-                margin: 0.5cm;
-            }
-
-            html,
-            body {
-                margin: 0;
-                padding: 0;
-                font-family: Arial, Helvetica, sans-serif;
-                font-size: 11pt;
-            }
-
-            table {
-                border-collapse: collapse;
-                width: 100%;
-                table-layout: fixed;
-            }
-
-            td,
-            th {
-                border: 1px solid #000;
-                padding: 6px;
-                font-size: 11pt;
-                text-align: center;
-            }
-
-            .title {
-                background: #dbeafe;
-                font-size: 16pt;
-                font-weight: 700;
-                text-align: center;
-            }
-
-            .head {
-                background: #dbeafe;
-                font-weight: 700;
-            }
-
-            .left {
-                text-align: left;
-            }
-
-            .foot {
-                background: #eef2ff;
-                font-weight: 700;
-            }
+            @page { size: A4 landscape; margin: 0.5cm; }
+            html, body { margin:0; padding:0; font-family: Arial, Helvetica, sans-serif; font-size:11pt; }
+            table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+            td, th { border: 1px solid #000; padding: 6px; font-size: 11pt; text-align: center; }
+            .title { background:#dbeafe; font-size:16pt; font-weight:700; text-align:center; }
+            .head { background:#dbeafe; font-weight:700; }
+            .left { text-align:left; }
+            .foot { background:#eef2ff; font-weight:700; }
         </style>
     </head>
-
     <body>
         <table>
-            <tr>
-                <td colspan="8" class="title">PAINEL DA DISTRIBUIDORA - FIADOS (RESUMO)</td>
-            </tr>
-            <tr>
-                <td colspan="8">Gerado em: <?= fi_e($agora) ?></td>
-            </tr>
-            <tr>
-                <td colspan="8">Período: <?= fi_e($di) ?> até <?= fi_e($df) ?> | Canal: <?= fi_e($canal) ?> | Status: <?= fi_e($status) ?> | Busca: <?= fi_e($q) ?></td>
-            </tr>
-            <tr>
-                <td colspan="8">Total fiados filtrados: <?= (int)$totais['qtd'] ?> | Total em fiados: <?= fi_e(fi_brl((float)$totais['total_venda'])) ?> | Total pago: <?= fi_e(fi_brl((float)$totais['total_pago'])) ?> | Restante: <?= fi_e(fi_brl((float)$totais['total_restante'])) ?></td>
-            </tr>
+            <tr><td colspan="8" class="title">PAINEL DA DISTRIBUIDORA - FIADOS (RESUMO)</td></tr>
+            <tr><td colspan="8">Gerado em: <?= fi_e($agora) ?></td></tr>
+            <tr><td colspan="8">Período: <?= fi_e($di) ?> até <?= fi_e($df) ?> | Canal: <?= fi_e($canal) ?> | Status: <?= fi_e($status) ?> | Busca: <?= fi_e($q) ?></td></tr>
+            <tr><td colspan="8">Total fiados filtrados: <?= (int)$totais['qtd'] ?> | Total em fiados: <?= fi_e(fi_brl((float)$totais['total_venda'])) ?> | Total pago: <?= fi_e(fi_brl((float)$totais['total_pago'])) ?> | Restante: <?= fi_e(fi_brl((float)$totais['total_restante'])) ?></td></tr>
         </table>
 
         <table style="margin-top:6px;">
@@ -766,9 +716,8 @@ if ($action === 'excel') {
             </tfoot>
         </table>
     </body>
-
     </html>
-<?php
+    <?php
     exit;
 }
 
@@ -783,7 +732,6 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -799,7 +747,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
-        .main-btn.btn-compact {
+        .main-btn.btn-compact{
             height: 36px !important;
             padding: 8px 12px !important;
             font-size: 13px !important;
@@ -807,20 +755,20 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
         }
 
         .form-control.compact,
-        .form-select.compact {
+        .form-select.compact{
             height: 40px;
             padding: 8px 12px;
             font-size: 13px;
         }
 
-        .cardx {
+        .cardx{
             border: 1px solid rgba(148, 163, 184, .24);
             border-radius: 16px;
             background: #fff;
             overflow: hidden;
         }
 
-        .cardx .head {
+        .cardx .head{
             padding: 14px 16px;
             border-bottom: 1px solid rgba(148, 163, 184, .18);
             display: flex;
@@ -830,27 +778,15 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             flex-wrap: wrap;
         }
 
-        .cardx .body {
+        .cardx .body{
             padding: 16px;
         }
 
-        .muted {
-            font-size: 12px;
-            color: #64748b;
-        }
+        .muted{ font-size: 12px; color: #64748b; }
+        .mini{ font-size: 12px; color: #475569; font-weight: 800; }
+        .muted2{ font-size: 12px; color: #64748b; }
 
-        .mini {
-            font-size: 12px;
-            color: #475569;
-            font-weight: 800;
-        }
-
-        .muted2 {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        .pill {
+        .pill{
             padding: 6px 10px;
             border-radius: 999px;
             border: 1px solid rgba(148, 163, 184, .22);
@@ -862,27 +798,27 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             background: rgba(248, 250, 252, .7);
         }
 
-        .pill.ok {
+        .pill.ok{
             border-color: rgba(34, 197, 94, .25);
             background: rgba(240, 253, 244, .9);
             color: #166534;
         }
 
-        .toolbar {
+        .toolbar{
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
             align-items: center;
         }
 
-        .summary-grid {
+        .summary-grid{
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 14px;
             margin-bottom: 14px;
         }
 
-        .summary-card {
+        .summary-card{
             border-radius: 16px;
             border: 1px solid rgba(148, 163, 184, .22);
             padding: 14px 16px;
@@ -893,7 +829,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             justify-content: center;
         }
 
-        .summary-card .lbl {
+        .summary-card .lbl{
             font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
@@ -901,51 +837,32 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             letter-spacing: .3px;
         }
 
-        .summary-card .val {
+        .summary-card .val{
             font-size: 28px;
             line-height: 1.1;
             font-weight: 1000;
         }
 
-        .summary-card.s1 {
-            background: #f8fafc;
-            border-left: 4px solid #0f172a;
-        }
+        .summary-card.s1{ background:#f8fafc; border-left:4px solid #0f172a; }
+        .summary-card.s2{ background:#f8fafc; border-left:4px solid #166534; }
+        .summary-card.s3{ background:#f8fafc; border-left:4px solid #dc2626; }
 
-        .summary-card.s2 {
-            background: #f8fafc;
-            border-left: 4px solid #166534;
-        }
+        .summary-card.s1 .val{ color:#0f172a; }
+        .summary-card.s2 .val{ color:#166534; }
+        .summary-card.s3 .val{ color:#dc2626; }
 
-        .summary-card.s3 {
-            background: #f8fafc;
-            border-left: 4px solid #dc2626;
-        }
-
-        .summary-card.s1 .val {
-            color: #0f172a;
-        }
-
-        .summary-card.s2 .val {
-            color: #166534;
-        }
-
-        .summary-card.s3 .val {
-            color: #dc2626;
-        }
-
-        .table-wrap {
+        .table-wrap{
             overflow: auto;
             border-radius: 14px;
         }
 
-        #tbFiados {
+        #tbFiados{
             width: 100%;
             min-width: 1220px;
             table-layout: fixed;
         }
 
-        #tbFiados thead th {
+        #tbFiados thead th{
             position: sticky;
             top: 0;
             z-index: 2;
@@ -959,7 +876,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             letter-spacing: .2px;
         }
 
-        #tbFiados tbody td {
+        #tbFiados tbody td{
             border-top: 1px solid rgba(148, 163, 184, .18);
             padding: 16px 18px;
             font-size: 13px;
@@ -968,7 +885,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             background: #fff;
         }
 
-        .page-nav {
+        .page-nav{
             display: flex;
             gap: 8px;
             align-items: center;
@@ -978,7 +895,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             padding-top: 6px;
         }
 
-        .page-btn {
+        .page-btn{
             border: 1px solid rgba(148, 163, 184, .35);
             background: #fff;
             border-radius: 10px;
@@ -988,57 +905,37 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             cursor: pointer;
         }
 
-        .page-btn[disabled] {
+        .page-btn[disabled]{
             opacity: .55;
             cursor: not-allowed;
         }
 
-        .page-info {
+        .page-info{
             font-size: 12px;
             color: #64748b;
             font-weight: 900;
         }
 
-        .col-venda {
-            width: 90px;
-        }
+        .col-venda{ width: 90px; }
+        .col-data{ width: 165px; }
+        .col-cliente{ width: 270px; }
+        .col-canal{ width: 130px; }
+        .col-num{ width: 145px; }
+        .col-status{ width: 130px; }
+        .col-acoes{ width: 220px; }
 
-        .col-data {
-            width: 165px;
-        }
-
-        .col-cliente {
-            width: 270px;
-        }
-
-        .col-canal {
-            width: 130px;
-        }
-
-        .col-num {
-            width: 145px;
-        }
-
-        .col-status {
-            width: 130px;
-        }
-
-        .col-acoes {
-            width: 220px;
-        }
-
-        .td-money {
+        .td-money{
             text-align: center;
             font-weight: 900;
             white-space: nowrap;
         }
 
-        .td-nowrap {
+        .td-nowrap{
             white-space: nowrap;
             text-align: center;
         }
 
-        .td-clip {
+        .td-clip{
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -1046,7 +943,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             max-width: 100%;
         }
 
-        .badge-soft {
+        .badge-soft{
             font-weight: 1000;
             border-radius: 999px;
             padding: 6px 10px;
@@ -1057,26 +954,26 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             white-space: nowrap;
         }
 
-        .b-open {
+        .b-open{
             background: rgba(255, 251, 235, .95);
             color: #92400e;
             border: 1px solid rgba(245, 158, 11, .25);
         }
 
-        .b-done {
+        .b-done{
             background: rgba(240, 253, 244, .95);
             color: #166534;
             border: 1px solid rgba(34, 197, 94, .25);
         }
 
-        .actions-wrap {
+        .actions-wrap{
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
             justify-content: center;
         }
 
-        .btn-action {
+        .btn-action{
             height: 34px !important;
             padding: 8px 10px !important;
             font-size: 12px !important;
@@ -1084,19 +981,19 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             white-space: nowrap;
         }
 
-        .success-btn {
+        .success-btn{
             background: #16a34a !important;
             border-color: #16a34a !important;
             color: #fff !important;
         }
 
-        .success-btn:hover {
+        .success-btn:hover{
             background: #15803d !important;
             border-color: #15803d !important;
             color: #fff !important;
         }
 
-        .sale-box {
+        .sale-box{
             border: 1px solid rgba(148, 163, 184, .22);
             border-radius: 14px;
             background: rgba(248, 250, 252, .7);
@@ -1106,7 +1003,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             -webkit-overflow-scrolling: touch;
         }
 
-        .sale-row {
+        .sale-row{
             display: flex;
             justify-content: space-between;
             gap: 10px;
@@ -1115,15 +1012,13 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             font-size: 12px;
         }
 
-        .sale-row:last-child {
-            border-bottom: none;
-        }
+        .sale-row:last-child{ border-bottom: none; }
 
-        .sale-row .left {
+        .sale-row .left{
             min-width: 0;
         }
 
-        .sale-row .left .nm {
+        .sale-row .left .nm{
             font-weight: 900;
             color: #0f172a;
             white-space: nowrap;
@@ -1132,17 +1027,17 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             max-width: 360px;
         }
 
-        .sale-row .left .cd {
+        .sale-row .left .cd{
             color: #64748b;
             font-size: 12px;
         }
 
-        .sale-row .right {
+        .sale-row .right{
             white-space: nowrap;
             text-align: right;
         }
 
-        .tot-row {
+        .tot-row{
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -1153,13 +1048,13 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             font-weight: 900;
         }
 
-        .tot-hr {
+        .tot-hr{
             height: 1px;
             background: rgba(148, 163, 184, .22);
             margin: 10px 0;
         }
 
-        .grand {
+        .grand{
             display: flex;
             justify-content: space-between;
             align-items: baseline;
@@ -1168,20 +1063,20 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             padding-top: 8px;
         }
 
-        .grand .lbl {
+        .grand .lbl{
             font-weight: 1000;
             color: #0f172a;
             font-size: 16px;
         }
 
-        .grand .val {
+        .grand .val{
             font-weight: 1000;
             color: #0b5ed7;
             font-size: 26px;
             letter-spacing: .2px;
         }
 
-        .logout-btn {
+        .logout-btn{
             padding: 8px 14px !important;
             min-width: 88px;
             height: 46px;
@@ -1194,57 +1089,54 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
             text-decoration: none !important;
         }
 
-        .logout-btn i {
+        .logout-btn i{
             font-size: 16px;
         }
 
-        .header-right {
-            height: 100%;
+        .header-right{ height: 100%; }
+
+        .brand-vertical{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:6px;
+            text-decoration:none;
+            text-align:center;
         }
 
-        .brand-vertical {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            text-decoration: none;
-            text-align: center;
+        .brand-name{
+            display:block;
+            font-size:18px;
+            line-height:1.2;
+            font-weight:600;
+            color:#1e2a78;
+            white-space:normal;
+            word-break:break-word;
         }
 
-        .brand-name {
-            display: block;
-            font-size: 18px;
-            line-height: 1.2;
-            font-weight: 600;
-            color: #1e2a78;
-            white-space: normal;
-            word-break: break-word;
-        }
-
-        .flash-auto-hide {
+        .flash-auto-hide{
             transition: opacity .35s ease, transform .35s ease;
         }
 
-        .flash-auto-hide.hide-now {
-            opacity: 0;
-            transform: translateY(-8px);
+        .flash-auto-hide.hide-now{
+            opacity:0;
+            transform:translateY(-8px);
         }
 
-        @media(max-width:1199.98px) {
-            .summary-grid {
+        @media(max-width:1199.98px){
+            .summary-grid{
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
-        @media(max-width:575.98px) {
-            .summary-grid {
+        @media(max-width:575.98px){
+            .summary-grid{
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
-
 <body>
     <div id="preloader">
         <div class="spinner"></div>
@@ -1318,9 +1210,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
                     </a>
                 </li>
 
-                <span class="divider">
-                    <hr />
-                </span>
+                <span class="divider"><hr /></span>
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
@@ -1674,7 +1564,7 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
                 '>': '&gt;',
                 '"': '&quot;',
                 "'": '&#039;'
-            } [m]));
+            }[m]));
         }
 
         function buildParams() {
@@ -1729,17 +1619,17 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
 
             el('tbody').innerHTML = rows.map(r => {
                 const status = String(r.status || '').toUpperCase();
-                const statusBadge = status === 'PAGO' ?
-                    '<span class="badge-soft b-done">PAGO</span>' :
-                    '<span class="badge-soft b-open">ABERTO</span>';
+                const statusBadge = status === 'PAGO'
+                    ? '<span class="badge-soft b-done">PAGO</span>'
+                    : '<span class="badge-soft b-open">ABERTO</span>';
 
-                const canalBadge = String(r.canal || '').toUpperCase() === 'DELIVERY' ?
-                    '<span class="badge-soft b-open">DELIVERY</span>' :
-                    '<span class="badge-soft b-done">PRESENCIAL</span>';
+                const canalBadge = String(r.canal || '').toUpperCase() === 'DELIVERY'
+                    ? '<span class="badge-soft b-open">DELIVERY</span>'
+                    : '<span class="badge-soft b-done">PRESENCIAL</span>';
 
-                const btnPagar = (status !== 'PAGO' && Number(r.valor_restante || 0) > 0) ?
-                    `<button class="main-btn success-btn btn-hover btn-action" onclick="openPagamento(${Number(r.fiado_id)})"><i class="lni lni-wallet me-1"></i>Pagar</button>` :
-                    '';
+                const btnPagar = (status !== 'PAGO' && Number(r.valor_restante || 0) > 0)
+                    ? `<button class="main-btn success-btn btn-hover btn-action" onclick="openPagamento(${Number(r.fiado_id)})"><i class="lni lni-wallet me-1"></i>Pagar</button>`
+                    : '';
 
                 return `
                     <tr>
@@ -2015,5 +1905,4 @@ $currentReturn = fi_e((string)($_SERVER['REQUEST_URI'] ?? 'fiados.php'));
         window.openPagamento = openPagamento;
     </script>
 </body>
-
 </html>
