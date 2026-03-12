@@ -88,7 +88,7 @@ class PreSaleController extends BaseController {
         $avulsoCol = $model->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
 
         $sql = "
-            SELECT pv.id, pv.codigo, pv.valor_total, pv.status, pv.created_at,
+            SELECT pv.id, pv.codigo, pv.valor_total, pv.status, pv.created_at, pv.cpf_cliente,
                    COALESCE(c.nome, $avulsoCol, 'Consumidor') as cliente_nome, 
                    u.nome as vendedor_nome 
             FROM pre_vendas pv 

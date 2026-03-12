@@ -9,12 +9,13 @@ class PreSale extends BaseModel {
         $hasAvulso = $this->columnExists('nome_cliente_avulso');
         
         if ($hasAvulso) {
-            $sql = "INSERT INTO {$this->table} (codigo, cliente_id, nome_cliente_avulso, usuario_id, filial_id, valor_total, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO {$this->table} (codigo, cliente_id, nome_cliente_avulso, cpf_cliente, usuario_id, filial_id, valor_total, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $params = [
                 $codigo,
                 $data['cliente_id'] ?? null,
                 $data['nome_cliente_avulso'] ?? null,
+                $data['cpf_cliente'] ?? null,
                 $data['usuario_id'],
                 $data['filial_id'],
                 $data['valor_total'],
@@ -50,7 +51,7 @@ class PreSale extends BaseModel {
         $nameField = $this->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
         $sql = "SELECT pv.*, 
                        COALESCE(c.nome, $nameField, 'Consumidor') as cliente_nome,
-                       c.cpf_cnpj as cliente_doc
+                       COALESCE(c.cpf_cnpj, pv.cpf_cliente) as cliente_doc
                 FROM {$this->table} pv 
                 LEFT JOIN clientes c ON pv.cliente_id = c.id
                 WHERE pv.codigo = ? AND pv.status = 'pendente'";

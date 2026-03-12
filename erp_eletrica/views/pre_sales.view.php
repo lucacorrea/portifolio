@@ -90,7 +90,8 @@
                         </select>
                     </div>
                     <div id="manual_name_container" class="mt-2 position-relative">
-                        <input type="text" id="pv_nome_cliente_avulso" class="form-control" placeholder="Digite o nome do cliente avulso..." autocomplete="off">
+                        <input type="text" id="pv_nome_cliente_avulso" class="form-control mb-2" placeholder="Digite o nome do cliente avulso..." autocomplete="off">
+                        <input type="text" id="pv_cpf_cliente" class="form-control" placeholder="CPF/CNPJ do cliente avulso (opcional)..." autocomplete="off">
                         <div id="pv_client_results" class="list-group shadow d-none" style="position: absolute; top: 100%; left: 0; z-index: 1050; width: 100%; max-height: 200px; overflow-y: auto;"></div>
                     </div>
                 </div>
@@ -278,6 +279,7 @@ async function generatePreSale() {
     const data = {
         cliente_id: document.getElementById('pv_cliente_id').value || null,
         nome_cliente_avulso: document.getElementById('pv_nome_cliente_avulso').value || null,
+        cpf_cliente: document.getElementById('pv_cpf_cliente').value || null,
         items: pvCart,
         valor_total: pvCart.reduce((acc, i) => acc + (i.price * i.qty), 0)
     };
