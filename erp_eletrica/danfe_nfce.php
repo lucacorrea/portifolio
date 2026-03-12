@@ -122,9 +122,13 @@ if (!$xmlRaw) {
         </tbody></table>
         <div class="hr"></div>
         <div class="small center">
-            Cliente: <b><?= htmlspecialchars($venda['cliente_nome']) ?></b>
-            <?php if (!empty($venda['cpf_cliente'])): ?>
-                <br>CPF: <?= htmlspecialchars($venda['cpf_cliente']) ?>
+            <?php if (trim($venda['cliente_nome']) !== 'Consumidor Final' && trim($venda['cliente_nome']) !== 'CONSUMIDOR AVULSO'): ?>
+                Cliente: <b><?= htmlspecialchars($venda['cliente_nome']) ?></b>
+                <?php if (!empty($venda['cpf_cliente'])): ?><br>CPF: <?= htmlspecialchars($venda['cpf_cliente']) ?><?php endif; ?>
+            <?php elseif (!empty($venda['cpf_cliente'])): ?>
+                <b>CPF: <?= htmlspecialchars($venda['cpf_cliente']) ?></b>
+            <?php else: ?>
+                Cliente: <b>Consumidor Final</b>
             <?php endif; ?>
         </div>
         <?php endif; ?>

@@ -551,6 +551,14 @@ const selectedCustomerInfo = document.getElementById('selectedCustomerInfo');
 if (customerSearch) {
     customerSearch.addEventListener('input', async (e) => {
         const term = e.target.value;
+        const cleanTerm = term.replace(/\D/g, '');
+        
+        // Auto-select if valid CPF/CNPJ
+        if (cleanTerm.length === 11 || cleanTerm.length === 14) {
+            selectCustomer(null, 'Consumidor Final', term);
+            return;
+        }
+
         if (term.length < 2) {
             customerResults.style.display = 'none';
             return;
