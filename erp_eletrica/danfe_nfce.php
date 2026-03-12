@@ -128,7 +128,7 @@ if (!$xmlRaw) {
             <?php elseif (!empty($venda['cpf_cliente'])): ?>
                 <b>CPF: <?= htmlspecialchars($venda['cpf_cliente']) ?></b>
             <?php else: ?>
-                Cliente: <b>Consumidor Final</b>
+                <b>Consumidor Final</b>
             <?php endif; ?>
         </div>
         <?php endif; ?>
@@ -328,8 +328,12 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     </div>
     <div class="hr"></div>
     <div class="small"><b>CONSUMIDOR</b></div>
-    <div class="small"><?= htmlspecialchars($dest_nome ?: 'CONSUMIDOR FINAL') ?></div>
-    <div class="small"><?= htmlspecialchars($dest_doc ?: '—') ?></div>
+    <?php if ($dest_nome && $dest_nome !== 'Consumidor Final'): ?>
+        <div class="small"><?= htmlspecialchars($dest_nome) ?></div>
+        <div class="small"><?= htmlspecialchars($dest_doc ?: '—') ?></div>
+    <?php else: ?>
+        <div class="small"><?= htmlspecialchars($dest_doc ?: 'CONSUMIDOR FINAL') ?></div>
+    <?php endif; ?>
     <div class="hr"></div>
     <div class="center small">Consulta via leitor de QR Code</div>
     <div id="qrcode" class="qr" role="img" aria-label="QR Code da NFC-e"></div>
