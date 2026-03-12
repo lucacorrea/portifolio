@@ -221,9 +221,12 @@ $chave = $base44.$cDV;
 /* XML Construction */
 $destXML = '';
 if ($cpf || $cnpj) {
-    $destXML = '<dest>'.($cpf?"<CPF>$cpf</CPF>":"<CNPJ>$cnpj</CNPJ>");
-    if ($nomeDest) $destXML .= '<xNome>'.e($nomeDest).'</xNome>';
-    $destXML .= '<indIEDest>9</indIEDest></dest>';
+    // xNome é obrigatório no elemento dest — usa nome do cliente ou 'CONSUMIDOR' para CPF avulso
+    $xNomeDest = $nomeDest ?: 'CONSUMIDOR';
+    $destXML = '<dest>'
+              . ($cpf ? "<CPF>$cpf</CPF>" : "<CNPJ>$cnpj</CNPJ>")
+              . '<xNome>' . e($xNomeDest) . '</xNome>'
+              . '<indIEDest>9</indIEDest></dest>';
 }
 
 $detXML = ''; $i=1; $vProd=0;
