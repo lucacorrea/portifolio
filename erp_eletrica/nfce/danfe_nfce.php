@@ -140,23 +140,29 @@ $vTroco = $dom->getElementsByTagNameNS($nfeNS, 'vTroco')->item(0);
 $vTroco = $vTroco ? br($vTroco->nodeValue) : '0,00';
 
 /* ============================== Destinatário =========================== */
-$dest     = $dom->getElementsByTagNameNS($nfeNS, 'dest')->item(0);
-if (!$dest) $dest = $dom->getElementsByTagName('dest')->item(0);
+$dest = null;
+foreach (['dest'] as $tg) {
+  $node = $dom->getElementsByTagNameNS($nfeNS, $tg)->item(0);
+  if (!$node) $node = $dom->getElementsByTagName($tg)->item(0);
+  if ($node) { $dest = $node; break; }
+}
+
+function getRobust($el, $name, $ns) {
+  if (!$el) return null;
+  $node = $el->getElementsByTagNameNS($ns, $name)->item(0);
+  if (!$node) $node = $el->getElementsByTagName($name)->item(0);
+  return $node ? limpar($node->nodeValue) : '';
+}
 
 $dest_doc  = '';
 $dest_nome = '';
 if ($dest) {
-  $dCNPJ = $dest->getElementsByTagNameNS($nfeNS, 'CNPJ')->item(0);
-  if (!$dCNPJ) $dCNPJ = $dest->getElementsByTagName('CNPJ')->item(0);
+  $dCNPJ = getRobust($dest, 'CNPJ', $nfeNS);
+  $dCPF  = getRobust($dest, 'CPF', $nfeNS);
+  $dN    = getRobust($dest, 'xNome', $nfeNS);
   
-  $dCPF  = $dest->getElementsByTagNameNS($nfeNS, 'CPF')->item(0);
-  if (!$dCPF) $dCPF = $dest->getElementsByTagName('CPF')->item(0);
-  
-  $dN    = $dest->getElementsByTagNameNS($nfeNS, 'xNome')->item(0);
-  if (!$dN) $dN = $dest->getElementsByTagName('xNome')->item(0);
-  
-  $dest_doc  = $dCNPJ ? 'CNPJ: ' . limpar($dCNPJ->nodeValue) : ($dCPF ? 'CPF: ' . limpar($dCPF->nodeValue) : '');
-  $dest_nome = $dN ? limpar($dN->nodeValue) : '';
+  $dest_doc  = $dCNPJ ? 'CNPJ: ' . $dCNPJ : ($dCPF ? 'CPF: ' . $dCPF : '');
+  $dest_nome = $dN;
 }
 
 /* ============================ Protocolo ================================ */

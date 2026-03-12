@@ -165,7 +165,7 @@ if ($venda_id) {
   if (isset($pdo) && $pdo instanceof PDO) {
     try {
       // 1) Carrega dados agregados da venda (cpf_cliente, forma_pagamento, valores)
-      $stV = $pdo->prepare("SELECT c.cpf_cnpj AS cpf_cliente, c.nome AS cliente_nome, v.nome_cliente_avulso, v.forma_pagamento, v.valor_total, v.valor_recebido, v.troco
+      $stV = $pdo->prepare("SELECT c.cpf_cnpj AS cliente_cpf, c.nome AS cliente_nome, v.cpf_cliente AS venda_cpf, v.nome_cliente_avulso, v.forma_pagamento, v.valor_total, v.valor_recebido, v.troco
                               FROM vendas v
                               LEFT JOIN clientes c ON v.cliente_id = c.id
                              WHERE v.id = :v
@@ -229,11 +229,12 @@ if (!$itens) die('Sem itens.');
 $docInput = soDig($_POST['cpf'] ?? $_POST['cpf_cnpj'] ?? $_POST['documento'] ?? $payload['cpf'] ?? $payload['cpf_cliente'] ?? $payload['documento'] ?? '');
 $cpf  = strlen($docInput) === 11 ? $docInput : '';
 $cnpj = strlen($docInput) === 14 ? $docInput : '';
-// Fallback: se não veio CPF/CNPJ da requisição e temos venda do BD
-if (empty($cpf) && !empty($vendaRow['cpf_cliente'])) {
-  $docVenda = soDig($vendaRow['cpf_cliente']);
-  if (strlen($docVenda) === 11) { $cpf = $docVenda; }
-  elseif (strlen($docVenda) === 14) { $cnpj = $docVenda; }
+
+// Fallback: se não veio documento na requisição, tenta o do cliente cadastrado ou da venda
+if (empty($cpf) && empty($cnpj) && !empty($vendaRow)) {
+  $regDoc = soDig($vendaRow['cliente_cpf'] ?? $vendaRow['venda_cpf'] ?? '');
+  if (strlen($regDoc) === 11) $cpf = $regDoc;
+  elseif (strlen($regDoc) === 14) $cnpj = $regDoc;
 }
 
 
