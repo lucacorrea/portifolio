@@ -145,11 +145,29 @@ class NfceService extends BaseService {
             }
             
             $saleData = [
-                'id' => $vendaId,
-                'items' => $mappedItems,
-                'valor_total' => $venda['valor_total'],
-                'forma_pagamento' => $venda['forma_pagamento']
+                'id'                  => $vendaId,
+                'items'               => $mappedItems,
+                'valor_total'         => $venda['valor_total'],
+                'desconto_total'      => $venda['desconto_total'] ?? 0,
+                'forma_pagamento'     => $venda['forma_pagamento'],
+                'cliente_id'          => $venda['cliente_id'],
+                'nome_cliente_avulso' => $venda['nome_cliente_avulso'],
+                'cpf_cnpj'            => null,
+                'cliente_nome'        => null
             ];
+
+            // Fetch customer data if exists
+            if (!empty($venda['cliente_id'])) {
+                $stC = $this->db->prepare("SELECT nome, cpf_cnpj FROM clientes WHERE id = ?");
+                $stC->execute([$venda['cliente_id']]);
+                $cl = $stC->fetch();
+                if ($cl) {
+                    $saleData['cliente_nome'] = $cl['nome'];
+                    $saleData['cpf_cnpj']     = $cl['cpf_cnpj'];
+                }
+            } elseif (!empty($venda['nome_cliente_avulso'])) {
+                $saleData['cliente_nome'] = $venda['nome_cliente_avulso'];
+            }
 
             // Real XML generation
             $resXml = $xmlService->generateNFCe($saleData, $fiscal);

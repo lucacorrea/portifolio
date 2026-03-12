@@ -141,11 +141,14 @@ $vTroco = $vTroco ? br($vTroco->nodeValue) : '0,00';
 
 /* ============================== Destinatário =========================== */
 $dest     = $dom->getElementsByTagNameNS($nfeNS, 'dest')->item(0);
-$dest_doc = '';
+$dest_doc  = '';
+$dest_nome = '';
 if ($dest) {
   $dCNPJ = $dest->getElementsByTagName('CNPJ')->item(0);
   $dCPF  = $dest->getElementsByTagName('CPF')->item(0);
-  $dest_doc = $dCNPJ ? 'CNPJ: ' . limpar($dCNPJ->nodeValue) : ($dCPF ? 'CPF: ' . limpar($dCPF->nodeValue) : '');
+  $dN    = $dest->getElementsByTagName('xNome')->item(0);
+  $dest_doc  = $dCNPJ ? 'CNPJ: ' . limpar($dCNPJ->nodeValue) : ($dCPF ? 'CPF: ' . limpar($dCPF->nodeValue) : '');
+  $dest_nome = $dN ? limpar($dN->nodeValue) : '';
 }
 
 /* ============================ Protocolo ================================ */
@@ -554,6 +557,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     <div class="hr"></div>
 
     <div class="small"><b>CONSUMIDOR</b></div>
+    <div class="small"><?= htmlspecialchars($dest_nome ?: 'CONSUMIDOR FINAL') ?></div>
     <div class="small"><?= htmlspecialchars($dest_doc ?: '—') ?></div>
 
     <div class="hr"></div>
