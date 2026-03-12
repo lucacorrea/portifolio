@@ -89,7 +89,7 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
 <?php if (!$vendaId || !$venda): ?>
   <div class="card">
     <p><strong>Venda não encontrada (ID: <?= $vendaId ?>).</strong></p>
-    <p class="mut">Verifique o banco de dados de vendas (u920914488_ERP).</p>
+    <p class="mut">Verifique se a venda existe no banco de dados.</p>
   </div>
 <?php else: ?>
 
