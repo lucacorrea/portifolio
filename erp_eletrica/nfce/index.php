@@ -9,15 +9,29 @@ require_once __DIR__ . '/config.php';
 // ===== AJAX: Busca de cliente para autocomplete =====
 if (isset($_GET['busca_cliente']) && isset($_GET['q'])) {
     header('Content-Type: application/json; charset=utf-8');
-    $q = '%' . trim($_GET['q']) . '%';
+    $q        = trim($_GET['q']);
+    $qLike    = '%' . $q . '%';
+    // Remove non-digits to also search by raw CPF digits
+    $qDigits  = preg_replace('/\D/', '', $q);
     try {
         $stBusca = $pdo->prepare("SELECT id, nome, cpf_cnpj FROM clientes 
-                                   WHERE nome LIKE :q OR cpf_cnpj LIKE :q 
+                                   WHERE nome LIKE :q 
+                                      OR cpf_cnpj LIKE :q
+                                      OR REGEXP_REPLACE(cpf_cnpj, '[^0-9]', '') LIKE :qd 
                                    ORDER BY nome LIMIT 8");
-        $stBusca->execute([':q' => $q]);
+        $stBusca->execute([':q' => $qLike, ':qd' => '%'.$qDigits.'%']);
         echo json_encode($stBusca->fetchAll(PDO::FETCH_ASSOC));
     } catch (Throwable $e) {
-        echo json_encode([]);
+        // Fallback sem REGEXP_REPLACE (MySQL < 8)
+        try {
+            $stBusca2 = $pdo->prepare("SELECT id, nome, cpf_cnpj FROM clientes 
+                                        WHERE nome LIKE :q OR cpf_cnpj LIKE :q 
+                                        ORDER BY nome LIMIT 8");
+            $stBusca2->execute([':q' => $qLike]);
+            echo json_encode($stBusca2->fetchAll(PDO::FETCH_ASSOC));
+        } catch (Throwable $e2) {
+            echo json_encode([]);
+        }
     }
     exit;
 }
@@ -176,27 +190,38 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
 
   <script>
   (function(){
-    const inp = document.getElementById('busca_cliente');
+    const form = document.getElementById('fEmit');
+    const inp  = document.getElementById('busca_cliente');
     const list = document.getElementById('sugestoes');
     const hCpf = document.getElementById('hCpf');
     const hNome = document.getElementById('hNome');
     const info = document.getElementById('cliente_selecionado');
     let debounce;
 
+    // ===== Garante que hCpf tem o valor certo ao submeter =====
+    form.addEventListener('submit', function() {
+      // Se hCpf ainda estiver vazio, tenta extrair CPF do campo de texto
+      if (!hCpf.value) {
+        const digits = inp.value.replace(/\D/g, '');
+        if (digits.length === 11) {
+          hCpf.value = digits;
+        }
+      }
+    });
+
     inp.addEventListener('input', function(){
       clearTimeout(debounce);
-      // Reset hidden fields on each keystroke
       hCpf.value = '';
       hNome.value = '';
       info.textContent = '';
       
       const q = this.value.trim();
-      
-      // If typed value is 11-digit CPF (avulso), set it immediately
       const soDigits = q.replace(/\D/g,'');
+
+      // CPF avulso digitado diretamente
       if (soDigits.length === 11) {
         hCpf.value = soDigits;
-        info.textContent = 'CPF Avulso: ' + q + ' (será impresso na nota)';
+        info.innerHTML = '✅ CPF Avulso: <b>' + q + '</b> — será impresso na nota';
         list.style.display = 'none';
         return;
       }
@@ -211,21 +236,26 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
             if (!data.length) { list.style.display = 'none'; return; }
             data.forEach(c => {
               const li = document.createElement('li');
-              li.style.cssText = 'padding:10px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0';
-              li.textContent = c.nome + (c.cpf_cnpj ? ' — CPF: ' + c.cpf_cnpj : '');
+              li.style.cssText = 'padding:10px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:13px';
+              li.innerHTML = '<b>' + c.nome + '</b>' + (c.cpf_cnpj ? ' — CPF: ' + c.cpf_cnpj : '<span style="color:#e00"> (sem CPF)</span>');
               li.addEventListener('mouseenter', () => li.style.background = '#f0f7ff');
               li.addEventListener('mouseleave', () => li.style.background = '');
               li.addEventListener('click', () => {
+                const cpfDigits = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g,'') : '';
                 inp.value = c.nome + (c.cpf_cnpj ? ' — ' + c.cpf_cnpj : '');
-                hCpf.value = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g,'') : '';
+                hCpf.value  = cpfDigits;
                 hNome.value = c.nome;
-                info.textContent = 'Cliente: ' + c.nome + (c.cpf_cnpj ? ' (CPF: ' + c.cpf_cnpj + ')' : '') + ' — será impresso na nota';
+                if (cpfDigits.length === 11 || cpfDigits.length === 14) {
+                  info.innerHTML = '✅ <b>' + c.nome + '</b>' + (c.cpf_cnpj ? ' (CPF: ' + c.cpf_cnpj + ')' : '') + ' — será impresso na nota';
+                } else {
+                  info.innerHTML = '⚠️ <b>' + c.nome + '</b> não tem CPF — não será impresso na nota';
+                }
                 list.style.display = 'none';
               });
               list.appendChild(li);
             });
             list.style.display = 'block';
-          });
+          }).catch(() => { list.style.display = 'none'; });
       }, 300);
     });
     

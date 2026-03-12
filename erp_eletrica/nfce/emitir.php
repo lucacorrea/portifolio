@@ -144,13 +144,28 @@ if (strlen($docInput) === 11) {
     if ($nomePost !== '') {
         $nomeDest = $nomePost;
     } else {
-        // Busca nome no banco pelo CPF
+        // Busca nome no banco pelo CPF (cpf_cnpj pode ser armazenado com pontuação)
         try {
-            $stN = $pdo->prepare("SELECT nome FROM clientes WHERE cpf_cnpj LIKE :d LIMIT 1");
-            $stN->execute([':d' => '%'.$cpf.'%']);
+            $stN = $pdo->prepare("SELECT nome FROM clientes 
+                                   WHERE REGEXP_REPLACE(cpf_cnpj, '[^0-9]', '') = :d LIMIT 1");
+            $stN->execute([':d' => $cpf]);
             $row = $stN->fetch();
+            if (!$row) {
+                // Fallback sem REGEXP_REPLACE
+                $stN2 = $pdo->prepare("SELECT nome FROM clientes WHERE cpf_cnpj LIKE :d LIMIT 1");
+                $stN2->execute([':d' => '%'.$cpf.'%']);
+                $row = $stN2->fetch();
+            }
             if ($row) $nomeDest = $row['nome'];
-        } catch (Throwable $e) {}
+        } catch (Throwable $e) {
+            // Fallback simples
+            try {
+                $stN3 = $pdo->prepare("SELECT nome FROM clientes WHERE cpf_cnpj LIKE :d LIMIT 1");
+                $stN3->execute([':d' => '%'.$cpf.'%']);
+                $rowF = $stN3->fetch();
+                if ($rowF) $nomeDest = $rowF['nome'];
+            } catch (Throwable $e2) {}
+        }
     }
 } elseif (strlen($docInput) === 14) {
     $cnpj = $docInput;
