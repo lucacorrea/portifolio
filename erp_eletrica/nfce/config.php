@@ -1,6 +1,7 @@
 <?php
 /**
- * nfce/config.php — CONEXÃO EXCLUSIVA u784961086_pdv
+ * nfce/config.php — CONEXÃO CENTRALIZADA (u784961086_pdv)
+ * Alinhado com NfceService.php do projeto ERP Elétrica.
  */
 
 if (defined('NFCE_CONFIG_LOADED')) { return; }
@@ -41,87 +42,91 @@ if (!function_exists('so_digitos')) {
 
 /**
  * Resolve o caminho local do certificado .pfx/.p12
+ * No erp_eletrica, os certificados podem estar em /storage/certificados/ ou /assets/img/certificado/
  */
-function resolve_cert_path(?string $fileFromDb, array &$attempts = []): ?string {
+function resolve_cert_path(?string $fileFromDb): ?string {
   if (!$fileFromDb) return null;
   $base = basename($fileFromDb);
-  $docroot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+  $root = dirname(__DIR__); // Root do projeto
   
   $candidates = [
-    $docroot . '/assets/img/certificado/' . $base,
-    __DIR__   . '/certificados/' . $base,
-    __DIR__   . '/' . $base,
+    $root . '/storage/certificados/' . $base,
+    $root . '/assets/img/certificado/' . $base,
+    __DIR__ . '/certificados/' . $base,
+    __DIR__ . '/' . $base,
   ];
   foreach ($candidates as $c) {
-    $attempts[] = $c;
     if (is_file($c)) return $c;
   }
   return null;
 }
 
-// ========== Qual empresa carregar? ==========
+// ========== Carregamento de Configuração (Lógica NfceService) ==========
 $empresaId = isset($_REQUEST['id']) ? (string)$_REQUEST['id'] : (isset($_SESSION['empresa_id']) ? (string)$_SESSION['empresa_id'] : '1');
 
-// ========== Lê integracao_nfce ou filiais ==========
-$row = null;
+// 1. Busca Global (sefaz_config)
+$global = [];
 try {
-  $st = $pdo->prepare("SELECT * FROM integracao_nfce WHERE empresa_id = :emp LIMIT 1");
-  $st->execute([':emp' => $empresaId]);
-  $row = $st->fetch();
-} catch (Throwable $e) {}
+    $stG = $pdo->query("SELECT * FROM sefaz_config LIMIT 1");
+    $global = $stG->fetch() ?: [];
+} catch (Throwable $e) { $errorLog[] = "Tabela 'sefaz_config' inacessível: " . $e->getMessage(); }
 
-if (!$row) {
-  try {
-    $st = $pdo->prepare("SELECT id AS empresa_id, cnpj, razao_social, nome AS nome_fantasia, inscricao_estadual, cep, logradouro, numero AS numero_endereco, bairro, municipio AS cidade, uf, certificado_pfx AS certificado_digital, certificado_senha AS senha_certificado, ambiente, crt AS regime_tributario, csc_token AS csc, csc_id, serie_nfce, codigo_municipio FROM filiais WHERE id = :emp LIMIT 1");
-    $st->execute([':emp' => preg_replace('/\D+/', '', $empresaId)]);
-    $row = $st->fetch();
-  } catch (Throwable $e) {}
+// 2. Busca Filial (filiais)
+$filial = [];
+try {
+    $stF = $pdo->prepare("SELECT * FROM filiais WHERE id = ?");
+    $stF->execute([$empresaId]);
+    $filial = $stF->fetch() ?: [];
+} catch (Throwable $e) { $errorLog[] = "Tabela 'filiais' inacessível: " . $e->getMessage(); }
+
+if (empty($global) && empty($filial)) {
+    echo "<h2>Erro de Configuração NFC-e</h2>";
+    echo "<p>Não foi possível encontrar os dados da empresa no banco de dados <b>u784961086_pdv</b>.</p>";
+    echo "<ul>";
+    foreach (($errorLog ?? []) as $err) echo "<li>$err</li>";
+    echo "</ul>";
+    echo "<p>Certifique-se de que as tabelas <code>sefaz_config</code> ou <code>filiais</code> estão preenchidas no seu banco de dados.</p>";
+    die();
 }
 
-// Se não achou com o ID informado, tenta pegar a PRIMEIRA que tiver NFC-e configurado (Sufoco-mode)
-if (!$row) {
-    try {
-        $row = $pdo->query("SELECT * FROM integracao_nfce LIMIT 1")->fetch();
-        if (!$row) {
-            $row = $pdo->query("SELECT id AS empresa_id, cnpj, razao_social, nome AS nome_fantasia, inscricao_estadual, cep, logradouro, numero AS numero_endereco, bairro, municipio AS cidade, uf, certificado_pfx AS certificado_digital, certificado_senha AS senha_certificado, ambiente, crt AS regime_tributario, csc_token AS csc, csc_id, serie_nfce, codigo_municipio FROM filiais LIMIT 1")->fetch();
-        }
-    } catch (Throwable $e) {}
-}
+// Mescla as configurações (Prioridade para Filial)
+$fiscal = array_merge($global, $filial);
 
-if (!$row) die("Config NFC-e: nenhuma empresa encontrada no banco u784961086_pdv.");
+// ========== Mapeamento de Campos (27 campos) ==========
+define('TP_AMB',     (string)($fiscal['ambiente'] ?? '2'));
+define('ID_TOKEN',   (string)($fiscal['csc_id'] ?? ''));
+define('CSC',        (string)($fiscal['csc'] ?? $fiscal['csc_token'] ?? ''));
+define('NFC_SERIE',  (string)($fiscal['serie_nfce'] ?? '1'));
 
-// ========== Constantes ==========
-define('TP_AMB',     (string)($row['ambiente'] ?? '2'));
-define('ID_TOKEN',   (string)($row['csc_id'] ?? ''));
-define('CSC',        (string)($row['csc'] ?? ''));
-define('NFC_SERIE',  (string)($row['serie_nfce'] ?? '1'));
+define('EMIT_CNPJ',  so_digitos($fiscal['cnpj']));
+define('EMIT_XNOME', trim((string)($fiscal['razao_social'] ?? '')));
+define('EMIT_XFANT', trim((string)($fiscal['nome_fantasia'] ?? '')));
+define('EMIT_IE',    so_digitos($fiscal['inscricao_estadual']));
+define('EMIT_CRT',   (string)($fiscal['regime_tributario'] ?? $fiscal['crt'] ?? '1'));
 
-define('EMIT_CNPJ',  so_digitos($row['cnpj']));
-define('EMIT_XNOME', trim($row['razao_social'] ?? ''));
-define('EMIT_XFANT', trim($row['nome_fantasia'] ?? ''));
-define('EMIT_IE',    so_digitos($row['inscricao_estadual']));
-define('EMIT_CRT',   (string)($row['regime_tributario'] ?? '1'));
-
-define('EMIT_XLGR',    trim($row['logradouro'] ?? ''));
-define('EMIT_NRO',     trim($row['numero_endereco'] ?? ''));
-define('EMIT_XBAIRRO', trim($row['bairro'] ?? ''));
-define('EMIT_XMUN',    trim($row['cidade'] ?? ''));
-define('EMIT_UF',      trim($row['uf'] ?? ''));
-define('EMIT_CEP',     so_digitos($row['cep'] ?? ''));
-define('EMIT_CMUN',    (string)($row['codigo_municipio'] ?? ''));
+define('EMIT_XLGR',    trim((string)($fiscal['logradouro'] ?? '')));
+define('EMIT_NRO',     trim((string)($fiscal['numero_endereco'] ?? $fiscal['numero'] ?? '')));
+define('EMIT_XBAIRRO', trim((string)($fiscal['bairro'] ?? '')));
+define('EMIT_XMUN',    trim((string)($fiscal['cidade'] ?? $fiscal['municipio'] ?? '')));
+define('EMIT_UF',      trim((string)($fiscal['uf'] ?? '')));
+define('EMIT_CEP',     so_digitos($fiscal['cep']));
+define('EMIT_CMUN',    (string)($fiscal['codigo_municipio'] ?? ''));
 define('COD_MUN',      EMIT_CMUN);
 define('COD_UF',       substr(EMIT_CMUN, 0, 2));
 
-$PFX_PASSWORD = (string)($row['senha_certificado'] ?? '');
-$PFX_PATH     = resolve_cert_path($row['certificado_digital']);
+$PFX_PASSWORD = (string)($fiscal['certificado_senha'] ?? '');
+$PFX_PATH     = resolve_cert_path($fiscal['certificado_pfx'] ?? $fiscal['certificado_path'] ?? null);
 
-if (!$PFX_PATH) die("PFX não encontrado no banco u784961086_pdv: " . $row['certificado_digital']);
+if (!$PFX_PATH) {
+    // Se não achou arquivo, mas tem nome no banco, avisa onde procurou
+    die("Certificado NFC-e não encontrado. Verifique se o arquivo .pfx existe na pasta /storage/certificados/ ou /assets/img/certificado/");
+}
+
 define('PFX_PATH',     $PFX_PATH);
 define('PFX_PASSWORD', $PFX_PASSWORD);
+define('NFCE_EMPRESA_ID', $empresaId);
 
-if (!defined('NFCE_EMPRESA_ID')) define('NFCE_EMPRESA_ID', $row['empresa_id']);
-
-$URL_QR = ($row['uf'] == 'AM') 
+$URL_QR = (EMIT_UF == 'AM') 
     ? (TP_AMB == '1' ? 'https://nfce.sefaz.am.gov.br/nfceweb/consultarNFCe.jsp' : 'https://homnfce.sefaz.am.gov.br/nfceweb/consultarNFCe.jsp')
     : (TP_AMB == '1' ? 'https://nfce.set.rn.gov.br/portalDFE/NFCe/ConsultaNFCe.aspx' : 'https://hom.nfce.set.rn.gov.br/portalDFE/NFCe/ConsultaNFCe.aspx');
 define('URL_QR', $URL_QR);
