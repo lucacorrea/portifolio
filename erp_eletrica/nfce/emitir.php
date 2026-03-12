@@ -141,10 +141,11 @@ if (!$payload && isset($_POST['payload'])) {
 
 $itens = json_decode($_POST['itens'] ?? '[]', true) ?: ($payload['itens'] ?? []);
 
-/* Se ainda não houver itens, tenta buscar pelo venda_id no banco */
+/* Se houver venda_id, tenta carregar dados do banco (mesmo que itens já venham via POST) */
 $venda_id = (int)($_GET['venda_id'] ?? $payload['venda_id'] ?? $_POST['venda_id'] ?? 0);
-if (!$itens && $venda_id) {
+$vendaRow = null;
 
+if ($venda_id) {
   /* Carrega conexão (mesmos candidatos do vendaRapidaSubmit.php) */
   $__candidates = [
     __DIR__ . '/../config.php',
@@ -154,56 +155,48 @@ if (!$itens && $venda_id) {
     $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
     $_SERVER['DOCUMENT_ROOT'] . '/ERP/assets/php/conexao.php',
   ];
-  $__found = false;
   foreach ($__candidates as $__p) {
     if (is_file($__p)) {
       require_once $__p;
-      if (isset($pdo) && $pdo instanceof PDO) {
-        $__found = true;
-        break;
-      }
+      if (isset($pdo) && $pdo instanceof PDO) break;
     }
   }
-if (isset($pdo) && $pdo instanceof PDO) {
-  try {
-    // Busca itens diretamente da nova tabela vendas_itens
-    $st = $pdo->prepare("SELECT vi.produto_id, p.nome AS produto_nome, vi.quantidade, vi.preco_unitario, p.unidade, p.ncm, p.cfop_interno AS cfop
-                           FROM vendas_itens vi
-                           JOIN produtos p ON vi.produto_id = p.id
-                          WHERE vi.venda_id = :v");
-    $st->execute([':v'=>$venda_id]);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($rows as $r) {
-      $itens[] = [
-        'id'   => (int)$r['produto_id'],
-        'desc' => (string)$r['produto_nome'],
-        'qtd'  => (float)$r['quantidade'],
-        'vun'  => (float)$r['preco_unitario'],
-        'unid' => $r['unidade'] !== null && $r['unidade'] !== '' ? (string)$r['unidade'] : 'UN',
-        'ncm'  => (string)($r['ncm'] ?? ''),
-        'cfop' => (string)($r['cfop'] ?? '')
-      ];
-    }
-  
-    // Carrega dados agregados da venda (cpf_cliente, forma_pagamento, valores)
-    $vendaRow = null;
+
+  if (isset($pdo) && $pdo instanceof PDO) {
     try {
-      $stV = $pdo->prepare("SELECT c.cpf_cnpj AS cpf_cliente, c.nome AS cliente_nome, v.nome_cliente_avulso, v.forma_pagamento, v.valor_total, v.valor_total AS valor_recebido, 0 AS troco
+      // 1) Carrega dados agregados da venda (cpf_cliente, forma_pagamento, valores)
+      $stV = $pdo->prepare("SELECT c.cpf_cnpj AS cpf_cliente, c.nome AS cliente_nome, v.nome_cliente_avulso, v.forma_pagamento, v.valor_total, v.valor_recebido, v.troco
                               FROM vendas v
                               LEFT JOIN clientes c ON v.cliente_id = c.id
                              WHERE v.id = :v
                              LIMIT 1");
       $stV->execute([':v' => $venda_id]);
       $vendaRow = $stV->fetch(PDO::FETCH_ASSOC) ?: null;
-    } catch (Throwable $eV) {
+
+      // 2) Se ainda não houver itens, busca do banco
+      if (!$itens) {
+        $st = $pdo->prepare("SELECT vi.produto_id, p.nome AS produto_nome, vi.quantidade, vi.preco_unitario, p.unidade, p.ncm, p.cfop_interno AS cfop
+                               FROM vendas_itens vi
+                               JOIN produtos p ON vi.produto_id = p.id
+                              WHERE vi.venda_id = :v");
+        $st->execute([':v'=>$venda_id]);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $r) {
+          $itens[] = [
+            'id'   => (int)$r['produto_id'],
+            'desc' => (string)$r['produto_nome'],
+            'qtd'  => (float)$r['quantidade'],
+            'vun'  => (float)$r['preco_unitario'],
+            'unid' => $r['unidade'] !== null && $r['unidade'] !== '' ? (string)$r['unidade'] : 'UN',
+            'ncm'  => (string)($r['ncm'] ?? ''),
+            'cfop' => (string)($r['cfop'] ?? '')
+          ];
+        }
+      }
+    } catch (Throwable $e) {
       // silencioso
     }
-  } catch (Throwable $e) {
-    // Se der erro de banco, ignora e segue (cairá no "Sem itens")
   }
-} else {
-  // Não foi possível carregar a conexão PDO; não buscar itens do banco
-}
 }
 
 /* Normaliza itens vindos por JSON em formato alternativo */
