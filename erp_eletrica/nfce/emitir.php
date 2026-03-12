@@ -95,10 +95,10 @@ if ($venda_id) {
         
         // Busca dados da venda no banco u784961086_pdv (Trata cliente avulso)
         $stV = $pdo->prepare("SELECT v.*, 
-                                     IFNULL(c.cpf_cnpj, v.cpf_cliente) AS cliente_doc, 
-                                     IFNULL(c.nome, v.nome_cliente_avulso) AS cliente_nome 
-                                FROM vendas v 
-                                LEFT JOIN clientes c ON v.cliente_id = c.id 
+                                     COALESCE(NULLIF(v.cpf_cliente,''), NULLIF(c.cpf_cnpj,'')) AS cliente_doc, 
+                                     COALESCE(NULLIF(v.cliente_nome,''), NULLIF(v.nome_cliente_avulso,''), c.nome) AS cliente_nome 
+                                FROM vendas v
+                                LEFT JOIN clientes c ON v.cliente_id = c.id
                                WHERE v.id = :v LIMIT 1");
         $stV->execute([':v' => $venda_id]);
         $vendaRow = $stV->fetch();

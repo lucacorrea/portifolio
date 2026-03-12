@@ -221,9 +221,30 @@ class SalesController extends BaseController {
                 // tipo_nota: 'fiscal' or 'nao_fiscal'
                 $tipoNota = (isset($data['tipo_nota']) && $data['tipo_nota'] === 'fiscal') ? 'fiscal' : 'nao_fiscal';
 
+                // Resolve customer data for persistence (Açaidinhos style)
+                $cpfPersist = null;
+                $nomePersist = $data['nome_cliente_avulso'] ?? null;
+                
+                if (!empty($data['cliente_id'])) {
+                    $stmtC = $db->prepare("SELECT nome, cpf_cnpj FROM clientes WHERE id = ?");
+                    $stmtC->execute([$data['cliente_id']]);
+                    $cRow = $stmtC->fetch(\PDO::FETCH_ASSOC);
+                    if ($cRow) {
+                        $cpfPersist = $cRow['cpf_cnpj'];
+                        $nomePersist = $cRow['nome'];
+                    }
+                }
+                
+                // Fallback for avulso CPF sent from frontend (if implemented there yet)
+                if (empty($cpfPersist) && !empty($data['cpf_cliente'])) {
+                    $cpfPersist = $data['cpf_cliente'];
+                }
+
                 $saleData = [
                     'cliente_id'          => $data['cliente_id'] ?? null,
                     'nome_cliente_avulso' => $data['nome_cliente_avulso'] ?? null,
+                    'cpf_cliente'         => $cpfPersist,
+                    'cliente_nome'        => $nomePersist,
                     'usuario_id'          => $_SESSION['usuario_id'],
                     'filial_id'           => $_SESSION['filial_id'] ?? 1,
                     'valor_total'         => $data['total'],

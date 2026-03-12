@@ -8,6 +8,8 @@ class Sale extends BaseModel {
         $hasAvulso      = $this->columnExists('nome_cliente_avulso');
         $hasTipoNota    = $this->columnExists('tipo_nota');
         $hasValorRecebido = $this->columnExists('valor_recebido');
+        $hasCpfCliente  = $this->columnExists('cpf_cliente');
+        $hasClienteNome = $this->columnExists('cliente_nome');
 
         $cols   = ['cliente_id', 'usuario_id', 'filial_id', 'valor_total', 'desconto_total', 'autorizado_por', 'forma_pagamento', 'status'];
         $params = [
@@ -24,6 +26,16 @@ class Sale extends BaseModel {
         if ($hasAvulso) {
             array_splice($cols, 1, 0, ['nome_cliente_avulso']);
             array_splice($params, 1, 0, [$data['nome_cliente_avulso'] ?? null]);
+        }
+
+        if ($hasCpfCliente) {
+            $cols[] = 'cpf_cliente';
+            $params[] = $data['cpf_cliente'] ?? null;
+        }
+
+        if ($hasClienteNome) {
+            $cols[] = 'cliente_nome';
+            $params[] = $data['cliente_nome'] ?? null;
         }
 
         if ($hasTipoNota) {

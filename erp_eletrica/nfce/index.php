@@ -48,7 +48,7 @@ $cpfConsumidor = '';
 if ($vendaId > 0) {
   // Cabeçalho da venda (Usa pdo que está em u784961086_pdv)
   try {
-    $st = $pdo->prepare("SELECT v.*, c.nome as cliente_nome, c.cpf_cnpj as cliente_doc
+    $st = $pdo->prepare("SELECT v.*, c.nome as cliente_nome_join, c.cpf_cnpj as cliente_doc
                          FROM vendas v
                          LEFT JOIN clientes c ON v.cliente_id = c.id
                          WHERE v.id = :id 
@@ -57,8 +57,17 @@ if ($vendaId > 0) {
     $venda = $st->fetch();
 
     if ($venda) {
-        $cpfConsumidor = preg_replace('/\D+/', '', (string)($venda['cliente_doc'] ?? ''));
-        $nomeConsumidor = (string)($venda['cliente_nome'] ?? $venda['nome_cliente_avulso'] ?? '');
+        // Prioritiza novas colunas persistidas (Açaidinhos style)
+        $cpfConsumidor = so_digitos($venda['cpf_cliente'] ?? '');
+        $nomeConsumidor = trim((string)($venda['cliente_nome'] ?? $venda['nome_cliente_avulso'] ?? ''));
+        
+        // Se ainda estiver vazio (venda antiga), usa o fallback do JOIN
+        if (empty($cpfConsumidor)) {
+            $cpfConsumidor = so_digitos($venda['cliente_doc'] ?? '');
+        }
+        if (empty($nomeConsumidor)) {
+            $nomeConsumidor = trim((string)($venda['cliente_nome_join'] ?? ''));
+        }
         
         // Itens (Busca em VENDAS_ITENS JOIN PRODUTOS, seguindo Sale.php)
         $sti = $pdo->prepare("SELECT i.*, p.nome as produto_nome, p.unidade as p_unidade, p.ncm as p_ncm, p.origem as p_origem, p.cest as p_cest
