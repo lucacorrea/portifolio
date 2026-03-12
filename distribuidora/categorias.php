@@ -331,8 +331,8 @@ function badgeStatus(string $st): string
           </a>
           <ul id="ddmenu_cadastros" class="collapse dropdown-nav show">
             <li><a href="clientes.php">Clientes</a></li>
-            <li><a href="fornecedores.php" class="active">Fornecedores</a></li>
-            <li><a href="categorias.php">Categorias</a></li>
+            <li><a href="fornecedores.php">Fornecedores</a></li>
+            <li><a href="categorias.php" class="active">Categorias</a></li>
           </ul>
         </li>
 
