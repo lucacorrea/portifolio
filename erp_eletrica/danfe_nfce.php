@@ -191,11 +191,14 @@ $vPag  = $detPag ? br_($detPag->getElementsByTagName('vPag')->item(0)->nodeValue
 $vTroco= $dom->getElementsByTagNameNS($ns,'vTroco')->item(0);
 $vTroco= $vTroco ? br_($vTroco->nodeValue) : '0,00';
 $dest  = $dom->getElementsByTagNameNS($ns,'dest')->item(0);
-$dest_doc = '';
+$dest_doc  = '';
+$dest_nome = '';
 if ($dest) {
     $dC = $dest->getElementsByTagName('CNPJ')->item(0);
     $dF = $dest->getElementsByTagName('CPF')->item(0);
-    $dest_doc = $dC ? 'CNPJ: '.lm_($dC->nodeValue) : ($dF ? 'CPF: '.lm_($dF->nodeValue) : '');
+    $dN = $dest->getElementsByTagName('xNome')->item(0);
+    $dest_doc  = $dC ? 'CNPJ: '.lm_($dC->nodeValue) : ($dF ? 'CPF: '.lm_($dF->nodeValue) : '');
+    $dest_nome = $dN ? lm_($dN->nodeValue) : '';
 }
 $protInfo = '';
 if ($prot) {
@@ -301,6 +304,7 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     </div>
     <div class="hr"></div>
     <div class="small"><b>CONSUMIDOR</b></div>
+    <div class="small"><?= htmlspecialchars($dest_nome ?: 'CONSUMIDOR FINAL') ?></div>
     <div class="small"><?= htmlspecialchars($dest_doc ?: '—') ?></div>
     <div class="hr"></div>
     <div class="center small">Consulta via leitor de QR Code</div>

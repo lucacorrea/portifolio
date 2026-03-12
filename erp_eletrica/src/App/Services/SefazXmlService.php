@@ -80,7 +80,25 @@ class SefazXmlService extends BaseService {
         $emit->appendChild($dom->createElement('CRT', $fiscal['crt'] ?? '1'));
         $infNFe->appendChild($emit);
 
-        // 3. det (Items)
+        // 3. dest (Customer)
+        if (!empty($sale['cliente_id']) || !empty($sale['nome_cliente_avulso'])) {
+            $dest = $dom->createElement('dest');
+            
+            $doc = preg_replace('/\D/', '', $sale['cpf_cnpj'] ?? '');
+            if (strlen($doc) === 11) {
+                $dest->appendChild($dom->createElement('CPF', $doc));
+            } elseif (strlen($doc) === 14) {
+                $dest->appendChild($dom->createElement('CNPJ', $doc));
+            }
+            
+            $nome = $this->clearText($sale['cliente_nome'] ?? $sale['nome_cliente_avulso'] ?? 'CONSUMIDOR');
+            $dest->appendChild($dom->createElement('xNome', substr($nome, 0, 60)));
+            $dest->appendChild($dom->createElement('indIEDest', '9')); // Não contribuinte
+            
+            $infNFe->appendChild($dest);
+        }
+
+        // 4. det (Items)
         $nItem = 1;
         $totalVBC = 0;
         $totalVICMS = 0;
@@ -137,7 +155,7 @@ class SefazXmlService extends BaseService {
             $infNFe->appendChild($det);
         }
 
-        // 4. total
+        // 5. total
         $total = $dom->createElement('total');
         $icmsTot = $dom->createElement('ICMSTot');
         $icmsTot->appendChild($dom->createElement('vBC', '0.00'));
@@ -162,12 +180,12 @@ class SefazXmlService extends BaseService {
         $total->appendChild($icmsTot);
         $infNFe->appendChild($total);
 
-        // 5. transp
+        // 6. transp
         $transp = $dom->createElement('transp');
         $transp->appendChild($dom->createElement('modFrete', '9')); // Sem frete
         $infNFe->appendChild($transp);
 
-        // 6. pag
+        // 7. pag
         $pag = $dom->createElement('pag');
         $detPag = $dom->createElement('detPag');
         $detPag->appendChild($dom->createElement('tPag', $this->mapPaymentMethod($sale['forma_pagamento'])));
@@ -202,13 +220,43 @@ class SefazXmlService extends BaseService {
     }
 
     private function mapPaymentMethod($method) {
+        $method = trim(mb_strtolower((string)$method, 'UTF-8'));
+        
+        // Mapa de textos → códigos
         $map = [
-            'dinheiro' => '01',
-            'credito' => '03',
-            'debito' => '04',
-            'pix' => '17',
-            'fiado' => '99'
+            'dinheiro'                 => '01',
+            'cheque'                   => '02',
+            'credito'                  => '03',
+            'cartao de credito'        => '03',
+            'cartao credito'           => '03',
+            'debito'                   => '04',
+            'cartao de debito'         => '04',
+            'cartao debito'            => '04',
+            'credito loja'             => '05',
+            'vale alimentacao'         => '10',
+            'vale refeicao'            => '11',
+            'vale presente'            => '12',
+            'vale combustivel'         => '13',
+            'boleto'                   => '15',
+            'deposito'                 => '16',
+            'pix'                      => '17',
+            'transferencia'            => '18',
+            'carteira digital'         => '18',
+            'programa de fidelidade'   => '19',
+            'sem pagamento'            => '90',
+            'fiado'                    => '99',
+            'outros'                   => '99'
         ];
-        return $map[strtolower($method)] ?? '99';
+
+        if (isset($map[$method])) return $map[$method];
+
+        // Heurísticas
+        if (str_contains($method, 'pix')) return '17';
+        if (str_contains($method, 'debito')) return '04';
+        if (str_contains($method, 'credito')) return '03';
+        if (str_contains($method, 'boleto')) return '15';
+        if (str_contains($method, 'transfer')) return '18';
+
+        return '01'; // Default to Dinheiro if unknown
     }
 }
