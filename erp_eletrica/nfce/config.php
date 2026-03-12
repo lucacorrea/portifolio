@@ -16,7 +16,7 @@ try {
   $pdo = new PDO(
     "mysql:host=localhost;dbname=u784961086_pdv;charset=utf8mb4",
     "u784961086_pdv",
-    "Uv$1NhLlkRub",
+    'Uv$1NhLlkRub',
     [
       PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
       PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
