@@ -163,23 +163,24 @@ if ($venda_id) {
   }
 
   if (isset($pdo) && $pdo instanceof PDO) {
+    // 1) Carrega dados agregados da venda (cpf_cliente, forma_pagamento, valores)
     try {
-      // 1) Carrega dados agregados da venda (cpf_cliente, forma_pagamento, valores)
-      $stV = $pdo->prepare("SELECT c.cpf_cnpj AS cliente_cpf, c.nome AS cliente_nome, v.cpf_cliente AS venda_cpf, v.nome_cliente_avulso, v.forma_pagamento, v.valor_total, v.valor_recebido, v.troco
+      $stV = $pdo->prepare("SELECT v.*, c.cpf_cnpj AS cliente_cpf, c.nome AS cliente_nome 
                               FROM vendas v
                               LEFT JOIN clientes c ON v.cliente_id = c.id
                              WHERE v.id = :v
                              LIMIT 1");
       $stV->execute([':v' => $venda_id]);
       $vendaRow = $stV->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) { /* silencioso */ }
 
-      // 2) Se ainda não houver itens, busca do banco
-      if (!$itens) {
-        $st = $pdo->prepare("SELECT vi.produto_id, p.nome AS produto_nome, vi.quantidade, vi.preco_unitario, p.unidade, p.ncm, p.cfop_interno AS cfop
-                               FROM vendas_itens vi
-                               JOIN produtos p ON vi.produto_id = p.id
-                              WHERE vi.venda_id = :v");
-        $st->execute([':v'=>$venda_id]);
+    // 2) Se ainda não houver itens, busca do banco (Tabela: itens_venda - Estilo Açai)
+    if (!$itens) {
+      try {
+        $st = $pdo->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, unidade, ncm, cfop 
+                               FROM itens_venda 
+                              WHERE venda_id = :v");
+        $st->execute([':v' => $venda_id]);
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as $r) {
           $itens[] = [
@@ -187,14 +188,12 @@ if ($venda_id) {
             'desc' => (string)$r['produto_nome'],
             'qtd'  => (float)$r['quantidade'],
             'vun'  => (float)$r['preco_unitario'],
-            'unid' => $r['unidade'] !== null && $r['unidade'] !== '' ? (string)$r['unidade'] : 'UN',
+            'unid' => (string)($r['unidade'] ?? 'UN'),
             'ncm'  => (string)($r['ncm'] ?? ''),
             'cfop' => (string)($r['cfop'] ?? '')
           ];
         }
-      }
-    } catch (Throwable $e) {
-      // silencioso
+      } catch (Throwable $e) { /* silencioso */ }
     }
   }
 }
@@ -232,7 +231,7 @@ $cnpj = strlen($docInput) === 14 ? $docInput : '';
 
 // Fallback: se não veio documento na requisição, tenta o do cliente cadastrado ou da venda
 if (empty($cpf) && empty($cnpj) && !empty($vendaRow)) {
-  $regDoc = soDig($vendaRow['cliente_cpf'] ?? $vendaRow['venda_cpf'] ?? '');
+  $regDoc = soDig($vendaRow['cliente_cpf'] ?? $vendaRow['cpf_cliente'] ?? $vendaRow['venda_cpf'] ?? '');
   if (strlen($regDoc) === 11) $cpf = $regDoc;
   elseif (strlen($regDoc) === 14) $cnpj = $regDoc;
 }
