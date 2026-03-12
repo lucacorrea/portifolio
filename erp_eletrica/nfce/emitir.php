@@ -150,27 +150,24 @@ if (strlen($docInput) === 11) {
                                    WHERE REGEXP_REPLACE(cpf_cnpj, '[^0-9]', '') = :d LIMIT 1");
             $stN->execute([':d' => $cpf]);
             $row = $stN->fetch();
-            if (!$row) {
-                // Fallback sem REGEXP_REPLACE
-                $stN2 = $pdo->prepare("SELECT nome FROM clientes WHERE cpf_cnpj LIKE :d LIMIT 1");
-                $stN2->execute([':d' => '%'.$cpf.'%']);
-                $row = $stN2->fetch();
-            }
             if ($row) $nomeDest = $row['nome'];
-        } catch (Throwable $e) {
-            // Fallback simples
-            try {
-                $stN3 = $pdo->prepare("SELECT nome FROM clientes WHERE cpf_cnpj LIKE :d LIMIT 1");
-                $stN3->execute([':d' => '%'.$cpf.'%']);
-                $rowF = $stN3->fetch();
-                if ($rowF) $nomeDest = $rowF['nome'];
-            } catch (Throwable $e2) {}
+        } catch (Throwable $e) {}
+        
+        // Se ainda não achou nome (CPF avulso ou cliente não cadastrado), usa o que tá na venda
+        if (empty($nomeDest) && $vendaRow) {
+            $nomeDest = trim((string)($vendaRow['cliente_nome'] ?? $vendaRow['nome_cliente_avulso'] ?? ''));
         }
     }
 } elseif (strlen($docInput) === 14) {
     $cnpj = $docInput;
     $nomePost = trim($_POST['nome_dest'] ?? '');
-    if ($nomePost !== '') $nomeDest = $nomePost;
+    if ($nomePost !== '') {
+        $nomeDest = $nomePost;
+    } else {
+        if ($vendaRow) {
+            $nomeDest = trim((string)($vendaRow['cliente_nome'] ?? $vendaRow['nome_cliente_avulso'] ?? ''));
+        }
+    }
 } else {
     // Sem CPF via POST — tenta pegar da venda (cliente vinculado)
     if ($vendaRow) {

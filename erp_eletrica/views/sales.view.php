@@ -1009,7 +1009,21 @@ async function processarCheckout() {
         return;
     }
 
-    const tipoNota = document.querySelector('input[name="tipo_nota"]:checked')?.value || 'nao_fiscal';
+    let nomeAvulso = selectedCustomerName;
+    let cpfAvulso = null;
+
+    if (!selectedCustomerId) {
+        const rawSearch = customerSearch.value.trim();
+        if (rawSearch !== '') {
+            const digits = rawSearch.replace(/\D/g, '');
+            if (digits.length === 11 || digits.length === 14) {
+                cpfAvulso = digits;
+                nomeAvulso = nomeAvulso || 'CONSUMIDOR';
+            } else {
+                nomeAvulso = rawSearch;
+            }
+        }
+    }
 
     const data = {
         subtotal: subtotal,
@@ -1021,7 +1035,8 @@ async function processarCheckout() {
         valor_recebido: valorRecebido,
         troco: troco,
         cliente_id: selectedCustomerId,
-        nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
+        nome_cliente_avulso: selectedCustomerId ? null : nomeAvulso,
+        cpf_cliente: selectedCustomerId ? null : cpfAvulso,
         pv_id: currentPvId,
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential,
