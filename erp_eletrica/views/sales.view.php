@@ -385,7 +385,8 @@ let currentPvId = null;
 let activeManageId = null;
 let selectedCustomerId = null;
 let selectedCustomerName = null;
-const currentUserLevel = '<?= $_SESSION['usuario_nivel'] ?? 'vendedor' ?>';
+let selectedCustomerCPF = null;
+const currentUserLevel = '<?= $_SESSION['usuario_id'] ? ($_SESSION['usuario_nivel'] ?? 'vendedor') : 'vendedor' ?>';
 
 const pdvSearch = document.getElementById('pdvSearch');
 const searchResults = document.getElementById('searchResults');
@@ -558,16 +559,35 @@ if (customerSearch) {
         try {
             const response = await fetch(`vendas.php?action=search_clients&term=${encodeURIComponent(term)}`);
             const clients = await response.json();
-            renderCustomerSearchResults(clients);
+            renderCustomerSearchResults(clients, term);
         } catch (err) {
             console.error("PDV: Erro ao buscar clientes:", err);
         }
     });
 }
 
-function renderCustomerSearchResults(clients) {
+function renderCustomerSearchResults(clients, term = '') {
     customerResults.innerHTML = '';
-    if (clients.length === 0) {
+    
+    // Check if term looks like a CPF or CNPJ
+    const cleanTerm = term.replace(/\D/g, '');
+    const isDoc = cleanTerm.length === 11 || cleanTerm.length === 14;
+
+    if (isDoc) {
+        const avulsoBtn = document.createElement('button');
+        avulsoBtn.className = 'list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center bg-info bg-opacity-10';
+        avulsoBtn.innerHTML = `
+            <div>
+                <div class="fw-bold text-info">IDENTIFICAR CONSUMIDOR AVULSO</div>
+                <small class="text-muted">Documento: ${term}</small>
+            </div>
+            <span class="badge bg-info">USAR CPF</span>
+        `;
+        avulsoBtn.onclick = () => selectCustomer(null, 'CONSUMIDOR AVULSO', term);
+        customerResults.appendChild(avulsoBtn);
+    }
+
+    if (clients.length === 0 && !isDoc) {
         customerResults.style.display = 'none';
         return;
     }
@@ -593,6 +613,7 @@ function renderCustomerSearchResults(clients) {
 function selectCustomer(id, nome, doc) {
     selectedCustomerId = id;
     selectedCustomerName = nome;
+    selectedCustomerCPF = doc;
     
     document.getElementById('customerNameDisplay').innerText = nome;
     document.getElementById('customerDocDisplay').innerText = doc || 'Sem documento';
@@ -609,6 +630,7 @@ function selectCustomer(id, nome, doc) {
 function clearCustomer() {
     selectedCustomerId = null;
     selectedCustomerName = null;
+    selectedCustomerCPF = null;
     
     selectedCustomerInfo.classList.add('d-none');
     customerSearch.closest('.input-group').classList.remove('d-none');
@@ -1022,6 +1044,7 @@ async function processarCheckout() {
         troco: troco,
         cliente_id: selectedCustomerId,
         nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
+        cpf_cliente: selectedCustomerCPF,
         pv_id: currentPvId,
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential,
