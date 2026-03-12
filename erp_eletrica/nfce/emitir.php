@@ -125,22 +125,49 @@ foreach ($itens as $it) {
 }
 $itens = $_norm;
 
-/* Destinatário */
-$docInput = soDig($_POST['cpf'] ?? $_POST['documento'] ?? '');
-$cpf = (strlen($docInput) === 11) ? $docInput : '';
-$cnpj = (strlen($docInput) === 14) ? $docInput : '';
-$nomeDest = null;
+/* ===== Destinatário — Regras de Identificação =====
+ * 1. Se CPF 11 dígitos vier via POST (selecionado no banco ou avulso) → imprime com nome (se houver)
+ * 2. Se nome_dest vier via POST E cliente encontrado no banco com nome+CPF → imprime ambos
+ * 3. Se só nome sem CPF e não encontrado no banco → NÃO imprime (sem identificação)
+ * 4. Fallback: tenta pegar o CPF salvo na própria venda
+ */
+$cpf       = '';
+$cnpj      = '';
+$nomeDest  = null;
 
-// Se não veio CPF avulso via POST, tenta pegar da venda
-if (empty($cpf) && empty($cnpj) && $vendaRow) {
-    $rDoc = soDig($vendaRow['cliente_doc'] ?? '');
-    if (strlen($rDoc) === 11) $cpf = $rDoc;
-    elseif (strlen($rDoc) === 14) $cnpj = $rDoc;
-}
-
-// Pega nome do destinatário se tiver documento
-if (($cpf || $cnpj) && $vendaRow) {
-    $nomeDest = $vendaRow['cliente_nome'] ?? null;
+// Veio CPF direto via POST (avulso ou selecionado)
+$docInput = soDig($_POST['cpf'] ?? '');
+if (strlen($docInput) === 11) {
+    $cpf = $docInput;
+    // Tenta pegar o nome se veio via POST (cliente selecionado do banco)
+    $nomePost = trim($_POST['nome_dest'] ?? '');
+    if ($nomePost !== '') {
+        $nomeDest = $nomePost;
+    } else {
+        // Busca nome no banco pelo CPF
+        try {
+            $stN = $pdo->prepare("SELECT nome FROM clientes WHERE cpf_cnpj LIKE :d LIMIT 1");
+            $stN->execute([':d' => '%'.$cpf.'%']);
+            $row = $stN->fetch();
+            if ($row) $nomeDest = $row['nome'];
+        } catch (Throwable $e) {}
+    }
+} elseif (strlen($docInput) === 14) {
+    $cnpj = $docInput;
+    $nomePost = trim($_POST['nome_dest'] ?? '');
+    if ($nomePost !== '') $nomeDest = $nomePost;
+} else {
+    // Sem CPF via POST — tenta pegar da venda (cliente vinculado)
+    if ($vendaRow) {
+        $rDoc = soDig($vendaRow['cliente_doc'] ?? '');
+        if (strlen($rDoc) === 11) {
+            $cpf = $rDoc;
+            $nomeDest = $vendaRow['cliente_nome'] ?? null;
+        } elseif (strlen($rDoc) === 14) {
+            $cnpj = $rDoc;
+            $nomeDest = $vendaRow['cliente_nome'] ?? null;
+        }
+    }
 }
 
     /* Certificado */

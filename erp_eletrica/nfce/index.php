@@ -6,6 +6,22 @@ error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 // Carrega a configuração unificada (que resolve tanto Empresa quanto Vendas no banco u784961086_pdv)
 require_once __DIR__ . '/config.php';
 
+// ===== AJAX: Busca de cliente para autocomplete =====
+if (isset($_GET['busca_cliente']) && isset($_GET['q'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $q = '%' . trim($_GET['q']) . '%';
+    try {
+        $stBusca = $pdo->prepare("SELECT id, nome, cpf_cnpj FROM clientes 
+                                   WHERE nome LIKE :q OR cpf_cnpj LIKE :q 
+                                   ORDER BY nome LIMIT 8");
+        $stBusca->execute([':q' => $q]);
+        echo json_encode($stBusca->fetchAll(PDO::FETCH_ASSOC));
+    } catch (Throwable $e) {
+        echo json_encode([]);
+    }
+    exit;
+}
+
 /* ===== Entrada ===== */
 $vendaId  = isset($_GET['venda_id']) ? (int)$_GET['venda_id'] : 0;
 $autoEmit = isset($_GET['auto_emit']) ? (int)$_GET['auto_emit'] : 0;
@@ -138,15 +154,84 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
   <form id="fEmit" class="card" method="post" action="emitir.php">
     <input type="hidden" name="venda_id" value="<?= (int)$vendaId ?>">
     <input type="hidden" name="itens" value="<?= htmlspecialchars(json_encode($itens, JSON_UNESCAPED_UNICODE)) ?>">
+    <input type="hidden" name="cpf" id="hCpf" value="">
+    <input type="hidden" name="nome_dest" id="hNome" value="">
     
-    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap">
-      <div style="flex:1">
-        <label for="cpf" class="mut" style="display:block; margin-bottom:4px">CPF do Consumidor (opcional)</label>
-        <input id="cpf" name="cpf" type="text" placeholder="000.000.000-00" value="<?= htmlspecialchars($cpfConsumidor) ?>" style="padding:10px; border:1px solid var(--b); border-radius:6px; width:100%">
+    <h3 style="margin-top:0">Identificar Cliente (opcional)</h3>
+    <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap">
+      <div style="flex:1; position:relative">
+        <label for="busca_cliente" class="mut" style="display:block; margin-bottom:4px">Nome ou CPF do Consumidor</label>
+        <input id="busca_cliente" type="text" placeholder="Nome do cliente ou CPF (000.000.000-00)" 
+               value="<?= htmlspecialchars($cpfConsumidor) ?>"
+               style="padding:10px; border:1px solid var(--b); border-radius:6px; width:100%; box-sizing:border-box"
+               autocomplete="off">
+        <ul id="sugestoes" style="display:none; position:absolute; background:#fff; border:1px solid var(--b); 
+            border-radius:6px; list-style:none; margin:0; padding:0; width:100%; z-index:10; 
+            box-shadow:0 4px 12px rgba(0,0,0,0.1); max-height:200px; overflow-y:auto"></ul>
       </div>
       <button class="btn" type="submit" <?= empty($itens) ? 'disabled' : '' ?>>EMITIR NOTA FISCAL</button>
     </div>
+    <div id="cliente_selecionado" class="mut" style="margin-top:8px; font-size:13px"></div>
   </form>
+
+  <script>
+  (function(){
+    const inp = document.getElementById('busca_cliente');
+    const list = document.getElementById('sugestoes');
+    const hCpf = document.getElementById('hCpf');
+    const hNome = document.getElementById('hNome');
+    const info = document.getElementById('cliente_selecionado');
+    let debounce;
+
+    inp.addEventListener('input', function(){
+      clearTimeout(debounce);
+      // Reset hidden fields on each keystroke
+      hCpf.value = '';
+      hNome.value = '';
+      info.textContent = '';
+      
+      const q = this.value.trim();
+      
+      // If typed value is 11-digit CPF (avulso), set it immediately
+      const soDigits = q.replace(/\D/g,'');
+      if (soDigits.length === 11) {
+        hCpf.value = soDigits;
+        info.textContent = 'CPF Avulso: ' + q + ' (será impresso na nota)';
+        list.style.display = 'none';
+        return;
+      }
+      
+      if (q.length < 2) { list.style.display = 'none'; return; }
+      
+      debounce = setTimeout(() => {
+        fetch('<?= htmlspecialchars($_SERVER['PHP_SELF'] ?? 'index.php') ?>?busca_cliente=1&q=' + encodeURIComponent(q) + '&venda_id=<?= (int)$vendaId ?>')
+          .then(r => r.json())
+          .then(data => {
+            list.innerHTML = '';
+            if (!data.length) { list.style.display = 'none'; return; }
+            data.forEach(c => {
+              const li = document.createElement('li');
+              li.style.cssText = 'padding:10px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0';
+              li.textContent = c.nome + (c.cpf_cnpj ? ' — CPF: ' + c.cpf_cnpj : '');
+              li.addEventListener('mouseenter', () => li.style.background = '#f0f7ff');
+              li.addEventListener('mouseleave', () => li.style.background = '');
+              li.addEventListener('click', () => {
+                inp.value = c.nome + (c.cpf_cnpj ? ' — ' + c.cpf_cnpj : '');
+                hCpf.value = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g,'') : '';
+                hNome.value = c.nome;
+                info.textContent = 'Cliente: ' + c.nome + (c.cpf_cnpj ? ' (CPF: ' + c.cpf_cnpj + ')' : '') + ' — será impresso na nota';
+                list.style.display = 'none';
+              });
+              list.appendChild(li);
+            });
+            list.style.display = 'block';
+          });
+      }, 300);
+    });
+    
+    document.addEventListener('click', e => { if (e.target !== inp) list.style.display = 'none'; });
+  })();
+  </script>
 
 <?php endif; ?>
 
