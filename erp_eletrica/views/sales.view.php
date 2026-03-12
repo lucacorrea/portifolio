@@ -570,12 +570,10 @@ if (customerSearch) {
             const term = customerSearch.value.trim();
             const cleanTerm = term.replace(/\D/g, '');
             if (cleanTerm.length === 11 || cleanTerm.length === 14) {
-                // Check if any results were found normally
-                const firstResult = customerResults.querySelector('.list-group-item:not(.bg-info)');
-                if (!firstResult) {
-                    e.preventDefault();
-                    selectCustomer(null, 'Consumidor Final', term);
-                }
+                // If there's an exact match in results, don't override it? 
+                // Actually user wants it automatic, so if we have a valid doc, let's just go with it
+                e.preventDefault();
+                selectCustomer(null, 'Consumidor Final', term);
             }
         }
     });
@@ -590,13 +588,13 @@ function renderCustomerSearchResults(clients, term = '') {
 
     if (isDoc) {
         const avulsoBtn = document.createElement('button');
-        avulsoBtn.className = 'list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center bg-info bg-opacity-10';
+        avulsoBtn.className = 'list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center bg-primary text-white shadow-sm';
         avulsoBtn.innerHTML = `
             <div>
-                <div class="fw-bold text-info">IDENTIFICAR CONSUMIDOR AVULSO</div>
-                <small class="text-muted">Documento: ${term}</small>
+                <div class="fw-bold">IDENTIFICAR CONSUMIDOR AVULSO</div>
+                <small class="opacity-75">Documento: ${term}</small>
             </div>
-            <span class="badge bg-info">USAR CPF</span>
+            <i class="fas fa-id-card fa-lg"></i>
         `;
         avulsoBtn.onclick = () => selectCustomer(null, 'Consumidor Final', term);
         customerResults.appendChild(avulsoBtn);
