@@ -564,6 +564,21 @@ if (customerSearch) {
             console.error("PDV: Erro ao buscar clientes:", err);
         }
     });
+
+    customerSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const term = customerSearch.value.trim();
+            const cleanTerm = term.replace(/\D/g, '');
+            if (cleanTerm.length === 11 || cleanTerm.length === 14) {
+                // Check if any results were found normally
+                const firstResult = customerResults.querySelector('.list-group-item:not(.bg-info)');
+                if (!firstResult) {
+                    e.preventDefault();
+                    selectCustomer(null, 'Consumidor Final', term);
+                }
+            }
+        }
+    });
 }
 
 function renderCustomerSearchResults(clients, term = '') {
@@ -583,7 +598,7 @@ function renderCustomerSearchResults(clients, term = '') {
             </div>
             <span class="badge bg-info">USAR CPF</span>
         `;
-        avulsoBtn.onclick = () => selectCustomer(null, 'CONSUMIDOR AVULSO', term);
+        avulsoBtn.onclick = () => selectCustomer(null, 'Consumidor Final', term);
         customerResults.appendChild(avulsoBtn);
     }
 

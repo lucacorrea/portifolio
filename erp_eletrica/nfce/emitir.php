@@ -236,8 +236,8 @@ $chave = $base44.$cDV;
 /* XML Construction */
 $destXML = '';
 if ($cpf || $cnpj) {
-    // xNome é obrigatório no elemento dest — usa nome do cliente ou 'CONSUMIDOR' para CPF avulso
-    $xNomeDest = $nomeDest ?: 'CONSUMIDOR';
+    // xNome é obrigatório no elemento dest — usa nome do cliente ou 'Consumidor Final' para CPF avulso
+    $xNomeDest = $nomeDest ?: 'Consumidor Final';
     $destXML = '<dest>'
               . ($cpf ? "<CPF>$cpf</CPF>" : "<CNPJ>$cnpj</CNPJ>")
               . '<xNome>' . e($xNomeDest) . '</xNome>'

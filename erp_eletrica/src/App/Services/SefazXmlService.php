@@ -100,7 +100,7 @@ class SefazXmlService extends BaseService {
                 $dest->appendChild($this->createEl($dom, 'CNPJ', $doc));
             }
             
-            $nome = $this->clearText($sale['cliente_nome'] ?? $sale['nome_cliente_avulso'] ?? 'CONSUMIDOR');
+            $nome = $this->clearText($sale['cliente_nome'] ?? $sale['nome_cliente_avulso'] ?? 'Consumidor Final');
             $dest->appendChild($this->createEl($dom, 'xNome', substr($nome, 0, 60)));
             $dest->appendChild($this->createEl($dom, 'indIEDest', '9')); // Não contribuinte
             

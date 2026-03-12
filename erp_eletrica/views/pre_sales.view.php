@@ -342,6 +342,17 @@ pvClientSearch.addEventListener('input', async (e) => {
     }
 });
 
+pvClientSearch.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const term = e.target.value.trim();
+        const cleanTerm = term.replace(/\D/g, '');
+        // If it looks like a document, just leave it as manual name/doc
+        if (cleanTerm.length === 11 || cleanTerm.length === 14) {
+            // Do nothing, just let it be a manual name
+        }
+    }
+});
+
 function renderPVClientResults(clients) {
     pvClientResults.innerHTML = '';
     if (clients.length === 0) {
