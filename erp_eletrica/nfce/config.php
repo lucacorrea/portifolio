@@ -118,8 +118,8 @@ define('CSC',        (string)($fiscal['csc'] ?? $fiscal['csc_token'] ?? ''));
 define('NFC_SERIE',  (string)($fiscal['serie_nfce'] ?? '1'));
 
 define('EMIT_CNPJ',  so_digitos($fiscal['cnpj']));
-define('EMIT_XNOME', trim((string)($fiscal['razao_social'] ?? '')));
-define('EMIT_XFANT', trim((string)($fiscal['nome_fantasia'] ?? '')));
+define('EMIT_XNOME', trim((string)($fiscal['razao_social'] ?? $fiscal['nome'] ?? '')));
+define('EMIT_XFANT', trim((string)($fiscal['nome'] ?? $fiscal['nome_fantasia'] ?? '')));
 define('EMIT_IE',    so_digitos($fiscal['inscricao_estadual']));
 define('EMIT_CRT',   (string)($fiscal['regime_tributario'] ?? $fiscal['crt'] ?? '1'));
 
