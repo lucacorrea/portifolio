@@ -26,6 +26,15 @@ try {
 // Carrega Configuração (Banco de Dados e constantes da Empresa do banco u784961086_pdv)
 require_once __DIR__ . '/config.php';
 
+// Validação Crítica de Configuração (Check early)
+if (empty(EMIT_CNPJ) || strlen(EMIT_UF) < 2) {
+    while (ob_get_level()) ob_end_clean();
+    die('[V3-DEBUG] Configuração Fiscal Incompleta! ' .
+        'empresaId resolvida: ' . (defined('NFCE_EMPRESA_ID') ? NFCE_EMPRESA_ID : 'não definida') . ', ' .
+        'vendaId: ' . (isset($venda_id) ? $venda_id : 'não definida') . '. ' .
+        'Verifique se a filial tem CNPJ e UF preenchidos no banco u784961086_pdv.');
+}
+
 header('Content-Type: text/html; charset=utf-8');
 
 /* ===== Helpers (guards) ===== */

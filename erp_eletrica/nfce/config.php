@@ -62,7 +62,26 @@ function resolve_cert_path(?string $fileFromDb): ?string {
 }
 
 // ========== Carregamento de Configuração (Lógica NfceService) ==========
-$empresaId = isset($_REQUEST['id']) ? (string)$_REQUEST['id'] : (isset($_SESSION['empresa_id']) ? (string)$_SESSION['empresa_id'] : '1');
+$vendaId   = isset($_REQUEST['venda_id']) ? (int)$_REQUEST['venda_id'] : (int)($_SESSION['venda_id'] ?? 0);
+$empresaId = isset($_REQUEST['id']) ? (string)$_REQUEST['id'] : null;
+
+// Se tem venda_id, a filial OBRIGATORIAMENTE deve ser a da venda
+if ($vendaId > 0) {
+    try {
+        $stV = $pdo->prepare("SELECT filial_id FROM vendas WHERE id = ?");
+        $stV->execute([$vendaId]);
+        $vid = $stV->fetchColumn();
+        if ($vid) $empresaId = (string)$vid;
+    } catch (Throwable $e) {}
+}
+
+// Se não resolveu pela venda, tenta sessão ou padrão
+if (!$empresaId) {
+    $empresaId = isset($_SESSION['empresa_id']) ? (string)$_SESSION['empresa_id'] : '1';
+}
+
+// Debug (opcional, logar no servidor)
+error_log("[NFC-e] Resolvido empresaId=$empresaId para vendaId=$vendaId");
 
 // 1. Busca Global (sefaz_config)
 $global = [];
