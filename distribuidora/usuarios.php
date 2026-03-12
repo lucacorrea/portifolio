@@ -465,7 +465,7 @@ $flashErr = u_take_flash('flash_err');
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav show">
-                        <li><a href="usuarios.php" class="active">Usuários</a></li>
+                        <li><a href="usuarios.php" class="active">Usuários e Permissões</a></li>
                         <li><a href="parametros.php">Parâmetros do Sistema</a></li>
                     </ul>
                 </li>
