@@ -168,68 +168,56 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
   <form id="fEmit" class="card" method="post" action="emitir.php">
     <input type="hidden" name="venda_id" value="<?= (int)$vendaId ?>">
     <input type="hidden" name="itens" value="<?= htmlspecialchars(json_encode($itens, JSON_UNESCAPED_UNICODE)) ?>">
-    <input type="hidden" name="cpf" id="hCpf" value="">
-    <input type="hidden" name="nome_dest" id="hNome" value="">
     
     <h3 style="margin-top:0">Identificar Cliente (opcional)</h3>
-    <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap">
-      <div style="flex:1; position:relative">
-        <label for="busca_cliente" class="mut" style="display:block; margin-bottom:4px">Nome ou CPF do Consumidor</label>
-        <input id="busca_cliente" type="text" placeholder="Nome do cliente ou CPF (000.000.000-00)" 
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; position:relative">
+      <div style="flex:1; min-width:200px">
+        <label for="campo_cpf" class="mut" style="display:block; margin-bottom:4px">CPF/CNPJ (somente dígitos)</label>
+        <!-- Açaidinhos pattern: campo direto name="cpf", valor é dígitos puros -->
+        <input id="campo_cpf" name="cpf" type="text" inputmode="numeric"
+               placeholder="000.000.000-00 ou só dígitos"
                value="<?= htmlspecialchars($cpfConsumidor) ?>"
                style="padding:10px; border:1px solid var(--b); border-radius:6px; width:100%; box-sizing:border-box"
                autocomplete="off">
-        <ul id="sugestoes" style="display:none; position:absolute; background:#fff; border:1px solid var(--b); 
-            border-radius:6px; list-style:none; margin:0; padding:0; width:100%; z-index:10; 
-            box-shadow:0 4px 12px rgba(0,0,0,0.1); max-height:200px; overflow-y:auto"></ul>
       </div>
-      <button class="btn" type="submit" <?= empty($itens) ? 'disabled' : '' ?>>EMITIR NOTA FISCAL</button>
+      <div style="flex:2; min-width:220px">
+        <label for="campo_nome" class="mut" style="display:block; margin-bottom:4px">Nome do Cliente (busca ou digita)</label>
+        <input id="campo_nome" name="nome_dest" type="text"
+               placeholder="Buscar cliente por nome..."
+               value=""
+               style="padding:10px; border:1px solid var(--b); border-radius:6px; width:100%; box-sizing:border-box"
+               autocomplete="off">
+        <ul id="sugestoes" style="display:none; position:absolute; background:#fff; border:1px solid var(--b);
+            border-radius:6px; list-style:none; margin:0; padding:0; min-width:280px; z-index:10;
+            box-shadow:0 4px 12px rgba(0,0,0,0.15); max-height:220px; overflow-y:auto"></ul>
+      </div>
     </div>
-    <div id="cliente_selecionado" class="mut" style="margin-top:8px; font-size:13px"></div>
+    <div id="info_cliente" class="mut" style="font-size:13px; margin-bottom:12px"></div>
+    <button class="btn" type="submit" <?= empty($itens) ? 'disabled' : '' ?>>EMITIR NOTA FISCAL</button>
   </form>
 
   <script>
   (function(){
-    const form = document.getElementById('fEmit');
-    const inp  = document.getElementById('busca_cliente');
-    const list = document.getElementById('sugestoes');
-    const hCpf = document.getElementById('hCpf');
-    const hNome = document.getElementById('hNome');
-    const info = document.getElementById('cliente_selecionado');
+    const fCpf   = document.getElementById('campo_cpf');
+    const fNome  = document.getElementById('campo_nome');
+    const list   = document.getElementById('sugestoes');
+    const info   = document.getElementById('info_cliente');
+    const form   = document.getElementById('fEmit');
     let debounce;
 
-    // ===== Garante que hCpf tem o valor certo ao submeter =====
-    form.addEventListener('submit', function() {
-      // Se hCpf ainda estiver vazio, tenta extrair CPF do campo de texto
-      if (!hCpf.value) {
-        const digits = inp.value.replace(/\D/g, '');
-        if (digits.length === 11) {
-          hCpf.value = digits;
-        }
-      }
+    // Antes de submeter: limpa dígitos do campo CPF
+    form.addEventListener('submit', function(){
+      fCpf.value = fCpf.value.replace(/\D/g, '');
     });
 
-    inp.addEventListener('input', function(){
+    // Autocomplete pelo nome
+    fNome.addEventListener('input', function(){
       clearTimeout(debounce);
-      hCpf.value = '';
-      hNome.value = '';
-      info.textContent = '';
-      
       const q = this.value.trim();
-      const soDigits = q.replace(/\D/g,'');
-
-      // CPF avulso digitado diretamente
-      if (soDigits.length === 11) {
-        hCpf.value = soDigits;
-        info.innerHTML = '✅ CPF Avulso: <b>' + q + '</b> — será impresso na nota';
-        list.style.display = 'none';
-        return;
-      }
-      
       if (q.length < 2) { list.style.display = 'none'; return; }
-      
+
       debounce = setTimeout(() => {
-        fetch('<?= htmlspecialchars($_SERVER['PHP_SELF'] ?? 'index.php') ?>?busca_cliente=1&q=' + encodeURIComponent(q) + '&venda_id=<?= (int)$vendaId ?>')
+        fetch('<?= htmlspecialchars($_SERVER['PHP_SELF'] ?? 'index.php') ?>?busca_cliente=1&q=' + encodeURIComponent(q))
           .then(r => r.json())
           .then(data => {
             list.innerHTML = '';
@@ -237,29 +225,45 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
             data.forEach(c => {
               const li = document.createElement('li');
               li.style.cssText = 'padding:10px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:13px';
-              li.innerHTML = '<b>' + c.nome + '</b>' + (c.cpf_cnpj ? ' — CPF: ' + c.cpf_cnpj : '<span style="color:#e00"> (sem CPF)</span>');
+              const hasCpf = c.cpf_cnpj && c.cpf_cnpj.replace(/\D/g,'').length >= 11;
+              li.innerHTML = '<b>' + c.nome + '</b>'
+                + (c.cpf_cnpj ? ' <span style="color:#555">— ' + c.cpf_cnpj + '</span>' : '<span style="color:#e00"> (sem CPF)</span>');
               li.addEventListener('mouseenter', () => li.style.background = '#f0f7ff');
               li.addEventListener('mouseleave', () => li.style.background = '');
               li.addEventListener('click', () => {
-                const cpfDigits = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g,'') : '';
-                inp.value = c.nome + (c.cpf_cnpj ? ' — ' + c.cpf_cnpj : '');
-                hCpf.value  = cpfDigits;
-                hNome.value = c.nome;
-                if (cpfDigits.length === 11 || cpfDigits.length === 14) {
-                  info.innerHTML = '✅ <b>' + c.nome + '</b>' + (c.cpf_cnpj ? ' (CPF: ' + c.cpf_cnpj + ')' : '') + ' — será impresso na nota';
-                } else {
-                  info.innerHTML = '⚠️ <b>' + c.nome + '</b> não tem CPF — não será impresso na nota';
-                }
+                fNome.value = c.nome;
+                fCpf.value  = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g,'') : '';
                 list.style.display = 'none';
+                if (hasCpf) {
+                  info.innerHTML = '✅ <b>' + c.nome + '</b> (CPF: ' + c.cpf_cnpj + ') — será impresso na nota';
+                } else {
+                  info.innerHTML = '⚠️ <b>' + c.nome + '</b> não tem CPF — sem identificação na nota';
+                }
               });
               list.appendChild(li);
             });
             list.style.display = 'block';
-          }).catch(() => { list.style.display = 'none'; });
+          }).catch(() => list.style.display = 'none');
       }, 300);
     });
-    
-    document.addEventListener('click', e => { if (e.target !== inp) list.style.display = 'none'; });
+
+    // CPF digitado manualmente: valida e mostra feedback
+    fCpf.addEventListener('input', function(){
+      const d = this.value.replace(/\D/g,'');
+      if (d.length === 11) {
+        info.innerHTML = '✅ CPF registrado — será impresso na nota';
+      } else if (d.length === 14) {
+        info.innerHTML = '✅ CNPJ registrado — será impresso na nota';
+      } else if (d.length > 0) {
+        info.innerHTML = '⌛ Continue digitando... (' + d.length + '/11 dígitos)';
+      } else {
+        info.innerHTML = '';
+      }
+    });
+
+    document.addEventListener('click', e => {
+      if (e.target !== fNome) list.style.display = 'none';
+    });
   })();
   </script>
 
