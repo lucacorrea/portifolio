@@ -1121,269 +1121,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
   exit;
 }
 
-/* =========================
-   AJAX endpoint: suggest
-========================= */
-if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
-  header('Content-Type: application/json; charset=utf-8');
-
-  try {
-    $pdo = db();
-
-    $tipo  = strtoupper(trim((string)($_GET['tipo'] ?? 'VENDAS_RESUMO')));
-    $q     = trim((string)($_GET['q'] ?? ''));
-    $dtIni = iso_date_or_empty((string)($_GET['dt_ini'] ?? ''));
-    $dtFim = iso_date_or_empty((string)($_GET['dt_fim'] ?? ''));
-
-    if ($q === '' || mb_strlen($q) < 1) {
-      echo json_encode(['ok' => true, 'items' => []], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-      exit;
-    }
-
-    $out = [];
-
-    if ($tipo === 'VENDAS_RESUMO') {
-      $params = [];
-      $where = [];
-      if ($dtIni !== '') {
-        $where[] = "v.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $where[] = "v.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $where[] = "NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')";
-      $whereId = $where;
-
-      $wId = $whereId;
-      $wId[] = add_like_or(["CAST(v.id AS CHAR)"], $q, $params, 'sv1');
-
-      $sql1 = "
-        SELECT CONCAT('#', v.id, ' — ', COALESCE(NULLIF(v.cliente,''),'Consumidor Final')) AS label,
-               CAST(v.id AS CHAR) AS value
-        FROM vendas v
-        WHERE " . implode(" AND ", $wId) . "
-        ORDER BY v.id DESC
-        LIMIT 6
-      ";
-      $st1 = $pdo->prepare($sql1);
-      $st1->execute($params);
-      foreach (($st1->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-
-      $params2 = [];
-      $where2 = [];
-      if ($dtIni !== '') {
-        $where2[] = "v.data >= :dtIni";
-        $params2[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $where2[] = "v.data <= :dtFim";
-        $params2[':dtFim'] = $dtFim;
-      }
-      $where2[] = "v.cliente IS NOT NULL AND v.cliente <> ''";
-      $where2[] = "NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')";
-      $where2[] = add_like_or(["v.cliente"], $q, $params2, 'sv2');
-
-      $sql2 = "
-        SELECT CONCAT('Cliente — ', v.cliente) AS label, v.cliente AS value
-        FROM vendas v
-        WHERE " . implode(" AND ", $where2) . "
-        GROUP BY v.cliente
-        ORDER BY v.cliente ASC
-        LIMIT 6
-      ";
-      $st2 = $pdo->prepare($sql2);
-      $st2->execute($params2);
-      foreach (($st2->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'VENDAS_ITENS') {
-      $params = [];
-      $where = [];
-      if ($dtIni !== '') {
-        $where[] = "v.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $where[] = "v.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $where[] = "NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')";
-      $where[] = add_like_or(["vi.codigo", "vi.nome", "CAST(v.id AS CHAR)", "v.cliente"], $q, $params, 'svi');
-
-      $sql = "
-        SELECT
-          CONCAT(vi.codigo, ' — ', vi.nome) AS label,
-          vi.codigo AS value
-        FROM venda_itens vi
-        INNER JOIN vendas v ON v.id = vi.venda_id
-        WHERE " . implode(" AND ", $where) . "
-        GROUP BY vi.codigo, vi.nome
-        ORDER BY vi.nome ASC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'PRODUTOS' || $tipo === 'ESTOQUE_MINIMO') {
-      $params = [];
-      $w = [];
-      if ($tipo === 'ESTOQUE_MINIMO') $w[] = "p.estoque < p.minimo";
-      $w[] = add_like_or(["p.codigo", "p.nome", "c.nome"], $q, $params, 'sp');
-
-      $sql = "
-        SELECT CONCAT(p.codigo, ' — ', p.nome) AS label, p.codigo AS value
-        FROM produtos p
-        LEFT JOIN categorias c ON c.id = p.categoria_id
-        WHERE " . implode(" AND ", $w) . "
-        ORDER BY p.nome ASC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'DEVOLUCOES') {
-      $params = [];
-      $w = [];
-
-      if ($dtIni !== '') {
-        $w[] = "d.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $w[] = "d.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-
-      $params[':sd1'] = like_q($q);
-      $params[':sd2'] = like_q($q);
-      $params[':sd3'] = like_q($q);
-      $params[':sd4'] = like_q($q);
-      $params[':sd5'] = like_q($q);
-      $params[':sd6'] = like_q($q);
-
-      $parts = [
-        "CAST(d.venda_no AS CHAR) LIKE :sd1",
-        "d.cliente LIKE :sd2",
-        "d.motivo LIKE :sd3",
-        "d.status LIKE :sd4"
-      ];
-
-      if (table_exists($pdo, 'venda_itens')) {
-        $parts[] = "EXISTS (
-          SELECT 1
-          FROM venda_itens vi
-          WHERE vi.venda_id = d.venda_no
-            AND (
-              vi.codigo LIKE :sd5
-              OR vi.nome LIKE :sd6
-            )
-        )";
-      }
-
-      $w[] = '(' . implode(' OR ', $parts) . ')';
-
-      $sql = "
-        SELECT
-          CONCAT(
-            'Devolução — Venda #',
-            COALESCE(d.venda_no, 0),
-            ' — ',
-            COALESCE(NULLIF(d.cliente,''), 'Consumidor Final')
-          ) AS label,
-          COALESCE(CAST(d.venda_no AS CHAR), CAST(d.id AS CHAR)) AS value
-        FROM devolucoes d
-        WHERE " . implode(" AND ", $w) . "
-        ORDER BY d.data DESC, d.hora DESC, d.id DESC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'ENTRADAS') {
-      $params = [];
-      $w = [];
-      if ($dtIni !== '') {
-        $w[] = "e.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $w[] = "e.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $w[] = add_like_or(["e.nf", "f.nome", "p.codigo", "p.nome"], $q, $params, 'se');
-
-      $sql = "
-        SELECT CONCAT('NF ', e.nf, ' — ', f.nome) AS label, e.nf AS value
-        FROM entradas e
-        INNER JOIN fornecedores f ON f.id = e.fornecedor_id
-        INNER JOIN produtos p ON p.id = e.produto_id
-        WHERE " . implode(" AND ", $w) . "
-        GROUP BY e.nf, f.nome
-        ORDER BY MAX(e.data) DESC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'SAIDAS') {
-      $params = [];
-      $w = [];
-      if ($dtIni !== '') {
-        $w[] = "s.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $w[] = "s.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $w[] = add_like_or(["s.tipo", "s.motivo", "p.codigo", "p.nome", "s.obs"], $q, $params, 'ss');
-
-      $sql = "
-        SELECT
-          CONCAT('Saída — ', s.tipo, ' — ', s.motivo, ' — ', p.nome) AS label,
-          s.motivo AS value
-        FROM saidas s
-        INNER JOIN produtos p ON p.id = s.produto_id
-        WHERE " . implode(" AND ", $w) . "
-        ORDER BY s.data DESC, s.id DESC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    }
-
-    $final = [];
-    foreach ($out as $it) {
-      $label = trim((string)($it['label'] ?? ''));
-      $value = trim((string)($it['value'] ?? ''));
-      if ($label === '' || $value === '') continue;
-      $final[] = ['label' => $label, 'value' => $value];
-      if (count($final) >= 10) break;
-    }
-
-    echo json_encode(['ok' => true, 'items' => $final], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-  } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-  }
-  exit;
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -1579,8 +1316,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       border-right: 1px solid rgba(148, 163, 184, .14);
     }
 
-    #tbRel thead th + th,
-    #tbRel tbody td + td {
+    #tbRel thead th+th,
+    #tbRel tbody td+td {
       border-left: 1px solid rgba(148, 163, 184, .14);
     }
 
@@ -1916,7 +1653,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
               <div class="header-search d-none d-md-flex" style="display: none !important;">
                 <form action="#" onsubmit="return false;">
                   <input type="text" placeholder="Buscar no relatório..." id="qGlobal" />
-                  <datalist id="dlGlobalSug"></datalist>
                   <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                 </form>
               </div>
@@ -1942,7 +1678,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
             <div class="col-md-8">
               <div class="title">
                 <h2>Relatórios</h2>
-                <div class="muted">Autocomplete • Devolvidas saem de Vendas e ficam em Devoluções.</div>
+                <div class="muted">Busca direta na tabela • Devolvidas saem de Vendas e ficam em Devoluções.</div>
               </div>
             </div>
           </div>
@@ -2000,13 +1736,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
               </div>
 
               <div class="col-12">
-                <div class="muted mt-1">* Digite na busca e escolha uma sugestão na lista.</div>
+                <div class="muted mt-1">* Digite na busca que os resultados serão filtrados direto na tabela.</div>
               </div>
 
               <div class="col-12">
                 <label class="form-label">Busca (filtro extra)</label>
-                <input class="form-control compact" id="qRel" placeholder="Cliente, venda, código, produto, motivo..." />
-                <datalist id="dlRelSug"></datalist>
+                <input class="form-control compact" id="qRel" placeholder="Cliente, venda, código, produto, motivo..." autocomplete="off" />
               </div>
             </div>
           </div>
@@ -2148,13 +1883,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     }
 
     const qGlobal = document.getElementById("qGlobal");
-    const dlGlobalSug = document.getElementById("dlGlobalSug");
 
     const rTipo = document.getElementById("rTipo");
     const dtIni = document.getElementById("dtIni");
     const dtFim = document.getElementById("dtFim");
     const qRel = document.getElementById("qRel");
-    const dlRelSug = document.getElementById("dlRelSug");
 
     const btnGerar = document.getElementById("btnGerar");
     const btnExcel = document.getElementById("btnExcel");
@@ -2178,9 +1911,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     const btnNextPage = document.getElementById("btnNextPage");
     const pagerText = document.getElementById("pagerText");
     const infoCount = document.getElementById("infoCount");
-
-    qRel.setAttribute("list", "dlRelSug");
-    qGlobal.setAttribute("list", "dlGlobalSug");
 
     const PER = 10;
     let PAGE = 1;
@@ -2290,44 +2020,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       renderPager(rep);
     }
 
-    async function fetchSuggest(targetDatalist) {
-      const tipo = rTipo.value;
-      const fromISO = dtIni.value || "";
-      const toISO = dtFim.value || "";
-      const q = qRel.value || "";
-
-      if (!q || q.trim().length < 1) {
-        targetDatalist.innerHTML = "";
-        return;
-      }
-
-      const params = new URLSearchParams({
-        action: "suggest",
-        tipo,
-        dt_ini: fromISO,
-        dt_fim: toISO,
-        q
-      });
-
-      const res = await fetch("relatorios.php?" + params.toString(), {
-        headers: {
-          "Accept": "application/json"
-        }
-      });
-      const json = await res.json().catch(() => null);
-      if (!json || !json.ok) {
-        targetDatalist.innerHTML = "";
-        return;
-      }
-
-      const items = Array.isArray(json.items) ? json.items : [];
-      targetDatalist.innerHTML = items.slice(0, 10).map(it => {
-        const label = String(it.label || it.value || "");
-        const value = String(it.value || "");
-        return `<option value="${safeText(value)}" label="${safeText(label)}"></option>`;
-      }).join("");
-    }
-
     const debouncedGerar = debounce(async () => {
       setInfo("CARREGANDO...", true);
       try {
@@ -2354,14 +2046,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       }
     }, 280);
 
-    const debouncedSuggest = debounce(async () => {
-      await fetchSuggest(dlRelSug);
-      await fetchSuggest(dlGlobalSug);
-    }, 220);
-
     function resetPageAndLoad() {
       PAGE = 1;
-      debouncedSuggest();
       debouncedGerar();
     }
 
@@ -2369,7 +2055,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       if (from === 'global') qRel.value = qGlobal.value;
       if (from === 'rel') qGlobal.value = qRel.value;
       PAGE = 1;
-      debouncedSuggest();
       debouncedGerar();
     }
 
@@ -2472,8 +2157,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       dtFim.value = "";
       qRel.value = "";
       qGlobal.value = "";
-      dlRelSug.innerHTML = "";
-      dlGlobalSug.innerHTML = "";
       PAGE = 1;
       debouncedGerar();
     });
