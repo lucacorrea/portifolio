@@ -48,13 +48,17 @@ $cpfConsumidor = '';
 if ($vendaId > 0) {
   // Cabeçalho da venda (Usa pdo que está em u784961086_pdv)
   try {
-    $st = $pdo->prepare("SELECT id, responsavel, cpf_responsavel, cpf_cliente, forma_pagamento, valor_total, valor_recebido, troco, data_venda
-                         FROM vendas WHERE id=:id LIMIT 1");
+    $st = $pdo->prepare("SELECT v.*, c.nome as cliente_nome, c.cpf_cnpj as cliente_doc
+                         FROM vendas v
+                         LEFT JOIN clientes c ON v.cliente_id = c.id
+                         WHERE v.id = :id 
+                         LIMIT 1");
     $st->execute([':id'=>$vendaId]);
     $venda = $st->fetch();
 
     if ($venda) {
-        $cpfConsumidor = preg_replace('/\D+/', '', (string)($venda['cpf_cliente'] ?? ''));
+        $cpfConsumidor = preg_replace('/\D+/', '', (string)($venda['cliente_doc'] ?? ''));
+        $nomeConsumidor = (string)($venda['cliente_nome'] ?? $venda['nome_cliente_avulso'] ?? '');
         
         // Itens (Busca em VENDAS_ITENS JOIN PRODUTOS, seguindo Sale.php)
         $sti = $pdo->prepare("SELECT i.*, p.nome as produto_nome, p.unidade as p_unidade, p.ncm as p_ncm, p.origem as p_origem, p.cest as p_cest
@@ -184,7 +188,7 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
         <label for="campo_nome" class="mut" style="display:block; margin-bottom:4px">Nome do Cliente (busca ou digita)</label>
         <input id="campo_nome" name="nome_dest" type="text"
                placeholder="Buscar cliente por nome..."
-               value=""
+               value="<?= htmlspecialchars($nomeConsumidor ?? '') ?>"
                style="padding:10px; border:1px solid var(--b); border-radius:6px; width:100%; box-sizing:border-box"
                autocomplete="off">
         <ul id="sugestoes" style="display:none; position:absolute; background:#fff; border:1px solid var(--b);
@@ -192,7 +196,9 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
             box-shadow:0 4px 12px rgba(0,0,0,0.15); max-height:220px; overflow-y:auto"></ul>
       </div>
     </div>
-    <div id="info_cliente" class="mut" style="font-size:13px; margin-bottom:12px"></div>
+    <div id="info_cliente" class="mut" style="font-size:13px; margin-bottom:12px"><?php
+      if ($cpfConsumidor) echo '✅ <b>Venda vinculada:</b> ' . htmlspecialchars($nomeConsumidor) . ' (CPF: ' . $cpfConsumidor . ')';
+    ?></div>
     <button class="btn" type="submit" <?= empty($itens) ? 'disabled' : '' ?>>EMITIR NOTA FISCAL</button>
   </form>
 
