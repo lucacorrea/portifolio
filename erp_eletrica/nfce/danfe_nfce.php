@@ -223,7 +223,17 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     <div class="center small"><b>CHAVE DE ACESSO</b><br><?= fmtChave($chave) ?></div>
 
     <div class="hr"></div>
-    <div class="center small"><b>CONSUMIDOR</b><br><?= $dest_nome ?: 'CONSUMIDOR NÃO IDENTIFICADO' ?><br><?= $dest_doc ?></div>
+    <div class="center small">
+      <b>CONSUMIDOR</b><br>
+      <?php 
+      $dN = strtoupper(trim($dest_nome));
+      if ($dN !== '' && $dN !== 'CONSUMIDOR FINAL' && $dN !== 'CONSUMIDOR AVULSO' && $dN !== 'CONSUMIDOR NÃO IDENTIFICADO'): ?>
+        <?= htmlspecialchars($dest_nome) ?><br>
+        <?= htmlspecialchars($dest_doc) ?>
+      <?php else: ?>
+        <?= htmlspecialchars($dest_doc ?: 'CONSUMIDOR FINAL') ?>
+      <?php endif; ?>
+    </div>
 
     <div class="hr"></div>
     <div class="center small">Consulta via leitor de QR Code</div>

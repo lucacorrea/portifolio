@@ -151,7 +151,15 @@ $qrCodeUrl = $val('//nfe:infNFeSupl/nfe:qrCode');
 
     <div class="dashed"></div>
     <div class="center">
-        CONSUMIDOR NÃO IDENTIFICADO
+        <?php 
+        $dN = strtoupper(trim($val('//nfe:dest/nfe:xNome')));
+        $dDoc = $val('//nfe:dest/nfe:CNPJ') ?: $val('//nfe:dest/nfe:CPF');
+        if($dN && $dN !== 'CONSUMIDOR FINAL' && $dN !== 'CONSUMIDOR NÃO IDENTIFICADO'): ?>
+            <div class="bold"><?= $dN ?></div>
+            <div><?= $dDoc ? (strlen($dDoc) > 11 ? 'CNPJ: ' : 'CPF: ') . $dDoc : '' ?></div>
+        <?php else: ?>
+            <div class="bold"><?= $dDoc ? (strlen($dDoc) > 11 ? 'CNPJ: ' : 'CPF: ') . $dDoc : 'CONSUMIDOR FINAL' ?></div>
+        <?php endif; ?>
     </div>
 
     <div class="dashed"></div>
