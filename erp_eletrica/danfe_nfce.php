@@ -122,7 +122,9 @@ if (!$xmlRaw) {
         </tbody></table>
         <div class="hr"></div>
         <div class="small center">
-            <?php if (trim($venda['cliente_nome']) !== 'Consumidor Final' && trim($venda['cliente_nome']) !== 'CONSUMIDOR AVULSO'): ?>
+            <?php 
+            $cName = strtoupper(trim($venda['cliente_nome']));
+            if ($cName !== 'CONSUMIDOR FINAL' && $cName !== 'CONSUMIDOR AVULSO' && $cName !== 'CONSUMIDOR'): ?>
                 Cliente: <b><?= htmlspecialchars($venda['cliente_nome']) ?></b>
                 <?php if (!empty($venda['cpf_cliente'])): ?><br>CPF: <?= htmlspecialchars($venda['cpf_cliente']) ?><?php endif; ?>
             <?php elseif (!empty($venda['cpf_cliente'])): ?>
@@ -328,7 +330,9 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     </div>
     <div class="hr"></div>
     <div class="small"><b>CONSUMIDOR</b></div>
-    <?php if ($dest_nome && $dest_nome !== 'Consumidor Final'): ?>
+    <?php 
+    $dN = strtoupper(trim($dest_nome));
+    if ($dest_nome && $dN !== 'CONSUMIDOR FINAL' && $dN !== 'CONSUMIDOR AVULSO' && $dN !== 'CONSUMIDOR'): ?>
         <div class="small"><?= htmlspecialchars($dest_nome) ?></div>
         <div class="small"><?= htmlspecialchars($dest_doc ?: '—') ?></div>
     <?php else: ?>
