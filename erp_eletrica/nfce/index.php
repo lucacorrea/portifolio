@@ -3,9 +3,8 @@ declare(strict_types=1);
 ini_set('display_errors','1');
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
-// Carrega a configuração unificada (que resolve tanto Empresa quanto Vendas)
+// Carrega a configuração unificada (que resolve tanto Empresa quanto Vendas no banco u784961086_pdv)
 require_once __DIR__ . '/config.php';
-// Nota: config.php já fornece $pdo (Config) e $pdoSales (Vendas) e define data_timezone
 
 /* ===== Entrada ===== */
 $vendaId  = isset($_GET['venda_id']) ? (int)$_GET['venda_id'] : 0;
@@ -17,19 +16,23 @@ $total = 0.0;
 $cpfConsumidor = '';
 
 if ($vendaId > 0) {
-  // Cabeçalho da venda (Usa pdoSales)
+  // Cabeçalho da venda (Usa pdo que está em u784961086_pdv)
   try {
-    $st = $pdoSales->prepare("SELECT id, responsavel, cpf_responsavel, cpf_cliente, forma_pagamento, valor_total, valor_recebido, troco, empresa_id, id_caixa, data_venda
+    $st = $pdo->prepare("SELECT id, responsavel, cpf_responsavel, cpf_cliente, forma_pagamento, valor_total, valor_recebido, troco, data_venda
                          FROM vendas WHERE id=:id LIMIT 1");
     $st->execute([':id'=>$vendaId]);
     $venda = $st->fetch();
 
     if ($venda) {
         $cpfConsumidor = preg_replace('/\D+/', '', (string)($venda['cpf_cliente'] ?? ''));
-        // Itens
-        $sti = $pdoSales->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, ncm, cfop, unidade, informacoes_adicionais, cest, origem, tributacao
-                              FROM itens_venda WHERE venda_id=:id ORDER BY id");
+        
+        // Itens (Busca em VENDAS_ITENS JOIN PRODUTOS, seguindo Sale.php)
+        $sti = $pdo->prepare("SELECT i.*, p.nome as produto_nome, p.unidade as p_unidade, p.ncm as p_ncm, p.origem as p_origem, p.cest as p_cest
+                                FROM vendas_itens i 
+                                JOIN produtos p ON i.produto_id = p.id 
+                               WHERE i.venda_id = :id ORDER BY i.id");
         $sti->execute([':id'=>$vendaId]);
+        
         while ($r = $sti->fetch()) {
           $qtd = (float)$r['quantidade'];
           $vun = (float)$r['preco_unitario'];
@@ -37,16 +40,14 @@ if ($vendaId > 0) {
           $total += $linTotal;
 
           $itens[] = [
-            'desc' => (string)$r['produto_nome'],
+            'desc' => (string)($r['produto_nome'] ?? $r['produto_id']),
             'qtd'  => $qtd,
             'vun'  => $vun,
-            'ncm'   => $r['ncm'] ?: '21069090',
-            'cfop'  => $r['cfop'] ?: '5102',
-            'unid'  => $r['unidade'] ?: 'UN',
-            'info'  => $r['informacoes_adicionais'] ?: null,
-            'cest'  => $r['cest'] ?: null,
-            'origem'=> $r['origem'] ?: null,
-            'trib'  => $r['tributacao'] ?: null,
+            'ncm'   => (string)($r['ncm'] ?: $r['p_ncm'] ?: '21069090'),
+            'cfop'  => (string)($r['cfop'] ?: '5102'),
+            'unid'  => (string)($r['unidade'] ?: $r['p_unidade'] ?: 'UN'),
+            'origem'=> (string)($r['origem'] ?: $r['p_origem'] ?: '0'),
+            'cest'  => (string)($r['cest'] ?: $r['p_cest'] ?: ''),
           ];
         }
     }
@@ -59,7 +60,7 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
 <html lang="pt-br">
 <head>
 <meta charset="utf-8">
-<title>Revisão da Venda #<?= htmlspecialchars((string)$vendaId) ?> • NFC-e</title>
+<title>Revisão NFC-e • Venda #<?= htmlspecialchars((string)$vendaId) ?></title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root { --b:#e8e8e8; --tx:#222; --mut:#666; --accent:#1a73e8; }
@@ -88,8 +89,8 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
 
 <?php if (!$vendaId || !$venda): ?>
   <div class="card">
-    <p><strong>Venda não encontrada (ID: <?= $vendaId ?>).</strong></p>
-    <p class="mut">Verifique se a venda existe no banco de dados.</p>
+    <p><strong>Venda #<?= $vendaId ?> não encontrada.</strong></p>
+    <p class="mut">Verifique se esta venda existe na tabela <code>vendas</code> do banco <code>u784961086_pdv</code>.</p>
   </div>
 <?php else: ?>
 
@@ -98,6 +99,7 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
       <h3 style="margin-top:0">Dados da Venda</h3>
       <div class="mut">Data: <?= date('d/m/Y H:i', strtotime((string)$venda['data_venda'])) ?></div>
       <div class="mut">Responsável: <?= htmlspecialchars((string)$venda['responsavel']) ?></div>
+      <div class="mut">Pagamento: <?= htmlspecialchars((string)$venda['forma_pagamento']) ?></div>
     </div>
     <div class="right">
       <div class="mut">Total da Venda</div>
@@ -118,7 +120,7 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
       </thead>
       <tbody>
       <?php if (empty($itens)): ?>
-          <tr><td colspan="4" class="mut center">Nenhum item encontrado nesta venda.</td></tr>
+          <tr><td colspan="4" class="mut center">Nenhum item encontrado na tabela <code>vendas_itens</code> para esta venda.</td></tr>
       <?php else: ?>
           <?php foreach ($itens as $it): ?>
             <tr>
@@ -134,7 +136,6 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
   </div>
 
   <form id="fEmit" class="card" method="post" action="emitir.php">
-    <input type="hidden" name="id" value="<?= htmlspecialchars((string)NFCE_EMPRESA_ID) ?>">
     <input type="hidden" name="venda_id" value="<?= (int)$vendaId ?>">
     <input type="hidden" name="itens" value="<?= htmlspecialchars(json_encode($itens, JSON_UNESCAPED_UNICODE)) ?>">
     
@@ -143,7 +144,7 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
         <label for="cpf" class="mut" style="display:block; margin-bottom:4px">CPF do Consumidor (opcional)</label>
         <input id="cpf" name="cpf" type="text" placeholder="000.000.000-00" value="<?= htmlspecialchars($cpfConsumidor) ?>" style="padding:10px; border:1px solid var(--b); border-radius:6px; width:100%">
       </div>
-      <button class="btn" type="submit">EMITIR NOTA FISCAL</button>
+      <button class="btn" type="submit" <?= empty($itens) ? 'disabled' : '' ?>>EMITIR NOTA FISCAL</button>
     </div>
   </form>
 
