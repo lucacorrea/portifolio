@@ -93,7 +93,7 @@ class SefazXmlService extends BaseService {
         if (!empty($sale['cliente_id']) || !empty($sale['nome_cliente_avulso'])) {
             $dest = $this->createEl($dom, 'dest');
             
-            $doc = preg_replace('/\D/', '', $sale['cpf_cnpj'] ?? '');
+            $doc = preg_replace('/\D/', '', $sale['cpf_cnpj'] ?? $sale['cpf_cliente'] ?? '');
             if (strlen($doc) === 11) {
                 $dest->appendChild($this->createEl($dom, 'CPF', $doc));
             } elseif (strlen($doc) === 14) {

@@ -121,7 +121,12 @@ if (!$xmlRaw) {
             <tr><td style="font-size:14px;"><b>TOTAL R$</b></td><td class="right" style="font-size:14px;"><b><?= number_format($venda['valor_total'],2,',','.') ?></b></td></tr>
         </tbody></table>
         <div class="hr"></div>
-        <div class="small center">Cliente: <b><?= htmlspecialchars($venda['cliente_nome']) ?></b></div>
+        <div class="small center">
+            Cliente: <b><?= htmlspecialchars($venda['cliente_nome']) ?></b>
+            <?php if (!empty($venda['cpf_cliente'])): ?>
+                <br>CPF: <?= htmlspecialchars($venda['cpf_cliente']) ?>
+            <?php endif; ?>
+        </div>
         <?php endif; ?>
         <div class="hr"></div>
         <?php if ($statusNF === 'sem_registro' || $statusNF === 'pendente'): ?>
