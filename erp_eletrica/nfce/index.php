@@ -2,29 +2,10 @@
 declare(strict_types=1);
 ini_set('display_errors','1');
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
-date_default_timezone_set('America/Manaus');
 
-/* ===== Conexão DIRETA (Garantida como no Açaidinhos) ===== */
-$host     = 'localhost';
-$dbname   = 'u920914488_ERP';
-$username = 'u920914488_ERP';
-$password = 'N8r=$&Wrs$';
-
-try {
-  $pdo = new PDO(
-    "mysql:host={$host};dbname={$dbname};charset=utf8mb4",
-    $username,
-    $password,
-    [
-      PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-      PDO::ATTR_EMULATE_PREPARES   => false,
-    ]
-  );
-} catch (PDOException $e) {
-  http_response_code(500);
-  exit('Erro na conexão: '.$e->getMessage());
-}
+// Carrega a configuração unificada (que resolve tanto Empresa quanto Vendas)
+require_once __DIR__ . '/config.php';
+// Nota: config.php já fornece $pdo (Config) e $pdoSales (Vendas) e define data_timezone
 
 /* ===== Entrada ===== */
 $vendaId  = isset($_GET['venda_id']) ? (int)$_GET['venda_id'] : 0;
@@ -36,38 +17,40 @@ $total = 0.0;
 $cpfConsumidor = '';
 
 if ($vendaId > 0) {
-  // Cabeçalho da venda
-  $st = $pdo->prepare("SELECT id, responsavel, cpf_responsavel, cpf_cliente, forma_pagamento, valor_total, valor_recebido, troco, empresa_id, id_caixa, data_venda
-                       FROM vendas WHERE id=:id LIMIT 1");
-  $st->execute([':id'=>$vendaId]);
-  $venda = $st->fetch();
+  // Cabeçalho da venda (Usa pdoSales)
+  try {
+    $st = $pdoSales->prepare("SELECT id, responsavel, cpf_responsavel, cpf_cliente, forma_pagamento, valor_total, valor_recebido, troco, empresa_id, id_caixa, data_venda
+                         FROM vendas WHERE id=:id LIMIT 1");
+    $st->execute([':id'=>$vendaId]);
+    $venda = $st->fetch();
 
-  if ($venda) {
-    $cpfConsumidor = preg_replace('/\D+/', '', (string)($venda['cpf_cliente'] ?? ''));
-    // Itens
-    $sti = $pdo->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, ncm, cfop, unidade, informacoes_adicionais, cest, origem, tributacao
-                          FROM itens_venda WHERE venda_id=:id ORDER BY id");
-    $sti->execute([':id'=>$vendaId]);
-    while ($r = $sti->fetch()) {
-      $qtd = (float)$r['quantidade'];
-      $vun = (float)$r['preco_unitario'];
-      $linTotal = $qtd * $vun;
-      $total += $linTotal;
+    if ($venda) {
+        $cpfConsumidor = preg_replace('/\D+/', '', (string)($venda['cpf_cliente'] ?? ''));
+        // Itens
+        $sti = $pdoSales->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, ncm, cfop, unidade, informacoes_adicionais, cest, origem, tributacao
+                              FROM itens_venda WHERE venda_id=:id ORDER BY id");
+        $sti->execute([':id'=>$vendaId]);
+        while ($r = $sti->fetch()) {
+          $qtd = (float)$r['quantidade'];
+          $vun = (float)$r['preco_unitario'];
+          $linTotal = $qtd * $vun;
+          $total += $linTotal;
 
-      $itens[] = [
-        'desc' => (string)$r['produto_nome'],
-        'qtd'  => $qtd,
-        'vun'  => $vun,
-        'ncm'   => $r['ncm'] ?: '21069090',
-        'cfop'  => $r['cfop'] ?: '5102',
-        'unid'  => $r['unidade'] ?: 'UN',
-        'info'  => $r['informacoes_adicionais'] ?: null,
-        'cest'  => $r['cest'] ?: null,
-        'origem'=> $r['origem'] ?: null,
-        'trib'  => $r['tributacao'] ?: null,
-      ];
+          $itens[] = [
+            'desc' => (string)$r['produto_nome'],
+            'qtd'  => $qtd,
+            'vun'  => $vun,
+            'ncm'   => $r['ncm'] ?: '21069090',
+            'cfop'  => $r['cfop'] ?: '5102',
+            'unid'  => $r['unidade'] ?: 'UN',
+            'info'  => $r['informacoes_adicionais'] ?: null,
+            'cest'  => $r['cest'] ?: null,
+            'origem'=> $r['origem'] ?: null,
+            'trib'  => $r['tributacao'] ?: null,
+          ];
+        }
     }
-  }
+  } catch (Throwable $e) { $venda = null; }
 }
 
 function brl($v){ return number_format((float)$v, 2, ',', '.'); }
@@ -105,8 +88,8 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
 
 <?php if (!$vendaId || !$venda): ?>
   <div class="card">
-    <p><strong>Venda não encontrada.</strong></p>
-    <p class="mut">Verifique o ID da venda informado.</p>
+    <p><strong>Venda não encontrada (ID: <?= $vendaId ?>).</strong></p>
+    <p class="mut">Verifique o banco de dados de vendas (u920914488_ERP).</p>
   </div>
 <?php else: ?>
 
@@ -151,6 +134,7 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
   </div>
 
   <form id="fEmit" class="card" method="post" action="emitir.php">
+    <input type="hidden" name="id" value="<?= htmlspecialchars((string)NFCE_EMPRESA_ID) ?>">
     <input type="hidden" name="venda_id" value="<?= (int)$vendaId ?>">
     <input type="hidden" name="itens" value="<?= htmlspecialchars(json_encode($itens, JSON_UNESCAPED_UNICODE)) ?>">
     

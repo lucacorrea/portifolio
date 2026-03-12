@@ -51,42 +51,41 @@ function mapFormaToTPag($forma): string {
 $venda_id = (int)($_REQUEST['venda_id'] ?? 0);
 $itensRaw = $_POST['itens'] ?? '[]';
 $itens    = json_decode((string)$itensRaw, true) ?: [];
+$vendaRow = null; // Initialize vendaRow
 
-// Se os itens vieram vazios via POST, tenta buscar do banco usando o venda_id
-if (empty($itens) && $venda_id > 0) {
+if ($venda_id) {
+    // Busca dados no banco de Vendas (pdoSales)
     try {
-        $st = $pdo->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, unidade, ncm, cfop 
-                               FROM itens_venda 
-                              WHERE venda_id = :v");
-        $st->execute([':v' => $venda_id]);
-        $rows = $st->fetchAll();
-        foreach ($rows as $r) {
-            $itens[] = [
-                'desc' => (string)$r['produto_nome'],
-                'qtd'  => (float)$r['quantidade'],
-                'vun'  => (float)$r['preco_unitario'],
-                'unid' => (string)($r['unidade'] ?? 'UN'),
-                'ncm'  => (string)($r['ncm'] ?? '21069090'),
-                'cfop' => (string)($r['cfop'] ?? '5102')
-            ];
+        // Se itens ainda não vieram via POST, busca do banco
+        if (empty($itens)) {
+            $st = $pdoSales->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, unidade, ncm, cfop 
+                                       FROM itens_venda 
+                                      WHERE venda_id = :v");
+            $st->execute([':v' => $venda_id]);
+            $rows = $st->fetchAll();
+            foreach ($rows as $r) {
+                $itens[] = [
+                    'desc' => (string)$r['produto_nome'],
+                    'qtd'  => (float)$r['quantidade'],
+                    'vun'  => (float)$r['preco_unitario'],
+                    'unid' => (string)($r['unidade'] ?? 'UN'),
+                    'ncm'  => (string)($r['ncm'] ?? '21069090'),
+                    'cfop' => (string)($r['cfop'] ?? '5102')
+                ];
+            }
         }
-    } catch (Throwable $e) {}
+        
+        // Busca dados da venda
+        $stV = $pdoSales->prepare("SELECT v.*, c.cpf_cnpj AS cliente_cpf, c.nome AS cliente_nome 
+                                    FROM vendas v 
+                                    LEFT JOIN clientes c ON v.cliente_id = c.id 
+                                   WHERE v.id = :v LIMIT 1");
+        $stV->execute([':v' => $venda_id]);
+        $vendaRow = $stV->fetch();
+    } catch (Throwable $e) { /* silencioso */ }
 }
 
 if (!$itens) die('Sem itens. Verifique se a venda #'.$venda_id.' possui produtos cadastrados na tabela itens_venda.');
-
-// Busca dados da venda (Cabeçalho)
-$vendaRow = null;
-if ($venda_id > 0) {
-    try {
-        $stV = $pdo->prepare("SELECT v.*, c.cpf_cnpj AS cliente_cpf, c.nome AS cliente_nome 
-                                FROM vendas v 
-                                LEFT JOIN clientes c ON v.cliente_id = c.id 
-                               WHERE v.id = :v LIMIT 1");
-        $stV->execute([':v' => $venda_id]);
-        $vendaRow = $stV->fetch();
-    } catch (Throwable $e) {}
-}
 
 // Normaliza itens (Garante campos mínimos)
 $_norm = [];
