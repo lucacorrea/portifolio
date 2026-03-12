@@ -1541,12 +1541,69 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
     #tbRel {
       width: 100%;
-      min-width: 980px;
+      min-width: 1080px;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: auto;
     }
 
-    #tbRel th,
-    #tbRel td {
+    #tbRel thead th {
       white-space: nowrap !important;
+      padding: 14px 16px !important;
+      background: #f8fafc;
+      color: #0f172a;
+      font-weight: 900;
+      border-bottom: 1px solid rgba(148, 163, 184, .24);
+    }
+
+    #tbRel tbody td {
+      padding: 14px 16px !important;
+      color: #334155;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(148, 163, 184, .14);
+      background: #fff;
+    }
+
+    #tbRel thead th+th,
+    #tbRel tbody td+td {
+      border-left: 1px solid rgba(148, 163, 184, .14);
+    }
+
+    #tbRel th.text-center,
+    #tbRel td.text-center {
+      text-align: center !important;
+    }
+
+    #tbRel th.text-end,
+    #tbRel td.text-end {
+      text-align: right !important;
+    }
+
+    #tbRel th.text-start,
+    #tbRel td.text-start {
+      text-align: left !important;
+    }
+
+    #tbRel th.col-items,
+    #tbRel td.col-items {
+      min-width: 280px;
+      max-width: 420px;
+      white-space: normal !important;
+      word-break: break-word;
+      line-height: 1.45;
+    }
+
+    #tbRel th.col-cliente,
+    #tbRel td.col-cliente {
+      min-width: 180px;
+      white-space: normal !important;
+    }
+
+    #tbRel th.col-obs,
+    #tbRel td.col-obs {
+      min-width: 200px;
+      white-space: normal !important;
+      word-break: break-word;
     }
 
     .rel-table-wrap {
@@ -1745,7 +1802,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
     @media (max-width: 991.98px) {
       #tbRel {
-        min-width: 900px;
+        min-width: 980px;
       }
 
       .grand .val {
@@ -2012,7 +2069,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
               <div class="body d-flex flex-column">
                 <div class="rel-table-wrap">
                   <div class="table-responsive">
-                    <table class="table text-nowrap" id="tbRel">
+                    <table class="table" id="tbRel">
                       <thead id="theadRel"></thead>
                       <tbody id="tbodyRel"></tbody>
                     </table>
@@ -2149,6 +2206,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       total_rows: 0
     };
 
+    function cellClassByHead(headText, alignClass) {
+      const h = String(headText || '').toUpperCase();
+
+      let extra = '';
+      if (h.includes('ITENS') || h.includes('PRODUTO')) extra += ' col-items';
+      if (h.includes('CLIENTE')) extra += ' col-cliente';
+      if (h === 'OBS' || h.includes('OBSERV')) extra += ' col-obs';
+
+      return `${alignClass} text-start${extra}`.trim().replace(/\s+/g, ' ');
+    }
+
     async function fetchReport() {
       const tipo = rTipo.value;
       const fromISO = dtIni.value || "";
@@ -2200,14 +2268,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       const center = new Set((rep.centerCols || []).map(n => Number(n)));
 
       theadRel.innerHTML = `<tr>${(rep.head || []).map((h, idx) => {
-        const cls = right.has(idx) ? "text-end" : (center.has(idx) ? "text-center" : "");
+        let cls = "text-start";
+        if (right.has(idx)) cls = "text-end";
+        else if (center.has(idx)) cls = "text-center";
+        cls = cellClassByHead(h, cls);
         return `<th class="${cls}">${safeText(h)}</th>`;
       }).join("")}</tr>`;
 
       tbodyRel.innerHTML = (rep.body || []).map(row => `
         <tr>
           ${(row || []).map((c, idx) => {
-            const cls = right.has(idx) ? "text-end" : (center.has(idx) ? "text-center" : "");
+            const headTxt = (rep.head || [])[idx] || '';
+            let cls = "text-start";
+            if (right.has(idx)) cls = "text-end";
+            else if (center.has(idx)) cls = "text-center";
+            cls = cellClassByHead(headTxt, cls);
             return `<td class="${cls}">${safeText(c)}</td>`;
           }).join("")}
         </tr>
@@ -2342,8 +2417,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           <head>
             <meta charset="utf-8">
             <style>
-              table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
-              td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; }
+              table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; width: 100%; }
+              td, th { border: 1px solid #000; padding: 8px 10px; vertical-align: middle; }
               th { background: #dbe5f1; font-weight: bold; }
               .title { font-size: 16px; font-weight: bold; text-align: center; background: #ddebf7; }
               .left { text-align: left; }
