@@ -11,19 +11,28 @@ date_default_timezone_set('America/Manaus');
 
 // ========== Localiza conexão PDO ($pdo) ==========
 $pdo = null;
-$tryPaths = [
-  __DIR__ . '/../config.php',
-  __DIR__ . '/../conexao/conexao.php',
-  __DIR__ . '/../../conexao/conexao.php',
-  __DIR__ . '/../../../conexao/conexao.php',
-  __DIR__ . '/../assets/conexao.php',
-  __DIR__ . '/../../assets/conexao.php',
-  $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
-];
-foreach ($tryPaths as $p) {
-  if (is_file($p)) {
-    require_once $p; // deve popular $pdo
-    if (isset($pdo) && $pdo instanceof PDO) { break; }
+
+// Tenta conexão direta (Hardcoded baseado no que funciona no index.php)
+try {
+  $pdo = new PDO("mysql:host=localhost;dbname=u920914488_ERP;charset=utf8mb4", "u920914488_ERP", "N8r=$&Wrs$", [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+  ]);
+} catch (Throwable $e) {
+  // Se falhar a direta, tenta os caminhos dinâmicos
+  $tryPaths = [
+    __DIR__ . '/../conexao/conexao.php',
+    __DIR__ . '/../../conexao/conexao.php',
+    __DIR__ . '/../assets/php/conexao.php',
+    __DIR__ . '/../../assets/php/conexao.php',
+    $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
+    __DIR__ . '/../config.php', // Deixado por último por ser o mais provável de estar errado para este módulo
+  ];
+  foreach ($tryPaths as $p) {
+    if (is_file($p)) {
+      @require_once $p; 
+      if (isset($pdo) && $pdo instanceof PDO) { break; }
+    }
   }
 }
 if (!isset($pdo) || !($pdo instanceof PDO)) {

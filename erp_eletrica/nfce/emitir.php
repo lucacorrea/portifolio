@@ -12,14 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_POST['_json_payload'] = $_POST['itens_json'];
     }
 }
-// A lógica original virá abaixo (mantida)
-?><?php
-// emitir.php — NFC-e (mod 65) com NFePHP: CHAVE correta, assina <infNFe>, envia ARRAY, e exibe link do DANFE (sem auto-print)
 
 // Autoload + config se existirem
-if (file_exists(__DIR__ . '/vendor/autoload.php')) require __DIR__ . '/vendor/autoload.php';
-if (file_exists(__DIR__ . '/config.php'))          require __DIR__ . '/config.php';
-
+if (file_exists(__DIR__ . '/vendor/autoload.php')) require_once __DIR__ . '/vendor/autoload.php';
+if (file_exists(__DIR__ . '/config.php'))          require_once __DIR__ . '/config.php';
 
 use NFePHP\Common\Certificate;
 use NFePHP\NFe\Tools;
@@ -45,743 +41,235 @@ if (!function_exists('nfeproc')) {
 }
 
 if (!function_exists('mapFormaToTPag')) {
-  /**
-   * Converte a forma (texto ou número) para o código tPag da NFC-e (2 dígitos).
-   * Aceita valores como: "01", "1", "pix", "débito", "credito", etc.
-   */
   function mapFormaToTPag($forma): string {
     $f = (string)$forma;
     $fTrim = trim(mb_strtolower($f, 'UTF-8'));
-
-    // Já é numérico? Normaliza para 2 dígitos (ex.: "1" -> "01")
     if (preg_match('/^\d+$/', $fTrim)) {
       return str_pad(substr($fTrim, -2), 2, '0', STR_PAD_LEFT);
     }
-
-    // Normaliza pontuação/acentos básicos
     $norm = iconv('UTF-8', 'ASCII//TRANSLIT', $fTrim);
     $norm = preg_replace('/[^a-z0-9]+/',' ', $norm);
     $norm = trim($norm);
-
-    // Mapa de textos → códigos
     $map = [
-      'dinheiro'                 => '01', 'cash' => '01',
-      'cheque'                   => '02',
-      'cartao de credito'        => '03', 'credito' => '03', 'cartao credito' => '03', 'credito loja' => '05',
-      'cartao de debito'         => '04', 'debito' => '04', 'cartao debito' => '04',
-      'vale alimentacao'         => '10', 'va' => '10',
-      'vale refeicao'            => '11', 'vr' => '11',
-      'vale presente'            => '12',
-      'vale combustivel'         => '13',
-      'boleto'                   => '15',
-      'deposito'                 => '16',
-      'pix'                      => '17', 'qr' => '17', 'qr code' => '17',
-      'transferencia'            => '18', 'carteira' => '18', 'carteira digital' => '18',
-      'programa de fidelidade'   => '19',
-      'sem pagamento'            => '90',
-      // dentro do array $map de mapFormaToTPag()
-'pix estatico' => '20', 'pix estático' => '20', 'qrcode estatico' => '20', 'qr code estatico' => '20',
-
-      'outros'                   => '99',
+      'dinheiro' => '01', 'cash' => '01', 'cheque' => '02',
+      'cartao de credito' => '03', 'credito' => '03', 'cartao credito' => '03',
+      'cartao de debito' => '04', 'debito' => '04', 'cartao debito' => '04',
+      'vale alimentacao' => '10', 'vale refeicao' => '11', 'vale presente' => '12', 'vale combustivel' => '13',
+      'boleto' => '15', 'deposito' => '16', 'pix' => '17', 'qr' => '17', 'qr code' => '17',
+      'transferencia' => '18', 'carteira digital' => '18', 'fidelidade' => '19', 'sem pagamento' => '90',
+      'pix estatico' => '20', 'outros' => '99',
     ];
-
-    if (isset($map[$norm])) {
-      return $map[$norm];
-    }
-
-    // Heurísticas simples
+    if (isset($map[$norm])) return $map[$norm];
     if (strpos($norm, 'pix') !== false) return '17';
     if (strpos($norm, 'debito') !== false) return '04';
     if (strpos($norm, 'credito') !== false) return '03';
-    if (strpos($norm, 'boleto') !== false) return '15';
-    if (strpos($norm, 'deposit') !== false) return '16';
-    if (strpos($norm, 'transfer') !== false) return '18';
-
-    // Desconhecido → dinheiro
     return '01';
   }
 }
 
-
 /* ===== Config NFePHP ===== */
-$nfceConfig = file_exists(__DIR__.'/nfce_config.php')
-  ? require __DIR__.'/nfce_config.php'
-  : [
-      'atualizacao' => date('Y-m-d H:i:s'),
-      'tpAmb'       => (int)TP_AMB,
-      'razaosocial' => EMIT_XNOME,
-      'siglaUF'     => EMIT_UF,
-      'cnpj'        => EMIT_CNPJ,
-      'schemes'     => 'PL_009_V4',
-      'versao'      => '4.00',
-      'urlChave'    => (defined('URL_CHAVE') ? constant('URL_CHAVE') : ''),
-      'urlQRCode'   => (defined('URL_QR') ? constant('URL_QR') : ''),
-      'CSC'         => CSC,
-      'CSCid'       => ID_TOKEN,
-      'proxyConf'   => ['proxyIp'=>'','proxyPort'=>'','proxyUser'=>'','proxyPass'=>''],
-    ];
-
+$nfceConfig = [
+  'atualizacao' => date('Y-m-d H:i:s'),
+  'tpAmb'       => (int)TP_AMB,
+  'razaosocial' => EMIT_XNOME,
+  'siglaUF'     => EMIT_UF,
+  'cnpj'        => EMIT_CNPJ,
+  'schemes'     => 'PL_009_V4',
+  'versao'      => '4.00',
+  'urlChave'    => (defined('URL_CHAVE') ? constant('URL_CHAVE') : ''),
+  'urlQRCode'   => (defined('URL_QR') ? constant('URL_QR') : ''),
+  'CSC'         => CSC,
+  'CSCid'       => ID_TOKEN,
+  'proxyConf'   => ['proxyIp'=>'','proxyPort'=>'','proxyUser'=>'','proxyPass'=>''],
+];
 $configJson = json_encode($nfceConfig, JSON_UNESCAPED_UNICODE);
 
 /* ===== Entrada do PDV ===== */
-/* Aceita:
-   1) $_POST['itens'] como JSON string
-   2) Corpo JSON (Content-Type: application/json) => {"itens":[...], "cpf": "..."}
-   3) Carrega a partir do banco usando ?venda_id=123 (tabelas vendas/itens_venda)
-*/
 $payload = [];
-$ct = $_SERVER['CONTENT_TYPE'] ?? '';
-$raw = file_get_contents('php://input');
-if ($raw && stripos($ct, 'application/json') !== false) {
-  $payload = json_decode($raw, true) ?: [];
-}
-if (!$payload && isset($_POST['payload'])) {
-  $payload = json_decode((string)$_POST['payload'], true) ?: [];
+$rawBody = file_get_contents('php://input');
+if ($rawBody && stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false) {
+    $payload = json_decode($rawBody, true) ?: [];
 }
 
-$itens = json_decode($_POST['itens'] ?? '[]', true) ?: ($payload['itens'] ?? []);
+$itensRaw = $_POST['itens'] ?? $payload['itens'] ?? '[]';
+$itens = is_array($itensRaw) ? $itensRaw : (json_decode((string)$itensRaw, true) ?: []);
 
-/* Se houver venda_id, tenta carregar dados do banco (mesmo que itens já venham via POST) */
-$venda_id = (int)($_GET['venda_id'] ?? $payload['venda_id'] ?? $_POST['venda_id'] ?? 0);
+$venda_id = (int)($_GET['venda_id'] ?? $_POST['venda_id'] ?? $payload['venda_id'] ?? 0);
 $vendaRow = null;
 
 if ($venda_id) {
-  /* Carrega conexão (mesmos candidatos do vendaRapidaSubmit.php) */
-  $__candidates = [
-    __DIR__ . '/../config.php',
-    __DIR__ . '/../../assets/php/conexao.php',
-    __DIR__ . '/../../ERP/assets/php/conexao.php',
-    __DIR__ . '/../dashboard/php/conexao.php',
-    $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
-    $_SERVER['DOCUMENT_ROOT'] . '/ERP/assets/php/conexao.php',
-  ];
-  foreach ($__candidates as $__p) {
-    if (is_file($__p)) {
-      require_once $__p;
-      if (isset($pdo) && $pdo instanceof PDO) break;
-    }
-  }
-
-  if (isset($pdo) && $pdo instanceof PDO) {
-    // 1) Carrega dados agregados da venda (cpf_cliente, forma_pagamento, valores)
-    try {
-      $stV = $pdo->prepare("SELECT v.*, c.cpf_cnpj AS cliente_cpf, c.nome AS cliente_nome 
-                              FROM vendas v
-                              LEFT JOIN clientes c ON v.cliente_id = c.id
-                             WHERE v.id = :v
-                             LIMIT 1");
-      $stV->execute([':v' => $venda_id]);
-      $vendaRow = $stV->fetch(PDO::FETCH_ASSOC) ?: null;
-    } catch (Throwable $e) { /* silencioso */ }
-
-    // 2) Se ainda não houver itens, busca do banco (Tabela: itens_venda - Estilo Açai)
-    if (!$itens) {
-      try {
-        $st = $pdo->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, unidade, ncm, cfop 
-                               FROM itens_venda 
-                              WHERE venda_id = :v");
-        $st->execute([':v' => $venda_id]);
-        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $r) {
-          $itens[] = [
-            'id'   => (int)$r['produto_id'],
-            'desc' => (string)$r['produto_nome'],
-            'qtd'  => (float)$r['quantidade'],
-            'vun'  => (float)$r['preco_unitario'],
-            'unid' => (string)($r['unidade'] ?? 'UN'),
-            'ncm'  => (string)($r['ncm'] ?? ''),
-            'cfop' => (string)($r['cfop'] ?? '')
-          ];
+    // Tenta localizar a conexão PDO
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+        $tryPaths = [
+            __DIR__ . '/../../acainhadinhos/assets/php/conexao.php',
+            __DIR__ . '/../config.php',
+            $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
+        ];
+        foreach ($tryPaths as $p) {
+            if (is_file($p)) { @require_once $p; if (isset($pdo) && $pdo instanceof PDO) break; }
         }
-      } catch (Throwable $e) { /* silencioso */ }
     }
-  }
+    
+    // Fallback Hardcoded (baseado no index.php que funciona)
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+        try {
+            $pdo = new PDO("mysql:host=localhost;dbname=u920914488_ERP;charset=utf8mb4", "u920914488_ERP", "N8r=$&Wrs$");
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (Throwable $e) { /* falha total */ }
+    }
+
+    if (isset($pdo) && $pdo instanceof PDO) {
+        try {
+            // Se itens ainda não vieram via POST, busca do banco
+            if (empty($itens)) {
+                $st = $pdo->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, unidade, ncm, cfop 
+                                       FROM itens_venda 
+                                      WHERE venda_id = :v");
+                $st->execute([':v' => $venda_id]);
+                $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as $r) {
+                    $itens[] = [
+                        'id'   => (int)$r['produto_id'],
+                        'desc' => (string)$r['produto_nome'],
+                        'qtd'  => (float)$r['quantidade'],
+                        'vun'  => (float)$r['preco_unitario'],
+                        'unid' => (string)($r['unidade'] ?? 'UN'),
+                        'ncm'  => (string)($r['ncm'] ?? ''),
+                        'cfop' => (string)($r['cfop'] ?? '')
+                    ];
+                }
+            }
+            
+            // Busca dados da venda
+            $stV = $pdo->prepare("SELECT v.*, c.cpf_cnpj AS cliente_cpf, c.nome AS cliente_nome 
+                                    FROM vendas v 
+                                    LEFT JOIN clientes c ON v.cliente_id = c.id 
+                                   WHERE v.id = :v LIMIT 1");
+            $stV->execute([':v' => $venda_id]);
+            $vendaRow = $stV->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) { /* silencioso */ }
+    }
 }
 
-/* Normaliza itens vindos por JSON em formato alternativo */
+// Normalização
 if ($itens) {
-  $_norm = [];
-  foreach ($itens as $it) {
-    $desc = $it['desc'] ?? $it['produto_nome'] ?? $it['nome'] ?? ($it['desc'] ?? '');
-    $qtd  = $it['qtd']  ?? $it['quantidade'] ?? $it['qCom'] ?? 1;
-    $vun  = $it['vun']  ?? $it['preco_unitario'] ?? $it['vUn'] ?? $it['vUnCom'] ?? 0;
-    $un   = $it['unid'] ?? $it['un'] ?? $it['uCom'] ?? 'UN';
-    $ncm  = $it['ncm']  ?? '';
-    $cfop = $it['cfop'] ?? '';
-    if ($desc !== '' && (float)$qtd > 0) {
-      $_norm[] = [
-        'desc' => (string)$desc,
-        'qtd'  => (float)$qtd,
-        'vun'  => (float)$vun,
-        'unid' => (string)$un,
-        'ncm'  => (string)$ncm,
-        'cfop' => (string)$cfop
-      ];
+    $_tmp = [];
+    foreach ($itens as $it) {
+        $desc = $it['desc'] ?? $it['produto_nome'] ?? $it['nome'] ?? '';
+        $qtd  = $it['qtd']  ?? $it['quantidade'] ?? 1;
+        $vun  = $it['vun']  ?? $it['preco_unitario'] ?? 0;
+        if ($desc !== '' && (float)$qtd > 0) {
+            $_tmp[] = [
+                'desc' => (string)$desc, 'qtd' => (float)$qtd, 'vun' => (float)$vun,
+                'unid' => (string)($it['unid'] ?? $it['un'] ?? 'UN'),
+                'ncm'  => (string)($it['ncm'] ?? ''), 'cfop' => (string)($it['cfop'] ?? '')
+            ];
+        }
     }
-  }
-  $itens = $_norm;
+    $itens = $_tmp;
 }
 
 if (!$itens) die('Sem itens.');
 
-/* Documento do destinatário (opcional) */
-$docInput = soDig($_POST['cpf'] ?? $_POST['cpf_cnpj'] ?? $_POST['documento'] ?? $payload['cpf'] ?? $payload['cpf_cliente'] ?? $payload['documento'] ?? '');
+/* Documento do destinatário */
+$docInput = soDig($_POST['cpf'] ?? $_POST['cpf_cnpj'] ?? $payload['cpf'] ?? $payload['cpf_cliente'] ?? '');
 $cpf  = strlen($docInput) === 11 ? $docInput : '';
 $cnpj = strlen($docInput) === 14 ? $docInput : '';
 
-// Fallback: se não veio documento na requisição, tenta o do cliente cadastrado ou da venda
 if (empty($cpf) && empty($cnpj) && !empty($vendaRow)) {
-  $regDoc = soDig($vendaRow['cliente_cpf'] ?? $vendaRow['cpf_cliente'] ?? $vendaRow['venda_cpf'] ?? '');
-  if (strlen($regDoc) === 11) $cpf = $regDoc;
-  elseif (strlen($regDoc) === 14) $cnpj = $regDoc;
+    $rDoc = soDig($vendaRow['cliente_cpf'] ?? $vendaRow['cpf_cliente'] ?? '');
+    if (strlen($rDoc) === 11) $cpf = $rDoc;
+    elseif (strlen($rDoc) === 14) $cnpj = $rDoc;
 }
 
+// Lógica de Nome: Apenas se cadastrado
+$nomeConsumidor = '';
+if (!empty($vendaRow['cliente_nome'])) {
+    $nomeConsumidor = $vendaRow['cliente_nome'];
+}
 
 /* ===== Certificado A1 ===== */
 $pfx = @file_get_contents(PFX_PATH);
 if ($pfx === false) die('Não encontrei o PFX em: '.e(PFX_PATH));
 try {
-  $cert = Certificate::readPfx($pfx, PFX_PASSWORD);
+    $cert = Certificate::readPfx($pfx, PFX_PASSWORD);
 } catch (Throwable $e) {
-  // Fallback: tenta com trim (caso o config.php não tenha pego ou hajam espaços fantasmas)
-  try {
-     $cert = Certificate::readPfx($pfx, trim(PFX_PASSWORD));
-  } catch (Throwable $e2) {
-     $msg = "Falha ao abrir certificado!\n";
-     $msg .= "Erro: " . $e->getMessage() . "\n";
-     $msg .= "Comprimento Senha: " . strlen(PFX_PASSWORD) . " caracteres\n";
-     $msg .= "Senha Hex: " . bin2hex(PFX_PASSWORD) . "\n";
-     $msg .= "ID Solicitado: " . (defined('NFCE_RESOLVED_ID') ? NFCE_RESOLVED_ID : 'não definido') . "\n";
-     $msg .= "Tabela de Origem: " . (defined('NFCE_TABLE_SOURCE') ? NFCE_TABLE_SOURCE : 'desconhecida') . "\n";
-     die('<pre>'.e($msg).'</pre>');
-  }
+    try { $cert = Certificate::readPfx($pfx, trim(PFX_PASSWORD)); }
+    catch (Throwable $e2) { die('Falha no certificado: '.$e->getMessage()); }
 }
 
-/* ===== Tools ===== */
 $tools = new Tools($configJson, $cert);
-$tools->model('65'); // NFC-e
+$tools->model('65');
 
-/* ===== CHAVE + Id ===== */
-$cUF    = pad(substr(preg_replace('/\D/', '', COD_UF), 0, 2), 2);
-$AAMM   = date('ym');
-$CNPJ   = pad(soDig(EMIT_CNPJ),14);
-$mod    = '65';
-$serie  = pad((string)NFC_SERIE,3);
-
-// nNF controlado no BD (integracao_nfce.ultimo_numero_nfce) — transacional
-$nNF = isset($_POST['nnf']) ? (int)$_POST['nnf'] : null;
-if ($nNF === null) {
-  // Carregar PDO se ainda não disponível
-  if (!isset($pdo) || !($pdo instanceof PDO)) {
-    $__found = false;
-    foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
-      if (is_file($__p)) { require_once $__p; $__found = true; break; }
-    }
-    if (!isset($pdo) || !($pdo instanceof PDO)) {
-      die('Não consegui carregar a conexão PDO para gerar o número da NFC-e.');
-    }
-  }
-  try {
-    $pdo->beginTransaction();
-    // trava linha da empresa
-    $st = $pdo->prepare("SELECT ultimo_numero_nfce FROM filiais WHERE id = :e FOR UPDATE");
-    $st->execute([':e' => NFCE_EMPRESA_ID]);
-    $row = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$row) { throw new RuntimeException('filiais não encontrado para empresa: '.NFCE_EMPRESA_ID); }
-    $proximo = (int)$row['ultimo_numero_nfce'] + 1;
-    $up = $pdo->prepare("UPDATE filiais SET ultimo_numero_nfce = :n WHERE id = :e");
-    $up->execute([':n'=>$proximo, ':e'=>NFCE_EMPRESA_ID]);
-    $pdo->commit();
-    $nNF = (int)$proximo;
-  } catch (Throwable $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
-    die('<pre>Falha ao gerar nNF do BD: '.htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8').'</pre>');
-  }
+/* ===== nNF transacional ===== */
+$nNF = null;
+if (isset($pdo) && $pdo instanceof PDO) {
+    try {
+        $pdo->beginTransaction();
+        $st = $pdo->prepare("SELECT ultimo_numero_nfce FROM integracao_nfce WHERE empresa_id = :e FOR UPDATE");
+        $st->execute([':e' => NFCE_EMPRESA_ID]);
+        $rN = $st->fetch(PDO::FETCH_ASSOC);
+        $nNF = $rN ? (int)$rN['ultimo_numero_nfce'] + 1 : 1;
+        $up = $pdo->prepare("UPDATE integracao_nfce SET ultimo_numero_nfce = :n WHERE empresa_id = :e");
+        $up->execute([':n'=>$nNF, ':e'=>NFCE_EMPRESA_ID]);
+        $pdo->commit();
+    } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); }
 }
-$nNF = (int)substr(str_pad((string)$nNF,9,'0',STR_PAD_LEFT), -9);
-$tpEmis = '1';
-$cNF    = pad((string)mt_rand(1,99999999),8);
+if (!$nNF) $nNF = mt_rand(1000, 999999);
 
-$base44 = $cUF.$AAMM.$CNPJ.$mod.$serie.pad($nNF,9).$tpEmis.$cNF;
+$cUF    = pad(COD_UF, 2);
+$AAMM   = date('ym');
+$CNPJem = pad(soDig(EMIT_CNPJ), 14);
+$serie  = pad((string)NFC_SERIE, 3);
+$nNFpad = pad($nNF, 9);
+$tpEmis = '1';
+$cNF    = pad((string)mt_rand(1, 99999999), 8);
+$base44 = $cUF.$AAMM.$CNPJem.'65'.$serie.$nNFpad.$tpEmis.$cNF;
 $cDV    = (string)mod11($base44);
 $chave  = $base44.$cDV;
 $IdNFe  = 'NFe'.$chave;
 
-/* ===== ide / emit / dest ===== */
-$ide = [
-  'cUF'=>$cUF,'cNF'=>$cNF,'natOp'=>'VENDA','mod'=>65,'serie'=>(int)$serie,'nNF'=>$nNF,
-  'dhEmi'=>date('c'),'tpNF'=>1,'idDest'=>1,'cMunFG'=>COD_MUN,'tpImp'=>4,'tpEmis'=>1,'cDV'=>(int)$cDV,
-  'tpAmb'=>(int)TP_AMB,'finNFe'=>1,'indFinal'=>1,'indPres'=>1,'procEmi'=>0,'verProc'=>'PDV-ACAI-1.0'
-];
-$enderEmit = [
-  'xLgr'=>EMIT_XLGR,'nro'=>EMIT_NRO,'xBairro'=>EMIT_XBAIRRO,'cMun'=>COD_MUN,'xMun'=>EMIT_XMUN,
-  'UF'=>EMIT_UF,'CEP'=>EMIT_CEP,'cPais'=>1058,'xPais'=>'Brasil'
-];
-if (defined('EMIT_FONE') && preg_match('/^\d{6,14}$/', (string)EMIT_FONE)) {
-  $enderEmit['fone'] = EMIT_FONE;
+/* ===== XML Montagem ===== */
+$destXML = '';
+if ($nomeConsumidor) {
+    $destXML = '<dest>'.($cpf?'<CPF>'.$cpf.'</CPF>':'<CNPJ>'.$cnpj.'</CNPJ>').'<xNome>'.e($nomeConsumidor).'</xNome><indIEDest>9</indIEDest></dest>';
+} elseif ($cpf || $cnpj) {
+    $destXML = '<dest>'.($cpf?'<CPF>'.$cpf.'</CPF>':'<CNPJ>'.$cnpj.'</CNPJ>').'<indIEDest>9</indIEDest></dest>';
 }
 
-$emit = [
-  'CNPJ'=>EMIT_CNPJ,'xNome'=>EMIT_XNOME,'xFant'=>EMIT_XFANT,'IE'=>EMIT_IE,'CRT'=>EMIT_CRT,
-  'enderEmit'=>$enderEmit
-];
-$dest = [];
-if ($cpf || $cnpj) {
-  if ($cpf)  $dest['CPF'] = $cpf;
-  if ($cnpj) $dest['CNPJ'] = $cnpj;
-  $dest['indIEDest'] = 9;
-  
-  // Identifica o nome do consumidor
-  $nomeConsumidor = '';
-  if (!empty($vendaRow['cliente_nome'])) {
-    // Somente clientes cadastrados (com CPF/CNPJ no banco) mostram o nome
-    $nomeConsumidor = $vendaRow['cliente_nome'];
-  }
-  
-  // SEFAZ exige xNome se dest for informado. 
-  // Se não é cadastrado ou não informou nome, usa o padrão.
-  if ($nomeConsumidor === '') {
-    $nomeConsumidor = 'CONSUMIDOR FINAL';
-  }
-
-  $dest['xNome'] = substr(e($nomeConsumidor), 0, 60);
-}
-
-/* ===== det dos itens ===== */
-$i=1; $vProd=0.00; $detXML='';
+$detXML = ''; $i=1; $vProd=0;
 foreach ($itens as $it) {
-  $xProd=e($it['desc']); $qCom=number_format((float)$it['qtd'],3,'.',''); $vUn=number_format((float)$it['vun'],2,'.','');
-  $vTot=number_format((float)$it['qtd']*(float)$it['vun'],2,'.','');
-  $ncm=!empty($it['ncm'])?e($it['ncm']):'21069090'; $cfop=!empty($it['cfop'])?e($it['cfop']):'5102';
-  $un=!empty($it['unid'])?e($it['unid']):'UN';
-  $detXML.='
-  <det nItem="'.$i.'">
-    <prod>
-      <cProd>'.$i.'</cProd><cEAN>SEM GTIN</cEAN><xProd>'.$xProd.'</xProd>
-      <NCM>'.$ncm.'</NCM><CFOP>'.$cfop.'</CFOP>
-      <uCom>'.$un.'</uCom><qCom>'.$qCom.'</qCom><vUnCom>'.$vUn.'</vUnCom><vProd>'.$vTot.'</vProd>
-      <cEANTrib>SEM GTIN</cEANTrib><uTrib>'.$un.'</uTrib><qTrib>'.$qCom.'</qTrib><vUnTrib>'.$vUn.'</vUnTrib>
-      <indTot>1</indTot>
-    </prod>
-    <imposto>
-      <ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS>
-      <PIS><PISNT><CST>07</CST></PISNT></PIS>
-      <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>
-    </imposto>
-  </det>';
-  $i++; $vProd += (float)$it['qtd']*(float)$it['vun'];
+    $vL = round($it['qtd'] * $it['vun'], 2);
+    $ncm = $it['ncm'] ?: '21069090';
+    $cfop = $it['cfop'] ?: '5102';
+    $detXML .= '<det nItem="'.$i.'"><prod><cProd>'.$i.'</cProd><cEAN>SEM GTIN</cEAN><xProd>'.e($it['desc']).'</xProd><NCM>'.$ncm.'</NCM><CFOP>'.$cfop.'</CFOP><uCom>'.e($it['unid']).'</uCom><qCom>'.number_format($it['qtd'],4,'.','').'</qCom><vUnCom>'.number_format($it['vun'],10,'.','').'</vUnCom><vProd>'.number_format($vL,2,'.','').'</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>'.e($it['unid']).'</uTrib><qTrib>'.number_format($it['qtd'],4,'.','').'</qTrib><vUnTrib>'.number_format($it['vun'],10,'.','').'</vUnTrib><indTot>1</indTot></prod><imposto><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISNT><CST>07</CST></PISNT></PIS><COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS></imposto></det>';
+    $vProd += $vL; $i++;
 }
+$vNF = number_format($vProd, 2, '.', '');
 
-/* ===== Totais / transp / pag / infAd ===== */
-$vProdFmt = number_format($vProd,2,'.','');
-$totXML   = '<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>'.$vProdFmt.'</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>'.$vProdFmt.'</vNF></ICMSTot></total>';
-$transpXML= '<transp><modFrete>9</modFrete></transp>';
+// Pagamento
+$tPag = mapFormaToTPag($vendaRow['forma_pagamento'] ?? '01');
+$vPag = number_format(max($vProd, (float)($vendaRow['valor_recebido'] ?? 0)), 2, '.', '');
+$vTroco = number_format(max(0, (float)$vPag - $vProd), 2, '.', '');
 
-// Pagamento dinâmico + troco (quando dinheiro)
-// ===== NOVO BLOCO =====
-$tPagCode   = '01';
-$vNFnum     = round((float)$vProd, 2); // Use o mesmo total já calculado para a NFC-e
-$valorRec   = 0.00;
-$trocoDb    = 0.00;
-
-// 1) Descobrir forma de pagamento e valores vindos da venda/payload
-if (!empty($vendaRow)) {
-  $tPagCode = mapFormaToTPag($vendaRow['forma_pagamento'] ?? '01');
-  $valorRec = isset($vendaRow['valor_recebido']) ? (float)$vendaRow['valor_recebido'] : 0.00;
-  $trocoDb  = isset($vendaRow['troco'])          ? (float)$vendaRow['troco']          : 0.00;
-} elseif (!empty($payload['pagamento'])) {
-  $tPagCode = mapFormaToTPag($payload['pagamento']['tPag'] ?? '01');
-  $valorRec = isset($payload['pagamento']['vPag'])   ? (float)$payload['pagamento']['vPag']   : 0.00;
-  $trocoDb  = isset($payload['pagamento']['vTroco']) ? (float)$payload['pagamento']['vTroco'] : 0.00;
-}
-
-// 2) PIX não integrado? Preferir tPag=20 (PIX estático)
-if ($tPagCode === '17') {
-  // se você não tiver cAut (endToEndId) ou integração TEF, trate como PIX estático
-  $temAut = !empty($payload['pagamento']['cAut']) || !empty($_POST['cAut']);
-  if (!$temAut) {
-    $tPagCode = '20'; // PIX – Estático (IT 2024.002)
-  }
-}
-
-// 3) Calcular vPag e vTroco conforme a regra da Sefaz
-$vPagVal   = 0.00;
-$vTrocoVal = 0.00;
-
-if ($tPagCode === '01') { // Dinheiro
-  // Se não veio valor recebido, reconstrói a partir do troco do banco
-  if ($valorRec <= 0 && $trocoDb > 0) {
-    $valorRec = $vNFnum + $trocoDb;
-  }
-  // vPag = quanto o cliente entregou; vTroco = vPag - vNF (se houver)
-  $vPagVal   = max($vNFnum, round($valorRec, 2));
-  $vTrocoVal = max(0.00, round($vPagVal - $vNFnum, 2));
-} else {
-  // Cartão/PIX/… normalmente não têm troco
-  $vPagVal   = ($valorRec > 0 ? round($valorRec, 2) : $vNFnum);
-  $vTrocoVal = 0.00;
-}
-
-// 4) Montar XML <pag> com <card> quando necessário
-$pagXML  = '<pag><detPag>';
-$pagXML .=   '<indPag>0</indPag>'; // à vista
-$pagXML .=   '<tPag>'.$tPagCode.'</tPag>';
-$pagXML .=   '<vPag>'.number_format($vPagVal, 2, '.', '').'</vPag>';
-
-// Se for Cartão de Crédito (03), Débito (04) ou PIX dinâmico (17), informar <card>
-if (in_array($tPagCode, ['03','04','17'], true)) {
-  // Por padrão considere NÃO integrado (tpIntegra=2) para não exigir CNPJ/cAut
-  $tpIntegra = 2;
-  $cAut = null;
-
-  // Se você capturar o NSU/autorização do cartão ou o endToEndId do PIX dinâmico, use tpIntegra=1 e informe cAut
-  if (!empty($payload['pagamento']['cAut']) || !empty($_POST['cAut'])) {
-    $tpIntegra = 1;
-    $cAut = htmlspecialchars((string)($_POST['cAut'] ?? $payload['pagamento']['cAut']), ENT_XML1|ENT_COMPAT, 'UTF-8');
-  }
-
-  $pagXML .= '<card><tpIntegra>'.$tpIntegra.'</tpIntegra>';
-  if ($tpIntegra === 1 && $cAut) {
-    $pagXML .= '<cAut>'.$cAut.'</cAut>';
-    // Opcional: se você tiver o CNPJ da credenciadora (adquirente/subadquirente), informe aqui:
-    // $pagXML .= '<CNPJ>XXXXXXXXXXXXXX</CNPJ>';
-    // Opcional: se souber a bandeira, informe <tBand> (01=Visa, 02=Mastercard, 03=Amex, 04=Sorocred, 99=Outros...)
-    // $pagXML .= '<tBand>99</tBand>';
-  }
-  $pagXML .= '</card>';
-}
-
-$pagXML .= '</detPag>';
-
-// vTroco só quando for dinheiro e existir troco
-if ($tPagCode === '01' && $vTrocoVal > 0) {
-  $pagXML .= '<vTroco>'.number_format($vTrocoVal, 2, '.', '').'</vTroco>';
-}
-
+$pagXML = '<pag><detPag><indPag>0</indPag><tPag>'.$tPag.'</tPag><vPag>'.$vPag.'</vPag></detPag>';
+if ((float)$vTroco > 0) $pagXML .= '<vTroco>'.$vTroco.'</vTroco>';
 $pagXML .= '</pag>';
-// ===== FIM DO NOVO BLOCO =====
 
-$infAd   = '<infAdic><infCpl>PDV Açaiteria</infCpl></infAdic>';
+$xml = '<?xml version="1.0" encoding="UTF-8"?><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="'.$IdNFe.'" versao="4.00"><ide><cUF>'.$cUF.'</cUF><cNF>'.$cNF.'</cNF><natOp>VENDA</natOp><mod>65</mod><serie>'.(int)NFC_SERIE.'</serie><nNF>'.$nNF.'</nNF><dhEmi>'.date('c').'</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>'.COD_MUN.'</cMunFG><tpImp>4</tpImp><tpEmis>1</tpEmis><cDV>'.$cDV.'</cDV><tpAmb>'.(int)TP_AMB.'</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>1</indPres><procEmi>0</procEmi><verProc>NFePHP</verProc></ide><emit><CNPJ>'.EMIT_CNPJ.'</CNPJ><xNome>'.e(EMIT_XNOME).'</xNome><xFant>'.e(EMIT_XFANT).'</xFant><enderEmit><xLgr>'.e(EMIT_XLGR).'</xLgr><nro>'.e(EMIT_NRO).'</nro><xBairro>'.e(EMIT_XBAIRRO).'</xBairro><cMun>'.COD_MUN.'</cMun><xMun>'.e(EMIT_XMUN).'</xMun><UF>'.EMIT_UF.'</UF><CEP>'.EMIT_CEP.'</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>'.EMIT_IE.'</IE><CRT>'.EMIT_CRT.'</CRT></emit>'.$destXML.$detXML.'<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>'.$vNF.'</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>'.$vNF.'</vNF></ICMSTot></total><transp><modFrete>9</modFrete></transp>'.$pagXML.'<infAdic><infCpl>NFC-e Gerada pelo Sistema</infCpl></infAdic></infNFe></NFe>';
 
-/* ===== MONTA SÓ A NFe (para assinar) ===== */
-$nfe = '<?xml version="1.0" encoding="UTF-8"?>'
-     . '<NFe xmlns="http://www.portalfiscal.inf.br/nfe">'
-     .   '<infNFe Id="'.$IdNFe.'" versao="4.00">'
-     .     '<ide>'
-     .       '<cUF>'.$ide['cUF'].'</cUF><cNF>'.$ide['cNF'].'</cNF><natOp>'.$ide['natOp'].'</natOp>'
-     .       '<mod>'.$ide['mod'].'</mod><serie>'.$ide['serie'].'</serie><nNF>'.$ide['nNF'].'</nNF>'
-     .       '<dhEmi>'.$ide['dhEmi'].'</dhEmi><tpNF>'.$ide['tpNF'].'</tpNF><idDest>'.$ide['idDest'].'</idDest>'
-     .       '<cMunFG>'.$ide['cMunFG'].'</cMunFG><tpImp>'.$ide['tpImp'].'</tpImp><tpEmis>'.$ide['tpEmis'].'</tpEmis>'
-     .       '<cDV>'.$ide['cDV'].'</cDV><tpAmb>'.$ide['tpAmb'].'</tpAmb><finNFe>'.$ide['finNFe'].'</finNFe>'
-     .       '<indFinal>'.$ide['indFinal'].'</indFinal><indPres>'.$ide['indPres'].'</indPres>'
-     .       '<procEmi>'.$ide['procEmi'].'</procEmi><verProc>'.$ide['verProc'].'</verProc>'
-     .     '</ide>'
-     .     '<emit>'
-     .       '<CNPJ>'.$emit['CNPJ'].'</CNPJ><xNome>'.$emit['xNome'].'</xNome><xFant>'.$emit['xFant'].'</xFant>'
-     .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais><fone>'.$emit['enderEmit']['fone'].'</fone></enderEmit>'
-     .       '<IE>'.$emit['IE'].'</IE><CRT>'.$emit['CRT'].'</CRT>'
-     .     '</emit>'
-      .      (!empty($dest)
-        ? ('<dest>'
-            . (isset($dest['CPF']) ? '<CPF>'.$dest['CPF'].'</CPF>' : '')
-            . (isset($dest['CNPJ']) ? '<CNPJ>'.$dest['CNPJ'].'</CNPJ>' : '')
-            . (isset($dest['xNome']) ? '<xNome>'.$dest['xNome'].'</xNome>' : '')
-            . '<indIEDest>'.$dest['indIEDest'].'</indIEDest>'
-          . '</dest>')
-        : '')
-     .     $detXML
-     .     $totXML
-     .     $transpXML
-     .     $pagXML
-     .     $infAd
-     .   '</infNFe>'
-     . '</NFe>';
-
-/* ===== Assina SOMENTE a NFe ===== */
-try { $nfeAss = $tools->signNFe($nfe); }
-catch (Throwable $e) { die('<pre>Falha ao assinar: '.$e->getMessage().'</pre>'); }
-
-/* ===== Envia — passa ARRAY de NFe assinadas ===== */
 try {
-  $respEnv = $tools->sefazEnviaLote([$nfeAss], '1', 1);
-} catch (Throwable $e) {
-  try { $respEnv = $tools->sefazEnviaLote([$nfeAss], '1', false, 1); }
-  catch (Throwable $e2) { die('<pre>Falha na autorização: '.$e->getMessage()."\n\n".$e2->getMessage()."</pre>"); }
-}
-
-$stdEnv = (new Standardize)->toStd($respEnv);
-
-/* ===== Trata retorno ===== */
-if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
-  if (!preg_match('~(<protNFe[^>]*>.*?</protNFe>)~s', $respEnv, $mProt)) {
-    die("Autorizado, mas não localizei protNFe no retorno.");
-  }
-  $proc = nfeproc($nfeAss, $mProt[1]);
-  $xmlPath = __DIR__ . '/procNFCe_'.$chave.'.xml';
-  file_put_contents($xmlPath, $proc);
-
-
-  // ===== Persistir retorno SEFAZ 104 em nfce_emitidas (antes do redirect) =====
-  try {
-    if (!isset($pdo) || !($pdo instanceof PDO)) {
-      $__found = false;
-      foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
-        if (is_file($__p)) { require_once $__p; $__found = true; break; }
-      }
-    }
-    if (isset($pdo) && ($pdo instanceof PDO)) {
-      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-      $cStat   = (string)($stdEnv->cStat ?? '');
-      $xMotivo = (string)($stdEnv->xMotivo ?? '');
-      $tpAmb   = (int)TP_AMB;
-      $serieI  = (int)NFC_SERIE;
-      $nnfI    = isset($nNF) ? (int)$nNF : 0;
-      $vendaId = isset($venda_id) ? (string)$venda_id : (isset($_GET['venda_id']) ? (string)$_GET['venda_id'] : null);
-      $chaveI  = isset($chave) ? (string)$chave : (isset($chaveI) ? (string)$chaveI : '');
-
-      $xmlProcContent = isset($proc) ? $proc : (isset($xmlProcPath) && is_file($xmlProcPath) ? @file_get_contents($xmlProcPath) : null);
-      $xmlEnvio       = isset($nfeAss) ? $nfeAss : (isset($nfe) ? $nfe : null);
-      $xmlRetorno     = isset($respEnv) ? $respEnv : (isset($ret) ? $ret : null);
-
-      // Extrai protocolo do protNFe capturado ($mProt)
-      $nProt = null;
-      if (isset($mProt[1]) && preg_match('~<nProt>([^<]+)</nProt>~', $mProt[1], $m2)) {
-        $nProt = $m2[1];
-      }
-
-      // Monta JSON de pagamento se existir código de tPag
-      $tpagJsonStr = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
-
-      // tenta identificar vNF
-      $vNFnum = null;
-      if (isset($proc) && preg_match('~<vNF>([0-9]+\.[0-9]{2})</vNF>~', $proc, $mV)) {
-        $vNFnum = $mV[1];
-      } elseif (isset($nfeAss) && preg_match('~<vNF>([0-9]+\.[0-9]{2})</vNF>~', $nfeAss, $mV)) {
-        $vNFnum = $mV[1];
-      }
-
-      $vTrocoVal = isset($vTrocoVal) ? $vTrocoVal : (isset($stdPag->vTroco) ? $stdPag->vTroco : null);
-
-      $st = $pdo->prepare("
-        INSERT INTO nfce_emitidas
-          (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem,
-           xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
-        VALUES
-          (:empresa_id, :venda_id, :ambiente, :serie, :numero, :chave, :protocolo, :status_sefaz, :mensagem,
-           :xml_nfeproc, :xml_envio, :xml_retorno, :valor_total, :valor_troco, :tpag_json)
-        ON DUPLICATE KEY UPDATE
-          protocolo    = VALUES(protocolo),
-          status_sefaz = VALUES(status_sefaz),
-          mensagem     = VALUES(mensagem),
-          xml_nfeproc  = VALUES(xml_nfeproc),
-          xml_envio    = VALUES(xml_envio),
-          xml_retorno  = VALUES(xml_retorno),
-          valor_total  = VALUES(valor_total),
-          valor_troco  = VALUES(valor_troco),
-          tpag_json    = VALUES(tpag_json),
-          created_at   = NOW()
-      ");
-
-      $st->execute([
-        ':empresa_id'   => defined('NFCE_EMPRESA_ID') ? constant('NFCE_EMPRESA_ID') : (defined('EMPRESA_ID') ? constant('EMPRESA_ID') : ''),
-        ':venda_id'     => $vendaId,
-        ':ambiente'     => $tpAmb,
-        ':serie'        => $serieI,
-        ':numero'       => $nnfI,
-        ':chave'        => $chaveI,
-        ':protocolo'    => $nProt,
-        ':status_sefaz' => $cStat,
-        ':mensagem'     => $xMotivo,
-        ':xml_nfeproc'  => $xmlProcContent,
-        ':xml_envio'    => $xmlEnvio,
-        ':xml_retorno'  => $xmlRetorno,
-        ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
-        ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
-        ':tpag_json'    => $tpagJsonStr
-      ]);
-    }
-  } catch (Throwable $e) {
-    error_log('Falha ao gravar nfce_emitidas (104): ' . $e->getMessage());
-  }
-   $empresaId = $_POST['empresa_id'] ?? ($_GET['id'] ?? '');
-  // ======= SEM AUTO-PRINT: só mostra link para abrir/imprimir =======
-  // ======= AGORA: redireciona direto para o DANFE =======
-  $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
-     . '&venda_id=' . urlencode((string)$vendaId)
-     . '&id=' . urlencode($empresaId);
-  // limpa qualquer saída anterior para poder enviar headers
-  while (ob_get_level() > 0) { ob_end_clean(); }
-  if (!headers_sent()) {
-    header('Location: ' . $danfeUrl);
-    exit;
-  }
-  // Fallback JS se headers já enviados
-  echo '<!doctype html><meta charset="utf-8">';
-  echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
-  exit;
-}
-
-if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 103 && !empty($stdEnv->infRec->nRec)) {
-  $nRec = (string)$stdEnv->infRec->nRec;
-  sleep(2);
-  $ret = $tools->sefazConsultaRecibo($nRec);
-  if (preg_match('~(<protNFe[^>]*>.*?</protNFe>)~s', $ret, $mProt)) {
-    $proc = nfeproc($nfeAss, $mProt[1]);
-    $xmlPath = __DIR__ . '/procNFCe_'.$chave.'.xml';
-    file_put_contents($xmlPath, $proc);
-
-    // ===== Persistir retorno SEFAZ no BD =====
-    try {
-      if (!isset($pdo) || !($pdo instanceof PDO)) {
-        $__found = false;
-        foreach ([ __DIR__ . '/../../assets/php/conexao.php',
-  __DIR__ . '/../../ERP/assets/php/conexao.php',
-  __DIR__ . '/../dashboard/php/conexao.php',
-  $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
-  $_SERVER['DOCUMENT_ROOT'] . '/ERP/assets/php/conexao.php',] as $__p) {
-          if (is_file($__p)) { require_once $__p; $__found = true; break; }
+    $xmlSigned = $tools->signNFe($xml);
+    $resp = $tools->sefazEnviaLote([$xmlSigned], mt_rand(1, 99999), 1);
+    $std = (new Standardize)->toStd($resp);
+    if ((int)($std->cStat ?? 0) === 104 || (int)($std->cStat ?? 0) === 100) {
+        if (preg_match('~(<protNFe[^>]*>.*?</protNFe>)~s', $resp, $m)) {
+            $procXml = nfeproc($xmlSigned, $m[1]);
+            file_put_contents(__DIR__ . '/procNFCe_'.$chave.'.xml', $procXml);
+            // Redir para DANFE
+            header('Location: danfe_nfce.php?chave='.$chave.'&venda_id='.$venda_id);
+            exit;
         }
-      }
-      if (isset($pdo) && ($pdo instanceof PDO)) {
-        $cStat   = (string)($stdEnv->cStat ?? '');
-        $xMotivo = (string)($stdEnv->xMotivo ?? '');
-        $tpAmb   = (string)TP_AMB;
-        $serieI  = (int)NFC_SERIE;
-        $nnfI    = (int)$nNF;
-        $vendaId = isset($venda_id) ? (string)$venda_id : (isset($_GET['venda_id']) ? (string)$_GET['venda_id'] : null);
-        $protXML = '';
-        $nProt   = null;
-        $dhRecb  = null;
-        $chaveI  = (string)$chave;
-        if (preg_match('~<protNFe[^>]*>(.*?)</protNFe>~s', $respEnv, $m)) { $protXML = $m[0]; }
-        if (preg_match('~<nProt>([^<]+)</nProt>~', $mProt[1], $m2)) { $nProt = $m2[1]; }
-        if (preg_match('~<dhRecbto>([^<]+)</dhRecbto>~', $mProt[1], $m3)) { $dhRecb = $m3[1]; }
-        $xmlProcPath = __DIR__ . '/procNFCe_' . $chaveI . '.xml';
-        // === Persistir em nfce_emitidas ===
-$xmlProcContent = isset($proc) ? $proc : ((isset($xmlProcPath) && is_file($xmlProcPath)) ? @file_get_contents($xmlProcPath) : null);
-$xmlEnvio       = isset($nfeAss) ? $nfeAss : (isset($nfe) ? $nfe : null);
-$xmlRetorno     = isset($ret) ? $ret : (isset($respEnv) ? $respEnv : null);
-$tpagJsonStr    = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
-
-$st = $pdo->prepare("INSERT INTO nfce_emitidas
-  (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem, xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
-  VALUES (:empresa_id, :venda_id, :ambiente, :serie, :numero, :chave, :protocolo, :status_sefaz, :mensagem, :xml_nfeproc, :xml_envio, :xml_retorno, :valor_total, :valor_troco, :tpag_json)
-  ON DUPLICATE KEY UPDATE
-    protocolo=VALUES(protocolo),
-    status_sefaz=VALUES(status_sefaz),
-    mensagem=VALUES(mensagem),
-    xml_nfeproc=VALUES(xml_nfeproc),
-    xml_envio=VALUES(xml_envio),
-    xml_retorno=VALUES(xml_retorno),
-    valor_total=VALUES(valor_total),
-    valor_troco=VALUES(valor_troco),
-    tpag_json=VALUES(tpag_json),
-    created_at=NOW()
-");
-$st->execute([
-  ':empresa_id'   => NFCE_EMPRESA_ID,
-  ':venda_id'     => $vendaId,
-  ':ambiente'     => (int)$tpAmb,
-  ':serie'        => $serieI,
-  ':numero'       => $nnfI,
-  ':chave'        => $chaveI,
-  ':protocolo'    => isset($nProt) ? $nProt : null,
-  ':status_sefaz' => (string)$cStat,
-  ':mensagem'     => (string)$xMotivo,
-  ':xml_nfeproc'  => $xmlProcContent,
-  ':xml_envio'    => $xmlEnvio,
-  ':xml_retorno'  => $xmlRetorno,
-  ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
-  ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
-  ':tpag_json'    => $tpagJsonStr
-]);
-}
-    } catch (Throwable $e) {
-      // Não bloquear o fluxo por erro de log
-      // error_log('Falha ao persistir retorno SEFAZ: '.$e->getMessage());
     }
-    
-    // ======= AGORA: redireciona direto para o DANFE =======
-    $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
-       . '&venda_id=' . urlencode((string)$vendaId);
-    while (ob_get_level() > 0) { ob_end_clean(); }
-    if (!headers_sent()) {
-      header('Location: ' . $danfeUrl);
-      exit;
-    }
-    echo '<!doctype html><meta charset="utf-8">';
-    echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
-    exit;
-}
-// === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
-try {
-  if (!isset($pdo) || !($pdo instanceof PDO)) {
-    foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
-      if (is_file($__p)) { require_once $__p; break; }
-    }
-  }
-  if (isset($pdo) && ($pdo instanceof PDO)) {
-    // garanta exceptions para capturar qualquer erro de SQL
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    $cStat   = (string)($stdEnv->cStat ?? '');
-    $xMotivo = (string)($stdEnv->xMotivo ?? '');
-    $tpAmb   = (int)TP_AMB;
-    $serieI  = (int)NFC_SERIE;
-    $nnfI    = isset($nNF) ? (int)$nNF : 0;
-    $vendaId = isset($venda_id) ? (string)$venda_id : (isset($_GET['venda_id']) ? (string)$_GET['venda_id'] : null);
-    $chaveI  = isset($chave) ? (string)$chave : (isset($chaveI) ? (string)$chaveI : '');
-
-    // === Persistir em nfce_emitidas ===
-$xmlProcContent = isset($proc) ? $proc : ((isset($xmlProcPath) && is_file($xmlProcPath)) ? @file_get_contents($xmlProcPath) : null);
-$xmlEnvio       = isset($nfeAss) ? $nfeAss : (isset($nfe) ? $nfe : null);
-$xmlRetorno     = isset($ret) ? $ret : (isset($respEnv) ? $respEnv : null);
-$tpagJsonStr    = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
-
-$st = $pdo->prepare("INSERT INTO nfce_emitidas
-  (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem, xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
-  VALUES (:empresa_id, :venda_id, :ambiente, :serie, :numero, :chave, :protocolo, :status_sefaz, :mensagem, :xml_nfeproc, :xml_envio, :xml_retorno, :valor_total, :valor_troco, :tpag_json)
-  ON DUPLICATE KEY UPDATE
-    protocolo=VALUES(protocolo),
-    status_sefaz=VALUES(status_sefaz),
-    mensagem=VALUES(mensagem),
-    xml_nfeproc=VALUES(xml_nfeproc),
-    xml_envio=VALUES(xml_envio),
-    xml_retorno=VALUES(xml_retorno),
-    valor_total=VALUES(valor_total),
-    valor_troco=VALUES(valor_troco),
-    tpag_json=VALUES(tpag_json),
-    created_at=NOW()
-");
-$st->execute([
-  ':empresa_id'   => NFCE_EMPRESA_ID,
-  ':venda_id'     => $vendaId,
-  ':ambiente'     => (int)$tpAmb,
-  ':serie'        => $serieI,
-  ':numero'       => $nnfI,
-  ':chave'        => $chaveI,
-  ':protocolo'    => isset($nProt) ? $nProt : null,
-  ':status_sefaz' => (string)$cStat,
-  ':mensagem'     => (string)$xMotivo,
-  ':xml_nfeproc'  => $xmlProcContent,
-  ':xml_envio'    => $xmlEnvio,
-  ':xml_retorno'  => $xmlRetorno,
-  ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
-  ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
-  ':tpag_json'    => $tpagJsonStr
-]);
-}
-} catch (Throwable $e) {
-  // habilite durante testes, depois pode comentar
-  error_log('Falha ao persistir retorno SEFAZ (rejeição): '.$e->getMessage());
-}
-
-  echo "<pre>Retorno não autorizado:\n".e($ret)."</pre>";
-  exit;
-}
-
-/* Retorno inesperado */
-echo "<pre>Retorno inesperado:\n".e($respEnv)."</pre>";?>
-<?php
-$__RETORNO_HTML__ = ob_get_clean();
-?>
+    echo "<pre>Erro SEFAZ:\n".print_r($std, true)."</pre>";
+} catch (Throwable $e) { echo "Erro: ".$e->getMessage(); }

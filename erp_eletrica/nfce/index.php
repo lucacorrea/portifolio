@@ -179,6 +179,7 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
 
   <form id="fEmit" class="card" method="post" action="emitir.php">
     <input type="hidden" name="itens" id="itens" value="<?= htmlspecialchars(json_encode($itens, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)) ?>">
+    <input type="hidden" name="venda_id" value="<?= (int)$vendaId ?>">
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
       <label for="cpf"><strong>CPF do consumidor (opcional):</strong></label>
       <input id="cpf" name="cpf" type="text" inputmode="numeric" pattern="\d*" placeholder="Somente dígitos" value="<?= htmlspecialchars($cpfConsumidor) ?>" style="padding:8px; min-width:220px;">
