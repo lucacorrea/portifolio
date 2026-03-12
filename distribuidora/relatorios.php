@@ -6,8 +6,11 @@ declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 // Helpers (csrf/flash/etc)
-$helpers = __DIR__ . '/assets/dados/relatorios/__helpers.php';
+$helpers = __DIR__ . '/assets/dados/relatorios/_helpers.php';
 if (is_file($helpers)) require_once $helpers;
+
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
 
 // Conexão PDO (precisa existir db():PDO)
 $con = __DIR__ . '/assets/conexao.php';
@@ -137,6 +140,12 @@ function paginate_meta(int $totalRows, int $page, int $per): array
 
 function table_exists(PDO $pdo, string $table): bool
 {
+  static $cache = [];
+
+  if (isset($cache[$table])) {
+    return $cache[$table];
+  }
+
   try {
     $st = $pdo->prepare("
       SELECT COUNT(*)
@@ -144,10 +153,223 @@ function table_exists(PDO $pdo, string $table): bool
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
     ");
     $st->execute([$table]);
-    return (int)$st->fetchColumn() > 0;
+    $cache[$table] = (int)$st->fetchColumn() > 0;
+    return $cache[$table];
   } catch (\Throwable $e) {
+    $cache[$table] = false;
     return false;
   }
+}
+
+function money_eq(float $a, float $b, float $eps = 0.02): bool
+{
+  return abs($a - $b) <= $eps;
+}
+
+function format_item_label(string $codigo, string $nome, int $qtd = 0): string
+{
+  $base = trim($codigo . ' - ' . $nome);
+  if ($base === '-' || $base === '') {
+    $base = $nome !== '' ? $nome : ($codigo !== '' ? $codigo : 'Item');
+  }
+  if ($qtd > 0) {
+    $base .= ' (' . $qtd . ')';
+  }
+  return $base;
+}
+
+function fetch_sale_items_by_sale_nos(PDO $pdo, array $saleNos): array
+{
+  $map = [];
+
+  if (!$saleNos || !table_exists($pdo, 'venda_itens')) {
+    return $map;
+  }
+
+  $ids = [];
+  foreach ($saleNos as $n) {
+    $n = (int)$n;
+    if ($n > 0) $ids[$n] = $n;
+  }
+
+  if (!$ids) return $map;
+
+  $vals = array_values($ids);
+  $in = implode(',', array_fill(0, count($vals), '?'));
+
+  $st = $pdo->prepare("
+    SELECT
+      venda_id,
+      produto_id,
+      codigo,
+      nome,
+      unidade,
+      qtd,
+      preco_unit,
+      subtotal
+    FROM venda_itens
+    WHERE venda_id IN ($in)
+    ORDER BY venda_id ASC, id ASC
+  ");
+  $st->execute($vals);
+
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  foreach ($rows as $r) {
+    $vendaId = (int)($r['venda_id'] ?? 0);
+    if ($vendaId <= 0) continue;
+
+    if (!isset($map[$vendaId])) $map[$vendaId] = [];
+
+    $map[$vendaId][] = [
+      'produto_id' => (int)($r['produto_id'] ?? 0),
+      'codigo'     => trim((string)($r['codigo'] ?? '')),
+      'nome'       => trim((string)($r['nome'] ?? '')),
+      'unidade'    => trim((string)($r['unidade'] ?? '')),
+      'qtd'        => (int)($r['qtd'] ?? 0),
+      'preco_unit' => (float)($r['preco_unit'] ?? 0),
+      'subtotal'   => (float)($r['subtotal'] ?? 0),
+    ];
+  }
+
+  return $map;
+}
+
+function resolve_partial_item_from_sale_rows(array $items, int $qty, float $amount): ?array
+{
+  if (!$items) return null;
+
+  if (count($items) === 1) {
+    return $items[0];
+  }
+
+  foreach ($items as $it) {
+    if ((int)$it['qtd'] === $qty && money_eq((float)$it['subtotal'], $amount)) {
+      return $it;
+    }
+  }
+
+  foreach ($items as $it) {
+    $qVendida = (int)$it['qtd'];
+    $precoUnit = (float)$it['preco_unit'];
+    if ($qty > 0 && $qVendida >= $qty && money_eq($precoUnit * $qty, $amount)) {
+      return $it;
+    }
+  }
+
+  $exactQty = [];
+  foreach ($items as $it) {
+    if ((int)$it['qtd'] === $qty) {
+      $exactQty[] = $it;
+    }
+  }
+  if (count($exactQty) === 1) {
+    return $exactQty[0];
+  }
+
+  $greaterQty = [];
+  foreach ($items as $it) {
+    if ((int)$it['qtd'] >= $qty && $qty > 0) {
+      $greaterQty[] = $it;
+    }
+  }
+  if (count($greaterQty) === 1) {
+    return $greaterQty[0];
+  }
+
+  $best = null;
+  $bestDiff = null;
+
+  foreach ($items as $it) {
+    $cand = ($qty > 0)
+      ? ((float)$it['preco_unit'] * $qty)
+      : (float)$it['subtotal'];
+
+    $diff = abs($cand - $amount);
+    if ($best === null || $diff < $bestDiff) {
+      $best = $it;
+      $bestDiff = $diff;
+    }
+  }
+
+  return $best ?: $items[0];
+}
+
+function fetch_items_map_for_devolucoes_report(PDO $pdo, array $rows): array
+{
+  $map = [];
+  if (!$rows) return $map;
+
+  $saleNos = [];
+  foreach ($rows as $r) {
+    $saleNo = (int)($r['venda_no'] ?? 0);
+    if ($saleNo > 0) $saleNos[$saleNo] = $saleNo;
+  }
+
+  $saleMap = fetch_sale_items_by_sale_nos($pdo, array_values($saleNos));
+
+  foreach ($rows as $r) {
+    $id     = (int)($r['id'] ?? 0);
+    $tipo   = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
+    $saleNo = (int)($r['venda_no'] ?? 0);
+
+    if ($tipo === 'PARCIAL') {
+      $resolved = resolve_partial_item_from_sale_rows(
+        $saleMap[$saleNo] ?? [],
+        (int)($r['qtd'] ?? 0),
+        (float)($r['valor'] ?? 0)
+      );
+
+      if ($resolved) {
+        $map[$id] = [
+          format_item_label(
+            trim((string)($resolved['codigo'] ?? '')),
+            trim((string)($resolved['nome'] ?? '')),
+            (int)($r['qtd'] ?? 0)
+          )
+        ];
+      } else {
+        $fallback = trim((string)($r['produto'] ?? ''));
+        if ($fallback !== '') {
+          if ((int)($r['qtd'] ?? 0) > 0) {
+            $fallback .= ' (' . (int)$r['qtd'] . ')';
+          }
+          $map[$id] = [$fallback];
+        } else {
+          $map[$id] = ['—'];
+        }
+      }
+    } else {
+      $items = [];
+      $saleItems = $saleMap[$saleNo] ?? [];
+
+      foreach ($saleItems as $it) {
+        $items[] = format_item_label(
+          trim((string)($it['codigo'] ?? '')),
+          trim((string)($it['nome'] ?? '')),
+          (int)($it['qtd'] ?? 0)
+        );
+      }
+
+      $map[$id] = $items ?: ['—'];
+    }
+  }
+
+  foreach ($rows as $r) {
+    $id = (int)($r['id'] ?? 0);
+    if (!isset($map[$id])) $map[$id] = ['—'];
+  }
+
+  return $map;
+}
+
+function join_items_for_report(array $items, int $max = 3): string
+{
+  if (!$items) return '—';
+  $show = array_slice($items, 0, $max);
+  $txt = implode(' | ', $show);
+  $extra = count($items) - count($show);
+  if ($extra > 0) $txt .= ' | +' . $extra . ' item(ns)';
+  return $txt;
 }
 
 /* =========================
@@ -555,15 +777,41 @@ function report_devolucoes(PDO $pdo, string $dtIni, string $dtFim, string $q, in
 
   $q = trim($q);
   if ($q !== '') {
-    $where[] = add_like_or([
-      "CAST(d.id AS CHAR)",
-      "CAST(d.venda_no AS CHAR)",
-      "d.cliente",
-      "d.tipo",
-      "d.produto",
-      "d.motivo",
-      "d.status"
-    ], $q, $params, 'qd');
+    $params[':qd1'] = like_q($q);
+    $params[':qd2'] = like_q($q);
+    $params[':qd3'] = like_q($q);
+    $params[':qd4'] = like_q($q);
+    $params[':qd5'] = like_q($q);
+    $params[':qd6'] = like_q($q);
+    $params[':qd7'] = like_q($q);
+    $params[':qd8'] = like_q($q);
+    $params[':qd9'] = like_q($q);
+    $params[':qd10'] = like_q($q);
+
+    $parts = [
+      "CAST(d.id AS CHAR) LIKE :qd1",
+      "CAST(d.venda_no AS CHAR) LIKE :qd2",
+      "d.cliente LIKE :qd3",
+      "d.tipo LIKE :qd4",
+      "d.motivo LIKE :qd5",
+      "d.status LIKE :qd6",
+    ];
+
+    if (table_exists($pdo, 'venda_itens')) {
+      $parts[] = "EXISTS (
+        SELECT 1
+        FROM venda_itens vi
+        WHERE vi.venda_id = d.venda_no
+          AND (
+            vi.codigo LIKE :qd7
+            OR vi.nome LIKE :qd8
+            OR CAST(vi.qtd AS CHAR) LIKE :qd9
+            OR COALESCE(vi.unidade,'') LIKE :qd10
+          )
+      )";
+    }
+
+    $where[] = '(' . implode(' OR ', $parts) . ')';
   }
 
   $whereSql = count($where) ? ("WHERE " . implode(" AND ", $where)) : "";
@@ -594,19 +842,22 @@ function report_devolucoes(PDO $pdo, string $dtIni, string $dtFim, string $q, in
   $st->execute();
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  $head = ["ID", "Data/Hora", "Venda", "Cliente", "Tipo", "Produto", "Qtd", "Motivo", "Status", "Valor"];
+  $itemsMap = fetch_items_map_for_devolucoes_report($pdo, $rows);
+
+  $head = ["ID", "Data/Hora", "Venda", "Cliente", "Tipo", "Itens / Produto", "Qtd", "Motivo", "Status", "Valor"];
   $body = [];
 
   foreach ($rows as $r) {
+    $id = (int)($r['id'] ?? 0);
     $cliente = trim((string)($r['cliente'] ?? ''));
     if ($cliente === '') $cliente = 'Consumidor Final';
 
     $valor = (float)($r['valor'] ?? 0);
-    $dtText = br_date((string)($r['data'] ?? '')) . ' ' . (string)($r['hora'] ?? '—');
+    $dtText = br_date((string)($r['data'] ?? '')) . ' ' . substr((string)($r['hora'] ?? '—'), 0, 5);
     $venda = ($r['venda_no'] !== null && (string)$r['venda_no'] !== '') ? ('#' . (string)$r['venda_no']) : '—';
 
-    $tipo = (string)($r['tipo'] ?? 'TOTAL');
-    $produto = ($tipo === 'PARCIAL') ? ((string)($r['produto'] ?? '—')) : '—';
+    $tipo = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
+    $itensProduto = join_items_for_report($itemsMap[$id] ?? []);
     $qtd = ($tipo === 'PARCIAL') ? ((string)($r['qtd'] ?? '—')) : '—';
 
     $body[] = [
@@ -615,7 +866,7 @@ function report_devolucoes(PDO $pdo, string $dtIni, string $dtFim, string $q, in
       $venda,
       $cliente,
       $tipo,
-      $produto,
+      $itensProduto,
       $qtd,
       (string)($r['motivo'] ?? '—'),
       (string)($r['status'] ?? '—'),
@@ -1001,6 +1252,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     } elseif ($tipo === 'DEVOLUCOES') {
       $params = [];
       $w = [];
+
       if ($dtIni !== '') {
         $w[] = "d.data >= :dtIni";
         $params[':dtIni'] = $dtIni;
@@ -1009,11 +1261,43 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
         $w[] = "d.data <= :dtFim";
         $params[':dtFim'] = $dtFim;
       }
-      $w[] = add_like_or(["CAST(d.venda_no AS CHAR)", "d.cliente", "d.motivo", "d.status"], $q, $params, 'sd');
+
+      $params[':sd1'] = like_q($q);
+      $params[':sd2'] = like_q($q);
+      $params[':sd3'] = like_q($q);
+      $params[':sd4'] = like_q($q);
+      $params[':sd5'] = like_q($q);
+      $params[':sd6'] = like_q($q);
+
+      $parts = [
+        "CAST(d.venda_no AS CHAR) LIKE :sd1",
+        "d.cliente LIKE :sd2",
+        "d.motivo LIKE :sd3",
+        "d.status LIKE :sd4"
+      ];
+
+      if (table_exists($pdo, 'venda_itens')) {
+        $parts[] = "EXISTS (
+          SELECT 1
+          FROM venda_itens vi
+          WHERE vi.venda_id = d.venda_no
+            AND (
+              vi.codigo LIKE :sd5
+              OR vi.nome LIKE :sd6
+            )
+        )";
+      }
+
+      $w[] = '(' . implode(' OR ', $parts) . ')';
 
       $sql = "
         SELECT
-          CONCAT('Devolução — Venda #', COALESCE(d.venda_no,0), ' — ', COALESCE(NULLIF(d.cliente,''),'Consumidor Final')) AS label,
+          CONCAT(
+            'Devolução — Venda #',
+            COALESCE(d.venda_no, 0),
+            ' — ',
+            COALESCE(NULLIF(d.cliente,''), 'Consumidor Final')
+          ) AS label,
           COALESCE(CAST(d.venda_no AS CHAR), CAST(d.id AS CHAR)) AS value
         FROM devolucoes d
         WHERE " . implode(" AND ", $w) . "
@@ -1705,7 +1989,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
                   </div>
                   <div class="quick" data-quick="DEVOLUCOES">
                     <div class="t">Devoluções</div>
-                    <div class="d">Onde ficam as vendas devolvidas.</div>
+                    <div class="d">Usa venda_no + venda_itens para identificar os produtos.</div>
                     <div class="tag"><i class="lni lni-package"></i> Pós-venda</div>
                   </div>
                 </div>

@@ -522,16 +522,26 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <section class="section">
             <div class="container-fluid">
+
                 <div class="title-wrapper pt-30">
                     <div class="row align-items-center">
-                        <div class="col-md-7">
+                        <div class="col-md-6">
                             <div class="title">
                                 <h2>Inventário</h2>
-                                <p class="text-sm text-gray mb-0">
-                                    Situação calculada por: <b>Soma = Estoque + Vendas + Saídas</b> e comparado com a <b>Contagem</b>.
-                                </p>
                             </div>
                         </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Estoque</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Inventário</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 

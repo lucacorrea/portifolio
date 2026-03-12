@@ -3,6 +3,9 @@
 declare(strict_types=1);
 session_start();
 
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
+
 require_once __DIR__ . '/assets/conexao.php';
 
 function e(string $s): string
@@ -422,18 +425,26 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
     <section class="section">
       <div class="container-fluid">
+
         <div class="title-wrapper pt-30">
           <div class="row align-items-center">
-            <div class="col-md-8">
+            <div class="col-md-6">
               <div class="title">
                 <h2>Fornecedores</h2>
               </div>
             </div>
-            <div class="col-md-4 text-md-end">
-              <button class="main-btn primary-btn btn-hover btn-compact" id="btnNovo" type="button" data-bs-toggle="modal" data-bs-target="#mdFornecedor">
-                <i class="lni lni-plus me-1"></i> Novo fornecedor
-              </button>
+
+            <div class="col-md-6">
+              <div class="breadcrumb-wrapper">
+                <nav aria-label="breadcrumb">
+                  <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#">Cadastros</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Fornecedores</li>
+                  </ol>
+                </nav>
+              </div>
             </div>
+
           </div>
         </div>
 

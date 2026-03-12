@@ -269,7 +269,18 @@ if (!function_exists('e')) {
         </header>
 
         <section class="section">
-            <div class="container-fluid p-4 mt-5">
+            <div class="container-fluid p-4">
+
+                <div class="title-wrapper pt-10">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="title">
+                                <h2>Suporte</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card-style">
                     <div class="head">
                         <h5>Canais de Suporte</h5>
