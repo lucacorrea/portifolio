@@ -144,9 +144,15 @@ $dest     = $dom->getElementsByTagNameNS($nfeNS, 'dest')->item(0);
 $dest_doc  = '';
 $dest_nome = '';
 if ($dest) {
-  $dCNPJ = $dest->getElementsByTagName('CNPJ')->item(0);
-  $dCPF  = $dest->getElementsByTagName('CPF')->item(0);
-  $dN    = $dest->getElementsByTagName('xNome')->item(0);
+  $dCNPJ = $dest->getElementsByTagNameNS($nfeNS, 'CNPJ')->item(0);
+  if (!$dCNPJ) $dCNPJ = $dest->getElementsByTagName('CNPJ')->item(0);
+  
+  $dCPF  = $dest->getElementsByTagNameNS($nfeNS, 'CPF')->item(0);
+  if (!$dCPF) $dCPF = $dest->getElementsByTagName('CPF')->item(0);
+  
+  $dN    = $dest->getElementsByTagNameNS($nfeNS, 'xNome')->item(0);
+  if (!$dN) $dN = $dest->getElementsByTagName('xNome')->item(0);
+  
   $dest_doc  = $dCNPJ ? 'CNPJ: ' . limpar($dCNPJ->nodeValue) : ($dCPF ? 'CPF: ' . limpar($dCPF->nodeValue) : '');
   $dest_nome = $dN ? limpar($dN->nodeValue) : '';
 }

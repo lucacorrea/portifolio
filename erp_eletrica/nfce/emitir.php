@@ -226,7 +226,7 @@ if ($itens) {
 if (!$itens) die('Sem itens.');
 
 /* Documento do destinatário (opcional) */
-$docInput = soDig($_POST['cpf'] ?? $payload['cpf'] ?? $payload['cpf_cliente'] ?? '');
+$docInput = soDig($_POST['cpf'] ?? $_POST['cpf_cnpj'] ?? $_POST['documento'] ?? $payload['cpf'] ?? $payload['cpf_cliente'] ?? $payload['documento'] ?? '');
 $cpf  = strlen($docInput) === 11 ? $docInput : '';
 $cnpj = strlen($docInput) === 14 ? $docInput : '';
 // Fallback: se não veio CPF/CNPJ da requisição e temos venda do BD
@@ -483,7 +483,8 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .     '</emit>'
       .      (!empty($dest)
         ? ('<dest>'
-            . (isset($dest['CPF']) ? '<CPF>'.$dest['CPF'].'</CPF>' : '<CNPJ>'.$dest['CNPJ'].'</CNPJ>')
+            . (isset($dest['CPF']) ? '<CPF>'.$dest['CPF'].'</CPF>' : '')
+            . (isset($dest['CNPJ']) ? '<CNPJ>'.$dest['CNPJ'].'</CNPJ>' : '')
             . (isset($dest['xNome']) ? '<xNome>'.$dest['xNome'].'</xNome>' : '')
             . '<indIEDest>'.$dest['indIEDest'].'</indIEDest>'
           . '</dest>')
