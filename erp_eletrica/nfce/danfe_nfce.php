@@ -141,6 +141,8 @@ $vTroco = $vTroco ? br($vTroco->nodeValue) : '0,00';
 
 /* ============================== Destinatário =========================== */
 $dest     = $dom->getElementsByTagNameNS($nfeNS, 'dest')->item(0);
+if (!$dest) $dest = $dom->getElementsByTagName('dest')->item(0);
+
 $dest_doc  = '';
 $dest_nome = '';
 if ($dest) {
