@@ -2,6 +2,7 @@
 /**
  * nfce/emitir.php — Emissor unificado e robusto
  * Baseado na lógica 100% funcional do sistema Açaidinhos.
+ * Adaptado para o banco de dados u784961086_pdv (ERP Elétrica).
  */
 ob_start();
 session_start();
@@ -11,7 +12,7 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
 
-// Carrega Configuração (Banco de Dados e constantes da Empresa)
+// Carrega Configuração (Banco de Dados e constantes da Empresa do banco u784961086_pdv)
 require_once __DIR__ . '/config.php';
 
 use NFePHP\Common\Certificate;
@@ -51,41 +52,44 @@ function mapFormaToTPag($forma): string {
 $venda_id = (int)($_REQUEST['venda_id'] ?? 0);
 $itensRaw = $_POST['itens'] ?? '[]';
 $itens    = json_decode((string)$itensRaw, true) ?: [];
-$vendaRow = null; // Initialize vendaRow
+$vendaRow = null; 
 
 if ($venda_id) {
-    // Busca dados no banco de Vendas (pdoSales)
     try {
-        // Se itens ainda não vieram via POST, busca do banco
+        // Se itens ainda não vieram via POST (ex: auto_emit), busca do banco u784961086_pdv
         if (empty($itens)) {
-            $st = $pdoSales->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, unidade, ncm, cfop 
-                                       FROM itens_venda 
-                                      WHERE venda_id = :v");
-            $st->execute([':v' => $venda_id]);
-            $rows = $st->fetchAll();
-            foreach ($rows as $r) {
+            $sti = $pdo->prepare("SELECT i.*, p.nome as produto_nome, p.unidade as p_unidade, p.ncm as p_ncm, p.origem as p_origem, p.cest as p_cest
+                                    FROM vendas_itens i 
+                                    JOIN produtos p ON i.produto_id = p.id 
+                                   WHERE i.venda_id = :id ORDER BY i.id");
+            $sti->execute([':id'=>$venda_id]);
+            while ($r = $sti->fetch()) {
                 $itens[] = [
-                    'desc' => (string)$r['produto_nome'],
-                    'qtd'  => (float)$r['quantidade'],
-                    'vun'  => (float)$r['preco_unitario'],
-                    'unid' => (string)($r['unidade'] ?? 'UN'),
-                    'ncm'  => (string)($r['ncm'] ?? '21069090'),
-                    'cfop' => (string)($r['cfop'] ?? '5102')
+                    'desc'   => (string)($r['produto_nome'] ?? $r['produto_id']),
+                    'qtd'    => (float)$r['quantidade'],
+                    'vun'    => (float)$r['preco_unitario'],
+                    'ncm'    => (string)($r['ncm'] ?: $r['p_ncm'] ?: '21069090'),
+                    'cfop'   => (string)($r['cfop'] ?: '5102'),
+                    'unid'   => (string)($r['unidade'] ?: $r['p_unidade'] ?: 'UN'),
+                    'origem' => (string)($r['origem'] ?: $r['p_origem'] ?: '0'),
+                    'cest'   => (string)($r['cest'] ?: $r['p_cest'] ?: ''),
                 ];
             }
         }
         
-        // Busca dados da venda
-        $stV = $pdoSales->prepare("SELECT v.*, c.cpf_cnpj AS cliente_cpf, c.nome AS cliente_nome 
-                                    FROM vendas v 
-                                    LEFT JOIN clientes c ON v.cliente_id = c.id 
-                                   WHERE v.id = :v LIMIT 1");
+        // Busca dados da venda no banco u784961086_pdv (Trata cliente avulso)
+        $stV = $pdo->prepare("SELECT v.*, 
+                                     IFNULL(c.cpf_cnpj, v.cpf_cliente) AS cliente_doc, 
+                                     IFNULL(c.nome, v.nome_cliente_avulso) AS cliente_nome 
+                                FROM vendas v 
+                                LEFT JOIN clientes c ON v.cliente_id = c.id 
+                               WHERE v.id = :v LIMIT 1");
         $stV->execute([':v' => $venda_id]);
         $vendaRow = $stV->fetch();
     } catch (Throwable $e) { /* silencioso */ }
 }
 
-if (!$itens) die('Sem itens. Verifique se a venda #'.$venda_id.' possui produtos cadastrados na tabela itens_venda.');
+if (!$itens) die('Sem itens. Verifique se a venda #'.$venda_id.' possui produtos cadastrados na tabela vendas_itens no banco u784961086_pdv.');
 
 // Normaliza itens (Garante campos mínimos)
 $_norm = [];
@@ -95,10 +99,11 @@ foreach ($itens as $it) {
     $v = (float)($it['vun'] ?? $it['preco_unitario'] ?? 0);
     if ($d !== '' && $q > 0) {
         $_norm[] = [
-            'desc' => $d, 'qtd' => $q, 'vun' => $v,
-            'unid' => (string)($it['unid'] ?? $it['unidade'] ?? 'UN'),
-            'ncm'  => (string)($it['ncm'] ?? '21069090'),
-            'cfop' => (string)($it['cfop'] ?? '5102')
+            'desc'  => $d, 'qtd' => $q, 'vun' => $v,
+            'unid'  => (string)($it['unid'] ?? $it['unidade'] ?? 'UN'),
+            'ncm'   => (string)($it['ncm'] ?? '21069090'),
+            'cfop'  => (string)($it['cfop'] ?? '5102'),
+            'origem'=> (string)($it['origem'] ?? '0')
         ];
     }
 }
@@ -110,11 +115,16 @@ $cpf = (strlen($docInput) === 11) ? $docInput : '';
 $cnpj = (strlen($docInput) === 14) ? $docInput : '';
 $nomeDest = null;
 
+// Se não veio CPF avulso via POST, tenta pegar da venda
 if (empty($cpf) && empty($cnpj) && $vendaRow) {
-    $rDoc = soDig($vendaRow['cliente_cpf'] ?? $vendaRow['cpf_cliente'] ?? '');
+    $rDoc = soDig($vendaRow['cliente_doc'] ?? '');
     if (strlen($rDoc) === 11) $cpf = $rDoc;
     elseif (strlen($rDoc) === 14) $cnpj = $rDoc;
-    if ($cpf || $cnpj) $nomeDest = $vendaRow['cliente_nome'] ?? null;
+}
+
+// Pega nome do destinatário se tiver documento
+if (($cpf || $cnpj) && $vendaRow) {
+    $nomeDest = $vendaRow['cliente_nome'] ?? null;
 }
 
 /* Certificado */
@@ -142,14 +152,20 @@ $toolsConfig = [
 $tools = new Tools(json_encode($toolsConfig), $cert);
 $tools->model('65');
 
-/* nNF transacional */
+/* nNF transacional - Atualizado para sefaz_config no banco u784961086_pdv */
 $nNF = null;
 try {
     $pdo->beginTransaction();
-    $st = $pdo->prepare("SELECT ultimo_numero_nfce FROM integracao_nfce WHERE empresa_id = :e FOR UPDATE");
-    $st->execute([':e' => NFCE_EMPRESA_ID]);
-    $nNF = (int)$st->fetchColumn() + 1;
-    $pdo->prepare("UPDATE integracao_nfce SET ultimo_numero_nfce = :n WHERE empresa_id = :e")->execute([':n'=>$nNF, ':e'=>NFCE_EMPRESA_ID]);
+    $st = $pdo->prepare("SELECT ultimo_numero_nfce FROM sefaz_config LIMIT 1 FOR UPDATE");
+    $st->execute();
+    $res = $st->fetch();
+    
+    if ($res !== false) {
+        $nNF = (int)$res['ultimo_numero_nfce'] + 1;
+        $pdo->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = :n")->execute([':n'=>$nNF]);
+    } else {
+        $nNF = mt_rand(100, 999999);
+    }
     $pdo->commit();
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
@@ -174,7 +190,7 @@ $detXML = ''; $i=1; $vProd=0;
 foreach ($itens as $it) {
     $vL = round($it['qtd'] * $it['vun'], 2);
     $vProd += $vL;
-    $detXML .= '<det nItem="'.$i.'"><prod><cProd>'.$i.'</cProd><cEAN>SEM GTIN</cEAN><xProd>'.e($it['desc']).'</xProd><NCM>'.$it['ncm'].'</NCM><CFOP>'.$it['cfop'].'</CFOP><uCom>'.e($it['unid']).'</uCom><qCom>'.number_format($it['qtd'],4,'.','').'</qCom><vUnCom>'.number_format($it['vun'],10,'.','').'</vUnCom><vProd>'.number_format($vL,2,'.','').'</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>'.e($it['unid']).'</uTrib><qTrib>'.number_format($it['qtd'],4,'.','').'</qTrib><vUnTrib>'.number_format($it['vun'],10,'.','').'</vUnTrib><indTot>1</indTot></prod><imposto><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISNT><CST>07</CST></PISNT></PIS><COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS></imposto></det>';
+    $detXML .= '<det nItem="'.$i.'"><prod><cProd>'.$i.'</cProd><cEAN>SEM GTIN</cEAN><xProd>'.e($it['desc']).'</xProd><NCM>'.$it['ncm'].'</NCM><CFOP>'.$it['cfop'].'</CFOP><uCom>'.e($it['unid']).'</uCom><qCom>'.number_format($it['qtd'],4,'.','').'</qCom><vUnCom>'.number_format($it['vun'],10,'.','').'</vUnCom><vProd>'.number_format($vL,2,'.','').'</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>'.e($it['unid']).'</uTrib><qTrib>'.number_format($it['qtd'],4,'.','').'</qTrib><vUnTrib>'.number_format($it['vun'],10,'.','').'</vUnTrib><indTot>1</indTot></prod><imposto><ICMS><ICMSSN102><orig>'.$it['origem'].'</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISNT><CST>07</CST></PISNT></PIS><COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS></imposto></det>';
     $i++;
 }
 
@@ -197,6 +213,11 @@ try {
         if (preg_match('~(<protNFe[^>]*>.*?</protNFe>)~s', $res, $m)) {
             $proc = nfeproc($sig, $m[1]);
             file_put_contents(__DIR__ . '/procNFCe_'.$chave.'.xml', $proc);
+            
+            // Atualiza status da venda no banco u784961086_pdv
+            $stUp = $pdo->prepare("UPDATE vendas SET chave_nfce = :ch, status_nfce = 'autorizada' WHERE id = :id");
+            $stUp->execute([':ch' => $chave, ':id' => $venda_id]);
+            
             while (ob_get_level()) ob_end_clean();
             header('Location: danfe_nfce.php?chave='.$chave.'&venda_id='.$venda_id.'&id='.NFCE_EMPRESA_ID);
             exit;
