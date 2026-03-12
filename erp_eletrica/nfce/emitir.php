@@ -188,7 +188,7 @@ if (isset($pdo) && $pdo instanceof PDO) {
     // Carrega dados agregados da venda (cpf_cliente, forma_pagamento, valores)
     $vendaRow = null;
     try {
-      $stV = $pdo->prepare("SELECT c.cpf_cnpj AS cpf_cliente, v.forma_pagamento, v.valor_total, v.valor_total AS valor_recebido, 0 AS troco
+      $stV = $pdo->prepare("SELECT c.cpf_cnpj AS cpf_cliente, c.nome AS cliente_nome, v.nome_cliente_avulso, v.forma_pagamento, v.valor_total, v.valor_total AS valor_recebido, 0 AS troco
                               FROM vendas v
                               LEFT JOIN clientes c ON v.cliente_id = c.id
                              WHERE v.id = :v
@@ -333,8 +333,25 @@ $emit = [
   'enderEmit'=>$enderEmit
 ];
 $dest = [];
-if ($cpf)  $dest = ['CPF'=>$cpf,'indIEDest'=>9];
-if ($cnpj) $dest = ['CNPJ'=>$cnpj,'indIEDest'=>9];
+if ($cpf || $cnpj) {
+  if ($cpf)  $dest['CPF'] = $cpf;
+  if ($cnpj) $dest['CNPJ'] = $cnpj;
+  $dest['indIEDest'] = 9;
+  
+  // Identifica o nome do consumidor
+  $nomeConsumidor = '';
+  if (!empty($vendaRow['cliente_nome'])) {
+    $nomeConsumidor = $vendaRow['cliente_nome'];
+  } elseif (!empty($vendaRow['nome_cliente_avulso'])) {
+    $nomeConsumidor = $vendaRow['nome_cliente_avulso'];
+  } elseif (isset($_POST['nome_cliente'])) {
+    $nomeConsumidor = $_POST['nome_cliente'];
+  }
+  
+  if ($nomeConsumidor !== '') {
+    $dest['xNome'] = substr(e($nomeConsumidor), 0, 60);
+  }
+}
 
 /* ===== det dos itens ===== */
 $i=1; $vProd=0.00; $detXML='';
@@ -470,8 +487,12 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais><fone>'.$emit['enderEmit']['fone'].'</fone></enderEmit>'
      .       '<IE>'.$emit['IE'].'</IE><CRT>'.$emit['CRT'].'</CRT>'
      .     '</emit>'
-     .      (!empty($dest)
-        ? ('<dest>'.(isset($dest['CPF'])?'<CPF>'.$dest['CPF'].'</CPF>':'<CNPJ>'.$dest['CNPJ'].'</CNPJ>').'<indIEDest>'.$dest['indIEDest'].'</indIEDest></dest>')
+      .      (!empty($dest)
+        ? ('<dest>'
+            . (isset($dest['CPF']) ? '<CPF>'.$dest['CPF'].'</CPF>' : '<CNPJ>'.$dest['CNPJ'].'</CNPJ>')
+            . (isset($dest['xNome']) ? '<xNome>'.$dest['xNome'].'</xNome>' : '')
+            . '<indIEDest>'.$dest['indIEDest'].'</indIEDest>'
+          . '</dest>')
         : '')
      .     $detXML
      .     $totXML
