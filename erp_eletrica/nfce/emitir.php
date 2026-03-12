@@ -214,9 +214,37 @@ try {
             $proc = nfeproc($sig, $m[1]);
             file_put_contents(__DIR__ . '/procNFCe_'.$chave.'.xml', $proc);
             
-            // Atualiza status da venda no banco u784961086_pdv
-            $stUp = $pdo->prepare("UPDATE vendas SET chave_nfce = :ch, status_nfce = 'autorizada' WHERE id = :id");
-            $stUp->execute([':ch' => $chave, ':id' => $venda_id]);
+            // Salva o retorno APENAS em nfce_emitidas (evita erro 500 se colunas sumirem da tabela vendas)
+            $stLog = $pdo->prepare("
+                UPDATE nfce_emitidas 
+                   SET status_sefaz = '100', 
+                       mensagem = 'Autorizado', 
+                       protocolo = :prot, 
+                       xml_nfeproc = :xml 
+                 WHERE chave = :chave
+            ");
+            
+            // Se não existir o registro (emissão manual sem pre-log), faz insert
+            $stIns = $pdo->prepare("
+                INSERT INTO nfce_emitidas (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem, xml_nfeproc)
+                VALUES (:emp, :venda, :amb, :serie, :num, :chave, :prot, '100', 'Autorizado', :xml)
+                ON DUPLICATE KEY UPDATE protocolo = VALUES(protocolo), xml_nfeproc = VALUES(xml_nfeproc), status_sefaz = '100'
+            ");
+            
+            $stIns->execute([
+                ':emp'  => NFCE_EMPRESA_ID,
+                ':venda'=> $venda_id,
+                ':amb'  => TP_AMB,
+                ':serie'=> NFC_SERIE,
+                ':num'  => $nNF,
+                ':chave'=> $chave,
+                ':prot' => $m[1] ? (preg_match('~<nProt>([^<]+)</nProt>~', $m[1], $mp) ? $mp[1] : null) : null,
+                ':xml'  => $proc
+            ]);
+            
+            // Opcional: Atualiza apenas o tipo_nota na vendas (esta coluna existe)
+            $stV = $pdo->prepare("UPDATE vendas SET tipo_nota = 'fiscal' WHERE id = :id");
+            $stV->execute([':id' => $venda_id]);
             
             while (ob_get_level()) ob_end_clean();
             header('Location: danfe_nfce.php?chave='.$chave.'&venda_id='.$venda_id.'&id='.NFCE_EMPRESA_ID);

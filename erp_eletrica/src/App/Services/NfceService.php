@@ -39,8 +39,7 @@ class NfceService extends BaseService {
         $config = [];
         foreach ($fields as $field) {
             // Priority: Filial (if it has the field populated differently from default/null)
-            // Note: some fields in erp_eletrica have slightly different names, handled in the controller save/load
-            $val = $filial[$field] ?? $global[$field] ?? null;
+            $val = (!empty($filial[$field])) ? $filial[$field] : ($global[$field] ?? null);
             $config[$field] = $val;
         }
 
@@ -97,7 +96,7 @@ class NfceService extends BaseService {
             $venda = $stV->fetch();
             if (!$venda) throw new Exception("Venda não encontrada: $vendaId");
 
-            $stI = $this->db->prepare("SELECT * FROM itens_venda WHERE venda_id = ?");
+            $stI = $this->db->prepare("SELECT * FROM vendas_itens WHERE venda_id = ?");
             $stI->execute([$vendaId]);
             $itens = $stI->fetchAll();
             if (empty($itens)) throw new Exception("Venda sem itens: $vendaId");

@@ -30,13 +30,14 @@ try {
     }
   }
 
-  // Atualiza a venda quando já sabemos tudo
+  // Atualiza a venda quando já sabemos tudo (Apenas colunas existentes)
   if ($vendaIdUrl > 0 && $chaveReq && strlen($chaveReq) === 44) {
-    $sql = "UPDATE vendas
-               SET chave_nfce = :ch, status_nfce = 'autorizada'
-             WHERE id = :id";
-    $st = $pdo->prepare($sql);
-    $st->execute([':ch' => $chaveReq, ':id' => $vendaIdUrl]);
+    try {
+      $stV = $pdo->prepare("UPDATE vendas SET tipo_nota = 'fiscal' WHERE id = :id");
+      $stV->execute([':id' => $vendaIdUrl]);
+    } catch (Throwable $ve) {
+      error_log('DANFE:update tipo_nota falhou: ' . $ve->getMessage());
+    }
   }
 } catch (Throwable $e) {
   error_log('DANFE:update venda falhou: ' . $e->getMessage());
