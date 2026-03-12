@@ -89,7 +89,7 @@ if ($venda_id) {
     } catch (Throwable $e) { /* silencioso */ }
 }
 
-if (!$itens) die('Sem itens. Verifique se a venda #'.$venda_id.' possui produtos cadastrados na tabela vendas_itens no banco u784961086_pdv.');
+if (!$itens) die('[V2-DEBUG] Sem itens. Verifique se a venda #'.$venda_id.' possui produtos cadastrados na tabela vendas_itens no banco u784961086_pdv.');
 
 // Normaliza itens (Garante campos mínimos)
 $_norm = [];
