@@ -334,16 +334,17 @@ if ($cpf || $cnpj) {
   // Identifica o nome do consumidor
   $nomeConsumidor = '';
   if (!empty($vendaRow['cliente_nome'])) {
+    // Somente clientes cadastrados (com CPF/CNPJ no banco) mostram o nome
     $nomeConsumidor = $vendaRow['cliente_nome'];
-  } elseif (!empty($vendaRow['nome_cliente_avulso'])) {
-    $nomeConsumidor = $vendaRow['nome_cliente_avulso'];
-  } elseif (isset($_POST['nome_cliente'])) {
-    $nomeConsumidor = $_POST['nome_cliente'];
   }
   
-  if ($nomeConsumidor !== '') {
-    $dest['xNome'] = substr(e($nomeConsumidor), 0, 60);
+  // SEFAZ exige xNome se dest for informado. 
+  // Se não é cadastrado ou não informou nome, usa o padrão.
+  if ($nomeConsumidor === '') {
+    $nomeConsumidor = 'CONSUMIDOR FINAL';
   }
+
+  $dest['xNome'] = substr(e($nomeConsumidor), 0, 60);
 }
 
 /* ===== det dos itens ===== */
