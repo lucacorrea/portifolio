@@ -737,13 +737,15 @@ async function importPreSale(code) {
             // If it's a walk-in name, we can just set the name for the record but not a DB ID
             selectedCustomerId = null;
             selectedCustomerName = pv.nome_cliente_avulso;
+            selectedCustomerCPF = pv.cliente_doc || null;
+            
             // UI Update for walk-in
             const customerInfo = document.getElementById('selectedCustomerInfo');
-            const customerNameDisplay = document.getElementById('selectedCustomerName');
-            const customerDocDisplay = document.getElementById('selectedCustomerDoc');
+            const customerNameDisplay = document.getElementById('customerNameDisplay'); // Fixed ID reference
+            const customerDocDisplay = document.getElementById('customerDocDisplay');   // Fixed ID reference
             if (customerInfo && customerNameDisplay) {
                 customerNameDisplay.innerText = pv.nome_cliente_avulso;
-                customerDocDisplay.innerText = 'Consumidor Avulso';
+                customerDocDisplay.innerText = selectedCustomerCPF || 'Consumidor Avulso';
                 customerInfo.classList.remove('d-none');
                 customerSearch.closest('.input-group').classList.add('d-none');
                 customerSearch.closest('div.mb-4').querySelector('label').classList.add('d-none');
