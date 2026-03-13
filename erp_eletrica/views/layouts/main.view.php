@@ -12,8 +12,28 @@
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="public/css/corporate.css?v=1.1">
-    <link rel="stylesheet" href="style.css?v=1.1">
+    <link rel="stylesheet" href="public/css/corporate.css?v=2.0">
+    <link rel="stylesheet" href="style.css?v=2.0">
+    
+    <style>
+        /* Force Dark Mode - Emergency Inlay */
+        :root {
+            --bs-body-bg: #020617 !important;
+            --bs-body-color: #f8fafc !important;
+        }
+        body { background-color: #020617 !important; color: #f8fafc !important; }
+        .main-wrapper, .erp-wrapper, .main-content { background-color: #020617 !important; }
+        .sidebar { background-color: #0f172a !important; }
+        .top-navbar { background-color: #020617 !important; border-bottom: 1px solid #334155 !important; }
+        .card, .stat-card { background-color: #0f172a !important; border-color: #334155 !important; color: #f8fafc !important; box-shadow: none !important; }
+        .bg-white { background-color: #0f172a !important; }
+        .text-dark { color: #f8fafc !important; }
+        .card-header { background-color: rgba(255,255,255,0.02) !important; border-bottom: 1px solid #334155 !important; }
+        .table { color: #f8fafc !important; }
+        .table-hover tbody tr:hover { background-color: rgba(255,255,255,0.02) !important; }
+        th, td { border-bottom-color: #334155 !important; }
+        .form-control, .form-select { background-color: #020617 !important; border-color: #334155 !important; color: #f8fafc !important; }
+    </style>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
