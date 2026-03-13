@@ -92,7 +92,8 @@ try {
       }
     }
   }
-} catch (Exception $e) {}
+} catch (Exception $e) {
+}
 
 /* ======================
    FUNÇÃO VALOR POR EXTENSO
@@ -308,6 +309,7 @@ $vars = [
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -321,7 +323,11 @@ $vars = [
       --cor-fundo: #f7fafc;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: "Times New Roman", Times, serif;
@@ -361,7 +367,9 @@ $vars = [
       box-shadow: 0 2px 6px rgba(26, 54, 93, 0.3);
     }
 
-    .btn-imprimir:hover { background: #2c5282; }
+    .btn-imprimir:hover {
+      background: #2c5282;
+    }
 
     .btn-fechar {
       background: #fff;
@@ -369,14 +377,17 @@ $vars = [
       border: 1px solid var(--cor-borda);
     }
 
-    .btn svg { width: 14px; height: 14px; }
+    .btn svg {
+      width: 14px;
+      height: 14px;
+    }
 
     .documento-container {
       width: 210mm;
       min-height: 297mm;
       margin: 0 auto;
       background: #fff;
-      box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
     }
 
     .documento {
@@ -388,24 +399,73 @@ $vars = [
 
     /* CABEÇALHO */
     .cabecalho {
-      text-align: center;
-      padding-bottom: 3px;
-      margin-bottom: 2px;
-      border-bottom: 2px double var(--cor-primaria);
+      margin-bottom: 12px;
     }
 
-    .logos {
-      display: flex;
-      justify-content: space-between;
+    .cabecalho-grid {
+      display: grid;
+      grid-template-columns: 110px 1fr 110px;
       align-items: center;
-      margin-bottom: 2px;
+      gap: 12px;
     }
 
-    .logos img {
-      max-height: 55px;
-      max-width: 130px;
-      object-fit: contain;
+    .logo-box {
+      width: 110px;
+      height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 12px;
+      padding: 8px;
     }
+
+    .logo-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .cabecalho-texto {
+      text-align: center;
+    }
+
+    .l1 {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .l2 {
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    .l3 {
+      font-size: 14px;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    .l4 {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .titulo {
+      text-align: center;
+      margin: 12px 0 8px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .subtitulo {
+      text-align: center;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
 
     .titulo-prefeitura {
       font-size: 12pt;
@@ -507,14 +567,18 @@ $vars = [
       border: 1px solid var(--cor-primaria);
     }
 
-    table th:last-child { text-align: right; }
+    table th:last-child {
+      text-align: right;
+    }
 
     table td {
       padding: 7px 12px;
       border: 1px solid var(--cor-borda);
     }
 
-    table tr:nth-child(even) td { background: var(--cor-fundo); }
+    table tr:nth-child(even) td {
+      background: var(--cor-fundo);
+    }
 
     table td:last-child {
       text-align: right;
@@ -577,7 +641,9 @@ $vars = [
       margin-bottom: 6px;
     }
 
-    .conclusao-box p:last-child { margin-bottom: 0; }
+    .conclusao-box p:last-child {
+      margin-bottom: 0;
+    }
 
     /* RODAPÉ */
     .rodape {
@@ -596,7 +662,7 @@ $vars = [
       text-align: center;
       width: 250px;
       margin: 0 auto;
-     
+
     }
 
     .assinatura-linha {
@@ -606,7 +672,7 @@ $vars = [
     }
 
     .assinatura-nome {
-      font-size: 10pt;
+      font-size: 8pt;
       font-weight: bold;
     }
 
@@ -624,7 +690,9 @@ $vars = [
         print-color-adjust: exact;
       }
 
-      .acoes { display: none !important; }
+      .acoes {
+        display: none !important;
+      }
 
       .documento-container {
         box-shadow: none;
@@ -650,6 +718,7 @@ $vars = [
     }
   </style>
 </head>
+
 <body>
 
   <div class="acoes">
@@ -671,22 +740,29 @@ $vars = [
     <div class="documento">
 
       <!-- CABEÇALHO -->
-      <header class="cabecalho">
-        <?php if ($config['logotipo_prefeitura'] || $config['logotipo_feira']): ?>
-          <div class="logos">
-            <div><?php if ($config['logotipo_prefeitura']): ?><img src="<?= h($config['logotipo_prefeitura']) ?>" alt="Brasão"><?php endif; ?></div>
-            <div><?php if ($config['logotipo_feira']): ?><img src="<?= h($config['logotipo_feira']) ?>" alt="Logo Feira"><?php endif; ?></div>
+      <!-- CABEÇALHO -->
+      <div class="cabecalho">
+        <div class="cabecalho-grid">
+
+          <div class="logo-box">
+            <img src="../../../images/prefeitura.png" alt="Logo da Prefeitura">
           </div>
-        <?php endif; ?>
-        <div class="titulo-prefeitura">Prefeitura Municipal de <?= h($config['municipio']) ?> – <?= h($config['estado']) ?></div>
-        <?php if ($config['secretaria']): ?>
-          <div class="titulo-secretaria"><?= h($config['secretaria']) ?></div>
-        <?php endif; ?>
-        <div class="titulo-relatorio">Relatório da <?= h($config['titulo_feira']) ?></div>
-        <?php if ($config['subtitulo_feira']): ?>
-          <div class="subtitulo-relatorio"><?= h($config['subtitulo_feira']) ?></div>
-        <?php endif; ?>
-      </header>
+
+          <div class="cabecalho-texto">
+            <div class="l1">ESTADO DO AMAZONAS</div>
+            <div class="l2">PREFEITURA MUNICIPAL DE COARI</div>
+            <div class="l3">SECRETARIA MUNICIPAL DE DES. RURAL E ECONOMICO</div>
+            <div class="l3">SECRETARIA ADJUNTA DE FEIRAS E MERCADO</div>
+            <div class="l4">Rua Independência, S/N – Bairro Centro – Coari – AM – CEP: 69460-000</div>
+          </div>
+
+          <div class="logo-box">
+           
+          </div>
+
+        </div>
+      </div>
+
 
       <!-- CONTEÚDO -->
       <main class="conteudo">
@@ -776,4 +852,5 @@ $vars = [
   </div>
 
 </body>
+
 </html>

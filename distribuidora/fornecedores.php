@@ -13,6 +13,47 @@ function e(string $s): string
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function build_url(array $overrides = []): string
+{
+  $params = $_GET;
+  unset($params['export']);
+
+  foreach ($overrides as $k => $v) {
+    if ($v === null || $v === '') {
+      unset($params[$k]);
+    } else {
+      $params[$k] = (string)$v;
+    }
+  }
+
+  $qs = http_build_query($params);
+  return 'fornecedores.php' . ($qs ? ('?' . $qs) : '');
+}
+
+function fmt_text(?string $v): string
+{
+  $v = trim((string)$v);
+  return $v !== '' ? $v : '—';
+}
+
+function fmt_loc(?string $cidade, ?string $uf): string
+{
+  $cidade = trim((string)$cidade);
+  $uf = trim((string)$uf);
+  return ($cidade || $uf) ? ($cidade . ($uf ? ' / ' . $uf : '')) : '—';
+}
+
+function badge_status_html(string $status): string
+{
+  $st = strtoupper(trim($status)) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+
+  if ($st === 'ATIVO') {
+    return '<span class="badge-soft badge-ok">ATIVO</span>';
+  }
+
+  return '<span class="badge-soft badge-off">INATIVO</span>';
+}
+
 // CSRF
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -23,36 +64,173 @@ $csrf = $_SESSION['csrf_token'];
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 
-// Filtros server-side (opcional)
+// Filtros
 $q = trim((string)($_GET['q'] ?? ''));
 $status = strtoupper(trim((string)($_GET['status'] ?? '')));
 $status = ($status === 'ATIVO' || $status === 'INATIVO') ? $status : '';
 
-// Buscar no banco
+$page = (int)($_GET['page'] ?? 1);
+if ($page < 1) $page = 1;
+
+$PER_PAGE = 10;
+
 $pdo = db();
 
 $where = [];
 $params = [];
 
 if ($status !== '') {
-  $where[] = "status = :status";
+  $where[] = "f.status = :status";
   $params[':status'] = $status;
 }
 
 if ($q !== '') {
-  $where[] = "(nome LIKE :q OR doc LIKE :q OR tel LIKE :q OR email LIKE :q OR endereco LIKE :q OR cidade LIKE :q OR uf LIKE :q OR contato LIKE :q)";
+  $where[] = "(
+    f.nome LIKE :q
+    OR f.doc LIKE :q
+    OR f.tel LIKE :q
+    OR f.email LIKE :q
+    OR f.endereco LIKE :q
+    OR f.cidade LIKE :q
+    OR f.uf LIKE :q
+    OR f.contato LIKE :q
+    OR f.obs LIKE :q
+  )";
   $params[':q'] = '%' . $q . '%';
 }
 
-$sql = "SELECT id, nome, status, doc, tel, email, endereco, cidade, uf, contato, obs
-        FROM fornecedores
-        " . ($where ? "WHERE " . implode(" AND ", $where) : "") . "
-        ORDER BY id DESC
-        LIMIT 2000";
+$whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+/* =========================
+   EXPORTAR EXCEL
+========================= */
+if (isset($_GET['export']) && $_GET['export'] === 'excel') {
+  $sqlExcel = "
+    SELECT
+      f.id, f.nome, f.status, f.doc, f.tel, f.email,
+      f.endereco, f.cidade, f.uf, f.contato, f.obs
+    FROM fornecedores f
+    $whereSql
+    ORDER BY f.id DESC
+  ";
+  $stExcel = $pdo->prepare($sqlExcel);
+  foreach ($params as $k => $v) {
+    $stExcel->bindValue($k, $v, PDO::PARAM_STR);
+  }
+  $stExcel->execute();
+  $excelRows = $stExcel->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $filename = 'fornecedores_' . date('Y-m-d_H-i-s') . '.xls';
+
+  header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+  header('Content-Disposition: attachment; filename="' . $filename . '"');
+  header('Cache-Control: max-age=0');
+
+  $statusLabel = $status !== '' ? $status : 'Todos';
+  $buscaLabel = $q !== '' ? $q : '—';
+  $geradoEm = date('d/m/Y H:i:s');
+
+  echo "\xEF\xBB\xBF";
+  ?>
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; width: 100%; }
+      td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; white-space: nowrap; }
+      th { background: #f2f2f2; font-weight: bold; text-align: center; }
+      .title { font-size: 18px; font-weight: bold; text-align: center; background: #ffffff; }
+      .sub { text-align: center; font-weight: bold; }
+      .left { text-align: left; }
+      .center { text-align: center; }
+    </style>
+  </head>
+  <body>
+    <table>
+      <tr>
+        <td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - FORNECEDORES</td>
+      </tr>
+      <tr>
+        <td class="sub" colspan="8">Gerado em: <?= e($geradoEm) ?></td>
+      </tr>
+      <tr>
+        <td class="sub" colspan="8">Status: <?= e($statusLabel) ?> | Busca: <?= e($buscaLabel) ?></td>
+      </tr>
+      <tr>
+        <th>ID</th>
+        <th>Fornecedor</th>
+        <th>Documento</th>
+        <th>Telefone</th>
+        <th>E-mail</th>
+        <th>Cidade/UF</th>
+        <th>Contato</th>
+        <th>Status</th>
+      </tr>
+
+      <?php if (!$excelRows): ?>
+        <tr>
+          <td colspan="8" class="center">Nenhum fornecedor encontrado.</td>
+        </tr>
+      <?php else: ?>
+        <?php foreach ($excelRows as $r): ?>
+          <tr>
+            <td class="center"><?= (int)$r['id'] ?></td>
+            <td class="left"><?= e((string)$r['nome']) ?></td>
+            <td class="left"><?= e(fmt_text((string)($r['doc'] ?? ''))) ?></td>
+            <td class="left"><?= e(fmt_text((string)($r['tel'] ?? ''))) ?></td>
+            <td class="left"><?= e(fmt_text((string)($r['email'] ?? ''))) ?></td>
+            <td class="left"><?= e(fmt_loc((string)($r['cidade'] ?? ''), (string)($r['uf'] ?? ''))) ?></td>
+            <td class="left"><?= e(fmt_text((string)($r['contato'] ?? ''))) ?></td>
+            <td class="center"><?= e(strtoupper((string)($r['status'] ?? 'ATIVO')) ?: 'ATIVO') ?></td>
+          </tr>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </table>
+  </body>
+  </html>
+  <?php
+  exit;
+}
+
+/* =========================
+   CONTAGEM
+========================= */
+$sqlCount = "SELECT COUNT(*) FROM fornecedores f $whereSql";
+$stCount = $pdo->prepare($sqlCount);
+foreach ($params as $k => $v) {
+  $stCount->bindValue($k, $v, PDO::PARAM_STR);
+}
+$stCount->execute();
+$totalRows = (int)$stCount->fetchColumn();
+
+$pages = max(1, (int)ceil($totalRows / $PER_PAGE));
+if ($page > $pages) $page = $pages;
+
+$offset = ($page - 1) * $PER_PAGE;
+
+/* =========================
+   LISTAGEM PAGINADA
+========================= */
+$sql = "
+  SELECT
+    f.id, f.nome, f.status, f.doc, f.tel, f.email,
+    f.endereco, f.cidade, f.uf, f.contato, f.obs
+  FROM fornecedores f
+  $whereSql
+  ORDER BY f.id DESC
+  LIMIT :lim OFFSET :off
+";
 
 $st = $pdo->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll(PDO::FETCH_ASSOC);
+foreach ($params as $k => $v) {
+  $st->bindValue($k, $v, PDO::PARAM_STR);
+}
+$st->bindValue(':lim', $PER_PAGE, PDO::PARAM_INT);
+$st->bindValue(':off', $offset, PDO::PARAM_INT);
+$st->execute();
+$rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+$currentCount = count($rows);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -65,7 +243,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
   <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
   <title>Painel da Distribuidora | Fornecedores</title>
 
-  <!-- ========== CSS ========= -->
   <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
@@ -107,15 +284,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     .main-btn.btn-compact i {
       font-size: 14px;
       vertical-align: -1px;
-    }
-
-    .icon-btn {
-      height: 34px !important;
-      width: 42px !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
     }
 
     .form-control.compact,
@@ -178,6 +346,9 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       font-size: 12px;
       font-weight: 900;
       color: #0f172a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .badge-ok {
@@ -215,7 +386,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       border-top: 1px solid rgba(148, 163, 184, .22);
     }
 
-    /* Flash auto-hide */
     .flash-wrap {
       margin-top: 16px;
     }
@@ -228,6 +398,57 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       opacity: 0;
       transform: translateY(-6px);
       pointer-events: none;
+    }
+
+    .table-footer-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .pager-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .page-btn,
+    .page-btn-link {
+      width: 42px;
+      height: 42px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none !important;
+      transition: .2s ease;
+    }
+
+    .page-btn-link:hover {
+      background: #eef2ff;
+      color: #1e40af;
+      border-color: #c7d2fe;
+    }
+
+    .page-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .page-info {
+      font-weight: 900;
+      color: #475569;
+      min-width: 90px;
+      text-align: center;
+      font-size: 12px;
     }
 
     .logout-btn {
@@ -275,6 +496,15 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       #tbFor {
         min-width: 900px;
       }
+
+      .table-footer-nav {
+        justify-content: center;
+      }
+
+      #infoCount {
+        text-align: center;
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -284,7 +514,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     <div class="spinner"></div>
   </div>
 
-  <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="brand-vertical">
@@ -296,27 +525,21 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       <ul>
         <li class="nav-item">
           <a href="dashboard.php">
-            <span class="icon">
-              <i class="lni lni-dashboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-dashboard"></i></span>
             <span class="text">Dashboard</span>
           </a>
         </li>
 
         <li class="nav-item">
           <a href="vendas.php">
-            <span class="icon">
-              <i class="lni lni-cart"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cart"></i></span>
             <span class="text">Vendas</span>
           </a>
         </li>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-layers"></i>
-            </span>
+            <span class="icon"><i class="lni lni-layers"></i></span>
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
@@ -328,9 +551,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-package"></i>
-            </span>
+            <span class="icon"><i class="lni lni-package"></i></span>
             <span class="text">Estoque</span>
           </a>
           <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -344,9 +565,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-users"></i>
-            </span>
+            <span class="icon"><i class="lni lni-users"></i></span>
             <span class="text">Cadastros</span>
           </a>
           <ul id="ddmenu_cadastros" class="collapse dropdown-nav show">
@@ -358,22 +577,16 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <li class="nav-item">
           <a href="relatorios.php">
-            <span class="icon">
-              <i class="lni lni-clipboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-clipboard"></i></span>
             <span class="text">Relatórios</span>
           </a>
         </li>
 
-        <span class="divider">
-          <hr />
-        </span>
+        <span class="divider"><hr /></span>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-cog"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cog"></i></span>
             <span class="text">Configurações</span>
           </a>
           <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -384,9 +597,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <li class="nav-item">
           <a href="suporte.php">
-            <span class="icon">
-              <i class="lni lni-whatsapp"></i>
-            </span>
+            <span class="icon"><i class="lni lni-whatsapp"></i></span>
             <span class="text">Suporte</span>
           </a>
         </li>
@@ -397,7 +608,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
   <div class="overlay"></div>
 
   <main class="main-wrapper">
-    <!-- Header -->
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -444,7 +654,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                 </nav>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -459,28 +668,31 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
         <div class="cardx mb-30 mt-3">
           <div class="head">
             <div class="d-flex align-items-center gap-2 flex-wrap">
-              <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-users me-1"></i> Lista</div>
-              <span class="badge-soft" id="countBadge"><?= count($rows) ?> fornecedores</span>
+              <div style="font-weight:1000;color:#0f172a;">
+                <i class="lni lni-users me-1"></i> Lista
+              </div>
+              <span class="badge-soft" id="countBadge"><?= $totalRows ?> fornecedor(es)</span>
             </div>
 
             <div class="d-flex gap-2 flex-wrap align-items-center">
+              <button
+                class="main-btn primary-btn btn-hover btn-compact"
+                id="btnNovo"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#mdFornecedor">
+                <i class="lni lni-plus me-1"></i> Novo fornecedor
+              </button>
+
               <select class="form-select compact" id="fStatus" style="min-width: 160px;">
                 <option value="" <?= $status === '' ? 'selected' : '' ?>>Status: Todos</option>
                 <option value="ATIVO" <?= $status === 'ATIVO' ? 'selected' : '' ?>>Ativo</option>
                 <option value="INATIVO" <?= $status === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
               </select>
 
-              <a class="main-btn light-btn btn-hover btn-compact" href="assets/dados/fornecedores/exportar.php">
-                <i class="lni lni-download me-1"></i> Exportar (JSON)
+              <a class="main-btn light-btn btn-hover btn-compact" href="<?= e(build_url(['export' => 'excel', 'page' => 1])) ?>">
+                <i class="lni lni-download me-1"></i> Exportar Excel
               </a>
-
-              <form action="assets/dados/fornecedores/importar.php" method="post" enctype="multipart/form-data" style="margin:0;">
-                <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-                <label class="main-btn light-btn btn-hover btn-compact" style="margin:0; cursor:pointer;">
-                  <i class="lni lni-upload me-1"></i> Importar
-                  <input type="file" name="arquivo" accept="application/json" hidden onchange="this.form.submit();" />
-                </label>
-              </form>
 
               <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
                 <i class="lni lni-eraser me-1"></i> Limpar
@@ -499,7 +711,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <div class="table-responsive">
-              <table class="table text-nowrap" id="tbFor">
+              <table class="table text-nowrap mb-0" id="tbFor">
                 <thead>
                   <tr>
                     <th style="min-width:80px;">ID</th>
@@ -517,17 +729,11 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                       <td colspan="8" class="text-center muted py-4">Nenhum fornecedor encontrado.</td>
                     </tr>
-                    <?php else: foreach ($rows as $r): ?>
+                  <?php else: ?>
+                    <?php foreach ($rows as $r): ?>
                       <?php
-                      $id = (int)$r['id'];
-                      $stx = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
-                      $badge = $stx === 'ATIVO'
-                        ? '<span class="badge-soft badge-ok">ATIVO</span>'
-                        : '<span class="badge-soft badge-off">INATIVO</span>';
-
-                      $loc = trim((string)$r['cidade']);
-                      $ufv = trim((string)$r['uf']);
-                      $locTxt = ($loc || $ufv) ? ($loc . ($ufv ? " / " . $ufv : "")) : "—";
+                        $id = (int)$r['id'];
+                        $stx = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
                       ?>
                       <tr
                         data-id="<?= $id ?>"
@@ -540,35 +746,66 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                         data-cidade="<?= e((string)($r['cidade'] ?? '')) ?>"
                         data-uf="<?= e((string)($r['uf'] ?? '')) ?>"
                         data-contato="<?= e((string)($r['contato'] ?? '')) ?>"
-                        data-obs="<?= e((string)($r['obs'] ?? '')) ?>"
-                        data-statusrow="<?= e($stx) ?>">
+                        data-obs="<?= e((string)($r['obs'] ?? '')) ?>">
                         <td style="font-weight:1000;color:#0f172a;"><?= $id ?></td>
                         <td>
                           <div style="font-weight:1000;color:#0f172a;line-height:1.1;"><?= e((string)$r['nome']) ?></div>
                           <div class="muted"><?= e(trim((string)$r['contato']) ?: '—') ?></div>
                         </td>
-                        <td><?= e(trim((string)$r['doc']) ?: '—') ?></td>
-                        <td><?= e(trim((string)$r['tel']) ?: '—') ?></td>
+                        <td><?= e(fmt_text((string)($r['doc'] ?? ''))) ?></td>
+                        <td><?= e(fmt_text((string)($r['tel'] ?? ''))) ?></td>
                         <td>
-                          <?php if (trim((string)$r['email'])): ?>
+                          <?php if (trim((string)$r['email']) !== ''): ?>
                             <a class="link-mini" href="mailto:<?= e((string)$r['email']) ?>"><?= e((string)$r['email']) ?></a>
-                            <?php else: ?>—<?php endif; ?>
+                          <?php else: ?>
+                            —
+                          <?php endif; ?>
                         </td>
-                        <td><?= e($locTxt) ?></td>
-                        <td class="text-center"><?= $badge ?></td>
+                        <td><?= e(fmt_loc((string)($r['cidade'] ?? ''), (string)($r['uf'] ?? ''))) ?></td>
+                        <td class="text-center"><?= badge_status_html($stx) ?></td>
                         <td class="text-center">
                           <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdFornecedor">
                             <i class="lni lni-pencil me-1"></i> Editar
                           </button>
                         </td>
                       </tr>
-                  <?php endforeach;
-                  endif; ?>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
                 </tbody>
               </table>
             </div>
 
-            <div class="muted mt-2" id="hintEmpty" style="display:none;">Nenhum fornecedor encontrado.</div>
+            <div class="muted mt-2" id="hintEmpty" style="<?= $totalRows === 0 ? '' : 'display:none;' ?>">Nenhum fornecedor encontrado.</div>
+
+            <div class="table-footer-nav">
+              <p class="text-sm text-gray mb-0" id="infoCount">
+                Mostrando <?= $currentCount ?> item(ns) nesta página de fornecedores. Total filtrado: <?= $totalRows ?>.
+              </p>
+
+              <div class="pager-box" id="pagerBox">
+                <?php if ($page > 1): ?>
+                  <a class="page-btn-link" href="<?= e(build_url(['page' => $page - 1])) ?>" title="Anterior">
+                    <i class="lni lni-chevron-left"></i>
+                  </a>
+                <?php else: ?>
+                  <button class="page-btn" type="button" disabled title="Anterior">
+                    <i class="lni lni-chevron-left"></i>
+                  </button>
+                <?php endif; ?>
+
+                <span class="page-info">Página <?= $page ?>/<?= $pages ?></span>
+
+                <?php if ($page < $pages): ?>
+                  <a class="page-btn-link" href="<?= e(build_url(['page' => $page + 1])) ?>" title="Próxima">
+                    <i class="lni lni-chevron-right"></i>
+                  </a>
+                <?php else: ?>
+                  <button class="page-btn" type="button" disabled title="Próxima">
+                    <i class="lni lni-chevron-right"></i>
+                  </button>
+                <?php endif; ?>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -588,7 +825,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     </footer>
   </main>
 
-  <!-- MODAL -->
   <div class="modal fade" id="mdFornecedor" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
@@ -674,7 +910,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="delId" value="">
         </form>
-
       </div>
     </div>
   </div>
@@ -683,24 +918,19 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
   <script src="assets/js/main.js"></script>
 
   <script>
-    // auto-hide do alerta flash
     (function() {
       const box = document.getElementById("flashBox");
       if (!box) return;
-      // tempo em ms
-      const TIME = 4500;
       setTimeout(() => {
         box.classList.add("hide");
         setTimeout(() => box.remove(), 450);
-      }, TIME);
+      }, 4500);
     })();
 
-    const qGlobal = document.getElementById("qGlobal");
     const qFor = document.getElementById("qFor");
     const fStatus = document.getElementById("fStatus");
     const btnLimpar = document.getElementById("btnLimpar");
-    const hintEmpty = document.getElementById("hintEmpty");
-    const countBadge = document.getElementById("countBadge");
+    const btnNovo = document.getElementById("btnNovo");
     const tbodyFor = document.getElementById("tbodyFor");
 
     const mdTitle = document.getElementById("mdTitle");
@@ -722,34 +952,23 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     const frmDelete = document.getElementById("frmDelete");
     const delId = document.getElementById("delId");
 
-    function onlyStatus(s) {
-      const v = String(s || "").trim().toUpperCase();
-      return (v === "ATIVO" || v === "INATIVO") ? v : "";
-    }
+    function applyFilters(resetPage = true) {
+      const params = new URLSearchParams(window.location.search);
+      const q = (qFor.value || '').trim();
+      const st = (fStatus.value || '').trim();
 
-    function filterRows() {
-      const q = (qFor.value || qGlobal.value || "").toLowerCase().trim();
-      const st = onlyStatus(fStatus.value);
+      if (q) params.set('q', q);
+      else params.delete('q');
 
-      let visible = 0;
-      const trs = tbodyFor.querySelectorAll("tr");
+      if (st) params.set('status', st);
+      else params.delete('status');
 
-      trs.forEach(tr => {
-        if (!tr.hasAttribute("data-id")) return;
+      if (resetPage) params.set('page', '1');
 
-        const statusRow = (tr.getAttribute("data-statusrow") || "").toUpperCase();
-        const text = tr.innerText.toLowerCase();
+      params.delete('export');
 
-        const okQ = !q || text.includes(q);
-        const okS = !st || statusRow === st;
-
-        const show = okQ && okS;
-        tr.style.display = show ? "" : "none";
-        if (show) visible++;
-      });
-
-      countBadge.textContent = `${visible} fornecedor(es)`;
-      hintEmpty.style.display = (visible === 0) ? "block" : "none";
+      const url = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
+      window.location.href = url;
     }
 
     function openNew() {
@@ -794,10 +1013,12 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       frmDelete.style.display = "block";
     }
 
-    document.getElementById("btnNovo").addEventListener("click", () => {
-      openNew();
-      setTimeout(() => fNome.focus(), 150);
-    });
+    if (btnNovo) {
+      btnNovo.addEventListener("click", () => {
+        openNew();
+        setTimeout(() => fNome.focus(), 150);
+      });
+    }
 
     tbodyFor.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-act='edit']");
@@ -808,23 +1029,18 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       setTimeout(() => fNome.focus(), 150);
     });
 
-    // filtros
-    qFor.addEventListener("input", filterRows);
-    qGlobal.addEventListener("input", () => {
-      qFor.value = qGlobal.value;
-      filterRows();
+    qFor.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyFilters(true);
+      }
     });
-    fStatus.addEventListener("change", filterRows);
+
+    fStatus.addEventListener("change", () => applyFilters(true));
 
     btnLimpar.addEventListener("click", () => {
-      qFor.value = "";
-      qGlobal.value = "";
-      fStatus.value = "";
-      filterRows();
+      window.location.href = "fornecedores.php";
     });
-
-    // init
-    filterRows();
   </script>
 </body>
 
