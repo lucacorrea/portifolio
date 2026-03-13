@@ -522,39 +522,215 @@ try {
    Mantido alias "feirantes" para não quebrar seu HTML,
    mas pelo schema atual isso lista PRODUTOS da venda.
 */
-$ultimosLanc = [];
 try {
-  $whereF = $feiraId > 0 ? " AND v.feira_id = :f" : "";
+  $whereF = $feiraId > 0 ? " AND feira_id = :f" : "";
+
+  /* Vendas Hoje */
+  $st = $pdo->prepare("
+    SELECT COUNT(*) AS qtd, COALESCE(SUM(total),0) AS total
+    FROM vendas
+    WHERE DATE(data_hora) = :d
+      AND UPPER(status) <> 'CANCELADA'
+      $whereF
+  ");
+  $params = [':d' => $today];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $r = $st->fetch(PDO::FETCH_ASSOC) ?: ['qtd' => 0, 'total' => 0];
+  $kpi['vendas_hoje_qtd']   = (int)$r['qtd'];
+  $kpi['vendas_hoje_total'] = (float)$r['total'];
+  $kpi['ticket_hoje']       = $kpi['vendas_hoje_qtd'] > 0 ? ($kpi['vendas_hoje_total'] / $kpi['vendas_hoje_qtd']) : 0.0;
+
+  /* Vendas Ontem */
+  $params = [':d' => $yesterday];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $r = $st->fetch(PDO::FETCH_ASSOC) ?: ['qtd' => 0, 'total' => 0];
+  $kpi['vendas_ontem_qtd']   = (int)$r['qtd'];
+  $kpi['vendas_ontem_total'] = (float)$r['total'];
+  $kpi['ticket_ontem']       = $kpi['vendas_ontem_qtd'] > 0 ? ($kpi['vendas_ontem_total'] / $kpi['vendas_ontem_qtd']) : 0.0;
+
+  /* Itens vendidos HOJE */
+  $st2 = $pdo->prepare("
+    SELECT COALESCE(SUM(vi.quantidade),0) AS itens
+    FROM venda_itens vi
+    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
+    WHERE DATE(v.data_hora) = :d
+      AND UPPER(v.status) <> 'CANCELADA'
+      " . ($feiraId > 0 ? " AND v.feira_id = :f" : "") . "
+  ");
+  $params = [':d' => $today];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st2->execute($params);
+  $kpi['itens_hoje_qtd'] = (float)($st2->fetchColumn() ?? 0);
+
+  /* Canceladas HOJE */
+  $st3 = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM vendas
+    WHERE DATE(data_hora) = :d
+      AND UPPER(status) = 'CANCELADA'
+      $whereF
+  ");
+  $params = [':d' => $today];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st3->execute($params);
+  $kpi['canceladas_hoje'] = (int)($st3->fetchColumn() ?? 0);
+
+  /* Total do MÊS */
+  $st4 = $pdo->prepare("
+    SELECT COUNT(*) AS qtd, COALESCE(SUM(total),0) AS total
+    FROM vendas
+    WHERE DATE(data_hora) BETWEEN :i AND :e
+      AND UPPER(status) <> 'CANCELADA'
+      $whereF
+  ");
+  $params = [':i' => $monthStart, ':e' => $monthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st4->execute($params);
+  $r = $st4->fetch(PDO::FETCH_ASSOC) ?: ['qtd' => 0, 'total' => 0];
+  $kpi['mes_vendas_qtd'] = (int)$r['qtd'];
+  $kpi['mes_total']      = (float)$r['total'];
+  $kpi['mes_ticket']     = $kpi['mes_vendas_qtd'] > 0 ? ($kpi['mes_total'] / $kpi['mes_vendas_qtd']) : 0.0;
+
+  /* Total do MÊS ANTERIOR */
+  $params = [':i' => $prevMonthStart, ':e' => $prevMonthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st4->execute($params);
+  $r = $st4->fetch(PDO::FETCH_ASSOC) ?: ['qtd' => 0, 'total' => 0];
+  $kpi['mes_ant_vendas_qtd'] = (int)$r['qtd'];
+  $kpi['mes_ant_total']      = (float)$r['total'];
+  $kpi['mes_ant_ticket']     = $kpi['mes_ant_vendas_qtd'] > 0 ? ($kpi['mes_ant_total'] / $kpi['mes_ant_vendas_qtd']) : 0.0;
+
+  /* Produtores ativos */
+  $st = $pdo->prepare("SELECT COUNT(*) FROM produtores WHERE ativo = 1 $whereF");
+  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
+  else $st->execute();
+  $kpi['produtores_ativos'] = (int)($st->fetchColumn() ?? 0);
+
+  /* Produtos ativos */
+  $st = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE ativo = 1 $whereF");
+  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
+  else $st->execute();
+  $kpi['produtos_ativos'] = (int)($st->fetchColumn() ?? 0);
+
+  /* Vendas sem forma_pagamento */
+  $st = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM vendas
+    WHERE DATE(data_hora) BETWEEN :i AND :e
+      AND UPPER(status) <> 'CANCELADA'
+      AND (forma_pagamento IS NULL OR TRIM(forma_pagamento) = '')
+      $whereF
+  ");
+  $params = [':i' => $monthStart, ':e' => $monthEnd];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+  $kpi['sem_pagto_mes'] = (int)($st->fetchColumn() ?? 0);
+
+  /* Produtos com preço ref zero
+     Sua tabela produtos não possui preco_referencia */
+  $kpi['preco_ref_zero'] = 0;
+
+  /* Breakdown pagamento HOJE */
   $st = $pdo->prepare("
     SELECT
-      v.id,
-      v.data_hora,
-      v.total,
-      GROUP_CONCAT(DISTINCT COALESCE(p.nome, 'Item sem produto') ORDER BY p.nome SEPARATOR '||') AS feirantes
-    FROM vendas v
-    LEFT JOIN venda_itens vi
-      ON vi.feira_id = v.feira_id
-     AND vi.venda_id = v.id
-    LEFT JOIN produtos p
+      UPPER(COALESCE(NULLIF(TRIM(forma_pagamento),''),'OUTROS')) AS fp,
+      COALESCE(SUM(total),0) AS total
+    FROM vendas
+    WHERE DATE(data_hora) = :d
+      AND UPPER(status) <> 'CANCELADA'
+      $whereF
+    GROUP BY fp
+  ");
+  $params = [':d' => $today];
+  if ($feiraId > 0) $params[':f'] = $feiraId;
+  $st->execute($params);
+
+  $payHoje = [
+    'PIX'      => 0.0,
+    'DINHEIRO' => 0.0,
+    'CARTAO'   => 0.0,
+    'OUTROS'   => 0.0,
+  ];
+
+  foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $fp = (string)($row['fp'] ?? 'OUTROS');
+    $val = (float)($row['total'] ?? 0);
+
+    if ($fp === 'PIX') {
+      $payHoje['PIX'] += $val;
+    } elseif ($fp === 'DINHEIRO') {
+      $payHoje['DINHEIRO'] += $val;
+    } elseif ($fp === 'CARTAO' || $fp === 'CARTÃO') {
+      $payHoje['CARTAO'] += $val;
+    } else {
+      $payHoje['OUTROS'] += $val;
+    }
+  }
+
+  /* Fechamento pendente ontem */
+  if ($hasFechamentoDia && $feiraId > 0) {
+    $st = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM vendas
+      WHERE feira_id = :f
+        AND DATE(data_hora) = :d
+        AND UPPER(status) <> 'CANCELADA'
+    ");
+    $st->execute([':f' => $feiraId, ':d' => $yesterday]);
+    $ontemVendas = (int)($st->fetchColumn() ?? 0);
+
+    $st = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM fechamento_dia
+      WHERE feira_id = :f
+        AND data_ref = :d
+    ");
+    $st->execute([':f' => $feiraId, ':d' => $yesterday]);
+    $ontemFechado = (int)($st->fetchColumn() ?? 0);
+
+    $kpi['fechamento_pendente_ontem'] = ($ontemVendas > 0 && $ontemFechado <= 0) ? 1 : 0;
+  }
+
+} catch (Throwable $e) {
+  // para teste, use:
+  // die($e->getMessage());
+}
+$topCategorias = [];
+try {
+  $whereF = $feiraId > 0 ? " AND vi.feira_id = :f" : "";
+  $st = $pdo->prepare("
+    SELECT
+      COALESCE(c.nome, 'Sem categoria') AS categoria,
+      COALESCE(SUM(vi.quantidade), 0) AS itens,
+      COALESCE(SUM(vi.subtotal), 0) AS total
+    FROM venda_itens vi
+    INNER JOIN vendas v
+      ON v.feira_id = vi.feira_id
+     AND v.id = vi.venda_id
+    INNER JOIN produtos p
       ON p.feira_id = vi.feira_id
      AND p.id = vi.produto_id
+    LEFT JOIN categorias c
+      ON c.feira_id = p.feira_id
+     AND c.id = p.categoria_id
     WHERE DATE(v.data_hora) BETWEEN :i AND :e
       AND UPPER(v.status) <> 'CANCELADA'
       $whereF
-    GROUP BY v.id, v.data_hora, v.total
-    ORDER BY v.data_hora DESC
-    LIMIT 6
+    GROUP BY COALESCE(c.nome, 'Sem categoria')
+    ORDER BY total DESC, categoria ASC
+    LIMIT 5
   ");
   $params = [':i' => $monthStart, ':e' => $monthEnd];
-  if ($feiraId > 0) {
-    $params[':f'] = $feiraId;
-  }
+  if ($feiraId > 0) $params[':f'] = $feiraId;
   $st->execute($params);
-  $ultimosLanc = $st->fetchAll(PDO::FETCH_ASSOC);
+  $topCategorias = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-  $ultimosLanc = [];
+  $topCategorias = [];
+  // para teste:
+  // die($e->getMessage());
 }
-
 /* ===== Lista produtores (amostra) ===== */
 $listaProdutores = [];
 try {
