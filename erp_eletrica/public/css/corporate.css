@@ -134,6 +134,20 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
+/* Search Dropdowns Z-Index Fix */
+#searchResults, #pv_search_results, #customerResults, #pv_client_results {
+    z-index: 9999 !important;
+}
+
+/* Ensure parents of absolute elements don't clip */
+.card-body {
+    overflow: visible !important;
+}
+
+.position-relative {
+    z-index: 1030; /* Above regular content but below sidebar */
+}
+
 /* Bootstrap 5 Theme Overrides */
 .btn-primary {
     background-color: var(--erp-primary);
