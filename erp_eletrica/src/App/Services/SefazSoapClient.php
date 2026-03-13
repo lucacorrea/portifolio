@@ -26,8 +26,8 @@ class SefazSoapClient extends BaseService {
     private $serviceMapping = [
         'nfe_distribuicao' => [
             'service' => 'NFeDistribuicaoDFe', 
-            'method' => 'nfeDistribuicaoDFe',
-            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe' // Não tem suffix de método
+            'method' => 'nfeDistDFeInteresse',
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe/nfeDistDFeInteresse'
         ],
         'nfe_evento' => [
             'service' => 'NFeRecepcaoEvento4', 
