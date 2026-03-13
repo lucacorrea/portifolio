@@ -501,3 +501,27 @@ h6 {
 .border-start.border-warning {
     border-left-color: var(--erp-warning) !important;
 }
+
+/* File Input Styling */
+input[type="file"] {
+    background-color: #0d0d0d !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border) !important;
+    padding: 0.2rem !important;
+}
+
+input[type="file"]::file-selector-button {
+    background-color: var(--erp-primary) !important;
+    color: #000 !important;
+    border: none !important;
+    padding: 0.4rem 1rem !important;
+    border-radius: var(--radius-sm) !important;
+    cursor: pointer !important;
+    margin-right: 1rem !important;
+    font-weight: bold !important;
+    transition: background-color 0.2s !important;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background-color: var(--erp-primary-hover) !important;
+}
