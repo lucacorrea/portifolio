@@ -105,7 +105,7 @@ $bairroId = isset($_POST['bairro_id']) ? (int)$_POST['bairro_id'] : 0;
 $comunidadeId = isset($_POST['comunidade_id']) ? (int)$_POST['comunidade_id'] : 0;
 
 if ($bairroId <= 0 && $comunidadeId <= 0) {
-    $msgErro = 'Selecione um bairro ou uma comunidade.';
+  $msgErro = 'Selecione um bairro ou uma comunidade.';
 }
 
 /* Upload (base64 da câmera via navegador) */
@@ -717,111 +717,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <div class="form-section">
                     <div class="section-title">
-                      <i class="ti-map-alt"></i> Localidade
+                      <i class="ti-map-alt"></i> Localidades
                     </div>
 
                     <div class="row">
-                      <div class="row">
 
-                        <!-- BAIRRO -->
-                        <div class="col-12 col-lg-6 mb-3">
-                          <label>Bairro</label>
-                          <select
-                            name="bairro_id"
-                            class="form-control"
-                            <?= empty($bairrosLista) ? 'disabled' : '' ?>>
-                            <option value="">Selecione o bairro</option>
-                            <?php foreach ($bairrosLista as $b): ?>
-                              <option
-                                value="<?= (int)$b['id'] ?>"
-                                <?= ($old['bairro_id'] !== '' && (int)$old['bairro_id'] === (int)$b['id']) ? 'selected' : '' ?>>
-                                <?= h($b['nome']) ?>
-                              </option>
-                            <?php endforeach; ?>
-                          </select>
-                          <small class="text-muted help-hint">
-                            Se o produtor morar em bairro urbano, selecione aqui.
-                          </small>
-                        </div>
 
-                        <!-- COMUNIDADE -->
-                        <div class="col-12 col-lg-6 mb-3">
-                          <label>Comunidade</label>
-                          <select
-                            name="comunidade_id"
-                            class="form-control"
-                            <?= empty($comunidadesLista) ? 'disabled' : '' ?>>
-                            <option value="">Selecione a comunidade</option>
-                            <?php foreach ($comunidadesLista as $c): ?>
-                              <option
-                                value="<?= (int)$c['id'] ?>"
-                                <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
-                                <?= h($c['nome']) ?>
-                              </option>
-                            <?php endforeach; ?>
-                          </select>
-                          <small class="text-muted help-hint">
-                            Se o produtor vier de comunidade rural, selecione aqui.
-                          </small>
-                        </div>
+                      <div class="col-12 col-lg-6 mb-3">
+                        <label>Localidades <span class="text-danger">*</span></label>
 
-                      </div>
-
-                      <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Status</label>
-                        <select name="ativo" class="form-control">
-                          <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
-                          <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
-                        </select>
-                        <small class="text-muted help-hint">Você pode desativar sem excluir.</small>
-                      </div>
-
-                      <div class="col-12 mb-3">
-                        <label>Observações</label>
-                        <textarea
-                          name="observacao"
+                        <select
+                          name="comunidade_id"
                           class="form-control"
-                          rows="4"
-                          placeholder="Ex.: produtor de farinha tradicional, entrega na sexta..."><?= h($old['observacao']) ?></textarea>
-                        <small class="text-muted help-hint">Opcional (até 255 caracteres).</small>
+                          <?= empty($comunidades) ? 'disabled' : 'required' ?>>
+
+                          <option value="">Selecione</option>
+
+                          <!-- BAIRROS -->
+                          <?php if (!empty($bairros)): ?>
+                            <optgroup label="Bairros">
+                              <?php foreach ($bairros as $b): ?>
+                                <option
+                                  value="<?= (int)$b['id'] ?>"
+                                  <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$b['id']) ? 'selected' : '' ?>>
+                                  <?= h($b['nome']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </optgroup>
+                          <?php endif; ?>
+
+                          <!-- COMUNIDADES -->
+                          <?php if (!empty($comunidadesLista)): ?>
+                            <optgroup label="Comunidades">
+                              <?php foreach ($comunidadesLista as $c): ?>
+                                <option
+                                  value="<?= (int)$c['id'] ?>"
+                                  <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
+                                  <?= h($c['nome']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </optgroup>
+                          <?php endif; ?>
+
+                        </select>
+
+                        <small class="text-muted help-hint">
+                          Selecione o bairro ou comunidade de origem.
+                        </small>
                       </div>
+
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3 mb-3">
+                      <label>Status</label>
+                      <select name="ativo" class="form-control">
+                        <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
+                        <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
+                      </select>
+                      <small class="text-muted help-hint">Você pode desativar sem excluir.</small>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                      <label>Observações</label>
+                      <textarea
+                        name="observacao"
+                        class="form-control"
+                        rows="4"
+                        placeholder="Ex.: produtor de farinha tradicional, entrega na sexta..."><?= h($old['observacao']) ?></textarea>
+                      <small class="text-muted help-hint">Opcional (até 255 caracteres).</small>
                     </div>
                   </div>
-
-                  <hr>
-
-                  <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" <?= empty($comunidades) ? 'disabled' : '' ?>>
-                      <i class="ti-save mr-1"></i> Salvar
-                    </button>
-                    <button type="reset" class="btn btn-light" id="btnLimparForm">
-                      <i class="ti-close mr-1"></i> Limpar
-                    </button>
-                  </div>
-
-                  <small class="text-muted d-block mt-3">
-                    * Campos obrigatórios.
-                  </small>
-                </form>
-
               </div>
+
+              <hr>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" <?= empty($comunidades) ? 'disabled' : '' ?>>
+                  <i class="ti-save mr-1"></i> Salvar
+                </button>
+                <button type="reset" class="btn btn-light" id="btnLimparForm">
+                  <i class="ti-close mr-1"></i> Limpar
+                </button>
+              </div>
+
+              <small class="text-muted d-block mt-3">
+                * Campos obrigatórios.
+              </small>
+              </form>
+
             </div>
           </div>
         </div>
-
       </div>
 
-      <footer class="footer">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
-          <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
-            © <?= date('Y') ?> SIGRelatórios —
-            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
-            Todos os direitos reservados.
-          </span>
-        </div>
-      </footer>
-
     </div>
+
+    <footer class="footer">
+      <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
+        <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
+          © <?= date('Y') ?> SIGRelatórios —
+          <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
+          Todos os direitos reservados.
+        </span>
+      </div>
+    </footer>
+
+  </div>
   </div>
   </div>
 
