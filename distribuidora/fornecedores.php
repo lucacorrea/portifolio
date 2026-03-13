@@ -829,19 +829,3 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 </body>
 
 </html>
-<script>
-  // Botão para adicionar novo fornecedor
-  (function() {
-    // Cria o botão
-    const btnNovo = document.createElement("button");
-    btnNovo.type = "button";
-    btnNovo.className = "main-btn primary-btn btn-hover btn-compact";
-    btnNovo.id = "btnNovo";
-    btnNovo.innerHTML = '<i class="lni lni-plus me-1"></i> Novo fornecedor';
-    // Insere o botão ao lado do título "Lista"
-    const headDiv = document.querySelector(".cardx .head > .d-flex.align-items-center");
-    if (headDiv) {
-      headDiv.appendChild(btnNovo);
-    }
-  })();
-</script>
