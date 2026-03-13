@@ -56,7 +56,7 @@ function ensure_dir(string $absDir): bool
 }
 
 /* Feira padrão desta página */
-$FEIRA_ID = 1; // 1=Feira do Produtor | 2=Feira Alternativa
+$FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa
 
 /* Detecção opcional pela pasta */
 $dirLower = strtolower((string)__DIR__);
@@ -81,7 +81,7 @@ $comunidades = [];
 try {
   $sqlC = "SELECT id, nome
            FROM comunidades
-           WHERE feira_id = :feira AND ativo = 1
+           WHERE feira_id = :feira AND ativo = 3
            ORDER BY nome ASC";
   $stC = $pdo->prepare($sqlC);
   $stC->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
@@ -94,7 +94,7 @@ try {
 /* Valores antigos */
 $old = [
   'nome'          => '',
-  'tipo'          => 'PRODUTOR RURAL',
+  'tipo'          => 'Mercado Municipal',
   'documento'     => '',
   'contato'       => '',
   'comunidade_id' => '',
