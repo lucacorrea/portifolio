@@ -139,7 +139,7 @@ $nomeDest  = null;
 $docInput = soDig($_POST['cpf'] ?? '');
 if (strlen($docInput) === 11) {
     $cpf = $docInput;
-    // Tenta pegar o nome se veio via POST (cliente selecionado do banco)
+    // Tenta pegar the nome se veio via POST (cliente selecionado do banco)
     $nomePost = trim($_POST['nome_dest'] ?? '');
     if ($nomePost !== '') {
         $nomeDest = $nomePost;
@@ -230,8 +230,31 @@ try {
 /* Chave e Identificação */
 $cUF = pad(COD_UF, 2); $AAMM = date('ym'); $CNPJem = pad(EMIT_CNPJ, 14); $mod = '65'; $serie = pad(NFC_SERIE, 3); $nNFpad = pad($nNF, 9); $tpEmis = '1'; $cNF = pad(mt_rand(1, 99999999), 8);
 $base44 = $cUF.$AAMM.$CNPJem.$mod.$serie.$nNFpad.$tpEmis.$cNF;
-$cDV = (string)mod11($base44);
-$chave = $base44.$cDV;
+$cDV    = (string)mod11($base44);
+$chave  = $base44.$cDV;
+$IdNFe  = 'NFe'.$chave;
+
+/* ===== ide / emit / dest ===== */
+$ide = [
+  'cUF'=>$cUF,'cNF'=>$cNF,'natOp'=>'VENDA','mod'=>65,'serie'=>(int)$serie,'nNF'=>$nNF,
+  'dhEmi'=>date('c'),'tpNF'=>1,'idDest'=>1,'cMunFG'=>COD_MUN,'tpImp'=>4,'tpEmis'=>1,'cDV'=>(int)$cDV,
+  'tpAmb'=>(int)TP_AMB,'finNFe'=>1,'indFinal'=>1,'indPres'=>1,'procEmi'=>0,'verProc'=>'PDV-ACAI-1.0'
+];
+$enderEmit = [
+  'xLgr'=>EMIT_XLGR,'nro'=>EMIT_NRO,'xBairro'=>EMIT_XBAIRRO,'cMun'=>COD_MUN,'xMun'=>EMIT_XMUN,
+  'UF'=>EMIT_UF,'CEP'=>EMIT_CEP,'cPais'=>1058,'xPais'=>'Brasil'
+];
+if (defined('EMIT_FONE') && preg_match('/^\d{6,14}$/', (string)EMIT_FONE)) {
+  $enderEmit['fone'] = EMIT_FONE;
+}
+
+$emit = [
+  'CNPJ'=>EMIT_CNPJ,'xNome'=>EMIT_XNOME,'xFant'=>EMIT_XFANT,'IE'=>EMIT_IE,'CRT'=>EMIT_CRT,
+  'enderEmit'=>$enderEmit
+];
+$dest = [];
+if ($cpf)  $dest = ['CPF'=>$cpf,'indIEDest'=>9];
+if ($cnpj) $dest = ['CNPJ'=>$cnpj,'indIEDest'=>9];
 
 /* XML Construction */
 $destXML = '';
@@ -262,6 +285,9 @@ if ((float)$vTr > 0) $pagXML .= '<vTroco>'.$vTr.'</vTroco>';
 $pagXML .= '</pag>';
 // ===== FIM DO NOVO BLOCO =====
 
+$totXML = '<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>'.number_format($vProd, 2, '.', '').'</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>'.number_format($vProd, 2, '.', '').'</vNF></ICMSTot></total>';
+$transpXML = '<transp><modFrete>9</modFrete></transp>';
+
 $infAd   = '<infAdic><infCpl>PDV Açaiteria</infCpl></infAdic>';
 
 /* ===== MONTA SÓ A NFe (para assinar) ===== */
@@ -279,17 +305,16 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .     '</ide>'
      .     '<emit>'
      .       '<CNPJ>'.$emit['CNPJ'].'</CNPJ><xNome>'.$emit['xNome'].'</xNome><xFant>'.$emit['xFant'].'</xFant>'
-     .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais><fone>'.$emit['enderEmit']['fone'].'</fone></enderEmit>'
+     .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais>'.(!empty($emit['enderEmit']['fone'])?'<fone>'.$emit['enderEmit']['fone'].'</fone>':'').'</enderEmit>'
      .       '<IE>'.$emit['IE'].'</IE><CRT>'.$emit['CRT'].'</CRT>'
      .     '</emit>'
-     .      (!empty($dest)
-        ? ('<dest>'.(isset($dest['CPF'])?'<CPF>'.$dest['CPF'].'</CPF>':'<CNPJ>'.$dest['CNPJ'].'</CNPJ>').'<indIEDest>'.$dest['indIEDest'].'</indIEDest></dest>')
-        : '')
+     .     $destXML
      .     $detXML
      .     $totXML
      .     $transpXML
      .     $pagXML
      .     $infAd
+     .     '<infRespTec><CNPJ>00004125521247</CNPJ><xContato>Luiz Breno da frota</xContato><email>luizfrota2@gmail.com</email><fone>97991434585</fone></infRespTec>'
      .   '</infNFe>'
      . '</NFe>';
 
@@ -346,7 +371,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
       }
 
       // Monta JSON de pagamento se existir código de tPag
-      $tpagJsonStr = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
+      $tpagJsonStr = isset($tPag) ? json_encode(['tPag' => $tPag], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
 
       // tenta identificar vNF
       $vNFnum = null;
@@ -356,7 +381,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
         $vNFnum = $mV[1];
       }
 
-      $vTrocoVal = isset($vTrocoVal) ? $vTrocoVal : (isset($stdPag->vTroco) ? $stdPag->vTroco : null);
+      $vTrocoVal = isset($vTr) ? $vTr : null;
 
       $st = $pdo->prepare("
         INSERT INTO nfce_emitidas
@@ -457,7 +482,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 103 && !empty($stdEnv->inf
 $xmlProcContent = isset($proc) ? $proc : ((isset($xmlProcPath) && is_file($xmlProcPath)) ? @file_get_contents($xmlProcPath) : null);
 $xmlEnvio       = isset($nfeAss) ? $nfeAss : (isset($nfe) ? $nfe : null);
 $xmlRetorno     = isset($ret) ? $ret : (isset($respEnv) ? $respEnv : null);
-$tpagJsonStr    = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
+$tpagJsonStr    = isset($tPag) ? json_encode(['tPag' => $tPag], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
 
 $st = $pdo->prepare("INSERT INTO nfce_emitidas
   (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem, xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
@@ -488,7 +513,7 @@ $st->execute([
   ':xml_envio'    => $xmlEnvio,
   ':xml_retorno'  => $xmlRetorno,
   ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
-  ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
+  ':valor_troco'  => isset($vTr) ? number_format((float)$vTr, 2, '.', '') : null,
   ':tpag_json'    => $tpagJsonStr
 ]);
 }
@@ -508,15 +533,18 @@ $st->execute([
     echo '<!doctype html><meta charset="utf-8">';
     echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
     exit;
+  }
 }
+
 // === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
-try {
-  if (!isset($pdo) || !($pdo instanceof PDO)) {
+if (!isset($pdo) || !($pdo instanceof PDO)) {
     foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
-      if (is_file($__p)) { require_once $__p; break; }
+        if (is_file($__p)) { require_once $__p; break; }
     }
-    die('Erro SEFAZ: ' . ($std->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($std->cStat ?? '?') . ')');
+}
+die('Erro SEFAZ: ' . ($stdEnv->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($stdEnv->cStat ?? '?') . ')');
+
 } catch (Throwable $e) {
     while (ob_get_level()) ob_end_clean();
     die('[V3-DEBUG] Erro Fatal na Emissão: ' . $e->getMessage() . ' no arquivo ' . $e->getFile() . ':' . $e->getLine());
-}}
+}
