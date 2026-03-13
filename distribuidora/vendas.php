@@ -923,7 +923,7 @@ function fmtMoney($v): string
                       <input class="form-control compact" id="cCliente" placeholder="Pesquisar por CPF ou Nome..." autocomplete="off" />
                       <div class="suggest" id="suggestCliente"></div>
                     </div>
-                    <div id="fiadoFeedback" class="fiado-alert">Cliente não localizado. Pressione F6 para cadastrar. (Obrigatório para venda À Prazo)</div>
+                    <div id="fiadoFeedback" class="fiado-alert" style="color: #fff !important;">Cliente não localizado. Pressione F6 para cadastrar. (Obrigatório para venda À Prazo)</div>
                     <div class="muted mt-1">Consumidor final (se vazio).</div>
                   </div>
 
