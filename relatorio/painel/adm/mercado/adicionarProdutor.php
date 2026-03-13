@@ -721,7 +721,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="row">
-
+                    <div class="row">
 
                       <div class="col-12 col-lg-6 mb-3">
                         <label>Localidades <span class="text-danger">*</span></label>
