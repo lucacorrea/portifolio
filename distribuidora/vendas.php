@@ -923,7 +923,7 @@ function fmtMoney($v): string
                       <input class="form-control compact" id="cCliente" placeholder="Pesquisar por CPF ou Nome..." autocomplete="off" />
                       <div class="suggest" id="suggestCliente"></div>
                     </div>
-                    <div id="fiadoFeedback" class="fiado-alert" style="color: #fff !important;">Cliente não localizado. Pressione F6 para cadastrar. (Obrigatório para venda À Prazo)</div>
+                    <div id="fiadoFeedback" class="fiado-alert">Cliente não localizado. Pressione F6 para cadastrar. (Obrigatório para venda À Prazo)</div>
                     <div class="muted mt-1">Consumidor final (se vazio).</div>
                   </div>
 
@@ -2029,7 +2029,7 @@ function fmtMoney($v): string
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">Venda À Prazo - Entrada</h5>
+            <h5 class="modal-title" style="color: #fff !important;">Venda À Prazo - Entrada</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
