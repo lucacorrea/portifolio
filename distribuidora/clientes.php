@@ -8,6 +8,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/clientes/_helpers.php';
 require_once __DIR__ . '/assets/auth/auth.php';
+
 auth_require('index.php');
 
 /* =========================
@@ -19,6 +20,7 @@ if (!function_exists('e')) {
         return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }
+
 if (!function_exists('require_db_or_die')) {
     function require_db_or_die(): void
     {
@@ -28,6 +30,7 @@ if (!function_exists('require_db_or_die')) {
         }
     }
 }
+
 if (!function_exists('csrf_token')) {
     function csrf_token(): string
     {
@@ -37,6 +40,7 @@ if (!function_exists('csrf_token')) {
         return (string)$_SESSION['_csrf'];
     }
 }
+
 if (!function_exists('flash_pop')) {
     function flash_pop(string $key): ?string
     {
@@ -46,12 +50,14 @@ if (!function_exists('flash_pop')) {
         return $v;
     }
 }
+
 if (!function_exists('only_digits')) {
     function only_digits(string $s): string
     {
         return preg_replace('/\D+/', '', $s) ?? '';
     }
 }
+
 if (!function_exists('cpf_fmt')) {
     function cpf_fmt(?string $cpf): string
     {
@@ -62,37 +68,66 @@ if (!function_exists('cpf_fmt')) {
         return substr($d, 0, 3) . '.' . substr($d, 3, 3) . '.' . substr($d, 6, 3) . '-' . substr($d, 9, 2);
     }
 }
+
 if (!function_exists('tel_fmt')) {
     function tel_fmt(?string $tel): string
     {
         $d = only_digits((string)$tel);
         if ($d === '') return '—';
+
         if (strlen($d) === 11) {
             return '(' . substr($d, 0, 2) . ') ' . substr($d, 2, 5) . '-' . substr($d, 7, 4);
         }
+
         if (strlen($d) === 10) {
             return '(' . substr($d, 0, 2) . ') ' . substr($d, 2, 4) . '-' . substr($d, 6, 4);
         }
-        return $tel ?: '—';
-    }
-}
-if (!function_exists('url_here')) {
-    function url_here(string $fallback = 'clientes.php'): string
-    {
-        return (string)($_SERVER['REQUEST_URI'] ?? $fallback);
+
+        return (string)$tel;
     }
 }
 
+/* =========================
+   HELPERS
+========================= */
 require_db_or_die();
 $pdo = db();
 
-/* =========================
-   UTILS
-========================= */
+function json_out(array $payload, int $code = 200): void
+{
+    if (function_exists('ob_get_length') && ob_get_length()) {
+        @ob_clean();
+    }
+    http_response_code($code);
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function fmt_text(?string $v): string
+{
+    $v = trim((string)$v);
+    return $v !== '' ? $v : '—';
+}
+
+function fmt_sql_datetime(?string $dt): string
+{
+    $dt = trim((string)$dt);
+    if ($dt === '') return '—';
+
+    try {
+        $d = new DateTime($dt);
+        return $d->format('d/m/Y H:i:s');
+    } catch (Throwable $e) {
+        return $dt;
+    }
+}
+
 function build_url(array $overrides = []): string
 {
     $params = $_GET;
-    unset($params['export']);
+    unset($params['action'], $params['export']);
 
     foreach ($overrides as $k => $v) {
         if ($v === null || $v === '') {
@@ -106,20 +141,7 @@ function build_url(array $overrides = []): string
     return 'clientes.php' . ($qs ? ('?' . $qs) : '');
 }
 
-function format_sql_datetime(?string $dt): string
-{
-    $dt = trim((string)$dt);
-    if ($dt === '') return '—';
-
-    try {
-        $d = new DateTime($dt);
-        return $d->format('d/m/Y H:i:s');
-    } catch (Throwable $e) {
-        return $dt;
-    }
-}
-
-function build_client_where(string $q, array &$params): string
+function build_client_where_and_params(string $q, array &$params): string
 {
     $where = " WHERE 1=1 ";
 
@@ -138,8 +160,8 @@ function build_client_where(string $q, array &$params): string
                 OR c.nome LIKE :qraw3
                 OR c.endereco LIKE :qraw4
             ) ";
-            $params[':qd1'] = '%' . $qd . '%';
-            $params[':qd2'] = '%' . $qd . '%';
+            $params[':qd1']   = '%' . $qd . '%';
+            $params[':qd2']   = '%' . $qd . '%';
             $params[':qraw1'] = '%' . $q . '%';
             $params[':qraw2'] = '%' . $q . '%';
             $params[':qraw3'] = '%' . $q . '%';
@@ -161,15 +183,95 @@ function build_client_where(string $q, array &$params): string
     return $where;
 }
 
+function fetch_clients_page(PDO $pdo, string $q, int $page, int $per): array
+{
+    $per = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
+    $page = max(1, $page);
+
+    $params = [];
+    $where = build_client_where_and_params($q, $params);
+
+    $sqlTot = "SELECT COUNT(*) AS total FROM clientes c $where";
+    $stTot = $pdo->prepare($sqlTot);
+    foreach ($params as $k => $v) {
+        $stTot->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $stTot->execute();
+    $totalCount = (int)($stTot->fetchColumn() ?: 0);
+
+    $pages = (int)max(1, (int)ceil($totalCount / $per));
+    if ($page > $pages) $page = $pages;
+    $off = ($page - 1) * $per;
+
+    $sql = "
+        SELECT c.id, c.nome, c.cpf, c.telefone, c.endereco, c.created_at
+        FROM clientes c
+        $where
+        ORDER BY c.id DESC
+        LIMIT :lim OFFSET :off
+    ";
+    $st = $pdo->prepare($sql);
+    foreach ($params as $k => $v) {
+        $st->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $st->bindValue(':lim', $per, PDO::PARAM_INT);
+    $st->bindValue(':off', $off, PDO::PARAM_INT);
+    $st->execute();
+
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $out = [];
+
+    foreach ($rows as $r) {
+        $cpfRaw = (string)($r['cpf'] ?? '');
+        $telRaw = (string)($r['telefone'] ?? '');
+
+        $out[] = [
+            'id'         => (int)$r['id'],
+            'nome'       => (string)($r['nome'] ?? ''),
+            'cpf_digits' => only_digits($cpfRaw),
+            'tel_digits' => only_digits($telRaw),
+            'cpf_fmt'    => cpf_fmt($cpfRaw),
+            'tel_fmt'    => tel_fmt($telRaw),
+            'tel_raw'    => $telRaw,
+            'endereco'   => (string)($r['endereco'] ?? ''),
+            'created_at' => (string)($r['created_at'] ?? ''),
+            'created_fmt'=> fmt_sql_datetime((string)($r['created_at'] ?? '')),
+        ];
+    }
+
+    return [
+        'meta' => [
+            'q'     => $q,
+            'page'  => $page,
+            'per'   => $per,
+            'pages' => $pages,
+            'total' => $totalCount,
+            'shown' => count($out),
+        ],
+        'rows' => $out,
+    ];
+}
+
 /* =========================
-   INPUTS
+   AJAX
 ========================= */
-$csrf = csrf_token();
-$return_to = (string)($_SERVER['REQUEST_URI'] ?? url_here('clientes.php'));
+$action = strtolower((string)($_GET['action'] ?? ''));
+if ($action === 'ajax') {
+    try {
+        $q = trim((string)($_GET['q'] ?? ''));
+        $page = (int)($_GET['page'] ?? 1);
+        $per  = (int)($_GET['per'] ?? 25);
 
-$flashOk  = flash_pop('flash_ok');
-$flashErr = flash_pop('flash_err');
+        $data = fetch_clients_page($pdo, $q, $page, $per);
+        json_out(['ok' => true] + $data);
+    } catch (Throwable $e) {
+        json_out(['ok' => false, 'msg' => 'Erro no AJAX: ' . $e->getMessage()], 500);
+    }
+}
 
+/* =========================
+   EXPORTAR EXCEL
+========================= */
 $q = trim((string)($_GET['q'] ?? ''));
 $page = (int)($_GET['page'] ?? 1);
 if ($page < 1) $page = 1;
@@ -177,12 +279,9 @@ if ($page < 1) $page = 1;
 $per = (int)($_GET['per'] ?? 25);
 $per = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
 
-/* =========================
-   EXPORTAR EXCEL
-========================= */
 if (isset($_GET['export']) && $_GET['export'] === 'excel') {
     $paramsExcel = [];
-    $whereExcel = build_client_where($q, $paramsExcel);
+    $whereExcel = build_client_where_and_params($q, $paramsExcel);
 
     $sqlExcel = "
         SELECT c.id, c.nome, c.cpf, c.telefone, c.endereco, c.created_at
@@ -192,8 +291,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
     ";
     $stExcel = $pdo->prepare($sqlExcel);
     foreach ($paramsExcel as $k => $v) {
-        $type = is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR;
-        $stExcel->bindValue($k, $v, $type);
+        $stExcel->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
     }
     $stExcel->execute();
     $excelRows = $stExcel->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -207,9 +305,8 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
     header('Cache-Control: max-age=0');
 
     echo "\xEF\xBB\xBF";
-?>
+    ?>
     <html>
-
     <head>
         <meta charset="UTF-8">
         <style>
@@ -219,42 +316,30 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
                 font-size: 12px;
                 width: auto;
             }
-
-            td,
-            th {
+            td, th {
                 border: 1px solid #000;
                 padding: 4px 6px;
                 vertical-align: middle;
                 white-space: nowrap;
             }
-
             th {
                 background: #ffffff;
                 font-weight: bold;
                 text-align: center;
             }
-
             .title {
                 font-size: 16px;
                 font-weight: bold;
                 text-align: center;
             }
-
             .sub {
                 text-align: center;
                 font-weight: normal;
             }
-
-            .left {
-                text-align: left;
-            }
-
-            .center {
-                text-align: center;
-            }
+            .left { text-align: left; }
+            .center { text-align: center; }
         </style>
     </head>
-
     <body>
         <table>
             <tr>
@@ -283,58 +368,35 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
                 <?php foreach ($excelRows as $r): ?>
                     <tr>
                         <td class="center"><?= (int)$r['id'] ?></td>
-                        <td class="left"><?= e((string)$r['nome']) ?></td>
+                        <td class="left"><?= e((string)($r['nome'] ?? '')) ?></td>
                         <td class="left"><?= e(cpf_fmt((string)($r['cpf'] ?? ''))) ?></td>
                         <td class="left"><?= e(tel_fmt((string)($r['telefone'] ?? ''))) ?></td>
-                        <td class="left"><?= e(fmtText((string)($r['endereco'] ?? ''))) ?></td>
-                        <td class="left"><?= e(format_sql_datetime((string)($r['created_at'] ?? ''))) ?></td>
+                        <td class="left"><?= e(fmt_text((string)($r['endereco'] ?? ''))) ?></td>
+                        <td class="left"><?= e(fmt_sql_datetime((string)($r['created_at'] ?? ''))) ?></td>
                     </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
         </table>
     </body>
-
     </html>
-<?php
+    <?php
     exit;
 }
 
 /* =========================
-   LISTAGEM PAGINADA
+   HTML NORMAL
 ========================= */
-$paramsList = [];
-$whereSql = build_client_where($q, $paramsList);
+$csrf = csrf_token();
+$return_to = (string)($_SERVER['REQUEST_URI'] ?? 'clientes.php');
 
-$sqlTot = "SELECT COUNT(*) AS total FROM clientes c $whereSql";
-$stTot = $pdo->prepare($sqlTot);
-foreach ($paramsList as $k => $v) {
-    $type = is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR;
-    $stTot->bindValue($k, $v, $type);
-}
-$stTot->execute();
-$totalCount = (int)($stTot->fetchColumn() ?: 0);
+$flashOk  = flash_pop('flash_ok');
+$flashErr = flash_pop('flash_err');
 
-$pages = (int)max(1, (int)ceil($totalCount / $per));
-if ($page > $pages) $page = $pages;
-$off = ($page - 1) * $per;
-
-$sql = "
-    SELECT c.id, c.nome, c.cpf, c.telefone, c.endereco, c.created_at
-    FROM clientes c
-    $whereSql
-    ORDER BY c.id DESC
-    LIMIT :lim OFFSET :off
-";
-$st = $pdo->prepare($sql);
-foreach ($paramsList as $k => $v) {
-    $type = is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR;
-    $st->bindValue($k, $v, $type);
-}
-$st->bindValue(':lim', $per, PDO::PARAM_INT);
-$st->bindValue(':off', $off, PDO::PARAM_INT);
-$st->execute();
-$rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-$currentCount = count($rows);
+$initial = fetch_clients_page($pdo, $q, $page, $per);
+$totalCount = (int)$initial['meta']['total'];
+$pages = (int)$initial['meta']['pages'];
+$currentCount = (int)$initial['meta']['shown'];
+$rows = $initial['rows'];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -354,13 +416,8 @@ $currentCount = count($rows);
     <link rel="stylesheet" href="assets/css/main.css" />
 
     <style>
-        .section {
-            padding-top: 18px;
-        }
-
-        .page-pad {
-            padding-top: 12px;
-        }
+        .section { padding-top: 18px; }
+        .page-pad { padding-top: 12px; }
 
         .main-btn.btn-compact {
             height: 38px !important;
@@ -423,6 +480,12 @@ $currentCount = count($rows);
             color: #166534;
         }
 
+        .pill.warn {
+            border-color: rgba(245, 158, 11, .25);
+            background: rgba(255, 251, 235, .95);
+            color: #92400e;
+        }
+
         .toolbar {
             display: flex;
             gap: 10px;
@@ -464,10 +527,7 @@ $currentCount = count($rows);
             background: #fff;
         }
 
-        .td-nowrap {
-            white-space: nowrap;
-        }
-
+        .td-nowrap { white-space: nowrap; }
         .td-clip {
             overflow: hidden;
             text-overflow: ellipsis;
@@ -476,33 +536,13 @@ $currentCount = count($rows);
             max-width: 100%;
         }
 
-        .col-id {
-            width: 70px;
-        }
-
-        .col-nome {
-            width: 300px;
-        }
-
-        .col-cpf {
-            width: 150px;
-        }
-
-        .col-tel {
-            width: 170px;
-        }
-
-        .col-end {
-            width: 260px;
-        }
-
-        .col-created {
-            width: 190px;
-        }
-
-        .col-acoes {
-            width: 260px;
-        }
+        .col-id { width: 70px; }
+        .col-nome { width: 300px; }
+        .col-cpf { width: 150px; }
+        .col-tel { width: 170px; }
+        .col-end { width: 260px; }
+        .col-created { width: 190px; }
+        .col-acoes { width: 260px; }
 
         .actions-wrap {
             display: flex;
@@ -523,33 +563,20 @@ $currentCount = count($rows);
             gap: 8px;
         }
 
-        .btn-action i {
-            font-size: 16px;
-        }
+        .btn-action i { font-size: 16px; }
 
         @media (max-width:1400px) {
-            .btn-action .act-text {
-                display: none;
-            }
-
-            .btn-action {
-                padding: 8px 10px !important;
-            }
+            .btn-action .act-text { display: none; }
+            .btn-action { padding: 8px 10px !important; }
         }
 
         @media (max-width:992px) {
-            #tbClientes {
-                min-width: 920px;
-            }
-
+            #tbClientes { min-width: 920px; }
             .actions-wrap {
                 flex-wrap: wrap;
                 justify-content: flex-start;
             }
-
-            .btn-action .act-text {
-                display: inline;
-            }
+            .btn-action .act-text { display: inline; }
         }
 
         .table-footer-nav {
@@ -570,8 +597,7 @@ $currentCount = count($rows);
             flex-wrap: wrap;
         }
 
-        .page-btn,
-        .page-btn-link {
+        .page-btn {
             width: 42px;
             height: 42px;
             border: 1px solid #e5e7eb;
@@ -581,11 +607,10 @@ $currentCount = count($rows);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            text-decoration: none !important;
             transition: .2s ease;
         }
 
-        .page-btn-link:hover {
+        .page-btn:hover:not(:disabled) {
             background: #eef2ff;
             color: #1e40af;
             border-color: #c7d2fe;
@@ -644,13 +669,8 @@ $currentCount = count($rows);
             text-decoration: none !important;
         }
 
-        .logout-btn i {
-            font-size: 16px;
-        }
-
-        .header-right {
-            height: 100%;
-        }
+        .logout-btn i { font-size: 16px; }
+        .header-right { height: 100%; }
 
         .brand-vertical {
             display: flex;
@@ -673,14 +693,10 @@ $currentCount = count($rows);
         }
 
         @media (max-width:768px) {
-            .dt-grid {
-                grid-template-columns: 1fr;
-            }
-
+            .dt-grid { grid-template-columns: 1fr; }
             .table-footer-nav {
                 justify-content: center;
             }
-
             #infoCount {
                 text-align: center;
                 width: 100%;
@@ -762,9 +778,7 @@ $currentCount = count($rows);
                     </a>
                 </li>
 
-                <span class="divider">
-                    <hr />
-                </span>
+                <span class="divider"><hr /></span>
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
@@ -853,7 +867,7 @@ $currentCount = count($rows);
                                 <span class="pill ok" id="pillCount"><?= (int)$totalCount ?> clientes</span>
                                 <span class="muted" id="lblRange"><?= $q !== '' ? 'Busca: ' . e($q) : '—' ?></span>
                             </div>
-                            <div class="muted mt-1">Digite e pressione Enter para pesquisar.</div>
+                            <div class="muted mt-1">Digite para pesquisar. Atualiza a tabela via JS/AJAX sem recarregar.</div>
                         </div>
 
                         <div class="toolbar">
@@ -868,13 +882,15 @@ $currentCount = count($rows);
                                 <option value="100" <?= $per === 100 ? 'selected' : '' ?>>100 por página</option>
                             </select>
 
-                            <a href="<?= e(build_url(['export' => 'excel', 'page' => 1])) ?>" class="main-btn light-btn btn-hover btn-compact">
+                            <button type="button" class="main-btn light-btn btn-hover btn-compact" id="btnExcel">
                                 <i class="lni lni-download me-1"></i> Exportar Excel
-                            </a>
+                            </button>
 
                             <button type="button" class="main-btn light-btn btn-hover btn-compact" id="btnLimpar">
                                 <i class="lni lni-eraser me-1"></i> Limpar
                             </button>
+
+                            <span class="pill warn" id="pillLoading" style="display:none;">Carregando…</span>
                         </div>
                     </div>
 
@@ -923,48 +939,41 @@ $currentCount = count($rows);
                                             <td colspan="7" class="muted">Nenhum cliente encontrado.</td>
                                         </tr>
                                     <?php else: ?>
-                                        <?php foreach ($rows as $r):
-                                            $id = (int)$r['id'];
-                                            $nome = (string)$r['nome'];
-                                            $cpfRaw = (string)($r['cpf'] ?? '');
-                                            $telRaw = (string)($r['telefone'] ?? '');
-                                            $end = (string)($r['endereco'] ?? '');
-                                            $created = (string)($r['created_at'] ?? '');
-                                        ?>
+                                        <?php foreach ($rows as $r): ?>
                                             <tr>
-                                                <td class="td-nowrap fw-1000"><?= $id ?></td>
-                                                <td><span class="td-clip" title="<?= e($nome) ?>"><?= e($nome) ?></span></td>
-                                                <td class="td-nowrap"><?= e(cpf_fmt($cpfRaw)) ?></td>
-                                                <td class="td-nowrap"><?= e(tel_fmt($telRaw)) ?></td>
-                                                <td><span class="td-clip" title="<?= e($end) ?>"><?= e($end ?: '—') ?></span></td>
-                                                <td class="td-nowrap"><?= e(format_sql_datetime($created)) ?></td>
+                                                <td class="td-nowrap fw-1000"><?= (int)$r['id'] ?></td>
+                                                <td><span class="td-clip" title="<?= e($r['nome']) ?>"><?= e($r['nome']) ?></span></td>
+                                                <td class="td-nowrap"><?= e($r['cpf_fmt']) ?></td>
+                                                <td class="td-nowrap"><?= e($r['tel_fmt']) ?></td>
+                                                <td><span class="td-clip" title="<?= e($r['endereco']) ?>"><?= e($r['endereco'] !== '' ? $r['endereco'] : '—') ?></span></td>
+                                                <td class="td-nowrap"><?= e($r['created_fmt']) ?></td>
 
                                                 <td class="text-end">
                                                     <div class="actions-wrap">
                                                         <button type="button" class="main-btn light-btn btn-hover btn-action btnDetalhes"
-                                                            data-id="<?= $id ?>"
-                                                            data-nome="<?= e($nome) ?>"
-                                                            data-cpf="<?= e(cpf_fmt($cpfRaw)) ?>"
-                                                            data-tel="<?= e(tel_fmt($telRaw)) ?>"
-                                                            data-end="<?= e($end) ?>"
-                                                            data-created="<?= e(format_sql_datetime($created)) ?>">
+                                                            data-id="<?= (int)$r['id'] ?>"
+                                                            data-nome="<?= e($r['nome']) ?>"
+                                                            data-cpf="<?= e($r['cpf_fmt']) ?>"
+                                                            data-tel="<?= e($r['tel_fmt']) ?>"
+                                                            data-end="<?= e($r['endereco']) ?>"
+                                                            data-created="<?= e($r['created_fmt']) ?>">
                                                             <i class="lni lni-eye"></i> <span class="act-text">Detalhes</span>
                                                         </button>
 
                                                         <button type="button" class="main-btn primary-btn btn-hover btn-action btnEditar"
-                                                            data-id="<?= $id ?>"
-                                                            data-nome="<?= e($nome) ?>"
-                                                            data-cpfdigits="<?= e(only_digits($cpfRaw)) ?>"
-                                                            data-telraw="<?= e($telRaw) ?>"
-                                                            data-end="<?= e($end) ?>">
+                                                            data-id="<?= (int)$r['id'] ?>"
+                                                            data-nome="<?= e($r['nome']) ?>"
+                                                            data-cpfdigits="<?= e($r['cpf_digits']) ?>"
+                                                            data-telraw="<?= e($r['tel_raw']) ?>"
+                                                            data-end="<?= e($r['endereco']) ?>">
                                                             <i class="lni lni-pencil"></i> <span class="act-text">Editar</span>
                                                         </button>
 
                                                         <button type="button" class="main-btn light-btn btn-hover btn-action btnExcluir"
-                                                            data-id="<?= $id ?>"
-                                                            data-nome="<?= e($nome) ?>"
-                                                            data-cpf="<?= e(cpf_fmt($cpfRaw)) ?>"
-                                                            data-tel="<?= e(tel_fmt($telRaw)) ?>">
+                                                            data-id="<?= (int)$r['id'] ?>"
+                                                            data-nome="<?= e($r['nome']) ?>"
+                                                            data-cpf="<?= e($r['cpf_fmt']) ?>"
+                                                            data-tel="<?= e($r['tel_fmt']) ?>">
                                                             <i class="lni lni-trash-can"></i> <span class="act-text">Excluir</span>
                                                         </button>
                                                     </div>
@@ -982,27 +991,15 @@ $currentCount = count($rows);
                             </p>
 
                             <div class="pager-box" id="pagerBox">
-                                <?php if ($page > 1): ?>
-                                    <a class="page-btn-link" href="<?= e(build_url(['page' => $page - 1])) ?>" title="Anterior">
-                                        <i class="lni lni-chevron-left"></i>
-                                    </a>
-                                <?php else: ?>
-                                    <button class="page-btn" type="button" disabled title="Anterior">
-                                        <i class="lni lni-chevron-left"></i>
-                                    </button>
-                                <?php endif; ?>
+                                <button class="page-btn" id="btnPrev" type="button" <?= $page <= 1 ? 'disabled' : '' ?>>
+                                    <i class="lni lni-chevron-left"></i>
+                                </button>
 
-                                <span class="page-info">Página <?= (int)$page ?>/<?= (int)$pages ?></span>
+                                <span class="page-info" id="pageInfo">Página <?= (int)$page ?>/<?= (int)$pages ?></span>
 
-                                <?php if ($page < $pages): ?>
-                                    <a class="page-btn-link" href="<?= e(build_url(['page' => $page + 1])) ?>" title="Próxima">
-                                        <i class="lni lni-chevron-right"></i>
-                                    </a>
-                                <?php else: ?>
-                                    <button class="page-btn" type="button" disabled title="Próxima">
-                                        <i class="lni lni-chevron-right"></i>
-                                    </button>
-                                <?php endif; ?>
+                                <button class="page-btn" id="btnNext" type="button" <?= $page >= $pages ? 'disabled' : '' ?>>
+                                    <i class="lni lni-chevron-right"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1165,6 +1162,23 @@ $currentCount = count($rows);
 
         const $ = (id) => document.getElementById(id);
 
+        const state = {
+            q: <?= json_encode($q, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+            page: <?= (int)$page ?>,
+            per: <?= (int)$per ?>,
+            pages: <?= (int)$pages ?>,
+            total: <?= (int)$totalCount ?>
+        };
+
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
         function onlyDigits(s) {
             return String(s || '').replace(/\D+/g, '');
         }
@@ -1180,23 +1194,87 @@ $currentCount = count($rows);
             return `(${dd}) ${rest.slice(0,5)}-${rest.slice(5)}`;
         }
 
-        function applyFilters(resetPage = true) {
-            const params = new URLSearchParams(window.location.search);
-            const q = $('q').value.trim();
-            const per = $('per').value;
+        function setLoading(on) {
+            $('pillLoading').style.display = on ? 'inline-flex' : 'none';
+        }
 
-            if (q) params.set('q', q);
-            else params.delete('q');
+        function syncUrl() {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('action');
+            url.searchParams.delete('export');
 
-            if (per) params.set('per', per);
-            else params.delete('per');
+            if (state.q) url.searchParams.set('q', state.q);
+            else url.searchParams.delete('q');
 
-            if (resetPage) params.set('page', '1');
+            url.searchParams.set('page', String(state.page));
+            url.searchParams.set('per', String(state.per));
 
-            params.delete('export');
+            window.history.replaceState({}, '', url.toString());
+        }
 
-            const url = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
-            window.location.href = url;
+        function renderMeta(meta) {
+            state.page = Number(meta.page || 1);
+            state.per = Number(meta.per || 25);
+            state.pages = Number(meta.pages || 1);
+            state.total = Number(meta.total || 0);
+
+            $('pillCount').textContent = `${state.total} clientes`;
+            $('lblRange').textContent = meta.q ? `Busca: ${meta.q}` : '—';
+            $('pageInfo').textContent = `Página ${state.page}/${state.pages}`;
+            $('pageMeta').textContent = `Página ${state.page} de ${state.pages}`;
+            $('infoCount').textContent = `Mostrando ${Number(meta.shown || 0)} item(ns) nesta página de clientes. Total filtrado: ${state.total}.`;
+
+            $('btnPrev').disabled = state.page <= 1;
+            $('btnNext').disabled = state.page >= state.pages;
+
+            $('per').value = String(state.per);
+            syncUrl();
+        }
+
+        function rowHtml(r) {
+            const end = r.endereco && r.endereco.trim() !== '' ? r.endereco : '—';
+            const created = r.created_fmt || '—';
+
+            return `
+                <tr>
+                    <td class="td-nowrap fw-1000">${Number(r.id || 0)}</td>
+                    <td><span class="td-clip" title="${escapeHtml(r.nome || '')}">${escapeHtml(r.nome || '')}</span></td>
+                    <td class="td-nowrap">${escapeHtml(r.cpf_fmt || '—')}</td>
+                    <td class="td-nowrap">${escapeHtml(r.tel_fmt || '—')}</td>
+                    <td><span class="td-clip" title="${escapeHtml(end)}">${escapeHtml(end)}</span></td>
+                    <td class="td-nowrap">${escapeHtml(created)}</td>
+                    <td class="text-end">
+                        <div class="actions-wrap">
+                            <button type="button" class="main-btn light-btn btn-hover btn-action btnDetalhes"
+                                data-id="${Number(r.id || 0)}"
+                                data-nome="${escapeHtml(r.nome || '')}"
+                                data-cpf="${escapeHtml(r.cpf_fmt || '—')}"
+                                data-tel="${escapeHtml(r.tel_fmt || '—')}"
+                                data-end="${escapeHtml(r.endereco || '')}"
+                                data-created="${escapeHtml(created)}">
+                                <i class="lni lni-eye"></i> <span class="act-text">Detalhes</span>
+                            </button>
+
+                            <button type="button" class="main-btn primary-btn btn-hover btn-action btnEditar"
+                                data-id="${Number(r.id || 0)}"
+                                data-nome="${escapeHtml(r.nome || '')}"
+                                data-cpfdigits="${escapeHtml(r.cpf_digits || '')}"
+                                data-telraw="${escapeHtml(r.tel_raw || '')}"
+                                data-end="${escapeHtml(r.endereco || '')}">
+                                <i class="lni lni-pencil"></i> <span class="act-text">Editar</span>
+                            </button>
+
+                            <button type="button" class="main-btn light-btn btn-hover btn-action btnExcluir"
+                                data-id="${Number(r.id || 0)}"
+                                data-nome="${escapeHtml(r.nome || '')}"
+                                data-cpf="${escapeHtml(r.cpf_fmt || '—')}"
+                                data-tel="${escapeHtml(r.tel_fmt || '—')}">
+                                <i class="lni lni-trash-can"></i> <span class="act-text">Excluir</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
         }
 
         function bindRowActions() {
@@ -1213,10 +1291,9 @@ $currentCount = count($rows);
             const fmTel = $('fmTel');
             const fmEnd = $('fmEnd');
 
-            const btnNovo = $('btnNovo');
-            if (btnNovo && !btnNovo.dataset.bound) {
-                btnNovo.dataset.bound = '1';
-                btnNovo.addEventListener('click', () => {
+            if (!$('btnNovo').dataset.bound) {
+                $('btnNovo').dataset.bound = '1';
+                $('btnNovo').addEventListener('click', () => {
                     formCliente.action = 'assets/dados/clientes/salvarClientes.php';
                     fmTitulo.textContent = 'Novo cliente';
                     fmSub.textContent = 'CPF só números • Telefone com máscara';
@@ -1230,18 +1307,22 @@ $currentCount = count($rows);
                 });
             }
 
-            if (fmCpf && !fmCpf.dataset.bound) {
+            if (!fmCpf.dataset.bound) {
                 fmCpf.dataset.bound = '1';
-                fmCpf.addEventListener('input', e => e.target.value = onlyDigits(e.target.value).slice(0, 11));
+                fmCpf.addEventListener('input', e => {
+                    e.target.value = onlyDigits(e.target.value).slice(0, 11);
+                });
             }
 
-            if (fmTel && !fmTel.dataset.bound) {
+            if (!fmTel.dataset.bound) {
                 fmTel.dataset.bound = '1';
-                fmTel.addEventListener('input', e => e.target.value = maskTel(e.target.value));
+                fmTel.addEventListener('input', e => {
+                    e.target.value = maskTel(e.target.value);
+                });
             }
 
             document.querySelectorAll('.btnDetalhes').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.onclick = () => {
                     $('dtTitulo').textContent = `Detalhes do cliente #${btn.dataset.id}`;
                     $('dtNome').textContent = btn.dataset.nome || '—';
                     $('dtCpf').textContent = btn.dataset.cpf || '—';
@@ -1249,11 +1330,11 @@ $currentCount = count($rows);
                     $('dtEnd').textContent = (btn.dataset.end && btn.dataset.end.trim() !== '') ? btn.dataset.end : '—';
                     $('dtCreated').textContent = btn.dataset.created || '—';
                     mdDetalhes.show();
-                });
+                };
             });
 
             document.querySelectorAll('.btnEditar').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.onclick = () => {
                     formCliente.action = 'assets/dados/clientes/editarClientes.php';
                     fmTitulo.textContent = `Editar cliente #${btn.dataset.id}`;
                     fmSub.textContent = 'CPF só números • Telefone com máscara';
@@ -1264,37 +1345,112 @@ $currentCount = count($rows);
                     fmEnd.value = btn.dataset.end || '';
                     mdForm.show();
                     setTimeout(() => fmNome.focus(), 150);
-                });
+                };
             });
 
             document.querySelectorAll('.btnExcluir').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.onclick = () => {
                     $('exId').value = btn.dataset.id || '';
                     $('exNome').textContent = btn.dataset.nome || '—';
                     $('exMeta').textContent = `${btn.dataset.cpf || ''} • ${btn.dataset.tel || ''}`;
                     mdExcluir.show();
-                });
+                };
             });
         }
 
-        $('q').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                applyFilters(true);
+        async function loadAjax() {
+            setLoading(true);
+
+            const params = new URLSearchParams({
+                action: 'ajax',
+                q: state.q,
+                page: String(state.page),
+                per: String(state.per)
+            });
+
+            try {
+                const res = await fetch('clientes.php?' + params.toString(), {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                const data = await res.json().catch(() => null);
+
+                if (!data || !data.ok) {
+                    $('tbody').innerHTML = `<tr><td colspan="7" class="muted">Erro ao carregar clientes.</td></tr>`;
+                    return;
+                }
+
+                renderMeta(data.meta || {});
+                const rows = Array.isArray(data.rows) ? data.rows : [];
+
+                $('tbody').innerHTML = rows.length
+                    ? rows.map(rowHtml).join('')
+                    : `<tr><td colspan="7" class="muted">Nenhum cliente encontrado.</td></tr>`;
+
+                bindRowActions();
+            } catch (e) {
+                $('tbody').innerHTML = `<tr><td colspan="7" class="muted">Erro de rede/servidor. Tente novamente.</td></tr>`;
+            } finally {
+                setLoading(false);
             }
+        }
+
+        let searchTimer = null;
+
+        $('q').addEventListener('input', (e) => {
+            state.q = e.target.value.trim();
+            state.page = 1;
+
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(loadAjax, 250);
+        });
+
+        $('q').addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 $('q').value = '';
-                applyFilters(true);
+                state.q = '';
+                state.page = 1;
+                loadAjax();
             }
         });
 
-        $('per').addEventListener('change', () => applyFilters(true));
+        $('per').addEventListener('change', (e) => {
+            state.per = Number(e.target.value) || 25;
+            state.page = 1;
+            loadAjax();
+        });
+
+        $('btnPrev').addEventListener('click', () => {
+            if (state.page <= 1) return;
+            state.page -= 1;
+            loadAjax();
+        });
+
+        $('btnNext').addEventListener('click', () => {
+            if (state.page >= state.pages) return;
+            state.page += 1;
+            loadAjax();
+        });
 
         $('btnLimpar').addEventListener('click', () => {
-            window.location.href = 'clientes.php';
+            $('q').value = '';
+            state.q = '';
+            state.page = 1;
+            state.per = 25;
+            $('per').value = '25';
+            loadAjax();
+        });
+
+        $('btnExcel').addEventListener('click', () => {
+            const params = new URLSearchParams();
+            params.set('export', 'excel');
+            if (state.q) params.set('q', state.q);
+            params.set('per', String(state.per));
+            window.location.href = 'clientes.php?' + params.toString();
         });
 
         bindRowActions();
+        syncUrl();
     </script>
 </body>
 
