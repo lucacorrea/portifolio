@@ -1,23 +1,24 @@
 :root {
-    /* Dark Modern Palette (Centro do Eletricista) */
-    --erp-primary: #fbbf24; /* Gold/Yellow from logo */
-    --erp-primary-hover: #f59e0b;
-    --erp-secondary: #1e293b;
+    /* Dark Modern Palette (Neutral Black) */
+    --erp-primary: #c5a028;
+    /* Gold Ouro Escuro */
+    --erp-primary-hover: #a68a20;
+    --erp-secondary: #141414;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
-    --erp-warning: #f59e0b;
-    --erp-dark: #020617;
-    --erp-light: #0f172a;
-    --erp-glass: rgba(15, 23, 42, 0.8);
+    --erp-warning: #c5a028;
+    --erp-dark: #0a0a0a;
+    --erp-light: #141414;
+    --erp-glass: rgba(10, 10, 10, 0.8);
     --erp-card-shadow: none;
 
     /* Technical Tokens */
     --primary-color: var(--erp-primary);
     --primary-hover: var(--erp-primary-hover);
     --secondary-color: var(--erp-secondary);
-    --border: #334155;
+    --border: #262626;
     --text-primary: #f8fafc !important;
-    --text-secondary: #94a3b8 !important;
+    --text-secondary: #a3a3a3 !important;
 
     --radius-sm: 4px;
     --radius-md: 8px;
@@ -31,11 +32,12 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #fbbf24;
-    --bs-primary-rgb: 251, 191, 36;
-    --bs-link-color: #fbbf24;
-    --bs-link-hover-color: #f59e0b;
-    --bs-body-bg: #020617;
+    --bs-primary: #c5a028;
+    --bs-primary-rgb: 197, 160, 40;
+    --bs-link-color: #c5a028;
+    --bs-link-hover-color: #a68a20;
+    --bs-body-bg: #0a0a0a;
+    --bs-warning: #c5a028;
     --bs-body-color: #f8fafc;
 }
 
@@ -44,10 +46,17 @@
     opacity: 1 !important;
 }
 
-::-webkit-input-placeholder { color: #475569 !important; }
-:-ms-input-placeholder { color: #475569 !important; }
+::-webkit-input-placeholder {
+    color: #475569 !important;
+}
 
-input, select, textarea {
+:-ms-input-placeholder {
+    color: #475569 !important;
+}
+
+input,
+select,
+textarea {
     color: #f8fafc !important;
 }
 
@@ -65,7 +74,7 @@ body {
 /* Sidebar Styling - Darker */
 .sidebar {
     width: 260px;
-    background: #0f172a;
+    background: #141414;
     border-right: 1px solid var(--border);
     transition: all 0.3s;
     z-index: 1040;
@@ -81,21 +90,25 @@ body {
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
+
 .sidebar::-webkit-scrollbar-track {
-    background: #0f172a; 
+    background: #141414;
 }
+
 .sidebar::-webkit-scrollbar-thumb {
-    background: #334155; 
+    background: #262626;
     border-radius: 4px;
 }
+
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: #475569; 
+    background: #404040;
 }
 
 .sidebar-header {
     padding: 1.5rem;
     border-bottom: 1px solid var(--border);
-    background: #000000; /* Match logo background */
+    background: #000000;
+    /* Match logo background */
 }
 
 .nav-link {
@@ -110,7 +123,7 @@ body {
 
 .nav-link:hover,
 .nav-link.active {
-    background-color: #1e293b;
+    background-color: #1a1a1a;
     color: var(--primary-color);
 }
 
@@ -125,13 +138,14 @@ body {
     flex-direction: column;
     min-width: 0;
     background: var(--erp-dark);
-    margin-left: 260px; /* Essential to prevent overlap */
+    margin-left: 260px;
+    /* Essential to prevent overlap */
     transition: margin-left 0.3s;
 }
 
 .top-navbar {
     height: 70px;
-    background: #020617;
+    background: #0a0a0a;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -146,7 +160,7 @@ body {
 
 /* Enhanced Cards - No Shadow, Flat Border */
 .card {
-    background: #0f172a;
+    background: #141414;
     border-radius: 0.5rem;
     border: 1px solid var(--border);
     box-shadow: none !important;
@@ -164,28 +178,33 @@ body {
 }
 
 /* Search Dropdowns Z-Index Fix & Style */
-#searchResults, #pv_search_results, #customerResults, #pv_client_results {
+#searchResults,
+#pv_search_results,
+#customerResults,
+#pv_client_results {
     z-index: 10000 !important;
-    background: #0f172a !important; /* Darker background for better contrast */
-    border: 1px solid var(--primary-color) !important; /* Primary border to make it pop */
+    background: #141414 !important;
+    /* Darker background for better contrast */
+    border: 1px solid var(--primary-color) !important;
+    /* Primary border to make it pop */
     margin-top: 5px;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
 }
 
-#searchResults .list-group-item, 
+#searchResults .list-group-item,
 #pv_search_results .list-group-item,
 #customerResults .list-group-item,
 #pv_client_results .list-group-item {
-    background: #1e293b;
-    border-color: rgba(255,255,255,0.05);
+    background: #1a1a1a;
+    border-color: rgba(255, 255, 255, 0.05);
     color: #f8fafc;
 }
 
-#searchResults .list-group-item:hover, 
+#searchResults .list-group-item:hover,
 #pv_search_results .list-group-item:hover,
 #customerResults .list-group-item:hover,
 #pv_client_results .list-group-item:hover {
-    background: #334155;
+    background: #262626;
 }
 
 /* Ensure parents of absolute elements don't clip */
@@ -255,7 +274,8 @@ body {
     background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-.industrial-table td, .industrial-table th {
+.industrial-table td,
+.industrial-table th {
     border-bottom: 1px solid var(--border);
     color: #f8fafc !important;
 }
@@ -272,7 +292,11 @@ body {
 }
 
 /* Neutralize all light/white backgrounds */
-.bg-light, .bg-white, .btn-light, .card-footer, .modal-footer {
+.bg-light,
+.bg-white,
+.btn-light,
+.card-footer,
+.modal-footer {
     background-color: var(--erp-light) !important;
     color: var(--text-primary) !important;
     border-color: var(--border) !important;
@@ -300,7 +324,9 @@ body {
     border-color: var(--border) !important;
 }
 
-.table td, .table th, .table tr {
+.table td,
+.table th,
+.table tr {
     border-color: var(--border) !important;
     color: var(--text-primary) !important;
 }
@@ -313,7 +339,14 @@ body {
 }
 
 /* Specific fix for cashier, sales and modals */
-.bg-light, .bg-light *, .modal-body, .modal-body *, .list-group-item, .list-group-item *, .card-body, .card-body * {
+.bg-light,
+.bg-light *,
+.modal-body,
+.modal-body *,
+.list-group-item,
+.list-group-item *,
+.card-body,
+.card-body * {
     color: var(--text-primary);
 }
 
@@ -380,7 +413,7 @@ body {
 }
 
 .dropdown-menu {
-    background-color: #1e293b;
+    background-color: #1a1a1a;
     border: 1px solid var(--border);
 }
 
@@ -389,28 +422,67 @@ body {
 }
 
 .dropdown-item:hover {
-    background-color: #334155;
+    background-color: #262626;
     color: var(--erp-primary);
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     color: #f8fafc;
 }
 
 /* Scrollbar Modernization */
 ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #262626;
 }
 
-.form-control, .form-select {
-    background-color: #020617;
+.form-control,
+.form-select {
+    background-color: #0d0d0d;
     border: 1px solid var(--border);
     color: #f8fafc;
 }
 
-.form-control:focus, .form-select:focus {
-    background-color: #020617;
+.form-control:focus,
+.form-select:focus {
+    background-color: #0d0d0d;
     border-color: var(--erp-primary);
     color: #f8fafc;
     box-shadow: none;
-}
+}
+
+/* Bootstrap Warning Overrides */
+.btn-warning {
+    background-color: var(--erp-warning) !important;
+    border-color: var(--erp-warning) !important;
+    color: #000 !important;
+}
+
+.btn-warning:hover {
+    background-color: var(--erp-primary-hover) !important;
+    border-color: var(--erp-primary-hover) !important;
+}
+
+.text-warning {
+    color: var(--erp-warning) !important;
+}
+
+.border-warning {
+    border-color: var(--erp-warning) !important;
+}
+
+.bg-warning {
+    background-color: var(--erp-warning) !important;
+}
+
+.bg-opacity-10.text-warning {
+    background-color: rgba(197, 160, 40, 0.1) !important;
+}
+
+.border-start.border-warning {
+    border-left-color: var(--erp-warning) !important;
+}
