@@ -142,19 +142,20 @@ class SefazConsultaService extends BaseService {
 
     private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
         $xml = new DOMDocument('1.0', 'UTF-8');
-        $distDFeInt = $xml->createElementNS('http://www.portalfiscal.inf.br/nfe', 'distDFeInt');
+        $ns = 'http://www.portalfiscal.inf.br/nfe';
+        $distDFeInt = $xml->createElementNS($ns, 'distDFeInt');
         $distDFeInt->setAttribute('versao', '1.01');
         
         $xml->appendChild($distDFeInt);
-        $distDFeInt->appendChild($xml->createElement('tpAmb', $ambiente));
-        $distDFeInt->appendChild($xml->createElement('cUFAutor', '91')); // Ambiente Nacional é obrigatório para DistDFe
-        $distDFeInt->appendChild($xml->createElement('CNPJ', $cnpj));
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'tpAmb', $ambiente));
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'cUFAutor', '91')); 
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'CNPJ', $cnpj));
         
-        $dist = $xml->createElement('distNSU');
-        $dist->appendChild($xml->createElement('ultNSU', str_pad($ultNSU, 15, '0', STR_PAD_LEFT)));
+        $dist = $xml->createElementNS($ns, 'distNSU');
+        $dist->appendChild($xml->createElementNS($ns, 'ultNSU', str_pad($ultNSU, 15, '0', STR_PAD_LEFT)));
         $distDFeInt->appendChild($dist);
 
-        return $xml->saveXML();
+        return $xml->saveXML($xml->documentElement);
     }
 
     private function comunicarSefaz($xml) {
