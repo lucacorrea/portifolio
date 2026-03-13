@@ -613,9 +613,9 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .table-danger {
-    --bs-table-bg: rgba(239, 68, 68, 0.18) !important;
+    --bs-table-bg: rgba(239, 68, 68, 0.35) !important;
     --bs-table-color: #f8fafc !important;
-    --bs-table-border-color: rgba(239, 68, 68, 0.31) !important;
+    --bs-table-border-color: rgba(239, 68, 68, 0.45) !important;
 }
 
 .table-success {
@@ -629,7 +629,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .table-hover tbody tr.table-danger:hover td {
-    background-color: rgba(239, 68, 68, 0.25) !important;
+    background-color: rgba(239, 68, 68, 0.55) !important;
 }
 
 .table-hover tbody tr.table-success:hover td {
