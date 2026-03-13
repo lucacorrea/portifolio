@@ -724,10 +724,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="row">
-                    <div class="row">
 
-                      <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Localidades <span class="text-danger">*</span></label>
+
+                      <div class="col-12 col-lg-6 mb-3">
+                        <label>Localidade <span class="text-danger">*</span></label>
 
                         <select
                           name="comunidade_id"
@@ -736,10 +736,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                           <option value="">Selecione</option>
 
-                          <!-- BAIRROS -->
-                          <?php if (!empty($bairros)): ?>
+                          <?php if (!empty($bairrosLista)): ?>
                             <optgroup label="Bairros">
-                              <?php foreach ($bairros as $b): ?>
+                              <?php foreach ($bairrosLista as $b): ?>
                                 <option
                                   value="<?= (int)$b['id'] ?>"
                                   <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$b['id']) ? 'selected' : '' ?>>
@@ -749,7 +748,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </optgroup>
                           <?php endif; ?>
 
-                          <!-- COMUNIDADES -->
                           <?php if (!empty($comunidadesLista)): ?>
                             <optgroup label="Comunidades">
                               <?php foreach ($comunidadesLista as $c): ?>
@@ -765,67 +763,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </select>
 
                         <small class="text-muted help-hint">
-                          Selecione o bairro ou comunidade de origem.
+                          Selecione o bairro ou a comunidade de origem.
                         </small>
                       </div>
 
-                    </div>
 
-                    <div class="col-12 col-md-6 col-lg-3 mb-3">
-                      <label>Status</label>
-                      <select name="ativo" class="form-control">
-                        <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
-                        <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
-                      </select>
-                      <small class="text-muted help-hint">Você pode desativar sem excluir.</small>
-                    </div>
 
-                    <div class="col-12 mb-3">
-                      <label>Observações</label>
-                      <textarea
-                        name="observacao"
-                        class="form-control"
-                        rows="4"
-                        placeholder="Ex.: produtor de farinha tradicional, entrega na sexta..."><?= h($old['observacao']) ?></textarea>
-                      <small class="text-muted help-hint">Opcional (até 255 caracteres).</small>
+                      <div class="col-12 col-md-6 col-lg-3 mb-3">
+                        <label>Status</label>
+                        <select name="ativo" class="form-control">
+                          <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
+                          <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
+                        </select>
+                        <small class="text-muted help-hint">Você pode desativar sem excluir.</small>
+                      </div>
+
+                      <div class="col-12 mb-3">
+                        <label>Observações</label>
+                        <textarea
+                          name="observacao"
+                          class="form-control"
+                          rows="4"
+                          placeholder="Ex.: produtor de farinha tradicional, entrega na sexta..."><?= h($old['observacao']) ?></textarea>
+                        <small class="text-muted help-hint">Opcional (até 255 caracteres).</small>
+                      </div>
                     </div>
                   </div>
+
+                  <hr>
+
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" <?= empty($comunidades) ? 'disabled' : '' ?>>
+                      <i class="ti-save mr-1"></i> Salvar
+                    </button>
+                    <button type="reset" class="btn btn-light" id="btnLimparForm">
+                      <i class="ti-close mr-1"></i> Limpar
+                    </button>
+                  </div>
+
+                  <small class="text-muted d-block mt-3">
+                    * Campos obrigatórios.
+                  </small>
+                </form>
+
               </div>
-
-              <hr>
-
-              <div class="form-actions">
-                <button type="submit" class="btn btn-primary" <?= empty($comunidades) ? 'disabled' : '' ?>>
-                  <i class="ti-save mr-1"></i> Salvar
-                </button>
-                <button type="reset" class="btn btn-light" id="btnLimparForm">
-                  <i class="ti-close mr-1"></i> Limpar
-                </button>
-              </div>
-
-              <small class="text-muted d-block mt-3">
-                * Campos obrigatórios.
-              </small>
-              </form>
-
             </div>
           </div>
         </div>
+
       </div>
+
+      <footer class="footer">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
+          <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
+            © <?= date('Y') ?> SIGRelatórios —
+            <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
+            Todos os direitos reservados.
+          </span>
+        </div>
+      </footer>
 
     </div>
-
-    <footer class="footer">
-      <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center">
-        <span class="text-muted text-center text-sm-left d-block mb-2 mb-sm-0">
-          © <?= date('Y') ?> SIGRelatórios —
-          <a href="https://www.lucascorrea.pro/" target="_blank" rel="noopener">lucascorrea.pro</a>.
-          Todos os direitos reservados.
-        </span>
-      </div>
-    </footer>
-
-  </div>
   </div>
   </div>
 
