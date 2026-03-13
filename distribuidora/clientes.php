@@ -2,139 +2,167 @@
 
 declare(strict_types=1);
 
-
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/clientes/_helpers.php';
-
 require_once __DIR__ . '/assets/auth/auth.php';
 auth_require('index.php');
+
+/* =========================
+   FALLBACKS
+========================= */
+if (!function_exists('e')) {
+    function e(string $s): string
+    {
+        return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+}
+if (!function_exists('require_db_or_die')) {
+    function require_db_or_die(): void
+    {
+        if (!function_exists('db')) {
+            http_response_code(500);
+            exit('Erro: função db() não encontrada.');
+        }
+    }
+}
+if (!function_exists('csrf_token')) {
+    function csrf_token(): string
+    {
+        if (empty($_SESSION['_csrf'])) {
+            $_SESSION['_csrf'] = bin2hex(random_bytes(32));
+        }
+        return (string)$_SESSION['_csrf'];
+    }
+}
+if (!function_exists('flash_pop')) {
+    function flash_pop(string $key): ?string
+    {
+        if (!isset($_SESSION[$key])) return null;
+        $v = (string)$_SESSION[$key];
+        unset($_SESSION[$key]);
+        return $v;
+    }
+}
+if (!function_exists('only_digits')) {
+    function only_digits(string $s): string
+    {
+        return preg_replace('/\D+/', '', $s) ?? '';
+    }
+}
+if (!function_exists('cpf_fmt')) {
+    function cpf_fmt(?string $cpf): string
+    {
+        $d = only_digits((string)$cpf);
+        if ($d === '') return '—';
+        $d = substr($d, 0, 11);
+        if (strlen($d) !== 11) return $d;
+        return substr($d, 0, 3) . '.' . substr($d, 3, 3) . '.' . substr($d, 6, 3) . '-' . substr($d, 9, 2);
+    }
+}
+if (!function_exists('tel_fmt')) {
+    function tel_fmt(?string $tel): string
+    {
+        $d = only_digits((string)$tel);
+        if ($d === '') return '—';
+        if (strlen($d) === 11) {
+            return '(' . substr($d, 0, 2) . ') ' . substr($d, 2, 5) . '-' . substr($d, 7, 4);
+        }
+        if (strlen($d) === 10) {
+            return '(' . substr($d, 0, 2) . ') ' . substr($d, 2, 4) . '-' . substr($d, 6, 4);
+        }
+        return $tel ?: '—';
+    }
+}
+if (!function_exists('url_here')) {
+    function url_here(string $fallback = 'clientes.php'): string
+    {
+        return (string)($_SERVER['REQUEST_URI'] ?? $fallback);
+    }
+}
 
 require_db_or_die();
 $pdo = db();
 
 /* =========================
-   JSON OUT (local)
+   UTILS
 ========================= */
-function json_out(array $payload, int $code = 200): void
+function build_url(array $overrides = []): string
 {
-    http_response_code($code);
-    header('Content-Type: application/json; charset=UTF-8');
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
+    $params = $_GET;
+    unset($params['export']);
+
+    foreach ($overrides as $k => $v) {
+        if ($v === null || $v === '') {
+            unset($params[$k]);
+        } else {
+            $params[$k] = (string)$v;
+        }
+    }
+
+    $qs = http_build_query($params);
+    return 'clientes.php' . ($qs ? ('?' . $qs) : '');
 }
 
-/* =========================
-   AJAX ENDPOINT
-   clientes.php?action=ajax&q=...&page=1&per=25
-========================= */
-$action = strtolower(get_str('action', ''));
-if ($action === 'ajax') {
+function format_sql_datetime(?string $dt): string
+{
+    $dt = trim((string)$dt);
+    if ($dt === '') return '—';
+
     try {
-        $q = trim(get_str('q', ''));
-        $page = max(1, get_int('page', 1));
-        $per  = get_int('per', 25);
-        $per  = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
-
-        $params = [];
-        $where  = " WHERE 1=1 ";
-
-        if ($q !== '') {
-            $qd = only_digits($q);
-
-            // ID
-            if (ctype_digit($q) && strlen($q) <= 9) {
-                $where .= " AND c.id = :id ";
-                $params['id'] = (int)$q;
-            }
-            // Digitou números (CPF/Telefone) - usa placeholders DIFERENTES (senão dá HY093)
-            elseif ($qd !== '') {
-                $where .= " AND (
-            REPLACE(REPLACE(REPLACE(c.cpf,'.',''),'-',''),' ','') LIKE :qd1
-         OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.telefone,'(',''),')',''),'-',''),' ',''),'+','') LIKE :qd2
-         OR c.cpf LIKE :qraw1
-         OR c.telefone LIKE :qraw2
-        ) ";
-                $params['qd1']   = '%' . $qd . '%';
-                $params['qd2']   = '%' . $qd . '%';
-                $params['qraw1'] = '%' . $q . '%';
-                $params['qraw2'] = '%' . $q . '%';
-            }
-            // Texto (nome/endereço) - placeholders diferentes
-            else {
-                $where .= " AND (c.nome LIKE :q1 OR c.endereco LIKE :q2) ";
-                $params['q1'] = '%' . $q . '%';
-                $params['q2'] = '%' . $q . '%';
-            }
-        }
-
-        // total
-        $sqlTot = "SELECT COUNT(*) AS total FROM clientes c $where";
-        $stTot = $pdo->prepare($sqlTot);
-        $stTot->execute($params);
-        $totalCount = (int)($stTot->fetchColumn() ?: 0);
-
-        $pages = (int)max(1, (int)ceil($totalCount / $per));
-        if ($page > $pages) $page = $pages;
-        $off = ($page - 1) * $per;
-
-        // lista
-        $sql = "SELECT c.id, c.nome, c.cpf, c.telefone, c.endereco, c.created_at
-            FROM clientes c
-            $where
-            ORDER BY c.id DESC
-            LIMIT $per OFFSET $off";
-        $st = $pdo->prepare($sql);
-        $st->execute($params);
-        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        $out = [];
-        foreach ($rows as $r) {
-            $cpfRaw = (string)($r['cpf'] ?? '');
-            $telRaw = (string)($r['telefone'] ?? '');
-
-            $out[] = [
-                'id' => (int)$r['id'],
-                'nome' => (string)$r['nome'],
-
-                // digits p/ editar (CPF sempre)
-                'cpf_digits' => only_digits($cpfRaw),
-                'tel_digits' => only_digits($telRaw),
-
-                // para exibir
-                'cpf_fmt' => cpf_fmt($cpfRaw),
-                'tel_fmt' => tel_fmt($telRaw),
-
-                // telefone como está no banco (p/ editar com máscara)
-                'tel_raw' => $telRaw,
-
-                'endereco' => (string)($r['endereco'] ?? ''),
-                'created_at' => (string)($r['created_at'] ?? ''),
-            ];
-        }
-
-        json_out([
-            'ok' => true,
-            'meta' => [
-                'q' => $q,
-                'page' => $page,
-                'per' => $per,
-                'pages' => $pages,
-                'total' => $totalCount,
-                'shown' => count($out),
-            ],
-            'rows' => $out,
-        ]);
+        $d = new DateTime($dt);
+        return $d->format('d/m/Y H:i:s');
     } catch (Throwable $e) {
-        json_out(['ok' => false, 'msg' => 'Erro no AJAX: ' . $e->getMessage()], 500);
+        return $dt;
     }
 }
 
+function build_client_where(string $q, array &$params): string
+{
+    $where = " WHERE 1=1 ";
+
+    if ($q !== '') {
+        $qd = only_digits($q);
+
+        if (ctype_digit($q) && strlen($q) <= 9) {
+            $where .= " AND c.id = :id ";
+            $params[':id'] = (int)$q;
+        } elseif ($qd !== '') {
+            $where .= " AND (
+                REPLACE(REPLACE(REPLACE(c.cpf,'.',''),'-',''),' ','') LIKE :qd1
+                OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.telefone,'(',''),')',''),'-',''),' ',''),'+','') LIKE :qd2
+                OR c.cpf LIKE :qraw1
+                OR c.telefone LIKE :qraw2
+                OR c.nome LIKE :qraw3
+                OR c.endereco LIKE :qraw4
+            ) ";
+            $params[':qd1'] = '%' . $qd . '%';
+            $params[':qd2'] = '%' . $qd . '%';
+            $params[':qraw1'] = '%' . $q . '%';
+            $params[':qraw2'] = '%' . $q . '%';
+            $params[':qraw3'] = '%' . $q . '%';
+            $params[':qraw4'] = '%' . $q . '%';
+        } else {
+            $where .= " AND (
+                c.nome LIKE :q1
+                OR c.endereco LIKE :q2
+                OR c.cpf LIKE :q3
+                OR c.telefone LIKE :q4
+            ) ";
+            $params[':q1'] = '%' . $q . '%';
+            $params[':q2'] = '%' . $q . '%';
+            $params[':q3'] = '%' . $q . '%';
+            $params[':q4'] = '%' . $q . '%';
+        }
+    }
+
+    return $where;
+}
+
 /* =========================
-   HTML NORMAL (primeiro load)
+   INPUTS
 ========================= */
 $csrf = csrf_token();
 $return_to = (string)($_SERVER['REQUEST_URI'] ?? url_here('clientes.php'));
@@ -142,19 +170,171 @@ $return_to = (string)($_SERVER['REQUEST_URI'] ?? url_here('clientes.php'));
 $flashOk  = flash_pop('flash_ok');
 $flashErr = flash_pop('flash_err');
 
-// Primeira renderização: traz página 1 sem filtro
-$page = 1;
-$per  = 25;
+$q = trim((string)($_GET['q'] ?? ''));
+$page = (int)($_GET['page'] ?? 1);
+if ($page < 1) $page = 1;
 
-$sqlTot = "SELECT COUNT(*) AS total FROM clientes";
-$totalCount = (int)($pdo->query($sqlTot)->fetchColumn() ?: 0);
+$per = (int)($_GET['per'] ?? 25);
+$per = in_array($per, [10, 25, 50, 100], true) ? $per : 25;
+
+/* =========================
+   EXPORTAR EXCEL
+========================= */
+if (isset($_GET['export']) && $_GET['export'] === 'excel') {
+    $paramsExcel = [];
+    $whereExcel = build_client_where($q, $paramsExcel);
+
+    $sqlExcel = "
+        SELECT c.id, c.nome, c.cpf, c.telefone, c.endereco, c.created_at
+        FROM clientes c
+        $whereExcel
+        ORDER BY c.id DESC
+    ";
+    $stExcel = $pdo->prepare($sqlExcel);
+    foreach ($paramsExcel as $k => $v) {
+        $type = is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR;
+        $stExcel->bindValue($k, $v, $type);
+    }
+    $stExcel->execute();
+    $excelRows = $stExcel->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $filename = 'clientes_' . date('Y-m-d_H-i-s') . '.xls';
+    $geradoEm = date('d/m/Y H:i:s');
+    $buscaLabel = $q !== '' ? $q : '—';
+
+    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+
+    echo "\xEF\xBB\xBF";
+?>
+    <html>
+
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            table {
+                border-collapse: collapse;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                width: auto;
+            }
+
+            td,
+            th {
+                border: 1px solid #000;
+                padding: 4px 6px;
+                vertical-align: middle;
+                white-space: nowrap;
+            }
+
+            th {
+                background: #ffffff;
+                font-weight: bold;
+                text-align: center;
+            }
+
+            .title {
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+            }
+
+            .sub {
+                text-align: center;
+                font-weight: normal;
+            }
+
+            .left {
+                text-align: left;
+            }
+
+            .center {
+                text-align: center;
+            }
+        </style>
+    </head>
+
+    <body>
+        <table>
+            <tr>
+                <td class="title" colspan="6">PAINEL DA DISTRIBUIDORA - CLIENTES</td>
+            </tr>
+            <tr>
+                <td class="sub" colspan="6">Gerado em: <?= e($geradoEm) ?></td>
+            </tr>
+            <tr>
+                <td class="sub" colspan="6">Busca: <?= e($buscaLabel) ?></td>
+            </tr>
+            <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>CPF</th>
+                <th>Telefone</th>
+                <th>Endereço</th>
+                <th>Criado em</th>
+            </tr>
+
+            <?php if (!$excelRows): ?>
+                <tr>
+                    <td colspan="6" class="center">Nenhum cliente encontrado.</td>
+                </tr>
+            <?php else: ?>
+                <?php foreach ($excelRows as $r): ?>
+                    <tr>
+                        <td class="center"><?= (int)$r['id'] ?></td>
+                        <td class="left"><?= e((string)$r['nome']) ?></td>
+                        <td class="left"><?= e(cpf_fmt((string)($r['cpf'] ?? ''))) ?></td>
+                        <td class="left"><?= e(tel_fmt((string)($r['telefone'] ?? ''))) ?></td>
+                        <td class="left"><?= e(fmtText((string)($r['endereco'] ?? ''))) ?></td>
+                        <td class="left"><?= e(format_sql_datetime((string)($r['created_at'] ?? ''))) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </table>
+    </body>
+
+    </html>
+<?php
+    exit;
+}
+
+/* =========================
+   LISTAGEM PAGINADA
+========================= */
+$paramsList = [];
+$whereSql = build_client_where($q, $paramsList);
+
+$sqlTot = "SELECT COUNT(*) AS total FROM clientes c $whereSql";
+$stTot = $pdo->prepare($sqlTot);
+foreach ($paramsList as $k => $v) {
+    $type = is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR;
+    $stTot->bindValue($k, $v, $type);
+}
+$stTot->execute();
+$totalCount = (int)($stTot->fetchColumn() ?: 0);
+
 $pages = (int)max(1, (int)ceil($totalCount / $per));
+if ($page > $pages) $page = $pages;
+$off = ($page - 1) * $per;
 
-$sql = "SELECT id, nome, cpf, telefone, endereco, created_at
-        FROM clientes
-        ORDER BY id DESC
-        LIMIT $per OFFSET 0";
-$rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+$sql = "
+    SELECT c.id, c.nome, c.cpf, c.telefone, c.endereco, c.created_at
+    FROM clientes c
+    $whereSql
+    ORDER BY c.id DESC
+    LIMIT :lim OFFSET :off
+";
+$st = $pdo->prepare($sql);
+foreach ($paramsList as $k => $v) {
+    $type = is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR;
+    $st->bindValue($k, $v, $type);
+}
+$st->bindValue(':lim', $per, PDO::PARAM_INT);
+$st->bindValue(':off', $off, PDO::PARAM_INT);
+$st->execute();
+$rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+$currentCount = count($rows);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -175,14 +355,13 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     <style>
         .section {
-            padding-top: 18px
+            padding-top: 18px;
         }
 
         .page-pad {
-            padding-top: 12px
+            padding-top: 12px;
         }
 
-        /* botões menores */
         .main-btn.btn-compact {
             height: 38px !important;
             padding: 10px 14px !important;
@@ -203,7 +382,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             border: 1px solid rgba(148, 163, 184, .22);
             border-radius: 16px;
             background: #fff;
-            overflow: hidden
+            overflow: hidden;
         }
 
         .cardx .head {
@@ -213,16 +392,16 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            flex-wrap: wrap
+            flex-wrap: wrap;
         }
 
         .cardx .body {
-            padding: 14px 16px
+            padding: 14px 16px;
         }
 
         .muted {
             font-size: 13px;
-            color: #64748b
+            color: #64748b;
         }
 
         .pill {
@@ -235,19 +414,13 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             align-items: center;
             gap: 8px;
             background: rgba(248, 250, 252, .7);
-            white-space: nowrap
+            white-space: nowrap;
         }
 
         .pill.ok {
             border-color: rgba(34, 197, 94, .25);
             background: rgba(240, 253, 244, .9);
-            color: #166534
-        }
-
-        .pill.warn {
-            border-color: rgba(245, 158, 11, .25);
-            background: rgba(255, 251, 235, .95);
-            color: #92400e
+            color: #166534;
         }
 
         .toolbar {
@@ -255,18 +428,18 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             gap: 10px;
             flex-wrap: wrap;
             align-items: center;
-            justify-content: flex-end
+            justify-content: flex-end;
         }
 
         .table-wrap {
             overflow: auto;
-            border-radius: 14px
+            border-radius: 14px;
         }
 
         #tbClientes {
             width: 100%;
             min-width: 980px;
-            table-layout: fixed
+            table-layout: fixed;
         }
 
         #tbClientes thead th {
@@ -278,7 +451,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             font-size: 13.5px;
             color: #0f172a;
             padding: 12px 12px;
-            white-space: nowrap
+            white-space: nowrap;
         }
 
         #tbClientes tbody td {
@@ -288,11 +461,11 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             line-height: 1.25;
             vertical-align: middle;
             color: #0f172a;
-            background: #fff
+            background: #fff;
         }
 
         .td-nowrap {
-            white-space: nowrap
+            white-space: nowrap;
         }
 
         .td-clip {
@@ -300,35 +473,35 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             text-overflow: ellipsis;
             white-space: nowrap;
             display: block;
-            max-width: 100%
+            max-width: 100%;
         }
 
         .col-id {
-            width: 70px
+            width: 70px;
         }
 
         .col-nome {
-            width: 300px
+            width: 300px;
         }
 
         .col-cpf {
-            width: 150px
+            width: 150px;
         }
 
         .col-tel {
-            width: 170px
+            width: 170px;
         }
 
         .col-end {
-            width: 260px
+            width: 260px;
         }
 
         .col-created {
-            width: 190px
+            width: 190px;
         }
 
         .col-acoes {
-            width: 260px
+            width: 260px;
         }
 
         .actions-wrap {
@@ -336,7 +509,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             gap: 8px;
             flex-wrap: nowrap;
             justify-content: flex-end;
-            align-items: center
+            align-items: center;
         }
 
         .btn-action {
@@ -351,92 +524,111 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         }
 
         .btn-action i {
-            font-size: 16px
+            font-size: 16px;
         }
 
         @media (max-width:1400px) {
             .btn-action .act-text {
-                display: none
+                display: none;
             }
 
             .btn-action {
-                padding: 8px 10px !important
+                padding: 8px 10px !important;
             }
         }
 
         @media (max-width:992px) {
             #tbClientes {
-                min-width: 920px
+                min-width: 920px;
             }
 
             .actions-wrap {
                 flex-wrap: wrap;
-                justify-content: flex-start
+                justify-content: flex-start;
             }
 
             .btn-action .act-text {
-                display: inline
+                display: inline;
             }
         }
 
-        .page-nav {
+        .table-footer-nav {
             display: flex;
-            gap: 10px;
             align-items: center;
-            justify-content: flex-end;
+            justify-content: space-between;
+            gap: 14px;
             flex-wrap: wrap;
             margin-top: 12px;
-            padding-top: 6px
+            padding-top: 6px;
         }
 
-        .page-btn {
-            border: 1px solid rgba(148, 163, 184, .35);
-            background: #fff;
-            border-radius: 10px;
-            padding: 9px 12px;
-            font-weight: 900;
-            font-size: 12.5px;
-            cursor: pointer;
-            color: #0f172a
+        .pager-box {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
         }
 
-        .page-btn[disabled] {
-            opacity: .55;
-            cursor: not-allowed
+        .page-btn,
+        .page-btn-link {
+            width: 42px;
+            height: 42px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none !important;
+            transition: .2s ease;
+        }
+
+        .page-btn-link:hover {
+            background: #eef2ff;
+            color: #1e40af;
+            border-color: #c7d2fe;
+        }
+
+        .page-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
         }
 
         .page-info {
-            font-size: 12.5px;
-            color: #64748b;
-            font-weight: 900
+            font-weight: 900;
+            color: #475569;
+            min-width: 90px;
+            text-align: center;
+            font-size: 12px;
         }
 
-        /* detalhes modal alinhado */
         .dt-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px
+            gap: 14px;
         }
 
         .dt-item {
             border: 1px solid rgba(148, 163, 184, .18);
             border-radius: 12px;
             padding: 10px 12px;
-            background: #fff
+            background: #fff;
         }
 
         .dt-label {
             font-size: 12px;
             color: #64748b;
             font-weight: 900;
-            margin-bottom: 4px
+            margin-bottom: 4px;
         }
 
         .dt-val {
             font-size: 14px;
             color: #0f172a;
             font-weight: 900;
-            word-break: break-word
+            word-break: break-word;
         }
 
         .logout-btn {
@@ -480,9 +672,18 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             word-break: break-word;
         }
 
-        @media(max-width:768px) {
+        @media (max-width:768px) {
             .dt-grid {
-                grid-template-columns: 1fr
+                grid-template-columns: 1fr;
+            }
+
+            .table-footer-nav {
+                justify-content: center;
+            }
+
+            #infoCount {
+                text-align: center;
+                width: 100%;
             }
         }
     </style>
@@ -493,7 +694,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         <div class="spinner"></div>
     </div>
 
-    <!-- ======== sidebar-nav start =========== -->
     <aside class="sidebar-nav-wrapper">
         <div class="navbar-logo">
             <a href="dashboard.php" class="brand-vertical">
@@ -505,27 +705,21 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             <ul>
                 <li class="nav-item">
                     <a href="dashboard.php">
-                        <span class="icon">
-                            <i class="lni lni-dashboard"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-dashboard"></i></span>
                         <span class="text">Dashboard</span>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="vendas.php">
-                        <span class="icon">
-                            <i class="lni lni-cart"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-cart"></i></span>
                         <span class="text">Vendas</span>
                     </a>
                 </li>
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-layers"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-layers"></i></span>
                         <span class="text">Operações</span>
                     </a>
                     <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
@@ -537,9 +731,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-package"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-package"></i></span>
                         <span class="text">Estoque</span>
                     </a>
                     <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -553,9 +745,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
                 <li class="nav-item nav-item-has-children active">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-users"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-users"></i></span>
                         <span class="text">Cadastros</span>
                     </a>
                     <ul id="ddmenu_cadastros" class="collapse dropdown-nav show">
@@ -567,9 +757,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
                 <li class="nav-item">
                     <a href="relatorios.php">
-                        <span class="icon">
-                            <i class="lni lni-clipboard"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-clipboard"></i></span>
                         <span class="text">Relatórios</span>
                     </a>
                 </li>
@@ -580,9 +768,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
                 <li class="nav-item nav-item-has-children">
                     <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-                        <span class="icon">
-                            <i class="lni lni-cog"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-cog"></i></span>
                         <span class="text">Configurações</span>
                     </a>
                     <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -593,9 +779,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
                 <li class="nav-item">
                     <a href="suporte.php">
-                        <span class="icon">
-                            <i class="lni lni-whatsapp"></i>
-                        </span>
+                        <span class="icon"><i class="lni lni-whatsapp"></i></span>
                         <span class="text">Suporte</span>
                     </a>
                 </li>
@@ -606,7 +790,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
     <div class="overlay"></div>
 
     <main class="main-wrapper">
-        <!-- Header -->
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -653,7 +836,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                                 </nav>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
@@ -664,15 +846,14 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                     <div class="alert alert-danger" style="border-radius:14px;" data-autohide="1"><?= e($flashErr) ?></div>
                 <?php endif; ?>
 
-                <!-- FILTRO (SEM submit) -->
                 <div class="cardx mb-3">
                     <div class="head">
                         <div>
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="pill ok" id="pillCount"><?= (int)$totalCount ?> clientes</span>
-                                <span class="muted" id="lblRange">—</span>
+                                <span class="muted" id="lblRange"><?= $q !== '' ? 'Busca: ' . e($q) : '—' ?></span>
                             </div>
-                            <div class="muted mt-1">Digite para pesquisar. Atualiza a tabela via AJAX (sem recarregar).</div>
+                            <div class="muted mt-1">Digite e pressione Enter para pesquisar.</div>
                         </div>
 
                         <div class="toolbar">
@@ -681,13 +862,19 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                             </button>
 
                             <select id="per" class="form-select compact" style="min-width:190px;">
-                                <option value="10">10 por página</option>
-                                <option value="25" selected>25 por página</option>
-                                <option value="50">50 por página</option>
-                                <option value="100">100 por página</option>
+                                <option value="10" <?= $per === 10 ? 'selected' : '' ?>>10 por página</option>
+                                <option value="25" <?= $per === 25 ? 'selected' : '' ?>>25 por página</option>
+                                <option value="50" <?= $per === 50 ? 'selected' : '' ?>>50 por página</option>
+                                <option value="100" <?= $per === 100 ? 'selected' : '' ?>>100 por página</option>
                             </select>
 
-                            <span class="pill warn" id="pillLoading" style="display:none;">Carregando…</span>
+                            <a href="<?= e(build_url(['export' => 'excel', 'page' => 1])) ?>" class="main-btn light-btn btn-hover btn-compact">
+                                <i class="lni lni-download me-1"></i> Exportar Excel
+                            </a>
+
+                            <button type="button" class="main-btn light-btn btn-hover btn-compact" id="btnLimpar">
+                                <i class="lni lni-eraser me-1"></i> Limpar
+                            </button>
                         </div>
                     </div>
 
@@ -697,7 +884,11 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                                 <label class="form-label" style="font-weight:900;color:#0f172a;">
                                     Buscar (Nome / CPF / Telefone / ID / Endereço)
                                 </label>
-                                <input type="text" class="form-control compact" id="q"
+                                <input
+                                    type="text"
+                                    class="form-control compact"
+                                    id="q"
+                                    value="<?= e($q) ?>"
                                     placeholder="Digite... (pode com ou sem máscara)"
                                     autocomplete="off">
                             </div>
@@ -705,11 +896,10 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                     </div>
                 </div>
 
-                <!-- TABELA -->
                 <div class="cardx">
                     <div class="head">
                         <div class="muted"><b>Clientes</b> • ações: Detalhes / Editar / Excluir</div>
-                        <div class="muted" id="pageMeta">Página 1 de <?= (int)$pages ?></div>
+                        <div class="muted" id="pageMeta">Página <?= (int)$page ?> de <?= (int)$pages ?></div>
                     </div>
 
                     <div class="body">
@@ -747,7 +937,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                                                 <td class="td-nowrap"><?= e(cpf_fmt($cpfRaw)) ?></td>
                                                 <td class="td-nowrap"><?= e(tel_fmt($telRaw)) ?></td>
                                                 <td><span class="td-clip" title="<?= e($end) ?>"><?= e($end ?: '—') ?></span></td>
-                                                <td class="td-nowrap"><?= e($created ?: '—') ?></td>
+                                                <td class="td-nowrap"><?= e(format_sql_datetime($created)) ?></td>
 
                                                 <td class="text-end">
                                                     <div class="actions-wrap">
@@ -757,7 +947,7 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                                                             data-cpf="<?= e(cpf_fmt($cpfRaw)) ?>"
                                                             data-tel="<?= e(tel_fmt($telRaw)) ?>"
                                                             data-end="<?= e($end) ?>"
-                                                            data-created="<?= e($created) ?>">
+                                                            data-created="<?= e(format_sql_datetime($created)) ?>">
                                                             <i class="lni lni-eye"></i> <span class="act-text">Detalhes</span>
                                                         </button>
 
@@ -786,10 +976,34 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                             </table>
                         </div>
 
-                        <div class="page-nav">
-                            <button class="page-btn" id="btnPrev" type="button">←</button>
-                            <span class="page-info" id="pageInfo">Página 1 de <?= (int)$pages ?></span>
-                            <button class="page-btn" id="btnNext" type="button">→</button>
+                        <div class="table-footer-nav">
+                            <p class="text-sm text-gray mb-0" id="infoCount">
+                                Mostrando <?= $currentCount ?> item(ns) nesta página de clientes. Total filtrado: <?= $totalCount ?>.
+                            </p>
+
+                            <div class="pager-box" id="pagerBox">
+                                <?php if ($page > 1): ?>
+                                    <a class="page-btn-link" href="<?= e(build_url(['page' => $page - 1])) ?>" title="Anterior">
+                                        <i class="lni lni-chevron-left"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <button class="page-btn" type="button" disabled title="Anterior">
+                                        <i class="lni lni-chevron-left"></i>
+                                    </button>
+                                <?php endif; ?>
+
+                                <span class="page-info">Página <?= (int)$page ?>/<?= (int)$pages ?></span>
+
+                                <?php if ($page < $pages): ?>
+                                    <a class="page-btn-link" href="<?= e(build_url(['page' => $page + 1])) ?>" title="Próxima">
+                                        <i class="lni lni-chevron-right"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <button class="page-btn" type="button" disabled title="Próxima">
+                                        <i class="lni lni-chevron-right"></i>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -804,7 +1018,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         </footer>
     </main>
 
-    <!-- MODAL FORM -->
     <div class="modal fade" id="mdForm" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content" style="border-radius:16px;">
@@ -858,7 +1071,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         </div>
     </div>
 
-    <!-- MODAL DETALHES (ALINHADO) -->
     <div class="modal fade" id="mdDetalhes" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content" style="border-radius:16px;">
@@ -908,7 +1120,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         </div>
     </div>
 
-    <!-- MODAL EXCLUIR -->
     <div class="modal fade" id="mdExcluir" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content" style="border-radius:16px;">
@@ -944,7 +1155,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
     <script src="assets/js/main.js"></script>
 
     <script>
-        /* ===== flash auto-hide 1s ===== */
         document.querySelectorAll('[data-autohide="1"]').forEach(el => {
             setTimeout(() => {
                 el.style.transition = 'opacity .25s ease';
@@ -955,89 +1165,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         const $ = (id) => document.getElementById(id);
 
-        const state = {
-            q: '',
-            page: 1,
-            per: 25,
-            pages: 1,
-            total: 0
-        };
-
-        function setLoading(on) {
-            const pill = $('pillLoading');
-            if (pill) pill.style.display = on ? 'inline-flex' : 'none';
-        }
-
-        function escapeHtml(str) {
-            return String(str ?? '')
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", "&#039;");
-        }
-
-        function renderMeta(meta) {
-            $('pillCount').textContent = `${meta.total} clientes`;
-            $('lblRange').textContent = meta.q ? `Busca: ${meta.q}` : '—';
-            $('pageInfo').textContent = `Página ${meta.page} de ${meta.pages}`;
-            $('pageMeta').textContent = `Página ${meta.page} de ${meta.pages}`;
-
-            $('btnPrev').disabled = meta.page <= 1;
-            $('btnNext').disabled = meta.page >= meta.pages;
-
-            state.page = meta.page;
-            state.pages = meta.pages;
-            state.total = meta.total;
-        }
-
-        function rowHtml(r) {
-            const end = r.endereco ? r.endereco : '—';
-            const created = r.created_at ? r.created_at : '—';
-
-            return `
-      <tr>
-        <td class="td-nowrap fw-1000">${r.id}</td>
-        <td><span class="td-clip" title="${escapeHtml(r.nome)}">${escapeHtml(r.nome)}</span></td>
-        <td class="td-nowrap">${escapeHtml(r.cpf_fmt || '')}</td>
-        <td class="td-nowrap">${escapeHtml(r.tel_fmt || '')}</td>
-        <td><span class="td-clip" title="${escapeHtml(end)}">${escapeHtml(end)}</span></td>
-        <td class="td-nowrap">${escapeHtml(created)}</td>
-        <td class="text-end">
-          <div class="actions-wrap">
-            <button type="button" class="main-btn light-btn btn-hover btn-action btnDetalhes"
-              data-id="${r.id}"
-              data-nome="${escapeHtml(r.nome)}"
-              data-cpf="${escapeHtml(r.cpf_fmt || '')}"
-              data-tel="${escapeHtml(r.tel_fmt || '')}"
-              data-end="${escapeHtml(r.endereco || '')}"
-              data-created="${escapeHtml(r.created_at || '')}">
-              <i class="lni lni-eye"></i> <span class="act-text">Detalhes</span>
-            </button>
-
-            <button type="button" class="main-btn primary-btn btn-hover btn-action btnEditar"
-              data-id="${r.id}"
-              data-nome="${escapeHtml(r.nome)}"
-              data-cpfdigits="${escapeHtml(r.cpf_digits || '')}"
-              data-telraw="${escapeHtml(r.tel_raw || '')}"
-              data-end="${escapeHtml(r.endereco || '')}">
-              <i class="lni lni-pencil"></i> <span class="act-text">Editar</span>
-            </button>
-
-            <button type="button" class="main-btn light-btn btn-hover btn-action btnExcluir"
-              data-id="${r.id}"
-              data-nome="${escapeHtml(r.nome)}"
-              data-cpf="${escapeHtml(r.cpf_fmt || '')}"
-              data-tel="${escapeHtml(r.tel_fmt || '')}">
-              <i class="lni lni-trash-can"></i> <span class="act-text">Excluir</span>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-        }
-
-        /* máscara telefone */
         function onlyDigits(s) {
             return String(s || '').replace(/\D+/g, '');
         }
@@ -1046,11 +1173,30 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             const d = onlyDigits(v).slice(0, 11);
             if (!d) return '';
             if (d.length <= 2) return `(${d}`;
-            const dd = d.slice(0, 2),
-                rest = d.slice(2);
+            const dd = d.slice(0, 2);
+            const rest = d.slice(2);
             if (rest.length <= 4) return `(${dd}) ${rest}`;
             if (rest.length <= 8) return `(${dd}) ${rest.slice(0,4)}-${rest.slice(4)}`;
             return `(${dd}) ${rest.slice(0,5)}-${rest.slice(5)}`;
+        }
+
+        function applyFilters(resetPage = true) {
+            const params = new URLSearchParams(window.location.search);
+            const q = $('q').value.trim();
+            const per = $('per').value;
+
+            if (q) params.set('q', q);
+            else params.delete('q');
+
+            if (per) params.set('per', per);
+            else params.delete('per');
+
+            if (resetPage) params.set('page', '1');
+
+            params.delete('export');
+
+            const url = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
+            window.location.href = url;
         }
 
         function bindRowActions() {
@@ -1067,7 +1213,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             const fmTel = $('fmTel');
             const fmEnd = $('fmEnd');
 
-            // bind único (não duplicar)
             const btnNovo = $('btnNovo');
             if (btnNovo && !btnNovo.dataset.bound) {
                 btnNovo.dataset.bound = '1';
@@ -1095,7 +1240,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                 fmTel.addEventListener('input', e => e.target.value = maskTel(e.target.value));
             }
 
-            // detalhes
             document.querySelectorAll('.btnDetalhes').forEach(btn => {
                 btn.addEventListener('click', () => {
                     $('dtTitulo').textContent = `Detalhes do cliente #${btn.dataset.id}`;
@@ -1108,7 +1252,6 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                 });
             });
 
-            // editar
             document.querySelectorAll('.btnEditar').forEach(btn => {
                 btn.addEventListener('click', () => {
                     formCliente.action = 'assets/dados/clientes/editarClientes.php';
@@ -1117,18 +1260,13 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
                     fmId.value = btn.dataset.id || '';
                     fmNome.value = btn.dataset.nome || '';
                     fmCpf.value = (btn.dataset.cpfdigits || '').slice(0, 11);
-
-                    // telefone: usar o que vem do banco e mascarar
-                    const tel = btn.dataset.telraw || '';
-                    fmTel.value = maskTel(tel);
-
+                    fmTel.value = maskTel(btn.dataset.telraw || '');
                     fmEnd.value = btn.dataset.end || '';
                     mdForm.show();
                     setTimeout(() => fmNome.focus(), 150);
                 });
             });
 
-            // excluir
             document.querySelectorAll('.btnExcluir').forEach(btn => {
                 btn.addEventListener('click', () => {
                     $('exId').value = btn.dataset.id || '';
@@ -1139,90 +1277,24 @@ $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
             });
         }
 
-        async function loadAjax() {
-            setLoading(true);
-
-            const url = new URL(window.location.href);
-            url.searchParams.set('action', 'ajax');
-            url.searchParams.set('q', state.q);
-            url.searchParams.set('page', String(state.page));
-            url.searchParams.set('per', String(state.per));
-
-            try {
-                const res = await fetch(url.toString(), {
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-                const data = await res.json();
-
-                if (!data.ok) {
-                    $('tbody').innerHTML = `<tr><td colspan="7" class="muted">Erro: ${escapeHtml(data.msg || 'Falha')}</td></tr>`;
-                    return;
-                }
-
-                renderMeta(data.meta);
-
-                const rows = data.rows || [];
-                $('tbody').innerHTML = rows.length ?
-                    rows.map(rowHtml).join('') :
-                    `<tr><td colspan="7" class="muted">Nenhum cliente encontrado.</td></tr>`;
-
-                bindRowActions();
-            } catch (e) {
-                $('tbody').innerHTML = `<tr><td colspan="7" class="muted">Erro de rede/servidor. Tente novamente.</td></tr>`;
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        // busca AJAX (debounce)
-        let timer = null;
-        $('q').addEventListener('input', (e) => {
-            state.q = e.target.value.trim();
-            state.page = 1;
-            clearTimeout(timer);
-            timer = setTimeout(loadAjax, 250);
-        });
-
-        // Esc limpa (substitui botão limpar)
         $('q').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyFilters(true);
+            }
             if (e.key === 'Escape') {
                 $('q').value = '';
-                state.q = '';
-                state.page = 1;
-                loadAjax();
+                applyFilters(true);
             }
         });
 
-        $('per').addEventListener('change', (e) => {
-            state.per = Number(e.target.value) || 25;
-            state.page = 1;
-            loadAjax();
+        $('per').addEventListener('change', () => applyFilters(true));
+
+        $('btnLimpar').addEventListener('click', () => {
+            window.location.href = 'clientes.php';
         });
 
-        $('btnPrev').addEventListener('click', () => {
-            state.page = Math.max(1, state.page - 1);
-            loadAjax();
-        });
-        $('btnNext').addEventListener('click', () => {
-            state.page = Math.min(state.pages || 1, state.page + 1);
-            loadAjax();
-        });
-
-        (function init() {
-            state.q = '';
-            state.page = 1;
-            state.per = Number($('per').value) || 25;
-            bindRowActions();
-            renderMeta({
-                q: '',
-                page: 1,
-                per: state.per,
-                pages: <?= (int)$pages ?>,
-                total: <?= (int)$totalCount ?>
-            });
-        })();
+        bindRowActions();
     </script>
 </body>
 
