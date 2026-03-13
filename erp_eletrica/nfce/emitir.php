@@ -139,7 +139,7 @@ $nomeDest  = null;
 $docInput = soDig($_POST['cpf'] ?? '');
 if (strlen($docInput) === 11) {
     $cpf = $docInput;
-    // Tenta pegar o nome se veio via POST (cliente selecionado do banco)
+    // Tenta pegar the nome se veio via POST (cliente selecionado do banco)
     $nomePost = trim($_POST['nome_dest'] ?? '');
     if ($nomePost !== '') {
         $nomeDest = $nomePost;
@@ -305,7 +305,7 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .     '</ide>'
      .     '<emit>'
      .       '<CNPJ>'.$emit['CNPJ'].'</CNPJ><xNome>'.$emit['xNome'].'</xNome><xFant>'.$emit['xFant'].'</xFant>'
-     .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais><fone>'.$emit['enderEmit']['fone'].'</fone></enderEmit>'
+     .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais>'.(!empty($emit['enderEmit']['fone'])?'<fone>'.$emit['enderEmit']['fone'].'</fone>':'').'</enderEmit>'
      .       '<IE>'.$emit['IE'].'</IE><CRT>'.$emit['CRT'].'</CRT>'
      .     '</emit>'
      .     $destXML
