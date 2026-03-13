@@ -171,23 +171,25 @@ class SefazConsultaService extends BaseService {
             throw new Exception("SEFAZ retornou uma resposta vazia.");
         }
 
-        // Remove namespaces for easier parsing (strips soap:, nfe:, etc)
-        $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $xmlStr);
-        $xml = simplexml_load_string($cleanXml);
+        // Remove namespaces and soap envelope parts for easier parsing
+        $xml = simplexml_load_string($xmlStr);
+        if (!$xml) {
+            // Fallback: try cleaning xml if it's strictly malformed
+            $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $xmlStr);
+            $xml = @simplexml_load_string($cleanXml);
+        }
         
         if (!$xml) {
             throw new Exception("Falha ao ler resposta da SEFAZ (XML inválido).");
         }
 
-        // O nó de retorno retDistDFeInt pode estar dentro do envelope SOAP
-        $nodes = $xml->xpath('//retDistDFeInt');
+        // Search for retDistDFeInt regardless of namespace or depth
+        $nodes = $xml->xpath('//*[local-name()="retDistDFeInt"]');
         if (empty($nodes)) {
-             // Caso não esteja em SOAP (raro), tentamos o root
-             $retDist = $xml;
-        } else {
-             $retDist = $nodes[0];
+             throw new Exception("Resposta da SEFAZ não contém o nó esperado (retDistDFeInt). Verifique os logs.");
         }
         
+        $retDist = $nodes[0];
         $status = (string)$retDist->cStat;
         if ($status != '138' && $status != '137') {
             $motivo = (string)$retDist->xMotivo ?: 'Erro desconhecido';
@@ -203,29 +205,35 @@ class SefazConsultaService extends BaseService {
                 
                 if ($content) {
                     $docXml = simplexml_load_string($content);
-                    // resNFe (resumo) ou nfeProc (completo)
+                    if (!$docXml) continue;
+
+                    // Support namespaced search for children
+                    $docXml->registerXPathNamespace('f', 'http://www.portalfiscal.inf.br/nfe');
                     $root = $docXml->getName();
+                    
                     if ($root == 'resNFe') {
                         $docs[] = [
-                            'chave' => (string)$docXml->chNFe,
-                            'cnpj' => (string)$docXml->CNPJ,
-                            'nome' => (string)$docXml->xNome,
-                            'numero' => substr((string)$docXml->chNFe, 25, 9),
-                            'data' => (string)$docXml->dhEmi,
-                            'valor' => (float)$docXml->vNF,
+                            'chave' => (string)($docXml->chNFe ?: $docXml->xpath('//f:chNFe')[0]),
+                            'cnpj' => (string)($docXml->CNPJ ?: $docXml->xpath('//f:CNPJ')[0]),
+                            'nome' => (string)($docXml->xNome ?: $docXml->xpath('//f:xNome')[0]),
+                            'numero' => substr((string)($docXml->chNFe ?: $docXml->xpath('//f:chNFe')[0]), 25, 9),
+                            'data' => (string)($docXml->dhEmi ?: $docXml->xpath('//f:dhEmi')[0]),
+                            'valor' => (float)($docXml->vNF ?: $docXml->xpath('//f:vNF')[0]),
                             'xml' => $content
                         ];
-                    } elseif ($root == 'nfeProc') {
-                        $infNFe = $docXml->NFe->infNFe;
-                        $docs[] = [
-                            'chave' => str_replace('NFe', '', (string)$infNFe->attributes()->Id),
-                            'cnpj' => (string)$infNFe->emit->CNPJ,
-                            'nome' => (string)$infNFe->emit->xNome,
-                            'numero' => (string)$infNFe->ide->nNF,
-                            'data' => (string)$infNFe->ide->dhEmi,
-                            'valor' => (float)$infNFe->total->ICMSTot->vNF,
-                            'xml' => $content
-                        ];
+                    } elseif ($root == 'nfeProc' || $root == 'NFe') {
+                        $inf = $docXml->xpath('//f:infNFe')[0] ?? $docXml->infNFe;
+                        if ($inf) {
+                            $docs[] = [
+                                'chave' => str_replace('NFe', '', (string)$inf->attributes()->Id),
+                                'cnpj' => (string)($inf->emit->CNPJ ?: $inf->xpath('//f:emit/f:CNPJ')[0]),
+                                'nome' => (string)($inf->emit->xNome ?: $inf->xpath('//f:emit/f:xNome')[0]),
+                                'numero' => (string)($inf->ide->nNF ?: $inf->xpath('//f:ide/f:nNF')[0]),
+                                'data' => (string)($inf->ide->dhEmi ?: $inf->xpath('//f:ide/f:dhEmi')[0]),
+                                'valor' => (float)($inf->total->ICMSTot->vNF ?: $inf->xpath('//f:total/f:ICMSTot/f:vNF')[0]),
+                                'xml' => $content
+                            ];
+                        }
                     }
                 }
             }
