@@ -1,10 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 /**
  * cupom.php (Cupom Fiscal BÁSICO - 58mm)
- * - Largura fixa 58mm
- * - Layout simples (sem “SEFAZ”, sem “DANFE”, sem chave/QR)
+ * - Layout mais estreito
+ * - Área útil reduzida para caber melhor em bobina 58mm
  */
 
 require_once __DIR__ . '/../../conexao.php';
@@ -12,19 +13,28 @@ require_once __DIR__ . '/../../conexao.php';
 $pdo = db();
 
 $id = (int)($_GET['id'] ?? 0);
-if ($id <= 0) { http_response_code(400); echo "ID inválido."; exit; }
+if ($id <= 0) {
+  http_response_code(400);
+  echo "ID inválido.";
+  exit;
+}
 
 $st = $pdo->prepare("SELECT * FROM vendas WHERE id = ?");
 $st->execute([$id]);
 $venda = $st->fetch(PDO::FETCH_ASSOC);
-if (!$venda) { http_response_code(404); echo "Venda não encontrada."; exit; }
+
+if (!$venda) {
+  http_response_code(404);
+  echo "Venda não encontrada.";
+  exit;
+}
 
 $st2 = $pdo->prepare("SELECT * FROM venda_itens WHERE venda_id = ? ORDER BY id ASC");
 $st2->execute([$id]);
 $itens = $st2->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
 /* =========================
-   CONFIG DO EMITENTE (edite aqui)
+   CONFIG DO EMITENTE
 ========================= */
 $EMIT = [
   'nome'     => 'DISTRIBUIDORA (NOME FANTASIA)',
@@ -35,20 +45,27 @@ $EMIT = [
   'msg'      => 'Obrigado e volte sempre!',
 ];
 
-function h(string $s): string {
+function h(string $s): string
+{
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
-function money(float $v): string {
+
+function money(float $v): string
+{
   return number_format($v, 2, ',', '.');
 }
-function brDateTime(?string $dt): string {
+
+function brDateTime(?string $dt): string
+{
   $dt = trim((string)$dt);
   if ($dt === '') return '';
   $ts = strtotime($dt);
   if (!$ts) return $dt;
   return date('d/m/Y H:i:s', $ts);
 }
-function payName(string $m): string {
+
+function payName(string $m): string
+{
   $m = strtoupper(trim($m));
   return match ($m) {
     'DINHEIRO' => 'Dinheiro',
@@ -93,62 +110,265 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 ?>
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Cupom #<?= (int)$venda['id'] ?></title>
+
   <style>
-    /* ===== CUPOM 58mm BÁSICO ===== */
-    @page { size: 58mm auto; margin: 2mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; }
-    .paper { width: 58mm; padding: 2mm; margin: 0 auto; }
+    :root {
+      --page-w: 58mm;
+      --content-w: 48mm;
+      /* mais estreito pra sair melhor */
+      --fs-9: 9px;
+      --fs-10: 10px;
+      --fs-11: 11px;
+      --fs-12: 12px;
+    }
 
-    .c { text-align: center; }
-    .r { text-align: right; }
-    .b { font-weight: 800; }
-    .t10 { font-size: 10px; }
-    .t11 { font-size: 11px; }
-    .t12 { font-size: 12px; }
+    @page {
+      size: 58mm auto;
+      margin: 0;
+    }
 
-    .line { border-top: 1px dashed #000; margin: 6px 0; }
-    .line2 { border-top: 1px solid #000; margin: 6px 0; }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
-    table { width: 100%; border-collapse: collapse; }
-    th, td { font-size: 10px; padding: 2px 0; vertical-align: top; }
-    th { border-bottom: 1px solid #000; padding-bottom: 3px; font-weight: 800; }
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: var(--page-w);
+      background: #fff;
+      color: #000;
+      font-family: Arial, Helvetica, sans-serif;
+    }
 
-    .itemname { font-size: 10px; font-weight: 800; }
-    .subline { font-size: 10px; }
+    body {
+      display: flex;
+      justify-content: center;
+    }
 
-    .totrow { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
-    .totrow .lbl { font-weight: 700; }
-    .totrow .val { font-weight: 800; }
-    .grand { font-size: 13px; }
+    .paper {
+      width: var(--content-w);
+      max-width: var(--content-w);
+      padding: 1.5mm 0 2mm 0;
+      margin: 0 auto;
+    }
 
-    .btns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
-    button { padding: 8px 10px; border: 1px solid #000; border-radius: 6px; background: #fff; cursor: pointer; font-weight: 800; font-size: 12px; }
+    .c {
+      text-align: center;
+    }
+
+    .r {
+      text-align: right;
+    }
+
+    .l {
+      text-align: left;
+    }
+
+    .b {
+      font-weight: 700;
+    }
+
+    .t9 {
+      font-size: var(--fs-9);
+    }
+
+    .t10 {
+      font-size: var(--fs-10);
+    }
+
+    .t11 {
+      font-size: var(--fs-11);
+    }
+
+    .t12 {
+      font-size: var(--fs-12);
+    }
+
+    .line {
+      border-top: 1px dashed #000;
+      margin: 4px 0;
+      height: 0;
+    }
+
+    .line2 {
+      border-top: 1px solid #000;
+      margin: 4px 0;
+      height: 0;
+    }
+
+    .wrap {
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+    }
+
+    .head-emit .nome {
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.15;
+      text-transform: uppercase;
+    }
+
+    .head-emit .sub {
+      font-size: 8.8px;
+      line-height: 1.15;
+    }
+
+    .sec-title {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .meta div,
+    .client div,
+    .pay div {
+      font-size: 9px;
+      line-height: 1.2;
+      margin-bottom: 1px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      padding: 1px 0;
+      vertical-align: top;
+      font-size: 9px;
+      line-height: 1.15;
+    }
+
+    thead th {
+      border-bottom: 1px solid #000;
+      padding-bottom: 2px;
+      font-weight: 700;
+    }
+
+    .col-n {
+      width: 4mm;
+    }
+
+    .col-total {
+      width: 13mm;
+    }
+
+    .itemname {
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1.1;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .subline {
+      font-size: 8.5px;
+      line-height: 1.1;
+      color: #111;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .totrow {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 9.5px;
+      line-height: 1.2;
+      margin: 1px 0;
+    }
+
+    .totrow .lbl {
+      font-weight: 700;
+      flex: 1 1 auto;
+    }
+
+    .totrow .val {
+      font-weight: 700;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .grand {
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .footer-msg {
+      text-align: center;
+      font-size: 9px;
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+
+    .btns {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    button {
+      padding: 8px 10px;
+      border: 1px solid #000;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+    }
 
     @media print {
-      .btns { display: none; }
-      .paper { margin: 0; }
+
+      html,
+      body {
+        width: 58mm;
+        min-width: 58mm;
+        max-width: 58mm;
+      }
+
+      .paper {
+        width: 48mm;
+        max-width: 48mm;
+        margin: 0 auto;
+        padding-top: 1mm;
+      }
+
+      .btns {
+        display: none !important;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="paper">
 
-    <div class="c">
-      <div class="b t12"><?= h($EMIT['nome']) ?></div>
-      <div class="t10">CNPJ: <?= h($EMIT['cnpj']) ?> <?= $EMIT['ie'] ? ' • IE: ' . h($EMIT['ie']) : '' ?></div>
-      <div class="t10"><?= h($EMIT['endereco']) ?></div>
-      <div class="t10"><?= h($EMIT['fone']) ?></div>
+    <div class="head-emit c">
+      <div class="nome"><?= h($EMIT['nome']) ?></div>
+      <div class="sub">CNPJ: <?= h($EMIT['cnpj']) ?><?= $EMIT['ie'] ? ' • IE: ' . h($EMIT['ie']) : '' ?></div>
+      <div class="sub wrap"><?= h($EMIT['endereco']) ?></div>
+      <div class="sub"><?= h($EMIT['fone']) ?></div>
     </div>
 
     <div class="line"></div>
 
-    <div class="c b t11">CUPOM FISCAL</div>
-    <div class="t10">
+    <div class="sec-title">Cupom Fiscal</div>
+
+    <div class="meta t9">
       <div><span class="b">Venda:</span> #<?= (int)$venda['id'] ?></div>
       <div><span class="b">Data/Hora:</span> <?= h($dataHora) ?></div>
       <div><span class="b">Canal:</span> <?= h($canal) ?></div>
@@ -156,13 +376,15 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     <div class="line"></div>
 
-    <div class="t10">
-      <div><span class="b">Cliente:</span> <?= h($cliente) ?></div>
+    <div class="client t9">
+      <div class="wrap"><span class="b">Cliente:</span> <?= h($cliente) ?></div>
+
       <?php if ($canal === 'DELIVERY' && $endereco !== ''): ?>
-        <div><span class="b">Endereço:</span> <?= h($endereco) ?></div>
+        <div class="wrap"><span class="b">Endereço:</span> <?= h($endereco) ?></div>
       <?php endif; ?>
+
       <?php if ($canal === 'DELIVERY' && $obs !== ''): ?>
-        <div><span class="b">Obs:</span> <?= h($obs) ?></div>
+        <div class="wrap"><span class="b">Obs:</span> <?= h($obs) ?></div>
       <?php endif; ?>
     </div>
 
@@ -171,31 +393,33 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     <table>
       <thead>
         <tr>
-          <th style="width:6mm;">#</th>
-          <th>Item</th>
-          <th class="r" style="width:14mm;">Total</th>
+          <th class="col-n l">#</th>
+          <th class="l">Item</th>
+          <th class="col-total r">Total</th>
         </tr>
       </thead>
       <tbody>
         <?php if (!$itens): ?>
-          <tr><td colspan="3" class="c t10">Sem itens.</td></tr>
+          <tr>
+            <td colspan="3" class="c t9">Sem itens.</td>
+          </tr>
         <?php else: ?>
           <?php foreach ($itens as $i => $it): ?>
             <?php
-              $nome = (string)($it['nome'] ?? '');
-              $cod  = (string)($it['codigo'] ?? '');
-              $qtd  = (int)($it['qtd'] ?? 0);
-              $un   = (string)($it['unidade'] ?? '');
-              $vu   = (float)($it['preco_unit'] ?? 0);
-              $vt   = (float)($it['subtotal'] ?? 0);
+            $nome = (string)($it['nome'] ?? '');
+            $cod  = (string)($it['codigo'] ?? '');
+            $qtd  = (int)($it['qtd'] ?? 0);
+            $un   = (string)($it['unidade'] ?? '');
+            $vu   = (float)($it['preco_unit'] ?? 0);
+            $vt   = (float)($it['subtotal'] ?? 0);
             ?>
             <tr>
-              <td class="t10"><?= $i + 1 ?></td>
+              <td class="t9"><?= $i + 1 ?></td>
               <td>
                 <div class="itemname"><?= h($nome) ?></div>
                 <div class="subline"><?= h($cod) ?> • <?= $qtd ?> <?= h($un) ?> x <?= money($vu) ?></div>
               </td>
-              <td class="r b t10"><?= money($vt) ?></td>
+              <td class="r b t9"><?= money($vt) ?></td>
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
@@ -210,47 +434,59 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     <div class="line2"></div>
 
-    <div class="totrow grand"><span class="lbl">TOTAL</span><span class="val"><?= money($total) ?></span></div>
+    <div class="totrow grand">
+      <span class="lbl">TOTAL</span>
+      <span class="val"><?= money($total) ?></span>
+    </div>
 
     <div class="line"></div>
 
-    <div class="t10">
+    <div class="pay t9">
       <div><span class="b">Pagamento:</span> <?= h(payName($pagLabel)) ?></div>
 
       <?php if ($pagMode === 'UNICO'): ?>
-        <?php if ($paid > 0): ?><div>Valor Pago: <span class="b"><?= money($paid) ?></span></div><?php endif; ?>
-        <?php if ($troco > 0): ?><div>Troco: <span class="b"><?= money($troco) ?></span></div><?php endif; ?>
+        <?php if ($paid > 0): ?>
+          <div>Valor Pago: <span class="b"><?= money($paid) ?></span></div>
+        <?php endif; ?>
+        <?php if ($troco > 0): ?>
+          <div>Troco: <span class="b"><?= money($troco) ?></span></div>
+        <?php endif; ?>
       <?php else: ?>
         <?php if ($parts): ?>
           <div class="line"></div>
-          <div class="b t10">Múltiplos:</div>
+          <div class="b">Múltiplos:</div>
           <?php foreach ($parts as $p): ?>
             <?php
-              $m = payName((string)($p['method'] ?? ''));
-              $v = (float)($p['value'] ?? 0);
+            $m = payName((string)($p['method'] ?? ''));
+            $v = (float)($p['value'] ?? 0);
             ?>
-            <div class="t10"><?= h($m) ?>: <span class="b"><?= money($v) ?></span></div>
+            <div><?= h($m) ?>: <span class="b"><?= money($v) ?></span></div>
           <?php endforeach; ?>
         <?php endif; ?>
-        <?php if ($troco > 0): ?><div class="t10">Troco: <span class="b"><?= money($troco) ?></span></div><?php endif; ?>
+
+        <?php if ($troco > 0): ?>
+          <div>Troco: <span class="b"><?= money($troco) ?></span></div>
+        <?php endif; ?>
       <?php endif; ?>
     </div>
 
     <div class="line"></div>
 
-    <div class="c t10"><?= h($EMIT['msg']) ?></div>
+    <div class="footer-msg"><?= h($EMIT['msg']) ?></div>
 
     <div class="btns">
       <button onclick="window.print()">Imprimir</button>
       <button onclick="window.close()">Fechar</button>
     </div>
-
   </div>
 
   <script>
     <?php if ($auto): ?>
-      window.addEventListener('load', () => setTimeout(() => window.print(), 250));
+      window.addEventListener('load', () => {
+        setTimeout(() => window.print(), 250);
+      });
     <?php endif; ?>
   </script>
 </body>
+
 </html>

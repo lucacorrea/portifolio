@@ -26,8 +26,8 @@ class SefazSoapClient extends BaseService {
     private $serviceMapping = [
         'nfe_distribuicao' => [
             'service' => 'NFeDistribuicaoDFe', 
-            'method' => 'nfeDistribuicaoDFe',
-            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe' // Não tem suffix de método
+            'method' => 'nfeDistDFeInteresse',
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe/nfeDistDFeInteresse'
         ],
         'nfe_evento' => [
             'service' => 'NFeRecepcaoEvento4', 
@@ -123,12 +123,19 @@ class SefazSoapClient extends BaseService {
     }
 
     private function wrapSoap($xml, $serviceName, $methodName) {
-        // SEFAZ 4.00 requires the namespace to be on nfeDadosMsg, and the method name to be namespace-free or prefixed with the exact matching ns
+        $ns = 'http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName;
+        
+        // For NFeDistribuicaoDFe, the method tag is REQUIRED around nfeDadosMsg
+        // SEFAZ 4.00 core services usually expect Body -> nfeDadosMsg directly
+        if ($serviceName === 'NFeDistribuicaoDFe') {
+             $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
+        } else {
+             $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
+        }
+
         return '<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>
-    <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName . '">' . $xml . '</nfeDadosMsg>
-  </soap12:Body>
+  <soap12:Body>' . $content . '</soap12:Body>
 </soap12:Envelope>';
     }
 

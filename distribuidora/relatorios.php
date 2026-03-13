@@ -6,8 +6,11 @@ declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 // Helpers (csrf/flash/etc)
-$helpers = __DIR__ . '/assets/dados/relatorios/__helpers.php';
+$helpers = __DIR__ . '/assets/dados/relatorios/_helpers.php';
 if (is_file($helpers)) require_once $helpers;
+
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
 
 // Conexão PDO (precisa existir db():PDO)
 $con = __DIR__ . '/assets/conexao.php';
@@ -137,6 +140,12 @@ function paginate_meta(int $totalRows, int $page, int $per): array
 
 function table_exists(PDO $pdo, string $table): bool
 {
+  static $cache = [];
+
+  if (isset($cache[$table])) {
+    return $cache[$table];
+  }
+
   try {
     $st = $pdo->prepare("
       SELECT COUNT(*)
@@ -144,10 +153,223 @@ function table_exists(PDO $pdo, string $table): bool
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
     ");
     $st->execute([$table]);
-    return (int)$st->fetchColumn() > 0;
+    $cache[$table] = (int)$st->fetchColumn() > 0;
+    return $cache[$table];
   } catch (\Throwable $e) {
+    $cache[$table] = false;
     return false;
   }
+}
+
+function money_eq(float $a, float $b, float $eps = 0.02): bool
+{
+  return abs($a - $b) <= $eps;
+}
+
+function format_item_label(string $codigo, string $nome, int $qtd = 0): string
+{
+  $base = trim($codigo . ' - ' . $nome);
+  if ($base === '-' || $base === '') {
+    $base = $nome !== '' ? $nome : ($codigo !== '' ? $codigo : 'Item');
+  }
+  if ($qtd > 0) {
+    $base .= ' (' . $qtd . ')';
+  }
+  return $base;
+}
+
+function fetch_sale_items_by_sale_nos(PDO $pdo, array $saleNos): array
+{
+  $map = [];
+
+  if (!$saleNos || !table_exists($pdo, 'venda_itens')) {
+    return $map;
+  }
+
+  $ids = [];
+  foreach ($saleNos as $n) {
+    $n = (int)$n;
+    if ($n > 0) $ids[$n] = $n;
+  }
+
+  if (!$ids) return $map;
+
+  $vals = array_values($ids);
+  $in = implode(',', array_fill(0, count($vals), '?'));
+
+  $st = $pdo->prepare("
+    SELECT
+      venda_id,
+      produto_id,
+      codigo,
+      nome,
+      unidade,
+      qtd,
+      preco_unit,
+      subtotal
+    FROM venda_itens
+    WHERE venda_id IN ($in)
+    ORDER BY venda_id ASC, id ASC
+  ");
+  $st->execute($vals);
+
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  foreach ($rows as $r) {
+    $vendaId = (int)($r['venda_id'] ?? 0);
+    if ($vendaId <= 0) continue;
+
+    if (!isset($map[$vendaId])) $map[$vendaId] = [];
+
+    $map[$vendaId][] = [
+      'produto_id' => (int)($r['produto_id'] ?? 0),
+      'codigo'     => trim((string)($r['codigo'] ?? '')),
+      'nome'       => trim((string)($r['nome'] ?? '')),
+      'unidade'    => trim((string)($r['unidade'] ?? '')),
+      'qtd'        => (int)($r['qtd'] ?? 0),
+      'preco_unit' => (float)($r['preco_unit'] ?? 0),
+      'subtotal'   => (float)($r['subtotal'] ?? 0),
+    ];
+  }
+
+  return $map;
+}
+
+function resolve_partial_item_from_sale_rows(array $items, int $qty, float $amount): ?array
+{
+  if (!$items) return null;
+
+  if (count($items) === 1) {
+    return $items[0];
+  }
+
+  foreach ($items as $it) {
+    if ((int)$it['qtd'] === $qty && money_eq((float)$it['subtotal'], $amount)) {
+      return $it;
+    }
+  }
+
+  foreach ($items as $it) {
+    $qVendida = (int)$it['qtd'];
+    $precoUnit = (float)$it['preco_unit'];
+    if ($qty > 0 && $qVendida >= $qty && money_eq($precoUnit * $qty, $amount)) {
+      return $it;
+    }
+  }
+
+  $exactQty = [];
+  foreach ($items as $it) {
+    if ((int)$it['qtd'] === $qty) {
+      $exactQty[] = $it;
+    }
+  }
+  if (count($exactQty) === 1) {
+    return $exactQty[0];
+  }
+
+  $greaterQty = [];
+  foreach ($items as $it) {
+    if ((int)$it['qtd'] >= $qty && $qty > 0) {
+      $greaterQty[] = $it;
+    }
+  }
+  if (count($greaterQty) === 1) {
+    return $greaterQty[0];
+  }
+
+  $best = null;
+  $bestDiff = null;
+
+  foreach ($items as $it) {
+    $cand = ($qty > 0)
+      ? ((float)$it['preco_unit'] * $qty)
+      : (float)$it['subtotal'];
+
+    $diff = abs($cand - $amount);
+    if ($best === null || $diff < $bestDiff) {
+      $best = $it;
+      $bestDiff = $diff;
+    }
+  }
+
+  return $best ?: $items[0];
+}
+
+function fetch_items_map_for_devolucoes_report(PDO $pdo, array $rows): array
+{
+  $map = [];
+  if (!$rows) return $map;
+
+  $saleNos = [];
+  foreach ($rows as $r) {
+    $saleNo = (int)($r['venda_no'] ?? 0);
+    if ($saleNo > 0) $saleNos[$saleNo] = $saleNo;
+  }
+
+  $saleMap = fetch_sale_items_by_sale_nos($pdo, array_values($saleNos));
+
+  foreach ($rows as $r) {
+    $id     = (int)($r['id'] ?? 0);
+    $tipo   = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
+    $saleNo = (int)($r['venda_no'] ?? 0);
+
+    if ($tipo === 'PARCIAL') {
+      $resolved = resolve_partial_item_from_sale_rows(
+        $saleMap[$saleNo] ?? [],
+        (int)($r['qtd'] ?? 0),
+        (float)($r['valor'] ?? 0)
+      );
+
+      if ($resolved) {
+        $map[$id] = [
+          format_item_label(
+            trim((string)($resolved['codigo'] ?? '')),
+            trim((string)($resolved['nome'] ?? '')),
+            (int)($r['qtd'] ?? 0)
+          )
+        ];
+      } else {
+        $fallback = trim((string)($r['produto'] ?? ''));
+        if ($fallback !== '') {
+          if ((int)($r['qtd'] ?? 0) > 0) {
+            $fallback .= ' (' . (int)$r['qtd'] . ')';
+          }
+          $map[$id] = [$fallback];
+        } else {
+          $map[$id] = ['—'];
+        }
+      }
+    } else {
+      $items = [];
+      $saleItems = $saleMap[$saleNo] ?? [];
+
+      foreach ($saleItems as $it) {
+        $items[] = format_item_label(
+          trim((string)($it['codigo'] ?? '')),
+          trim((string)($it['nome'] ?? '')),
+          (int)($it['qtd'] ?? 0)
+        );
+      }
+
+      $map[$id] = $items ?: ['—'];
+    }
+  }
+
+  foreach ($rows as $r) {
+    $id = (int)($r['id'] ?? 0);
+    if (!isset($map[$id])) $map[$id] = ['—'];
+  }
+
+  return $map;
+}
+
+function join_items_for_report(array $items, int $max = 3): string
+{
+  if (!$items) return '—';
+  $show = array_slice($items, 0, $max);
+  $txt = implode(' | ', $show);
+  $extra = count($items) - count($show);
+  if ($extra > 0) $txt .= ' | +' . $extra . ' item(ns)';
+  return $txt;
 }
 
 /* =========================
@@ -555,15 +777,41 @@ function report_devolucoes(PDO $pdo, string $dtIni, string $dtFim, string $q, in
 
   $q = trim($q);
   if ($q !== '') {
-    $where[] = add_like_or([
-      "CAST(d.id AS CHAR)",
-      "CAST(d.venda_no AS CHAR)",
-      "d.cliente",
-      "d.tipo",
-      "d.produto",
-      "d.motivo",
-      "d.status"
-    ], $q, $params, 'qd');
+    $params[':qd1'] = like_q($q);
+    $params[':qd2'] = like_q($q);
+    $params[':qd3'] = like_q($q);
+    $params[':qd4'] = like_q($q);
+    $params[':qd5'] = like_q($q);
+    $params[':qd6'] = like_q($q);
+    $params[':qd7'] = like_q($q);
+    $params[':qd8'] = like_q($q);
+    $params[':qd9'] = like_q($q);
+    $params[':qd10'] = like_q($q);
+
+    $parts = [
+      "CAST(d.id AS CHAR) LIKE :qd1",
+      "CAST(d.venda_no AS CHAR) LIKE :qd2",
+      "d.cliente LIKE :qd3",
+      "d.tipo LIKE :qd4",
+      "d.motivo LIKE :qd5",
+      "d.status LIKE :qd6",
+    ];
+
+    if (table_exists($pdo, 'venda_itens')) {
+      $parts[] = "EXISTS (
+        SELECT 1
+        FROM venda_itens vi
+        WHERE vi.venda_id = d.venda_no
+          AND (
+            vi.codigo LIKE :qd7
+            OR vi.nome LIKE :qd8
+            OR CAST(vi.qtd AS CHAR) LIKE :qd9
+            OR COALESCE(vi.unidade,'') LIKE :qd10
+          )
+      )";
+    }
+
+    $where[] = '(' . implode(' OR ', $parts) . ')';
   }
 
   $whereSql = count($where) ? ("WHERE " . implode(" AND ", $where)) : "";
@@ -594,19 +842,22 @@ function report_devolucoes(PDO $pdo, string $dtIni, string $dtFim, string $q, in
   $st->execute();
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-  $head = ["ID", "Data/Hora", "Venda", "Cliente", "Tipo", "Produto", "Qtd", "Motivo", "Status", "Valor"];
+  $itemsMap = fetch_items_map_for_devolucoes_report($pdo, $rows);
+
+  $head = ["ID", "Data/Hora", "Venda", "Cliente", "Tipo", "Itens / Produto", "Qtd", "Motivo", "Status", "Valor"];
   $body = [];
 
   foreach ($rows as $r) {
+    $id = (int)($r['id'] ?? 0);
     $cliente = trim((string)($r['cliente'] ?? ''));
     if ($cliente === '') $cliente = 'Consumidor Final';
 
     $valor = (float)($r['valor'] ?? 0);
-    $dtText = br_date((string)($r['data'] ?? '')) . ' ' . (string)($r['hora'] ?? '—');
+    $dtText = br_date((string)($r['data'] ?? '')) . ' ' . substr((string)($r['hora'] ?? '—'), 0, 5);
     $venda = ($r['venda_no'] !== null && (string)$r['venda_no'] !== '') ? ('#' . (string)$r['venda_no']) : '—';
 
-    $tipo = (string)($r['tipo'] ?? 'TOTAL');
-    $produto = ($tipo === 'PARCIAL') ? ((string)($r['produto'] ?? '—')) : '—';
+    $tipo = strtoupper((string)($r['tipo'] ?? 'TOTAL'));
+    $itensProduto = join_items_for_report($itemsMap[$id] ?? []);
     $qtd = ($tipo === 'PARCIAL') ? ((string)($r['qtd'] ?? '—')) : '—';
 
     $body[] = [
@@ -615,7 +866,7 @@ function report_devolucoes(PDO $pdo, string $dtIni, string $dtFim, string $q, in
       $venda,
       $cliente,
       $tipo,
-      $produto,
+      $itensProduto,
       $qtd,
       (string)($r['motivo'] ?? '—'),
       (string)($r['status'] ?? '—'),
@@ -870,236 +1121,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch') {
   exit;
 }
 
-/* =========================
-   AJAX endpoint: suggest
-========================= */
-if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
-  header('Content-Type: application/json; charset=utf-8');
-
-  try {
-    $pdo = db();
-
-    $tipo  = strtoupper(trim((string)($_GET['tipo'] ?? 'VENDAS_RESUMO')));
-    $q     = trim((string)($_GET['q'] ?? ''));
-    $dtIni = iso_date_or_empty((string)($_GET['dt_ini'] ?? ''));
-    $dtFim = iso_date_or_empty((string)($_GET['dt_fim'] ?? ''));
-
-    if ($q === '' || mb_strlen($q) < 1) {
-      echo json_encode(['ok' => true, 'items' => []], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-      exit;
-    }
-
-    $out = [];
-
-    if ($tipo === 'VENDAS_RESUMO') {
-      $params = [];
-      $where = [];
-      if ($dtIni !== '') {
-        $where[] = "v.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $where[] = "v.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $where[] = "NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')";
-      $whereId = $where;
-
-      $wId = $whereId;
-      $wId[] = add_like_or(["CAST(v.id AS CHAR)"], $q, $params, 'sv1');
-
-      $sql1 = "
-        SELECT CONCAT('#', v.id, ' — ', COALESCE(NULLIF(v.cliente,''),'Consumidor Final')) AS label,
-               CAST(v.id AS CHAR) AS value
-        FROM vendas v
-        WHERE " . implode(" AND ", $wId) . "
-        ORDER BY v.id DESC
-        LIMIT 6
-      ";
-      $st1 = $pdo->prepare($sql1);
-      $st1->execute($params);
-      foreach (($st1->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-
-      $params2 = [];
-      $where2 = [];
-      if ($dtIni !== '') {
-        $where2[] = "v.data >= :dtIni";
-        $params2[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $where2[] = "v.data <= :dtFim";
-        $params2[':dtFim'] = $dtFim;
-      }
-      $where2[] = "v.cliente IS NOT NULL AND v.cliente <> ''";
-      $where2[] = "NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')";
-      $where2[] = add_like_or(["v.cliente"], $q, $params2, 'sv2');
-
-      $sql2 = "
-        SELECT CONCAT('Cliente — ', v.cliente) AS label, v.cliente AS value
-        FROM vendas v
-        WHERE " . implode(" AND ", $where2) . "
-        GROUP BY v.cliente
-        ORDER BY v.cliente ASC
-        LIMIT 6
-      ";
-      $st2 = $pdo->prepare($sql2);
-      $st2->execute($params2);
-      foreach (($st2->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'VENDAS_ITENS') {
-      $params = [];
-      $where = [];
-      if ($dtIni !== '') {
-        $where[] = "v.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $where[] = "v.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $where[] = "NOT EXISTS (SELECT 1 FROM devolucoes d WHERE d.venda_no = v.id AND d.status <> 'CANCELADO')";
-      $where[] = add_like_or(["vi.codigo", "vi.nome", "CAST(v.id AS CHAR)", "v.cliente"], $q, $params, 'svi');
-
-      $sql = "
-        SELECT
-          CONCAT(vi.codigo, ' — ', vi.nome) AS label,
-          vi.codigo AS value
-        FROM venda_itens vi
-        INNER JOIN vendas v ON v.id = vi.venda_id
-        WHERE " . implode(" AND ", $where) . "
-        GROUP BY vi.codigo, vi.nome
-        ORDER BY vi.nome ASC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'PRODUTOS' || $tipo === 'ESTOQUE_MINIMO') {
-      $params = [];
-      $w = [];
-      if ($tipo === 'ESTOQUE_MINIMO') $w[] = "p.estoque < p.minimo";
-      $w[] = add_like_or(["p.codigo", "p.nome", "c.nome"], $q, $params, 'sp');
-
-      $sql = "
-        SELECT CONCAT(p.codigo, ' — ', p.nome) AS label, p.codigo AS value
-        FROM produtos p
-        LEFT JOIN categorias c ON c.id = p.categoria_id
-        WHERE " . implode(" AND ", $w) . "
-        ORDER BY p.nome ASC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'DEVOLUCOES') {
-      $params = [];
-      $w = [];
-      if ($dtIni !== '') {
-        $w[] = "d.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $w[] = "d.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $w[] = add_like_or(["CAST(d.venda_no AS CHAR)", "d.cliente", "d.motivo", "d.status"], $q, $params, 'sd');
-
-      $sql = "
-        SELECT
-          CONCAT('Devolução — Venda #', COALESCE(d.venda_no,0), ' — ', COALESCE(NULLIF(d.cliente,''),'Consumidor Final')) AS label,
-          COALESCE(CAST(d.venda_no AS CHAR), CAST(d.id AS CHAR)) AS value
-        FROM devolucoes d
-        WHERE " . implode(" AND ", $w) . "
-        ORDER BY d.data DESC, d.hora DESC, d.id DESC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'ENTRADAS') {
-      $params = [];
-      $w = [];
-      if ($dtIni !== '') {
-        $w[] = "e.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $w[] = "e.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $w[] = add_like_or(["e.nf", "f.nome", "p.codigo", "p.nome"], $q, $params, 'se');
-
-      $sql = "
-        SELECT CONCAT('NF ', e.nf, ' — ', f.nome) AS label, e.nf AS value
-        FROM entradas e
-        INNER JOIN fornecedores f ON f.id = e.fornecedor_id
-        INNER JOIN produtos p ON p.id = e.produto_id
-        WHERE " . implode(" AND ", $w) . "
-        GROUP BY e.nf, f.nome
-        ORDER BY MAX(e.data) DESC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    } elseif ($tipo === 'SAIDAS') {
-      $params = [];
-      $w = [];
-      if ($dtIni !== '') {
-        $w[] = "s.data >= :dtIni";
-        $params[':dtIni'] = $dtIni;
-      }
-      if ($dtFim !== '') {
-        $w[] = "s.data <= :dtFim";
-        $params[':dtFim'] = $dtFim;
-      }
-      $w[] = add_like_or(["s.tipo", "s.motivo", "p.codigo", "p.nome", "s.obs"], $q, $params, 'ss');
-
-      $sql = "
-        SELECT
-          CONCAT('Saída — ', s.tipo, ' — ', s.motivo, ' — ', p.nome) AS label,
-          s.motivo AS value
-        FROM saidas s
-        INNER JOIN produtos p ON p.id = s.produto_id
-        WHERE " . implode(" AND ", $w) . "
-        ORDER BY s.data DESC, s.id DESC
-        LIMIT 10
-      ";
-      $st = $pdo->prepare($sql);
-      $st->execute($params);
-      foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $it) {
-        $out[] = ['label' => (string)$it['label'], 'value' => (string)$it['value']];
-      }
-    }
-
-    $final = [];
-    foreach ($out as $it) {
-      $label = trim((string)($it['label'] ?? ''));
-      $value = trim((string)($it['value'] ?? ''));
-      if ($label === '' || $value === '') continue;
-      $final[] = ['label' => $label, 'value' => $value];
-      if (count($final) >= 10) break;
-    }
-
-    echo json_encode(['ok' => true, 'items' => $final], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-  } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-  }
-  exit;
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -1257,12 +1278,62 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
     #tbRel {
       width: 100%;
-      min-width: 980px;
+      min-width: 1080px;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: auto;
     }
 
-    #tbRel th,
-    #tbRel td {
+    #tbRel thead th,
+    #tbRel tbody td {
       white-space: nowrap !important;
+    }
+
+    #tbRel thead th {
+      padding: 14px 16px !important;
+      background: #f8fafc;
+      color: #0f172a;
+      font-weight: 900;
+      border-top: 1px solid rgba(148, 163, 184, .18);
+      border-bottom: 1px solid rgba(148, 163, 184, .24);
+    }
+
+    #tbRel tbody td {
+      padding: 14px 16px !important;
+      color: #334155;
+      font-weight: 600;
+      background: #fff;
+      border-bottom: 1px solid rgba(148, 163, 184, .14);
+    }
+
+    #tbRel thead th:first-child,
+    #tbRel tbody td:first-child {
+      border-left: 1px solid rgba(148, 163, 184, .14);
+    }
+
+    #tbRel thead th:last-child,
+    #tbRel tbody td:last-child {
+      border-right: 1px solid rgba(148, 163, 184, .14);
+    }
+
+    #tbRel thead th+th,
+    #tbRel tbody td+td {
+      border-left: 1px solid rgba(148, 163, 184, .14);
+    }
+
+    #tbRel th.text-center,
+    #tbRel td.text-center {
+      text-align: center !important;
+    }
+
+    #tbRel th.text-end,
+    #tbRel td.text-end {
+      text-align: right !important;
+    }
+
+    #tbRel th.text-start,
+    #tbRel td.text-start {
+      text-align: left !important;
     }
 
     .rel-table-wrap {
@@ -1461,7 +1532,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
 
     @media (max-width: 991.98px) {
       #tbRel {
-        min-width: 900px;
+        min-width: 980px;
       }
 
       .grand .val {
@@ -1582,7 +1653,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
               <div class="header-search d-none d-md-flex" style="display: none !important;">
                 <form action="#" onsubmit="return false;">
                   <input type="text" placeholder="Buscar no relatório..." id="qGlobal" />
-                  <datalist id="dlGlobalSug"></datalist>
                   <button type="submit" onclick="return false"><i class="lni lni-search-alt"></i></button>
                 </form>
               </div>
@@ -1608,7 +1678,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
             <div class="col-md-8">
               <div class="title">
                 <h2>Relatórios</h2>
-                <div class="muted">Autocomplete • Devolvidas saem de Vendas e ficam em Devoluções.</div>
+                <div class="muted">Busca direta na tabela • Devolvidas saem de Vendas e ficam em Devoluções.</div>
               </div>
             </div>
           </div>
@@ -1666,13 +1736,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
               </div>
 
               <div class="col-12">
-                <div class="muted mt-1">* Digite na busca e escolha uma sugestão na lista.</div>
+                <div class="muted mt-1">* Digite na busca que os resultados serão filtrados direto na tabela.</div>
               </div>
 
               <div class="col-12">
                 <label class="form-label">Busca (filtro extra)</label>
-                <input class="form-control compact" id="qRel" placeholder="Cliente, venda, código, produto, motivo..." />
-                <datalist id="dlRelSug"></datalist>
+                <input class="form-control compact" id="qRel" placeholder="Cliente, venda, código, produto, motivo..." autocomplete="off" />
               </div>
             </div>
           </div>
@@ -1705,7 +1774,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
                   </div>
                   <div class="quick" data-quick="DEVOLUCOES">
                     <div class="t">Devoluções</div>
-                    <div class="d">Onde ficam as vendas devolvidas.</div>
+                    <div class="d">Usa venda_no + venda_itens para identificar os produtos.</div>
                     <div class="tag"><i class="lni lni-package"></i> Pós-venda</div>
                   </div>
                 </div>
@@ -1814,13 +1883,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     }
 
     const qGlobal = document.getElementById("qGlobal");
-    const dlGlobalSug = document.getElementById("dlGlobalSug");
 
     const rTipo = document.getElementById("rTipo");
     const dtIni = document.getElementById("dtIni");
     const dtFim = document.getElementById("dtFim");
     const qRel = document.getElementById("qRel");
-    const dlRelSug = document.getElementById("dlRelSug");
 
     const btnGerar = document.getElementById("btnGerar");
     const btnExcel = document.getElementById("btnExcel");
@@ -1844,9 +1911,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
     const btnNextPage = document.getElementById("btnNextPage");
     const pagerText = document.getElementById("pagerText");
     const infoCount = document.getElementById("infoCount");
-
-    qRel.setAttribute("list", "dlRelSug");
-    qGlobal.setAttribute("list", "dlGlobalSug");
 
     const PER = 10;
     let PAGE = 1;
@@ -1916,14 +1980,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       const center = new Set((rep.centerCols || []).map(n => Number(n)));
 
       theadRel.innerHTML = `<tr>${(rep.head || []).map((h, idx) => {
-        const cls = right.has(idx) ? "text-end" : (center.has(idx) ? "text-center" : "");
+        const cls = right.has(idx) ? "text-end" : (center.has(idx) ? "text-center" : "text-start");
         return `<th class="${cls}">${safeText(h)}</th>`;
       }).join("")}</tr>`;
 
       tbodyRel.innerHTML = (rep.body || []).map(row => `
         <tr>
           ${(row || []).map((c, idx) => {
-            const cls = right.has(idx) ? "text-end" : (center.has(idx) ? "text-center" : "");
+            const cls = right.has(idx) ? "text-end" : (center.has(idx) ? "text-center" : "text-start");
             return `<td class="${cls}">${safeText(c)}</td>`;
           }).join("")}
         </tr>
@@ -1956,44 +2020,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       renderPager(rep);
     }
 
-    async function fetchSuggest(targetDatalist) {
-      const tipo = rTipo.value;
-      const fromISO = dtIni.value || "";
-      const toISO = dtFim.value || "";
-      const q = qRel.value || "";
-
-      if (!q || q.trim().length < 1) {
-        targetDatalist.innerHTML = "";
-        return;
-      }
-
-      const params = new URLSearchParams({
-        action: "suggest",
-        tipo,
-        dt_ini: fromISO,
-        dt_fim: toISO,
-        q
-      });
-
-      const res = await fetch("relatorios.php?" + params.toString(), {
-        headers: {
-          "Accept": "application/json"
-        }
-      });
-      const json = await res.json().catch(() => null);
-      if (!json || !json.ok) {
-        targetDatalist.innerHTML = "";
-        return;
-      }
-
-      const items = Array.isArray(json.items) ? json.items : [];
-      targetDatalist.innerHTML = items.slice(0, 10).map(it => {
-        const label = String(it.label || it.value || "");
-        const value = String(it.value || "");
-        return `<option value="${safeText(value)}" label="${safeText(label)}"></option>`;
-      }).join("");
-    }
-
     const debouncedGerar = debounce(async () => {
       setInfo("CARREGANDO...", true);
       try {
@@ -2020,14 +2046,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       }
     }, 280);
 
-    const debouncedSuggest = debounce(async () => {
-      await fetchSuggest(dlRelSug);
-      await fetchSuggest(dlGlobalSug);
-    }, 220);
-
     function resetPageAndLoad() {
       PAGE = 1;
-      debouncedSuggest();
       debouncedGerar();
     }
 
@@ -2035,7 +2055,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       if (from === 'global') qRel.value = qGlobal.value;
       if (from === 'rel') qGlobal.value = qRel.value;
       PAGE = 1;
-      debouncedSuggest();
       debouncedGerar();
     }
 
@@ -2058,8 +2077,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
           <head>
             <meta charset="utf-8">
             <style>
-              table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
-              td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; }
+              table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; width: 100%; }
+              td, th { border: 1px solid #000; padding: 8px 10px; vertical-align: middle; white-space: nowrap; }
               th { background: #dbe5f1; font-weight: bold; }
               .title { font-size: 16px; font-weight: bold; text-align: center; background: #ddebf7; }
               .left { text-align: left; }
@@ -2138,8 +2157,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'suggest') {
       dtFim.value = "";
       qRel.value = "";
       qGlobal.value = "";
-      dlRelSug.innerHTML = "";
-      dlGlobalSug.innerHTML = "";
       PAGE = 1;
       debouncedGerar();
     });

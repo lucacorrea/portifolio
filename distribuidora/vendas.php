@@ -2,14 +2,8 @@
 
 declare(strict_types=1);
 
-/**
- * vendas.php (PDV)
- * - HTML normal
- * - AJAX interno SOMENTE para "ultimasVendas" (refresh dos cupons)
- * - Busca de produtos: SEM AJAX, SEM ENTER pra buscar (filtra LOCAL no JS enquanto digita)
- */
-
-// ✅ BLINDA: evita “JSON quebrado” por warnings/avisos
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
 
 
 if (function_exists('ob_start')) {
@@ -309,8 +303,6 @@ function fmtMoney($v): string
       background: rgba(241, 245, 249, .9);
     }
 
-
-
     .it .meta {
       min-width: 0;
       flex: 1 1 auto;
@@ -340,10 +332,6 @@ function fmtMoney($v): string
       color: #0f172a;
       white-space: nowrap;
     }
-
-
-
-
 
     .table td,
     .table th {
@@ -1123,8 +1111,6 @@ function fmtMoney($v): string
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const AJAX_URL = "vendas.php";
 
-
-
     function safeText(s) {
       return String(s ?? "")
         .replaceAll("&", "&amp;")
@@ -1145,6 +1131,15 @@ function fmtMoney($v): string
     function numberToMoney(n) {
       const v = Number(n || 0);
       return "R$ " + v.toFixed(2).replace(".", ",");
+    }
+
+    // HORÁRIO DO DISPOSITIVO
+    function getDeviceDateTime() {
+      const agora = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+
+      return `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-${pad(agora.getDate())} ` +
+        `${pad(agora.getHours())}:${pad(agora.getMinutes())}:${pad(agora.getSeconds())}`;
     }
 
     function fetchJSON(url, opts = {}) {
@@ -1305,10 +1300,8 @@ function fmtMoney($v): string
 
         let hit = false;
 
-        // busca normal
         if (code.includes(sRaw) || name.includes(sRaw)) hit = true;
 
-        // busca por dígitos (0005 => P0005)
         if (!hit && sDigits) {
           if (codeDigits.includes(sDigits)) hit = true;
           else if (cands.some(c => codeDigits.includes(c))) hit = true;
@@ -1317,7 +1310,6 @@ function fmtMoney($v): string
         if (hit) res.push(p);
       }
 
-      // ordena melhor match
       res.sort((a, b) => {
         const ac = String(a.code || "").toLowerCase();
         const bc = String(b.code || "").toLowerCase();
@@ -1547,7 +1539,7 @@ function fmtMoney($v): string
       } else {
         hintTroco.style.display = "none";
         ok = (Math.abs(paid - total) < 0.009) && total > 0;
-        if (method === "FIADO") ok = total > 0; // Fiado doesnt need 'paid' to match 'total' in simplified check here
+        if (method === "FIADO") ok = total > 0;
         troco = 0;
       }
       pTroco.value = troco.toFixed(2).replace(".", ",");
@@ -1597,8 +1589,6 @@ function fmtMoney($v): string
           </tr>
         `);
       });
-
-
     }
 
     function recalcAll() {
@@ -1855,13 +1845,11 @@ function fmtMoney($v): string
         LAST_CLIENT_SUGG = r.items || [];
         showSuggestCliente(LAST_CLIENT_SUGG);
 
-        // Se encontrar resultados, limpa o aviso de erro (ainda não é verificado, mas tem candidatos)
         if (LAST_CLIENT_SUGG.length > 0) {
           cCliente.classList.remove("client-unverified");
           document.getElementById("fiadoFeedback").style.display = "none";
         }
 
-        // Se não encontrar nada e for prazo, já marca vermelho mais rápido
         if (LAST_CLIENT_SUGG.length === 0 && isFiado) {
           cCliente.classList.add("client-unverified");
           document.getElementById("fiadoFeedback").style.display = "block";
@@ -1874,7 +1862,7 @@ function fmtMoney($v): string
 
     cCliente.addEventListener("input", () => {
       clearTimeout(clientSearchTimer);
-      clientSearchTimer = setTimeout(searchClientsRealTime, 100); // Reduzido para 100ms
+      clientSearchTimer = setTimeout(searchClientsRealTime, 100);
     });
 
     suggestCliente.addEventListener("click", (e) => {
@@ -1900,10 +1888,8 @@ function fmtMoney($v): string
     }
 
     async function checkClientFiado() {
-      // Pequeno delay para garantir que se o usuário clicou numa sugestão, o click seja processado primeiro
       await new Promise(r => setTimeout(r, 150));
 
-      // Se acabou de selecionar via clique, não faz a verificação automática de "saída" que pode dar erro
       if (Date.now() - LAST_SELECTED_TS < 300) return;
 
       const q = cCliente.value.trim();
@@ -1917,7 +1903,6 @@ function fmtMoney($v): string
         return;
       }
 
-      // Se já estiver verificado e o nome bater, não faz nada
       if (SELECTED_CLIENT && SELECTED_CLIENT.nome === q) return;
 
       try {
@@ -1929,7 +1914,6 @@ function fmtMoney($v): string
           if (exact) {
             selectClient(exact);
           } else {
-            // Se não for exato, mas tiver resultados, deixa o usuário escolher da lista ou marca como não verificado se saiu do campo
             SELECTED_CLIENT = null;
             cCliente.classList.remove("client-verified");
             if (isFiado) {
@@ -1955,9 +1939,7 @@ function fmtMoney($v): string
     }
 
     cCliente.addEventListener("blur", () => {
-      // O delay agora está dentro de checkClientFiado
       checkClientFiado();
-      // Oculta a lista após um tempo para não sumir antes do clique
       setTimeout(hideSuggestCliente, 200);
     });
 
@@ -2047,8 +2029,8 @@ function fmtMoney($v): string
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">Venda À Prazo - Entrada</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <h5 class="modal-title" style="color: #fff !important;">Venda À Prazo - Entrada</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="color: #fff !important;"></button>
           </div>
           <div class="modal-body">
             <p>Deseja registrar uma entrada para esta venda?</p>
@@ -2084,7 +2066,6 @@ function fmtMoney($v): string
 
     function handleFiadoSale(callback) {
       fiadoCallback = callback;
-      const total = calcTotal();
       document.getElementById("vEntrada").value = "0,00";
       document.getElementById("entradaMethod").style.display = "none";
       modalEntradaFiado.show();
@@ -2130,7 +2111,6 @@ function fmtMoney($v): string
       const q = cCliente.value.trim();
 
       if (isFiado && !SELECTED_CLIENT) {
-        // Tenta uma verificação de última hora se houver texto
         if (q !== "") {
           await checkClientFiado();
         }
@@ -2166,7 +2146,7 @@ function fmtMoney($v): string
           };
           if (r.method === "FIADO") return {
             ok: true
-          }; // Custom check already passed
+          };
           return {
             ok: false,
             msg: "Para Pix/Cartão/À Prazo, o valor pago deve ser igual ao total."
@@ -2194,7 +2174,6 @@ function fmtMoney($v): string
         return;
       }
 
-      // Se for fiado ÚNICO e ainda não temos os dados da entrada, abre o modal
       if (PAY_MODE === "UNICO" && PAY_SELECTED === "FIADO" && !fiadoData) {
         handleFiadoSale((data) => confirmSale(data));
         return;
@@ -2202,6 +2181,7 @@ function fmtMoney($v): string
 
       const payload = {
         csrf_token: CSRF,
+        device_datetime: getDeviceDateTime(),
         customer: String(cCliente.value || "").trim(),
         client_id: SELECTED_CLIENT ? SELECTED_CLIENT.id : null,
         delivery: {
@@ -2338,10 +2318,12 @@ function fmtMoney($v): string
       recalcAll();
       renderLastSales();
 
-      qGlobal.addEventListener("input", () => {
-        qProd.value = qGlobal.value;
-        refreshSuggestDebounced();
-      });
+      if (qGlobal) {
+        qGlobal.addEventListener("input", () => {
+          qProd.value = qGlobal.value;
+          refreshSuggestDebounced();
+        });
+      }
 
       btnRefreshLast.addEventListener("click", renderLastSales);
 

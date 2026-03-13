@@ -2,28 +2,38 @@
 declare(strict_types=1);
 ini_set('display_errors','1');
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
-date_default_timezone_set('America/Manaus');
 
-/* ===== Conexão DIRETA ===== */
-$host     = 'localhost';
-$dbname   = 'u920914488_ERP';
-$username = 'u920914488_ERP';
-$password = 'N8r=$&Wrs$';
+// Carrega a configuração unificada (que resolve tanto Empresa quanto Vendas no banco u784961086_pdv)
+require_once __DIR__ . '/config.php';
 
-try {
-  $pdo = new PDO(
-    "mysql:host={$host};dbname={$dbname};charset=utf8mb4",
-    $username,
-    $password,
-    [
-      PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-      PDO::ATTR_EMULATE_PREPARES   => false,
-    ]
-  );
-} catch (PDOException $e) {
-  http_response_code(500);
-  exit('Erro na conexão: '.$e->getMessage());
+// ===== AJAX: Busca de cliente para autocomplete =====
+if (isset($_GET['busca_cliente']) && isset($_GET['q'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $q        = trim($_GET['q']);
+    $qLike    = '%' . $q . '%';
+    // Remove non-digits to also search by raw CPF digits
+    $qDigits  = preg_replace('/\D/', '', $q);
+    try {
+        $stBusca = $pdo->prepare("SELECT id, nome, cpf_cnpj FROM clientes 
+                                   WHERE nome LIKE :q 
+                                      OR cpf_cnpj LIKE :q
+                                      OR REGEXP_REPLACE(cpf_cnpj, '[^0-9]', '') LIKE :qd 
+                                   ORDER BY nome LIMIT 8");
+        $stBusca->execute([':q' => $qLike, ':qd' => '%'.$qDigits.'%']);
+        echo json_encode($stBusca->fetchAll(PDO::FETCH_ASSOC));
+    } catch (Throwable $e) {
+        // Fallback sem REGEXP_REPLACE (MySQL < 8)
+        try {
+            $stBusca2 = $pdo->prepare("SELECT id, nome, cpf_cnpj FROM clientes 
+                                        WHERE nome LIKE :q OR cpf_cnpj LIKE :q 
+                                        ORDER BY nome LIMIT 8");
+            $stBusca2->execute([':q' => $qLike]);
+            echo json_encode($stBusca2->fetchAll(PDO::FETCH_ASSOC));
+        } catch (Throwable $e2) {
+            echo json_encode([]);
+        }
+    }
+    exit;
 }
 
 /* ===== Entrada ===== */
@@ -36,40 +46,55 @@ $total = 0.0;
 $cpfConsumidor = '';
 
 if ($vendaId > 0) {
-  // Cabeçalho da venda
-  $st = $pdo->prepare("SELECT id, responsavel, cpf_responsavel, cpf_cliente, forma_pagamento, valor_total, valor_recebido, troco, empresa_id, id_caixa, data_venda
-                       FROM vendas WHERE id=:id LIMIT 1");
-  $st->execute([':id'=>$vendaId]);
-  $venda = $st->fetch();
+  // Cabeçalho da venda (Usa pdo que está em u784961086_pdv)
+  try {
+    $st = $pdo->prepare("SELECT v.*, c.nome as cliente_nome_join, c.cpf_cnpj as cliente_doc
+                         FROM vendas v
+                         LEFT JOIN clientes c ON v.cliente_id = c.id
+                         WHERE v.id = :id 
+                         LIMIT 1");
+    $st->execute([':id'=>$vendaId]);
+    $venda = $st->fetch();
 
-  if ($venda) {
-    $cpfConsumidor = preg_replace('/\D+/', '', (string)($venda['cpf_cliente'] ?? ''));
-    // Itens
-    $sti = $pdo->prepare("SELECT produto_id, produto_nome, quantidade, preco_unitario, ncm, cfop, unidade, informacoes_adicionais, cest, origem, tributacao
-                          FROM itens_venda WHERE venda_id=:id ORDER BY id");
-    $sti->execute([':id'=>$vendaId]);
-    while ($r = $sti->fetch()) {
-      $qtd = (float)$r['quantidade'];
-      $vun = (float)$r['preco_unitario'];
-      $linTotal = $qtd * $vun;
-      $total += $linTotal;
+    if ($venda) {
+        // Prioritiza novas colunas persistidas (Açaidinhos style)
+        $cpfConsumidor = so_digitos($venda['cpf_cliente'] ?? '');
+        $nomeConsumidor = trim((string)($venda['cliente_nome'] ?? $venda['nome_cliente_avulso'] ?? ''));
+        
+        // Se ainda estiver vazio (venda antiga), usa o fallback do JOIN
+        if (empty($cpfConsumidor)) {
+            $cpfConsumidor = so_digitos($venda['cliente_doc'] ?? '');
+        }
+        if (empty($nomeConsumidor)) {
+            $nomeConsumidor = trim((string)($venda['cliente_nome_join'] ?? ''));
+        }
+        
+        // Itens (Busca em VENDAS_ITENS JOIN PRODUTOS, seguindo Sale.php)
+        $sti = $pdo->prepare("SELECT i.*, p.nome as produto_nome, p.unidade as p_unidade, p.ncm as p_ncm, p.origem as p_origem, p.cest as p_cest
+                                FROM vendas_itens i 
+                                JOIN produtos p ON i.produto_id = p.id 
+                               WHERE i.venda_id = :id ORDER BY i.id");
+        $sti->execute([':id'=>$vendaId]);
+        
+        while ($r = $sti->fetch()) {
+          $qtd = (float)$r['quantidade'];
+          $vun = (float)$r['preco_unitario'];
+          $linTotal = $qtd * $vun;
+          $total += $linTotal;
 
-      // estrutura simples para emitir.php (desc, qtd, vun)
-      $itens[] = [
-        'desc' => (string)$r['produto_nome'],
-        'qtd'  => $qtd,
-        'vun'  => $vun,
-        // extras (não quebram emitir.php; pode ignorar lá ou usar se desejar)
-        'ncm'   => $r['ncm'] ?: null,
-        'cfop'  => $r['cfop'] ?: null,
-        'unid'  => $r['unidade'] ?: null,
-        'info'  => $r['informacoes_adicionais'] ?: null,
-        'cest'  => $r['cest'] ?: null,
-        'origem'=> $r['origem'] ?: null,
-        'trib'  => $r['tributacao'] ?: null,
-      ];
+          $itens[] = [
+            'desc' => (string)($r['produto_nome'] ?? $r['produto_id']),
+            'qtd'  => $qtd,
+            'vun'  => $vun,
+            'ncm'   => (string)($r['ncm'] ?: $r['p_ncm'] ?: '21069090'),
+            'cfop'  => (string)($r['cfop'] ?: '5102'),
+            'unid'  => (string)($r['unidade'] ?: $r['p_unidade'] ?: 'UN'),
+            'origem'=> (string)($r['origem'] ?: $r['p_origem'] ?: '0'),
+            'cest'  => (string)($r['cest'] ?: $r['p_cest'] ?: ''),
+          ];
+        }
     }
-  }
+  } catch (Throwable $e) { $venda = null; }
 }
 
 function brl($v){ return number_format((float)$v, 2, ',', '.'); }
@@ -78,126 +103,191 @@ function brl($v){ return number_format((float)$v, 2, ',', '.'); }
 <html lang="pt-br">
 <head>
 <meta charset="utf-8">
-<title>Revisão da Venda #<?= htmlspecialchars((string)$vendaId) ?> • NFC-e</title>
+<title>Revisão NFC-e • Venda #<?= htmlspecialchars((string)$vendaId) ?></title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { --b:#e8e8e8; --tx:#222; --mut:#666; }
-  body{font-family:system-ui,Arial; color:var(--tx); margin:20px; max-width:1000px}
-  h1,h2,h3{margin:.2rem 0}
-  .head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
-  .card{border:1px solid var(--b); border-radius:10px; padding:14px; margin:12px 0; background:#fff}
+  :root { --b:#e8e8e8; --tx:#222; --mut:#666; --accent:#1a73e8; }
+  body{font-family:system-ui,Arial; color:var(--tx); margin:20px; max-width:1000px; background:#f9fafb}
+  h2{margin:.2rem 0}
+  .head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px}
+  .card{border:1px solid var(--b); border-radius:12px; padding:20px; margin-bottom:16px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.1)}
   table{width:100%; border-collapse:collapse}
-  th,td{border:1px solid var(--b); padding:8px; text-align:left; vertical-align:top}
-  th{background:#fafafa}
+  th,td{border-bottom:1px solid var(--b); padding:12px 8px; text-align:left}
+  th{background:#f9fafb; font-size:12px; text-transform:uppercase; color:var(--mut)}
   .right{text-align:right}
   .mut{color:var(--mut); font-size:13px}
-  .row{display:flex; gap:12px; flex-wrap:wrap}
-  .col{flex:1 1 280px}
-  .btn{padding:10px 14px; border:1px solid #333; background:#fff; border-radius:8px; cursor:pointer; font-weight:600}
-  .btn:hover{background:#f5f5f5}
-  .total{font-size:18px; font-weight:700}
-  .badge{display:inline-block; padding:2px 8px; border:1px solid var(--b); border-radius:999px; background:#f9f9f9}
-  .hidden{display:none}
+  .total{font-size:20px; font-weight:700; color:var(--accent)}
+  .btn{padding:12px 24px; border:0; background:var(--accent); color:#fff; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px}
+  .btn:hover{filter:brightness(0.9)}
 </style>
 </head>
 <body>
 
 <div class="head">
   <div>
-    <h2>NFC-e • Revisão da Venda</h2>
-    <div class="mut">Confirme os itens e emita a nota fiscal.</div>
+    <h2>Revisão NFC-e • Venda #<?= htmlspecialchars((string)$vendaId) ?></h2>
+    <div class="mut">Confira os itens antes de emitir a nota fiscal eletrônica.</div>
   </div>
-  <?php if ($vendaId): ?>
-    <div class="badge">Venda #<?= htmlspecialchars((string)$vendaId) ?></div>
-  <?php endif; ?>
 </div>
 
 <?php if (!$vendaId || !$venda): ?>
   <div class="card">
-    <p><strong>Nenhuma venda carregada.</strong></p>
-    <p class="mut">Acesse esta página com <code>?venda_id=123</code> (e opcionalmente <code>&auto_emit=1</code>).</p>
+    <p><strong>Venda #<?= $vendaId ?> não encontrada.</strong></p>
+    <p class="mut">Verifique se esta venda existe na tabela <code>vendas</code> do banco <code>u784961086_pdv</code>.</p>
   </div>
 <?php else: ?>
 
-  <div class="card row">
-    <div class="col">
-      <h3>Dados da venda</h3>
-      <div><strong>Data:</strong> <?= htmlspecialchars(date('d/m/Y H:i', strtotime((string)$venda['data_venda']))) ?></div>
-      <div><strong>Responsável:</strong> <?= htmlspecialchars((string)$venda['responsavel']) ?></div>
-      <div><strong>Forma de Pagamento (cód.):</strong> <?= htmlspecialchars((string)$venda['forma_pagamento']) ?></div>
-      <div><strong>Empresa ID:</strong> <?= htmlspecialchars((string)$venda['empresa_id']) ?> &middot; <strong>Caixa ID:</strong> <?= htmlspecialchars((string)$venda['id_caixa']) ?></div>
+  <div class="card" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:20px">
+    <div>
+      <h3 style="margin-top:0">Dados da Venda</h3>
+      <div class="mut">Data: <?= date('d/m/Y H:i', strtotime((string)$venda['data_venda'])) ?></div>
+      <div class="mut">Responsável: <?= htmlspecialchars((string)$venda['responsavel']) ?></div>
+      <div class="mut">Pagamento: <?= htmlspecialchars((string)$venda['forma_pagamento']) ?></div>
     </div>
-    <div class="col">
-      <h3>Consumidor</h3>
-      <div><strong>CPF:</strong> <?= $cpfConsumidor ? htmlspecialchars($cpfConsumidor) : '<span class="mut">não informado</span>' ?></div>
-      <div><strong>Recebido:</strong> R$ <?= brl($venda['valor_recebido']) ?> &middot; <strong>Troco:</strong> R$ <?= brl($venda['troco']) ?></div>
-      <div class="total" style="margin-top:6px;">Total venda: R$ <?= brl($total ?: $venda['valor_total']) ?></div>
+    <div class="right">
+      <div class="mut">Total da Venda</div>
+      <div class="total">R$ <?= brl($total ?: $venda['valor_total']) ?></div>
     </div>
   </div>
 
   <div class="card">
-    <h3 style="margin-bottom:8px;">Itens</h3>
+    <h3 style="margin-top:0">Itens</h3>
     <table>
       <thead>
         <tr>
-          <th>#</th>
           <th>Descrição</th>
           <th class="right">Qtd</th>
           <th class="right">V. Unit</th>
           <th class="right">V. Total</th>
-          <th>NCM</th>
-          <th>CFOP</th>
-          <th>UN</th>
-          <th>Info</th>
         </tr>
       </thead>
       <tbody>
-      <?php
-        if (empty($itens)) {
-          echo '<tr><td colspan="9" class="mut">Sem itens encontrados para esta venda.</td></tr>';
-        } else {
-          $i=1;
-          foreach ($itens as $linha) {
-            $linTot = ((float)$linha['qtd']) * ((float)$linha['vun']);
-            echo '<tr>';
-            echo '<td>'.($i++).'</td>';
-            echo '<td>'.htmlspecialchars((string)$linha['desc']).'</td>';
-            echo '<td class="right">'.htmlspecialchars((string)(float)$linha['qtd']).'</td>';
-            echo '<td class="right">R$ '.brl($linha['vun']).'</td>';
-            echo '<td class="right">R$ '.brl($linTot).'</td>';
-            echo '<td>'.htmlspecialchars((string)($linha['ncm'] ?? '')).'</td>';
-            echo '<td>'.htmlspecialchars((string)($linha['cfop'] ?? '')).'</td>';
-            echo '<td>'.htmlspecialchars((string)($linha['unid'] ?? '')).'</td>';
-            echo '<td>'.htmlspecialchars((string)($linha['info'] ?? '')).'</td>';
-            echo '</tr>';
-          }
-        }
-      ?>
+      <?php if (empty($itens)): ?>
+          <tr><td colspan="4" class="mut center">Nenhum item encontrado na tabela <code>vendas_itens</code> para esta venda.</td></tr>
+      <?php else: ?>
+          <?php foreach ($itens as $it): ?>
+            <tr>
+              <td><?= htmlspecialchars($it['desc']) ?></td>
+              <td class="right"><?= number_format($it['qtd'], 2) ?> <?= htmlspecialchars($it['unid']) ?></td>
+              <td class="right">R$ <?= brl($it['vun']) ?></td>
+              <td class="right">R$ <?= brl($it['qtd'] * $it['vun']) ?></td>
+            </tr>
+          <?php endforeach; ?>
+      <?php endif; ?>
       </tbody>
     </table>
   </div>
 
   <form id="fEmit" class="card" method="post" action="emitir.php">
-    <input type="hidden" name="itens" id="itens" value="<?= htmlspecialchars(json_encode($itens, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)) ?>">
-    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
-      <label for="cpf"><strong>CPF do consumidor (opcional):</strong></label>
-      <input id="cpf" name="cpf" type="text" inputmode="numeric" pattern="\d*" placeholder="Somente dígitos" value="<?= htmlspecialchars($cpfConsumidor) ?>" style="padding:8px; min-width:220px;">
-      <button class="btn" type="submit">Emitir NFC-e</button>
-      <span class="mut">A emissão abrirá a resposta do SEFAZ (ou DANFE/QR-Code, conforme seu <code>emitir.php</code>).</span>
+    <input type="hidden" name="venda_id" value="<?= (int)$vendaId ?>">
+    <input type="hidden" name="itens" value="<?= htmlspecialchars(json_encode($itens, JSON_UNESCAPED_UNICODE)) ?>">
+    
+    <h3 style="margin-top:0">Identificar Cliente (opcional)</h3>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; position:relative">
+      <div style="flex:1; min-width:200px">
+        <label for="campo_cpf" class="mut" style="display:block; margin-bottom:4px">CPF/CNPJ (somente dígitos)</label>
+        <!-- Açaidinhos pattern: campo direto name="cpf", valor é dígitos puros -->
+        <input id="campo_cpf" name="cpf" type="text" inputmode="numeric"
+               placeholder="000.000.000-00 ou só dígitos"
+               value="<?= htmlspecialchars($cpfConsumidor) ?>"
+               style="padding:10px; border:1px solid var(--b); border-radius:6px; width:100%; box-sizing:border-box"
+               autocomplete="off">
+      </div>
+      <div style="flex:2; min-width:220px">
+        <label for="campo_nome" class="mut" style="display:block; margin-bottom:4px">Nome do Cliente (busca ou digita)</label>
+        <input id="campo_nome" name="nome_dest" type="text"
+               placeholder="Buscar cliente por nome..."
+               value="<?= htmlspecialchars($nomeConsumidor ?? '') ?>"
+               style="padding:10px; border:1px solid var(--b); border-radius:6px; width:100%; box-sizing:border-box"
+               autocomplete="off">
+        <ul id="sugestoes" style="display:none; position:absolute; background:#fff; border:1px solid var(--b);
+            border-radius:6px; list-style:none; margin:0; padding:0; min-width:280px; z-index:10;
+            box-shadow:0 4px 12px rgba(0,0,0,0.15); max-height:220px; overflow-y:auto"></ul>
+      </div>
     </div>
+    <div id="info_cliente" class="mut" style="font-size:13px; margin-bottom:12px"><?php
+      if ($cpfConsumidor) echo '✅ <b>Venda vinculada:</b> ' . htmlspecialchars($nomeConsumidor) . ' (CPF: ' . $cpfConsumidor . ')';
+    ?></div>
+    <button class="btn" type="submit" <?= empty($itens) ? 'disabled' : '' ?>>EMITIR NOTA FISCAL</button>
   </form>
+
+  <script>
+  (function(){
+    const fCpf   = document.getElementById('campo_cpf');
+    const fNome  = document.getElementById('campo_nome');
+    const list   = document.getElementById('sugestoes');
+    const info   = document.getElementById('info_cliente');
+    const form   = document.getElementById('fEmit');
+    let debounce;
+
+    // Antes de submeter: limpa dígitos do campo CPF
+    form.addEventListener('submit', function(){
+      fCpf.value = fCpf.value.replace(/\D/g, '');
+    });
+
+    // Autocomplete pelo nome
+    fNome.addEventListener('input', function(){
+      clearTimeout(debounce);
+      const q = this.value.trim();
+      if (q.length < 2) { list.style.display = 'none'; return; }
+
+      debounce = setTimeout(() => {
+        fetch('<?= htmlspecialchars($_SERVER['PHP_SELF'] ?? 'index.php') ?>?busca_cliente=1&q=' + encodeURIComponent(q))
+          .then(r => r.json())
+          .then(data => {
+            list.innerHTML = '';
+            if (!data.length) { list.style.display = 'none'; return; }
+            data.forEach(c => {
+              const li = document.createElement('li');
+              li.style.cssText = 'padding:10px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:13px';
+              const hasCpf = c.cpf_cnpj && c.cpf_cnpj.replace(/\D/g,'').length >= 11;
+              li.innerHTML = '<b>' + c.nome + '</b>'
+                + (c.cpf_cnpj ? ' <span style="color:#555">— ' + c.cpf_cnpj + '</span>' : '<span style="color:#e00"> (sem CPF)</span>');
+              li.addEventListener('mouseenter', () => li.style.background = '#f0f7ff');
+              li.addEventListener('mouseleave', () => li.style.background = '');
+              li.addEventListener('click', () => {
+                fNome.value = c.nome;
+                fCpf.value  = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g,'') : '';
+                list.style.display = 'none';
+                if (hasCpf) {
+                  info.innerHTML = '✅ <b>' + c.nome + '</b> (CPF: ' + c.cpf_cnpj + ') — será impresso na nota';
+                } else {
+                  info.innerHTML = '⚠️ <b>' + c.nome + '</b> não tem CPF — sem identificação na nota';
+                }
+              });
+              list.appendChild(li);
+            });
+            list.style.display = 'block';
+          }).catch(() => list.style.display = 'none');
+      }, 300);
+    });
+
+    // CPF digitado manualmente: valida e mostra feedback
+    fCpf.addEventListener('input', function(){
+      const d = this.value.replace(/\D/g,'');
+      if (d.length === 11) {
+        info.innerHTML = '✅ CPF registrado — será impresso na nota';
+      } else if (d.length === 14) {
+        info.innerHTML = '✅ CNPJ registrado — será impresso na nota';
+      } else if (d.length > 0) {
+        info.innerHTML = '⌛ Continue digitando... (' + d.length + '/11 dígitos)';
+      } else {
+        info.innerHTML = '';
+      }
+    });
+
+    document.addEventListener('click', e => {
+      if (e.target !== fNome) list.style.display = 'none';
+    });
+  })();
+  </script>
 
 <?php endif; ?>
 
 <script>
-(function(){
-  const autoEmit = <?= (int)$autoEmit ?>;
-  const temItens = <?= json_encode(!empty($itens)) ?>;
-  if (autoEmit && temItens) {
-    // pequena espera só para garantir renderização na tela antes do envio
-    setTimeout(()=>{ document.getElementById('fEmit')?.submit(); }, 200);
-  }
-})();
+<?php if ($autoEmit && !empty($itens)): ?>
+  setTimeout(() => { document.getElementById('fEmit').submit(); }, 500);
+<?php endif; ?>
 </script>
 
 </body>

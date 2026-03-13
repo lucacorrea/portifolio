@@ -73,7 +73,7 @@ class AuthService extends BaseService {
 
     public static function hasPermission($modulo, $acao) {
         if (!isset($_SESSION['usuario_id'])) return false;
-        if (($_SESSION['usuario_nivel'] ?? '') === 'master' || ($_SESSION['usuario_nivel'] ?? '') === 'admin') return true;
+        if (($_SESSION['usuario_nivel'] ?? '') === 'admin') return true;
 
         $nivel = $_SESSION['usuario_nivel'];
         
@@ -110,8 +110,8 @@ class AuthService extends BaseService {
             return $stmt->fetchColumn() > 0;
         } catch (\PDOException $e) {
             // Fallback robusto se as tabelas de permissão (007_rbac_schema) não existirem
-            // Admins e Master sempre têm acesso. Gerentes e Vendedores têm acessos baseados no hardcoding acima.
-            return in_array($nivel, ['admin', 'master']);
+            // Admins sempre têm acesso. Gerentes e Vendedores têm acessos baseados no hardcoding acima.
+            return $nivel === 'admin';
         }
     }
 

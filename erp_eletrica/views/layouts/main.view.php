@@ -12,7 +12,8 @@
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="public/css/corporate.css">
+    <link rel="stylesheet" href="public/css/corporate.css?v=3.2">
+    <link rel="stylesheet" href="style.css?v=3.2">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -23,7 +24,7 @@
         
         <div class="main-wrapper">
             <!-- Top Navbar -->
-            <nav class="top-navbar px-4 shadow-sm border-0 mb-4 bg-white sticky-top">
+            <nav class="top-navbar px-4 border-0 mb-4 sticky-top">
                 <div class="d-flex align-items-center">
                     <button class="btn btn-light me-3 d-lg-none" id="sidebarToggle">
                         <i class="fas fa-bars"></i>
@@ -51,7 +52,6 @@
                                 <div class="text-muted extra-small"><?= $_SESSION['usuario_email'] ?? 'Acesso Nível ' . $_SESSION['usuario_nivel'] ?></div>
                             </li>
                             <li><a class="dropdown-item py-2" href="configuracoes.php"><i class="fas fa-cog me-2 text-muted"></i>Ajustes do Perfil</a></li>
-                            <li><a class="dropdown-item py-2" href="master.php" <?= ($_SESSION['usuario_nivel'] ?? '') !== 'master' ? 'style="display:none"' : '' ?>><i class="fas fa-crown me-2 text-warning"></i>Painel Master</a></li>
                             <li><hr class="dropdown-divider opacity-50"></li>
                             <li><a class="dropdown-item py-2 text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i>Sair com Segurança</a></li>
                         </ul>

@@ -121,7 +121,18 @@ if (!$xmlRaw) {
             <tr><td style="font-size:14px;"><b>TOTAL R$</b></td><td class="right" style="font-size:14px;"><b><?= number_format($venda['valor_total'],2,',','.') ?></b></td></tr>
         </tbody></table>
         <div class="hr"></div>
-        <div class="small center">Cliente: <b><?= htmlspecialchars($venda['cliente_nome']) ?></b></div>
+        <div class="small center">
+            <?php 
+            $cName = strtoupper(trim($venda['cliente_nome']));
+            if ($cName !== 'CONSUMIDOR FINAL' && $cName !== 'CONSUMIDOR AVULSO' && $cName !== 'CONSUMIDOR'): ?>
+                Cliente: <b><?= htmlspecialchars($venda['cliente_nome']) ?></b>
+                <?php if (!empty($venda['cpf_cliente'])): ?><br>CPF: <?= htmlspecialchars($venda['cpf_cliente']) ?><?php endif; ?>
+            <?php elseif (!empty($venda['cpf_cliente'])): ?>
+                <b>CPF: <?= htmlspecialchars($venda['cpf_cliente']) ?></b>
+            <?php else: ?>
+                <b>Consumidor Final</b>
+            <?php endif; ?>
+        </div>
         <?php endif; ?>
         <div class="hr"></div>
         <?php if ($statusNF === 'sem_registro' || $statusNF === 'pendente'): ?>
@@ -164,58 +175,63 @@ $infNFe = $dom->getElementsByTagNameNS($ns,'infNFe')->item(0);
 $supl   = $dom->getElementsByTagNameNS($ns,'infNFeSupl')->item(0);
 $prot   = $dom->getElementsByTagNameNS($ns,'protNFe')->item(0);
 $emit   = $dom->getElementsByTagNameNS($ns,'emit')->item(0);
-$emit_xNome = $emit ? lm_($emit->getElementsByTagName('xNome')->item(0)->nodeValue) : '';
-$emit_xFant = ($emit && $emit->getElementsByTagName('xFant')->item(0)) ? lm_($emit->getElementsByTagName('xFant')->item(0)->nodeValue) : '';
-$emit_CNPJ  = $emit ? lm_($emit->getElementsByTagName('CNPJ')->item(0)->nodeValue) : '';
-$emit_IE    = ($emit && $emit->getElementsByTagName('IE')->item(0)) ? lm_($emit->getElementsByTagName('IE')->item(0)->nodeValue) : '';
+$emit_xNome = $emit ? lm_($emit->getElementsByTagNameNS($ns,'xNome')->item(0)->nodeValue) : '';
+$emit_xFant = ($emit && $emit->getElementsByTagNameNS($ns,'xFant')->item(0)) ? lm_($emit->getElementsByTagNameNS($ns,'xFant')->item(0)->nodeValue) : '';
+$emit_CNPJ  = $emit ? lm_($emit->getElementsByTagNameNS($ns,'CNPJ')->item(0)->nodeValue) : '';
+$emit_IE    = ($emit && $emit->getElementsByTagNameNS($ns,'IE')->item(0)) ? lm_($emit->getElementsByTagNameNS($ns,'IE')->item(0)->nodeValue) : '';
 $enderEmit  = $emit ? $emit->getElementsByTagNameNS($ns,'enderEmit')->item(0) : null;
 $end_txt = '';
 if ($enderEmit) {
-    $g = fn($t) => ($x=$enderEmit->getElementsByTagName($t)->item(0)) ? lm_($x->nodeValue) : '';
+    $g = fn($t) => ($x=$enderEmit->getElementsByTagNameNS($ns,$t)->item(0)) ? lm_($x->nodeValue) : '';
     $end_txt = $g('xLgr').' '.$g('nro').', '.$g('xBairro').', '.$g('xMun').' - '.$g('UF');
 }
 $ide   = $dom->getElementsByTagNameNS($ns,'ide')->item(0);
-$serie = $ide ? lm_($ide->getElementsByTagName('serie')->item(0)->nodeValue) : '';
-$nNF   = $ide ? lm_($ide->getElementsByTagName('nNF')->item(0)->nodeValue) : '';
-$dhEmi = $ide ? lm_($ide->getElementsByTagName('dhEmi')->item(0)->nodeValue) : '';
+$serie = $ide ? lm_($ide->getElementsByTagNameNS($ns,'serie')->item(0)->nodeValue) : '';
+$nNF   = $ide ? lm_($ide->getElementsByTagNameNS($ns,'nNF')->item(0)->nodeValue) : '';
+$dhEmi = $ide ? lm_($ide->getElementsByTagNameNS($ns,'dhEmi')->item(0)->nodeValue) : '';
 $idAttr= $infNFe ? $infNFe->getAttribute('Id') : '';
 $chave = preg_replace('/^NFe/', '', $idAttr);
-$tot   = $dom->getElementsByTagNameNS($ns,'ICMSTot')->item(0);
-$vProd = $tot ? br_($tot->getElementsByTagName('vProd')->item(0)->nodeValue) : '0,00';
-$vDesc = ($tot && $tot->getElementsByTagName('vDesc')->item(0)) ? br_($tot->getElementsByTagName('vDesc')->item(0)->nodeValue) : '0,00';
-$vNF   = $tot ? br_($tot->getElementsByTagName('vNF')->item(0)->nodeValue) : '0,00';
-$vTrib = ($tot && $tot->getElementsByTagName('vTotTrib')->item(0)) ? br_($tot->getElementsByTagName('vTotTrib')->item(0)->nodeValue) : '0,00';
+$total   = $dom->getElementsByTagNameNS($ns,'ICMSTot')->item(0);
+$vProd = $total ? br_($total->getElementsByTagNameNS($ns,'vProd')->item(0)->nodeValue) : '0,00';
+$vDesc = ($total && $total->getElementsByTagNameNS($ns,'vDesc')->item(0)) ? br_($total->getElementsByTagNameNS($ns,'vDesc')->item(0)->nodeValue) : '0,00';
+$vNF   = $total ? br_($total->getElementsByTagNameNS($ns,'vNF')->item(0)->nodeValue) : '0,00';
+$vTrib = ($total && $total->getElementsByTagNameNS($ns,'vTotTrib')->item(0)) ? br_($total->getElementsByTagNameNS($ns,'vTotTrib')->item(0)->nodeValue) : '0,00';
 $detPag= $dom->getElementsByTagNameNS($ns,'detPag')->item(0);
-$tPag  = $detPag ? lm_($detPag->getElementsByTagName('tPag')->item(0)->nodeValue) : '';
-$vPag  = $detPag ? br_($detPag->getElementsByTagName('vPag')->item(0)->nodeValue) : '0,00';
+$tPag  = $detPag ? lm_($detPag->getElementsByTagNameNS($ns,'tPag')->item(0)->nodeValue) : '';
+$vPag  = $detPag ? br_($detPag->getElementsByTagNameNS($ns,'vPag')->item(0)->nodeValue) : '0,00';
 $vTroco= $dom->getElementsByTagNameNS($ns,'vTroco')->item(0);
 $vTroco= $vTroco ? br_($vTroco->nodeValue) : '0,00';
 $dest  = $dom->getElementsByTagNameNS($ns,'dest')->item(0);
-$dest_doc = '';
+$dest_doc  = '';
+$dest_nome = '';
 if ($dest) {
-    $dC = $dest->getElementsByTagName('CNPJ')->item(0);
-    $dF = $dest->getElementsByTagName('CPF')->item(0);
-    $dest_doc = $dC ? 'CNPJ: '.lm_($dC->nodeValue) : ($dF ? 'CPF: '.lm_($dF->nodeValue) : '');
+    $dC = $dest->getElementsByTagNameNS($ns, 'CNPJ')->item(0);
+    $dF = $dest->getElementsByTagNameNS($ns, 'CPF')->item(0);
+    $dN = $dest->getElementsByTagNameNS($ns, 'xNome')->item(0);
+    $dest_doc  = $dC ? 'CNPJ: '.lm_($dC->nodeValue) : ($dF ? 'CPF: '.lm_($dF->nodeValue) : '');
+    $dest_nome = $dN ? lm_($dN->nodeValue) : '';
 }
 $protInfo = '';
 if ($prot) {
-    $infP = $prot->getElementsByTagName('infProt')->item(0);
-    $nProt= ($infP && $infP->getElementsByTagName('nProt')->item(0)) ? lm_($infP->getElementsByTagName('nProt')->item(0)->nodeValue) : '';
-    $dhRec= ($infP && $infP->getElementsByTagName('dhRecbto')->item(0)) ? lm_($infP->getElementsByTagName('dhRecbto')->item(0)->nodeValue) : '';
+    $infP = $prot->getElementsByTagNameNS('*', 'infProt')->item(0);
+    $nProtTag= ($infP && $infP->getElementsByTagNameNS('*', 'nProt')->item(0)) ? $infP->getElementsByTagNameNS('*', 'nProt')->item(0) : null;
+    $dhRecTag= ($infP && $infP->getElementsByTagNameNS('*', 'dhRecbto')->item(0)) ? $infP->getElementsByTagNameNS('*', 'dhRecbto')->item(0) : null;
+    $nProt = $nProtTag ? lm_($nProtTag->nodeValue) : '';
+    $dhRec = $dhRecTag ? lm_($dhRecTag->nodeValue) : '';
     $protInfo = $nProt ? "Protocolo: $nProt — $dhRec" : '';
 }
-$qrTxt = ($supl && $supl->getElementsByTagName('qrCode')->item(0)) ? lm_($supl->getElementsByTagName('qrCode')->item(0)->nodeValue) : '';
+$qrTxt = ($supl && $supl->getElementsByTagNameNS($ns,'qrCode')->item(0)) ? lm_($supl->getElementsByTagNameNS($ns,'qrCode')->item(0)->nodeValue) : '';
 $itens = [];
 foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     $prod = $det->getElementsByTagNameNS($ns,'prod')->item(0);
     if (!$prod) continue;
-    $g   = fn($t) => lm_($prod->getElementsByTagName($t)->item(0)->nodeValue);
+    $g   = fn($t) => lm_($prod->getElementsByTagNameNS($ns,$t)->item(0)->nodeValue);
     $itens[] = [
         'cProd'=>$g('cProd'), 'xProd'=>$g('xProd'),
-        'qCom' =>number_format((float)$prod->getElementsByTagName('qCom')->item(0)->nodeValue,3,',','.'),
+        'qCom' =>number_format((float)$prod->getElementsByTagNameNS($ns,'qCom')->item(0)->nodeValue,3,',','.'),
         'uCom' =>$g('uCom'),
-        'vUn'  =>br_($prod->getElementsByTagName('vUnCom')->item(0)->nodeValue),
-        'vTot' =>br_($prod->getElementsByTagName('vProd')->item(0)->nodeValue),
+        'vUn'  =>br_($prod->getElementsByTagNameNS($ns,'vUnCom')->item(0)->nodeValue),
+        'vTot' =>br_($prod->getElementsByTagNameNS($ns,'vProd')->item(0)->nodeValue),
     ];
 }
 ?>
@@ -262,16 +278,25 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
         <colgroup><col style="width:16%"><col style="width:42%"><col style="width:10%"><col style="width:8%"><col style="width:12%"><col style="width:12%"></colgroup>
         <thead><tr><th class="left">Cód</th><th class="left">Descrição</th><th class="right">Qtde</th><th class="right">Un</th><th class="right">V.Unit</th><th class="right">V.Total</th></tr></thead>
         <tbody>
-            <?php foreach ($itens as $it): ?>
-            <tr>
-                <td class="left"><?= htmlspecialchars($it['cProd']) ?></td>
-                <td class="left"><?= htmlspecialchars($it['xProd']) ?></td>
-                <td class="right"><?= htmlspecialchars($it['qCom']) ?></td>
-                <td class="right"><?= htmlspecialchars($it['uCom']) ?></td>
-                <td class="right"><?= htmlspecialchars($it['vUn']) ?></td>
-                <td class="right"><?= htmlspecialchars($it['vTot']) ?></td>
-            </tr>
-            <?php endforeach; ?>
+            <?php
+    $itens = $dom->getElementsByTagNameNS($ns, 'det');
+    foreach($itens as $item):
+        $prod = $item->getElementsByTagNameNS($ns, 'prod')->item(0);
+        if(!$prod) continue;
+        $cProd = $prod->getElementsByTagNameNS($ns, 'cProd')->item(0)->nodeValue;
+        $xProd = $prod->getElementsByTagNameNS($ns, 'xProd')->item(0)->nodeValue;
+        $qCom  = $prod->getElementsByTagNameNS($ns, 'qCom')->item(0)->nodeValue;
+        $uCom  = $prod->getElementsByTagNameNS($ns, 'uCom')->item(0)->nodeValue;
+        $vUn   = $prod->getElementsByTagNameNS($ns, 'vUnCom')->item(0)->nodeValue;
+        $vTot  = $prod->getElementsByTagNameNS($ns, 'vProd')->item(0)->nodeValue;
+    ?>
+    <tr>
+        <td class="left small"><?= htmlspecialchars($cProd) ?><br><?= htmlspecialchars(lm_($xProd)) ?></td>
+        <td class="right small"><?= number_format($qCom, 3, ',', '.') ?> <?= htmlspecialchars(lm_($uCom)) ?></td>
+        <td class="right small"><?= br_($vUn) ?></td>
+        <td class="right small"><?= br_($vTot) ?></td>
+    </tr>
+    <?php endforeach; ?>
         </tbody>
     </table>
 
@@ -279,10 +304,14 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
 
     <table class="tbl small" aria-label="Totais">
         <tbody>
-            <tr><td class="left"><b>QTDE TOTAL DE ITENS</b></td><td class="right"><?= count($itens) ?></td></tr>
-            <tr><td class="left"><b>SUBTOTAL R$</b></td><td class="right"><?= $vProd ?></td></tr>
-            <?php if ($vDesc !== '0,00'): ?><tr><td class="left"><b>DESCONTO</b></td><td class="right">- <?= $vDesc ?></td></tr><?php endif; ?>
-            <tr><td class="left" style="font-size:14px;"><b>VALOR TOTAL R$</b></td><td class="right" style="font-size:14px;"><b><?= $vNF ?></b></td></tr>
+            <?php
+    $vProd = $total->getElementsByTagNameNS($ns, 'vProd')->item(0);
+    $vDesc = $total->getElementsByTagNameNS($ns, 'vDesc')->item(0);
+    $vNF   = $total->getElementsByTagNameNS($ns, 'vNF')->item(0);
+    ?>
+    <tr><td class="left">VALOR TOTAL BRUTO</td><td class="right"><?= $vProd ? br_($vProd->nodeValue) : '0,00' ?></td></tr>
+    <tr><td class="left">DESCONTO</td><td class="right">- <?= $vDesc ? br_($vDesc->nodeValue) : '0,00' ?></td></tr>
+    <tr><td class="left"><b>VALOR TOTAL LÍQUIDO</b></td><td class="right"><b><?= $vNF ? br_($vNF->nodeValue) : '0,00' ?></b></td></tr>
             <tr><td class="left"><b>FORMA DE PAGAMENTO</b></td><td class="right"><?= htmlspecialchars(tPag_($tPag)) ?></td></tr>
             <tr><td class="left"><b>VALOR PAGO</b></td><td class="right"><?= $vPag ?></td></tr>
             <?php if ($vTroco !== '0,00'): ?><tr><td class="left"><b>TROCO</b></td><td class="right"><?= $vTroco ?></td></tr><?php endif; ?>
@@ -301,7 +330,14 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     </div>
     <div class="hr"></div>
     <div class="small"><b>CONSUMIDOR</b></div>
-    <div class="small"><?= htmlspecialchars($dest_doc ?: '—') ?></div>
+    <?php 
+    $dN = strtoupper(trim($dest_nome));
+    if ($dest_nome && $dN !== 'CONSUMIDOR FINAL' && $dN !== 'CONSUMIDOR AVULSO' && $dN !== 'CONSUMIDOR'): ?>
+        <div class="small"><?= htmlspecialchars($dest_nome) ?></div>
+        <div class="small"><?= htmlspecialchars($dest_doc ?: '—') ?></div>
+    <?php else: ?>
+        <div class="small"><?= htmlspecialchars($dest_doc ?: 'CONSUMIDOR FINAL') ?></div>
+    <?php endif; ?>
     <div class="hr"></div>
     <div class="center small">Consulta via leitor de QR Code</div>
     <div id="qrcode" class="qr" role="img" aria-label="QR Code da NFC-e"></div>

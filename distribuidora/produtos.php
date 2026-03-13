@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
@@ -436,13 +439,14 @@ $produtos = $pdo->query("
                             </a>
                         </div>
                     </div>
-                    
+
                 </div>
             </div>
         </header>
 
         <section class="section">
             <div class="container-fluid">
+
                 <div class="title-wrapper pt-30">
                     <div class="row align-items-center">
                         <div class="col-md-6">
@@ -450,6 +454,18 @@ $produtos = $pdo->query("
                                 <h2>Produtos</h2>
                             </div>
                         </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Estoque</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Produtos</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 

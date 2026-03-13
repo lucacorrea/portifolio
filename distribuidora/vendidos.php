@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
+
 @date_default_timezone_set('America/Manaus');
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
@@ -791,11 +794,15 @@ if ($action === 'excel') {
                 border: 1px solid #000;
             }
 
+            th,
+            td {
+                text-align: center;
+            }
+
             .tbl-meta td {
                 border: 1px solid #000;
                 padding: 6px;
                 font-size: 11pt;
-                vertical-align: middle;
             }
 
             th,
@@ -803,7 +810,6 @@ if ($action === 'excel') {
                 border: 0.6px solid #000;
                 padding: 6px;
                 font-size: 11pt;
-                vertical-align: middle;
             }
 
             .title {
@@ -1281,6 +1287,11 @@ $initialTotais = $initial['totais'];
             white-space: nowrap;
         }
 
+        th,
+        td {
+            text-align: center;
+        }
+
         .td-nowrap {
             white-space: nowrap;
             text-align: center;
@@ -1634,14 +1645,26 @@ $initialTotais = $initial['totais'];
 
         <section class="section">
             <div class="container-fluid">
+
                 <div class="title-wrapper pt-30">
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="title">
-                                <h2>Gestão de Vendas</h2>
-                                <p class="text-muted">Listagem e filtros de vendas</p>
+                                <h2>Vendidos</h2>
                             </div>
                         </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Operações</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Vendidos</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 

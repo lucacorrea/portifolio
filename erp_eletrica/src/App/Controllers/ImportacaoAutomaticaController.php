@@ -47,13 +47,15 @@ class ImportacaoAutomaticaController extends BaseController {
             $cnpj = $stmt->fetchColumn();
 
             $service = new SefazConsultaService();
-            $resultado = $service->consultarNotas($cnpj, '0');
+            // O serviço agora cuida do NSU automático e do loop de busca
+            $resultado = $service->consultarNotas($cnpj);
             
-            if (!empty($resultado['documentos'])) {
-                $service->salvarNotasCache($filialId, $resultado['documentos']);
-                echo json_encode(['success' => true, 'count' => count($resultado['documentos'])]);
+            $count = count($resultado['documentos'] ?? []);
+            
+            if ($count > 0) {
+                echo json_encode(['success' => true, 'count' => $count, 'message' => "Sincronização concluída. $count novos registros (resumos ou completos) foram processados."]);
             } else {
-                echo json_encode(['success' => true, 'count' => 0, 'message' => 'Nenhuma nota nova encontrada na SEFAZ.']);
+                echo json_encode(['success' => true, 'count' => 0, 'message' => 'Nenhuma nota nova encontrada na SEFAZ para este período.']);
             }
         } catch (\Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);

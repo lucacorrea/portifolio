@@ -24,7 +24,7 @@
                                 </span>
                                 <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off">
                             </div>
-                            <div id="searchResults" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 9999; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd; margin-top: 5px;">
+                            <div id="searchResults" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 10000; width: 100%; max-height: 400px; overflow-y: auto;">
                                 <!-- Results will be injected here -->
                             </div>
                         </div>
@@ -80,7 +80,7 @@
 
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
-        <div class="card border-0 glass-card  h-100 d-flex flex-column" style="border: 1px solid rgba(0, 86, 179, 0.2) !important;">
+        <div class="card border-0 glass-card h-100 d-flex flex-column" style="border: 1px solid var(--primary-color) !important;">
             <div class="card-header bg-erp-primary text-white py-3 border-0">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Checkout SaaS</h5>
             </div>
@@ -116,31 +116,31 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_dinheiro" value="dinheiro" checked>
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_dinheiro">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_dinheiro">
                                 <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_pix" value="pix">
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_pix">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_pix">
                                 <i class="fa-brands fa-pix me-2 text-info"></i> Pix
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_cartao" value="cartao_credito">
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_cartao">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_cartao">
                                 <i class="fas fa-credit-card me-2 text-primary"></i> Cartão
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_boleto">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_boleto">
                                 <i class="fas fa-barcode me-2 text-secondary"></i> Boleto
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_fiado">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_fiado">
                                 <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado)
                             </label>
                         </div>
@@ -385,7 +385,8 @@ let currentPvId = null;
 let activeManageId = null;
 let selectedCustomerId = null;
 let selectedCustomerName = null;
-const currentUserLevel = '<?= $_SESSION['usuario_nivel'] ?? 'vendedor' ?>';
+let selectedCustomerCPF = null;
+const currentUserLevel = '<?= $_SESSION['usuario_id'] ? ($_SESSION['usuario_nivel'] ?? 'vendedor') : 'vendedor' ?>';
 
 const pdvSearch = document.getElementById('pdvSearch');
 const searchResults = document.getElementById('searchResults');
@@ -550,6 +551,23 @@ const selectedCustomerInfo = document.getElementById('selectedCustomerInfo');
 if (customerSearch) {
     customerSearch.addEventListener('input', async (e) => {
         const term = e.target.value;
+        const cleanTerm = term.replace(/\D/g, '');
+        
+        // Clear previous timer
+        if (window.customerSearchTimer) clearTimeout(window.customerSearchTimer);
+
+        // Auto-select 
+        if (cleanTerm.length === 14) {
+            selectCustomer(null, 'Consumidor Final', term);
+            return;
+        } else if (cleanTerm.length === 11) {
+            // Wait 400ms to see if more digits are coming (CNPJ)
+            window.customerSearchTimer = setTimeout(() => {
+                selectCustomer(null, 'Consumidor Final', term);
+            }, 400);
+            return;
+        }
+
         if (term.length < 2) {
             customerResults.style.display = 'none';
             return;
@@ -558,16 +576,50 @@ if (customerSearch) {
         try {
             const response = await fetch(`vendas.php?action=search_clients&term=${encodeURIComponent(term)}`);
             const clients = await response.json();
-            renderCustomerSearchResults(clients);
+            renderCustomerSearchResults(clients, term);
         } catch (err) {
             console.error("PDV: Erro ao buscar clientes:", err);
         }
     });
+
+    customerSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const term = customerSearch.value.trim();
+            const cleanTerm = term.replace(/\D/g, '');
+            if (cleanTerm.length === 11 || cleanTerm.length === 14) {
+                if (window.customerSearchTimer) clearTimeout(window.customerSearchTimer);
+                e.preventDefault();
+                selectCustomer(null, 'Consumidor Final', term);
+            }
+        }
+    });
 }
 
-function renderCustomerSearchResults(clients) {
+function renderCustomerSearchResults(clients, term = '') {
     customerResults.innerHTML = '';
-    if (clients.length === 0) {
+    
+    // Check if term looks like a CPF or CNPJ
+    const cleanTerm = term.replace(/\D/g, '');
+    const isDoc = cleanTerm.length === 11 || cleanTerm.length === 14;
+
+    if (isDoc) {
+        const avulsoBtn = document.createElement('button');
+        avulsoBtn.className = 'list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center bg-primary text-white shadow';
+        avulsoBtn.innerHTML = `
+            <div>
+                <div class="fw-bold">IDENTIFICAR CONSUMIDOR</div>
+                <small class="opacity-75">Documento: ${term}</small>
+            </div>
+            <i class="fas fa-id-card fa-lg"></i>
+        `;
+        avulsoBtn.onclick = () => {
+            if (window.customerSearchTimer) clearTimeout(window.customerSearchTimer);
+            selectCustomer(null, 'Consumidor Final', term);
+        }
+        customerResults.appendChild(avulsoBtn);
+    }
+
+    if (clients.length === 0 && !isDoc) {
         customerResults.style.display = 'none';
         return;
     }
@@ -593,6 +645,7 @@ function renderCustomerSearchResults(clients) {
 function selectCustomer(id, nome, doc) {
     selectedCustomerId = id;
     selectedCustomerName = nome;
+    selectedCustomerCPF = doc;
     
     document.getElementById('customerNameDisplay').innerText = nome;
     document.getElementById('customerDocDisplay').innerText = doc || 'Sem documento';
@@ -609,6 +662,7 @@ function selectCustomer(id, nome, doc) {
 function clearCustomer() {
     selectedCustomerId = null;
     selectedCustomerName = null;
+    selectedCustomerCPF = null;
     
     selectedCustomerInfo.classList.add('d-none');
     customerSearch.closest('.input-group').classList.remove('d-none');
@@ -715,13 +769,15 @@ async function importPreSale(code) {
             // If it's a walk-in name, we can just set the name for the record but not a DB ID
             selectedCustomerId = null;
             selectedCustomerName = pv.nome_cliente_avulso;
+            selectedCustomerCPF = pv.cliente_doc || null;
+            
             // UI Update for walk-in
             const customerInfo = document.getElementById('selectedCustomerInfo');
-            const customerNameDisplay = document.getElementById('selectedCustomerName');
-            const customerDocDisplay = document.getElementById('selectedCustomerDoc');
+            const customerNameDisplay = document.getElementById('customerNameDisplay'); // Fixed ID reference
+            const customerDocDisplay = document.getElementById('customerDocDisplay');   // Fixed ID reference
             if (customerInfo && customerNameDisplay) {
                 customerNameDisplay.innerText = pv.nome_cliente_avulso;
-                customerDocDisplay.innerText = 'Consumidor Avulso';
+                customerDocDisplay.innerText = selectedCustomerCPF || 'Consumidor Avulso';
                 customerInfo.classList.remove('d-none');
                 customerSearch.closest('.input-group').classList.add('d-none');
                 customerSearch.closest('div.mb-4').querySelector('label').classList.add('d-none');
@@ -1022,6 +1078,7 @@ async function processarCheckout() {
         troco: troco,
         cliente_id: selectedCustomerId,
         nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
+        cpf_cliente: selectedCustomerCPF,
         pv_id: currentPvId,
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential,

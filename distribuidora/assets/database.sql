@@ -153,19 +153,38 @@ CREATE TABLE IF NOT EXISTS venda_itens (
 );
 
 
+-- Create clientes table
 CREATE TABLE IF NOT EXISTS clientes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nome VARCHAR(255) NOT NULL,
-  cpf VARCHAR(20) DEFAULT NULL,
-  telefone VARCHAR(20) DEFAULT NULL,
-  endereco TEXT DEFAULT NULL,
-  created_at DATETIME DEFAULT current_timestamp(),
-  updated_at DATETIME DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ;
+  cpf VARCHAR(20),
+  telefone VARCHAR(20),
+  endereco TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
-CREATE UNIQUE INDEX ux_clientes_cpf ON clientes (cpf);
 CREATE INDEX idx_clientes_nome ON clientes (nome);
-CREATE INDEX idx_clientes_telefone ON clientes (telefone);
+CREATE INDEX idx_clientes_cpf ON clientes (cpf);
+
+-- Create fiados table
+CREATE TABLE IF NOT EXISTS fiados (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  venda_id INT NOT NULL,
+  cliente_id INT NOT NULL,
+  valor_total DECIMAL(10,2) NOT NULL,
+  valor_pago DECIMAL(10,2) DEFAULT 0.00,
+  valor_restante DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'ABERTO', -- ABERTO | PAGO | PARCIAL
+  data_vencimento DATE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (venda_id) REFERENCES vendas(id),
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+);
+
+CREATE INDEX idx_fiados_cliente ON fiados (cliente_id);
+CREATE INDEX idx_fiados_status ON fiados (status);
 
 
 CREATE TABLE IF NOT EXISTS devolucoes (
@@ -192,3 +211,15 @@ CREATE TABLE IF NOT EXISTS devolucoes (
 CREATE INDEX idx_devol_data   ON devolucoes (data);
 CREATE INDEX idx_devol_status ON devolucoes (status);
 CREATE INDEX idx_devol_venda  ON devolucoes (venda_no);
+
+
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(150) NOT NULL,
+  email VARCHAR(190) NOT NULL UNIQUE,
+  senha_hash CHAR(64) NOT NULL,
+  senha_salt CHAR(64) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ATIVO',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

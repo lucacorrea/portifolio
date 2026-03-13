@@ -195,9 +195,9 @@
 
                 <h6 class="fw-bold extra-small text-uppercase text-muted mb-2">Vínculo de Certificado</h6>
                 <?php if ($globalConfig && $globalConfig['certificado_path']): ?>
-                    <div class="alert alert-info py-2 px-3 small border-0 mb-0">
+                    <div class="alert bg-primary bg-opacity-10 border border-primary border-opacity-25 text-primary py-2 px-3 small rounded mb-0">
                         <i class="fas fa-link me-1"></i> Certificado GLOBAL ativo.
-                        <div class="mt-1 extra-small user-select-all text-break"><code><?= $globalConfig['certificado_path'] ?></code></div>
+                        <div class="mt-1 extra-small user-select-all text-break text-light"><code><?= $globalConfig['certificado_path'] ?></code></div>
                     </div>
                 <?php elseif($branch['certificado_pfx']): ?>
                     <div class="alert alert-success py-2 px-3 small border-0 mb-0">

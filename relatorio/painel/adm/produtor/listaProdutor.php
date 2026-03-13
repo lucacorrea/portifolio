@@ -11,6 +11,7 @@ if (empty($_SESSION['usuario_logado'])) {
 
 /* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
@@ -29,10 +30,40 @@ function only_digits(string $s): string
   return $out !== null ? $out : '';
 }
 
+function trunc(string $s, int $max): string
+{
+  $s = trim($s);
+  if ($s === '') return '';
+  if (function_exists('mb_substr')) return mb_substr($s, 0, $max, 'UTF-8');
+  return substr($s, 0, $max);
+}
+
+function ensure_dir(string $absDir): bool
+{
+  if (is_dir($absDir)) return true;
+  return @mkdir($absDir, 0755, true);
+}
+
+function build_public_photo_path(?string $foto): string
+{
+  $foto = trim((string)$foto);
+  if ($foto === '') return '';
+
+  if (
+    stripos($foto, 'http://') === 0 ||
+    stripos($foto, 'https://') === 0 ||
+    stripos($foto, 'data:image/') === 0
+  ) {
+    return $foto;
+  }
+
+  return '../../../' . ltrim($foto, '/');
+}
+
 /* Feira padrão desta página */
 $FEIRA_ID = 1; // 1=Feira do Produtor | 2=Feira Alternativa
 
-/* Detecção opcional pela pasta (se você separou em pastas) */
+/* Detecção opcional pela pasta */
 $dirLower = strtolower((string)__DIR__);
 if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
 if (strpos($dirLower, 'produtor')   !== false) $FEIRA_ID = 1;
@@ -64,9 +95,18 @@ $page = (int)($_GET['p'] ?? 1);
 if ($page < 1) $page = 1;
 $offset = ($page - 1) * $perPage;
 
-/* Busca (FAZ FUNCIONAR: normaliza e busca por CPF/telefone também) */
+/* Busca */
 $qRaw = trim((string)($_GET['q'] ?? ''));
 $qDigits = only_digits($qRaw);
+
+/* Foto upload */
+$BASE_DIR = realpath(__DIR__ . '/../../../');
+$UPLOAD_REL_DIR = 'uploads/produtores';
+$UPLOAD_ABS_DIR = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR) : null;
+$MAX_BASE64_BYTES = 3 * 1024 * 1024;
+
+/* Tipos */
+$tiposValidos = ['PRODUTOR RURAL', 'FEIRANTE', 'MARRETEIRO'];
 
 $cleanErr = function (string $m): string {
   $m = preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $m) ?? $m;
@@ -86,15 +126,6 @@ function buildUrl(array $add = []): string
   return $qs ? ($base . '?' . $qs) : $base;
 }
 
-/* Helpers modal: validação simples */
-function trunc(string $s, int $max): string
-{
-  $s = trim($s);
-  if ($s === '') return '';
-  if (function_exists('mb_substr')) return mb_substr($s, 0, $max, 'UTF-8');
-  return substr($s, 0, $max);
-}
-
 try {
   $pdo = db();
   $dbName = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
@@ -106,6 +137,12 @@ try {
   $tblC = $pdo->query("SHOW TABLES LIKE 'comunidades'")->fetchColumn();
   $hasComunidades = (bool)$tblC;
 
+  $colTipo = $pdo->query("SHOW COLUMNS FROM produtores LIKE 'tipo'")->fetch(PDO::FETCH_ASSOC);
+  $hasTipo = (bool)$colTipo;
+
+  $colFoto = $pdo->query("SHOW COLUMNS FROM produtores LIKE 'foto'")->fetch(PDO::FETCH_ASSOC);
+  $hasFoto = (bool)$colFoto;
+
   if ($hasComunidades) {
     $stCom = $pdo->prepare("SELECT id, nome FROM comunidades WHERE feira_id = :f AND ativo = 1 ORDER BY nome ASC");
     $stCom->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
@@ -113,7 +150,7 @@ try {
     $comunidades = $stCom->fetchAll(PDO::FETCH_ASSOC);
   }
 
-  /* ===== AÇÕES POST: toggle / update (modal) ===== */
+  /* ===== AÇÕES POST ===== */
   if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tokenPost = (string)($_POST['csrf_token'] ?? '');
     if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
@@ -149,19 +186,21 @@ try {
     }
 
     if ($action === 'update' && $id > 0) {
-
       $nome = trunc((string)($_POST['nome'] ?? ''), 160);
+
       $tipo = trim((string)($_POST['tipo'] ?? 'PRODUTOR RURAL'));
-      $tiposValidos = ['PRODUTOR RURAL', 'FEIRANTE', 'MARRETEIRO'];
       if (!in_array($tipo, $tiposValidos, true)) {
         $tipo = 'PRODUTOR RURAL';
       }
+
       $contato = trunc((string)($_POST['contato'] ?? ''), 60);
       $documento = trunc(only_digits((string)($_POST['documento'] ?? '')), 30);
       $obs = trunc((string)($_POST['observacao'] ?? ''), 255);
       $ativo = ((string)($_POST['ativo'] ?? '1') === '1') ? 1 : 0;
-
       $comunidade_id = (int)($_POST['comunidade_id'] ?? 0);
+
+      $removerFoto = ((string)($_POST['remover_foto'] ?? '0') === '1');
+      $fotoBase64 = trim((string)($_POST['foto_base64'] ?? ''));
 
       if ($nome === '') {
         $_SESSION['flash_err'] = 'Informe o nome do produtor.';
@@ -186,12 +225,10 @@ try {
           exit;
         }
       } else {
-        // sem tabela comunidades, mantém comunidade_id como está (não atualiza)
         $comunidade_id = 0;
       }
 
-      // evita duplicidade por feira+nome (se você mantém UNIQUE uq_produtores_feira_nome)
-      $dupe = $pdo->prepare("SELECT COUNT(*) FROM produtores WHERE feira_id=:f AND nome=:n AND id<>:id");
+      $dupe = $pdo->prepare("SELECT COUNT(*) FROM produtores WHERE feira_id = :f AND nome = :n AND id <> :id");
       $dupe->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
       $dupe->bindValue(':n', $nome, PDO::PARAM_STR);
       $dupe->bindValue(':id', $id, PDO::PARAM_INT);
@@ -202,53 +239,151 @@ try {
         exit;
       }
 
-      if ($hasComunidades) {
-        $up = $pdo->prepare("UPDATE produtores
-                       SET nome=:nome, tipo=:tipo, contato=:contato, documento=:doc, comunidade_id=:cid, ativo=:ativo, observacao=:obs
-                       WHERE id=:id AND feira_id=:f");
-        $up->execute([
-          ':nome' => $nome,
-          ':tipo' => $tipo,
-          ':contato' => ($contato !== '' ? $contato : null),
-          ':doc' => ($documento !== '' ? $documento : null),
-          ':cid' => $comunidade_id,
-          ':ativo' => $ativo,
-          ':obs' => ($obs !== '' ? $obs : null),
-          ':id' => $id,
-          ':f' => $FEIRA_ID
-        ]);
-      } else {
-        $up = $pdo->prepare("UPDATE produtores
-                       SET nome=:nome, tipo=:tipo, contato=:contato, documento=:doc, ativo=:ativo, observacao=:obs
-                       WHERE id=:id AND feira_id=:f");
-        $up->execute([
-          ':nome' => $nome,
-          ':tipo' => $tipo,
-          ':contato' => ($contato !== '' ? $contato : null),
-          ':doc' => ($documento !== '' ? $documento : null),
-          ':ativo' => $ativo,
-          ':obs' => ($obs !== '' ? $obs : null),
-          ':id' => $id,
-          ':f' => $FEIRA_ID
-        ]);
+      $stOld = $pdo->prepare("SELECT foto FROM produtores WHERE id = :id AND feira_id = :f LIMIT 1");
+      $stOld->bindValue(':id', $id, PDO::PARAM_INT);
+      $stOld->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
+      $stOld->execute();
+      $oldRow = $stOld->fetch(PDO::FETCH_ASSOC);
+
+      if (!$oldRow) {
+        $_SESSION['flash_err'] = 'Produtor não encontrado.';
+        header('Location: ' . buildUrl(['p' => $page]));
+        exit;
       }
-      $_SESSION['flash_ok'] = 'Produtor atualizado com sucesso!';
-      header('Location: ' . buildUrl(['p' => $page]));
-      exit;
+
+      $fotoAtual = trim((string)($oldRow['foto'] ?? ''));
+      $novaFotoDbValue = null;
+      $usarNovaFoto = false;
+
+      if ($hasFoto && $fotoBase64 !== '') {
+        if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $fotoBase64) !== 1) {
+          $_SESSION['flash_err'] = 'Foto inválida (formato não suportado).';
+          header('Location: ' . buildUrl(['p' => $page]));
+          exit;
+        }
+
+        $base64 = substr($fotoBase64, strpos($fotoBase64, ',') + 1);
+        $bin = base64_decode($base64, true);
+
+        if ($bin === false) {
+          $_SESSION['flash_err'] = 'Foto inválida (base64).';
+          header('Location: ' . buildUrl(['p' => $page]));
+          exit;
+        }
+
+        if (strlen($bin) > $MAX_BASE64_BYTES) {
+          $_SESSION['flash_err'] = 'Foto muito grande. Máximo: 3MB.';
+          header('Location: ' . buildUrl(['p' => $page]));
+          exit;
+        }
+
+        if (!$UPLOAD_ABS_DIR) {
+          $_SESSION['flash_err'] = 'Diretório base não encontrado para upload.';
+          header('Location: ' . buildUrl(['p' => $page]));
+          exit;
+        }
+
+        if (!ensure_dir($UPLOAD_ABS_DIR)) {
+          $_SESSION['flash_err'] = 'Não foi possível criar a pasta de upload.';
+          header('Location: ' . buildUrl(['p' => $page]));
+          exit;
+        }
+
+        $fileName = 'produtor_' . bin2hex(random_bytes(10)) . '.jpg';
+        $destAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $fileName;
+
+        if (@file_put_contents($destAbs, $bin) === false) {
+          $_SESSION['flash_err'] = 'Falha ao salvar a foto no servidor.';
+          header('Location: ' . buildUrl(['p' => $page]));
+          exit;
+        }
+
+        $novaFotoDbValue = $UPLOAD_REL_DIR . '/' . $fileName;
+        $usarNovaFoto = true;
+      }
+
+      try {
+        $paramsUpdate = [
+          ':nome' => $nome,
+          ':tipo' => $tipo,
+          ':contato' => ($contato !== '' ? $contato : null),
+          ':doc' => ($documento !== '' ? $documento : null),
+          ':ativo' => $ativo,
+          ':obs' => ($obs !== '' ? $obs : null),
+          ':id' => $id,
+          ':f' => $FEIRA_ID
+        ];
+
+        $setComunidade = '';
+        if ($hasComunidades) {
+          $setComunidade = ', comunidade_id = :cid';
+          $paramsUpdate[':cid'] = $comunidade_id;
+        }
+
+        $setFoto = '';
+        if ($hasFoto) {
+          if ($usarNovaFoto) {
+            $setFoto = ', foto = :foto';
+            $paramsUpdate[':foto'] = $novaFotoDbValue;
+          } elseif ($removerFoto) {
+            $setFoto = ', foto = NULL';
+          }
+        }
+
+        $sqlUpdate = "UPDATE produtores
+                      SET nome = :nome,
+                          tipo = :tipo,
+                          contato = :contato,
+                          documento = :doc
+                          {$setComunidade},
+                          ativo = :ativo,
+                          observacao = :obs
+                          {$setFoto}
+                      WHERE id = :id AND feira_id = :f";
+
+        $up = $pdo->prepare($sqlUpdate);
+        $up->execute($paramsUpdate);
+
+        if ($hasFoto) {
+          if ($usarNovaFoto && $fotoAtual !== '' && $UPLOAD_ABS_DIR) {
+            $oldAbs = $BASE_DIR . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $fotoAtual);
+            if (is_file($oldAbs)) @unlink($oldAbs);
+          } elseif ($removerFoto && !$usarNovaFoto && $fotoAtual !== '' && $UPLOAD_ABS_DIR) {
+            $oldAbs = $BASE_DIR . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $fotoAtual);
+            if (is_file($oldAbs)) @unlink($oldAbs);
+          }
+        }
+
+        $_SESSION['flash_ok'] = 'Produtor atualizado com sucesso!';
+        header('Location: ' . buildUrl(['p' => $page]));
+        exit;
+      } catch (Throwable $e) {
+        if ($usarNovaFoto && $novaFotoDbValue && $BASE_DIR) {
+          $newAbs = $BASE_DIR . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $novaFotoDbValue);
+          if (is_file($newAbs)) @unlink($newAbs);
+        }
+
+        $_SESSION['flash_err'] = 'Erro ao atualizar produtor: ' . $cleanErr($e->getMessage());
+        header('Location: ' . buildUrl(['p' => $page]));
+        exit;
+      }
     }
   }
 
-  /* ===== WHERE da listagem (PESQUISA FUNCIONANDO) ===== */
-
+  /* ===== WHERE da listagem ===== */
   $where = ["p.feira_id = :feira"];
   $params = [':feira' => $FEIRA_ID];
 
   if ($qRaw !== '') {
     $parts = [];
 
-    // mesmo valor, placeholders diferentes (PDO MySQL com emulação OFF exige isso)
     $params[':q_nome'] = '%' . $qRaw . '%';
     $parts[] = "p.nome LIKE :q_nome";
+
+    if ($hasTipo) {
+      $params[':q_tipo'] = '%' . $qRaw . '%';
+      $parts[] = "p.tipo LIKE :q_tipo";
+    }
 
     $params[':q_contato'] = '%' . $qRaw . '%';
     $parts[] = "p.contato LIKE :q_contato";
@@ -294,7 +429,6 @@ try {
   }
 
   $stCount->execute();
-
   $totalRows = (int)$stCount->fetchColumn();
 
   $totalPages = max(1, (int)ceil($totalRows / $perPage));
@@ -304,11 +438,15 @@ try {
   }
 
   /* ===== SELECT ===== */
+  $campoTipo = $hasTipo ? "p.tipo" : "'PRODUTOR RURAL' AS tipo";
+  $campoFoto = $hasFoto ? "p.foto" : "NULL AS foto";
+
   if ($hasComunidades) {
     $sql = "SELECT
               p.id,
               p.nome,
-              p.tipo,
+              {$campoTipo},
+              {$campoFoto},
               p.contato,
               p.documento,
               p.ativo,
@@ -325,7 +463,8 @@ try {
     $sql = "SELECT
               p.id,
               p.nome,
-              p.tipo,
+              {$campoTipo},
+              {$campoFoto},
               p.contato,
               p.documento,
               p.ativo,
@@ -367,11 +506,8 @@ try {
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" href="../../../vendors/css/vendor.bundle.base.css">
-
   <link rel="stylesheet" href="../../../vendors/datatables.net-bs4/dataTables.bootstrap4.css">
-  <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
   <link rel="stylesheet" type="text/css" href="../../../js/select.dataTables.min.css">
-
   <link rel="stylesheet" href="../../../css/vertical-layout-light/style.css">
   <link rel="shortcut icon" href="../../../images/3.png" />
 
@@ -400,12 +536,10 @@ try {
       height: 42px;
     }
 
-    /* ===== Flash “Hostinger style” ===== */
     .sig-flash-wrap {
       position: fixed;
       top: 78px;
       right: 18px;
-      left: auto;
       width: min(420px, calc(100vw - 36px));
       z-index: 9999;
       pointer-events: none;
@@ -420,7 +554,6 @@ try {
       box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
-
       opacity: 0;
       transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
@@ -525,13 +658,13 @@ try {
       border-radius: 10px !important;
     }
 
-    /* Modal ajustes leves */
     .modal .form-control {
-      height: 42px;
+      min-height: 42px;
+      height: auto;
     }
 
     .modal .btn {
-      height: 42px;
+      min-height: 42px;
     }
 
     .modal .modal-header {
@@ -541,13 +674,149 @@ try {
     .modal .modal-footer {
       border-top: 1px solid rgba(0, 0, 0, .06);
     }
+
+    .edit-photo-box {
+      border: 1px solid rgba(0, 0, 0, .08);
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8f9fa;
+    }
+
+    #edit_cameraVideo,
+    #edit_fotoPreview,
+    #edit_fotoAtual {
+      width: 100%;
+      border-radius: 10px;
+      background: #111;
+    }
+
+    #edit_cameraVideo {
+      display: none;
+    }
+
+    #edit_fotoPreview {
+      display: none;
+    }
+
+    .foto-atual-wrap {
+      text-align: center;
+    }
+
+    .foto-atual-wrap img {
+      max-height: 260px;
+      object-fit: cover;
+      border: 1px solid #ddd;
+    }
+
+    .sem-foto-box {
+      width: 100%;
+      min-height: 220px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .modal-content {
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .modal-header,
+    .modal-footer {
+      padding: 16px 20px;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .modal .form-control {
+      min-height: 44px;
+      border-radius: 10px;
+    }
+
+    .modal textarea.form-control {
+      min-height: 110px;
+    }
+
+    .modal label {
+      margin-bottom: 6px;
+    }
+
+    .font-weight-semibold {
+      font-weight: 600;
+    }
+
+    .edit-photo-box {
+      border: 1px solid rgba(0, 0, 0, .08);
+      border-radius: 14px;
+      padding: 10px;
+      background: #f8f9fa;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #edit_cameraVideo,
+    #edit_fotoPreview,
+    #edit_fotoAtual {
+      width: 100%;
+      border-radius: 10px;
+      background: #111;
+    }
+
+    #edit_cameraVideo {
+      display: none;
+    }
+
+    #edit_fotoPreview {
+      display: none;
+    }
+
+    .foto-atual-wrap {
+      width: 100%;
+      text-align: center;
+    }
+
+    .foto-atual-wrap img {
+      width: 100%;
+      max-height: 280px;
+      object-fit: cover;
+      border: 1px solid #ddd;
+    }
+
+    .sem-foto-box {
+      width: 100%;
+      min-height: 250px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      text-align: center;
+      padding: 12px;
+    }
+
+    @media (max-width: 991.98px) {
+      .modal-body {
+        padding: 15px;
+      }
+    }
   </style>
 </head>
 
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -612,7 +881,6 @@ try {
         </ul>
       </div>
 
-      <!-- SIDEBAR -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
           <li class="nav-item">
@@ -627,15 +895,6 @@ try {
             </a>
 
             <div class="collapse show" id="feiraCadastros">
-              <style>
-                .sub-menu .nav-item .nav-link {
-                  color: black !important;
-                }
-
-                .sub-menu .nav-item .nav-link:hover {
-                  color: blue !important;
-                }
-              </style>
               <ul class="nav flex-column sub-menu" style="background: white !important;">
                 <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
                 <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
@@ -646,8 +905,6 @@ try {
                     <i class="ti-user mr-2"></i> Produtores
                   </a>
                 </li>
-
-
               </ul>
             </div>
           </li>
@@ -678,23 +935,12 @@ try {
             </div>
           </li>
 
-
-          <!-- Título DIVERSOS -->
           <li class="nav-item" style="pointer-events:none;">
-            <span style="
-                  display:block;
-                  padding: 5px 15px 5px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  color: #6c757d;
-                  text-transform: uppercase;
-                ">
+            <span style="display:block;padding:5px 15px 5px;font-size:11px;font-weight:600;letter-spacing:1px;color:#6c757d;text-transform:uppercase;">
               Links Diversos
             </span>
           </li>
 
-          <!-- Linha abaixo do título -->
           <li class="nav-item">
             <a class="nav-link" href="../index.php">
               <i class="ti-home menu-icon"></i>
@@ -704,39 +950,31 @@ try {
           <li class="nav-item">
             <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
-              <span class="menu-title">Feira do Alternativa </span>
-
+              <span class="menu-title">Feira do Alternativa</span>
             </a>
           </li>
           <li class="nav-item">
             <a href="../mercado/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Mercado Municipal</span>
-
             </a>
           </li>
           <li class="nav-item">
-
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
             </a>
           </li>
-
         </ul>
       </nav>
 
-      </ul>
-      </nav>
-
-      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
 
           <div class="row">
             <div class="col-12 mb-3">
               <h3 class="font-weight-bold">Produtores</h3>
-              <h6 class="font-weight-normal mb-0">Pesquisa funciona por nome, comunidade, contato e documento.</h6>
+              <h6 class="font-weight-normal mb-0">Pesquisa funciona por nome, função, comunidade, contato e documento.</h6>
             </div>
           </div>
 
@@ -746,7 +984,6 @@ try {
             </div>
           <?php endif; ?>
 
-          <!-- Toolbar -->
           <div class="row">
             <div class="col-md-12 grid-margin stretch-card">
               <div class="card toolbar-card">
@@ -755,7 +992,8 @@ try {
                     <div class="col-md-6 mb-2 mb-md-0">
                       <label class="mb-1">Pesquisa</label>
                       <input type="text" name="q" class="form-control"
-                        placeholder="Ex.: João / São Francisco / 9299... / CPF..." value="<?= h($qRaw) ?>">
+                        placeholder="Ex.: João / Feirante / São Francisco / 9299... / CPF..."
+                        value="<?= h($qRaw) ?>">
                       <?php if ($debug): ?><input type="hidden" name="debug" value="1"><?php endif; ?>
                     </div>
 
@@ -764,9 +1002,7 @@ try {
                       <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
                         <button type="submit" class="btn btn-primary"><i class="ti-search mr-1"></i> Pesquisar</button>
                         <a class="btn btn-light" href="<?= h(buildUrl(['q' => null, 'p' => null])) ?>"><i class="ti-close mr-1"></i> Limpar</a>
-
                       </div>
-
                     </div>
                   </form>
                 </div>
@@ -774,7 +1010,6 @@ try {
             </div>
           </div>
 
-          <!-- Tabela -->
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
@@ -828,38 +1063,42 @@ try {
                             $contato = trim((string)($p['contato'] ?? ''));
                             $doc = trim((string)($p['documento'] ?? ''));
                             $obs = trim((string)($p['observacao'] ?? ''));
+                            $tipo = trim((string)($p['tipo'] ?? 'PRODUTOR RURAL'));
+                            $foto = trim((string)($p['foto'] ?? ''));
+                            $fotoSrc = build_public_photo_path($foto);
                             ?>
                             <tr>
                               <td><?= $id ?></td>
                               <td>
-                                <div class="font-weight-bold"><?= h($p['nome'] ?? '') ?></div>
-                                <?php if ($doc !== ''): ?><div class="muted-small">CPF/Doc: <?= h($doc) ?></div><?php endif; ?>
+                                <div class="font-weight-bold"><?= h((string)($p['nome'] ?? '')) ?></div>
+                                <?php if ($doc !== ''): ?>
+                                  <div class="muted-small">CPF/Doc: <?= h($doc) ?></div>
+                                <?php endif; ?>
                               </td>
+                              <td><?= h($tipo) ?></td>
                               <td><?= h($comunidadeNome) ?></td>
                               <td><?= h($contato) ?></td>
                               <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
-                              <td> <label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                               <td>
                                 <div class="acoes-wrap">
 
-                                  <!-- EDITAR (abre modal e preenche) -->
                                   <button
                                     type="button"
                                     class="btn btn-outline-primary btn-xs js-edit"
                                     data-toggle="modal"
                                     data-target="#modalEditProdutor"
-                                    data-id="<?= (int)$id ?>"
-                                    data-nome="<?= h($p['nome'] ?? '') ?>"
-                                    data-tipo="<?= h((string)($p['tipo'] ?? 'PRODUTOR RURAL')) ?>"
+                                    data-id="<?= $id ?>"
+                                    data-nome="<?= h((string)($p['nome'] ?? '')) ?>"
+                                    data-tipo="<?= h($tipo) ?>"
                                     data-contato="<?= h($contato) ?>"
                                     data-documento="<?= h($doc) ?>"
                                     data-observacao="<?= h($obs) ?>"
                                     data-ativo="<?= $ativo ? '1' : '0' ?>"
-                                    data-comunidade_id="<?= (int)$comId ?>">
+                                    data-comunidade_id="<?= $comId ?>"
+                                    data-foto="<?= h($fotoSrc) ?>">
                                     <i class="ti-pencil"></i> Editar
                                   </button>
 
-                                  <!-- Toggle ativo -->
                                   <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" style="margin:0;">
                                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                                     <input type="hidden" name="action" value="toggle">
@@ -880,7 +1119,6 @@ try {
                       </tbody>
                     </table>
 
-                    <!-- Paginação -->
                     <?php if ($totalPages > 1): ?>
                       <?php
                       $prev = max(1, $page - 1);
@@ -940,110 +1178,349 @@ try {
 
   <!-- ===================== MODAL EDITAR PRODUTOR ===================== -->
   <div class="modal fade" id="modalEditProdutor" tabindex="-1" role="dialog" aria-labelledby="modalEditProdutorLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-      <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+      <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" class="modal-content border-0 shadow-lg">
         <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="id" id="edit_id" value="">
+        <input type="hidden" name="foto_base64" id="edit_foto_base64" value="">
+        <input type="hidden" name="remover_foto" id="edit_remover_foto" value="0">
 
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalEditProdutorLabel"><i class="ti-pencil"></i> Editar Produtor</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+        <div class="modal-header bg-white border-bottom">
+          <div>
+            <h5 class="modal-title font-weight-bold mb-1" id="modalEditProdutorLabel">
+              <i class="ti-pencil mr-2"></i>Editar Produtor
+            </h5>
+            <small class="text-muted">Atualize dados, função, comunidade e foto.</small>
+          </div>
+
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+            <span aria-hidden="true">&times;</span>
+          </button>
         </div>
 
-        <div class="modal-body">
+        <div class="modal-body bg-light">
 
           <div class="row">
-            <div class="col-md-6 mb-3">
-              <label>Nome <span class="text-danger">*</span></label>
-              <input type="text" name="nome" id="edit_nome" class="form-control" required>
-              <small class="text-muted">Até 160 caracteres.</small>
-            </div>
+            <!-- COLUNA ESQUERDA -->
+            <div class="col-lg-8 mb-3 mb-lg-0">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
 
-            <div class="col-md-3 mb-3">
-              <label>CPF / Documento</label>
-              <input type="text" name="documento" id="edit_documento" class="form-control" placeholder="Somente números">
-              <small class="text-muted">Opcional.</small>
-            </div>
+                  <h6 class="font-weight-bold text-dark mb-3">
+                    <i class="ti-id-badge mr-2"></i>Dados principais
+                  </h6>
 
-            <div class="col-md-3 mb-3">
-              <label>Contato</label>
-              <input type="text" name="contato" id="edit_contato" class="form-control" placeholder="Ex.: 9299...">
-              <small class="text-muted">Opcional.</small>
-            </div>
-          </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="font-weight-semibold">Nome <span class="text-danger">*</span></label>
+                      <input type="text" name="nome" id="edit_nome" class="form-control" required>
+                      <small class="text-muted">Até 160 caracteres.</small>
+                    </div>
 
-          <div class="row">
-            <?php if (!empty($comunidades)): ?>
-              <div class="col-md-6 mb-3">
-                <label>Comunidade <span class="text-danger">*</span></label>
-                <select name="comunidade_id" id="edit_comunidade_id" class="form-control" required>
-                  <option value="">Selecione</option>
-                  <?php foreach ($comunidades as $c): ?>
-                    <option value="<?= (int)$c['id'] ?>"><?= h($c['nome']) ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <small class="text-muted">Somente comunidades ativas.</small>
+                    <div class="col-md-3 mb-3">
+                      <label class="font-weight-semibold">Função <span class="text-danger">*</span></label>
+                      <select name="tipo" id="edit_tipo" class="form-control" required>
+                        <option value="PRODUTOR RURAL">Produtor Rural</option>
+                        <option value="FEIRANTE">Feirante</option>
+                        <option value="MARRETEIRO">Marreteiro</option>
+                      </select>
+                      <small class="text-muted">Tipo do cadastro.</small>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                      <label class="font-weight-semibold">Status</label>
+                      <select name="ativo" id="edit_ativo" class="form-control">
+                        <option value="1">Ativo</option>
+                        <option value="0">Inativo</option>
+                      </select>
+                      <small class="text-muted">Situação atual.</small>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-4 mb-3">
+                      <label class="font-weight-semibold">CPF / Documento</label>
+                      <input type="text" name="documento" id="edit_documento" class="form-control" placeholder="Somente números">
+                      <small class="text-muted">Opcional.</small>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                      <label class="font-weight-semibold">Contato</label>
+                      <input type="text" name="contato" id="edit_contato" class="form-control" placeholder="Ex.: 9299...">
+                      <small class="text-muted">Telefone ou WhatsApp.</small>
+                    </div>
+
+                    <?php if (!empty($comunidades)): ?>
+                      <div class="col-md-4 mb-3">
+                        <label class="font-weight-semibold">Comunidade <span class="text-danger">*</span></label>
+                        <select name="comunidade_id" id="edit_comunidade_id" class="form-control" required>
+                          <option value="">Selecione</option>
+                          <?php foreach ($comunidades as $c): ?>
+                            <option value="<?= (int)$c['id'] ?>"><?= h($c['nome']) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Somente comunidades ativas.</small>
+                      </div>
+                    <?php else: ?>
+                      <div class="col-md-4 mb-3">
+                        <label class="font-weight-semibold">Comunidade</label>
+                        <input type="text" class="form-control" value="Tabela comunidades não encontrada" disabled>
+                        <small class="text-muted">Cadastre comunidades para habilitar.</small>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-12 mb-2">
+                      <label class="font-weight-semibold">Observação</label>
+                      <textarea name="observacao" id="edit_observacao" class="form-control" rows="5" placeholder="Ex.: produtor de farinha, entrega na sexta..."></textarea>
+                      <small class="text-muted">Até 255 caracteres.</small>
+                    </div>
+                  </div>
+
+                </div>
               </div>
-            <?php else: ?>
-              <div class="col-md-6 mb-3">
-                <label>Comunidade</label>
-                <input type="text" class="form-control" value="Tabela comunidades não encontrada" disabled>
-                <small class="text-muted">Cadastre comunidades para habilitar este campo.</small>
-              </div>
-            <?php endif; ?>
-
-            <div class="col-md-3 mb-3">
-              <label>Status</label>
-              <select name="ativo" id="edit_ativo" class="form-control">
-                <option value="1">Ativo</option>
-                <option value="0">Inativo</option>
-              </select>
             </div>
-          </div>
 
-          <div class="row">
-            <div class="col-md-12 mb-2">
-              <label>Observação</label>
-              <textarea name="observacao" id="edit_observacao" class="form-control" rows="4" placeholder="Ex.: produtor de farinha..."></textarea>
-              <small class="text-muted">Até 255 caracteres.</small>
+            <!-- COLUNA DIREITA -->
+            <div class="col-lg-4">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+
+                  <h6 class="font-weight-bold text-dark mb-3">
+                    <i class="ti-camera mr-2"></i>Foto do produtor
+                  </h6>
+
+                  <div class="edit-photo-box">
+                    <video id="edit_cameraVideo" autoplay playsinline></video>
+                    <canvas id="edit_cameraCanvas" style="display:none;"></canvas>
+
+                    <div id="edit_fotoAtual_wrap" class="foto-atual-wrap">
+                      <img id="edit_fotoAtual" src="" alt="Foto atual" style="display:none;">
+                      <div id="edit_semFotoAtual" class="sem-foto-box">Sem foto cadastrada</div>
+                    </div>
+
+                    <img id="edit_fotoPreview" alt="Prévia da nova foto">
+                  </div>
+
+                  <div class="row mt-3">
+                    <div class="col-12 mb-2">
+                      <button type="button" class="btn btn-outline-secondary btn-block btn-sm" id="edit_btnAbrirCam">
+                        <i class="ti-camera mr-1"></i> Abrir Câmera
+                      </button>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <button type="button" class="btn btn-primary btn-block btn-sm" id="edit_btnTirarFoto" disabled>
+                        <i class="ti-image mr-1"></i> Tirar
+                      </button>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <button type="button" class="btn btn-light btn-block btn-sm" id="edit_btnRefazer" disabled>
+                        <i class="ti-reload mr-1"></i> Refazer
+                      </button>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <button type="button" class="btn btn-danger btn-block btn-sm" id="edit_btnFecharCam" disabled>
+                        <i class="ti-close mr-1"></i> Fechar
+                      </button>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <button type="button" class="btn btn-outline-danger btn-block btn-sm" id="edit_btnRemoverFoto">
+                        <i class="ti-trash mr-1"></i> Remover
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="alert alert-light border mt-3 mb-0 py-2 px-3">
+                    <small class="text-muted mb-0 d-block">
+                      Você pode manter a foto atual, remover ou tirar uma nova foto.
+                    </small>
+                  </div>
+
+                </div>
+              </div>
             </div>
           </div>
 
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-dismiss="modal"><i class="ti-close mr-1"></i> Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar alterações</button>
+        <div class="modal-footer bg-white border-top d-flex justify-content-between">
+          <button type="button" class="btn btn-light" data-dismiss="modal">
+            <i class="ti-close mr-1"></i> Cancelar
+          </button>
+
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="ti-save mr-1"></i> Salvar alterações
+          </button>
         </div>
       </form>
     </div>
   </div>
-  <!-- ================================================================ -->
-
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
-
   <script src="../../../js/off-canvas.js"></script>
   <script src="../../../js/hoverable-collapse.js"></script>
   <script src="../../../js/template.js"></script>
   <script src="../../../js/settings.js"></script>
   <script src="../../../js/todolist.js"></script>
-
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
 
   <script>
-    // Preenche modal com dados do botão
     (function() {
       var modal = document.getElementById('modalEditProdutor');
       if (!modal) return;
 
-      // jQuery está presente no vendor.bundle.base.js
+      let editStream = null;
+
+      const video = document.getElementById('edit_cameraVideo');
+      const canvas = document.getElementById('edit_cameraCanvas');
+      const fotoPreview = document.getElementById('edit_fotoPreview');
+      const fotoAtual = document.getElementById('edit_fotoAtual');
+      const fotoAtualWrap = document.getElementById('edit_fotoAtual_wrap');
+      const semFotoAtual = document.getElementById('edit_semFotoAtual');
+
+      const inputFotoBase64 = document.getElementById('edit_foto_base64');
+      const inputRemoverFoto = document.getElementById('edit_remover_foto');
+
+      const btnAbrir = document.getElementById('edit_btnAbrirCam');
+      const btnTirar = document.getElementById('edit_btnTirarFoto');
+      const btnRefazer = document.getElementById('edit_btnRefazer');
+      const btnFechar = document.getElementById('edit_btnFecharCam');
+      const btnRemover = document.getElementById('edit_btnRemoverFoto');
+
+      function setPhotoState(opts) {
+        const camOn = !!opts.camOn;
+        const hasPreview = !!opts.hasPreview;
+        const hasCurrent = !!opts.hasCurrent;
+
+        video.style.display = camOn ? 'block' : 'none';
+        fotoPreview.style.display = hasPreview ? 'block' : 'none';
+
+        fotoAtual.style.display = (!camOn && !hasPreview && hasCurrent) ? 'block' : 'none';
+        semFotoAtual.style.display = (!camOn && !hasPreview && !hasCurrent) ? 'flex' : 'none';
+
+        btnAbrir.disabled = camOn;
+        btnTirar.disabled = !camOn;
+        btnFechar.disabled = !camOn;
+        btnRefazer.disabled = !hasPreview;
+      }
+
+      async function abrirCamera() {
+        try {
+          editStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: {
+                ideal: 'environment'
+              }
+            },
+            audio: false
+          });
+
+          video.srcObject = editStream;
+          await video.play();
+
+          setPhotoState({
+            camOn: true,
+            hasPreview: false,
+            hasCurrent: false
+          });
+        } catch (e) {
+          alert('Não foi possível acessar a câmera. Verifique permissão/HTTPS.');
+          fecharCamera();
+        }
+      }
+
+      function fecharCamera() {
+        if (editStream) {
+          editStream.getTracks().forEach(t => t.stop());
+          editStream = null;
+        }
+        video.srcObject = null;
+
+        const hasPreview = inputFotoBase64.value !== '';
+        const hasCurrent = fotoAtual.getAttribute('data-has-current') === '1';
+
+        setPhotoState({
+          camOn: false,
+          hasPreview: hasPreview,
+          hasCurrent: hasCurrent
+        });
+      }
+
+      function tirarFoto() {
+        if (!video.videoWidth || !video.videoHeight) return;
+
+        const targetW = 720;
+        const ratio = video.videoHeight / video.videoWidth;
+        const targetH = Math.round(targetW * ratio);
+
+        canvas.width = targetW;
+        canvas.height = targetH;
+
+        const ctx = canvas.getContext('2d', {
+          alpha: false
+        });
+        ctx.drawImage(video, 0, 0, targetW, targetH);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+
+        fotoPreview.src = dataUrl;
+        inputFotoBase64.value = dataUrl;
+        inputRemoverFoto.value = '0';
+
+        fotoAtual.setAttribute('data-has-current', '0');
+        fecharCamera();
+
+        setPhotoState({
+          camOn: false,
+          hasPreview: true,
+          hasCurrent: false
+        });
+      }
+
+      function refazerFoto() {
+        inputFotoBase64.value = '';
+        fotoPreview.src = '';
+        fotoPreview.style.display = 'none';
+        abrirCamera();
+      }
+
+      function removerFoto() {
+        inputFotoBase64.value = '';
+        fotoPreview.src = '';
+        fotoPreview.style.display = 'none';
+        fotoAtual.src = '';
+        fotoAtual.style.display = 'none';
+        fotoAtual.setAttribute('data-has-current', '0');
+        inputRemoverFoto.value = '1';
+
+        fecharCamera();
+
+        setPhotoState({
+          camOn: false,
+          hasPreview: false,
+          hasCurrent: false
+        });
+      }
+
+      btnAbrir.addEventListener('click', abrirCamera);
+      btnTirar.addEventListener('click', tirarFoto);
+      btnRefazer.addEventListener('click', refazerFoto);
+      btnFechar.addEventListener('click', fecharCamera);
+      btnRemover.addEventListener('click', removerFoto);
+
       $('#modalEditProdutor').on('show.bs.modal', function(event) {
         var btn = $(event.relatedTarget);
+
         $('#edit_id').val(btn.data('id') || '');
         $('#edit_nome').val(btn.data('nome') || '');
+        $('#edit_tipo').val(btn.data('tipo') || 'PRODUTOR RURAL');
         $('#edit_contato').val(btn.data('contato') || '');
         $('#edit_documento').val(btn.data('documento') || '');
         $('#edit_observacao').val(btn.data('observacao') || '');
@@ -1052,19 +1529,59 @@ try {
         var cid = btn.data('comunidade_id');
         if (cid !== undefined && cid !== null && cid !== '') {
           $('#edit_comunidade_id').val(String(cid));
+        } else {
+          $('#edit_comunidade_id').val('');
         }
+
+        inputFotoBase64.value = '';
+        inputRemoverFoto.value = '0';
+        fotoPreview.src = '';
+        fotoPreview.style.display = 'none';
+
+        const foto = btn.data('foto') || '';
+        if (foto !== '') {
+          fotoAtual.src = foto;
+          fotoAtual.setAttribute('data-has-current', '1');
+        } else {
+          fotoAtual.src = '';
+          fotoAtual.setAttribute('data-has-current', '0');
+        }
+
+        fecharCamera();
+
+        setPhotoState({
+          camOn: false,
+          hasPreview: false,
+          hasCurrent: foto !== ''
+        });
       });
 
-      // Limpa ao fechar (evita “vazar” dados de um produtor pra outro)
       $('#modalEditProdutor').on('hidden.bs.modal', function() {
         $('#edit_id').val('');
         $('#edit_nome').val('');
+        $('#edit_tipo').val('PRODUTOR RURAL');
         $('#edit_contato').val('');
         $('#edit_documento').val('');
         $('#edit_observacao').val('');
         $('#edit_ativo').val('1');
         $('#edit_comunidade_id').val('');
+
+        inputFotoBase64.value = '';
+        inputRemoverFoto.value = '0';
+        fotoPreview.src = '';
+        fotoAtual.src = '';
+        fotoAtual.setAttribute('data-has-current', '0');
+
+        fecharCamera();
+
+        setPhotoState({
+          camOn: false,
+          hasPreview: false,
+          hasCurrent: false
+        });
       });
+
+      window.addEventListener('beforeunload', fecharCamera);
     })();
   </script>
 </body>

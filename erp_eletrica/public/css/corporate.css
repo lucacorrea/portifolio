@@ -1,43 +1,59 @@
 :root {
-    /* Primary Color Standardization (Blue Theme) */
-    --erp-primary: #0056b3;
-    --erp-primary-hover: #004494;
-    --erp-secondary: #1a202c;
+    /* Dark Modern Palette (Centro do Eletricista) */
+    --erp-primary: #fbbf24; /* Gold/Yellow from logo */
+    --erp-primary-hover: #f59e0b;
+    --erp-secondary: #1e293b;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
     --erp-warning: #f59e0b;
-    --erp-dark: #1e293b;
-    --erp-light: #f8fafc;
-    --erp-glass: rgba(255, 255, 255, 0.7);
-    --erp-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --erp-dark: #020617;
+    --erp-light: #0f172a;
+    --erp-glass: rgba(15, 23, 42, 0.8);
+    --erp-card-shadow: none;
 
-    /* Technical Tokens (Sync with style.css) */
+    /* Technical Tokens */
     --primary-color: var(--erp-primary);
     --primary-hover: var(--erp-primary-hover);
     --secondary-color: var(--erp-secondary);
-    --border: #e2e8f0;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
+    --border: #334155;
+    --text-primary: #f8fafc !important;
+    --text-secondary: #94a3b8 !important;
 
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 16px;
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --transition: 0.15s ease;
 
     --sidebar-width: 260px;
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #0056b3;
-    --bs-primary-rgb: 0, 86, 179;
-    --bs-link-color: #0056b3;
-    --bs-link-hover-color: #004494;
+    --bs-primary: #fbbf24;
+    --bs-primary-rgb: 251, 191, 36;
+    --bs-link-color: #fbbf24;
+    --bs-link-hover-color: #f59e0b;
+    --bs-body-bg: #020617;
+    --bs-body-color: #f8fafc;
+}
+
+::placeholder {
+    color: #475569 !important;
+    opacity: 1 !important;
+}
+
+::-webkit-input-placeholder { color: #475569 !important; }
+:-ms-input-placeholder { color: #475569 !important; }
+
+input, select, textarea {
+    color: #f8fafc !important;
 }
 
 body {
+    background-color: var(--erp-dark);
+    color: var(--text-primary);
     overflow-x: hidden;
 }
 
@@ -46,25 +62,45 @@ body {
     min-height: 100vh;
 }
 
-/* Sidebar Styling */
+/* Sidebar Styling - Darker */
 .sidebar {
     width: 260px;
-    background: #ffffff;
-    /* Default, will be overridden by --erp-sidebar-bg if defined */
-    border-right: 1px solid #e2e8f0;
+    background: #0f172a;
+    border-right: 1px solid var(--border);
     transition: all 0.3s;
     z-index: 1040;
-    /* Above Bootstrap sticky-top (1020) and fixed-top (1030) */
+    position: fixed;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Custom Scrollbar for Sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: #0f172a; 
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #334155; 
+    border-radius: 4px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #475569; 
 }
 
 .sidebar-header {
     padding: 1.5rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--border);
+    background: #000000; /* Match logo background */
 }
 
 .nav-link {
     padding: 0.8rem 1.5rem;
-    color: #64748b;
+    color: #94a3b8;
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -74,7 +110,7 @@ body {
 
 .nav-link:hover,
 .nav-link.active {
-    background-color: #f8fafc;
+    background-color: #1e293b;
     color: var(--primary-color);
 }
 
@@ -88,12 +124,15 @@ body {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    background: var(--erp-dark);
+    margin-left: 260px; /* Essential to prevent overlap */
+    transition: margin-left 0.3s;
 }
 
 .top-navbar {
     height: 70px;
-    background: #ffffff;
-    border-bottom: 1px solid #e2e8f0;
+    background: #020617;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -105,30 +144,81 @@ body {
     flex: 1;
 }
 
-/* Enhanced Cards */
+/* Enhanced Cards - No Shadow, Flat Border */
 .card {
-    border-radius: 0.75rem;
-    border: none;
-    box-shadow: var(--erp-card-shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
+    background: #0f172a;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    box-shadow: none !important;
+    transition: none !important;
 }
 
 .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.card-header {
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border);
+}
+
+/* Search Dropdowns Z-Index Fix & Style */
+#searchResults, #pv_search_results, #customerResults, #pv_client_results {
+    z-index: 10000 !important;
+    background: #0f172a !important; /* Darker background for better contrast */
+    border: 1px solid var(--primary-color) !important; /* Primary border to make it pop */
+    margin-top: 5px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+#searchResults .list-group-item, 
+#pv_search_results .list-group-item,
+#customerResults .list-group-item,
+#pv_client_results .list-group-item {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.05);
+    color: #f8fafc;
+}
+
+#searchResults .list-group-item:hover, 
+#pv_search_results .list-group-item:hover,
+#customerResults .list-group-item:hover,
+#pv_client_results .list-group-item:hover {
+    background: #334155;
+}
+
+/* Ensure parents of absolute elements don't clip */
+.card-body {
+    overflow: visible !important;
+}
+
+/* Push the search container up in the stacking context */
+.card:has(#searchResults, #pv_search_results, #customerResults),
+.row:has(#searchResults, #pv_search_results, #customerResults) {
+    position: relative;
+    z-index: 1050 !important;
+}
+
+.position-relative:has(> #searchResults),
+.position-relative:has(> #pv_search_results),
+.position-relative:has(> #customerResults) {
+    z-index: 1100 !important;
 }
 
 /* Bootstrap 5 Theme Overrides */
 .btn-primary {
     background-color: var(--erp-primary);
     border-color: var(--erp-primary);
+    color: #000;
 }
 
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active {
-    background-color: var(--erp-primary-hover);
-    border-color: var(--erp-primary-hover);
+    background-color: var(--erp-primary-hover) !important;
+    border-color: var(--erp-primary-hover) !important;
+    color: #000 !important;
 }
 
 .btn-outline-primary {
@@ -138,10 +228,39 @@ body {
 
 .btn-outline-primary:hover {
     background-color: var(--erp-primary);
-    color: white;
+    color: #000;
 }
 
-/* Utility Class Mapping (without !important to allow bg-opacity) */
+/* List Groups & Tables */
+.table {
+    --bs-table-color: var(--text-primary);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--border);
+    color: var(--text-primary) !important;
+}
+
+.table thead th {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--erp-primary) !important;
+    border-bottom: 2px solid var(--border) !important;
+    border-top: none !important;
+}
+
+.table td {
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.industrial-table td, .industrial-table th {
+    border-bottom: 1px solid var(--border);
+    color: #f8fafc !important;
+}
+
+/* Utility Class Mapping */
 .text-primary,
 .text-erp-primary {
     color: var(--erp-primary) !important;
@@ -149,29 +268,67 @@ body {
 
 .bg-primary,
 .bg-erp-primary {
-    background-color: var(--erp-primary);
+    background-color: var(--erp-primary) !important;
 }
 
-/* Gradient Fix */
-.bg-erp-gradient {
-    background: linear-gradient(135deg, var(--erp-primary), #4da3ff);
+/* Neutralize all light/white backgrounds */
+.bg-light, .bg-white, .btn-light, .card-footer, .modal-footer {
+    background-color: var(--erp-light) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
 }
 
-/* Animations */
+.bg-secondary {
+    background-color: var(--erp-secondary) !important;
+    border-color: var(--border) !important;
+}
+
+.text-dark:not(.btn-warning) {
+    color: #f8fafc !important;
+}
+
+.text-muted {
+    color: #64748b !important;
+}
+
+/* Aggressive Table Cleanup */
+.table {
+    --bs-table-color: var(--text-primary);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--border);
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+}
+
+.table td, .table th, .table tr {
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+}
+
+.table thead th {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--erp-primary) !important;
+    border-bottom: 2px solid var(--border) !important;
+    border-top: none !important;
+}
+
+/* Specific fix for cashier, sales and modals */
+.bg-light, .bg-light *, .modal-body, .modal-body *, .list-group-item, .list-group-item *, .card-body, .card-body * {
+    color: var(--text-primary);
+}
+
+.list-group-item {
+    background-color: transparent !important;
+    border-color: var(--border) !important;
+}
+
+.text-black {
+    color: #f8fafc !important;
+}
+
+/* Animations Disabled */
 .fade-up {
-    animation: fadeUp 0.4s ease-out;
-}
-
-@keyframes fadeUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    animation: none !important;
 }
 
 /* Responsive sidebar */
@@ -184,7 +341,11 @@ body {
 
     .sidebar.active {
         left: 0;
-        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+        box-shadow: none;
+    }
+
+    .main-wrapper {
+        margin-left: 0 !important;
     }
 }
 
@@ -195,8 +356,8 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
     z-index: 1035;
     display: none;
     opacity: 0;
@@ -208,81 +369,48 @@ body {
     opacity: 1;
 }
 
-/* Content Body Mobile Optimization */
-@media (max-width: 768px) {
-    .content-body {
-        padding: 1rem;
-    }
-}
-
-/* Custom UI Components */
-.btn {
-    border-radius: 0.5rem;
-    font-weight: 600;
-    padding: 0.6rem 1.2rem;
-}
-
-.badge {
-    padding: 0.5em 0.8em;
-    font-weight: 600;
-}
-
 .loader-wrapper {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.8);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
+    background: rgba(2, 6, 23, 0.9);
 }
 
-/* Glassmorphism PDV */
+/* Glassmorphism Refined */
 .glass-card {
     background: var(--erp-glass);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.bg-erp-gradient {
-    background: linear-gradient(135deg, var(--erp-primary), #6366f1);
+.dropdown-menu {
+    background-color: #1e293b;
+    border: 1px solid var(--border);
 }
 
-/* Glassmorphism PDV */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    color: var(--erp-dark);
-    letter-spacing: -0.025em;
+.dropdown-item {
+    color: #f8fafc;
 }
 
-.extra-small {
-    font-size: 0.75rem;
+.dropdown-item:hover {
+    background-color: #334155;
+    color: var(--erp-primary);
 }
 
-/* Dashboard Widgets */
-.stat-card {
-    overflow: hidden;
-    position: relative;
+h1, h2, h3, h4, h5, h6 {
+    color: #f8fafc;
 }
 
 /* Scrollbar Modernization */
-::-webkit-scrollbar {
-    width: 6px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
+    background: #334155;
 }
+
+.form-control, .form-select {
+    background-color: #020617;
+    border: 1px solid var(--border);
+    color: #f8fafc;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: #020617;
+    border-color: var(--erp-primary);
+    color: #f8fafc;
+    box-shadow: none;
+}

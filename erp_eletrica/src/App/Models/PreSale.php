@@ -7,31 +7,30 @@ class PreSale extends BaseModel {
     public function create($data) {
         $codigo = 'PV-' . strtoupper(substr(uniqid(), -6));
         $hasAvulso = $this->columnExists('nome_cliente_avulso');
+        $hasCpfCliente = $this->columnExists('cpf_cliente');
         
+        $cols = ['codigo', 'cliente_id', 'usuario_id', 'filial_id', 'valor_total', 'status'];
+        $params = [$codigo, $data['cliente_id'] ?? null, $data['usuario_id'], $data['filial_id'], $data['valor_total'], 'pendente'];
+
         if ($hasAvulso) {
-            $sql = "INSERT INTO {$this->table} (codigo, cliente_id, nome_cliente_avulso, usuario_id, filial_id, valor_total, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
-            $params = [
-                $codigo,
-                $data['cliente_id'] ?? null,
-                $data['nome_cliente_avulso'] ?? null,
-                $data['usuario_id'],
-                $data['filial_id'],
-                $data['valor_total'],
-                'pendente'
-            ];
-        } else {
-            $sql = "INSERT INTO {$this->table} (codigo, cliente_id, usuario_id, filial_id, valor_total, status) 
-                    VALUES (?, ?, ?, ?, ?, ?)";
-            $params = [
-                $codigo,
-                $data['cliente_id'] ?? null,
-                $data['usuario_id'],
-                $data['filial_id'],
-                $data['valor_total'],
-                'pendente'
-            ];
+            array_splice($cols, 2, 0, ['nome_cliente_avulso']);
+            array_splice($params, 2, 0, [$data['nome_cliente_avulso'] ?? null]);
         }
+
+        if ($hasCpfCliente) {
+            if ($hasAvulso) {
+                array_splice($cols, 3, 0, ['cpf_cliente']);
+                array_splice($params, 3, 0, [$data['cpf_cliente'] ?? null]);
+            } else {
+                $cols[] = 'cpf_cliente';
+                $params[] = $data['cpf_cliente'] ?? null;
+            }
+        }
+
+        $colList = implode(', ', $cols);
+        $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+        
+        $sql = "INSERT INTO {$this->table} ($colList) VALUES ($placeholders)";
         
         $this->query($sql, $params);
         $preVendaId = $this->db->lastInsertId();
@@ -50,7 +49,7 @@ class PreSale extends BaseModel {
         $nameField = $this->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
         $sql = "SELECT pv.*, 
                        COALESCE(c.nome, $nameField, 'Consumidor') as cliente_nome,
-                       c.cpf_cnpj as cliente_doc
+                       COALESCE(c.cpf_cnpj, pv.cpf_cliente) as cliente_doc
                 FROM {$this->table} pv 
                 LEFT JOIN clientes c ON pv.cliente_id = c.id
                 WHERE pv.codigo = ? AND pv.status = 'pendente'";

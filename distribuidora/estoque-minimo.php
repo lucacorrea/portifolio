@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-session_start();
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
+
 require_once __DIR__ . '/assets/conexao.php';
 require_once __DIR__ . '/assets/dados/estoque-minimo/_helpers.php';
 
@@ -546,6 +548,7 @@ foreach ($produtos as $p) {
 
         <section class="section">
             <div class="container-fluid">
+
                 <div class="title-wrapper pt-30">
                     <div class="row align-items-center">
                         <div class="col-md-6">
@@ -553,6 +556,18 @@ foreach ($produtos as $p) {
                                 <h2>Estoque Mínimo</h2>
                             </div>
                         </div>
+
+                        <div class="col-md-6">
+                            <div class="breadcrumb-wrapper">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Estoque</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page">Estoque Mínimo</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 

@@ -1,10 +1,10 @@
 <?php if (!$caixaAberto): ?>
-<div class="alert alert-warning shadow-sm border-0 d-flex align-items-center mb-4 p-3 rounded-4">
-    <i class="fas fa-cash-register fa-2x me-3"></i>
+<div class="alert alert-dark shadow-sm border-0 d-flex align-items-center mb-4 p-3 rounded-4" style="background: rgba(251, 191, 36, 0.1); border: 1px solid var(--primary-color) !important;">
+    <i class="fas fa-cash-register fa-2x me-3 text-warning"></i>
     <div class="flex-grow-1">
-        <h6 class="mb-1 fw-bold">CAIXA FECHADO PARA ESTA FILIAL</h6>
-        <p class="mb-0 small">A geração de pré-vendas (orçamentos) requer que você tenha um caixa aberto. 
-           <a href="caixa.php" class="fw-bold text-dark text-decoration-underline ms-1">Abrir meu caixa agora.</a>
+        <h6 class="mb-1 fw-bold text-white">CAIXA FECHADO PARA ESTA FILIAL</h6>
+        <p class="mb-0 small text-light">A geração de pré-vendas (orçamentos) requer que você tenha um caixa aberto. 
+           <a href="caixa.php" class="fw-bold text-primary text-decoration-underline ms-1">Abrir meu caixa agora.</a>
         </p>
     </div>
 </div>
@@ -24,7 +24,7 @@
                                 </span>
                                 <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquise por material ou código para o orçamento..." autocomplete="off">
                             </div>
-                            <div id="pv_search_results" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 9999; width: 100%; max-height: 400px; overflow-y: auto; background: white !important; border: 1px solid #ddd; margin-top: 5px;">
+                            <div id="pv_search_results" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 10000; width: 100%; max-height: 400px; overflow-y: auto;">
                                 <!-- Results will be injected here -->
                             </div>
                         </div>
@@ -90,7 +90,8 @@
                         </select>
                     </div>
                     <div id="manual_name_container" class="mt-2 position-relative">
-                        <input type="text" id="pv_nome_cliente_avulso" class="form-control" placeholder="Digite o nome do cliente avulso..." autocomplete="off">
+                        <input type="text" id="pv_nome_cliente_avulso" class="form-control mb-2" placeholder="Digite o nome do cliente avulso..." autocomplete="off">
+                        <input type="text" id="pv_cpf_cliente" class="form-control" placeholder="CPF/CNPJ do cliente avulso (opcional)..." autocomplete="off">
                         <div id="pv_client_results" class="list-group shadow d-none" style="position: absolute; top: 100%; left: 0; z-index: 1050; width: 100%; max-height: 200px; overflow-y: auto;"></div>
                     </div>
                 </div>
@@ -107,7 +108,7 @@
                     </div>
                 </div>
 
-                <div class="alert alert-info border-0 shadow-sm small mb-4">
+                <div class="alert border-0 shadow-sm small mb-4" style="background-color: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3) !important; color: #38bdf8;">
                     <i class="fas fa-info-circle me-2"></i>
                     A pré-venda reserva o estoque temporariamente e gera um código para o caixa.
                 </div>
@@ -278,6 +279,7 @@ async function generatePreSale() {
     const data = {
         cliente_id: document.getElementById('pv_cliente_id').value || null,
         nome_cliente_avulso: document.getElementById('pv_nome_cliente_avulso').value || null,
+        cpf_cliente: document.getElementById('pv_cpf_cliente').value || null,
         items: pvCart,
         valor_total: pvCart.reduce((acc, i) => acc + (i.price * i.qty), 0)
     };
@@ -337,6 +339,17 @@ pvClientSearch.addEventListener('input', async (e) => {
         renderPVClientResults(clients);
     } catch (err) {
         console.error("Erro busca cliente:", err);
+    }
+});
+
+pvClientSearch.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const term = e.target.value.trim();
+        const cleanTerm = term.replace(/\D/g, '');
+        // If it looks like a document, just leave it as manual name/doc
+        if (cleanTerm.length === 11 || cleanTerm.length === 14) {
+            // Do nothing, just let it be a manual name
+        }
     }
 });
 

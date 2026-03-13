@@ -136,7 +136,6 @@
                         <label class="form-label small fw-bold">Nível de Acesso</label>
                         <select name="nivel" id="edit-user-nivel" class="form-select shadow-sm" onchange="toggleAuthFields()">
                             <option value="vendedor">Vendedor</option>
-                            <option value="tecnico">Técnico</option>
                             <option value="gerente">Gerente</option>
                             <option value="admin">Administrador</option>
                         </select>

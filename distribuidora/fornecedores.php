@@ -3,6 +3,9 @@
 declare(strict_types=1);
 session_start();
 
+require_once __DIR__ . '/assets/auth/auth.php';
+auth_require('index.php');
+
 require_once __DIR__ . '/assets/conexao.php';
 
 function e(string $s): string
@@ -10,46 +13,324 @@ function e(string $s): string
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-// CSRF
+function json_out(array $payload, int $code = 200): void
+{
+  if (function_exists('ob_get_length') && ob_get_length()) {
+    @ob_clean();
+  }
+  http_response_code($code);
+  header('Content-Type: application/json; charset=UTF-8');
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  exit;
+}
+
+function fmt_text(?string $v): string
+{
+  $v = trim((string)$v);
+  return $v !== '' ? $v : '—';
+}
+
+function fmt_loc(?string $cidade, ?string $uf): string
+{
+  $cidade = trim((string)$cidade);
+  $uf = trim((string)$uf);
+  return ($cidade || $uf) ? ($cidade . ($uf ? ' / ' . $uf : '')) : '—';
+}
+
+function badge_status_html(string $status): string
+{
+  $st = strtoupper(trim($status)) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+
+  if ($st === 'ATIVO') {
+    return '<span class="badge-soft badge-ok">ATIVO</span>';
+  }
+
+  return '<span class="badge-soft badge-off">INATIVO</span>';
+}
+
+function build_fornecedores_filter(string $q, string $status): array
+{
+  $where = [];
+  $params = [];
+
+  if ($status !== '') {
+    $where[] = "f.status = :status";
+    $params[':status'] = $status;
+  }
+
+  if ($q !== '') {
+    $where[] = "(
+      CAST(f.id AS CHAR) LIKE :q_id
+      OR f.nome LIKE :q_nome
+      OR f.doc LIKE :q_doc
+      OR f.tel LIKE :q_tel
+      OR f.email LIKE :q_email
+      OR f.endereco LIKE :q_endereco
+      OR f.cidade LIKE :q_cidade
+      OR f.uf LIKE :q_uf
+      OR f.contato LIKE :q_contato
+      OR f.obs LIKE :q_obs
+      OR f.status LIKE :q_status
+    )";
+
+    $like = '%' . $q . '%';
+    $params[':q_id'] = $like;
+    $params[':q_nome'] = $like;
+    $params[':q_doc'] = $like;
+    $params[':q_tel'] = $like;
+    $params[':q_email'] = $like;
+    $params[':q_endereco'] = $like;
+    $params[':q_cidade'] = $like;
+    $params[':q_uf'] = $like;
+    $params[':q_contato'] = $like;
+    $params[':q_obs'] = $like;
+    $params[':q_status'] = $like;
+  }
+
+  $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+  return [$whereSql, $params];
+}
+
+function fetch_fornecedores_page(PDO $pdo, string $q, string $status, int $page, int $perPage = 10): array
+{
+  $page = max(1, $page);
+  $perPage = max(1, $perPage);
+
+  [$whereSql, $params] = build_fornecedores_filter($q, $status);
+
+  $sqlCount = "SELECT COUNT(*) FROM fornecedores f $whereSql";
+  $stCount = $pdo->prepare($sqlCount);
+  foreach ($params as $k => $v) {
+    $stCount->bindValue($k, $v, PDO::PARAM_STR);
+  }
+  $stCount->execute();
+  $totalRows = (int)$stCount->fetchColumn();
+
+  $pages = max(1, (int)ceil($totalRows / $perPage));
+  if ($page > $pages) $page = $pages;
+
+  $offset = ($page - 1) * $perPage;
+  $limitSql = (int)$perPage;
+  $offsetSql = (int)$offset;
+
+  $sql = "
+    SELECT
+      f.id, f.nome, f.status, f.doc, f.tel, f.email,
+      f.endereco, f.cidade, f.uf, f.contato, f.obs
+    FROM fornecedores f
+    $whereSql
+    ORDER BY f.id DESC
+    LIMIT $limitSql OFFSET $offsetSql
+  ";
+
+  $st = $pdo->prepare($sql);
+  foreach ($params as $k => $v) {
+    $st->bindValue($k, $v, PDO::PARAM_STR);
+  }
+  $st->execute();
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $outRows = [];
+  foreach ($rows as $r) {
+    $statusRow = strtoupper((string)($r['status'] ?? 'ATIVO')) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+
+    $outRows[] = [
+      'id'       => (int)($r['id'] ?? 0),
+      'nome'     => (string)($r['nome'] ?? ''),
+      'status'   => $statusRow,
+      'doc'      => (string)($r['doc'] ?? ''),
+      'tel'      => (string)($r['tel'] ?? ''),
+      'email'    => (string)($r['email'] ?? ''),
+      'endereco' => (string)($r['endereco'] ?? ''),
+      'cidade'   => (string)($r['cidade'] ?? ''),
+      'uf'       => (string)($r['uf'] ?? ''),
+      'contato'  => (string)($r['contato'] ?? ''),
+      'obs'      => (string)($r['obs'] ?? ''),
+    ];
+  }
+
+  return [
+    'meta' => [
+      'q'      => $q,
+      'status' => $status,
+      'page'   => $page,
+      'pages'  => $pages,
+      'total'  => $totalRows,
+      'shown'  => count($outRows),
+      'per'    => $perPage,
+    ],
+    'rows' => $outRows,
+  ];
+}
+
+function fetch_all_fornecedores(PDO $pdo, string $q, string $status): array
+{
+  return fetch_fornecedores_page($pdo, $q, $status, 1, 999999)['rows'];
+}
+
+/* =========================
+   CSRF / FLASH / FILTROS
+========================= */
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = $_SESSION['csrf_token'];
 
-// Flash
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 
-// Filtros server-side (opcional)
 $q = trim((string)($_GET['q'] ?? ''));
 $status = strtoupper(trim((string)($_GET['status'] ?? '')));
 $status = ($status === 'ATIVO' || $status === 'INATIVO') ? $status : '';
 
-// Buscar no banco
+$page = (int)($_GET['page'] ?? 1);
+if ($page < 1) $page = 1;
+
+$PER_PAGE = 10;
 $pdo = db();
 
-$where = [];
-$params = [];
+/* =========================
+   AJAX
+========================= */
+$action = strtolower(trim((string)($_GET['action'] ?? '')));
+if ($action === 'ajax') {
+  try {
+    $ajaxQ = trim((string)($_GET['q'] ?? ''));
+    $ajaxStatus = strtoupper(trim((string)($_GET['status'] ?? '')));
+    $ajaxStatus = ($ajaxStatus === 'ATIVO' || $ajaxStatus === 'INATIVO') ? $ajaxStatus : '';
+    $ajaxPage = (int)($_GET['page'] ?? 1);
+    if ($ajaxPage < 1) $ajaxPage = 1;
 
-if ($status !== '') {
-  $where[] = "status = :status";
-  $params[':status'] = $status;
+    $data = fetch_fornecedores_page($pdo, $ajaxQ, $ajaxStatus, $ajaxPage, $PER_PAGE);
+    json_out([
+      'ok' => true,
+      'meta' => $data['meta'],
+      'rows' => $data['rows'],
+    ]);
+  } catch (Throwable $e) {
+    json_out(['ok' => false, 'msg' => 'Erro no AJAX: ' . $e->getMessage()], 500);
+  }
 }
 
-if ($q !== '') {
-  $where[] = "(nome LIKE :q OR doc LIKE :q OR tel LIKE :q OR email LIKE :q OR endereco LIKE :q OR cidade LIKE :q OR uf LIKE :q OR contato LIKE :q)";
-  $params[':q'] = '%' . $q . '%';
+/* =========================
+   EXPORTAR EXCEL
+========================= */
+if (isset($_GET['export']) && $_GET['export'] === 'excel') {
+  $excelRows = fetch_all_fornecedores($pdo, $q, $status);
+
+  $filename = 'fornecedores_' . date('Y-m-d_H-i-s') . '.xls';
+  $geradoEm = date('d/m/Y H:i:s');
+  $statusLabel = $status !== '' ? $status : 'Todos';
+  $buscaLabel = $q !== '' ? $q : '—';
+
+  header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+  header('Content-Disposition: attachment; filename="' . $filename . '"');
+  header('Cache-Control: max-age=0');
+
+  echo "\xEF\xBB\xBF";
+?>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    table {
+      border-collapse: collapse;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      width: auto;
+    }
+
+    td, th {
+      border: 1px solid #000;
+      padding: 4px 6px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #ffffff;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .sub {
+      text-align: center;
+      font-weight: normal;
+    }
+
+    .left {
+      text-align: left;
+    }
+
+    .center {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <table>
+    <tr>
+      <td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - FORNECEDORES</td>
+    </tr>
+    <tr>
+      <td class="sub" colspan="8">Gerado em: <?= e($geradoEm) ?></td>
+    </tr>
+    <tr>
+      <td class="sub" colspan="8">Busca: <?= e($buscaLabel) ?> | Status: <?= e($statusLabel) ?></td>
+    </tr>
+    <tr>
+      <th>ID</th>
+      <th>Fornecedor</th>
+      <th>Documento</th>
+      <th>Telefone</th>
+      <th>E-mail</th>
+      <th>Cidade/UF</th>
+      <th>Contato</th>
+      <th>Status</th>
+    </tr>
+
+    <?php if (!$excelRows): ?>
+      <tr>
+        <td colspan="8" class="center">Nenhum fornecedor encontrado.</td>
+      </tr>
+    <?php else: ?>
+      <?php foreach ($excelRows as $r): ?>
+        <tr>
+          <td class="center"><?= (int)$r['id'] ?></td>
+          <td class="left"><?= e((string)$r['nome']) ?></td>
+          <td class="left"><?= e(fmt_text((string)$r['doc'])) ?></td>
+          <td class="left"><?= e(fmt_text((string)$r['tel'])) ?></td>
+          <td class="left"><?= e(fmt_text((string)$r['email'])) ?></td>
+          <td class="left"><?= e(fmt_loc((string)$r['cidade'], (string)$r['uf'])) ?></td>
+          <td class="left"><?= e(fmt_text((string)$r['contato'])) ?></td>
+          <td class="center"><?= e((string)$r['status']) ?></td>
+        </tr>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </table>
+</body>
+</html>
+<?php
+  exit;
 }
 
-$sql = "SELECT id, nome, status, doc, tel, email, endereco, cidade, uf, contato, obs
-        FROM fornecedores
-        " . ($where ? "WHERE " . implode(" AND ", $where) : "") . "
-        ORDER BY id DESC
-        LIMIT 2000";
-
-$st = $pdo->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll(PDO::FETCH_ASSOC);
+/* =========================
+   PRIMEIRA CARGA
+========================= */
+$initialData = fetch_fornecedores_page($pdo, $q, $status, $page, $PER_PAGE);
+$totalRows = (int)$initialData['meta']['total'];
+$pages = (int)$initialData['meta']['pages'];
+$currentCount = (int)$initialData['meta']['shown'];
+$rows = $initialData['rows'];
+$page = (int)$initialData['meta']['page'];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -62,7 +343,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
   <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
   <title>Painel da Distribuidora | Fornecedores</title>
 
-  <!-- ========== CSS ========= -->
   <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
@@ -104,15 +384,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     .main-btn.btn-compact i {
       font-size: 14px;
       vertical-align: -1px;
-    }
-
-    .icon-btn {
-      height: 34px !important;
-      width: 42px !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
     }
 
     .form-control.compact,
@@ -175,6 +446,9 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       font-size: 12px;
       font-weight: 900;
       color: #0f172a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .badge-ok {
@@ -212,7 +486,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       border-top: 1px solid rgba(148, 163, 184, .22);
     }
 
-    /* Flash auto-hide */
     .flash-wrap {
       margin-top: 16px;
     }
@@ -225,6 +498,55 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       opacity: 0;
       transform: translateY(-6px);
       pointer-events: none;
+    }
+
+    .table-footer-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .pager-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .page-btn {
+      width: 42px;
+      height: 42px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: .2s ease;
+    }
+
+    .page-btn:hover:not(:disabled) {
+      background: #eef2ff;
+      color: #1e40af;
+      border-color: #c7d2fe;
+    }
+
+    .page-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .page-info {
+      font-weight: 900;
+      color: #475569;
+      min-width: 90px;
+      text-align: center;
+      font-size: 12px;
     }
 
     .logout-btn {
@@ -272,6 +594,15 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       #tbFor {
         min-width: 900px;
       }
+
+      .table-footer-nav {
+        justify-content: center;
+      }
+
+      #infoCount {
+        text-align: center;
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -281,7 +612,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     <div class="spinner"></div>
   </div>
 
-  <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="brand-vertical">
@@ -293,27 +623,21 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       <ul>
         <li class="nav-item">
           <a href="dashboard.php">
-            <span class="icon">
-              <i class="lni lni-dashboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-dashboard"></i></span>
             <span class="text">Dashboard</span>
           </a>
         </li>
 
         <li class="nav-item">
           <a href="vendas.php">
-            <span class="icon">
-              <i class="lni lni-cart"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cart"></i></span>
             <span class="text">Vendas</span>
           </a>
         </li>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-layers"></i>
-            </span>
+            <span class="icon"><i class="lni lni-layers"></i></span>
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
@@ -325,9 +649,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-package"></i>
-            </span>
+            <span class="icon"><i class="lni lni-package"></i></span>
             <span class="text">Estoque</span>
           </a>
           <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -341,9 +663,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-users"></i>
-            </span>
+            <span class="icon"><i class="lni lni-users"></i></span>
             <span class="text">Cadastros</span>
           </a>
           <ul id="ddmenu_cadastros" class="collapse dropdown-nav show">
@@ -355,22 +675,16 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <li class="nav-item">
           <a href="relatorios.php">
-            <span class="icon">
-              <i class="lni lni-clipboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-clipboard"></i></span>
             <span class="text">Relatórios</span>
           </a>
         </li>
 
-        <span class="divider">
-          <hr />
-        </span>
+        <span class="divider"><hr /></span>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-cog"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cog"></i></span>
             <span class="text">Configurações</span>
           </a>
           <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -381,9 +695,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         <li class="nav-item">
           <a href="suporte.php">
-            <span class="icon">
-              <i class="lni lni-whatsapp"></i>
-            </span>
+            <span class="icon"><i class="lni lni-whatsapp"></i></span>
             <span class="text">Suporte</span>
           </a>
         </li>
@@ -394,7 +706,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
   <div class="overlay"></div>
 
   <main class="main-wrapper">
-    <!-- Header -->
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -422,17 +733,24 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
     <section class="section">
       <div class="container-fluid">
+
         <div class="title-wrapper pt-30">
           <div class="row align-items-center">
-            <div class="col-md-8">
+            <div class="col-md-6">
               <div class="title">
                 <h2>Fornecedores</h2>
               </div>
             </div>
-            <div class="col-md-4 text-md-end">
-              <button class="main-btn primary-btn btn-hover btn-compact" id="btnNovo" type="button" data-bs-toggle="modal" data-bs-target="#mdFornecedor">
-                <i class="lni lni-plus me-1"></i> Novo fornecedor
-              </button>
+
+            <div class="col-md-6">
+              <div class="breadcrumb-wrapper">
+                <nav aria-label="breadcrumb">
+                  <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#">Cadastros</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Fornecedores</li>
+                  </ol>
+                </nav>
+              </div>
             </div>
           </div>
         </div>
@@ -448,28 +766,32 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
         <div class="cardx mb-30 mt-3">
           <div class="head">
             <div class="d-flex align-items-center gap-2 flex-wrap">
-              <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-users me-1"></i> Lista</div>
-              <span class="badge-soft" id="countBadge"><?= count($rows) ?> fornecedores</span>
+              <div style="font-weight:1000;color:#0f172a;">
+                <i class="lni lni-users me-1"></i> Lista
+              </div>
+              <span class="badge-soft" id="countBadge"><?= $totalRows ?> fornecedor(es)</span>
+              <span class="badge-soft" id="pillLoading" style="display:none;">Carregando...</span>
             </div>
 
             <div class="d-flex gap-2 flex-wrap align-items-center">
+              <button
+                class="main-btn primary-btn btn-hover btn-compact"
+                id="btnNovo"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#mdFornecedor">
+                <i class="lni lni-plus me-1"></i> Novo fornecedor
+              </button>
+
               <select class="form-select compact" id="fStatus" style="min-width: 160px;">
                 <option value="" <?= $status === '' ? 'selected' : '' ?>>Status: Todos</option>
                 <option value="ATIVO" <?= $status === 'ATIVO' ? 'selected' : '' ?>>Ativo</option>
                 <option value="INATIVO" <?= $status === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
               </select>
 
-              <a class="main-btn light-btn btn-hover btn-compact" href="assets/dados/fornecedores/exportar.php">
-                <i class="lni lni-download me-1"></i> Exportar (JSON)
-              </a>
-
-              <form action="assets/dados/fornecedores/importar.php" method="post" enctype="multipart/form-data" style="margin:0;">
-                <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-                <label class="main-btn light-btn btn-hover btn-compact" style="margin:0; cursor:pointer;">
-                  <i class="lni lni-upload me-1"></i> Importar
-                  <input type="file" name="arquivo" accept="application/json" hidden onchange="this.form.submit();" />
-                </label>
-              </form>
+              <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
+                <i class="lni lni-download me-1"></i> Exportar Excel
+              </button>
 
               <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
                 <i class="lni lni-eraser me-1"></i> Limpar
@@ -483,12 +805,12 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                 <input class="form-control compact" id="qFor" value="<?= e($q) ?>" placeholder="Buscar por nome, CNPJ/CPF, telefone, e-mail..." />
               </div>
               <div class="col-12 col-lg-6 text-lg-end">
-                <div class="muted">Atalho: <b>Enter</b> para buscar • Clique em <b>Editar</b> para alterar.</div>
+                <div class="muted">Pesquisa em tempo real via AJAX enquanto digita.</div>
               </div>
             </div>
 
             <div class="table-responsive">
-              <table class="table text-nowrap" id="tbFor">
+              <table class="table text-nowrap mb-0" id="tbFor">
                 <thead>
                   <tr>
                     <th style="min-width:80px;">ID</th>
@@ -506,58 +828,67 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                       <td colspan="8" class="text-center muted py-4">Nenhum fornecedor encontrado.</td>
                     </tr>
-                    <?php else: foreach ($rows as $r): ?>
-                      <?php
-                      $id = (int)$r['id'];
-                      $stx = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
-                      $badge = $stx === 'ATIVO'
-                        ? '<span class="badge-soft badge-ok">ATIVO</span>'
-                        : '<span class="badge-soft badge-off">INATIVO</span>';
-
-                      $loc = trim((string)$r['cidade']);
-                      $ufv = trim((string)$r['uf']);
-                      $locTxt = ($loc || $ufv) ? ($loc . ($ufv ? " / " . $ufv : "")) : "—";
-                      ?>
+                  <?php else: ?>
+                    <?php foreach ($rows as $r): ?>
                       <tr
-                        data-id="<?= $id ?>"
+                        data-id="<?= (int)$r['id'] ?>"
                         data-nome="<?= e((string)$r['nome']) ?>"
-                        data-status="<?= e($stx) ?>"
-                        data-doc="<?= e((string)($r['doc'] ?? '')) ?>"
-                        data-tel="<?= e((string)($r['tel'] ?? '')) ?>"
-                        data-email="<?= e((string)($r['email'] ?? '')) ?>"
-                        data-endereco="<?= e((string)($r['endereco'] ?? '')) ?>"
-                        data-cidade="<?= e((string)($r['cidade'] ?? '')) ?>"
-                        data-uf="<?= e((string)($r['uf'] ?? '')) ?>"
-                        data-contato="<?= e((string)($r['contato'] ?? '')) ?>"
-                        data-obs="<?= e((string)($r['obs'] ?? '')) ?>"
-                        data-statusrow="<?= e($stx) ?>">
-                        <td style="font-weight:1000;color:#0f172a;"><?= $id ?></td>
+                        data-status="<?= e((string)$r['status']) ?>"
+                        data-doc="<?= e((string)$r['doc']) ?>"
+                        data-tel="<?= e((string)$r['tel']) ?>"
+                        data-email="<?= e((string)$r['email']) ?>"
+                        data-endereco="<?= e((string)$r['endereco']) ?>"
+                        data-cidade="<?= e((string)$r['cidade']) ?>"
+                        data-uf="<?= e((string)$r['uf']) ?>"
+                        data-contato="<?= e((string)$r['contato']) ?>"
+                        data-obs="<?= e((string)$r['obs']) ?>">
+                        <td style="font-weight:1000;color:#0f172a;"><?= (int)$r['id'] ?></td>
                         <td>
                           <div style="font-weight:1000;color:#0f172a;line-height:1.1;"><?= e((string)$r['nome']) ?></div>
                           <div class="muted"><?= e(trim((string)$r['contato']) ?: '—') ?></div>
                         </td>
-                        <td><?= e(trim((string)$r['doc']) ?: '—') ?></td>
-                        <td><?= e(trim((string)$r['tel']) ?: '—') ?></td>
+                        <td><?= e(fmt_text((string)$r['doc'])) ?></td>
+                        <td><?= e(fmt_text((string)$r['tel'])) ?></td>
                         <td>
-                          <?php if (trim((string)$r['email'])): ?>
+                          <?php if (trim((string)$r['email']) !== ''): ?>
                             <a class="link-mini" href="mailto:<?= e((string)$r['email']) ?>"><?= e((string)$r['email']) ?></a>
-                            <?php else: ?>—<?php endif; ?>
+                          <?php else: ?>
+                            —
+                          <?php endif; ?>
                         </td>
-                        <td><?= e($locTxt) ?></td>
-                        <td class="text-center"><?= $badge ?></td>
+                        <td><?= e(fmt_loc((string)$r['cidade'], (string)$r['uf'])) ?></td>
+                        <td class="text-center"><?= badge_status_html((string)$r['status']) ?></td>
                         <td class="text-center">
                           <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdFornecedor">
                             <i class="lni lni-pencil me-1"></i> Editar
                           </button>
                         </td>
                       </tr>
-                  <?php endforeach;
-                  endif; ?>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
                 </tbody>
               </table>
             </div>
 
-            <div class="muted mt-2" id="hintEmpty" style="display:none;">Nenhum fornecedor encontrado.</div>
+            <div class="muted mt-2" id="hintEmpty" style="<?= $totalRows === 0 ? '' : 'display:none;' ?>">Nenhum fornecedor encontrado.</div>
+
+            <div class="table-footer-nav">
+              <p class="text-sm text-gray mb-0" id="infoCount">
+                Mostrando <?= $currentCount ?> item(ns) nesta página de fornecedores. Total filtrado: <?= $totalRows ?>.
+              </p>
+
+              <div class="pager-box" id="pagerBox">
+                <button class="page-btn" id="btnPrev" type="button" <?= $page <= 1 ? 'disabled' : '' ?> title="Anterior">
+                  <i class="lni lni-chevron-left"></i>
+                </button>
+
+                <span class="page-info" id="pagerText">Página <?= $page ?>/<?= $pages ?></span>
+
+                <button class="page-btn" id="btnNext" type="button" <?= $page >= $pages ? 'disabled' : '' ?> title="Próxima">
+                  <i class="lni lni-chevron-right"></i>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -577,7 +908,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     </footer>
   </main>
 
-  <!-- MODAL -->
   <div class="modal fade" id="mdFornecedor" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
@@ -663,7 +993,6 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="delId" value="">
         </form>
-
       </div>
     </div>
   </div>
@@ -672,73 +1001,174 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
   <script src="assets/js/main.js"></script>
 
   <script>
-    // auto-hide do alerta flash
     (function() {
       const box = document.getElementById("flashBox");
       if (!box) return;
-      // tempo em ms
-      const TIME = 4500;
       setTimeout(() => {
         box.classList.add("hide");
         setTimeout(() => box.remove(), 450);
-      }, TIME);
+      }, 4500);
     })();
 
-    const qGlobal = document.getElementById("qGlobal");
-    const qFor = document.getElementById("qFor");
-    const fStatus = document.getElementById("fStatus");
-    const btnLimpar = document.getElementById("btnLimpar");
-    const hintEmpty = document.getElementById("hintEmpty");
-    const countBadge = document.getElementById("countBadge");
-    const tbodyFor = document.getElementById("tbodyFor");
+    const $ = (id) => document.getElementById(id);
 
-    const mdTitle = document.getElementById("mdTitle");
-    const mdSub = document.getElementById("mdSub");
+    const qFor = $("qFor");
+    const fStatus = $("fStatus");
+    const btnLimpar = $("btnLimpar");
+    const btnNovo = $("btnNovo");
+    const btnExcel = $("btnExcel");
+    const tbodyFor = $("tbodyFor");
+    const hintEmpty = $("hintEmpty");
+    const countBadge = $("countBadge");
+    const infoCount = $("infoCount");
+    const pagerText = $("pagerText");
+    const btnPrev = $("btnPrev");
+    const btnNext = $("btnNext");
+    const pillLoading = $("pillLoading");
 
-    const fId = document.getElementById("fId");
-    const fNome = document.getElementById("fNome");
-    const fStatusEdit = document.getElementById("fStatusEdit");
-    const fDoc = document.getElementById("fDoc");
-    const fTel = document.getElementById("fTel");
-    const fEmail = document.getElementById("fEmail");
-    const fEnd = document.getElementById("fEnd");
-    const fCidade = document.getElementById("fCidade");
-    const fUF = document.getElementById("fUF");
-    const fContato = document.getElementById("fContato");
-    const fObs = document.getElementById("fObs");
+    const mdTitle = $("mdTitle");
+    const mdSub = $("mdSub");
 
-    const btnExcluir = document.getElementById("btnExcluir");
-    const frmDelete = document.getElementById("frmDelete");
-    const delId = document.getElementById("delId");
+    const fId = $("fId");
+    const fNome = $("fNome");
+    const fStatusEdit = $("fStatusEdit");
+    const fDoc = $("fDoc");
+    const fTel = $("fTel");
+    const fEmail = $("fEmail");
+    const fEnd = $("fEnd");
+    const fCidade = $("fCidade");
+    const fUF = $("fUF");
+    const fContato = $("fContato");
+    const fObs = $("fObs");
 
-    function onlyStatus(s) {
-      const v = String(s || "").trim().toUpperCase();
-      return (v === "ATIVO" || v === "INATIVO") ? v : "";
+    const btnExcluir = $("btnExcluir");
+    const frmDelete = $("frmDelete");
+    const delId = $("delId");
+
+    const state = {
+      q: <?= json_encode($q, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      status: <?= json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      page: <?= (int)$page ?>,
+      pages: <?= (int)$pages ?>,
+      total: <?= (int)$totalRows ?>
+    };
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
     }
 
-    function filterRows() {
-      const q = (qFor.value || qGlobal.value || "").toLowerCase().trim();
-      const st = onlyStatus(fStatus.value);
+    function fmtTextJs(v) {
+      const s = String(v ?? '').trim();
+      return s !== '' ? s : '—';
+    }
 
-      let visible = 0;
-      const trs = tbodyFor.querySelectorAll("tr");
+    function fmtLocJs(cidade, uf) {
+      const c = String(cidade ?? '').trim();
+      const u = String(uf ?? '').trim();
+      return (c || u) ? (c + (u ? ' / ' + u : '')) : '—';
+    }
 
-      trs.forEach(tr => {
-        if (!tr.hasAttribute("data-id")) return;
+    function badgeStatusHtml(status) {
+      const st = String(status || '').toUpperCase() === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+      if (st === 'ATIVO') {
+        return '<span class="badge-soft badge-ok">ATIVO</span>';
+      }
+      return '<span class="badge-soft badge-off">INATIVO</span>';
+    }
 
-        const statusRow = (tr.getAttribute("data-statusrow") || "").toUpperCase();
-        const text = tr.innerText.toLowerCase();
+    function setLoading(on) {
+      if (pillLoading) {
+        pillLoading.style.display = on ? 'inline-flex' : 'none';
+      }
+    }
 
-        const okQ = !q || text.includes(q);
-        const okS = !st || statusRow === st;
+    function syncUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('action');
+      url.searchParams.delete('export');
 
-        const show = okQ && okS;
-        tr.style.display = show ? "" : "none";
-        if (show) visible++;
-      });
+      if (state.q) url.searchParams.set('q', state.q);
+      else url.searchParams.delete('q');
 
-      countBadge.textContent = `${visible} fornecedor(es)`;
-      hintEmpty.style.display = (visible === 0) ? "block" : "none";
+      if (state.status) url.searchParams.set('status', state.status);
+      else url.searchParams.delete('status');
+
+      url.searchParams.set('page', String(state.page));
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    function updateExcelAction() {
+      if (!btnExcel) return;
+      btnExcel.onclick = () => {
+        const params = new URLSearchParams();
+        params.set('export', 'excel');
+        if (state.q) params.set('q', state.q);
+        if (state.status) params.set('status', state.status);
+        window.location.href = 'fornecedores.php?' + params.toString();
+      };
+    }
+
+    function renderMeta(meta) {
+      state.q = String(meta.q || '');
+      state.status = String(meta.status || '');
+      state.page = Number(meta.page || 1);
+      state.pages = Number(meta.pages || 1);
+      state.total = Number(meta.total || 0);
+
+      countBadge.textContent = `${state.total} fornecedor(es)`;
+      infoCount.textContent = `Mostrando ${Number(meta.shown || 0)} item(ns) nesta página de fornecedores. Total filtrado: ${state.total}.`;
+      pagerText.textContent = `Página ${state.page}/${state.pages}`;
+
+      btnPrev.disabled = state.page <= 1;
+      btnNext.disabled = state.page >= state.pages;
+
+      qFor.value = state.q;
+      fStatus.value = state.status;
+
+      syncUrl();
+      updateExcelAction();
+    }
+
+    function rowHtml(r) {
+      const email = String(r.email || '').trim();
+      const contato = fmtTextJs(r.contato);
+      const loc = fmtLocJs(r.cidade, r.uf);
+
+      return `
+        <tr
+          data-id="${Number(r.id || 0)}"
+          data-nome="${escapeHtml(r.nome || '')}"
+          data-status="${escapeHtml(r.status || 'ATIVO')}"
+          data-doc="${escapeHtml(r.doc || '')}"
+          data-tel="${escapeHtml(r.tel || '')}"
+          data-email="${escapeHtml(r.email || '')}"
+          data-endereco="${escapeHtml(r.endereco || '')}"
+          data-cidade="${escapeHtml(r.cidade || '')}"
+          data-uf="${escapeHtml(r.uf || '')}"
+          data-contato="${escapeHtml(r.contato || '')}"
+          data-obs="${escapeHtml(r.obs || '')}">
+          <td style="font-weight:1000;color:#0f172a;">${Number(r.id || 0)}</td>
+          <td>
+            <div style="font-weight:1000;color:#0f172a;line-height:1.1;">${escapeHtml(r.nome || '')}</div>
+            <div class="muted">${escapeHtml(contato)}</div>
+          </td>
+          <td>${escapeHtml(fmtTextJs(r.doc))}</td>
+          <td>${escapeHtml(fmtTextJs(r.tel))}</td>
+          <td>${email !== '' ? `<a class="link-mini" href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>` : '—'}</td>
+          <td>${escapeHtml(loc)}</td>
+          <td class="text-center">${badgeStatusHtml(r.status || 'ATIVO')}</td>
+          <td class="text-center">
+            <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdFornecedor">
+              <i class="lni lni-pencil me-1"></i> Editar
+            </button>
+          </td>
+        </tr>
+      `;
     }
 
     function openNew() {
@@ -783,37 +1213,123 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
       frmDelete.style.display = "block";
     }
 
-    document.getElementById("btnNovo").addEventListener("click", () => {
-      openNew();
-      setTimeout(() => fNome.focus(), 150);
-    });
+    async function loadAjax() {
+      setLoading(true);
+
+      const params = new URLSearchParams();
+      params.set('action', 'ajax');
+      params.set('page', String(state.page));
+      if (state.q) params.set('q', state.q);
+      if (state.status) params.set('status', state.status);
+
+      try {
+        const res = await fetch('fornecedores.php?' + params.toString(), {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          cache: 'no-store'
+        });
+
+        const text = await res.text();
+        let data = null;
+
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          tbodyFor.innerHTML = `<tr><td colspan="8" class="text-center muted py-4">Erro ao carregar fornecedores.</td></tr>`;
+          hintEmpty.style.display = '';
+          console.error('Resposta inválida do AJAX:', text);
+          return;
+        }
+
+        if (!res.ok || !data || data.ok !== true) {
+          tbodyFor.innerHTML = `<tr><td colspan="8" class="text-center muted py-4">${escapeHtml(data?.msg || 'Erro ao carregar fornecedores.')}</td></tr>`;
+          hintEmpty.style.display = '';
+          return;
+        }
+
+        renderMeta(data.meta || {});
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+
+        tbodyFor.innerHTML = rows.length
+          ? rows.map(rowHtml).join('')
+          : `<tr><td colspan="8" class="text-center muted py-4">Nenhum fornecedor encontrado.</td></tr>`;
+
+        hintEmpty.style.display = rows.length ? 'none' : '';
+      } catch (e) {
+        tbodyFor.innerHTML = `<tr><td colspan="8" class="text-center muted py-4">Erro de rede/servidor. Tente novamente.</td></tr>`;
+        hintEmpty.style.display = '';
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (btnNovo) {
+      btnNovo.addEventListener("click", () => {
+        openNew();
+        setTimeout(() => fNome.focus(), 150);
+      });
+    }
 
     tbodyFor.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-act='edit']");
       if (!btn) return;
       const tr = e.target.closest("tr");
-      if (!tr) return;
+      if (!tr || !tr.hasAttribute('data-id')) return;
       openEditFromTr(tr);
       setTimeout(() => fNome.focus(), 150);
     });
 
-    // filtros
-    qFor.addEventListener("input", filterRows);
-    qGlobal.addEventListener("input", () => {
-      qFor.value = qGlobal.value;
-      filterRows();
+    let searchTimer = null;
+
+    qFor.addEventListener("input", (e) => {
+      state.q = String(e.target.value || '').trim();
+      state.page = 1;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadAjax, 250);
     });
-    fStatus.addEventListener("change", filterRows);
+
+    qFor.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        qFor.value = "";
+        state.q = "";
+        state.page = 1;
+        loadAjax();
+      }
+    });
+
+    fStatus.addEventListener("change", () => {
+      state.status = String(fStatus.value || '').trim();
+      state.page = 1;
+      loadAjax();
+    });
+
+    btnPrev.addEventListener("click", () => {
+      if (state.page <= 1) return;
+      state.page -= 1;
+      loadAjax();
+    });
+
+    btnNext.addEventListener("click", () => {
+      if (state.page >= state.pages) return;
+      state.page += 1;
+      loadAjax();
+    });
 
     btnLimpar.addEventListener("click", () => {
       qFor.value = "";
-      qGlobal.value = "";
       fStatus.value = "";
-      filterRows();
+      state.q = "";
+      state.status = "";
+      state.page = 1;
+      loadAjax();
     });
 
-    // init
-    filterRows();
+    updateExcelAction();
+    syncUrl();
   </script>
 </body>
 
