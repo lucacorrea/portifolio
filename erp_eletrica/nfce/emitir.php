@@ -346,7 +346,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
       }
 
       // Monta JSON de pagamento se existir código de tPag
-      $tpagJsonStr = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
+      $tpagJsonStr = isset($tPag) ? json_encode(['tPag' => $tPag], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
 
       // tenta identificar vNF
       $vNFnum = null;
@@ -356,7 +356,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
         $vNFnum = $mV[1];
       }
 
-      $vTrocoVal = isset($vTrocoVal) ? $vTrocoVal : (isset($stdPag->vTroco) ? $stdPag->vTroco : null);
+      $vTrocoVal = isset($vTr) ? $vTr : null;
 
       $st = $pdo->prepare("
         INSERT INTO nfce_emitidas
@@ -457,7 +457,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 103 && !empty($stdEnv->inf
 $xmlProcContent = isset($proc) ? $proc : ((isset($xmlProcPath) && is_file($xmlProcPath)) ? @file_get_contents($xmlProcPath) : null);
 $xmlEnvio       = isset($nfeAss) ? $nfeAss : (isset($nfe) ? $nfe : null);
 $xmlRetorno     = isset($ret) ? $ret : (isset($respEnv) ? $respEnv : null);
-$tpagJsonStr    = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
+$tpagJsonStr    = isset($tPag) ? json_encode(['tPag' => $tPag], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
 
 $st = $pdo->prepare("INSERT INTO nfce_emitidas
   (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem, xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
@@ -488,7 +488,7 @@ $st->execute([
   ':xml_envio'    => $xmlEnvio,
   ':xml_retorno'  => $xmlRetorno,
   ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
-  ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
+  ':valor_troco'  => isset($vTr) ? number_format((float)$vTr, 2, '.', '') : null,
   ':tpag_json'    => $tpagJsonStr
 ]);
 }
@@ -508,6 +508,7 @@ $st->execute([
     echo '<!doctype html><meta charset="utf-8">';
     echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
     exit;
+  }
 }
 // === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
   if (!isset($pdo) || !($pdo instanceof PDO)) {
