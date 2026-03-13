@@ -1,16 +1,16 @@
 :root {
-    /* Dark Modern Palette (Centro do Eletricista) */
+    /* Dark Modern Palette (Neutral Black) */
     --primary-color: #fbbf24;
     --primary-hover: #f59e0b;
-    --secondary-color: #0f172a;
-    --bg-main: #020617;
-    --surface: #0f172a;
+    --secondary-color: #141414;
+    --bg-main: #0a0a0a;
+    --surface: #141414;
     --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
+    --text-secondary: #a3a3a3;
     --success: #10b981;
     --danger: #ef4444;
     --warning: #f59e0b;
-    --border: #334155;
+    --border: #262626;
 
     /* Corporate Aliases */
     --erp-primary: var(--primary-color);
@@ -55,7 +55,7 @@ body {
 /* Sidebar Refined (Darker) */
 .sidebar {
     width: var(--sidebar-width);
-    background: #0f172a;
+    background: var(--surface);
     color: white;
     height: 100vh;
     position: fixed;
@@ -83,7 +83,8 @@ body {
 }
 
 /* Main Content Wrapper */
-.main-content, .main-wrapper {
+.main-content,
+.main-wrapper {
     flex: 1;
     margin-left: var(--sidebar-width);
     transition: margin-left var(--transition);
@@ -96,7 +97,7 @@ body {
 /* Top Bar Styling - Dark */
 .top-bar {
     height: var(--header-height);
-    background: #020617;
+    background: var(--bg-main);
     padding: 0 40px;
     display: flex;
     justify-content: space-between;
@@ -114,13 +115,16 @@ body {
     border-radius: var(--radius-md);
     box-shadow: none;
     margin-bottom: 30px;
-    overflow: visible !important; /* Allow search dropdowns to overflow */
+    overflow: visible !important;
+    /* Allow search dropdowns to overflow */
     border: 1px solid var(--border);
     transition: none !important;
 }
 
 /* Icons visibility */
-.bg-opacity-10 i, .bg-opacity-25 i, .rounded-circle i {
+.bg-opacity-10 i,
+.bg-opacity-25 i,
+.rounded-circle i {
     color: #ffffff !important;
 }
 
@@ -153,13 +157,13 @@ body {
 }
 
 .form-control {
-    background: #020617;
+    background: #0d0d0d;
     border: 1px solid var(--border);
     color: var(--text-primary);
 }
 
 .form-control:focus {
-    background: #020617;
+    background: #0d0d0d;
     border-color: var(--primary-color);
     color: var(--text-primary);
     box-shadow: none;
@@ -169,9 +173,15 @@ body {
 .fade-in {
     animation: none !important;
 }
+
 @keyframes fadeIn {
-    from { opacity: 1; }
-    to { opacity: 1; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 /* Badges System */
