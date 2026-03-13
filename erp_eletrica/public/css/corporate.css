@@ -16,8 +16,8 @@
     --primary-hover: var(--erp-primary-hover);
     --secondary-color: var(--erp-secondary);
     --border: #334155;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
+    --text-primary: #f8fafc !important;
+    --text-secondary: #94a3b8 !important;
 
     --radius-sm: 4px;
     --radius-md: 8px;
@@ -40,12 +40,16 @@
 }
 
 ::placeholder {
-    color: #475569 !important; /* Visible slate grey */
-    opacity: 1;
+    color: #475569 !important;
+    opacity: 1 !important;
 }
 
 ::-webkit-input-placeholder { color: #475569 !important; }
 :-ms-input-placeholder { color: #475569 !important; }
+
+input, select, textarea {
+    color: #f8fafc !important;
+}
 
 body {
     background-color: var(--erp-dark);
@@ -173,10 +177,16 @@ body {
 }
 
 /* Push the search container up in the stacking context */
+.card:has(#searchResults, #pv_search_results, #customerResults),
+.row:has(#searchResults, #pv_search_results, #customerResults) {
+    position: relative;
+    z-index: 1050 !important;
+}
+
 .position-relative:has(> #searchResults),
 .position-relative:has(> #pv_search_results),
 .position-relative:has(> #customerResults) {
-    z-index: 1050 !important;
+    z-index: 1100 !important;
 }
 
 /* Bootstrap 5 Theme Overrides */
@@ -230,6 +240,7 @@ body {
 
 .industrial-table td, .industrial-table th {
     border-bottom: 1px solid var(--border);
+    color: #f8fafc !important;
 }
 
 /* Utility Class Mapping */
