@@ -16,8 +16,8 @@
     --primary-hover: var(--erp-primary-hover);
     --secondary-color: var(--erp-secondary);
     --border: #334155;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
+    --text-primary: #f8fafc !important;
+    --text-secondary: #94a3b8 !important;
 
     --radius-sm: 4px;
     --radius-md: 8px;
@@ -37,6 +37,18 @@
     --bs-link-hover-color: #f59e0b;
     --bs-body-bg: #020617;
     --bs-body-color: #f8fafc;
+}
+
+::placeholder {
+    color: #475569 !important;
+    opacity: 1 !important;
+}
+
+::-webkit-input-placeholder { color: #475569 !important; }
+:-ms-input-placeholder { color: #475569 !important; }
+
+input, select, textarea {
+    color: #f8fafc !important;
 }
 
 body {
@@ -134,9 +146,29 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
-/* Search Dropdowns Z-Index Fix */
+/* Search Dropdowns Z-Index Fix & Style */
 #searchResults, #pv_search_results, #customerResults, #pv_client_results {
-    z-index: 9999 !important;
+    z-index: 10000 !important;
+    background: #0f172a !important; /* Darker background for better contrast */
+    border: 1px solid var(--primary-color) !important; /* Primary border to make it pop */
+    margin-top: 5px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+#searchResults .list-group-item, 
+#pv_search_results .list-group-item,
+#customerResults .list-group-item,
+#pv_client_results .list-group-item {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.05);
+    color: #f8fafc;
+}
+
+#searchResults .list-group-item:hover, 
+#pv_search_results .list-group-item:hover,
+#customerResults .list-group-item:hover,
+#pv_client_results .list-group-item:hover {
+    background: #334155;
 }
 
 /* Ensure parents of absolute elements don't clip */
@@ -144,8 +176,17 @@ body {
     overflow: visible !important;
 }
 
-.position-relative {
-    z-index: 1030; /* Above regular content but below sidebar */
+/* Push the search container up in the stacking context */
+.card:has(#searchResults, #pv_search_results, #customerResults),
+.row:has(#searchResults, #pv_search_results, #customerResults) {
+    position: relative;
+    z-index: 1050 !important;
+}
+
+.position-relative:has(> #searchResults),
+.position-relative:has(> #pv_search_results),
+.position-relative:has(> #customerResults) {
+    z-index: 1100 !important;
 }
 
 /* Bootstrap 5 Theme Overrides */
@@ -175,16 +216,31 @@ body {
 
 /* List Groups & Tables */
 .table {
-    color: var(--text-primary);
+    --bs-table-color: var(--text-primary);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--border);
+    color: var(--text-primary) !important;
+}
+
+.table thead th {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--erp-primary) !important;
+    border-bottom: 2px solid var(--border) !important;
+    border-top: none !important;
+}
+
+.table td {
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border) !important;
 }
 
 .table-hover tbody tr:hover {
-    background-color: rgba(255, 255, 255, 0.02) !important;
-    color: var(--text-primary) !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .industrial-table td, .industrial-table th {
     border-bottom: 1px solid var(--border);
+    color: #f8fafc !important;
 }
 
 /* Utility Class Mapping */
@@ -202,12 +258,26 @@ body {
     background-color: #0f172a !important;
 }
 
-.text-dark {
+.text-dark:not(.btn-warning) {
     color: #f8fafc !important;
 }
 
 .text-muted {
-    color: #94a3b8 !important;
+    color: #64748b !important;
+}
+
+/* Specific fix for cashier and modals lists */
+.bg-light, .bg-light *, .modal-body, .modal-body *, .list-group-item, .list-group-item * {
+    color: var(--text-primary);
+}
+
+.list-group-item {
+    background-color: transparent !important;
+    border-color: var(--border) !important;
+}
+
+.text-black {
+    color: #f8fafc !important;
 }
 
 /* Animations Disabled */
