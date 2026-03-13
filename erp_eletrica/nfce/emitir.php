@@ -534,6 +534,7 @@ $st->execute([
     echo '<!doctype html><meta charset="utf-8">';
     echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
     exit;
+  }
 }
     /* Se chegou aqui e não é 104 nem 103, é uma rejeição */
     die('Erro SEFAZ: ' . ($stdEnv->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($stdEnv->cStat ?? '?') . ')');
