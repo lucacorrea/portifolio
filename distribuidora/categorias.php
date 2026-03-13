@@ -13,6 +13,138 @@ function e(string $s): string
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function json_out(array $payload, int $code = 200): void
+{
+  if (function_exists('ob_get_length') && ob_get_length()) {
+    @ob_clean();
+  }
+  http_response_code($code);
+  header('Content-Type: application/json; charset=UTF-8');
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  exit;
+}
+
+function build_url(array $overrides = []): string
+{
+  $params = $_GET;
+  unset($params['export'], $params['action']);
+
+  foreach ($overrides as $k => $v) {
+    if ($v === null || $v === '') {
+      unset($params[$k]);
+    } else {
+      $params[$k] = (string)$v;
+    }
+  }
+
+  $qs = http_build_query($params);
+  return 'categorias.php' . ($qs ? ('?' . $qs) : '');
+}
+
+function badgeStatus(string $st): string
+{
+  $s = strtoupper(trim($st));
+  if ($s === 'INATIVO') return '<span class="badge-soft badge-off">INATIVO</span>';
+  return '<span class="badge-soft badge-ok">ATIVO</span>';
+}
+
+function normHex(string $hex): string
+{
+  $h = trim($hex);
+  if ($h === '') return '#60a5fa';
+  if ($h[0] !== '#') $h = '#' . $h;
+  if (strlen($h) === 4) {
+    $h = '#' . $h[1] . $h[1] . $h[2] . $h[2] . $h[3] . $h[3];
+  }
+  return preg_match('/^#[0-9A-Fa-f]{6}$/', $h) ? strtolower($h) : '#60a5fa';
+}
+
+function fmtText(?string $v): string
+{
+  $v = trim((string)$v);
+  return $v !== '' ? $v : '—';
+}
+
+function fetch_categorias_page(PDO $pdo, string $q, string $status, int $page, int $perPage = 10): array
+{
+  $page = max(1, $page);
+
+  $where = [];
+  $params = [];
+
+  if ($status !== '') {
+    $where[] = "c.status = :status";
+    $params[':status'] = $status;
+  }
+
+  if ($q !== '') {
+    $where[] = "(
+      c.nome LIKE :q
+      OR c.descricao LIKE :q
+      OR c.cor LIKE :q
+      OR c.obs LIKE :q
+      OR c.status LIKE :q
+    )";
+    $params[':q'] = '%' . $q . '%';
+  }
+
+  $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+  $sqlCount = "SELECT COUNT(*) FROM categorias c $whereSql";
+  $stCount = $pdo->prepare($sqlCount);
+  foreach ($params as $k => $v) {
+    $stCount->bindValue($k, $v, PDO::PARAM_STR);
+  }
+  $stCount->execute();
+  $totalRows = (int)$stCount->fetchColumn();
+
+  $pages = max(1, (int)ceil($totalRows / $perPage));
+  if ($page > $pages) $page = $pages;
+  $offset = ($page - 1) * $perPage;
+
+  $sql = "
+    SELECT id, nome, descricao, cor, obs, status
+    FROM categorias c
+    $whereSql
+    ORDER BY id DESC
+    LIMIT :lim OFFSET :off
+  ";
+  $st = $pdo->prepare($sql);
+  foreach ($params as $k => $v) {
+    $st->bindValue($k, $v, PDO::PARAM_STR);
+  }
+  $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
+  $st->bindValue(':off', $offset, PDO::PARAM_INT);
+  $st->execute();
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $outRows = [];
+  foreach ($rows as $r) {
+    $outRows[] = [
+      'id'        => (int)($r['id'] ?? 0),
+      'nome'      => (string)($r['nome'] ?? ''),
+      'descricao' => (string)($r['descricao'] ?? ''),
+      'cor'       => normHex((string)($r['cor'] ?? '#60a5fa')),
+      'obs'       => (string)($r['obs'] ?? ''),
+      'status'    => strtoupper((string)($r['status'] ?? 'ATIVO')) === 'INATIVO' ? 'INATIVO' : 'ATIVO',
+    ];
+  }
+
+  return [
+    'meta' => [
+      'q'     => $q,
+      'status' => $status,
+      'page'  => $page,
+      'pages' => $pages,
+      'total' => $totalRows,
+      'shown' => count($outRows),
+      'per'   => $perPage,
+    ],
+    'rows' => $outRows,
+  ];
+}
+
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -21,18 +153,153 @@ $csrf = $_SESSION['csrf_token'];
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 
-$pdo = db();
-$rows = $pdo->query("SELECT id, nome, descricao, cor, obs, status
-                     FROM categorias
-                     ORDER BY id DESC
-                     LIMIT 2000")->fetchAll(PDO::FETCH_ASSOC);
+$q = trim((string)($_GET['q'] ?? ''));
+$status = strtoupper(trim((string)($_GET['status'] ?? '')));
+$status = ($status === 'ATIVO' || $status === 'INATIVO') ? $status : '';
 
-function badgeStatus(string $st): string
-{
-  $s = strtoupper(trim($st));
-  if ($s === 'INATIVO') return '<span class="badge-soft badge-off">INATIVO</span>';
-  return '<span class="badge-soft badge-ok">ATIVO</span>';
+$page = (int)($_GET['page'] ?? 1);
+if ($page < 1) $page = 1;
+
+$PER_PAGE = 10;
+$pdo = db();
+
+/* =========================
+   AJAX
+========================= */
+$action = strtolower(trim((string)($_GET['action'] ?? '')));
+if ($action === 'ajax') {
+  try {
+    $ajaxQ = trim((string)($_GET['q'] ?? ''));
+    $ajaxStatus = strtoupper(trim((string)($_GET['status'] ?? '')));
+    $ajaxStatus = ($ajaxStatus === 'ATIVO' || $ajaxStatus === 'INATIVO') ? $ajaxStatus : '';
+    $ajaxPage = (int)($_GET['page'] ?? 1);
+    if ($ajaxPage < 1) $ajaxPage = 1;
+
+    $data = fetch_categorias_page($pdo, $ajaxQ, $ajaxStatus, $ajaxPage, $PER_PAGE);
+    json_out(['ok' => true] + $data);
+  } catch (Throwable $e) {
+    json_out(['ok' => false, 'msg' => 'Erro no AJAX: ' . $e->getMessage()], 500);
+  }
 }
+
+/* =========================
+   EXPORTAR EXCEL
+========================= */
+if (isset($_GET['export']) && $_GET['export'] === 'excel') {
+  $exportData = fetch_categorias_page($pdo, $q, $status, 1, 999999);
+  $excelRows = $exportData['rows'];
+
+  $filename = 'categorias_' . date('Y-m-d_H-i-s') . '.xls';
+  $geradoEm = date('d/m/Y H:i:s');
+  $statusLabel = $status !== '' ? $status : 'Todos';
+  $buscaLabel = $q !== '' ? $q : '—';
+
+  header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+  header('Content-Disposition: attachment; filename="' . $filename . '"');
+  header('Cache-Control: max-age=0');
+
+  echo "\xEF\xBB\xBF";
+?>
+  <html>
+
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      table {
+        border-collapse: collapse;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        width: auto;
+      }
+
+      td,
+      th {
+        border: 1px solid #000;
+        padding: 4px 6px;
+        vertical-align: middle;
+        white-space: nowrap;
+      }
+
+      th {
+        background: #ffffff;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .title {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .sub {
+        text-align: center;
+        font-weight: normal;
+      }
+
+      .left {
+        text-align: left;
+      }
+
+      .center {
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <table>
+      <tr>
+        <td class="title" colspan="6">PAINEL DA DISTRIBUIDORA - CATEGORIAS</td>
+      </tr>
+      <tr>
+        <td class="sub" colspan="6">Gerado em: <?= e($geradoEm) ?></td>
+      </tr>
+      <tr>
+        <td class="sub" colspan="6">Busca: <?= e($buscaLabel) ?> | Status: <?= e($statusLabel) ?></td>
+      </tr>
+      <tr>
+        <th>ID</th>
+        <th>Categoria</th>
+        <th>Descrição</th>
+        <th>Cor</th>
+        <th>Observação</th>
+        <th>Status</th>
+      </tr>
+
+      <?php if (!$excelRows): ?>
+        <tr>
+          <td colspan="6" class="center">Nenhuma categoria encontrada.</td>
+        </tr>
+      <?php else: ?>
+        <?php foreach ($excelRows as $r): ?>
+          <tr>
+            <td class="center"><?= (int)$r['id'] ?></td>
+            <td class="left"><?= e((string)$r['nome']) ?></td>
+            <td class="left"><?= e(fmtText((string)$r['descricao'])) ?></td>
+            <td class="left"><?= e((string)$r['cor']) ?></td>
+            <td class="left"><?= e(fmtText((string)$r['obs'])) ?></td>
+            <td class="center"><?= e((string)$r['status']) ?></td>
+          </tr>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </table>
+  </body>
+
+  </html>
+<?php
+  exit;
+}
+
+/* =========================
+   PRIMEIRA CARGA
+========================= */
+$initialData = fetch_categorias_page($pdo, $q, $status, $page, $PER_PAGE);
+$totalRows = (int)$initialData['meta']['total'];
+$pages = (int)$initialData['meta']['pages'];
+$currentCount = (int)$initialData['meta']['shown'];
+$rows = $initialData['rows'];
+$page = (int)$initialData['meta']['page'];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -45,14 +312,12 @@ function badgeStatus(string $st): string
   <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
   <title>Painel da Distribuidora | Categorias</title>
 
-  <!-- ========== CSS ========= -->
   <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    /* dropdown do profile: largura acompanha conteúdo */
     .profile-box .dropdown-menu {
       width: max-content;
       min-width: 260px;
@@ -78,7 +343,6 @@ function badgeStatus(string $st): string
       max-width: 100%;
     }
 
-    /* Botões compactos */
     .main-btn.btn-compact {
       height: 38px !important;
       padding: 8px 14px !important;
@@ -89,15 +353,6 @@ function badgeStatus(string $st): string
     .main-btn.btn-compact i {
       font-size: 14px;
       vertical-align: -1px;
-    }
-
-    .icon-btn {
-      height: 34px !important;
-      width: 42px !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
     }
 
     .form-control.compact,
@@ -112,7 +367,6 @@ function badgeStatus(string $st): string
       color: #64748b;
     }
 
-    /* Cards */
     .cardx {
       border: 1px solid rgba(148, 163, 184, .28);
       border-radius: 16px;
@@ -134,7 +388,6 @@ function badgeStatus(string $st): string
       padding: 14px;
     }
 
-    /* Tabela */
     .table td,
     .table th {
       vertical-align: middle;
@@ -162,6 +415,9 @@ function badgeStatus(string $st): string
       font-size: 12px;
       font-weight: 900;
       color: #0f172a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .badge-ok {
@@ -176,7 +432,6 @@ function badgeStatus(string $st): string
       color: #991b1b;
     }
 
-    /* modal */
     .modal-content {
       border-radius: 16px;
       overflow: hidden;
@@ -199,7 +454,6 @@ function badgeStatus(string $st): string
       flex: 0 0 auto;
     }
 
-    /* Flash 1.5s */
     .flash-auto-hide {
       transition: opacity .35s ease, transform .35s ease;
     }
@@ -208,6 +462,55 @@ function badgeStatus(string $st): string
       opacity: 0;
       transform: translateY(-6px);
       pointer-events: none;
+    }
+
+    .table-footer-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .pager-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .page-btn {
+      width: 42px;
+      height: 42px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: .2s ease;
+    }
+
+    .page-btn:hover:not(:disabled) {
+      background: #eef2ff;
+      color: #1e40af;
+      border-color: #c7d2fe;
+    }
+
+    .page-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .page-info {
+      font-weight: 900;
+      color: #475569;
+      min-width: 90px;
+      text-align: center;
+      font-size: 12px;
     }
 
     .logout-btn {
@@ -255,6 +558,15 @@ function badgeStatus(string $st): string
       #tbCat {
         min-width: 820px;
       }
+
+      .table-footer-nav {
+        justify-content: center;
+      }
+
+      #infoCount {
+        text-align: center;
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -264,7 +576,6 @@ function badgeStatus(string $st): string
     <div class="spinner"></div>
   </div>
 
-  <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="brand-vertical">
@@ -276,27 +587,21 @@ function badgeStatus(string $st): string
       <ul>
         <li class="nav-item">
           <a href="dashboard.php">
-            <span class="icon">
-              <i class="lni lni-dashboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-dashboard"></i></span>
             <span class="text">Dashboard</span>
           </a>
         </li>
 
         <li class="nav-item">
           <a href="vendas.php">
-            <span class="icon">
-              <i class="lni lni-cart"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cart"></i></span>
             <span class="text">Vendas</span>
           </a>
         </li>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-layers"></i>
-            </span>
+            <span class="icon"><i class="lni lni-layers"></i></span>
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
@@ -308,9 +613,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-package"></i>
-            </span>
+            <span class="icon"><i class="lni lni-package"></i></span>
             <span class="text">Estoque</span>
           </a>
           <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -324,9 +627,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-users"></i>
-            </span>
+            <span class="icon"><i class="lni lni-users"></i></span>
             <span class="text">Cadastros</span>
           </a>
           <ul id="ddmenu_cadastros" class="collapse dropdown-nav show">
@@ -338,9 +639,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item">
           <a href="relatorios.php">
-            <span class="icon">
-              <i class="lni lni-clipboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-clipboard"></i></span>
             <span class="text">Relatórios</span>
           </a>
         </li>
@@ -351,9 +650,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-cog"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cog"></i></span>
             <span class="text">Configurações</span>
           </a>
           <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -364,9 +661,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item">
           <a href="suporte.php">
-            <span class="icon">
-              <i class="lni lni-whatsapp"></i>
-            </span>
+            <span class="icon"><i class="lni lni-whatsapp"></i></span>
             <span class="text">Suporte</span>
           </a>
         </li>
@@ -377,7 +672,6 @@ function badgeStatus(string $st): string
   <div class="overlay"></div>
 
   <main class="main-wrapper">
-    <!-- Header -->
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -424,7 +718,6 @@ function badgeStatus(string $st): string
                 </nav>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -438,42 +731,41 @@ function badgeStatus(string $st): string
           <div class="head">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-tag me-1"></i> Lista</div>
-              <span class="badge-soft" id="countBadge">
-                <?= count($rows) ?> categorias
-              </span>
+              <span class="badge-soft" id="countBadge"><?= $totalRows ?> categoria(s)</span>
             </div>
 
             <div class="d-flex gap-2 flex-wrap align-items-center">
+              <button
+                class="main-btn primary-btn btn-hover btn-compact"
+                id="btnNovo"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#mdCategoria">
+                <i class="lni lni-plus me-1"></i> Nova categoria
+              </button>
+
               <select class="form-select compact" id="fStatus" style="min-width: 160px;">
-                <option value="">Status: Todos</option>
-                <option value="ATIVO">Ativo</option>
-                <option value="INATIVO">Inativo</option>
+                <option value="" <?= $status === '' ? 'selected' : '' ?>>Status: Todos</option>
+                <option value="ATIVO" <?= $status === 'ATIVO' ? 'selected' : '' ?>>Ativo</option>
+                <option value="INATIVO" <?= $status === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
               </select>
 
-              <a class="main-btn light-btn btn-hover btn-compact" href="assets/dados/categorias/exportar.php">
-                <i class="lni lni-download me-1"></i> Exportar (JSON)
-              </a>
-
-              <form action="assets/dados/categorias/importar.php" method="post" enctype="multipart/form-data"
-                style="margin:0;">
-                <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-                <label class="main-btn light-btn btn-hover btn-compact" style="margin:0; cursor:pointer;">
-                  <i class="lni lni-upload me-1"></i> Importar
-                  <input type="file" name="arquivo" id="fileImport" accept="application/json" hidden
-                    onchange="this.form.submit();" />
-                </label>
-              </form>
+              <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
+                <i class="lni lni-download me-1"></i> Exportar Excel
+              </button>
 
               <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
                 <i class="lni lni-eraser me-1"></i> Limpar
               </button>
+
+              <span class="badge-soft" id="pillLoading" style="display:none;">Carregando...</span>
             </div>
           </div>
 
           <div class="body">
             <div class="row g-2 mb-2">
               <div class="col-12 col-lg-6">
-                <input class="form-control compact" id="qCat" placeholder="Buscar por nome, descrição ou status..." />
+                <input class="form-control compact" id="qCat" value="<?= e($q) ?>" placeholder="Buscar por nome, descrição, cor ou status..." />
               </div>
               <div class="col-12 col-lg-6 text-lg-end">
                 <div class="muted">Dica: use cor para identificar a categoria no sistema.</div>
@@ -481,7 +773,7 @@ function badgeStatus(string $st): string
             </div>
 
             <div class="table-responsive">
-              <table class="table text-nowrap" id="tbCat">
+              <table class="table text-nowrap mb-0" id="tbCat">
                 <thead>
                   <tr>
                     <th style="min-width:90px;">ID</th>
@@ -497,62 +789,65 @@ function badgeStatus(string $st): string
                     <tr>
                       <td colspan="6" class="text-center muted py-4">Nenhuma categoria encontrada.</td>
                     </tr>
-                    <?php else: foreach ($rows as $r): ?>
-                      <?php
-                      $id = (int)$r['id'];
-                      $st = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
-                      $cor = trim((string)($r['cor'] ?? '#60a5fa')) ?: '#60a5fa';
-                      $nome = (string)$r['nome'];
-                      $desc = (string)($r['descricao'] ?? '');
-                      $obs  = (string)($r['obs'] ?? '');
-                      ?>
-                      <tr data-id="<?= $id ?>" data-statusrow="<?= e($st) ?>" data-nome="<?= e($nome) ?>"
-                        data-desc="<?= e($desc) ?>" data-obs="<?= e($obs) ?>" data-cor="<?= e($cor) ?>"
-                        data-status="<?= e($st) ?>">
-                        <td style="font-weight:1000;color:#0f172a;">
-                          <?= $id ?>
-                        </td>
+                  <?php else: ?>
+                    <?php foreach ($rows as $r): ?>
+                      <tr
+                        data-id="<?= (int)$r['id'] ?>"
+                        data-statusrow="<?= e((string)$r['status']) ?>"
+                        data-nome="<?= e((string)$r['nome']) ?>"
+                        data-desc="<?= e((string)$r['descricao']) ?>"
+                        data-obs="<?= e((string)$r['obs']) ?>"
+                        data-cor="<?= e((string)$r['cor']) ?>"
+                        data-status="<?= e((string)$r['status']) ?>">
+                        <td style="font-weight:1000;color:#0f172a;"><?= (int)$r['id'] ?></td>
                         <td>
                           <div class="d-flex align-items-center gap-2">
-                            <span class="swatch" style="background:<?= e($cor) ?>;"></span>
+                            <span class="swatch" style="background:<?= e((string)$r['cor']) ?>;"></span>
                             <div style="min-width:0;">
-                              <div style="font-weight:1000;color:#0f172a;line-height:1.1;">
-                                <?= e($nome) ?>
-                              </div>
-                              <div class="muted">
-                                <?= e($obs !== '' ? $obs : '—') ?>
-                              </div>
+                              <div style="font-weight:1000;color:#0f172a;line-height:1.1;"><?= e((string)$r['nome']) ?></div>
+                              <div class="muted"><?= e(fmtText((string)$r['obs'])) ?></div>
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <?= e($desc !== '' ? $desc : '—') ?>
-                        </td>
+                        <td><?= e(fmtText((string)$r['descricao'])) ?></td>
                         <td>
                           <div class="d-flex align-items-center gap-2">
-                            <span class="swatch" style="background:<?= e($cor) ?>;"></span>
-                            <span style="font-weight:900;color:#0f172a;">
-                              <?= e($cor) ?>
-                            </span>
+                            <span class="swatch" style="background:<?= e((string)$r['cor']) ?>;"></span>
+                            <span style="font-weight:900;color:#0f172a;"><?= e((string)$r['cor']) ?></span>
                           </div>
                         </td>
+                        <td class="text-center"><?= badgeStatus((string)$r['status']) ?></td>
                         <td class="text-center">
-                          <?= badgeStatus($st) ?>
-                        </td>
-                        <td class="text-center">
-                          <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit"
-                            data-bs-toggle="modal" data-bs-target="#mdCategoria">
+                          <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdCategoria">
                             <i class="lni lni-pencil me-1"></i> Editar
                           </button>
                         </td>
                       </tr>
-                  <?php endforeach;
-                  endif; ?>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
                 </tbody>
               </table>
             </div>
 
-            <div class="muted mt-2" id="hintEmpty" style="display:none;">Nenhuma categoria encontrada.</div>
+            <div class="muted mt-2" id="hintEmpty" style="<?= $totalRows === 0 ? '' : 'display:none;' ?>">Nenhuma categoria encontrada.</div>
+
+            <div class="table-footer-nav">
+              <p class="text-sm text-gray mb-0" id="infoCount">
+                Mostrando <?= $currentCount ?> item(ns) nesta página de categorias. Total filtrado: <?= $totalRows ?>.
+              </p>
+
+              <div class="pager-box" id="pagerBox">
+                <button class="page-btn" id="btnPrev" type="button" <?= $page <= 1 ? 'disabled' : '' ?> title="Anterior">
+                  <i class="lni lni-chevron-left"></i>
+                </button>
+
+                <span class="page-info" id="pagerText">Página <?= $page ?>/<?= $pages ?></span>
+
+                <button class="page-btn" id="btnNext" type="button" <?= $page >= $pages ? 'disabled' : '' ?> title="Próxima">
+                  <i class="lni lni-chevron-right"></i>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -571,7 +866,6 @@ function badgeStatus(string $st): string
     </footer>
   </main>
 
-  <!-- MODAL: Categoria -->
   <div class="modal fade" id="mdCategoria" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
@@ -583,7 +877,6 @@ function badgeStatus(string $st): string
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
-        <!-- SAVE (add/edit) -->
         <form id="frmSave" action="assets/dados/categorias/adicionarCategorias.php" method="post">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="cId" value="">
@@ -610,8 +903,7 @@ function badgeStatus(string $st): string
               <div class="col-12 col-lg-4">
                 <label class="form-label">Cor</label>
                 <div class="d-flex align-items-center gap-2">
-                  <input class="form-control compact" id="cCor" type="color" value="#60a5fa"
-                    style="width: 70px; padding: 4px 8px;" />
+                  <input class="form-control compact" id="cCor" type="color" value="#60a5fa" style="width: 70px; padding: 4px 8px;" />
                   <input class="form-control compact" id="cCorTxt" name="cor" value="#60a5fa" placeholder="#RRGGBB" />
                 </div>
                 <div class="muted mt-1">Usada para etiqueta/badge.</div>
@@ -619,20 +911,17 @@ function badgeStatus(string $st): string
 
               <div class="col-12">
                 <label class="form-label">Observação</label>
-                <textarea class="form-control" id="cObs" name="obs" rows="3" placeholder="Opcional..."
-                  style="border-radius:12px;"></textarea>
+                <textarea class="form-control" id="cObs" name="obs" rows="3" placeholder="Opcional..." style="border-radius:12px;"></textarea>
               </div>
             </div>
           </div>
 
           <div class="modal-footer d-flex justify-content-between">
-            <button class="main-btn danger-btn-outline btn-hover btn-compact" id="btnExcluir" type="submit"
-              form="frmDelete" style="display:none;">
+            <button class="main-btn danger-btn-outline btn-hover btn-compact" id="btnExcluir" type="submit" form="frmDelete" style="display:none;">
               <i class="lni lni-trash-can me-1"></i> Excluir
             </button>
             <div class="d-flex gap-2">
-              <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal"
-                type="button">Cancelar</button>
+              <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">Cancelar</button>
               <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
                 <i class="lni lni-save me-1"></i> Salvar
               </button>
@@ -640,23 +929,18 @@ function badgeStatus(string $st): string
           </div>
         </form>
 
-        <!-- DELETE (fora do form save) -->
-        <form id="frmDelete" action="assets/dados/categorias/excluirCategorias.php" method="post"
-          onsubmit="return confirm('Excluir esta categoria?');" style="display:none;">
+        <form id="frmDelete" action="assets/dados/categorias/excluirCategorias.php" method="post" onsubmit="return confirm('Excluir esta categoria?');" style="display:none;">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="delId" value="">
         </form>
-
       </div>
     </div>
   </div>
 
-  <!-- ========= JS ========= -->
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
 
   <script>
-    // Flash some em 1.5s
     (function() {
       const box = document.getElementById('flashBox');
       if (!box) return;
@@ -666,62 +950,22 @@ function badgeStatus(string $st): string
       }, 1500);
     })();
 
-    // DOM filtros
-    const qGlobal = document.getElementById("qGlobal");
     const qCat = document.getElementById("qCat");
     const fStatus = document.getElementById("fStatus");
+    const btnLimpar = document.getElementById("btnLimpar");
+    const btnNovo = document.getElementById("btnNovo");
+    const btnExcel = document.getElementById("btnExcel");
     const tbody = document.getElementById("tbodyCat");
     const hintEmpty = document.getElementById("hintEmpty");
     const countBadge = document.getElementById("countBadge");
-    const btnLimpar = document.getElementById("btnLimpar");
+    const infoCount = document.getElementById("infoCount");
+    const pagerText = document.getElementById("pagerText");
+    const btnPrev = document.getElementById("btnPrev");
+    const btnNext = document.getElementById("btnNext");
+    const pillLoading = document.getElementById("pillLoading");
 
-    function onlyStatus(s) {
-      const v = String(s || "").trim().toUpperCase();
-      return (v === "ATIVO" || v === "INATIVO") ? v : "";
-    }
-
-    function filterRows() {
-      const q = (qCat.value || qGlobal.value || "").toLowerCase().trim();
-      const st = onlyStatus(fStatus.value);
-
-      let visible = 0;
-      tbody.querySelectorAll("tr").forEach(tr => {
-        // ignora linha vazia
-        if (!tr.hasAttribute("data-id")) return;
-
-        const statusRow = (tr.getAttribute("data-statusrow") || "").toUpperCase();
-        const text = tr.innerText.toLowerCase();
-
-        const okQ = !q || text.includes(q);
-        const okS = !st || statusRow === st;
-
-        const show = okQ && okS;
-        tr.style.display = show ? "" : "none";
-        if (show) visible++;
-      });
-
-      countBadge.textContent = `${visible} categoria(s)`;
-      hintEmpty.style.display = (visible === 0) ? "block" : "none";
-    }
-
-    qCat.addEventListener("input", filterRows);
-    qGlobal.addEventListener("input", () => {
-      qCat.value = qGlobal.value;
-      filterRows();
-    });
-    fStatus.addEventListener("change", filterRows);
-
-    btnLimpar.addEventListener("click", () => {
-      qCat.value = "";
-      qGlobal.value = "";
-      fStatus.value = "";
-      filterRows();
-    });
-
-    // Modal (novo/editar)
     const mdTitle = document.getElementById("mdTitle");
     const mdSub = document.getElementById("mdSub");
-    const btnNovo = document.getElementById("btnNovo");
 
     const cId = document.getElementById("cId");
     const cNome = document.getElementById("cNome");
@@ -735,12 +979,177 @@ function badgeStatus(string $st): string
     const frmDelete = document.getElementById("frmDelete");
     const delId = document.getElementById("delId");
 
-    function normHex(hex) {
+    const state = {
+      q: <?= json_encode($q, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      status: <?= json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      page: <?= (int)$page ?>,
+      pages: <?= (int)$pages ?>,
+      total: <?= (int)$totalRows ?>
+    };
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function normalizeHex(hex) {
       let h = String(hex || "").trim();
       if (!h) return "#60a5fa";
       if (!h.startsWith("#")) h = "#" + h;
       if (h.length === 4) h = "#" + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
       return /^#[0-9A-Fa-f]{6}$/.test(h) ? h.toLowerCase() : "#60a5fa";
+    }
+
+    function badgeStatusHtml(status) {
+      const st = String(status || '').toUpperCase() === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+      if (st === 'INATIVO') {
+        return '<span class="badge-soft badge-off">INATIVO</span>';
+      }
+      return '<span class="badge-soft badge-ok">ATIVO</span>';
+    }
+
+    function fmtTextJs(v) {
+      const s = String(v ?? '').trim();
+      return s !== '' ? s : '—';
+    }
+
+    function setLoading(on) {
+      pillLoading.style.display = on ? 'inline-flex' : 'none';
+    }
+
+    function syncUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('action');
+      url.searchParams.delete('export');
+
+      if (state.q) url.searchParams.set('q', state.q);
+      else url.searchParams.delete('q');
+
+      if (state.status) url.searchParams.set('status', state.status);
+      else url.searchParams.delete('status');
+
+      url.searchParams.set('page', String(state.page));
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    function updateExcelHref() {
+      const params = new URLSearchParams();
+      params.set('export', 'excel');
+      if (state.q) params.set('q', state.q);
+      if (state.status) params.set('status', state.status);
+      btnExcel.onclick = () => {
+        window.location.href = 'categorias.php?' + params.toString();
+      };
+    }
+
+    function renderMeta(meta) {
+      state.q = String(meta.q || '');
+      state.status = String(meta.status || '');
+      state.page = Number(meta.page || 1);
+      state.pages = Number(meta.pages || 1);
+      state.total = Number(meta.total || 0);
+
+      countBadge.textContent = `${state.total} categoria(s)`;
+      infoCount.textContent = `Mostrando ${Number(meta.shown || 0)} item(ns) nesta página de categorias. Total filtrado: ${state.total}.`;
+      pagerText.textContent = `Página ${state.page}/${state.pages}`;
+
+      btnPrev.disabled = state.page <= 1;
+      btnNext.disabled = state.page >= state.pages;
+
+      qCat.value = state.q;
+      fStatus.value = state.status;
+
+      syncUrl();
+      updateExcelHref();
+    }
+
+    function rowHtml(r) {
+      const id = Number(r.id || 0);
+      const nome = String(r.nome || '');
+      const desc = String(r.descricao || '');
+      const obs = String(r.obs || '');
+      const cor = normalizeHex(String(r.cor || '#60a5fa'));
+      const status = String(r.status || 'ATIVO').toUpperCase() === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+
+      return `
+        <tr
+          data-id="${id}"
+          data-statusrow="${escapeHtml(status)}"
+          data-nome="${escapeHtml(nome)}"
+          data-desc="${escapeHtml(desc)}"
+          data-obs="${escapeHtml(obs)}"
+          data-cor="${escapeHtml(cor)}"
+          data-status="${escapeHtml(status)}">
+          <td style="font-weight:1000;color:#0f172a;">${id}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span class="swatch" style="background:${escapeHtml(cor)};"></span>
+              <div style="min-width:0;">
+                <div style="font-weight:1000;color:#0f172a;line-height:1.1;">${escapeHtml(nome)}</div>
+                <div class="muted">${escapeHtml(fmtTextJs(obs))}</div>
+              </div>
+            </div>
+          </td>
+          <td>${escapeHtml(fmtTextJs(desc))}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span class="swatch" style="background:${escapeHtml(cor)};"></span>
+              <span style="font-weight:900;color:#0f172a;">${escapeHtml(cor)}</span>
+            </div>
+          </td>
+          <td class="text-center">${badgeStatusHtml(status)}</td>
+          <td class="text-center">
+            <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdCategoria">
+              <i class="lni lni-pencil me-1"></i> Editar
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+
+    async function loadAjax() {
+      setLoading(true);
+
+      const params = new URLSearchParams({
+        action: 'ajax',
+        q: state.q,
+        status: state.status,
+        page: String(state.page)
+      });
+
+      try {
+        const res = await fetch('categorias.php?' + params.toString(), {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!data || !data.ok) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center muted py-4">Erro ao carregar categorias.</td></tr>`;
+          hintEmpty.style.display = '';
+          return;
+        }
+
+        renderMeta(data.meta || {});
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+
+        tbody.innerHTML = rows.length ?
+          rows.map(rowHtml).join('') :
+          `<tr><td colspan="6" class="text-center muted py-4">Nenhuma categoria encontrada.</td></tr>`;
+
+        hintEmpty.style.display = rows.length ? 'none' : '';
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center muted py-4">Erro de rede/servidor. Tente novamente.</td></tr>`;
+        hintEmpty.style.display = '';
+      } finally {
+        setLoading(false);
+      }
     }
 
     function openNew() {
@@ -771,7 +1180,8 @@ function badgeStatus(string $st): string
       cStatus.value = tr.getAttribute("data-status") || "ATIVO";
       cDesc.value = tr.getAttribute("data-desc") || "";
       cObs.value = tr.getAttribute("data-obs") || "";
-      const cor = normHex(tr.getAttribute("data-cor") || "#60a5fa");
+
+      const cor = normalizeHex(tr.getAttribute("data-cor") || "#60a5fa");
       cCor.value = cor;
       cCorTxt.value = cor;
 
@@ -782,7 +1192,9 @@ function badgeStatus(string $st): string
       setTimeout(() => cNome.focus(), 150);
     }
 
-    btnNovo.addEventListener("click", openNew);
+    if (btnNovo) {
+      btnNovo.addEventListener("click", openNew);
+    }
 
     tbody.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-act='edit']");
@@ -792,16 +1204,61 @@ function badgeStatus(string $st): string
       openEditFromTr(tr);
     });
 
-    // Cor sync
+    let searchTimer = null;
+
+    qCat.addEventListener("input", (e) => {
+      state.q = String(e.target.value || '').trim();
+      state.page = 1;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadAjax, 250);
+    });
+
+    qCat.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        qCat.value = "";
+        state.q = "";
+        state.page = 1;
+        loadAjax();
+      }
+    });
+
+    fStatus.addEventListener("change", () => {
+      state.status = String(fStatus.value || '').trim();
+      state.page = 1;
+      loadAjax();
+    });
+
+    btnPrev.addEventListener("click", () => {
+      if (state.page <= 1) return;
+      state.page -= 1;
+      loadAjax();
+    });
+
+    btnNext.addEventListener("click", () => {
+      if (state.page >= state.pages) return;
+      state.page += 1;
+      loadAjax();
+    });
+
+    btnLimpar.addEventListener("click", () => {
+      qCat.value = "";
+      fStatus.value = "";
+      state.q = "";
+      state.status = "";
+      state.page = 1;
+      loadAjax();
+    });
+
     cCor.addEventListener("input", () => {
       cCorTxt.value = cCor.value;
     });
+
     cCorTxt.addEventListener("input", () => {
-      cCor.value = normHex(cCorTxt.value);
+      cCor.value = normalizeHex(cCorTxt.value);
     });
 
-    // init
-    filterRows();
+    updateExcelHref();
+    syncUrl();
   </script>
 </body>
 
