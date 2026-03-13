@@ -33,63 +33,230 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de Autorização - ERP Elétrica</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="public/css/corporate.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <!-- Custom Corporate UI -->
+    <link rel="stylesheet" href="style.css?v=3.9">
+    <link rel="stylesheet" href="public/css/corporate.css?v=3.9">
     <style>
-        body { background-color: #f4f7f6; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; }
-        .auth-card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 480px; border-top: 5px solid var(--erp-primary); }
-        .code-display { font-size: 3.5rem; letter-spacing: 8px; font-weight: 800; color: var(--erp-primary); background: #f8f9fa; padding: 20px; border-radius: 12px; border: 2px dashed #dee2e6; margin: 20px 0; font-family: 'Roboto Mono', monospace; }
+        :root {
+            --login-bg: #0a0a0a;
+            --card-bg: #141414;
+            --accent-gold: #c79802;
+            --accent-hover: #a67f02;
+            --input-bg: #0d0d0d;
+            --border-color: #262626;
+        }
+
+        body {
+            background-color: var(--login-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+        }
+
+        .auth-card {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--accent-gold);
+        }
+
+        .code-display {
+            font-size: 3rem;
+            letter-spacing: 8px;
+            font-weight: 800;
+            color: var(--accent-gold);
+            background: var(--input-bg);
+            padding: 25px;
+            border-radius: 12px;
+            border: 2px dashed var(--border-color);
+            margin: 20px 0;
+            font-family: 'Roboto Mono', monospace;
+            text-align: center;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: #a3a3a3;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .form-control, .form-select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background: var(--input-bg);
+            color: #fff !important;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-gold);
+            background: var(--input-bg);
+            outline: none;
+            box-shadow: none;
+        }
+
+        .form-control::placeholder {
+            color: #475569 !important;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-gold) !important;
+            border: none !important;
+            color: #000 !important;
+            font-weight: 700 !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 14px !important;
+            transition: all 0.2s !important;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover) !important;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-primary {
+            border-color: var(--accent-gold) !important;
+            color: var(--accent-gold) !important;
+            background: transparent !important;
+            font-weight: 700 !important;
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--accent-gold) !important;
+            color: #000 !important;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255,255,255,0.05) !important;
+            backdrop-filter: blur(4px);
+        }
+
+        .alert-danger {
+            background-color: rgba(239, 68, 68, 0.15) !important;
+            color: #ff8a8a !important;
+        }
+
+        .alert-warning {
+            background-color: rgba(197, 160, 40, 0.15) !important;
+            color: #ffd75e !important;
+        }
+
+        .text-accent {
+            color: var(--accent-gold) !important;
+        }
+
+        small.text-muted {
+            color: #737373 !important;
+        }
+
+        hr {
+            border-top-color: var(--border-color);
+            opacity: 1;
+        }
+
+        select option {
+            background: var(--card-bg);
+            color: #fff;
+        }
+
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: 30px 20px;
+                border-radius: 0;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                border: none;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="auth-card">
         <div class="text-center mb-4">
-            <i class="fas fa-shield-halved fa-3x text-primary mb-3"></i>
-            <h4 class="fw-bold">Geração de Código Único</h4>
-            <p class="text-muted small">Este código permite autorizar operações restritas (Sangria, Descontos) por gerentes.</p>
+            <i class="fas fa-shield-halved fa-3x text-accent mb-3"></i>
+            <h4 class="fw-bold mb-1">Geração de Código Único</h4>
+            <p class="text-muted small">Autorização para operações restritas (Sangria, Descontos).</p>
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-danger small"><i class="fas fa-exclamation-circle me-2"></i><?= $error ?></div>
+            <div class="alert alert-danger mb-4"><i class="fas fa-exclamation-circle me-2"></i><?= $error ?></div>
         <?php endif; ?>
 
         <?php if ($code): ?>
-            <div class="text-center fade-in">
-                <p class="mb-1 small fw-bold text-uppercase opacity-50">Código Gerado para Unidade Selecionada:</p>
+            <div class="text-center">
+                <p class="mb-1 small fw-bold text-uppercase opacity-50">Código Gerado:</p>
                 <div class="code-display"><?= $code ?></div>
                 <div class="alert alert-warning extra-small py-2 mt-2">
                     <i class="fas fa-info-circle me-1"></i> Este código é de <strong>uso único</strong> e expira em 30 minutos. 
-                    Gerar um novo código invalidará este automaticamente.
                 </div>
-                <button class="btn btn-outline-primary w-100 fw-bold mt-3" onclick="navigator.clipboard.writeText('<?= $code ?>'); this.innerText='COPIADO!';">
+                <button class="btn btn-outline-primary w-100 fw-bold mt-4" onclick="navigator.clipboard.writeText('<?= $code ?>'); this.innerText='COPIADO!';">
                     <i class="fas fa-copy me-2"></i>COPIAR CÓDIGO
                 </button>
-                <a href="login.php" class="btn btn-link w-100 text-muted small mt-2">Voltar ao Login</a>
+                <div class="mt-4">
+                    <a href="login.php" class="text-muted small text-decoration-none"><i class="fas fa-arrow-left me-1"></i> Voltar ao Login</a>
+                </div>
             </div>
         <?php else: ?>
             <form method="POST">
                 <input type="hidden" name="action" value="auth">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">SUA UNIDADE ADM</label>
+                <div class="mb-4">
+                    <label class="form-label">SUA UNIDADE ADM</label>
                     <select name="filial_id" class="form-select" required>
                         <?php foreach ($branches as $b): ?>
                             <option value="<?= $b['id'] ?>"><?= $b['nome'] ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">E-MAIL DO ADMINISTRADOR</label>
+                <div class="mb-4">
+                    <label class="form-label">E-MAIL DO ADMINISTRADOR</label>
                     <input type="email" name="email" class="form-control" placeholder="seu-email@adm.com" required>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">SENHA</label>
+                <div class="mb-4">
+                    <label class="form-label">SENHA</label>
                     <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
                 </div>
-                <hr>
-                <div class="row g-2 mb-4">
+                
+                <hr class="my-4">
+                
+                <div class="row g-3 mb-4">
                     <div class="col-6">
-                        <label class="form-label small fw-bold">UNIDADE DESTINO</label>
+                        <label class="form-label">UNIDADE DESTINO</label>
                         <select name="unidade_alvo" class="form-select form-select-sm" required>
                              <?php foreach ($branches as $b): ?>
                                 <option value="<?= $b['id'] ?>"><?= $b['nome'] ?></option>
@@ -97,19 +264,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                         </select>
                     </div>
                     <div class="col-6">
-                        <label class="form-label small fw-bold">TIPO DE OPERAÇÃO</label>
+                        <label class="form-label">TIPO DE OPERAÇÃO</label>
                         <select name="tipo" class="form-select form-select-sm" required>
-                            <option value="geral">Qualquer Operação</option>
-                            <option value="sangria">Sangria de Caixa</option>
-                            <option value="suprimento">Suprimento de Caixa</option>
-                            <option value="desconto">Desconto Especial</option>
+                            <option value="geral">Qualquer</option>
+                            <option value="sangria">Sangria</option>
+                            <option value="suprimento">Suprimento</option>
+                            <option value="desconto">Desconto</option>
                         </select>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold">
+                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm">
                     GERAR CÓDIGO DE ACESSO <i class="fas fa-key ms-1"></i>
                 </button>
-                <a href="login.php" class="btn btn-link w-100 text-muted small mt-2">Cancelar e Voltar</a>
+                <div class="mt-4 text-center">
+                    <a href="login.php" class="text-muted small text-decoration-none"><i class="fas fa-arrow-left me-1"></i> Cancelar e Voltar</a>
+                </div>
             </form>
         <?php endif; ?>
     </div>
