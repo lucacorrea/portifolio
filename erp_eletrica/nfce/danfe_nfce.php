@@ -245,6 +245,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 
 <div class="actions">
     <button class="btn btn-secondary" onclick="window.history.back()">Voltar</button>
+    <a class="btn btn-secondary" href="danfe_a4.php?id=<?= urlencode($empresaIdUrl) ?>&venda_id=<?= (int)$vendaIdUrl ?>&chave=<?= urlencode($chave) ?>" target="_blank">Modelo SEFAZ (A4)</a>
     <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
 </div>
 
