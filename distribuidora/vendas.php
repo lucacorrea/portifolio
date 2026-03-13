@@ -2030,7 +2030,7 @@ function fmtMoney($v): string
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
             <h5 class="modal-title" style="color: #fff !important;">Venda À Prazo - Entrada</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="color: #fff !important;"></button>
           </div>
           <div class="modal-body">
             <p>Deseja registrar uma entrada para esta venda?</p>
