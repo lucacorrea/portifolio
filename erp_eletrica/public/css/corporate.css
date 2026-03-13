@@ -291,6 +291,23 @@ body {
     background-color: var(--erp-primary) !important;
 }
 
+/* Header Text and Badge Refinement */
+.erp-user-name {
+    color: #f8fafc !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: subpixel-antialiased !important;
+    letter-spacing: 0.2px;
+}
+
+.erp-user-badge {
+    background: rgba(199, 152, 2, 0.15) !important;
+    color: #c79802 !important;
+    border: 1px solid rgba(199, 152, 2, 0.3) !important;
+    padding: 0.4em 0.8em !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+}
+
 /* Neutralize all light/white backgrounds */
 .bg-light,
 .bg-white,
