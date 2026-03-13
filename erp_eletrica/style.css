@@ -113,9 +113,14 @@ body {
     border-radius: var(--radius-md);
     box-shadow: none;
     margin-bottom: 30px;
-    overflow: hidden;
+    overflow: visible !important; /* Allow search dropdowns to overflow */
     border: 1px solid var(--border);
     transition: none !important;
+}
+
+/* Icons visibility */
+.bg-opacity-10 i, .bg-opacity-25 i, .rounded-circle i {
+    color: #ffffff !important;
 }
 
 .card-header {
