@@ -56,12 +56,13 @@ function ensure_dir(string $absDir): bool
 }
 
 /* Feira padrão desta página */
-$FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa
+$FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa | 3=Mercado Municipal
 
 /* Detecção opcional pela pasta */
 $dirLower = strtolower((string)__DIR__);
 if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
 if (strpos($dirLower, 'produtor') !== false) $FEIRA_ID = 1;
+if (strpos($dirLower, 'mercado') !== false) $FEIRA_ID = 3;
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
@@ -76,13 +77,15 @@ $csrf = (string)$_SESSION['csrf_token'];
 
 $pdo = db();
 
-/* ===== Comunidades (para o SELECT) ===== */
+/* ===== Comunidades / Bairros (para o SELECT agrupado) ===== */
 $comunidades = [];
 try {
-  $sqlC = "SELECT id, nome
+  $sqlC = "SELECT id, nome, tipo
            FROM comunidades
            WHERE feira_id = :feira AND ativo = 1
-           ORDER BY nome ASC";
+           ORDER BY
+             CASE WHEN UPPER(COALESCE(tipo,'')) = 'BAIRRO' THEN 0 ELSE 1 END,
+             nome ASC";
   $stC = $pdo->prepare($sqlC);
   $stC->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
   $stC->execute();
@@ -91,30 +94,28 @@ try {
   $comunidades = [];
 }
 
+/* Separa bairros e comunidades para optgroup */
+$bairrosLista = [];
+$comunidadesLista = [];
+
+foreach ($comunidades as $c) {
+  if (strtoupper((string)($c['tipo'] ?? '')) === 'BAIRRO') {
+    $bairrosLista[] = $c;
+  } else {
+    $comunidadesLista[] = $c;
+  }
+}
+
 /* Valores antigos */
 $old = [
   'nome'          => '',
-  'tipo'          => 'Mercado Municipal',
+  'tipo'          => 'FEIRANTE',
   'documento'     => '',
   'contato'       => '',
   'comunidade_id' => '',
   'ativo'         => '1',
   'observacao'    => '',
 ];
-$bairros = [];
-$comunidadesLista = [];
-
-foreach ($comunidades as $c) {
-    if (($c['tipo'] ?? '') === 'BAIRRO') {
-        $bairros[] = $c;
-    } else {
-        $comunidadesLista[] = $c;
-    }
-}
-
-if ($bairroId <= 0 && $comunidadeId <= 0) {
-  $msgErro = 'Selecione um bairro ou uma comunidade.';
-}
 
 /* Upload (base64 da câmera via navegador) */
 $BASE_DIR = realpath(__DIR__ . '/../../../');
@@ -135,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   $old['nome']          = trim((string)($_POST['nome'] ?? ''));
-  $old['tipo']          = trim((string)($_POST['tipo'] ?? 'PRODUTOR RURAL'));
+  $old['tipo']          = trim((string)($_POST['tipo'] ?? 'FEIRANTE'));
   $old['documento']     = trim((string)($_POST['documento'] ?? ''));
   $old['contato']       = trim((string)($_POST['contato'] ?? ''));
   $old['comunidade_id'] = trim((string)($_POST['comunidade_id'] ?? ''));
@@ -143,19 +144,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $old['observacao']    = trim((string)($_POST['observacao'] ?? ''));
 
   if (!in_array($old['tipo'], $tiposValidos, true)) {
-    $old['tipo'] = 'PRODUTOR RURAL';
+    $old['tipo'] = 'FEIRANTE';
   }
 
   if ($old['nome'] === '') {
     $err = 'Informe o nome do produtor.';
   } elseif ($old['comunidade_id'] === '' || !ctype_digit($old['comunidade_id'])) {
-    $err = 'Selecione a comunidade do produtor.';
+    $err = 'Selecione a localidade do produtor.';
   } else {
     $nome = trunc255($old['nome']);
     $tipo = $old['tipo'];
     $contato = trunc255($old['contato']);
 
-    // documento: salva somente dígitos
+    /* documento: salva somente dígitos */
     $docDigits = only_digits($old['documento']);
     $documento = $docDigits !== '' ? trunc255($docDigits) : null;
 
@@ -169,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_POST['foto_base64'])) {
       $dataUrl = (string)$_POST['foto_base64'];
 
-      if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl, $m) !== 1) {
+      if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl) !== 1) {
         $err = 'Foto inválida (formato não suportado).';
       } else {
         $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
@@ -200,9 +201,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($err === '') {
       try {
-        $chk = $pdo->prepare("SELECT COUNT(*)
-                              FROM comunidades
-                              WHERE id = :id AND feira_id = :feira AND ativo = 1");
+        $chk = $pdo->prepare("
+          SELECT COUNT(*)
+          FROM comunidades
+          WHERE id = :id
+            AND feira_id = :feira
+            AND ativo = 1
+        ");
         $chk->bindValue(':id', $comunidadeId, PDO::PARAM_INT);
         $chk->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
         $chk->execute();
@@ -212,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           if ($fotoDbValue) {
             @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
           }
-          $err = 'Comunidade inválida (não encontrada ou inativa).';
+          $err = 'Localidade inválida (não encontrada ou inativa).';
         } else {
           $sql = "INSERT INTO produtores
                     (feira_id, nome, tipo, contato, comunidade_id, documento, foto, ativo, observacao)
@@ -243,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
   }
-
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
