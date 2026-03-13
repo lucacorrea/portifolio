@@ -607,15 +607,15 @@ input[type="file"]::file-selector-button:hover {
 
 /* Table Multi-state Clean-up (Dark Mode) */
 .table-warning {
-    --bs-table-bg: rgba(199, 152, 2, 0.12) !important;
+    --bs-table-bg: rgba(199, 152, 2, 0.15) !important;
     --bs-table-color: #f8fafc !important;
-    --bs-table-border-color: rgba(199, 152, 2, 0.2) !important;
+    --bs-table-border-color: rgba(199, 152, 2, 0.25) !important;
 }
 
 .table-danger {
-    --bs-table-bg: rgba(239, 68, 68, 0.12) !important;
+    --bs-table-bg: rgba(239, 68, 68, 0.18) !important;
     --bs-table-color: #f8fafc !important;
-    --bs-table-border-color: rgba(239, 68, 68, 0.2) !important;
+    --bs-table-border-color: rgba(239, 68, 68, 0.31) !important;
 }
 
 .table-success {
