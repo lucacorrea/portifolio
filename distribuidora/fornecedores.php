@@ -13,21 +13,16 @@ function e(string $s): string
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function build_url(array $overrides = []): string
+function json_out(array $payload, int $code = 200): void
 {
-  $params = $_GET;
-  unset($params['export']);
-
-  foreach ($overrides as $k => $v) {
-    if ($v === null || $v === '') {
-      unset($params[$k]);
-    } else {
-      $params[$k] = (string)$v;
-    }
+  if (function_exists('ob_get_length') && ob_get_length()) {
+    @ob_clean();
   }
-
-  $qs = http_build_query($params);
-  return 'fornecedores.php' . ($qs ? ('?' . $qs) : '');
+  http_response_code($code);
+  header('Content-Type: application/json; charset=UTF-8');
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  exit;
 }
 
 function fmt_text(?string $v): string
@@ -54,17 +49,117 @@ function badge_status_html(string $status): string
   return '<span class="badge-soft badge-off">INATIVO</span>';
 }
 
-// CSRF
+function fetch_fornecedores_page(PDO $pdo, string $q, string $status, int $page, int $perPage = 10): array
+{
+  $page = max(1, $page);
+
+  $where = [];
+  $params = [];
+
+  if ($status !== '') {
+    $where[] = "f.status = :status";
+    $params[':status'] = $status;
+  }
+
+  if ($q !== '') {
+    $where[] = "(
+      CAST(f.id AS CHAR) LIKE :q
+      OR f.nome LIKE :q
+      OR f.doc LIKE :q
+      OR f.tel LIKE :q
+      OR f.email LIKE :q
+      OR f.endereco LIKE :q
+      OR f.cidade LIKE :q
+      OR f.uf LIKE :q
+      OR f.contato LIKE :q
+      OR f.obs LIKE :q
+      OR f.status LIKE :q
+    )";
+    $params[':q'] = '%' . $q . '%';
+  }
+
+  $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+  $sqlCount = "SELECT COUNT(*) FROM fornecedores f $whereSql";
+  $stCount = $pdo->prepare($sqlCount);
+  foreach ($params as $k => $v) {
+    $stCount->bindValue($k, $v, PDO::PARAM_STR);
+  }
+  $stCount->execute();
+  $totalRows = (int)$stCount->fetchColumn();
+
+  $pages = max(1, (int)ceil($totalRows / $perPage));
+  if ($page > $pages) $page = $pages;
+  $offset = ($page - 1) * $perPage;
+
+  $sql = "
+    SELECT
+      f.id, f.nome, f.status, f.doc, f.tel, f.email,
+      f.endereco, f.cidade, f.uf, f.contato, f.obs
+    FROM fornecedores f
+    $whereSql
+    ORDER BY f.id DESC
+    LIMIT :lim OFFSET :off
+  ";
+
+  $st = $pdo->prepare($sql);
+  foreach ($params as $k => $v) {
+    $st->bindValue($k, $v, PDO::PARAM_STR);
+  }
+  $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
+  $st->bindValue(':off', $offset, PDO::PARAM_INT);
+  $st->execute();
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $outRows = [];
+  foreach ($rows as $r) {
+    $statusRow = strtoupper((string)($r['status'] ?? 'ATIVO')) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+
+    $outRows[] = [
+      'id'       => (int)($r['id'] ?? 0),
+      'nome'     => (string)($r['nome'] ?? ''),
+      'status'   => $statusRow,
+      'doc'      => (string)($r['doc'] ?? ''),
+      'tel'      => (string)($r['tel'] ?? ''),
+      'email'    => (string)($r['email'] ?? ''),
+      'endereco' => (string)($r['endereco'] ?? ''),
+      'cidade'   => (string)($r['cidade'] ?? ''),
+      'uf'       => (string)($r['uf'] ?? ''),
+      'contato'  => (string)($r['contato'] ?? ''),
+      'obs'      => (string)($r['obs'] ?? ''),
+    ];
+  }
+
+  return [
+    'meta' => [
+      'q'      => $q,
+      'status' => $status,
+      'page'   => $page,
+      'pages'  => $pages,
+      'total'  => $totalRows,
+      'shown'  => count($outRows),
+      'per'    => $perPage,
+    ],
+    'rows' => $outRows,
+  ];
+}
+
+function fetch_all_fornecedores(PDO $pdo, string $q, string $status): array
+{
+  return fetch_fornecedores_page($pdo, $q, $status, 1, 999999)['rows'];
+}
+
+/* =========================
+   CSRF / FLASH / FILTROS
+========================= */
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = $_SESSION['csrf_token'];
 
-// Flash
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 
-// Filtros
 $q = trim((string)($_GET['q'] ?? ''));
 $status = strtoupper(trim((string)($_GET['status'] ?? '')));
 $status = ($status === 'ATIVO' || $status === 'INATIVO') ? $status : '';
@@ -73,164 +168,144 @@ $page = (int)($_GET['page'] ?? 1);
 if ($page < 1) $page = 1;
 
 $PER_PAGE = 10;
-
 $pdo = db();
 
-$where = [];
-$params = [];
+/* =========================
+   AJAX
+========================= */
+$action = strtolower(trim((string)($_GET['action'] ?? '')));
+if ($action === 'ajax') {
+  try {
+    $ajaxQ = trim((string)($_GET['q'] ?? ''));
+    $ajaxStatus = strtoupper(trim((string)($_GET['status'] ?? '')));
+    $ajaxStatus = ($ajaxStatus === 'ATIVO' || $ajaxStatus === 'INATIVO') ? $ajaxStatus : '';
+    $ajaxPage = (int)($_GET['page'] ?? 1);
+    if ($ajaxPage < 1) $ajaxPage = 1;
 
-if ($status !== '') {
-  $where[] = "f.status = :status";
-  $params[':status'] = $status;
+    $data = fetch_fornecedores_page($pdo, $ajaxQ, $ajaxStatus, $ajaxPage, $PER_PAGE);
+    json_out(['ok' => true] + $data);
+  } catch (Throwable $e) {
+    json_out(['ok' => false, 'msg' => 'Erro no AJAX: ' . $e->getMessage()], 500);
+  }
 }
-
-if ($q !== '') {
-  $where[] = "(
-    f.nome LIKE :q
-    OR f.doc LIKE :q
-    OR f.tel LIKE :q
-    OR f.email LIKE :q
-    OR f.endereco LIKE :q
-    OR f.cidade LIKE :q
-    OR f.uf LIKE :q
-    OR f.contato LIKE :q
-    OR f.obs LIKE :q
-  )";
-  $params[':q'] = '%' . $q . '%';
-}
-
-$whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
 /* =========================
    EXPORTAR EXCEL
 ========================= */
 if (isset($_GET['export']) && $_GET['export'] === 'excel') {
-  $sqlExcel = "
-    SELECT
-      f.id, f.nome, f.status, f.doc, f.tel, f.email,
-      f.endereco, f.cidade, f.uf, f.contato, f.obs
-    FROM fornecedores f
-    $whereSql
-    ORDER BY f.id DESC
-  ";
-  $stExcel = $pdo->prepare($sqlExcel);
-  foreach ($params as $k => $v) {
-    $stExcel->bindValue($k, $v, PDO::PARAM_STR);
-  }
-  $stExcel->execute();
-  $excelRows = $stExcel->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  $excelRows = fetch_all_fornecedores($pdo, $q, $status);
 
   $filename = 'fornecedores_' . date('Y-m-d_H-i-s') . '.xls';
+  $geradoEm = date('d/m/Y H:i:s');
+  $statusLabel = $status !== '' ? $status : 'Todos';
+  $buscaLabel = $q !== '' ? $q : '—';
 
   header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
   header('Content-Disposition: attachment; filename="' . $filename . '"');
   header('Cache-Control: max-age=0');
 
-  $statusLabel = $status !== '' ? $status : 'Todos';
-  $buscaLabel = $q !== '' ? $q : '—';
-  $geradoEm = date('d/m/Y H:i:s');
-
   echo "\xEF\xBB\xBF";
-  ?>
-  <html>
-  <head>
-    <meta charset="UTF-8">
-    <style>
-      table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; width: 100%; }
-      td, th { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; white-space: nowrap; }
-      th { background: #f2f2f2; font-weight: bold; text-align: center; }
-      .title { font-size: 18px; font-weight: bold; text-align: center; background: #ffffff; }
-      .sub { text-align: center; font-weight: bold; }
-      .left { text-align: left; }
-      .center { text-align: center; }
-    </style>
-  </head>
-  <body>
-    <table>
-      <tr>
-        <td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - FORNECEDORES</td>
-      </tr>
-      <tr>
-        <td class="sub" colspan="8">Gerado em: <?= e($geradoEm) ?></td>
-      </tr>
-      <tr>
-        <td class="sub" colspan="8">Status: <?= e($statusLabel) ?> | Busca: <?= e($buscaLabel) ?></td>
-      </tr>
-      <tr>
-        <th>ID</th>
-        <th>Fornecedor</th>
-        <th>Documento</th>
-        <th>Telefone</th>
-        <th>E-mail</th>
-        <th>Cidade/UF</th>
-        <th>Contato</th>
-        <th>Status</th>
-      </tr>
+?>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    table {
+      border-collapse: collapse;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      width: auto;
+    }
 
-      <?php if (!$excelRows): ?>
+    td, th {
+      border: 1px solid #000;
+      padding: 4px 6px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #ffffff;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .sub {
+      text-align: center;
+      font-weight: normal;
+    }
+
+    .left {
+      text-align: left;
+    }
+
+    .center {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <table>
+    <tr>
+      <td class="title" colspan="8">PAINEL DA DISTRIBUIDORA - FORNECEDORES</td>
+    </tr>
+    <tr>
+      <td class="sub" colspan="8">Gerado em: <?= e($geradoEm) ?></td>
+    </tr>
+    <tr>
+      <td class="sub" colspan="8">Busca: <?= e($buscaLabel) ?> | Status: <?= e($statusLabel) ?></td>
+    </tr>
+    <tr>
+      <th>ID</th>
+      <th>Fornecedor</th>
+      <th>Documento</th>
+      <th>Telefone</th>
+      <th>E-mail</th>
+      <th>Cidade/UF</th>
+      <th>Contato</th>
+      <th>Status</th>
+    </tr>
+
+    <?php if (!$excelRows): ?>
+      <tr>
+        <td colspan="8" class="center">Nenhum fornecedor encontrado.</td>
+      </tr>
+    <?php else: ?>
+      <?php foreach ($excelRows as $r): ?>
         <tr>
-          <td colspan="8" class="center">Nenhum fornecedor encontrado.</td>
+          <td class="center"><?= (int)$r['id'] ?></td>
+          <td class="left"><?= e((string)$r['nome']) ?></td>
+          <td class="left"><?= e(fmt_text((string)$r['doc'])) ?></td>
+          <td class="left"><?= e(fmt_text((string)$r['tel'])) ?></td>
+          <td class="left"><?= e(fmt_text((string)$r['email'])) ?></td>
+          <td class="left"><?= e(fmt_loc((string)$r['cidade'], (string)$r['uf'])) ?></td>
+          <td class="left"><?= e(fmt_text((string)$r['contato'])) ?></td>
+          <td class="center"><?= e((string)$r['status']) ?></td>
         </tr>
-      <?php else: ?>
-        <?php foreach ($excelRows as $r): ?>
-          <tr>
-            <td class="center"><?= (int)$r['id'] ?></td>
-            <td class="left"><?= e((string)$r['nome']) ?></td>
-            <td class="left"><?= e(fmt_text((string)($r['doc'] ?? ''))) ?></td>
-            <td class="left"><?= e(fmt_text((string)($r['tel'] ?? ''))) ?></td>
-            <td class="left"><?= e(fmt_text((string)($r['email'] ?? ''))) ?></td>
-            <td class="left"><?= e(fmt_loc((string)($r['cidade'] ?? ''), (string)($r['uf'] ?? ''))) ?></td>
-            <td class="left"><?= e(fmt_text((string)($r['contato'] ?? ''))) ?></td>
-            <td class="center"><?= e(strtoupper((string)($r['status'] ?? 'ATIVO')) ?: 'ATIVO') ?></td>
-          </tr>
-        <?php endforeach; ?>
-      <?php endif; ?>
-    </table>
-  </body>
-  </html>
-  <?php
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </table>
+</body>
+</html>
+<?php
   exit;
 }
 
 /* =========================
-   CONTAGEM
+   PRIMEIRA CARGA
 ========================= */
-$sqlCount = "SELECT COUNT(*) FROM fornecedores f $whereSql";
-$stCount = $pdo->prepare($sqlCount);
-foreach ($params as $k => $v) {
-  $stCount->bindValue($k, $v, PDO::PARAM_STR);
-}
-$stCount->execute();
-$totalRows = (int)$stCount->fetchColumn();
-
-$pages = max(1, (int)ceil($totalRows / $PER_PAGE));
-if ($page > $pages) $page = $pages;
-
-$offset = ($page - 1) * $PER_PAGE;
-
-/* =========================
-   LISTAGEM PAGINADA
-========================= */
-$sql = "
-  SELECT
-    f.id, f.nome, f.status, f.doc, f.tel, f.email,
-    f.endereco, f.cidade, f.uf, f.contato, f.obs
-  FROM fornecedores f
-  $whereSql
-  ORDER BY f.id DESC
-  LIMIT :lim OFFSET :off
-";
-
-$st = $pdo->prepare($sql);
-foreach ($params as $k => $v) {
-  $st->bindValue($k, $v, PDO::PARAM_STR);
-}
-$st->bindValue(':lim', $PER_PAGE, PDO::PARAM_INT);
-$st->bindValue(':off', $offset, PDO::PARAM_INT);
-$st->execute();
-$rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-$currentCount = count($rows);
+$initialData = fetch_fornecedores_page($pdo, $q, $status, $page, $PER_PAGE);
+$totalRows = (int)$initialData['meta']['total'];
+$pages = (int)$initialData['meta']['pages'];
+$currentCount = (int)$initialData['meta']['shown'];
+$rows = $initialData['rows'];
+$page = (int)$initialData['meta']['page'];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -417,8 +492,7 @@ $currentCount = count($rows);
       flex-wrap: wrap;
     }
 
-    .page-btn,
-    .page-btn-link {
+    .page-btn {
       width: 42px;
       height: 42px;
       border: 1px solid #e5e7eb;
@@ -428,11 +502,10 @@ $currentCount = count($rows);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      text-decoration: none !important;
       transition: .2s ease;
     }
 
-    .page-btn-link:hover {
+    .page-btn:hover:not(:disabled) {
       background: #eef2ff;
       color: #1e40af;
       border-color: #c7d2fe;
@@ -672,6 +745,7 @@ $currentCount = count($rows);
                 <i class="lni lni-users me-1"></i> Lista
               </div>
               <span class="badge-soft" id="countBadge"><?= $totalRows ?> fornecedor(es)</span>
+              <span class="badge-soft" id="pillLoading" style="display:none;">Carregando...</span>
             </div>
 
             <div class="d-flex gap-2 flex-wrap align-items-center">
@@ -690,9 +764,9 @@ $currentCount = count($rows);
                 <option value="INATIVO" <?= $status === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
               </select>
 
-              <a class="main-btn light-btn btn-hover btn-compact" href="<?= e(build_url(['export' => 'excel', 'page' => 1])) ?>">
+              <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
                 <i class="lni lni-download me-1"></i> Exportar Excel
-              </a>
+              </button>
 
               <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
                 <i class="lni lni-eraser me-1"></i> Limpar
@@ -706,7 +780,7 @@ $currentCount = count($rows);
                 <input class="form-control compact" id="qFor" value="<?= e($q) ?>" placeholder="Buscar por nome, CNPJ/CPF, telefone, e-mail..." />
               </div>
               <div class="col-12 col-lg-6 text-lg-end">
-                <div class="muted">Atalho: <b>Enter</b> para buscar • Clique em <b>Editar</b> para alterar.</div>
+                <div class="muted">Pesquisa em tempo real via AJAX enquanto digita.</div>
               </div>
             </div>
 
@@ -731,29 +805,25 @@ $currentCount = count($rows);
                     </tr>
                   <?php else: ?>
                     <?php foreach ($rows as $r): ?>
-                      <?php
-                        $id = (int)$r['id'];
-                        $stx = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
-                      ?>
                       <tr
-                        data-id="<?= $id ?>"
+                        data-id="<?= (int)$r['id'] ?>"
                         data-nome="<?= e((string)$r['nome']) ?>"
-                        data-status="<?= e($stx) ?>"
-                        data-doc="<?= e((string)($r['doc'] ?? '')) ?>"
-                        data-tel="<?= e((string)($r['tel'] ?? '')) ?>"
-                        data-email="<?= e((string)($r['email'] ?? '')) ?>"
-                        data-endereco="<?= e((string)($r['endereco'] ?? '')) ?>"
-                        data-cidade="<?= e((string)($r['cidade'] ?? '')) ?>"
-                        data-uf="<?= e((string)($r['uf'] ?? '')) ?>"
-                        data-contato="<?= e((string)($r['contato'] ?? '')) ?>"
-                        data-obs="<?= e((string)($r['obs'] ?? '')) ?>">
-                        <td style="font-weight:1000;color:#0f172a;"><?= $id ?></td>
+                        data-status="<?= e((string)$r['status']) ?>"
+                        data-doc="<?= e((string)$r['doc']) ?>"
+                        data-tel="<?= e((string)$r['tel']) ?>"
+                        data-email="<?= e((string)$r['email']) ?>"
+                        data-endereco="<?= e((string)$r['endereco']) ?>"
+                        data-cidade="<?= e((string)$r['cidade']) ?>"
+                        data-uf="<?= e((string)$r['uf']) ?>"
+                        data-contato="<?= e((string)$r['contato']) ?>"
+                        data-obs="<?= e((string)$r['obs']) ?>">
+                        <td style="font-weight:1000;color:#0f172a;"><?= (int)$r['id'] ?></td>
                         <td>
                           <div style="font-weight:1000;color:#0f172a;line-height:1.1;"><?= e((string)$r['nome']) ?></div>
                           <div class="muted"><?= e(trim((string)$r['contato']) ?: '—') ?></div>
                         </td>
-                        <td><?= e(fmt_text((string)($r['doc'] ?? ''))) ?></td>
-                        <td><?= e(fmt_text((string)($r['tel'] ?? ''))) ?></td>
+                        <td><?= e(fmt_text((string)$r['doc'])) ?></td>
+                        <td><?= e(fmt_text((string)$r['tel'])) ?></td>
                         <td>
                           <?php if (trim((string)$r['email']) !== ''): ?>
                             <a class="link-mini" href="mailto:<?= e((string)$r['email']) ?>"><?= e((string)$r['email']) ?></a>
@@ -761,8 +831,8 @@ $currentCount = count($rows);
                             —
                           <?php endif; ?>
                         </td>
-                        <td><?= e(fmt_loc((string)($r['cidade'] ?? ''), (string)($r['uf'] ?? ''))) ?></td>
-                        <td class="text-center"><?= badge_status_html($stx) ?></td>
+                        <td><?= e(fmt_loc((string)$r['cidade'], (string)$r['uf'])) ?></td>
+                        <td class="text-center"><?= badge_status_html((string)$r['status']) ?></td>
                         <td class="text-center">
                           <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdFornecedor">
                             <i class="lni lni-pencil me-1"></i> Editar
@@ -783,27 +853,15 @@ $currentCount = count($rows);
               </p>
 
               <div class="pager-box" id="pagerBox">
-                <?php if ($page > 1): ?>
-                  <a class="page-btn-link" href="<?= e(build_url(['page' => $page - 1])) ?>" title="Anterior">
-                    <i class="lni lni-chevron-left"></i>
-                  </a>
-                <?php else: ?>
-                  <button class="page-btn" type="button" disabled title="Anterior">
-                    <i class="lni lni-chevron-left"></i>
-                  </button>
-                <?php endif; ?>
+                <button class="page-btn" id="btnPrev" type="button" <?= $page <= 1 ? 'disabled' : '' ?> title="Anterior">
+                  <i class="lni lni-chevron-left"></i>
+                </button>
 
-                <span class="page-info">Página <?= $page ?>/<?= $pages ?></span>
+                <span class="page-info" id="pagerText">Página <?= $page ?>/<?= $pages ?></span>
 
-                <?php if ($page < $pages): ?>
-                  <a class="page-btn-link" href="<?= e(build_url(['page' => $page + 1])) ?>" title="Próxima">
-                    <i class="lni lni-chevron-right"></i>
-                  </a>
-                <?php else: ?>
-                  <button class="page-btn" type="button" disabled title="Próxima">
-                    <i class="lni lni-chevron-right"></i>
-                  </button>
-                <?php endif; ?>
+                <button class="page-btn" id="btnNext" type="button" <?= $page >= $pages ? 'disabled' : '' ?> title="Próxima">
+                  <i class="lni lni-chevron-right"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -927,48 +985,164 @@ $currentCount = count($rows);
       }, 4500);
     })();
 
-    const qFor = document.getElementById("qFor");
-    const fStatus = document.getElementById("fStatus");
-    const btnLimpar = document.getElementById("btnLimpar");
-    const btnNovo = document.getElementById("btnNovo");
-    const tbodyFor = document.getElementById("tbodyFor");
+    const $ = (id) => document.getElementById(id);
 
-    const mdTitle = document.getElementById("mdTitle");
-    const mdSub = document.getElementById("mdSub");
+    const qFor = $("qFor");
+    const fStatus = $("fStatus");
+    const btnLimpar = $("btnLimpar");
+    const btnNovo = $("btnNovo");
+    const btnExcel = $("btnExcel");
+    const tbodyFor = $("tbodyFor");
+    const hintEmpty = $("hintEmpty");
+    const countBadge = $("countBadge");
+    const infoCount = $("infoCount");
+    const pagerText = $("pagerText");
+    const btnPrev = $("btnPrev");
+    const btnNext = $("btnNext");
+    const pillLoading = $("pillLoading");
 
-    const fId = document.getElementById("fId");
-    const fNome = document.getElementById("fNome");
-    const fStatusEdit = document.getElementById("fStatusEdit");
-    const fDoc = document.getElementById("fDoc");
-    const fTel = document.getElementById("fTel");
-    const fEmail = document.getElementById("fEmail");
-    const fEnd = document.getElementById("fEnd");
-    const fCidade = document.getElementById("fCidade");
-    const fUF = document.getElementById("fUF");
-    const fContato = document.getElementById("fContato");
-    const fObs = document.getElementById("fObs");
+    const mdTitle = $("mdTitle");
+    const mdSub = $("mdSub");
 
-    const btnExcluir = document.getElementById("btnExcluir");
-    const frmDelete = document.getElementById("frmDelete");
-    const delId = document.getElementById("delId");
+    const fId = $("fId");
+    const fNome = $("fNome");
+    const fStatusEdit = $("fStatusEdit");
+    const fDoc = $("fDoc");
+    const fTel = $("fTel");
+    const fEmail = $("fEmail");
+    const fEnd = $("fEnd");
+    const fCidade = $("fCidade");
+    const fUF = $("fUF");
+    const fContato = $("fContato");
+    const fObs = $("fObs");
 
-    function applyFilters(resetPage = true) {
-      const params = new URLSearchParams(window.location.search);
-      const q = (qFor.value || '').trim();
-      const st = (fStatus.value || '').trim();
+    const btnExcluir = $("btnExcluir");
+    const frmDelete = $("frmDelete");
+    const delId = $("delId");
 
-      if (q) params.set('q', q);
-      else params.delete('q');
+    const state = {
+      q: <?= json_encode($q, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      status: <?= json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      page: <?= (int)$page ?>,
+      pages: <?= (int)$pages ?>,
+      total: <?= (int)$totalRows ?>
+    };
 
-      if (st) params.set('status', st);
-      else params.delete('status');
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
 
-      if (resetPage) params.set('page', '1');
+    function fmtTextJs(v) {
+      const s = String(v ?? '').trim();
+      return s !== '' ? s : '—';
+    }
 
-      params.delete('export');
+    function fmtLocJs(cidade, uf) {
+      const c = String(cidade ?? '').trim();
+      const u = String(uf ?? '').trim();
+      return (c || u) ? (c + (u ? ' / ' + u : '')) : '—';
+    }
 
-      const url = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
-      window.location.href = url;
+    function badgeStatusHtml(status) {
+      const st = String(status || '').toUpperCase() === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+      if (st === 'ATIVO') {
+        return '<span class="badge-soft badge-ok">ATIVO</span>';
+      }
+      return '<span class="badge-soft badge-off">INATIVO</span>';
+    }
+
+    function setLoading(on) {
+      if (pillLoading) {
+        pillLoading.style.display = on ? 'inline-flex' : 'none';
+      }
+    }
+
+    function syncUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('action');
+      url.searchParams.delete('export');
+
+      if (state.q) url.searchParams.set('q', state.q);
+      else url.searchParams.delete('q');
+
+      if (state.status) url.searchParams.set('status', state.status);
+      else url.searchParams.delete('status');
+
+      url.searchParams.set('page', String(state.page));
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    function updateExcelAction() {
+      btnExcel.onclick = () => {
+        const params = new URLSearchParams();
+        params.set('export', 'excel');
+        if (state.q) params.set('q', state.q);
+        if (state.status) params.set('status', state.status);
+        window.location.href = 'fornecedores.php?' + params.toString();
+      };
+    }
+
+    function renderMeta(meta) {
+      state.q = String(meta.q || '');
+      state.status = String(meta.status || '');
+      state.page = Number(meta.page || 1);
+      state.pages = Number(meta.pages || 1);
+      state.total = Number(meta.total || 0);
+
+      countBadge.textContent = `${state.total} fornecedor(es)`;
+      infoCount.textContent = `Mostrando ${Number(meta.shown || 0)} item(ns) nesta página de fornecedores. Total filtrado: ${state.total}.`;
+      pagerText.textContent = `Página ${state.page}/${state.pages}`;
+
+      btnPrev.disabled = state.page <= 1;
+      btnNext.disabled = state.page >= state.pages;
+
+      qFor.value = state.q;
+      fStatus.value = state.status;
+
+      syncUrl();
+      updateExcelAction();
+    }
+
+    function rowHtml(r) {
+      const email = String(r.email || '').trim();
+      const contato = fmtTextJs(r.contato);
+      const loc = fmtLocJs(r.cidade, r.uf);
+
+      return `
+        <tr
+          data-id="${Number(r.id || 0)}"
+          data-nome="${escapeHtml(r.nome || '')}"
+          data-status="${escapeHtml(r.status || 'ATIVO')}"
+          data-doc="${escapeHtml(r.doc || '')}"
+          data-tel="${escapeHtml(r.tel || '')}"
+          data-email="${escapeHtml(r.email || '')}"
+          data-endereco="${escapeHtml(r.endereco || '')}"
+          data-cidade="${escapeHtml(r.cidade || '')}"
+          data-uf="${escapeHtml(r.uf || '')}"
+          data-contato="${escapeHtml(r.contato || '')}"
+          data-obs="${escapeHtml(r.obs || '')}">
+          <td style="font-weight:1000;color:#0f172a;">${Number(r.id || 0)}</td>
+          <td>
+            <div style="font-weight:1000;color:#0f172a;line-height:1.1;">${escapeHtml(r.nome || '')}</div>
+            <div class="muted">${escapeHtml(contato)}</div>
+          </td>
+          <td>${escapeHtml(fmtTextJs(r.doc))}</td>
+          <td>${escapeHtml(fmtTextJs(r.tel))}</td>
+          <td>${email !== '' ? `<a class="link-mini" href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>` : '—'}</td>
+          <td>${escapeHtml(loc)}</td>
+          <td class="text-center">${badgeStatusHtml(r.status || 'ATIVO')}</td>
+          <td class="text-center">
+            <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdFornecedor">
+              <i class="lni lni-pencil me-1"></i> Editar
+            </button>
+          </td>
+        </tr>
+      `;
     }
 
     function openNew() {
@@ -1013,6 +1187,47 @@ $currentCount = count($rows);
       frmDelete.style.display = "block";
     }
 
+    async function loadAjax() {
+      setLoading(true);
+
+      const params = new URLSearchParams({
+        action: 'ajax',
+        q: state.q,
+        status: state.status,
+        page: String(state.page)
+      });
+
+      try {
+        const res = await fetch('fornecedores.php?' + params.toString(), {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!data || !data.ok) {
+          tbodyFor.innerHTML = `<tr><td colspan="8" class="text-center muted py-4">Erro ao carregar fornecedores.</td></tr>`;
+          hintEmpty.style.display = '';
+          return;
+        }
+
+        renderMeta(data.meta || {});
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+
+        tbodyFor.innerHTML = rows.length
+          ? rows.map(rowHtml).join('')
+          : `<tr><td colspan="8" class="text-center muted py-4">Nenhum fornecedor encontrado.</td></tr>`;
+
+        hintEmpty.style.display = rows.length ? 'none' : '';
+      } catch (e) {
+        tbodyFor.innerHTML = `<tr><td colspan="8" class="text-center muted py-4">Erro de rede/servidor. Tente novamente.</td></tr>`;
+        hintEmpty.style.display = '';
+      } finally {
+        setLoading(false);
+      }
+    }
+
     if (btnNovo) {
       btnNovo.addEventListener("click", () => {
         openNew();
@@ -1024,23 +1239,58 @@ $currentCount = count($rows);
       const btn = e.target.closest("[data-act='edit']");
       if (!btn) return;
       const tr = e.target.closest("tr");
-      if (!tr) return;
+      if (!tr || !tr.hasAttribute('data-id')) return;
       openEditFromTr(tr);
       setTimeout(() => fNome.focus(), 150);
     });
 
+    let searchTimer = null;
+
+    qFor.addEventListener("input", (e) => {
+      state.q = String(e.target.value || '').trim();
+      state.page = 1;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadAjax, 250);
+    });
+
     qFor.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        applyFilters(true);
+      if (e.key === "Escape") {
+        qFor.value = "";
+        state.q = "";
+        state.page = 1;
+        loadAjax();
       }
     });
 
-    fStatus.addEventListener("change", () => applyFilters(true));
+    fStatus.addEventListener("change", () => {
+      state.status = String(fStatus.value || '').trim();
+      state.page = 1;
+      loadAjax();
+    });
+
+    btnPrev.addEventListener("click", () => {
+      if (state.page <= 1) return;
+      state.page -= 1;
+      loadAjax();
+    });
+
+    btnNext.addEventListener("click", () => {
+      if (state.page >= state.pages) return;
+      state.page += 1;
+      loadAjax();
+    });
 
     btnLimpar.addEventListener("click", () => {
-      window.location.href = "fornecedores.php";
+      qFor.value = "";
+      fStatus.value = "";
+      state.q = "";
+      state.status = "";
+      state.page = 1;
+      loadAjax();
     });
+
+    updateExcelAction();
+    syncUrl();
   </script>
 </body>
 
