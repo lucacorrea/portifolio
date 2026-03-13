@@ -47,7 +47,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }],
         chart: {
             type: 'bar',
-            height: 350
+            height: 350,
+            background: 'transparent'
+        },
+        theme: {
+            mode: 'dark'
         },
         plotOptions: {
             bar: {
@@ -59,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
         xaxis: {
             categories: [<?php echo "'" . implode("','", array_column($produtos, 'nome')) . "'"; ?>],
         },
-        colors: ['#0d6efd']
+        colors: ['#fbbf24']
     };
 
     var chart = new ApexCharts(document.querySelector("#chartTopProdutos"), options);
