@@ -2,9 +2,8 @@
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar" id="sidebar">
-    <div class="p-4 d-flex align-items-center border-bottom border-secondary border-opacity-10 mb-2">
-        <i class="fas fa-bolt text-primary me-3 fs-3"></i>
-        <h5 class="mb-0 fw-bold tracking-wider">ERP ELÉTRICA</h5>
+    <div class="px-3 py-4 d-flex align-items-center justify-content-center border-bottom border-secondary border-opacity-10 mb-2">
+        <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 100%; height: auto; max-height: 80px;">
     </div>
     
     <nav class="nav flex-column sidebar-menu">

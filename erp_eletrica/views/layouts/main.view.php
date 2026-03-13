@@ -23,7 +23,7 @@
         
         <div class="main-wrapper">
             <!-- Top Navbar -->
-            <nav class="top-navbar px-4 shadow-sm border-0 mb-4 bg-white sticky-top">
+            <nav class="top-navbar px-4 border-0 mb-4 sticky-top">
                 <div class="d-flex align-items-center">
                     <button class="btn btn-light me-3 d-lg-none" id="sidebarToggle">
                         <i class="fas fa-bars"></i>
