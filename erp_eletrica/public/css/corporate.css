@@ -1,12 +1,12 @@
 :root {
     /* Dark Modern Palette (Neutral Black) */
-    --erp-primary: #d4af37;
+    --erp-primary: #c79802;
     /* Gold Ouro Escuro */
-    --erp-primary-hover: #c5a028;
+    --erp-primary-hover: #a67f02;
     --erp-secondary: #141414;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
-    --erp-warning: #d4af37;
+    --erp-warning: #c79802;
     --erp-dark: #0a0a0a;
     --erp-light: #141414;
     --erp-glass: rgba(10, 10, 10, 0.8);
@@ -32,12 +32,12 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #d4af37;
-    --bs-primary-rgb: 212, 175, 55;
-    --bs-link-color: #d4af37;
-    --bs-link-hover-color: #c5a028;
+    --bs-primary: #c79802;
+    --bs-primary-rgb: 199, 152, 2;
+    --bs-link-color: #c79802;
+    --bs-link-hover-color: #a67f02;
     --bs-body-bg: #0a0a0a;
-    --bs-warning: #d4af37;
+    --bs-warning: #c79802;
     --bs-body-color: #f8fafc;
 }
 
@@ -457,44 +457,44 @@ h6 {
 
 /* Bootstrap Warning Overrides in corporate.css */
 .btn-warning {
-    --bs-btn-bg: #d4af37 !important;
-    --bs-btn-border-color: #d4af37 !important;
-    --bs-btn-hover-bg: #c5a028 !important;
-    --bs-btn-hover-border-color: #c5a028 !important;
-    --bs-btn-active-bg: #c5a028 !important;
-    --bs-btn-active-border-color: #c5a028 !important;
-    --bs-btn-disabled-bg: #d4af37 !important;
-    --bs-btn-disabled-border-color: #d4af37 !important;
+    --bs-btn-bg: #c79802 !important;
+    --bs-btn-border-color: #c79802 !important;
+    --bs-btn-hover-bg: #a67f02 !important;
+    --bs-btn-hover-border-color: #a67f02 !important;
+    --bs-btn-active-bg: #a67f02 !important;
+    --bs-btn-active-border-color: #a67f02 !important;
+    --bs-btn-disabled-bg: #c79802 !important;
+    --bs-btn-disabled-border-color: #c79802 !important;
     color: #000 !important;
 }
 
 .btn-warning:hover,
 .btn-warning:focus,
 .btn-warning:active {
-    background-color: #c5a028 !important;
-    border-color: #c5a028 !important;
+    background-color: #a67f02 !important;
+    border-color: #a67f02 !important;
     color: #000 !important;
     box-shadow: none !important;
 }
 
 .text-warning {
-    color: #d4af37 !important;
+    color: #c79802 !important;
 }
 
 .border-warning {
-    border-color: #d4af37 !important;
+    border-color: #c79802 !important;
 }
 
 .bg-warning {
-    background-color: #d4af37 !important;
+    background-color: #c79802 !important;
 }
 
 .bg-opacity-10.text-warning {
-    background-color: rgba(212, 175, 55, 0.1) !important;
+    background-color: rgba(199, 152, 2, 0.1) !important;
 }
 
 .border-start.border-warning {
-    border-left-color: #d4af37 !important;
+    border-left-color: #c79802 !important;
 }
 
 /* File Input Styling */
