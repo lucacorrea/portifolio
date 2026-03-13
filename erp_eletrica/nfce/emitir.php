@@ -139,7 +139,7 @@ $nomeDest  = null;
 $docInput = soDig($_POST['cpf'] ?? '');
 if (strlen($docInput) === 11) {
     $cpf = $docInput;
-    // Tenta pegar o nome se veio via POST (cliente selecionado do banco)
+    // Tenta pegar the nome se veio via POST (cliente selecionado do banco)
     $nomePost = trim($_POST['nome_dest'] ?? '');
     if ($nomePost !== '') {
         $nomeDest = $nomePost;
@@ -305,20 +305,18 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .     '</ide>'
      .     '<emit>'
      .       '<CNPJ>'.$emit['CNPJ'].'</CNPJ><xNome>'.$emit['xNome'].'</xNome><xFant>'.$emit['xFant'].'</xFant>'
-     .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais><fone>'.$emit['enderEmit']['fone'].'</fone></enderEmit>'
+     .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais>'.(!empty($emit['enderEmit']['fone'])?'<fone>'.$emit['enderEmit']['fone'].'</fone>':'').'</enderEmit>'
      .       '<IE>'.$emit['IE'].'</IE><CRT>'.$emit['CRT'].'</CRT>'
      .     '</emit>'
-     .      (!empty($dest)
-        ? ('<dest>'.(isset($dest['CPF'])?'<CPF>'.$dest['CPF'].'</CPF>':'<CNPJ>'.$dest['CNPJ'].'</CNPJ>').'<indIEDest>'.$dest['indIEDest'].'</indIEDest></dest>')
-        : '')
+     .     $destXML
      .     $detXML
      .     $totXML
      .     $transpXML
      .     $pagXML
      .     $infAd
-     .     . '<infRespTec><CPF>04125521247</CPF><xContato>Luiz Breno da frota</xContato><email>luizfrota2@gmail.com</email><fone>97991434585</fone></infRespTec>'
+     .     '<infRespTec><CNPJ>04125521247</CNPJ><xContato>Luiz Breno da frota</xContato><email>luizfrota2@gmail.com</email><fone>97991434585</fone></infRespTec>'
      .   '</infNFe>'
-     . '</NFe>';}
+     . '</NFe>';
 
 /* ===== Assina SOMENTE a NFe ===== */
 try { $nfeAss = $tools->signNFe($nfe); }
@@ -535,13 +533,14 @@ $st->execute([
     echo '<!doctype html><meta charset="utf-8">';
     echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
     exit;
+  }
 }
 
 // === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
 if (!isset($pdo) || !($pdo instanceof PDO)) {
-  foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
-    if (is_file($__p)) { require_once $__p; break; }
-  }
+    foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
+        if (is_file($__p)) { require_once $__p; break; }
+    }
 }
 die('Erro SEFAZ: ' . ($stdEnv->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($stdEnv->cStat ?? '?') . ')');
 
