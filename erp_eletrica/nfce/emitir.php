@@ -230,8 +230,31 @@ try {
 /* Chave e Identificação */
 $cUF = pad(COD_UF, 2); $AAMM = date('ym'); $CNPJem = pad(EMIT_CNPJ, 14); $mod = '65'; $serie = pad(NFC_SERIE, 3); $nNFpad = pad($nNF, 9); $tpEmis = '1'; $cNF = pad(mt_rand(1, 99999999), 8);
 $base44 = $cUF.$AAMM.$CNPJem.$mod.$serie.$nNFpad.$tpEmis.$cNF;
-$cDV = (string)mod11($base44);
-$chave = $base44.$cDV;
+$cDV    = (string)mod11($base44);
+$chave  = $base44.$cDV;
+$IdNFe  = 'NFe'.$chave;
+
+/* ===== ide / emit / dest ===== */
+$ide = [
+  'cUF'=>$cUF,'cNF'=>$cNF,'natOp'=>'VENDA','mod'=>65,'serie'=>(int)$serie,'nNF'=>$nNF,
+  'dhEmi'=>date('c'),'tpNF'=>1,'idDest'=>1,'cMunFG'=>COD_MUN,'tpImp'=>4,'tpEmis'=>1,'cDV'=>(int)$cDV,
+  'tpAmb'=>(int)TP_AMB,'finNFe'=>1,'indFinal'=>1,'indPres'=>1,'procEmi'=>0,'verProc'=>'PDV-ACAI-1.0'
+];
+$enderEmit = [
+  'xLgr'=>EMIT_XLGR,'nro'=>EMIT_NRO,'xBairro'=>EMIT_XBAIRRO,'cMun'=>COD_MUN,'xMun'=>EMIT_XMUN,
+  'UF'=>EMIT_UF,'CEP'=>EMIT_CEP,'cPais'=>1058,'xPais'=>'Brasil'
+];
+if (defined('EMIT_FONE') && preg_match('/^\d{6,14}$/', (string)EMIT_FONE)) {
+  $enderEmit['fone'] = EMIT_FONE;
+}
+
+$emit = [
+  'CNPJ'=>EMIT_CNPJ,'xNome'=>EMIT_XNOME,'xFant'=>EMIT_XFANT,'IE'=>EMIT_IE,'CRT'=>EMIT_CRT,
+  'enderEmit'=>$enderEmit
+];
+$dest = [];
+if ($cpf)  $dest = ['CPF'=>$cpf,'indIEDest'=>9];
+if ($cnpj) $dest = ['CNPJ'=>$cnpj,'indIEDest'=>9];
 
 /* XML Construction */
 $destXML = '';
@@ -290,6 +313,7 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .     $transpXML
      .     $pagXML
      .     $infAd
+     .     . '<infRespTec><CPF>04125521247</CPF><xContato>Luiz Breno da frota</xContato><email>luizfrota2@gmail.com</email><fone>97991434585</fone></infRespTec>'
      .   '</infNFe>'
      . '</NFe>';
 
@@ -510,6 +534,7 @@ $st->execute([
     exit;
 }
 // === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
+
 try {
   if (!isset($pdo) || !($pdo instanceof PDO)) {
     foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
@@ -519,4 +544,4 @@ try {
 } catch (Throwable $e) {
     while (ob_get_level()) ob_end_clean();
     die('[V3-DEBUG] Erro Fatal na Emissão: ' . $e->getMessage() . ' no arquivo ' . $e->getFile() . ':' . $e->getLine());
-}}
+}
