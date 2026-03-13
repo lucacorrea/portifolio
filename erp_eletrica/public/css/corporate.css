@@ -39,6 +39,14 @@
     --bs-body-color: #f8fafc;
 }
 
+::placeholder {
+    color: #475569 !important; /* Visible slate grey */
+    opacity: 1;
+}
+
+::-webkit-input-placeholder { color: #475569 !important; }
+:-ms-input-placeholder { color: #475569 !important; }
+
 body {
     background-color: var(--erp-dark);
     color: var(--text-primary);
@@ -137,9 +145,10 @@ body {
 /* Search Dropdowns Z-Index Fix & Style */
 #searchResults, #pv_search_results, #customerResults, #pv_client_results {
     z-index: 10000 !important;
-    background: #1e293b !important;
-    border: 1px solid var(--border) !important;
+    background: #0f172a !important; /* Darker background for better contrast */
+    border: 1px solid var(--primary-color) !important; /* Primary border to make it pop */
     margin-top: 5px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
 }
 
 #searchResults .list-group-item, 
@@ -229,7 +238,25 @@ body {
 }
 
 .text-muted {
-    color: #94a3b8 !important;
+    color: #64748b !important; /* Slightly lighter muted text */
+}
+
+/* Fix for icons appearing as "yellow balls" */
+.bg-opacity-10 i, .bg-opacity-25 i {
+    color: #ffffff !important; /* Make icons white inside colored circles */
+}
+
+.bg-primary.bg-opacity-10, .bg-warning.bg-opacity-10 {
+    background-color: rgba(251, 191, 36, 0.15) !important;
+}
+
+/* Global Cleanups */
+.bg-light {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.text-black, .text-dark:not(body) {
+    color: #f8fafc !important;
 }
 
 /* Animations Disabled */

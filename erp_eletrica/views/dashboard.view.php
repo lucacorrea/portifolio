@@ -194,22 +194,25 @@
                     stops: [20, 100, 100, 100]
                 }
             },
-            xaxis: {
-                categories: [<?= "'" . implode("','", array_column($faturamento_historico, 'mes')) . "'" ?>],
-                axisBorder: { show: false },
-                axisTicks: { show: false }
-            },
             yaxis: {
                 labels: {
+                    style: { colors: '#94a3b8' },
                     formatter: function (val) {
                         return "R$ " + val.toLocaleString('pt-BR');
                     }
                 }
             },
+            xaxis: {
+                categories: [<?= "'" . implode("','", array_column($faturamento_historico, 'mes')) . "'" ?>],
+                axisBorder: { show: false },
+                axisTicks: { show: false },
+                labels: { style: { colors: '#94a3b8' } }
+            },
             grid: {
-                borderColor: '#f1f1f1',
+                borderColor: '#1e293b',
                 strokeDashArray: 4
-            }
+            },
+            tooltip: { theme: 'dark' }
         };
 
         var chart = new ApexCharts(document.querySelector("#chart-faturamento"), options);
