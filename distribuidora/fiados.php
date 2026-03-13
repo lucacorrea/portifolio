@@ -1678,7 +1678,19 @@ $flashErr = fi_flash_take('flash_err');
                 document.getElementById('detVencimento').innerText = f.data_vencimento || '—';
                 document.getElementById('detEndereco').innerText = f.endereco || '—';
                 document.getElementById('detObs').innerText = f.obs || '—';
-                document.getElementById('detCreated').innerText = f.created_at || '—';
+                // Formata a data de criação para o padrão brasileiro
+                if (f.created_at) {
+                    const dt = new Date(f.created_at.replace(' ', 'T'));
+                    const dia = String(dt.getDate()).padStart(2, '0');
+                    const mes = String(dt.getMonth() + 1).padStart(2, '0');
+                    const ano = dt.getFullYear();
+                    const hora = String(dt.getHours()).padStart(2, '0');
+                    const min = String(dt.getMinutes()).padStart(2, '0');
+                    const seg = String(dt.getSeconds()).padStart(2, '0');
+                    document.getElementById('detCreated').innerText = `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+                } else {
+                    document.getElementById('detCreated').innerText = '—';
+                }
                 document.getElementById('detTotal').innerText = brlJs(f.valor_total);
                 document.getElementById('detPago').innerText = brlJs(f.valor_pago);
                 document.getElementById('detRestante').innerText = brlJs(f.valor_restante);
