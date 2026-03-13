@@ -6,7 +6,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-require_once __DIR__ . '/assets/dados/_helpers.php';
+require_once __DIR__ . '/assets/auth/_helpers.php';
 
 $erro = flash_pop('recupera_erro');
 $ok   = flash_pop('recupera_ok');
