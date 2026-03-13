@@ -672,7 +672,7 @@ $vars = [
     }
 
     .assinatura-nome {
-      font-size: 10pt;
+      font-size: 8pt;
       font-weight: bold;
     }
 
