@@ -724,50 +724,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="row">
-                      <div class="row">
 
-                        <div class="col-12 col-lg-6 mb-3">
-                          <label>Localidade <span class="text-danger">*</span></label>
 
-                          <select
-                            name="comunidade_id"
-                            class="form-control"
-                            <?= empty($comunidades) ? 'disabled' : 'required' ?>>
+                      <div class="col-12 col-lg-6 mb-3">
+                        <label>Localidade <span class="text-danger">*</span></label>
 
-                            <option value="">Selecione</option>
+                        <select
+                          name="comunidade_id"
+                          class="form-control"
+                          <?= empty($comunidades) ? 'disabled' : 'required' ?>>
 
-                            <?php if (!empty($bairrosLista)): ?>
-                              <optgroup label="Bairros">
-                                <?php foreach ($bairrosLista as $b): ?>
-                                  <option
-                                    value="<?= (int)$b['id'] ?>"
-                                    <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$b['id']) ? 'selected' : '' ?>>
-                                    <?= h($b['nome']) ?>
-                                  </option>
-                                <?php endforeach; ?>
-                              </optgroup>
-                            <?php endif; ?>
+                          <option value="">Selecione</option>
 
-                            <?php if (!empty($comunidadesLista)): ?>
-                              <optgroup label="Comunidades">
-                                <?php foreach ($comunidadesLista as $c): ?>
-                                  <option
-                                    value="<?= (int)$c['id'] ?>"
-                                    <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
-                                    <?= h($c['nome']) ?>
-                                  </option>
-                                <?php endforeach; ?>
-                              </optgroup>
-                            <?php endif; ?>
+                          <?php if (!empty($bairrosLista)): ?>
+                            <optgroup label="Bairros">
+                              <?php foreach ($bairrosLista as $b): ?>
+                                <option
+                                  value="<?= (int)$b['id'] ?>"
+                                  <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$b['id']) ? 'selected' : '' ?>>
+                                  <?= h($b['nome']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </optgroup>
+                          <?php endif; ?>
 
-                          </select>
+                          <?php if (!empty($comunidadesLista)): ?>
+                            <optgroup label="Comunidades">
+                              <?php foreach ($comunidadesLista as $c): ?>
+                                <option
+                                  value="<?= (int)$c['id'] ?>"
+                                  <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
+                                  <?= h($c['nome']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </optgroup>
+                          <?php endif; ?>
 
-                          <small class="text-muted help-hint">
-                            Selecione o bairro ou a comunidade de origem.
-                          </small>
-                        </div>
+                        </select>
 
+                        <small class="text-muted help-hint">
+                          Selecione o bairro ou a comunidade de origem.
+                        </small>
                       </div>
+
+
 
                       <div class="col-12 col-md-6 col-lg-3 mb-3">
                         <label>Status</label>
