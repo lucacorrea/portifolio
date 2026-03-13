@@ -49,10 +49,8 @@ function badge_status_html(string $status): string
   return '<span class="badge-soft badge-off">INATIVO</span>';
 }
 
-function fetch_fornecedores_page(PDO $pdo, string $q, string $status, int $page, int $perPage = 10): array
+function build_fornecedores_filter(string $q, string $status): array
 {
-  $page = max(1, $page);
-
   $where = [];
   $params = [];
 
@@ -63,22 +61,44 @@ function fetch_fornecedores_page(PDO $pdo, string $q, string $status, int $page,
 
   if ($q !== '') {
     $where[] = "(
-      CAST(f.id AS CHAR) LIKE :q
-      OR f.nome LIKE :q
-      OR f.doc LIKE :q
-      OR f.tel LIKE :q
-      OR f.email LIKE :q
-      OR f.endereco LIKE :q
-      OR f.cidade LIKE :q
-      OR f.uf LIKE :q
-      OR f.contato LIKE :q
-      OR f.obs LIKE :q
-      OR f.status LIKE :q
+      CAST(f.id AS CHAR) LIKE :q_id
+      OR f.nome LIKE :q_nome
+      OR f.doc LIKE :q_doc
+      OR f.tel LIKE :q_tel
+      OR f.email LIKE :q_email
+      OR f.endereco LIKE :q_endereco
+      OR f.cidade LIKE :q_cidade
+      OR f.uf LIKE :q_uf
+      OR f.contato LIKE :q_contato
+      OR f.obs LIKE :q_obs
+      OR f.status LIKE :q_status
     )";
-    $params[':q'] = '%' . $q . '%';
+
+    $like = '%' . $q . '%';
+    $params[':q_id'] = $like;
+    $params[':q_nome'] = $like;
+    $params[':q_doc'] = $like;
+    $params[':q_tel'] = $like;
+    $params[':q_email'] = $like;
+    $params[':q_endereco'] = $like;
+    $params[':q_cidade'] = $like;
+    $params[':q_uf'] = $like;
+    $params[':q_contato'] = $like;
+    $params[':q_obs'] = $like;
+    $params[':q_status'] = $like;
   }
 
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+  return [$whereSql, $params];
+}
+
+function fetch_fornecedores_page(PDO $pdo, string $q, string $status, int $page, int $perPage = 10): array
+{
+  $page = max(1, $page);
+  $perPage = max(1, $perPage);
+
+  [$whereSql, $params] = build_fornecedores_filter($q, $status);
 
   $sqlCount = "SELECT COUNT(*) FROM fornecedores f $whereSql";
   $stCount = $pdo->prepare($sqlCount);
@@ -90,7 +110,10 @@ function fetch_fornecedores_page(PDO $pdo, string $q, string $status, int $page,
 
   $pages = max(1, (int)ceil($totalRows / $perPage));
   if ($page > $pages) $page = $pages;
+
   $offset = ($page - 1) * $perPage;
+  $limitSql = (int)$perPage;
+  $offsetSql = (int)$offset;
 
   $sql = "
     SELECT
@@ -99,15 +122,13 @@ function fetch_fornecedores_page(PDO $pdo, string $q, string $status, int $page,
     FROM fornecedores f
     $whereSql
     ORDER BY f.id DESC
-    LIMIT :lim OFFSET :off
+    LIMIT $limitSql OFFSET $offsetSql
   ";
 
   $st = $pdo->prepare($sql);
   foreach ($params as $k => $v) {
     $st->bindValue($k, $v, PDO::PARAM_STR);
   }
-  $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
-  $st->bindValue(':off', $offset, PDO::PARAM_INT);
   $st->execute();
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
@@ -183,7 +204,11 @@ if ($action === 'ajax') {
     if ($ajaxPage < 1) $ajaxPage = 1;
 
     $data = fetch_fornecedores_page($pdo, $ajaxQ, $ajaxStatus, $ajaxPage, $PER_PAGE);
-    json_out(['ok' => true] + $data);
+    json_out([
+      'ok' => true,
+      'meta' => $data['meta'],
+      'rows' => $data['rows'],
+    ]);
   } catch (Throwable $e) {
     json_out(['ok' => false, 'msg' => 'Erro no AJAX: ' . $e->getMessage()], 500);
   }
@@ -1078,6 +1103,7 @@ $page = (int)$initialData['meta']['page'];
     }
 
     function updateExcelAction() {
+      if (!btnExcel) return;
       btnExcel.onclick = () => {
         const params = new URLSearchParams();
         params.set('export', 'excel');
@@ -1190,24 +1216,36 @@ $page = (int)$initialData['meta']['page'];
     async function loadAjax() {
       setLoading(true);
 
-      const params = new URLSearchParams({
-        action: 'ajax',
-        q: state.q,
-        status: state.status,
-        page: String(state.page)
-      });
+      const params = new URLSearchParams();
+      params.set('action', 'ajax');
+      params.set('page', String(state.page));
+      if (state.q) params.set('q', state.q);
+      if (state.status) params.set('status', state.status);
 
       try {
         const res = await fetch('fornecedores.php?' + params.toString(), {
+          method: 'GET',
           headers: {
-            'Accept': 'application/json'
-          }
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          cache: 'no-store'
         });
 
-        const data = await res.json().catch(() => null);
+        const text = await res.text();
+        let data = null;
 
-        if (!data || !data.ok) {
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
           tbodyFor.innerHTML = `<tr><td colspan="8" class="text-center muted py-4">Erro ao carregar fornecedores.</td></tr>`;
+          hintEmpty.style.display = '';
+          console.error('Resposta inválida do AJAX:', text);
+          return;
+        }
+
+        if (!res.ok || !data || data.ok !== true) {
+          tbodyFor.innerHTML = `<tr><td colspan="8" class="text-center muted py-4">${escapeHtml(data?.msg || 'Erro ao carregar fornecedores.')}</td></tr>`;
           hintEmpty.style.display = '';
           return;
         }
@@ -1223,6 +1261,7 @@ $page = (int)$initialData['meta']['page'];
       } catch (e) {
         tbodyFor.innerHTML = `<tr><td colspan="8" class="text-center muted py-4">Erro de rede/servidor. Tente novamente.</td></tr>`;
         hintEmpty.style.display = '';
+        console.error(e);
       } finally {
         setLoading(false);
       }
