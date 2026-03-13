@@ -1430,7 +1430,7 @@ $flashErr = fi_flash_take('flash_err');
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">Receber Pagamento (AVS)</h5>
+                    <h5 class="modal-title" style="color: #fff !important;">Receber Pagamento (AVS)</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
