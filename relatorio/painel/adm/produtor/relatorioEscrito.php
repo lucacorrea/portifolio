@@ -757,7 +757,7 @@ $vars = [
           </div>
 
           <div class="logo-box">
-            <img src="../../../images/feira.png" alt="Logo da Feira">
+           
           </div>
 
         </div>
