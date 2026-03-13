@@ -510,12 +510,12 @@ $st->execute([
     exit;
 }
 // === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
-try {
   if (!isset($pdo) || !($pdo instanceof PDO)) {
     foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
       if (is_file($__p)) { require_once $__p; break; }
     }
-    die('Erro SEFAZ: ' . ($std->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($std->cStat ?? '?') . ')');
+  }
+  die('Erro SEFAZ: ' . ($stdEnv->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($stdEnv->cStat ?? '?') . ')');
 } catch (Throwable $e) {
     while (ob_get_level()) ob_end_clean();
     die('[V3-DEBUG] Erro Fatal na Emissão: ' . $e->getMessage() . ' no arquivo ' . $e->getFile() . ':' . $e->getLine());
