@@ -116,31 +116,31 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_dinheiro" value="dinheiro" checked>
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_dinheiro">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_dinheiro">
                                 <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_pix" value="pix">
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_pix">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_pix">
                                 <i class="fa-brands fa-pix me-2 text-info"></i> Pix
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_cartao" value="cartao_credito">
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_cartao">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_cartao">
                                 <i class="fas fa-credit-card me-2 text-primary"></i> Cartão
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_boleto">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_boleto">
                                 <i class="fas fa-barcode me-2 text-secondary"></i> Boleto
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
-                            <label class="btn btn-outline-light d-block text-start p-3 text-dark border" for="pay_fiado">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_fiado">
                                 <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado)
                             </label>
                         </div>

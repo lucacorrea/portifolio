@@ -108,7 +108,7 @@
                     </div>
                 </div>
 
-                <div class="alert alert-info border-0 shadow-sm small mb-4">
+                <div class="alert border-0 shadow-sm small mb-4" style="background-color: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3) !important; color: #38bdf8;">
                     <i class="fas fa-info-circle me-2"></i>
                     A pré-venda reserva o estoque temporariamente e gera um código para o caixa.
                 </div>

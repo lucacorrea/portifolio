@@ -65,7 +65,8 @@ body {
     transition: width var(--transition), transform var(--transition);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: none;
     border-right: 1px solid var(--border);
 }
