@@ -229,6 +229,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
   }
+  $comunidadesLista = [];
+  $bairrosLista = [];
+
+  foreach ($comunidades as $c) {
+    if (($c['tipo'] ?? '') === 'BAIRRO') {
+      $bairrosLista[] = $c;
+    } else {
+      $comunidadesLista[] = $c;
+    }
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -701,12 +711,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <div class="form-section">
                     <div class="section-title">
-                      <i class="ti-map-alt"></i> Comunidade
+                      <i class="ti-map-alt"></i> Localidade
                     </div>
 
                     <div class="row">
                       <div class="col-12 col-lg-6 mb-3">
-                        <label>Comunidade <span class="text-danger">*</span></label>
+                        <label>Localidade <span class="text-danger">*</span></label>
                         <select
                           name="comunidade_id"
                           class="form-control"
@@ -721,7 +731,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           <?php endforeach; ?>
                         </select>
                         <small class="text-muted help-hint">
-                          Vem da tabela <b>comunidades</b> (feira_id = <?= (int)$FEIRA_ID ?>, ativo=1).
+
                         </small>
                       </div>
 
