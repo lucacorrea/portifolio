@@ -1,12 +1,12 @@
 :root {
     /* Dark Modern Palette (Neutral Black) */
-    --erp-primary: #fbbf24;
-    /* Gold/Yellow from logo */
-    --erp-primary-hover: #f59e0b;
+    --erp-primary: #c5a028;
+    /* Gold Ouro Escuro */
+    --erp-primary-hover: #a68a20;
     --erp-secondary: #141414;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
-    --erp-warning: #f59e0b;
+    --erp-warning: #c5a028;
     --erp-dark: #0a0a0a;
     --erp-light: #141414;
     --erp-glass: rgba(10, 10, 10, 0.8);
@@ -32,11 +32,12 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #fbbf24;
-    --bs-primary-rgb: 251, 191, 36;
-    --bs-link-color: #fbbf24;
-    --bs-link-hover-color: #f59e0b;
+    --bs-primary: #c5a028;
+    --bs-primary-rgb: 197, 160, 40;
+    --bs-link-color: #c5a028;
+    --bs-link-hover-color: #a68a20;
     --bs-body-bg: #0a0a0a;
+    --bs-warning: #c5a028;
     --bs-body-color: #f8fafc;
 }
 

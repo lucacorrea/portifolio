@@ -1,7 +1,8 @@
 :root {
     /* Dark Modern Palette (Neutral Black) */
-    --primary-color: #fbbf24;
-    --primary-hover: #f59e0b;
+    --primary-color: #c5a028;
+    /* Gold Ouro Escuro */
+    --primary-hover: #a68a20;
     --secondary-color: #141414;
     --bg-main: #0a0a0a;
     --surface: #141414;
@@ -9,7 +10,7 @@
     --text-secondary: #a3a3a3;
     --success: #10b981;
     --danger: #ef4444;
-    --warning: #f59e0b;
+    --warning: #c5a028;
     --border: #262626;
 
     /* Corporate Aliases */
