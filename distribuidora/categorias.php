@@ -13,42 +13,6 @@ function e(string $s): string
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function json_out(array $payload, int $code = 200): void
-{
-  if (function_exists('ob_get_length') && ob_get_length()) {
-    @ob_clean();
-  }
-  http_response_code($code);
-  header('Content-Type: application/json; charset=UTF-8');
-  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-  echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-  exit;
-}
-
-function build_url(array $overrides = []): string
-{
-  $params = $_GET;
-  unset($params['export'], $params['action']);
-
-  foreach ($overrides as $k => $v) {
-    if ($v === null || $v === '') {
-      unset($params[$k]);
-    } else {
-      $params[$k] = (string)$v;
-    }
-  }
-
-  $qs = http_build_query($params);
-  return 'categorias.php' . ($qs ? ('?' . $qs) : '');
-}
-
-function badgeStatus(string $st): string
-{
-  $s = strtoupper(trim($st));
-  if ($s === 'INATIVO') return '<span class="badge-soft badge-off">INATIVO</span>';
-  return '<span class="badge-soft badge-ok">ATIVO</span>';
-}
-
 function normHex(string $hex): string
 {
   $h = trim($hex);
@@ -66,10 +30,15 @@ function fmtText(?string $v): string
   return $v !== '' ? $v : '—';
 }
 
-function fetch_categorias_page(PDO $pdo, string $q, string $status, int $page, int $perPage = 10): array
+function badgeStatus(string $st): string
 {
-  $page = max(1, $page);
+  $s = strtoupper(trim($st));
+  if ($s === 'INATIVO') return '<span class="badge-soft badge-off">INATIVO</span>';
+  return '<span class="badge-soft badge-ok">ATIVO</span>';
+}
 
+function fetchCategoriasFiltradas(PDO $pdo, string $q, string $status): array
+{
   $where = [];
   $params = [];
 
@@ -85,64 +54,38 @@ function fetch_categorias_page(PDO $pdo, string $q, string $status, int $page, i
       OR c.cor LIKE :q
       OR c.obs LIKE :q
       OR c.status LIKE :q
+      OR CAST(c.id AS CHAR) LIKE :q
     )";
     $params[':q'] = '%' . $q . '%';
   }
 
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
-  $sqlCount = "SELECT COUNT(*) FROM categorias c $whereSql";
-  $stCount = $pdo->prepare($sqlCount);
-  foreach ($params as $k => $v) {
-    $stCount->bindValue($k, $v, PDO::PARAM_STR);
-  }
-  $stCount->execute();
-  $totalRows = (int)$stCount->fetchColumn();
-
-  $pages = max(1, (int)ceil($totalRows / $perPage));
-  if ($page > $pages) $page = $pages;
-  $offset = ($page - 1) * $perPage;
-
   $sql = "
     SELECT id, nome, descricao, cor, obs, status
     FROM categorias c
     $whereSql
     ORDER BY id DESC
-    LIMIT :lim OFFSET :off
   ";
+
   $st = $pdo->prepare($sql);
   foreach ($params as $k => $v) {
     $st->bindValue($k, $v, PDO::PARAM_STR);
   }
-  $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
-  $st->bindValue(':off', $offset, PDO::PARAM_INT);
   $st->execute();
+
   $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-  $outRows = [];
-  foreach ($rows as $r) {
-    $outRows[] = [
-      'id'        => (int)($r['id'] ?? 0),
-      'nome'      => (string)($r['nome'] ?? ''),
-      'descricao' => (string)($r['descricao'] ?? ''),
-      'cor'       => normHex((string)($r['cor'] ?? '#60a5fa')),
-      'obs'       => (string)($r['obs'] ?? ''),
-      'status'    => strtoupper((string)($r['status'] ?? 'ATIVO')) === 'INATIVO' ? 'INATIVO' : 'ATIVO',
-    ];
+  foreach ($rows as &$r) {
+    $r['id'] = (int)($r['id'] ?? 0);
+    $r['nome'] = (string)($r['nome'] ?? '');
+    $r['descricao'] = (string)($r['descricao'] ?? '');
+    $r['cor'] = normHex((string)($r['cor'] ?? '#60a5fa'));
+    $r['obs'] = (string)($r['obs'] ?? '');
+    $r['status'] = strtoupper((string)($r['status'] ?? 'ATIVO')) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
   }
+  unset($r);
 
-  return [
-    'meta' => [
-      'q'     => $q,
-      'status' => $status,
-      'page'  => $page,
-      'pages' => $pages,
-      'total' => $totalRows,
-      'shown' => count($outRows),
-      'per'   => $perPage,
-    ],
-    'rows' => $outRows,
-  ];
+  return $rows;
 }
 
 if (empty($_SESSION['csrf_token'])) {
@@ -164,30 +107,10 @@ $PER_PAGE = 10;
 $pdo = db();
 
 /* =========================
-   AJAX
-========================= */
-$action = strtolower(trim((string)($_GET['action'] ?? '')));
-if ($action === 'ajax') {
-  try {
-    $ajaxQ = trim((string)($_GET['q'] ?? ''));
-    $ajaxStatus = strtoupper(trim((string)($_GET['status'] ?? '')));
-    $ajaxStatus = ($ajaxStatus === 'ATIVO' || $ajaxStatus === 'INATIVO') ? $ajaxStatus : '';
-    $ajaxPage = (int)($_GET['page'] ?? 1);
-    if ($ajaxPage < 1) $ajaxPage = 1;
-
-    $data = fetch_categorias_page($pdo, $ajaxQ, $ajaxStatus, $ajaxPage, $PER_PAGE);
-    json_out(['ok' => true] + $data);
-  } catch (Throwable $e) {
-    json_out(['ok' => false, 'msg' => 'Erro no AJAX: ' . $e->getMessage()], 500);
-  }
-}
-
-/* =========================
    EXPORTAR EXCEL
 ========================= */
 if (isset($_GET['export']) && $_GET['export'] === 'excel') {
-  $exportData = fetch_categorias_page($pdo, $q, $status, 1, 999999);
-  $excelRows = $exportData['rows'];
+  $excelRows = fetchCategoriasFiltradas($pdo, $q, $status);
 
   $filename = 'categorias_' . date('Y-m-d_H-i-s') . '.xls';
   $geradoEm = date('d/m/Y H:i:s');
@@ -292,14 +215,9 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
 }
 
 /* =========================
-   PRIMEIRA CARGA
+   LISTA COMPLETA PARA JS
 ========================= */
-$initialData = fetch_categorias_page($pdo, $q, $status, $page, $PER_PAGE);
-$totalRows = (int)$initialData['meta']['total'];
-$pages = (int)$initialData['meta']['pages'];
-$currentCount = (int)$initialData['meta']['shown'];
-$rows = $initialData['rows'];
-$page = (int)$initialData['meta']['page'];
+$allRows = fetchCategoriasFiltradas($pdo, '', '');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -731,7 +649,7 @@ $page = (int)$initialData['meta']['page'];
           <div class="head">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-tag me-1"></i> Lista</div>
-              <span class="badge-soft" id="countBadge"><?= $totalRows ?> categoria(s)</span>
+              <span class="badge-soft" id="countBadge">0 categoria(s)</span>
             </div>
 
             <div class="d-flex gap-2 flex-wrap align-items-center">
@@ -745,9 +663,9 @@ $page = (int)$initialData['meta']['page'];
               </button>
 
               <select class="form-select compact" id="fStatus" style="min-width: 160px;">
-                <option value="" <?= $status === '' ? 'selected' : '' ?>>Status: Todos</option>
-                <option value="ATIVO" <?= $status === 'ATIVO' ? 'selected' : '' ?>>Ativo</option>
-                <option value="INATIVO" <?= $status === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
+                <option value="">Status: Todos</option>
+                <option value="ATIVO">Ativo</option>
+                <option value="INATIVO">Inativo</option>
               </select>
 
               <button class="main-btn light-btn btn-hover btn-compact" id="btnExcel" type="button">
@@ -757,8 +675,6 @@ $page = (int)$initialData['meta']['page'];
               <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
                 <i class="lni lni-eraser me-1"></i> Limpar
               </button>
-
-              <span class="badge-soft" id="pillLoading" style="display:none;">Carregando...</span>
             </div>
           </div>
 
@@ -784,66 +700,25 @@ $page = (int)$initialData['meta']['page'];
                     <th style="min-width:160px;" class="text-center">Ações</th>
                   </tr>
                 </thead>
-                <tbody id="tbodyCat">
-                  <?php if (!$rows): ?>
-                    <tr>
-                      <td colspan="6" class="text-center muted py-4">Nenhuma categoria encontrada.</td>
-                    </tr>
-                  <?php else: ?>
-                    <?php foreach ($rows as $r): ?>
-                      <tr
-                        data-id="<?= (int)$r['id'] ?>"
-                        data-statusrow="<?= e((string)$r['status']) ?>"
-                        data-nome="<?= e((string)$r['nome']) ?>"
-                        data-desc="<?= e((string)$r['descricao']) ?>"
-                        data-obs="<?= e((string)$r['obs']) ?>"
-                        data-cor="<?= e((string)$r['cor']) ?>"
-                        data-status="<?= e((string)$r['status']) ?>">
-                        <td style="font-weight:1000;color:#0f172a;"><?= (int)$r['id'] ?></td>
-                        <td>
-                          <div class="d-flex align-items-center gap-2">
-                            <span class="swatch" style="background:<?= e((string)$r['cor']) ?>;"></span>
-                            <div style="min-width:0;">
-                              <div style="font-weight:1000;color:#0f172a;line-height:1.1;"><?= e((string)$r['nome']) ?></div>
-                              <div class="muted"><?= e(fmtText((string)$r['obs'])) ?></div>
-                            </div>
-                          </div>
-                        </td>
-                        <td><?= e(fmtText((string)$r['descricao'])) ?></td>
-                        <td>
-                          <div class="d-flex align-items-center gap-2">
-                            <span class="swatch" style="background:<?= e((string)$r['cor']) ?>;"></span>
-                            <span style="font-weight:900;color:#0f172a;"><?= e((string)$r['cor']) ?></span>
-                          </div>
-                        </td>
-                        <td class="text-center"><?= badgeStatus((string)$r['status']) ?></td>
-                        <td class="text-center">
-                          <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdCategoria">
-                            <i class="lni lni-pencil me-1"></i> Editar
-                          </button>
-                        </td>
-                      </tr>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                </tbody>
+                <tbody id="tbodyCat"></tbody>
               </table>
             </div>
 
-            <div class="muted mt-2" id="hintEmpty" style="<?= $totalRows === 0 ? '' : 'display:none;' ?>">Nenhuma categoria encontrada.</div>
+            <div class="muted mt-2" id="hintEmpty" style="display:none;">Nenhuma categoria encontrada.</div>
 
             <div class="table-footer-nav">
               <p class="text-sm text-gray mb-0" id="infoCount">
-                Mostrando <?= $currentCount ?> item(ns) nesta página de categorias. Total filtrado: <?= $totalRows ?>.
+                Mostrando 0 item(ns) nesta página de categorias. Total filtrado: 0.
               </p>
 
               <div class="pager-box" id="pagerBox">
-                <button class="page-btn" id="btnPrev" type="button" <?= $page <= 1 ? 'disabled' : '' ?> title="Anterior">
+                <button class="page-btn" id="btnPrev" type="button" disabled title="Anterior">
                   <i class="lni lni-chevron-left"></i>
                 </button>
 
-                <span class="page-info" id="pagerText">Página <?= $page ?>/<?= $pages ?></span>
+                <span class="page-info" id="pagerText">Página 1/1</span>
 
-                <button class="page-btn" id="btnNext" type="button" <?= $page >= $pages ? 'disabled' : '' ?> title="Próxima">
+                <button class="page-btn" id="btnNext" type="button" disabled title="Próxima">
                   <i class="lni lni-chevron-right"></i>
                 </button>
               </div>
@@ -950,6 +825,9 @@ $page = (int)$initialData['meta']['page'];
       }, 1500);
     })();
 
+    const ALL_ROWS = <?= json_encode($allRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const PER_PAGE = 10;
+
     const qCat = document.getElementById("qCat");
     const fStatus = document.getElementById("fStatus");
     const btnLimpar = document.getElementById("btnLimpar");
@@ -962,7 +840,6 @@ $page = (int)$initialData['meta']['page'];
     const pagerText = document.getElementById("pagerText");
     const btnPrev = document.getElementById("btnPrev");
     const btnNext = document.getElementById("btnNext");
-    const pillLoading = document.getElementById("pillLoading");
 
     const mdTitle = document.getElementById("mdTitle");
     const mdSub = document.getElementById("mdSub");
@@ -983,8 +860,9 @@ $page = (int)$initialData['meta']['page'];
       q: <?= json_encode($q, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
       status: <?= json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
       page: <?= (int)$page ?>,
-      pages: <?= (int)$pages ?>,
-      total: <?= (int)$totalRows ?>
+      pages: 1,
+      total: 0,
+      filtered: []
     };
 
     function escapeHtml(str) {
@@ -1017,13 +895,8 @@ $page = (int)$initialData['meta']['page'];
       return s !== '' ? s : '—';
     }
 
-    function setLoading(on) {
-      pillLoading.style.display = on ? 'inline-flex' : 'none';
-    }
-
     function syncUrl() {
       const url = new URL(window.location.href);
-      url.searchParams.delete('action');
       url.searchParams.delete('export');
 
       if (state.q) url.searchParams.set('q', state.q);
@@ -1036,35 +909,14 @@ $page = (int)$initialData['meta']['page'];
       window.history.replaceState({}, '', url.toString());
     }
 
-    function updateExcelHref() {
-      const params = new URLSearchParams();
-      params.set('export', 'excel');
-      if (state.q) params.set('q', state.q);
-      if (state.status) params.set('status', state.status);
+    function updateExcelAction() {
       btnExcel.onclick = () => {
+        const params = new URLSearchParams();
+        params.set('export', 'excel');
+        if (state.q) params.set('q', state.q);
+        if (state.status) params.set('status', state.status);
         window.location.href = 'categorias.php?' + params.toString();
       };
-    }
-
-    function renderMeta(meta) {
-      state.q = String(meta.q || '');
-      state.status = String(meta.status || '');
-      state.page = Number(meta.page || 1);
-      state.pages = Number(meta.pages || 1);
-      state.total = Number(meta.total || 0);
-
-      countBadge.textContent = `${state.total} categoria(s)`;
-      infoCount.textContent = `Mostrando ${Number(meta.shown || 0)} item(ns) nesta página de categorias. Total filtrado: ${state.total}.`;
-      pagerText.textContent = `Página ${state.page}/${state.pages}`;
-
-      btnPrev.disabled = state.page <= 1;
-      btnNext.disabled = state.page >= state.pages;
-
-      qCat.value = state.q;
-      fStatus.value = state.status;
-
-      syncUrl();
-      updateExcelHref();
     }
 
     function rowHtml(r) {
@@ -1111,45 +963,53 @@ $page = (int)$initialData['meta']['page'];
       `;
     }
 
-    async function loadAjax() {
-      setLoading(true);
+    function filterData() {
+      const q = String(state.q || '').toLowerCase().trim();
+      const st = String(state.status || '').toUpperCase().trim();
 
-      const params = new URLSearchParams({
-        action: 'ajax',
-        q: state.q,
-        status: state.status,
-        page: String(state.page)
+      state.filtered = ALL_ROWS.filter(row => {
+        const rowStatus = String(row.status || '').toUpperCase();
+        const haystack = [
+          row.id,
+          row.nome,
+          row.descricao,
+          row.cor,
+          row.obs,
+          row.status
+        ].join(' ').toLowerCase();
+
+        const okQ = !q || haystack.includes(q);
+        const okS = !st || rowStatus === st;
+        return okQ && okS;
       });
 
-      try {
-        const res = await fetch('categorias.php?' + params.toString(), {
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
+      state.total = state.filtered.length;
+      state.pages = Math.max(1, Math.ceil(state.total / PER_PAGE));
+      if (state.page > state.pages) state.page = state.pages;
+      if (state.page < 1) state.page = 1;
+    }
 
-        const data = await res.json().catch(() => null);
+    function renderTable() {
+      filterData();
 
-        if (!data || !data.ok) {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-center muted py-4">Erro ao carregar categorias.</td></tr>`;
-          hintEmpty.style.display = '';
-          return;
-        }
+      const start = (state.page - 1) * PER_PAGE;
+      const end = start + PER_PAGE;
+      const pageRows = state.filtered.slice(start, end);
 
-        renderMeta(data.meta || {});
-        const rows = Array.isArray(data.rows) ? data.rows : [];
+      tbody.innerHTML = pageRows.length
+        ? pageRows.map(rowHtml).join('')
+        : `<tr><td colspan="6" class="text-center muted py-4">Nenhuma categoria encontrada.</td></tr>`;
 
-        tbody.innerHTML = rows.length ?
-          rows.map(rowHtml).join('') :
-          `<tr><td colspan="6" class="text-center muted py-4">Nenhuma categoria encontrada.</td></tr>`;
+      countBadge.textContent = `${state.total} categoria(s)`;
+      infoCount.textContent = `Mostrando ${pageRows.length} item(ns) nesta página de categorias. Total filtrado: ${state.total}.`;
+      pagerText.textContent = `Página ${state.page}/${state.pages}`;
 
-        hintEmpty.style.display = rows.length ? 'none' : '';
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center muted py-4">Erro de rede/servidor. Tente novamente.</td></tr>`;
-        hintEmpty.style.display = '';
-      } finally {
-        setLoading(false);
-      }
+      btnPrev.disabled = state.page <= 1;
+      btnNext.disabled = state.page >= state.pages;
+      hintEmpty.style.display = pageRows.length ? 'none' : '';
+
+      syncUrl();
+      updateExcelAction();
     }
 
     function openNew() {
@@ -1200,7 +1060,7 @@ $page = (int)$initialData['meta']['page'];
       const btn = e.target.closest("[data-act='edit']");
       if (!btn) return;
       const tr = e.target.closest("tr");
-      if (!tr) return;
+      if (!tr || !tr.hasAttribute('data-id')) return;
       openEditFromTr(tr);
     });
 
@@ -1210,7 +1070,7 @@ $page = (int)$initialData['meta']['page'];
       state.q = String(e.target.value || '').trim();
       state.page = 1;
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(loadAjax, 250);
+      searchTimer = setTimeout(renderTable, 200);
     });
 
     qCat.addEventListener("keydown", (e) => {
@@ -1218,26 +1078,26 @@ $page = (int)$initialData['meta']['page'];
         qCat.value = "";
         state.q = "";
         state.page = 1;
-        loadAjax();
+        renderTable();
       }
     });
 
     fStatus.addEventListener("change", () => {
       state.status = String(fStatus.value || '').trim();
       state.page = 1;
-      loadAjax();
+      renderTable();
     });
 
     btnPrev.addEventListener("click", () => {
       if (state.page <= 1) return;
       state.page -= 1;
-      loadAjax();
+      renderTable();
     });
 
     btnNext.addEventListener("click", () => {
       if (state.page >= state.pages) return;
       state.page += 1;
-      loadAjax();
+      renderTable();
     });
 
     btnLimpar.addEventListener("click", () => {
@@ -1246,7 +1106,7 @@ $page = (int)$initialData['meta']['page'];
       state.q = "";
       state.status = "";
       state.page = 1;
-      loadAjax();
+      renderTable();
     });
 
     cCor.addEventListener("input", () => {
@@ -1257,8 +1117,8 @@ $page = (int)$initialData['meta']['page'];
       cCor.value = normalizeHex(cCorTxt.value);
     });
 
-    updateExcelHref();
-    syncUrl();
+    fStatus.value = state.status;
+    renderTable();
   </script>
 </body>
 
