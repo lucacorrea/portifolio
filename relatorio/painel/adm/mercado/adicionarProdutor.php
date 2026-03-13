@@ -101,6 +101,12 @@ $old = [
   'ativo'         => '1',
   'observacao'    => '',
 ];
+$bairroId = isset($_POST['bairro_id']) ? (int)$_POST['bairro_id'] : 0;
+$comunidadeId = isset($_POST['comunidade_id']) ? (int)$_POST['comunidade_id'] : 0;
+
+if ($bairroId <= 0 && $comunidadeId <= 0) {
+    $msgErro = 'Selecione um bairro ou uma comunidade.';
+}
 
 /* Upload (base64 da câmera via navegador) */
 $BASE_DIR = realpath(__DIR__ . '/../../../');
