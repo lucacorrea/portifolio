@@ -230,8 +230,31 @@ try {
 /* Chave e Identificação */
 $cUF = pad(COD_UF, 2); $AAMM = date('ym'); $CNPJem = pad(EMIT_CNPJ, 14); $mod = '65'; $serie = pad(NFC_SERIE, 3); $nNFpad = pad($nNF, 9); $tpEmis = '1'; $cNF = pad(mt_rand(1, 99999999), 8);
 $base44 = $cUF.$AAMM.$CNPJem.$mod.$serie.$nNFpad.$tpEmis.$cNF;
-$cDV = (string)mod11($base44);
-$chave = $base44.$cDV;
+$cDV    = (string)mod11($base44);
+$chave  = $base44.$cDV;
+$IdNFe  = 'NFe'.$chave;
+
+/* ===== ide / emit / dest ===== */
+$ide = [
+  'cUF'=>$cUF,'cNF'=>$cNF,'natOp'=>'VENDA','mod'=>65,'serie'=>(int)$serie,'nNF'=>$nNF,
+  'dhEmi'=>date('c'),'tpNF'=>1,'idDest'=>1,'cMunFG'=>COD_MUN,'tpImp'=>4,'tpEmis'=>1,'cDV'=>(int)$cDV,
+  'tpAmb'=>(int)TP_AMB,'finNFe'=>1,'indFinal'=>1,'indPres'=>1,'procEmi'=>0,'verProc'=>'PDV-ACAI-1.0'
+];
+$enderEmit = [
+  'xLgr'=>EMIT_XLGR,'nro'=>EMIT_NRO,'xBairro'=>EMIT_XBAIRRO,'cMun'=>COD_MUN,'xMun'=>EMIT_XMUN,
+  'UF'=>EMIT_UF,'CEP'=>EMIT_CEP,'cPais'=>1058,'xPais'=>'Brasil'
+];
+if (defined('EMIT_FONE') && preg_match('/^\d{6,14}$/', (string)EMIT_FONE)) {
+  $enderEmit['fone'] = EMIT_FONE;
+}
+
+$emit = [
+  'CNPJ'=>EMIT_CNPJ,'xNome'=>EMIT_XNOME,'xFant'=>EMIT_XFANT,'IE'=>EMIT_IE,'CRT'=>EMIT_CRT,
+  'enderEmit'=>$enderEmit
+];
+$dest = [];
+if ($cpf)  $dest = ['CPF'=>$cpf,'indIEDest'=>9];
+if ($cnpj) $dest = ['CNPJ'=>$cnpj,'indIEDest'=>9];
 
 /* XML Construction */
 $destXML = '';
@@ -260,57 +283,259 @@ $vTr  = number_format(max(0, (float)$vPag - $vProd), 2, '.', '');
 $pagXML = '<pag><detPag><indPag>0</indPag><tPag>'.$tPag.'</tPag><vPag>'.$vPag.'</vPag></detPag>';
 if ((float)$vTr > 0) $pagXML .= '<vTroco>'.$vTr.'</vTroco>';
 $pagXML .= '</pag>';
+// ===== FIM DO NOVO BLOCO =====
 
-$xFantXML = !empty(EMIT_XFANT) ? '<xFant>'.e(EMIT_XFANT).'</xFant>' : '';
-$xml = '<?xml version="1.0" encoding="UTF-8"?><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe'.$chave.'" versao="4.00"><ide><cUF>'.$cUF.'</cUF><cNF>'.$cNF.'</cNF><natOp>VENDA</natOp><mod>65</mod><serie>'.(int)NFC_SERIE.'</serie><nNF>'.$nNF.'</nNF><dhEmi>'.date('c').'</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>'.COD_MUN.'</cMunFG><tpImp>4</tpImp><tpEmis>1</tpEmis><cDV>'.$cDV.'</cDV><tpAmb>'.(int)TP_AMB.'</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>1</indPres><procEmi>0</procEmi><verProc>NFePHP</verProc></ide><emit><CNPJ>'.EMIT_CNPJ.'</CNPJ><xNome>'.e(EMIT_XNOME).'</xNome>'.$xFantXML.'<enderEmit><xLgr>'.e(EMIT_XLGR).'</xLgr><nro>'.e(EMIT_NRO).'</nro><xBairro>'.e(EMIT_XBAIRRO).'</xBairro><cMun>'.COD_MUN.'</cMun><xMun>'.e(EMIT_XMUN).'</xMun><UF>'.EMIT_UF.'</UF><CEP>'.EMIT_CEP.'</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>'.EMIT_IE.'</IE><CRT>'.EMIT_CRT.'</CRT></emit>'.$destXML.$detXML.'<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>'.$vNF.'</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>'.$vNF.'</vNF></ICMSTot></total><transp><modFrete>9</modFrete></transp>'.$pagXML.'<infAdic><infCpl>NFC-e Gerada pelo Sistema</infCpl></infAdic></infNFe></NFe>';
+$infAd   = '<infAdic><infCpl>PDV Açaiteria</infCpl></infAdic>';
 
-    $sig = $tools->signNFe($xml);
+/* ===== MONTA SÓ A NFe (para assinar) ===== */
+$nfe = '<?xml version="1.0" encoding="UTF-8"?>'
+     . '<NFe xmlns="http://www.portalfiscal.inf.br/nfe">'
+     .   '<infNFe Id="'.$IdNFe.'" versao="4.00">'
+     .     '<ide>'
+     .       '<cUF>'.$ide['cUF'].'</cUF><cNF>'.$ide['cNF'].'</cNF><natOp>'.$ide['natOp'].'</natOp>'
+     .       '<mod>'.$ide['mod'].'</mod><serie>'.$ide['serie'].'</serie><nNF>'.$ide['nNF'].'</nNF>'
+     .       '<dhEmi>'.$ide['dhEmi'].'</dhEmi><tpNF>'.$ide['tpNF'].'</tpNF><idDest>'.$ide['idDest'].'</idDest>'
+     .       '<cMunFG>'.$ide['cMunFG'].'</cMunFG><tpImp>'.$ide['tpImp'].'</tpImp><tpEmis>'.$ide['tpEmis'].'</tpEmis>'
+     .       '<cDV>'.$ide['cDV'].'</cDV><tpAmb>'.$ide['tpAmb'].'</tpAmb><finNFe>'.$ide['finNFe'].'</finNFe>'
+     .       '<indFinal>'.$ide['indFinal'].'</indFinal><indPres>'.$ide['indPres'].'</indPres>'
+     .       '<procEmi>'.$ide['procEmi'].'</procEmi><verProc>'.$ide['verProc'].'</verProc>'
+     .     '</ide>'
+     .     '<emit>'
+     .       '<CNPJ>'.$emit['CNPJ'].'</CNPJ><xNome>'.$emit['xNome'].'</xNome><xFant>'.$emit['xFant'].'</xFant>'
+     .       '<enderEmit><xLgr>'.$emit['enderEmit']['xLgr'].'</xLgr><nro>'.$emit['enderEmit']['nro'].'</nro><xBairro>'.$emit['enderEmit']['xBairro'].'</xBairro><cMun>'.$emit['enderEmit']['cMun'].'</cMun><xMun>'.$emit['enderEmit']['xMun'].'</xMun><UF>'.$emit['enderEmit']['UF'].'</UF><CEP>'.$emit['enderEmit']['CEP'].'</CEP><cPais>'.$emit['enderEmit']['cPais'].'</cPais><xPais>'.$emit['enderEmit']['xPais'].'</xPais><fone>'.$emit['enderEmit']['fone'].'</fone></enderEmit>'
+     .       '<IE>'.$emit['IE'].'</IE><CRT>'.$emit['CRT'].'</CRT>'
+     .     '</emit>'
+     .      (!empty($dest)
+        ? ('<dest>'.(isset($dest['CPF'])?'<CPF>'.$dest['CPF'].'</CPF>':'<CNPJ>'.$dest['CNPJ'].'</CNPJ>').'<indIEDest>'.$dest['indIEDest'].'</indIEDest></dest>')
+        : '')
+     .     $detXML
+     .     $totXML
+     .     $transpXML
+     .     $pagXML
+     .     $infAd
+     .     . '<infRespTec><CPF>04125521247</CPF><xContato>Luiz Breno da frota</xContato><email>luizfrota2@gmail.com</email><fone>97991434585</fone></infRespTec>'
+     .   '</infNFe>'
+     . '</NFe>';
 
-    $res = $tools->sefazEnviaLote([$sig], mt_rand(1, 99999), 1);
-    $std = (new Standardize)->toStd($res);
-    if (in_array((int)($std->cStat ?? 0), [100, 104])) {
-        if (preg_match('~(<protNFe[^>]*>.*?</protNFe>)~s', $res, $m)) {
-            $proc = nfeproc($sig, $m[1]);
-            file_put_contents(__DIR__ . '/procNFCe_'.$chave.'.xml', $proc);
-            
-            // Salva o retorno APENAS em nfce_emitidas (evita erro 500 se colunas sumirem da tabela vendas)
-            $stLog = $pdo->prepare("
-                UPDATE nfce_emitidas 
-                   SET status_sefaz = '100', 
-                       mensagem = 'Autorizado', 
-                       protocolo = :prot, 
-                       xml_nfeproc = :xml 
-                 WHERE chave = :chave
-            ");
-            
-            // Se não existir o registro (emissão manual sem pre-log), faz insert
-            $stIns = $pdo->prepare("
-                INSERT INTO nfce_emitidas (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem, xml_nfeproc)
-                VALUES (:emp, :venda, :amb, :serie, :num, :chave, :prot, '100', 'Autorizado', :xml)
-                ON DUPLICATE KEY UPDATE protocolo = VALUES(protocolo), xml_nfeproc = VALUES(xml_nfeproc), status_sefaz = '100'
-            ");
-            
-            $stIns->execute([
-                ':emp'  => NFCE_EMPRESA_ID,
-                ':venda'=> $venda_id,
-                ':amb'  => TP_AMB,
-                ':serie'=> NFC_SERIE,
-                ':num'  => $nNF,
-                ':chave'=> $chave,
-                ':prot' => $m[1] ? (preg_match('~<nProt>([^<]+)</nProt>~', $m[1], $mp) ? $mp[1] : null) : null,
-                ':xml'  => $proc
-            ]);
-            
-            // Opcional: Atualiza apenas o tipo_nota na vendas (esta coluna existe)
-            $stV = $pdo->prepare("UPDATE vendas SET tipo_nota = 'fiscal' WHERE id = :id");
-            $stV->execute([':id' => $venda_id]);
-            
-            while (ob_get_level()) ob_end_clean();
-            header('Location: danfe_nfce.php?chave='.$chave.'&venda_id='.$venda_id.'&id='.NFCE_EMPRESA_ID);
-            exit;
-        }
+/* ===== Assina SOMENTE a NFe ===== */
+try { $nfeAss = $tools->signNFe($nfe); }
+catch (Throwable $e) { die('<pre>Falha ao assinar: '.$e->getMessage().'</pre>'); }
+
+/* ===== Envia — passa ARRAY de NFe assinadas ===== */
+try {
+  $respEnv = $tools->sefazEnviaLote([$nfeAss], '1', 1);
+} catch (Throwable $e) {
+  try { $respEnv = $tools->sefazEnviaLote([$nfeAss], '1', false, 1); }
+  catch (Throwable $e2) { die('<pre>Falha na autorização: '.$e->getMessage()."\n\n".$e2->getMessage()."</pre>"); }
+}
+
+$stdEnv = (new Standardize)->toStd($respEnv);
+
+/* ===== Trata retorno ===== */
+if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
+  if (!preg_match('~(<protNFe[^>]*>.*?</protNFe>)~s', $respEnv, $mProt)) {
+    die("Autorizado, mas não localizei protNFe no retorno.");
+  }
+  $proc = nfeproc($nfeAss, $mProt[1]);
+  $xmlPath = __DIR__ . '/procNFCe_'.$chave.'.xml';
+  file_put_contents($xmlPath, $proc);
+
+
+  // ===== Persistir retorno SEFAZ 104 em nfce_emitidas (antes do redirect) =====
+  try {
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+      $__found = false;
+      foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
+        if (is_file($__p)) { require_once $__p; $__found = true; break; }
+      }
     }
-    die('Erro SEFAZ: ' . ($std->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($std->cStat ?? '?') . ')');
+    if (isset($pdo) && ($pdo instanceof PDO)) {
+      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      $cStat   = (string)($stdEnv->cStat ?? '');
+      $xMotivo = (string)($stdEnv->xMotivo ?? '');
+      $tpAmb   = (int)TP_AMB;
+      $serieI  = (int)NFC_SERIE;
+      $nnfI    = isset($nNF) ? (int)$nNF : 0;
+      $vendaId = isset($venda_id) ? (string)$venda_id : (isset($_GET['venda_id']) ? (string)$_GET['venda_id'] : null);
+      $chaveI  = isset($chave) ? (string)$chave : (isset($chaveI) ? (string)$chaveI : '');
+
+      $xmlProcContent = isset($proc) ? $proc : (isset($xmlProcPath) && is_file($xmlProcPath) ? @file_get_contents($xmlProcPath) : null);
+      $xmlEnvio       = isset($nfeAss) ? $nfeAss : (isset($nfe) ? $nfe : null);
+      $xmlRetorno     = isset($respEnv) ? $respEnv : (isset($ret) ? $ret : null);
+
+      // Extrai protocolo do protNFe capturado ($mProt)
+      $nProt = null;
+      if (isset($mProt[1]) && preg_match('~<nProt>([^<]+)</nProt>~', $mProt[1], $m2)) {
+        $nProt = $m2[1];
+      }
+
+      // Monta JSON de pagamento se existir código de tPag
+      $tpagJsonStr = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
+
+      // tenta identificar vNF
+      $vNFnum = null;
+      if (isset($proc) && preg_match('~<vNF>([0-9]+\.[0-9]{2})</vNF>~', $proc, $mV)) {
+        $vNFnum = $mV[1];
+      } elseif (isset($nfeAss) && preg_match('~<vNF>([0-9]+\.[0-9]{2})</vNF>~', $nfeAss, $mV)) {
+        $vNFnum = $mV[1];
+      }
+
+      $vTrocoVal = isset($vTrocoVal) ? $vTrocoVal : (isset($stdPag->vTroco) ? $stdPag->vTroco : null);
+
+      $st = $pdo->prepare("
+        INSERT INTO nfce_emitidas
+          (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem,
+           xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
+        VALUES
+          (:empresa_id, :venda_id, :ambiente, :serie, :numero, :chave, :protocolo, :status_sefaz, :mensagem,
+           :xml_nfeproc, :xml_envio, :xml_retorno, :valor_total, :valor_troco, :tpag_json)
+        ON DUPLICATE KEY UPDATE
+          protocolo    = VALUES(protocolo),
+          status_sefaz = VALUES(status_sefaz),
+          mensagem     = VALUES(mensagem),
+          xml_nfeproc  = VALUES(xml_nfeproc),
+          xml_envio    = VALUES(xml_envio),
+          xml_retorno  = VALUES(xml_retorno),
+          valor_total  = VALUES(valor_total),
+          valor_troco  = VALUES(valor_troco),
+          tpag_json    = VALUES(tpag_json),
+          created_at   = NOW()
+      ");
+
+      $st->execute([
+        ':empresa_id'   => defined('NFCE_EMPRESA_ID') ? constant('NFCE_EMPRESA_ID') : (defined('EMPRESA_ID') ? constant('EMPRESA_ID') : ''),
+        ':venda_id'     => $vendaId,
+        ':ambiente'     => $tpAmb,
+        ':serie'        => $serieI,
+        ':numero'       => $nnfI,
+        ':chave'        => $chaveI,
+        ':protocolo'    => $nProt,
+        ':status_sefaz' => $cStat,
+        ':mensagem'     => $xMotivo,
+        ':xml_nfeproc'  => $xmlProcContent,
+        ':xml_envio'    => $xmlEnvio,
+        ':xml_retorno'  => $xmlRetorno,
+        ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
+        ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
+        ':tpag_json'    => $tpagJsonStr
+      ]);
+    }
+  } catch (Throwable $e) {
+    error_log('Falha ao gravar nfce_emitidas (104): ' . $e->getMessage());
+  }
+   $empresaId = $_POST['empresa_id'] ?? ($_GET['id'] ?? '');
+  // ======= SEM AUTO-PRINT: só mostra link para abrir/imprimir =======
+  // ======= AGORA: redireciona direto para o DANFE =======
+  $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
+     . '&venda_id=' . urlencode((string)$vendaId)
+     . '&id=' . urlencode($empresaId);
+  // limpa qualquer saída anterior para poder enviar headers
+  while (ob_get_level() > 0) { ob_end_clean(); }
+  if (!headers_sent()) {
+    header('Location: ' . $danfeUrl);
+    exit;
+  }
+  // Fallback JS se headers já enviados
+  echo '<!doctype html><meta charset="utf-8">';
+  echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
+  exit;
+}
+
+if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 103 && !empty($stdEnv->infRec->nRec)) {
+  $nRec = (string)$stdEnv->infRec->nRec;
+  sleep(2);
+  $ret = $tools->sefazConsultaRecibo($nRec);
+  if (preg_match('~(<protNFe[^>]*>.*?</protNFe>)~s', $ret, $mProt)) {
+    $proc = nfeproc($nfeAss, $mProt[1]);
+    $xmlPath = __DIR__ . '/procNFCe_'.$chave.'.xml';
+    file_put_contents($xmlPath, $proc);
+
+    // ===== Persistir retorno SEFAZ no BD =====
+    try {
+      if (!isset($pdo) || !($pdo instanceof PDO)) {
+        $__found = false;
+        foreach ([ __DIR__ . '/../../assets/php/conexao.php',
+  __DIR__ . '/../../ERP/assets/php/conexao.php',
+  __DIR__ . '/../dashboard/php/conexao.php',
+  $_SERVER['DOCUMENT_ROOT'] . '/assets/php/conexao.php',
+  $_SERVER['DOCUMENT_ROOT'] . '/ERP/assets/php/conexao.php',] as $__p) {
+          if (is_file($__p)) { require_once $__p; $__found = true; break; }
+        }
+      }
+      if (isset($pdo) && ($pdo instanceof PDO)) {
+        $cStat   = (string)($stdEnv->cStat ?? '');
+        $xMotivo = (string)($stdEnv->xMotivo ?? '');
+        $tpAmb   = (string)TP_AMB;
+        $serieI  = (int)NFC_SERIE;
+        $nnfI    = (int)$nNF;
+        $vendaId = isset($venda_id) ? (string)$venda_id : (isset($_GET['venda_id']) ? (string)$_GET['venda_id'] : null);
+        $protXML = '';
+        $nProt   = null;
+        $dhRecb  = null;
+        $chaveI  = (string)$chave;
+        if (preg_match('~<protNFe[^>]*>(.*?)</protNFe>~s', $respEnv, $m)) { $protXML = $m[0]; }
+        if (preg_match('~<nProt>([^<]+)</nProt>~', $mProt[1], $m2)) { $nProt = $m2[1]; }
+        if (preg_match('~<dhRecbto>([^<]+)</dhRecbto>~', $mProt[1], $m3)) { $dhRecb = $m3[1]; }
+        $xmlProcPath = __DIR__ . '/procNFCe_' . $chaveI . '.xml';
+        // === Persistir em nfce_emitidas ===
+$xmlProcContent = isset($proc) ? $proc : ((isset($xmlProcPath) && is_file($xmlProcPath)) ? @file_get_contents($xmlProcPath) : null);
+$xmlEnvio       = isset($nfeAss) ? $nfeAss : (isset($nfe) ? $nfe : null);
+$xmlRetorno     = isset($ret) ? $ret : (isset($respEnv) ? $respEnv : null);
+$tpagJsonStr    = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
+
+$st = $pdo->prepare("INSERT INTO nfce_emitidas
+  (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem, xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
+  VALUES (:empresa_id, :venda_id, :ambiente, :serie, :numero, :chave, :protocolo, :status_sefaz, :mensagem, :xml_nfeproc, :xml_envio, :xml_retorno, :valor_total, :valor_troco, :tpag_json)
+  ON DUPLICATE KEY UPDATE
+    protocolo=VALUES(protocolo),
+    status_sefaz=VALUES(status_sefaz),
+    mensagem=VALUES(mensagem),
+    xml_nfeproc=VALUES(xml_nfeproc),
+    xml_envio=VALUES(xml_envio),
+    xml_retorno=VALUES(xml_retorno),
+    valor_total=VALUES(valor_total),
+    valor_troco=VALUES(valor_troco),
+    tpag_json=VALUES(tpag_json),
+    created_at=NOW()
+");
+$st->execute([
+  ':empresa_id'   => NFCE_EMPRESA_ID,
+  ':venda_id'     => $vendaId,
+  ':ambiente'     => (int)$tpAmb,
+  ':serie'        => $serieI,
+  ':numero'       => $nnfI,
+  ':chave'        => $chaveI,
+  ':protocolo'    => isset($nProt) ? $nProt : null,
+  ':status_sefaz' => (string)$cStat,
+  ':mensagem'     => (string)$xMotivo,
+  ':xml_nfeproc'  => $xmlProcContent,
+  ':xml_envio'    => $xmlEnvio,
+  ':xml_retorno'  => $xmlRetorno,
+  ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
+  ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
+  ':tpag_json'    => $tpagJsonStr
+]);
+}
+    } catch (Throwable $e) {
+      // Não bloquear o fluxo por erro de log
+      // error_log('Falha ao persistir retorno SEFAZ: '.$e->getMessage());
+    }
+    
+    // ======= AGORA: redireciona direto para o DANFE =======
+    $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
+       . '&venda_id=' . urlencode((string)$vendaId);
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    if (!headers_sent()) {
+      header('Location: ' . $danfeUrl);
+      exit;
+    }
+    echo '<!doctype html><meta charset="utf-8">';
+    echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
+    exit;
+}
+    /* Se chegou aqui e não é 104 nem 103, é uma rejeição */
+    die('Erro SEFAZ: ' . ($stdEnv->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($stdEnv->cStat ?? '?') . ')');
+
 } catch (Throwable $e) {
     while (ob_get_level()) ob_end_clean();
     die('[V3-DEBUG] Erro Fatal na Emissão: ' . $e->getMessage() . ' no arquivo ' . $e->getFile() . ':' . $e->getLine());
