@@ -254,8 +254,16 @@ body {
     background-color: var(--erp-primary) !important;
 }
 
-.bg-white {
-    background-color: #0f172a !important;
+/* Neutralize all light/white backgrounds */
+.bg-light, .bg-white, .btn-light, .card-footer, .modal-footer {
+    background-color: var(--erp-light) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+}
+
+.bg-secondary {
+    background-color: var(--erp-secondary) !important;
+    border-color: var(--border) !important;
 }
 
 .text-dark:not(.btn-warning) {
@@ -266,8 +274,29 @@ body {
     color: #64748b !important;
 }
 
-/* Specific fix for cashier and modals lists */
-.bg-light, .bg-light *, .modal-body, .modal-body *, .list-group-item, .list-group-item * {
+/* Aggressive Table Cleanup */
+.table {
+    --bs-table-color: var(--text-primary);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--border);
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+}
+
+.table td, .table th, .table tr {
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+}
+
+.table thead th {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--erp-primary) !important;
+    border-bottom: 2px solid var(--border) !important;
+    border-top: none !important;
+}
+
+/* Specific fix for cashier, sales and modals */
+.bg-light, .bg-light *, .modal-body, .modal-body *, .list-group-item, .list-group-item *, .card-body, .card-body * {
     color: var(--text-primary);
 }
 
