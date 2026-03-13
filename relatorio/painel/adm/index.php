@@ -45,7 +45,7 @@ try {
 /* ===== FILTRO DE FEIRA ===== */
 $feiraId = isset($_GET['feira_id']) ? (int)$_GET['feira_id'] : 0;
 
-// Buscar feiras disponíveis
+/* Buscar feiras disponíveis */
 $feiras = [];
 try {
   $st = $pdo->query("SELECT id, codigo, nome FROM feiras WHERE ativo = 1 ORDER BY id");
@@ -54,16 +54,16 @@ try {
   $feiras = [];
 }
 
-// Se não selecionou feira, pega a primeira
+/* Se não selecionou feira, pega a primeira */
 if ($feiraId === 0 && !empty($feiras)) {
   $feiraId = (int)$feiras[0]['id'];
 }
 
-// Nome da feira selecionada
+/* Nome da feira selecionada */
 $feiraNome = 'Todas as Feiras';
 foreach ($feiras as $f) {
   if ((int)$f['id'] === $feiraId) {
-    $feiraNome = $f['nome'];
+    $feiraNome = (string)$f['nome'];
     break;
   }
 }
@@ -86,7 +86,7 @@ try {
     $st->execute();
   }
 
-  foreach ($st->fetchAll() as $row) {
+  foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $ym = (string)($row['ym'] ?? '');
     if ($ym !== '' && preg_match('/^\d{4}-\d{2}$/', $ym)) {
       $label = date('m/Y', strtotime($ym . '-01'));
@@ -102,7 +102,9 @@ try {
 /* ===== Filtro mensal (YYYY-MM) ===== */
 $defaultMes = !empty($mesOptions) ? (string)$mesOptions[0]['val'] : date('Y-m');
 $mes = trim((string)($_GET['mes'] ?? $defaultMes));
-if (!preg_match('/^\d{4}-\d{2}$/', $mes)) $mes = $defaultMes;
+if (!preg_match('/^\d{4}-\d{2}$/', $mes)) {
+  $mes = $defaultMes;
+}
 
 if (!empty($mesMap) && empty($mesMap[$mes])) {
   $mes = $defaultMes;
@@ -116,9 +118,9 @@ $mesLabel   = date('m/Y', strtotime($monthStart));
 $today      = date('Y-m-d');
 $yesterday  = date('Y-m-d', strtotime('-1 day'));
 
-/* Mes anterior */
+/* Mês anterior */
 $prevMonthStart = date('Y-m-01', strtotime($monthStart . ' -1 month'));
-$prevMonthEnd   = date('Y-m-t',  strtotime($monthStart . ' -1 month'));
+$prevMonthEnd   = date('Y-m-t', strtotime($monthStart . ' -1 month'));
 $prevMesLabel   = date('m/Y', strtotime($prevMonthStart));
 
 /* Detecta tabela fechamento_dia */
@@ -135,11 +137,28 @@ try {
   $hasFechamentoDia = false;
 }
 
+/* Detecta coluna produtos.preco_referencia */
+$hasPrecoReferencia = false;
+try {
+  $st = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'produtos'
+      AND column_name = 'preco_referencia'
+  ");
+  $st->execute();
+  $hasPrecoReferencia = ((int)$st->fetchColumn() > 0);
+} catch (Throwable $e) {
+  $hasPrecoReferencia = false;
+}
+
 /* Helpers */
 function money($n): string
 {
   return number_format((float)$n, 2, ',', '.');
 }
+
 function pct_change(float $current, float $previous): ?float
 {
   if ($previous == 0.0) {
@@ -172,8 +191,11 @@ function url_with(array $add): string
 {
   $q = $_GET;
   foreach ($add as $k => $v) {
-    if ($v === null) unset($q[$k]);
-    else $q[$k] = $v;
+    if ($v === null) {
+      unset($q[$k]);
+    } else {
+      $q[$k] = $v;
+    }
   }
   return '?' . http_build_query($q);
 }
@@ -181,7 +203,9 @@ function url_with(array $add): string
 /* ===== Paginação ===== */
 $perPage = 6;
 $page = (int)($_GET['p'] ?? 1);
-if ($page < 1) $page = 1;
+if ($page < 1) {
+  $page = 1;
+}
 $offset = ($page - 1) * $perPage;
 
 $totalRows = 0;
@@ -236,9 +260,11 @@ try {
       $whereF
   ");
   $params = [':d' => $today];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st->execute($params);
-  $r = $st->fetch() ?: ['qtd' => 0, 'total' => 0];
+  $r = $st->fetch(PDO::FETCH_ASSOC) ?: ['qtd' => 0, 'total' => 0];
   $kpi['vendas_hoje_qtd']   = (int)$r['qtd'];
   $kpi['vendas_hoje_total'] = (float)$r['total'];
   $kpi['ticket_hoje']       = $kpi['vendas_hoje_qtd'] > 0 ? ($kpi['vendas_hoje_total'] / $kpi['vendas_hoje_qtd']) : 0.0;
@@ -246,7 +272,7 @@ try {
   /* Vendas Ontem */
   $params[':d'] = $yesterday;
   $st->execute($params);
-  $r = $st->fetch() ?: ['qtd' => 0, 'total' => 0];
+  $r = $st->fetch(PDO::FETCH_ASSOC) ?: ['qtd' => 0, 'total' => 0];
   $kpi['vendas_ontem_qtd']   = (int)$r['qtd'];
   $kpi['vendas_ontem_total'] = (float)$r['total'];
   $kpi['ticket_ontem']       = $kpi['vendas_ontem_qtd'] > 0 ? ($kpi['vendas_ontem_total'] / $kpi['vendas_ontem_qtd']) : 0.0;
@@ -260,7 +286,10 @@ try {
       AND UPPER(v.status) <> 'CANCELADA'
       $whereF
   ");
-  $params[':d'] = $today;
+  $params = [':d' => $today];
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st2->execute($params);
   $kpi['itens_hoje_qtd'] = (float)($st2->fetchColumn() ?? 0);
 
@@ -284,32 +313,42 @@ try {
       $whereF
   ");
   $params = [':i' => $monthStart, ':e' => $monthEnd];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st4->execute($params);
-  $r = $st4->fetch() ?: ['qtd' => 0, 'total' => 0];
+  $r = $st4->fetch(PDO::FETCH_ASSOC) ?: ['qtd' => 0, 'total' => 0];
   $kpi['mes_vendas_qtd'] = (int)$r['qtd'];
   $kpi['mes_total']      = (float)$r['total'];
   $kpi['mes_ticket']     = $kpi['mes_vendas_qtd'] > 0 ? ($kpi['mes_total'] / $kpi['mes_vendas_qtd']) : 0.0;
 
   /* Total do MÊS ANTERIOR */
   $params = [':i' => $prevMonthStart, ':e' => $prevMonthEnd];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st4->execute($params);
-  $r = $st4->fetch() ?: ['qtd' => 0, 'total' => 0];
+  $r = $st4->fetch(PDO::FETCH_ASSOC) ?: ['qtd' => 0, 'total' => 0];
   $kpi['mes_ant_vendas_qtd'] = (int)$r['qtd'];
   $kpi['mes_ant_total']      = (float)$r['total'];
   $kpi['mes_ant_ticket']     = $kpi['mes_ant_vendas_qtd'] > 0 ? ($kpi['mes_ant_total'] / $kpi['mes_ant_vendas_qtd']) : 0.0;
 
   /* Produtores ativos */
   $st = $pdo->prepare("SELECT COUNT(*) FROM produtores WHERE ativo = 1 $whereF");
-  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
-  else $st->execute();
+  if ($feiraId > 0) {
+    $st->execute([':f' => $feiraId]);
+  } else {
+    $st->execute();
+  }
   $kpi['produtores_ativos'] = (int)($st->fetchColumn() ?? 0);
 
   /* Produtos ativos */
   $st = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE ativo = 1 $whereF");
-  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
-  else $st->execute();
+  if ($feiraId > 0) {
+    $st->execute([':f' => $feiraId]);
+  } else {
+    $st->execute();
+  }
   $kpi['produtos_ativos'] = (int)($st->fetchColumn() ?? 0);
 
   /* Vendas sem forma_pagamento */
@@ -322,21 +361,30 @@ try {
       $whereF
   ");
   $params = [':i' => $monthStart, ':e' => $monthEnd];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st->execute($params);
   $kpi['sem_pagto_mes'] = (int)($st->fetchColumn() ?? 0);
 
   /* Produtos com preço ref zero */
-  $st = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM produtos
-    WHERE ativo = 1
-      AND (preco_referencia IS NULL OR preco_referencia <= 0)
-      $whereF
-  ");
-  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
-  else $st->execute();
-  $kpi['preco_ref_zero'] = (int)($st->fetchColumn() ?? 0);
+  if ($hasPrecoReferencia) {
+    $st = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM produtos
+      WHERE ativo = 1
+        AND (preco_referencia IS NULL OR preco_referencia <= 0)
+        $whereF
+    ");
+    if ($feiraId > 0) {
+      $st->execute([':f' => $feiraId]);
+    } else {
+      $st->execute();
+    }
+    $kpi['preco_ref_zero'] = (int)($st->fetchColumn() ?? 0);
+  } else {
+    $kpi['preco_ref_zero'] = 0;
+  }
 
   /* Breakdown pagamento HOJE */
   $st = $pdo->prepare("
@@ -350,15 +398,22 @@ try {
     GROUP BY fp
   ");
   $params = [':d' => $today];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st->execute($params);
-  foreach ($st->fetchAll() as $row) {
+  foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $fp = (string)($row['fp'] ?? 'OUTROS');
     $val = (float)($row['total'] ?? 0);
-    if ($fp === 'PIX') $payHoje['PIX'] += $val;
-    elseif ($fp === 'DINHEIRO') $payHoje['DINHEIRO'] += $val;
-    elseif ($fp === 'CARTAO' || $fp === 'CARTÃO') $payHoje['CARTAO'] += $val;
-    else $payHoje['OUTROS'] += $val;
+    if ($fp === 'PIX') {
+      $payHoje['PIX'] += $val;
+    } elseif ($fp === 'DINHEIRO') {
+      $payHoje['DINHEIRO'] += $val;
+    } elseif ($fp === 'CARTAO' || $fp === 'CARTÃO') {
+      $payHoje['CARTAO'] += $val;
+    } else {
+      $payHoje['OUTROS'] += $val;
+    }
   }
 
   /* Fechamento pendente ontem */
@@ -373,14 +428,19 @@ try {
     $st->execute([':f' => $feiraId, ':d' => $yesterday]);
     $ontemVendas = (int)($st->fetchColumn() ?? 0);
 
-    $st = $pdo->prepare("SELECT COUNT(*) FROM fechamento_dia WHERE feira_id = :f AND data_ref = :d");
+    $st = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM fechamento_dia
+      WHERE feira_id = :f
+        AND data_ref = :d
+    ");
     $st->execute([':f' => $feiraId, ':d' => $yesterday]);
     $ontemFechado = (int)($st->fetchColumn() ?? 0);
 
     $kpi['fechamento_pendente_ontem'] = ($ontemVendas > 0 && $ontemFechado <= 0) ? 1 : 0;
   }
 } catch (Throwable $e) {
-  // Mantém zeros
+  /* Mantém zeros */
 }
 
 /* Percentuais pagamento HOJE */
@@ -405,7 +465,7 @@ try {
   $whereF = $feiraId > 0 ? " AND vi.feira_id = :f" : "";
   $st = $pdo->prepare("
     SELECT
-      c.nome AS categoria,
+      COALESCE(c.nome, 'Sem categoria') AS categoria,
       COALESCE(SUM(vi.quantidade),0) AS itens,
       COALESCE(SUM(vi.subtotal),0)   AS total
     FROM venda_itens vi
@@ -415,14 +475,16 @@ try {
     WHERE DATE(v.data_hora) BETWEEN :i AND :e
       AND UPPER(v.status) <> 'CANCELADA'
       $whereF
-    GROUP BY c.nome
+    GROUP BY COALESCE(c.nome, 'Sem categoria')
     ORDER BY total DESC
     LIMIT 5
   ");
   $params = [':i' => $monthStart, ':e' => $monthEnd];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st->execute($params);
-  $topCategorias = $st->fetchAll();
+  $topCategorias = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
   $topCategorias = [];
 }
@@ -447,14 +509,19 @@ try {
     LIMIT 7
   ");
   $params = [':i' => $monthStart, ':e' => $monthEnd];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st->execute($params);
-  $topProdutos = $st->fetchAll();
+  $topProdutos = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
   $topProdutos = [];
 }
 
-/* ===== Últimos lançamentos (mês) ===== */
+/* ===== Últimos lançamentos (mês) =====
+   Mantido alias "feirantes" para não quebrar seu HTML,
+   mas pelo schema atual isso lista PRODUTOS da venda.
+*/
 $ultimosLanc = [];
 try {
   $whereF = $feiraId > 0 ? " AND v.feira_id = :f" : "";
@@ -463,21 +530,27 @@ try {
       v.id,
       v.data_hora,
       v.total,
-      GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR '||') AS feirantes
+      GROUP_CONCAT(DISTINCT COALESCE(p.nome, 'Item sem produto') ORDER BY p.nome SEPARATOR '||') AS feirantes
     FROM vendas v
-    LEFT JOIN venda_itens vi ON vi.feira_id = v.feira_id AND vi.venda_id = v.id
-    LEFT JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
-    LEFT JOIN produtores pr ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
+    LEFT JOIN venda_itens vi
+      ON vi.feira_id = v.feira_id
+     AND vi.venda_id = v.id
+    LEFT JOIN produtos p
+      ON p.feira_id = vi.feira_id
+     AND p.id = vi.produto_id
     WHERE DATE(v.data_hora) BETWEEN :i AND :e
+      AND UPPER(v.status) <> 'CANCELADA'
       $whereF
     GROUP BY v.id, v.data_hora, v.total
     ORDER BY v.data_hora DESC
     LIMIT 6
   ");
   $params = [':i' => $monthStart, ':e' => $monthEnd];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st->execute($params);
-  $ultimosLanc = $st->fetchAll();
+  $ultimosLanc = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
   $ultimosLanc = [];
 }
@@ -492,19 +565,28 @@ try {
       COALESCE(c.nome,'') AS comunidade,
       pr.ativo
     FROM produtores pr
-    LEFT JOIN comunidades c ON c.feira_id = pr.feira_id AND c.id = pr.comunidade_id
+    LEFT JOIN comunidades c
+      ON c.feira_id = pr.feira_id
+     AND c.id = pr.comunidade_id
     $whereF
     ORDER BY pr.ativo DESC, pr.nome ASC
     LIMIT 6
   ");
-  if ($feiraId > 0) $st->execute([':f' => $feiraId]);
-  else $st->execute();
-  $listaProdutores = $st->fetchAll();
+  if ($feiraId > 0) {
+    $st->execute([':f' => $feiraId]);
+  } else {
+    $st->execute();
+  }
+  $listaProdutores = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
   $listaProdutores = [];
 }
 
-/* ===== Tabela grande (mês) com paginação 6 ===== */
+/* ===== Tabela grande (mês) com paginação 6 =====
+   Mantido alias "feirante" para não quebrar seu HTML,
+   mas ficará vazio porque o schema atual não tem vínculo
+   direto do item vendido com produtor.
+*/
 $ultimosItens = [];
 try {
   $whereF = $feiraId > 0 ? " AND vi.feira_id = :f" : "";
@@ -514,10 +596,13 @@ try {
     JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
     JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
     WHERE DATE(v.data_hora) BETWEEN :i AND :e
+      AND UPPER(v.status) <> 'CANCELADA'
       $whereF
   ");
   $params = [':i' => $monthStart, ':e' => $monthEnd];
-  if ($feiraId > 0) $params[':f'] = $feiraId;
+  if ($feiraId > 0) {
+    $params[':f'] = $feiraId;
+  }
   $st->execute($params);
   $totalRows = (int)($st->fetchColumn() ?? 0);
 
@@ -533,30 +618,40 @@ try {
       v.data_hora,
       p.nome AS produto,
       COALESCE(cat.nome,'') AS categoria,
-      COALESCE(pr.nome,'') AS feirante,
+      '' AS feirante,
       vi.quantidade,
       COALESCE(u.sigla,'') AS unid,
       vi.subtotal,
       COALESCE(NULLIF(TRIM(v.forma_pagamento),''),'—') AS forma_pagamento,
       COALESCE(NULLIF(TRIM(v.status),''),'—') AS status
     FROM venda_itens vi
-    JOIN vendas v ON v.feira_id = vi.feira_id AND v.id = vi.venda_id
-    JOIN produtos p ON p.feira_id = vi.feira_id AND p.id = vi.produto_id
-    LEFT JOIN categorias cat ON cat.feira_id = p.feira_id AND cat.id = p.categoria_id
-    LEFT JOIN unidades u ON u.feira_id = p.feira_id AND u.id = p.unidade_id
-    LEFT JOIN produtores pr ON pr.feira_id = p.feira_id AND pr.id = p.produtor_id
+    JOIN vendas v
+      ON v.feira_id = vi.feira_id
+     AND v.id = vi.venda_id
+    JOIN produtos p
+      ON p.feira_id = vi.feira_id
+     AND p.id = vi.produto_id
+    LEFT JOIN categorias cat
+      ON cat.feira_id = p.feira_id
+     AND cat.id = p.categoria_id
+    LEFT JOIN unidades u
+      ON u.feira_id = p.feira_id
+     AND u.id = p.unidade_id
     WHERE DATE(v.data_hora) BETWEEN :i AND :e
+      AND UPPER(v.status) <> 'CANCELADA'
       $whereF
-    ORDER BY v.data_hora DESC
+    ORDER BY v.data_hora DESC, v.id DESC, vi.id DESC
     LIMIT :lim OFFSET :off
   ");
   $st->bindValue(':i', $monthStart, PDO::PARAM_STR);
   $st->bindValue(':e', $monthEnd, PDO::PARAM_STR);
-  if ($feiraId > 0) $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
+  if ($feiraId > 0) {
+    $st->bindValue(':f', $feiraId, PDO::PARAM_INT);
+  }
   $st->bindValue(':lim', $perPage, PDO::PARAM_INT);
   $st->bindValue(':off', $offset, PDO::PARAM_INT);
   $st->execute();
-  $ultimosItens = $st->fetchAll();
+  $ultimosItens = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
   $ultimosItens = [];
   $totalRows = 0;
@@ -946,7 +1041,7 @@ $nomeTopo = $_SESSION['usuario_nome'] ?? 'Admin';
               <span class="menu-title">Relatórios</span>
             </a>
           </li>
-            <li class="nav-item">
+          <li class="nav-item">
             <a class="nav-link" href="./localidades.php">
               <i class="ti-map menu-icon"></i>
               <span class="menu-title">Localidades</span>
