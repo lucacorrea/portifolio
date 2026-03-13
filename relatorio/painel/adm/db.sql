@@ -103,6 +103,33 @@ CREATE TABLE produtores (
   atualizado_em datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE permissionarios (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  feira_id TINYINT UNSIGNED NOT NULL,
+
+  nome VARCHAR(160) NOT NULL,
+  contato VARCHAR(60) DEFAULT NULL,
+  comunidade_id BIGINT UNSIGNED NOT NULL,
+  documento VARCHAR(30) DEFAULT NULL,
+  foto VARCHAR(255) DEFAULT NULL,
+
+  box_numero VARCHAR(30) DEFAULT NULL,
+  setor VARCHAR(100) DEFAULT NULL,
+  ramo_atividade VARCHAR(120) DEFAULT NULL,
+  data_permissao DATE DEFAULT NULL,
+  vencimento_permissao DATE DEFAULT NULL,
+  status_permissao ENUM('ATIVO','INATIVO','SUSPENSO','PENDENTE') NOT NULL DEFAULT 'ATIVO',
+
+  ativo TINYINT(1) NOT NULL DEFAULT 1,
+  observacao VARCHAR(255) DEFAULT NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  atualizado_em DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(),
+
+  PRIMARY KEY (id),
+  KEY idx_permissionarios_feira (feira_id),
+  KEY idx_permissionarios_comunidade (comunidade_id),
+  KEY idx_permissionarios_box (box_numero)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE produtos (
   id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
