@@ -134,9 +134,28 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
-/* Search Dropdowns Z-Index Fix */
+/* Search Dropdowns Z-Index Fix & Style */
 #searchResults, #pv_search_results, #customerResults, #pv_client_results {
-    z-index: 9999 !important;
+    z-index: 10000 !important;
+    background: #1e293b !important;
+    border: 1px solid var(--border) !important;
+    margin-top: 5px;
+}
+
+#searchResults .list-group-item, 
+#pv_search_results .list-group-item,
+#customerResults .list-group-item,
+#pv_client_results .list-group-item {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.05);
+    color: #f8fafc;
+}
+
+#searchResults .list-group-item:hover, 
+#pv_search_results .list-group-item:hover,
+#customerResults .list-group-item:hover,
+#pv_client_results .list-group-item:hover {
+    background: #334155;
 }
 
 /* Ensure parents of absolute elements don't clip */
@@ -144,8 +163,11 @@ body {
     overflow: visible !important;
 }
 
-.position-relative {
-    z-index: 1030; /* Above regular content but below sidebar */
+/* Push the search container up in the stacking context */
+.position-relative:has(> #searchResults),
+.position-relative:has(> #pv_search_results),
+.position-relative:has(> #customerResults) {
+    z-index: 1050 !important;
 }
 
 /* Bootstrap 5 Theme Overrides */
