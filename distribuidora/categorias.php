@@ -13,6 +13,47 @@ function e(string $s): string
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function build_url(array $overrides = []): string
+{
+  $params = $_GET;
+  unset($params['export']);
+
+  foreach ($overrides as $k => $v) {
+    if ($v === null || $v === '') {
+      unset($params[$k]);
+    } else {
+      $params[$k] = (string)$v;
+    }
+  }
+
+  $qs = http_build_query($params);
+  return 'categorias.php' . ($qs ? ('?' . $qs) : '');
+}
+
+function badgeStatus(string $st): string
+{
+  $s = strtoupper(trim($st));
+  if ($s === 'INATIVO') return '<span class="badge-soft badge-off">INATIVO</span>';
+  return '<span class="badge-soft badge-ok">ATIVO</span>';
+}
+
+function normHex(string $hex): string
+{
+  $h = trim($hex);
+  if ($h === '') return '#60a5fa';
+  if ($h[0] !== '#') $h = '#' . $h;
+  if (strlen($h) === 4) {
+    $h = '#' . $h[1] . $h[1] . $h[2] . $h[2] . $h[3] . $h[3];
+  }
+  return preg_match('/^#[0-9A-Fa-f]{6}$/', $h) ? strtolower($h) : '#60a5fa';
+}
+
+function fmtText(?string $v): string
+{
+  $v = trim((string)$v);
+  return $v !== '' ? $v : '—';
+}
+
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -21,18 +62,259 @@ $csrf = $_SESSION['csrf_token'];
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 
-$pdo = db();
-$rows = $pdo->query("SELECT id, nome, descricao, cor, obs, status
-                     FROM categorias
-                     ORDER BY id DESC
-                     LIMIT 2000")->fetchAll(PDO::FETCH_ASSOC);
+$q = trim((string)($_GET['q'] ?? ''));
+$status = strtoupper(trim((string)($_GET['status'] ?? '')));
+$status = ($status === 'ATIVO' || $status === 'INATIVO') ? $status : '';
 
-function badgeStatus(string $st): string
-{
-  $s = strtoupper(trim($st));
-  if ($s === 'INATIVO') return '<span class="badge-soft badge-off">INATIVO</span>';
-  return '<span class="badge-soft badge-ok">ATIVO</span>';
+$page = (int)($_GET['page'] ?? 1);
+if ($page < 1) $page = 1;
+
+$PER_PAGE = 10;
+
+$pdo = db();
+
+$where = [];
+$params = [];
+
+if ($status !== '') {
+  $where[] = "c.status = :status";
+  $params[':status'] = $status;
 }
+
+if ($q !== '') {
+  $where[] = "(
+    c.nome LIKE :q
+    OR c.descricao LIKE :q
+    OR c.cor LIKE :q
+    OR c.obs LIKE :q
+    OR c.status LIKE :q
+  )";
+  $params[':q'] = '%' . $q . '%';
+}
+
+$whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+/* =========================
+   EXPORTAR PDF (HTML IMPRIMÍVEL)
+========================= */
+if (isset($_GET['export']) && $_GET['export'] === 'pdf') {
+  $sqlPdf = "
+    SELECT id, nome, descricao, cor, obs, status
+    FROM categorias c
+    $whereSql
+    ORDER BY id DESC
+  ";
+  $stPdf = $pdo->prepare($sqlPdf);
+  foreach ($params as $k => $v) {
+    $stPdf->bindValue($k, $v, PDO::PARAM_STR);
+  }
+  $stPdf->execute();
+  $pdfRows = $stPdf->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  $geradoEm = date('d/m/Y H:i:s');
+  $statusLabel = $status !== '' ? $status : 'Todos';
+  $buscaLabel = $q !== '' ? $q : '—';
+?>
+  <!DOCTYPE html>
+  <html lang="pt-BR">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Relatório de Categorias</title>
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 12mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #111827;
+        background: #fff;
+      }
+
+      .wrap {
+        width: 100%;
+      }
+
+      .title {
+        text-align: center;
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+
+      .sub {
+        text-align: center;
+        font-size: 13px;
+        margin-bottom: 2px;
+      }
+
+      .filters {
+        text-align: center;
+        font-size: 13px;
+        margin-bottom: 14px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      th,
+      td {
+        border: 1px solid #111;
+        padding: 7px 8px;
+        vertical-align: middle;
+      }
+
+      th {
+        background: #f3f4f6;
+        text-align: center;
+        font-weight: 700;
+      }
+
+      .center {
+        text-align: center;
+      }
+
+      .left {
+        text-align: left;
+      }
+
+      .color-box {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        border: 1px solid #999;
+        vertical-align: middle;
+        margin-right: 6px;
+      }
+
+      .print-actions {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .print-actions button {
+        padding: 8px 12px;
+        border: 1px solid #111;
+        background: #fff;
+        border-radius: 6px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      @media print {
+        .print-actions {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <div class="title">PAINEL DA DISTRIBUIDORA - CATEGORIAS</div>
+      <div class="sub">Gerado em: <?= e($geradoEm) ?></div>
+      <div class="filters">Busca: <?= e($buscaLabel) ?> | Status: <?= e($statusLabel) ?></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px;">ID</th>
+            <th>Categoria</th>
+            <th>Descrição</th>
+            <th style="width:140px;">Cor</th>
+            <th style="width:120px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php if (!$pdfRows): ?>
+            <tr>
+              <td colspan="5" class="center">Nenhuma categoria encontrada.</td>
+            </tr>
+          <?php else: ?>
+            <?php foreach ($pdfRows as $r): ?>
+              <?php $cor = normHex((string)($r['cor'] ?? '#60a5fa')); ?>
+              <tr>
+                <td class="center"><?= (int)$r['id'] ?></td>
+                <td class="left"><?= e((string)$r['nome']) ?></td>
+                <td class="left"><?= e(fmtText((string)($r['descricao'] ?? ''))) ?></td>
+                <td class="left">
+                  <span class="color-box" style="background:<?= e($cor) ?>;"></span>
+                  <?= e($cor) ?>
+                </td>
+                <td class="center"><?= e(strtoupper((string)($r['status'] ?? 'ATIVO'))) ?></td>
+              </tr>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </tbody>
+      </table>
+
+      <div class="print-actions">
+        <button onclick="window.print()">Imprimir / Salvar em PDF</button>
+        <button onclick="window.close()">Fechar</button>
+      </div>
+    </div>
+
+    <script>
+      window.addEventListener('load', () => {
+        setTimeout(() => window.print(), 250);
+      });
+    </script>
+  </body>
+
+  </html>
+<?php
+  exit;
+}
+
+/* =========================
+   CONTAGEM
+========================= */
+$sqlCount = "SELECT COUNT(*) FROM categorias c $whereSql";
+$stCount = $pdo->prepare($sqlCount);
+foreach ($params as $k => $v) {
+  $stCount->bindValue($k, $v, PDO::PARAM_STR);
+}
+$stCount->execute();
+$totalRows = (int)$stCount->fetchColumn();
+
+$pages = max(1, (int)ceil($totalRows / $PER_PAGE));
+if ($page > $pages) $page = $pages;
+
+$offset = ($page - 1) * $PER_PAGE;
+
+/* =========================
+   LISTAGEM PAGINADA
+========================= */
+$sql = "
+  SELECT id, nome, descricao, cor, obs, status
+  FROM categorias c
+  $whereSql
+  ORDER BY id DESC
+  LIMIT :lim OFFSET :off
+";
+$st = $pdo->prepare($sql);
+foreach ($params as $k => $v) {
+  $st->bindValue($k, $v, PDO::PARAM_STR);
+}
+$st->bindValue(':lim', $PER_PAGE, PDO::PARAM_INT);
+$st->bindValue(':off', $offset, PDO::PARAM_INT);
+$st->execute();
+$rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+$currentCount = count($rows);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -45,14 +327,12 @@ function badgeStatus(string $st): string
   <link rel="shortcut icon" href="assets/images/favicon.svg" type="image/x-icon" />
   <title>Painel da Distribuidora | Categorias</title>
 
-  <!-- ========== CSS ========= -->
   <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/css/lineicons.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="assets/css/materialdesignicons.min.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="assets/css/main.css" />
 
   <style>
-    /* dropdown do profile: largura acompanha conteúdo */
     .profile-box .dropdown-menu {
       width: max-content;
       min-width: 260px;
@@ -78,7 +358,6 @@ function badgeStatus(string $st): string
       max-width: 100%;
     }
 
-    /* Botões compactos */
     .main-btn.btn-compact {
       height: 38px !important;
       padding: 8px 14px !important;
@@ -89,15 +368,6 @@ function badgeStatus(string $st): string
     .main-btn.btn-compact i {
       font-size: 14px;
       vertical-align: -1px;
-    }
-
-    .icon-btn {
-      height: 34px !important;
-      width: 42px !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
     }
 
     .form-control.compact,
@@ -112,7 +382,6 @@ function badgeStatus(string $st): string
       color: #64748b;
     }
 
-    /* Cards */
     .cardx {
       border: 1px solid rgba(148, 163, 184, .28);
       border-radius: 16px;
@@ -134,7 +403,6 @@ function badgeStatus(string $st): string
       padding: 14px;
     }
 
-    /* Tabela */
     .table td,
     .table th {
       vertical-align: middle;
@@ -162,6 +430,9 @@ function badgeStatus(string $st): string
       font-size: 12px;
       font-weight: 900;
       color: #0f172a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .badge-ok {
@@ -176,7 +447,6 @@ function badgeStatus(string $st): string
       color: #991b1b;
     }
 
-    /* modal */
     .modal-content {
       border-radius: 16px;
       overflow: hidden;
@@ -199,7 +469,6 @@ function badgeStatus(string $st): string
       flex: 0 0 auto;
     }
 
-    /* Flash 1.5s */
     .flash-auto-hide {
       transition: opacity .35s ease, transform .35s ease;
     }
@@ -208,6 +477,57 @@ function badgeStatus(string $st): string
       opacity: 0;
       transform: translateY(-6px);
       pointer-events: none;
+    }
+
+    .table-footer-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .pager-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .page-btn,
+    .page-btn-link {
+      width: 42px;
+      height: 42px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none !important;
+      transition: .2s ease;
+    }
+
+    .page-btn-link:hover {
+      background: #eef2ff;
+      color: #1e40af;
+      border-color: #c7d2fe;
+    }
+
+    .page-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .page-info {
+      font-weight: 900;
+      color: #475569;
+      min-width: 90px;
+      text-align: center;
+      font-size: 12px;
     }
 
     .logout-btn {
@@ -255,6 +575,15 @@ function badgeStatus(string $st): string
       #tbCat {
         min-width: 820px;
       }
+
+      .table-footer-nav {
+        justify-content: center;
+      }
+
+      #infoCount {
+        text-align: center;
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -264,7 +593,6 @@ function badgeStatus(string $st): string
     <div class="spinner"></div>
   </div>
 
-  <!-- ======== sidebar-nav start =========== -->
   <aside class="sidebar-nav-wrapper">
     <div class="navbar-logo">
       <a href="dashboard.php" class="brand-vertical">
@@ -276,27 +604,21 @@ function badgeStatus(string $st): string
       <ul>
         <li class="nav-item">
           <a href="dashboard.php">
-            <span class="icon">
-              <i class="lni lni-dashboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-dashboard"></i></span>
             <span class="text">Dashboard</span>
           </a>
         </li>
 
         <li class="nav-item">
           <a href="vendas.php">
-            <span class="icon">
-              <i class="lni lni-cart"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cart"></i></span>
             <span class="text">Vendas</span>
           </a>
         </li>
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_operacoes" aria-controls="ddmenu_operacoes" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-layers"></i>
-            </span>
+            <span class="icon"><i class="lni lni-layers"></i></span>
             <span class="text">Operações</span>
           </a>
           <ul id="ddmenu_operacoes" class="collapse dropdown-nav">
@@ -308,9 +630,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_estoque" aria-controls="ddmenu_estoque" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-package"></i>
-            </span>
+            <span class="icon"><i class="lni lni-package"></i></span>
             <span class="text">Estoque</span>
           </a>
           <ul id="ddmenu_estoque" class="collapse dropdown-nav">
@@ -324,9 +644,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item nav-item-has-children active">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_cadastros" aria-controls="ddmenu_cadastros" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-users"></i>
-            </span>
+            <span class="icon"><i class="lni lni-users"></i></span>
             <span class="text">Cadastros</span>
           </a>
           <ul id="ddmenu_cadastros" class="collapse dropdown-nav show">
@@ -338,9 +656,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item">
           <a href="relatorios.php">
-            <span class="icon">
-              <i class="lni lni-clipboard"></i>
-            </span>
+            <span class="icon"><i class="lni lni-clipboard"></i></span>
             <span class="text">Relatórios</span>
           </a>
         </li>
@@ -351,9 +667,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item nav-item-has-children">
           <a href="#0" class="collapsed" data-bs-toggle="collapse" data-bs-target="#ddmenu_config" aria-controls="ddmenu_config" aria-expanded="false">
-            <span class="icon">
-              <i class="lni lni-cog"></i>
-            </span>
+            <span class="icon"><i class="lni lni-cog"></i></span>
             <span class="text">Configurações</span>
           </a>
           <ul id="ddmenu_config" class="collapse dropdown-nav">
@@ -364,9 +678,7 @@ function badgeStatus(string $st): string
 
         <li class="nav-item">
           <a href="suporte.php">
-            <span class="icon">
-              <i class="lni lni-whatsapp"></i>
-            </span>
+            <span class="icon"><i class="lni lni-whatsapp"></i></span>
             <span class="text">Suporte</span>
           </a>
         </li>
@@ -377,7 +689,6 @@ function badgeStatus(string $st): string
   <div class="overlay"></div>
 
   <main class="main-wrapper">
-    <!-- Header -->
     <header class="header">
       <div class="container-fluid">
         <div class="row">
@@ -424,7 +735,6 @@ function badgeStatus(string $st): string
                 </nav>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -438,31 +748,28 @@ function badgeStatus(string $st): string
           <div class="head">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div style="font-weight:1000;color:#0f172a;"><i class="lni lni-tag me-1"></i> Lista</div>
-              <span class="badge-soft" id="countBadge">
-                <?= count($rows) ?> categorias
-              </span>
+              <span class="badge-soft" id="countBadge"><?= $totalRows ?> categoria(s)</span>
             </div>
 
             <div class="d-flex gap-2 flex-wrap align-items-center">
+              <button
+                class="main-btn primary-btn btn-hover btn-compact"
+                id="btnNovo"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#mdCategoria">
+                <i class="lni lni-plus me-1"></i> Nova categoria
+              </button>
+
               <select class="form-select compact" id="fStatus" style="min-width: 160px;">
-                <option value="">Status: Todos</option>
-                <option value="ATIVO">Ativo</option>
-                <option value="INATIVO">Inativo</option>
+                <option value="" <?= $status === '' ? 'selected' : '' ?>>Status: Todos</option>
+                <option value="ATIVO" <?= $status === 'ATIVO' ? 'selected' : '' ?>>Ativo</option>
+                <option value="INATIVO" <?= $status === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
               </select>
 
-              <a class="main-btn light-btn btn-hover btn-compact" href="assets/dados/categorias/exportar.php">
-                <i class="lni lni-download me-1"></i> Exportar (JSON)
+              <a class="main-btn light-btn btn-hover btn-compact" href="<?= e(build_url(['export' => 'pdf', 'page' => 1])) ?>" target="_blank">
+                <i class="lni lni-download me-1"></i> Exportar PDF
               </a>
-
-              <form action="assets/dados/categorias/importar.php" method="post" enctype="multipart/form-data"
-                style="margin:0;">
-                <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-                <label class="main-btn light-btn btn-hover btn-compact" style="margin:0; cursor:pointer;">
-                  <i class="lni lni-upload me-1"></i> Importar
-                  <input type="file" name="arquivo" id="fileImport" accept="application/json" hidden
-                    onchange="this.form.submit();" />
-                </label>
-              </form>
 
               <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
                 <i class="lni lni-eraser me-1"></i> Limpar
@@ -473,7 +780,7 @@ function badgeStatus(string $st): string
           <div class="body">
             <div class="row g-2 mb-2">
               <div class="col-12 col-lg-6">
-                <input class="form-control compact" id="qCat" placeholder="Buscar por nome, descrição ou status..." />
+                <input class="form-control compact" id="qCat" value="<?= e($q) ?>" placeholder="Buscar por nome, descrição, cor ou status..." />
               </div>
               <div class="col-12 col-lg-6 text-lg-end">
                 <div class="muted">Dica: use cor para identificar a categoria no sistema.</div>
@@ -481,7 +788,7 @@ function badgeStatus(string $st): string
             </div>
 
             <div class="table-responsive">
-              <table class="table text-nowrap" id="tbCat">
+              <table class="table text-nowrap mb-0" id="tbCat">
                 <thead>
                   <tr>
                     <th style="min-width:90px;">ID</th>
@@ -497,21 +804,25 @@ function badgeStatus(string $st): string
                     <tr>
                       <td colspan="6" class="text-center muted py-4">Nenhuma categoria encontrada.</td>
                     </tr>
-                    <?php else: foreach ($rows as $r): ?>
+                  <?php else: ?>
+                    <?php foreach ($rows as $r): ?>
                       <?php
                       $id = (int)$r['id'];
                       $st = strtoupper((string)$r['status']) === 'INATIVO' ? 'INATIVO' : 'ATIVO';
-                      $cor = trim((string)($r['cor'] ?? '#60a5fa')) ?: '#60a5fa';
+                      $cor = normHex((string)($r['cor'] ?? '#60a5fa'));
                       $nome = (string)$r['nome'];
                       $desc = (string)($r['descricao'] ?? '');
                       $obs  = (string)($r['obs'] ?? '');
                       ?>
-                      <tr data-id="<?= $id ?>" data-statusrow="<?= e($st) ?>" data-nome="<?= e($nome) ?>"
-                        data-desc="<?= e($desc) ?>" data-obs="<?= e($obs) ?>" data-cor="<?= e($cor) ?>"
+                      <tr
+                        data-id="<?= $id ?>"
+                        data-statusrow="<?= e($st) ?>"
+                        data-nome="<?= e($nome) ?>"
+                        data-desc="<?= e($desc) ?>"
+                        data-obs="<?= e($obs) ?>"
+                        data-cor="<?= e($cor) ?>"
                         data-status="<?= e($st) ?>">
-                        <td style="font-weight:1000;color:#0f172a;">
-                          <?= $id ?>
-                        </td>
+                        <td style="font-weight:1000;color:#0f172a;"><?= $id ?></td>
                         <td>
                           <div class="d-flex align-items-center gap-2">
                             <span class="swatch" style="background:<?= e($cor) ?>;"></span>
@@ -519,40 +830,61 @@ function badgeStatus(string $st): string
                               <div style="font-weight:1000;color:#0f172a;line-height:1.1;">
                                 <?= e($nome) ?>
                               </div>
-                              <div class="muted">
-                                <?= e($obs !== '' ? $obs : '—') ?>
-                              </div>
+                              <div class="muted"><?= e($obs !== '' ? $obs : '—') ?></div>
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <?= e($desc !== '' ? $desc : '—') ?>
-                        </td>
+                        <td><?= e($desc !== '' ? $desc : '—') ?></td>
                         <td>
                           <div class="d-flex align-items-center gap-2">
                             <span class="swatch" style="background:<?= e($cor) ?>;"></span>
-                            <span style="font-weight:900;color:#0f172a;">
-                              <?= e($cor) ?>
-                            </span>
+                            <span style="font-weight:900;color:#0f172a;"><?= e($cor) ?></span>
                           </div>
                         </td>
+                        <td class="text-center"><?= badgeStatus($st) ?></td>
                         <td class="text-center">
-                          <?= badgeStatus($st) ?>
-                        </td>
-                        <td class="text-center">
-                          <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit"
-                            data-bs-toggle="modal" data-bs-target="#mdCategoria">
+                          <button class="main-btn light-btn btn-hover btn-compact" type="button" data-act="edit" data-bs-toggle="modal" data-bs-target="#mdCategoria">
                             <i class="lni lni-pencil me-1"></i> Editar
                           </button>
                         </td>
                       </tr>
-                  <?php endforeach;
-                  endif; ?>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
                 </tbody>
               </table>
             </div>
 
-            <div class="muted mt-2" id="hintEmpty" style="display:none;">Nenhuma categoria encontrada.</div>
+            <div class="muted mt-2" id="hintEmpty" style="<?= $totalRows === 0 ? '' : 'display:none;' ?>">Nenhuma categoria encontrada.</div>
+
+            <div class="table-footer-nav">
+              <p class="text-sm text-gray mb-0" id="infoCount">
+                Mostrando <?= $currentCount ?> item(ns) nesta página de categorias. Total filtrado: <?= $totalRows ?>.
+              </p>
+
+              <div class="pager-box" id="pagerBox">
+                <?php if ($page > 1): ?>
+                  <a class="page-btn-link" href="<?= e(build_url(['page' => $page - 1])) ?>" title="Anterior">
+                    <i class="lni lni-chevron-left"></i>
+                  </a>
+                <?php else: ?>
+                  <button class="page-btn" type="button" disabled title="Anterior">
+                    <i class="lni lni-chevron-left"></i>
+                  </button>
+                <?php endif; ?>
+
+                <span class="page-info">Página <?= $page ?>/<?= $pages ?></span>
+
+                <?php if ($page < $pages): ?>
+                  <a class="page-btn-link" href="<?= e(build_url(['page' => $page + 1])) ?>" title="Próxima">
+                    <i class="lni lni-chevron-right"></i>
+                  </a>
+                <?php else: ?>
+                  <button class="page-btn" type="button" disabled title="Próxima">
+                    <i class="lni lni-chevron-right"></i>
+                  </button>
+                <?php endif; ?>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -571,7 +903,6 @@ function badgeStatus(string $st): string
     </footer>
   </main>
 
-  <!-- MODAL: Categoria -->
   <div class="modal fade" id="mdCategoria" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
@@ -583,7 +914,6 @@ function badgeStatus(string $st): string
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
-        <!-- SAVE (add/edit) -->
         <form id="frmSave" action="assets/dados/categorias/adicionarCategorias.php" method="post">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="cId" value="">
@@ -610,8 +940,7 @@ function badgeStatus(string $st): string
               <div class="col-12 col-lg-4">
                 <label class="form-label">Cor</label>
                 <div class="d-flex align-items-center gap-2">
-                  <input class="form-control compact" id="cCor" type="color" value="#60a5fa"
-                    style="width: 70px; padding: 4px 8px;" />
+                  <input class="form-control compact" id="cCor" type="color" value="#60a5fa" style="width: 70px; padding: 4px 8px;" />
                   <input class="form-control compact" id="cCorTxt" name="cor" value="#60a5fa" placeholder="#RRGGBB" />
                 </div>
                 <div class="muted mt-1">Usada para etiqueta/badge.</div>
@@ -619,20 +948,17 @@ function badgeStatus(string $st): string
 
               <div class="col-12">
                 <label class="form-label">Observação</label>
-                <textarea class="form-control" id="cObs" name="obs" rows="3" placeholder="Opcional..."
-                  style="border-radius:12px;"></textarea>
+                <textarea class="form-control" id="cObs" name="obs" rows="3" placeholder="Opcional..." style="border-radius:12px;"></textarea>
               </div>
             </div>
           </div>
 
           <div class="modal-footer d-flex justify-content-between">
-            <button class="main-btn danger-btn-outline btn-hover btn-compact" id="btnExcluir" type="submit"
-              form="frmDelete" style="display:none;">
+            <button class="main-btn danger-btn-outline btn-hover btn-compact" id="btnExcluir" type="submit" form="frmDelete" style="display:none;">
               <i class="lni lni-trash-can me-1"></i> Excluir
             </button>
             <div class="d-flex gap-2">
-              <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal"
-                type="button">Cancelar</button>
+              <button class="main-btn light-btn btn-hover btn-compact" data-bs-dismiss="modal" type="button">Cancelar</button>
               <button class="main-btn primary-btn btn-hover btn-compact" type="submit">
                 <i class="lni lni-save me-1"></i> Salvar
               </button>
@@ -640,23 +966,18 @@ function badgeStatus(string $st): string
           </div>
         </form>
 
-        <!-- DELETE (fora do form save) -->
-        <form id="frmDelete" action="assets/dados/categorias/excluirCategorias.php" method="post"
-          onsubmit="return confirm('Excluir esta categoria?');" style="display:none;">
+        <form id="frmDelete" action="assets/dados/categorias/excluirCategorias.php" method="post" onsubmit="return confirm('Excluir esta categoria?');" style="display:none;">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="id" id="delId" value="">
         </form>
-
       </div>
     </div>
   </div>
 
-  <!-- ========= JS ========= -->
   <script src="assets/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
 
   <script>
-    // Flash some em 1.5s
     (function() {
       const box = document.getElementById('flashBox');
       if (!box) return;
@@ -666,62 +987,14 @@ function badgeStatus(string $st): string
       }, 1500);
     })();
 
-    // DOM filtros
-    const qGlobal = document.getElementById("qGlobal");
     const qCat = document.getElementById("qCat");
     const fStatus = document.getElementById("fStatus");
-    const tbody = document.getElementById("tbodyCat");
-    const hintEmpty = document.getElementById("hintEmpty");
-    const countBadge = document.getElementById("countBadge");
     const btnLimpar = document.getElementById("btnLimpar");
+    const btnNovo = document.getElementById("btnNovo");
+    const tbody = document.getElementById("tbodyCat");
 
-    function onlyStatus(s) {
-      const v = String(s || "").trim().toUpperCase();
-      return (v === "ATIVO" || v === "INATIVO") ? v : "";
-    }
-
-    function filterRows() {
-      const q = (qCat.value || qGlobal.value || "").toLowerCase().trim();
-      const st = onlyStatus(fStatus.value);
-
-      let visible = 0;
-      tbody.querySelectorAll("tr").forEach(tr => {
-        // ignora linha vazia
-        if (!tr.hasAttribute("data-id")) return;
-
-        const statusRow = (tr.getAttribute("data-statusrow") || "").toUpperCase();
-        const text = tr.innerText.toLowerCase();
-
-        const okQ = !q || text.includes(q);
-        const okS = !st || statusRow === st;
-
-        const show = okQ && okS;
-        tr.style.display = show ? "" : "none";
-        if (show) visible++;
-      });
-
-      countBadge.textContent = `${visible} categoria(s)`;
-      hintEmpty.style.display = (visible === 0) ? "block" : "none";
-    }
-
-    qCat.addEventListener("input", filterRows);
-    qGlobal.addEventListener("input", () => {
-      qCat.value = qGlobal.value;
-      filterRows();
-    });
-    fStatus.addEventListener("change", filterRows);
-
-    btnLimpar.addEventListener("click", () => {
-      qCat.value = "";
-      qGlobal.value = "";
-      fStatus.value = "";
-      filterRows();
-    });
-
-    // Modal (novo/editar)
     const mdTitle = document.getElementById("mdTitle");
     const mdSub = document.getElementById("mdSub");
-    const btnNovo = document.getElementById("btnNovo");
 
     const cId = document.getElementById("cId");
     const cNome = document.getElementById("cNome");
@@ -735,12 +1008,31 @@ function badgeStatus(string $st): string
     const frmDelete = document.getElementById("frmDelete");
     const delId = document.getElementById("delId");
 
-    function normHex(hex) {
+    function normalizeHex(hex) {
       let h = String(hex || "").trim();
       if (!h) return "#60a5fa";
       if (!h.startsWith("#")) h = "#" + h;
       if (h.length === 4) h = "#" + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
       return /^#[0-9A-Fa-f]{6}$/.test(h) ? h.toLowerCase() : "#60a5fa";
+    }
+
+    function applyFilters(resetPage = true) {
+      const params = new URLSearchParams(window.location.search);
+      const q = (qCat.value || '').trim();
+      const st = (fStatus.value || '').trim();
+
+      if (q) params.set('q', q);
+      else params.delete('q');
+
+      if (st) params.set('status', st);
+      else params.delete('status');
+
+      if (resetPage) params.set('page', '1');
+
+      params.delete('export');
+
+      const url = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
+      window.location.href = url;
     }
 
     function openNew() {
@@ -771,7 +1063,8 @@ function badgeStatus(string $st): string
       cStatus.value = tr.getAttribute("data-status") || "ATIVO";
       cDesc.value = tr.getAttribute("data-desc") || "";
       cObs.value = tr.getAttribute("data-obs") || "";
-      const cor = normHex(tr.getAttribute("data-cor") || "#60a5fa");
+
+      const cor = normalizeHex(tr.getAttribute("data-cor") || "#60a5fa");
       cCor.value = cor;
       cCorTxt.value = cor;
 
@@ -782,7 +1075,9 @@ function badgeStatus(string $st): string
       setTimeout(() => cNome.focus(), 150);
     }
 
-    btnNovo.addEventListener("click", openNew);
+    if (btnNovo) {
+      btnNovo.addEventListener("click", openNew);
+    }
 
     tbody.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-act='edit']");
@@ -792,16 +1087,26 @@ function badgeStatus(string $st): string
       openEditFromTr(tr);
     });
 
-    // Cor sync
+    qCat.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyFilters(true);
+      }
+    });
+
+    fStatus.addEventListener("change", () => applyFilters(true));
+
+    btnLimpar.addEventListener("click", () => {
+      window.location.href = "categorias.php";
+    });
+
     cCor.addEventListener("input", () => {
       cCorTxt.value = cCor.value;
     });
-    cCorTxt.addEventListener("input", () => {
-      cCor.value = normHex(cCorTxt.value);
-    });
 
-    // init
-    filterRows();
+    cCorTxt.addEventListener("input", () => {
+      cCor.value = normalizeHex(cCorTxt.value);
+    });
   </script>
 </body>
 
