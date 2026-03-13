@@ -80,122 +80,178 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="public/css/corporate.css">
+    <link rel="stylesheet" href="style.css?v=3.8">
+    <link rel="stylesheet" href="public/css/corporate.css?v=3.8">
     <style>
+        :root {
+            --login-bg: #0a0a0a;
+            --card-bg: #141414;
+            --accent-gold: #c5a028;
+            --accent-hover: #a68a20;
+            --input-bg: #0d0d0d;
+            --border-color: #262626;
+        }
+
         body {
-            background-color: #f4f7f6;
+            background-color: var(--login-bg);
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
+            color: #f8fafc;
         }
+
         .login-card {
-            background: white;
+            background: var(--card-bg);
             padding: 50px;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             width: 100%;
             max-width: 450px;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-color);
             position: relative;
+            overflow: hidden;
         }
+
         .login-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 6px;
-            background: linear-gradient(90deg, var(--primary-color), #4da3ff);
-            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            height: 4px;
+            background: var(--accent-gold);
         }
+
         .login-header {
             text-align: center;
             margin-bottom: 40px;
         }
+
         .login-header i {
             font-size: 3.5rem;
-            color: var(--primary-color);
+            color: var(--accent-gold);
             margin-bottom: 15px;
-            filter: drop-shadow(0 4px 6px rgba(0,86,179,0.2));
+            filter: drop-shadow(0 0 10px rgba(197, 160, 40, 0.3));
         }
+
         .login-header h1 {
             font-size: 1.75rem;
-            color: var(--secondary-color);
+            color: #fff;
             margin: 0;
             font-weight: 800;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
         }
+
         .login-header p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
+            color: #a3a3a3;
+            font-size: 0.85rem;
             margin-top: 5px;
+            letter-spacing: 1px;
+            font-weight: 500;
         }
+
         .form-group {
             margin-bottom: 25px;
         }
+
         .form-label {
             display: block;
             margin-bottom: 10px;
             font-weight: 700;
-            color: var(--secondary-color);
-            font-size: 0.75rem;
-            letter-spacing: 0.5px;
+            color: #a3a3a3;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
         }
+
         .form-control {
             width: 100%;
             padding: 14px 18px;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 1rem;
-            transition: var(--transition);
-            background: #fcfdfe;
+            transition: all 0.2s;
+            background: var(--input-bg);
+            color: #fff !important;
         }
+
         .form-control:focus {
-            border-color: var(--primary-color);
-            background: #fff;
+            border-color: var(--accent-gold);
+            background: var(--input-bg);
             outline: none;
-            box-shadow: 0 0 0 4px rgba(0,86,179,0.1);
+            box-shadow: none;
+            color: #fff;
         }
+
+        .form-control::placeholder {
+            color: #475569 !important;
+        }
+
         .btn-login {
             width: 100%;
             padding: 15px;
-            background: var(--primary-color);
-            color: white;
+            background: var(--accent-gold);
+            color: #000;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
-            transition: var(--transition);
+            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
+
         .btn-login:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,86,179,0.3);
+            background: var(--accent-hover);
+            transform: translateY(-1px);
         }
+
         .alert {
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 25px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 500;
             display: flex;
             align-items: center;
             gap: 10px;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            background-color: rgba(239, 68, 68, 0.15) !important;
+            color: #ff8a8a !important;
         }
-        .alert-danger {
-            background: #fef2f2;
-            color: #991b1b;
-            border: 1px solid #fee2e2;
+
+        .alert-info {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #93c5fd !important;
+            border: 1px solid rgba(59, 130, 246, 0.2) !important;
         }
+
+        .text-accent {
+            color: var(--accent-gold) !important;
+        }
+
+        .footer-info {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #404040;
+            font-family: 'Roboto Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        select.form-control option {
+            background-color: var(--card-bg);
+            color: #fff;
+        }
+
         @media (max-width: 480px) {
             .login-card {
                 padding: 30px 20px;
@@ -204,15 +260,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-            }
-            body {
-                background: white;
+                border: none;
             }
         }
     </style>
 </head>
 <body>
-    <div class="login-card fade-in">
+    <div class="login-card">
         <div class="login-header">
             <i class="fas fa-bolt"></i>
             <h1>ERP ELÉTRICA</h1>
@@ -226,8 +280,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php endif; ?>
 
         <?php if (isset($_GET['msg'])): ?>
-            <div class="alert" style="background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb;">
-                <?php echo htmlspecialchars($_GET['msg']); ?>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> <?php echo htmlspecialchars($_GET['msg']); ?>
             </div>
         <?php endif; ?>
 
@@ -254,13 +308,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </button>
         </form>
 
-        <div class="mt-3 text-center">
-            <a href="gerar_codigo.php" class="text-primary small fw-bold text-decoration-none">
+        <div class="mt-4 text-center">
+            <a href="gerar_codigo.php" class="text-accent small fw-bold text-decoration-none transition-all">
                 <i class="fas fa-key me-1"></i> Gerar Código de Autorização (Admin)
             </a>
         </div>
 
-        <div style="margin-top: 25px; text-align: center; font-size: 0.75rem; color: #bdc3c7; font-family: 'Roboto Mono', monospace;">
+        <div class="footer-info">
             VERSÃO <?php echo APP_VERSION; ?> | SECURE INDUSTRIAL ACCESS
         </div>
     </div>
