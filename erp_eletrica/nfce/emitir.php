@@ -285,6 +285,9 @@ if ((float)$vTr > 0) $pagXML .= '<vTroco>'.$vTr.'</vTroco>';
 $pagXML .= '</pag>';
 // ===== FIM DO NOVO BLOCO =====
 
+$totXML = '<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>'.number_format($vProd, 2, '.', '').'</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>'.number_format($vProd, 2, '.', '').'</vNF></ICMSTot></total>';
+$transpXML = '<transp><modFrete>9</modFrete></transp>';
+
 $infAd   = '<infAdic><infCpl>PDV Açaiteria</infCpl></infAdic>';
 
 /* ===== MONTA SÓ A NFe (para assinar) ===== */
@@ -315,7 +318,7 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .     $infAd
      .     . '<infRespTec><CPF>04125521247</CPF><xContato>Luiz Breno da frota</xContato><email>luizfrota2@gmail.com</email><fone>97991434585</fone></infRespTec>'
      .   '</infNFe>'
-     . '</NFe>';
+     . '</NFe>';}
 
 /* ===== Assina SOMENTE a NFe ===== */
 try { $nfeAss = $tools->signNFe($nfe); }
@@ -370,7 +373,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
       }
 
       // Monta JSON de pagamento se existir código de tPag
-      $tpagJsonStr = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
+      $tpagJsonStr = isset($tPag) ? json_encode(['tPag' => $tPag], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
 
       // tenta identificar vNF
       $vNFnum = null;
@@ -380,7 +383,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
         $vNFnum = $mV[1];
       }
 
-      $vTrocoVal = isset($vTrocoVal) ? $vTrocoVal : (isset($stdPag->vTroco) ? $stdPag->vTroco : null);
+      $vTrocoVal = isset($vTr) ? $vTr : null;
 
       $st = $pdo->prepare("
         INSERT INTO nfce_emitidas
@@ -481,7 +484,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 103 && !empty($stdEnv->inf
 $xmlProcContent = isset($proc) ? $proc : ((isset($xmlProcPath) && is_file($xmlProcPath)) ? @file_get_contents($xmlProcPath) : null);
 $xmlEnvio       = isset($nfeAss) ? $nfeAss : (isset($nfe) ? $nfe : null);
 $xmlRetorno     = isset($ret) ? $ret : (isset($respEnv) ? $respEnv : null);
-$tpagJsonStr    = isset($tPagCode) ? json_encode(['tPag' => $tPagCode], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
+$tpagJsonStr    = isset($tPag) ? json_encode(['tPag' => $tPag], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : null;
 
 $st = $pdo->prepare("INSERT INTO nfce_emitidas
   (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem, xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
@@ -512,7 +515,7 @@ $st->execute([
   ':xml_envio'    => $xmlEnvio,
   ':xml_retorno'  => $xmlRetorno,
   ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
-  ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
+  ':valor_troco'  => isset($vTr) ? number_format((float)$vTr, 2, '.', '') : null,
   ':tpag_json'    => $tpagJsonStr
 ]);
 }
@@ -533,14 +536,15 @@ $st->execute([
     echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
     exit;
 }
-// === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
 
-try {
-  if (!isset($pdo) || !($pdo instanceof PDO)) {
-    foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
-      if (is_file($__p)) { require_once $__p; break; }
-    }
-    die('Erro SEFAZ: ' . ($std->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($std->cStat ?? '?') . ')');
+// === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
+if (!isset($pdo) || !($pdo instanceof PDO)) {
+  foreach ([__DIR__ . '/../conexao/conexao.php', __DIR__ . '/../../conexao/conexao.php', __DIR__ . '/../../../conexao/conexao.php'] as $__p) {
+    if (is_file($__p)) { require_once $__p; break; }
+  }
+}
+die('Erro SEFAZ: ' . ($stdEnv->xMotivo ?? 'Erro desconhecido') . ' (cStat: ' . ($stdEnv->cStat ?? '?') . ')');
+
 } catch (Throwable $e) {
     while (ob_get_level()) ob_end_clean();
     die('[V3-DEBUG] Erro Fatal na Emissão: ' . $e->getMessage() . ' no arquivo ' . $e->getFile() . ':' . $e->getLine());
