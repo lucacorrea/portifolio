@@ -212,6 +212,30 @@ body {
     color: var(--danger);
 }
 
+/* Specific Table Row Backgrounds (Dark Theme Optimization) */
+.table-warning {
+    --bs-table-bg: rgba(199, 152, 2, 0.15) !important;
+    --bs-table-color: #f8fafc !important;
+    border-color: rgba(199, 152, 2, 0.25) !important;
+}
+
+.table-danger {
+    --bs-table-bg: rgba(239, 68, 68, 0.18) !important;
+    --bs-table-color: #f8fafc !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.table-success {
+    --bs-table-bg: rgba(16, 185, 129, 0.12) !important;
+    --bs-table-color: #f8fafc !important;
+    border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Hover consistency for tinted rows */
+.table-hover tbody tr.table-warning:hover {
+    background-color: rgba(199, 152, 2, 0.18) !important;
+}
+
 /* --- Bootstrap Overrides for Warning (Standardized Gold) --- */
 .badge-warning {
     background-color: #c79802 !important;

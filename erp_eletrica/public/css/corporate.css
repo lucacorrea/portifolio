@@ -291,6 +291,23 @@ body {
     background-color: var(--erp-primary) !important;
 }
 
+/* Header Text and Badge Refinement */
+.erp-user-name {
+    color: #f8fafc !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: subpixel-antialiased !important;
+    letter-spacing: 0.2px;
+}
+
+.erp-user-badge {
+    background: rgba(199, 152, 2, 0.15) !important;
+    color: #c79802 !important;
+    border: 1px solid rgba(199, 152, 2, 0.3) !important;
+    padding: 0.4em 0.8em !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+}
+
 /* Neutralize all light/white backgrounds */
 .bg-light,
 .bg-white,
@@ -586,4 +603,29 @@ input[type="file"]::file-selector-button:hover {
 .alert-success h6,
 .alert-success a {
     color: #6ee7b7 !important;
+}
+
+/* Table Multi-state Clean-up (Dark Mode) */
+.table-warning {
+    --bs-table-bg: rgba(199, 152, 2, 0.15) !important;
+    --bs-table-color: #f8fafc !important;
+    --bs-table-border-color: rgba(199, 152, 2, 0.25) !important;
+}
+
+.table-danger {
+    --bs-table-bg: rgba(239, 68, 68, 0.18) !important;
+    --bs-table-color: #f8fafc !important;
+    --bs-table-border-color: rgba(239, 68, 68, 0.31) !important;
+}
+
+.table-success {
+    --bs-table-bg: rgba(16, 185, 129, 0.12) !important;
+    --bs-table-color: #f8fafc !important;
+    --bs-table-border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+.table-hover tbody tr.table-warning:hover td,
+.table-hover tbody tr.table-danger:hover td,
+.table-hover tbody tr.table-success:hover td {
+    background-color: rgba(255, 255, 255, 0.05) !important;
 }

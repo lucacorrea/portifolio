@@ -81,7 +81,7 @@
                 </thead>
                 <tbody>
                     <?php foreach ($products as $p): ?>
-                    <tr class="<?= $p['quantidade'] <= $p['estoque_minimo'] ? 'table-warning bg-opacity-10' : '' ?>">
+                    <tr class="<?= $p['quantidade'] <= $p['estoque_minimo'] ? 'table-danger' : '' ?>">
                         <td class="ps-4">
                             <div class="fw-bold text-primary small"><?= $p['codigo'] ?></div>
                             <div class="text-muted extra-small">NCM: <?= $p['ncm'] ?: '---' ?></div>
