@@ -19,9 +19,6 @@ CREATE TABLE permissionarios (
   box_numero VARCHAR(30) DEFAULT NULL,
   setor VARCHAR(100) DEFAULT NULL,
   ramo_atividade VARCHAR(120) DEFAULT NULL,
-  data_permissao DATE DEFAULT NULL,
-  vencimento_permissao DATE DEFAULT NULL,
-  status_permissao ENUM('ATIVO','INATIVO','SUSPENSO','PENDENTE') NOT NULL DEFAULT 'ATIVO',
 
   ativo TINYINT(1) NOT NULL DEFAULT 1,
   observacao VARCHAR(255) DEFAULT NULL,
@@ -85,13 +82,6 @@ function ensure_dir(string $absDir): bool
   return @mkdir($absDir, 0755, true);
 }
 
-function valid_date_ymd(?string $date): bool
-{
-  if ($date === null || trim($date) === '') return false;
-  $d = DateTime::createFromFormat('Y-m-d', $date);
-  return $d && $d->format('Y-m-d') === $date;
-}
-
 /* Feira padrão desta página */
 $FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa | 3=Mercado Municipal
 
@@ -145,18 +135,15 @@ foreach ($comunidades as $c) {
 
 /* Valores antigos */
 $old = [
-  'nome'                  => '',
-  'documento'             => '',
-  'contato'               => '',
-  'comunidade_id'         => '',
-  'box_numero'            => '',
-  'setor'                 => '',
-  'ramo_atividade'        => '',
-  'data_permissao'        => '',
-  'vencimento_permissao'  => '',
-  'status_permissao'      => 'ATIVO',
-  'ativo'                 => '1',
-  'observacao'            => '',
+  'nome'           => '',
+  'documento'      => '',
+  'contato'        => '',
+  'comunidade_id'  => '',
+  'box_numero'     => '',
+  'setor'          => '',
+  'ramo_atividade' => '',
+  'ativo'          => '1',
+  'observacao'     => '',
 ];
 
 /* Upload (base64 da câmera via navegador) */
@@ -164,9 +151,6 @@ $BASE_DIR = realpath(__DIR__ . '/../../../');
 $UPLOAD_REL_DIR = 'uploads/permissionarios';
 $UPLOAD_ABS_DIR = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR) : null;
 $MAX_BASE64_BYTES = 3 * 1024 * 1024; // 3MB em bytes decodificados
-
-/* Status válidos */
-$statusValidos = ['ATIVO', 'INATIVO', 'SUSPENSO', 'PENDENTE'];
 
 /* POST */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -177,37 +161,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  $old['nome']                 = trim((string)($_POST['nome'] ?? ''));
-  $old['documento']            = trim((string)($_POST['documento'] ?? ''));
-  $old['contato']              = trim((string)($_POST['contato'] ?? ''));
-  $old['comunidade_id']        = trim((string)($_POST['comunidade_id'] ?? ''));
-  $old['box_numero']           = trim((string)($_POST['box_numero'] ?? ''));
-  $old['setor']                = trim((string)($_POST['setor'] ?? ''));
-  $old['ramo_atividade']       = trim((string)($_POST['ramo_atividade'] ?? ''));
-  $old['data_permissao']       = trim((string)($_POST['data_permissao'] ?? ''));
-  $old['vencimento_permissao'] = trim((string)($_POST['vencimento_permissao'] ?? ''));
-  $old['status_permissao']     = trim((string)($_POST['status_permissao'] ?? 'ATIVO'));
-  $old['ativo']                = (string)($_POST['ativo'] ?? '1');
-  $old['observacao']           = trim((string)($_POST['observacao'] ?? ''));
-
-  if (!in_array($old['status_permissao'], $statusValidos, true)) {
-    $old['status_permissao'] = 'ATIVO';
-  }
+  $old['nome']           = trim((string)($_POST['nome'] ?? ''));
+  $old['documento']      = trim((string)($_POST['documento'] ?? ''));
+  $old['contato']        = trim((string)($_POST['contato'] ?? ''));
+  $old['comunidade_id']  = trim((string)($_POST['comunidade_id'] ?? ''));
+  $old['box_numero']     = trim((string)($_POST['box_numero'] ?? ''));
+  $old['setor']          = trim((string)($_POST['setor'] ?? ''));
+  $old['ramo_atividade'] = trim((string)($_POST['ramo_atividade'] ?? ''));
+  $old['ativo']          = (string)($_POST['ativo'] ?? '1');
+  $old['observacao']     = trim((string)($_POST['observacao'] ?? ''));
 
   if ($old['nome'] === '') {
     $err = 'Informe o nome do permissionário.';
   } elseif ($old['comunidade_id'] === '' || !ctype_digit($old['comunidade_id'])) {
     $err = 'Selecione a localidade do permissionário.';
-  } elseif ($old['data_permissao'] !== '' && !valid_date_ymd($old['data_permissao'])) {
-    $err = 'Informe uma data de permissão válida.';
-  } elseif ($old['vencimento_permissao'] !== '' && !valid_date_ymd($old['vencimento_permissao'])) {
-    $err = 'Informe uma data de vencimento válida.';
-  } elseif (
-    $old['data_permissao'] !== '' &&
-    $old['vencimento_permissao'] !== '' &&
-    $old['vencimento_permissao'] < $old['data_permissao']
-  ) {
-    $err = 'O vencimento da permissão não pode ser menor que a data da permissão.';
   } else {
     $nome = truncLen($old['nome'], 160);
     $contato = truncLen($old['contato'], 60);
@@ -219,9 +186,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $docDigits = only_digits($old['documento']);
     $documento = $docDigits !== '' ? truncLen($docDigits, 30) : null;
 
-    $dataPermissao = $old['data_permissao'] !== '' ? $old['data_permissao'] : null;
-    $vencimentoPermissao = $old['vencimento_permissao'] !== '' ? $old['vencimento_permissao'] : null;
-    $statusPermissao = $old['status_permissao'];
     $observacao = trunc255($old['observacao']);
     $ativo = ($old['ativo'] === '1') ? 1 : 0;
     $comunidadeId = (int)$old['comunidade_id'];
@@ -284,31 +248,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           $sql = "INSERT INTO permissionarios
                     (
                       feira_id, nome, contato, comunidade_id, documento, foto,
-                      box_numero, setor, ramo_atividade, data_permissao, vencimento_permissao, status_permissao,
-                      ativo, observacao
+                      box_numero, setor, ramo_atividade, ativo, observacao
                     )
                   VALUES
                     (
                       :feira_id, :nome, :contato, :comunidade_id, :documento, :foto,
-                      :box_numero, :setor, :ramo_atividade, :data_permissao, :vencimento_permissao, :status_permissao,
-                      :ativo, :observacao
+                      :box_numero, :setor, :ramo_atividade, :ativo, :observacao
                     )";
           $stmt = $pdo->prepare($sql);
           $stmt->execute([
-            ':feira_id'             => $FEIRA_ID,
-            ':nome'                 => $nome,
-            ':contato'              => ($contato !== '' ? $contato : null),
-            ':comunidade_id'        => $comunidadeId,
-            ':documento'            => $documento,
-            ':foto'                 => $fotoDbValue,
-            ':box_numero'           => ($boxNumero !== '' ? $boxNumero : null),
-            ':setor'                => ($setor !== '' ? $setor : null),
-            ':ramo_atividade'       => ($ramoAtividade !== '' ? $ramoAtividade : null),
-            ':data_permissao'       => $dataPermissao,
-            ':vencimento_permissao' => $vencimentoPermissao,
-            ':status_permissao'     => $statusPermissao,
-            ':ativo'                => $ativo,
-            ':observacao'           => ($observacao !== '' ? $observacao : null),
+            ':feira_id'      => $FEIRA_ID,
+            ':nome'          => $nome,
+            ':contato'       => ($contato !== '' ? $contato : null),
+            ':comunidade_id' => $comunidadeId,
+            ':documento'     => $documento,
+            ':foto'          => $fotoDbValue,
+            ':box_numero'    => ($boxNumero !== '' ? $boxNumero : null),
+            ':setor'         => ($setor !== '' ? $setor : null),
+            ':ramo_atividade' => ($ramoAtividade !== '' ? $ramoAtividade : null),
+            ':ativo'         => $ativo,
+            ':observacao'    => ($observacao !== '' ? $observacao : null),
           ]);
 
           $_SESSION['flash_ok'] = 'Permissionário cadastrado com sucesso!';
@@ -459,7 +418,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
-  <!-- NAVBAR -->
   <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
     <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
       <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -496,7 +454,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </ul>
     </div>
 
-    <!-- SIDEBAR -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
       <ul class="nav">
 
@@ -730,7 +687,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           placeholder="Somente números"
                           inputmode="numeric"
                           value="<?= h($old['documento']) ?>">
-                        <small class="text-muted help-hint">Opcional (salvo em <b>permissionarios.documento</b>).</small>
+                        <small class="text-muted help-hint">Opcional.</small>
                       </div>
 
                       <div class="col-12 col-md-6 col-lg-3 mb-3">
@@ -741,7 +698,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           class="form-control"
                           placeholder="Ex.: 92991112222"
                           value="<?= h($old['contato']) ?>">
-                        <small class="text-muted help-hint">Opcional (salvo em <b>permissionarios.contato</b>).</small>
+                        <small class="text-muted help-hint">Opcional.</small>
                       </div>
 
                       <div class="col-12 col-md-6 col-lg-3 mb-3">
@@ -810,7 +767,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <div class="form-section">
                     <div class="section-title">
-                      <i class="ti-map-alt"></i> Localidade e Permissão
+                      <i class="ti-map-alt"></i> Localidade
                     </div>
 
                     <div class="row">
@@ -856,37 +813,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       </div>
 
                       <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Data da permissão</label>
-                        <input
-                          name="data_permissao"
-                          type="date"
-                          class="form-control"
-                          value="<?= h($old['data_permissao']) ?>">
-                        <small class="text-muted help-hint">Opcional.</small>
-                      </div>
-
-                      <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Vencimento da permissão</label>
-                        <input
-                          name="vencimento_permissao"
-                          type="date"
-                          class="form-control"
-                          value="<?= h($old['vencimento_permissao']) ?>">
-                        <small class="text-muted help-hint">Opcional.</small>
-                      </div>
-
-                      <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Status da permissão</label>
-                        <select name="status_permissao" class="form-control">
-                          <option value="ATIVO" <?= $old['status_permissao'] === 'ATIVO' ? 'selected' : '' ?>>Ativo</option>
-                          <option value="INATIVO" <?= $old['status_permissao'] === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
-                          <option value="SUSPENSO" <?= $old['status_permissao'] === 'SUSPENSO' ? 'selected' : '' ?>>Suspenso</option>
-                          <option value="PENDENTE" <?= $old['status_permissao'] === 'PENDENTE' ? 'selected' : '' ?>>Pendente</option>
-                        </select>
-                        <small class="text-muted help-hint">Status cadastral da permissão.</small>
-                      </div>
-
-                      <div class="col-12 col-md-6 col-lg-3 mb-3">
                         <label>Status geral</label>
                         <select name="ativo" class="form-control">
                           <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
@@ -901,7 +827,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           name="observacao"
                           class="form-control"
                           rows="4"
-                          placeholder="Ex.: trabalha no box 12, documentação em análise..."><?= h($old['observacao']) ?></textarea>
+                          placeholder="Ex.: trabalha no box 12, documentação pendente..."><?= h($old['observacao']) ?></textarea>
                         <small class="text-muted help-hint">Opcional (até 255 caracteres).</small>
                       </div>
                     </div>
