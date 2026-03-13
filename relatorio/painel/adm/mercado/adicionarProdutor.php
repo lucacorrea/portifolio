@@ -502,7 +502,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               </li>
 
               <li class="nav-item">
-                <a class="nav-link" href="./listaPermissionario.php">
+                <a class="nav-link" href="./listaProdutor.php">
                   <i class="ti-user mr-2"></i> Permissionários
                 </a>
               </li>
