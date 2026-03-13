@@ -525,3 +525,53 @@ input[type="file"]::file-selector-button {
 input[type="file"]::file-selector-button:hover {
     background-color: var(--erp-primary-hover) !important;
 }
+
+/* Alert Visibility Overrides (Dark Theme) */
+.alert {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(4px);
+}
+
+.alert-danger {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    color: #ff8a8a !important;
+}
+
+.alert-danger i,
+.alert-danger h6,
+.alert-danger a {
+    color: #ff8a8a !important;
+}
+
+.alert-warning {
+    background-color: rgba(197, 160, 40, 0.15) !important;
+    color: #ffd75e !important;
+}
+
+.alert-warning i,
+.alert-warning h6,
+.alert-warning a {
+    color: #ffd75e !important;
+}
+
+.alert-info {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    color: #93c5fd !important;
+}
+
+.alert-info i,
+.alert-info h6,
+.alert-info a {
+    color: #93c5fd !important;
+}
+
+.alert-success {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    color: #6ee7b7 !important;
+}
+
+.alert-success i,
+.alert-success h6,
+.alert-success a {
+    color: #6ee7b7 !important;
+}
