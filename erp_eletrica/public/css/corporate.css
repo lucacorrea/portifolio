@@ -629,7 +629,8 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .table-hover tbody tr.table-danger:hover td {
-    background-color: rgba(239, 68, 68, 0.55) !important;
+    background-color: #4d0000 !important;
+    color: #ffffff !important;
 }
 
 .table-hover tbody tr.table-success:hover td {
