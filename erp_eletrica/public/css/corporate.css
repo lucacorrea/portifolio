@@ -455,6 +455,23 @@ h6 {
     box-shadow: none;
 }
 
+/* Fix for readonly and disabled inputs in dark theme */
+.form-control:disabled,
+.form-control[readonly],
+.form-select:disabled {
+    background-color: #1a1a1a !important;
+    border-color: #333 !important;
+    color: #a3a3a3 !important;
+    opacity: 0.8;
+}
+
+/* Fix for white background in input-group-text */
+.input-group-text {
+    background-color: #1a1a1a !important;
+    border-color: var(--border) !important;
+    color: #a3a3a3 !important;
+}
+
 /* Bootstrap Warning Overrides in corporate.css */
 .btn-warning {
     --bs-btn-bg: #c79802 !important;
