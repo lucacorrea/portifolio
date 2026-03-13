@@ -95,183 +95,118 @@ if ($q !== '') {
 $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
 /* =========================
-   EXPORTAR PDF (HTML IMPRIMÍVEL)
+   EXPORTAR EXCEL
 ========================= */
-if (isset($_GET['export']) && $_GET['export'] === 'pdf') {
-  $sqlPdf = "
+if (isset($_GET['export']) && $_GET['export'] === 'excel') {
+  $sqlExcel = "
     SELECT id, nome, descricao, cor, obs, status
     FROM categorias c
     $whereSql
     ORDER BY id DESC
   ";
-  $stPdf = $pdo->prepare($sqlPdf);
+  $stExcel = $pdo->prepare($sqlExcel);
   foreach ($params as $k => $v) {
-    $stPdf->bindValue($k, $v, PDO::PARAM_STR);
+    $stExcel->bindValue($k, $v, PDO::PARAM_STR);
   }
-  $stPdf->execute();
-  $pdfRows = $stPdf->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  $stExcel->execute();
+  $excelRows = $stExcel->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+  $filename = 'categorias_' . date('Y-m-d_H-i-s') . '.xls';
   $geradoEm = date('d/m/Y H:i:s');
   $statusLabel = $status !== '' ? $status : 'Todos';
   $buscaLabel = $q !== '' ? $q : '—';
+
+  header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+  header('Content-Disposition: attachment; filename="' . $filename . '"');
+  header('Cache-Control: max-age=0');
+
+  echo "\xEF\xBB\xBF";
 ?>
-  <!DOCTYPE html>
-  <html lang="pt-BR">
+  <html>
 
   <head>
     <meta charset="UTF-8">
-    <title>Relatório de Categorias</title>
     <style>
-      @page {
-        size: A4 portrait;
-        margin: 12mm;
+      table {
+        border-collapse: collapse;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        width: auto;
       }
 
-      * {
-        box-sizing: border-box;
+      td,
+      th {
+        border: 1px solid #000;
+        padding: 4px 6px;
+        vertical-align: middle;
+        white-space: nowrap;
       }
 
-      body {
-        margin: 0;
-        font-family: Arial, Helvetica, sans-serif;
-        color: #111827;
-        background: #fff;
-      }
-
-      .wrap {
-        width: 100%;
+      th {
+        background: #ffffff;
+        font-weight: bold;
+        text-align: center;
       }
 
       .title {
+        font-size: 16px;
+        font-weight: bold;
         text-align: center;
-        font-size: 22px;
-        font-weight: 700;
-        margin-bottom: 4px;
       }
 
       .sub {
         text-align: center;
-        font-size: 13px;
-        margin-bottom: 2px;
-      }
-
-      .filters {
-        text-align: center;
-        font-size: 13px;
-        margin-bottom: 14px;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-      }
-
-      th,
-      td {
-        border: 1px solid #111;
-        padding: 7px 8px;
-        vertical-align: middle;
-      }
-
-      th {
-        background: #f3f4f6;
-        text-align: center;
-        font-weight: 700;
-      }
-
-      .center {
-        text-align: center;
+        font-weight: normal;
       }
 
       .left {
         text-align: left;
       }
 
-      .color-box {
-        display: inline-block;
-        width: 16px;
-        height: 16px;
-        border-radius: 4px;
-        border: 1px solid #999;
-        vertical-align: middle;
-        margin-right: 6px;
-      }
-
-      .print-actions {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        margin-top: 14px;
-      }
-
-      .print-actions button {
-        padding: 8px 12px;
-        border: 1px solid #111;
-        background: #fff;
-        border-radius: 6px;
-        font-weight: 700;
-        cursor: pointer;
-      }
-
-      @media print {
-        .print-actions {
-          display: none;
-        }
+      .center {
+        text-align: center;
       }
     </style>
   </head>
 
   <body>
-    <div class="wrap">
-      <div class="title">PAINEL DA DISTRIBUIDORA - CATEGORIAS</div>
-      <div class="sub">Gerado em: <?= e($geradoEm) ?></div>
-      <div class="filters">Busca: <?= e($buscaLabel) ?> | Status: <?= e($statusLabel) ?></div>
+    <table>
+      <tr>
+        <td class="title" colspan="6">PAINEL DA DISTRIBUIDORA - CATEGORIAS</td>
+      </tr>
+      <tr>
+        <td class="sub" colspan="6">Gerado em: <?= e($geradoEm) ?></td>
+      </tr>
+      <tr>
+        <td class="sub" colspan="6">Busca: <?= e($buscaLabel) ?> | Status: <?= e($statusLabel) ?></td>
+      </tr>
+      <tr>
+        <th>ID</th>
+        <th>Categoria</th>
+        <th>Descrição</th>
+        <th>Cor</th>
+        <th>Observação</th>
+        <th>Status</th>
+      </tr>
 
-      <table>
-        <thead>
+      <?php if (!$excelRows): ?>
+        <tr>
+          <td colspan="6" class="center">Nenhuma categoria encontrada.</td>
+        </tr>
+      <?php else: ?>
+        <?php foreach ($excelRows as $r): ?>
+          <?php $cor = normHex((string)($r['cor'] ?? '#60a5fa')); ?>
           <tr>
-            <th style="width:70px;">ID</th>
-            <th>Categoria</th>
-            <th>Descrição</th>
-            <th style="width:140px;">Cor</th>
-            <th style="width:120px;">Status</th>
+            <td class="center"><?= (int)$r['id'] ?></td>
+            <td class="left"><?= e((string)$r['nome']) ?></td>
+            <td class="left"><?= e(fmtText((string)($r['descricao'] ?? ''))) ?></td>
+            <td class="left"><?= e($cor) ?></td>
+            <td class="left"><?= e(fmtText((string)($r['obs'] ?? ''))) ?></td>
+            <td class="center"><?= e(strtoupper((string)($r['status'] ?? 'ATIVO'))) ?></td>
           </tr>
-        </thead>
-        <tbody>
-          <?php if (!$pdfRows): ?>
-            <tr>
-              <td colspan="5" class="center">Nenhuma categoria encontrada.</td>
-            </tr>
-          <?php else: ?>
-            <?php foreach ($pdfRows as $r): ?>
-              <?php $cor = normHex((string)($r['cor'] ?? '#60a5fa')); ?>
-              <tr>
-                <td class="center"><?= (int)$r['id'] ?></td>
-                <td class="left"><?= e((string)$r['nome']) ?></td>
-                <td class="left"><?= e(fmtText((string)($r['descricao'] ?? ''))) ?></td>
-                <td class="left">
-                  <span class="color-box" style="background:<?= e($cor) ?>;"></span>
-                  <?= e($cor) ?>
-                </td>
-                <td class="center"><?= e(strtoupper((string)($r['status'] ?? 'ATIVO'))) ?></td>
-              </tr>
-            <?php endforeach; ?>
-          <?php endif; ?>
-        </tbody>
-      </table>
-
-      <div class="print-actions">
-        <button onclick="window.print()">Imprimir / Salvar em PDF</button>
-        <button onclick="window.close()">Fechar</button>
-      </div>
-    </div>
-
-    <script>
-      window.addEventListener('load', () => {
-        setTimeout(() => window.print(), 250);
-      });
-    </script>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </table>
   </body>
 
   </html>
@@ -767,8 +702,8 @@ $currentCount = count($rows);
                 <option value="INATIVO" <?= $status === 'INATIVO' ? 'selected' : '' ?>>Inativo</option>
               </select>
 
-              <a class="main-btn light-btn btn-hover btn-compact" href="<?= e(build_url(['export' => 'pdf', 'page' => 1])) ?>" target="_blank">
-                <i class="lni lni-download me-1"></i> Exportar PDF
+              <a class="main-btn light-btn btn-hover btn-compact" href="<?= e(build_url(['export' => 'excel', 'page' => 1])) ?>">
+                <i class="lni lni-download me-1"></i> Exportar Excel
               </a>
 
               <button class="main-btn light-btn btn-hover btn-compact" id="btnLimpar" type="button">
@@ -827,9 +762,7 @@ $currentCount = count($rows);
                           <div class="d-flex align-items-center gap-2">
                             <span class="swatch" style="background:<?= e($cor) ?>;"></span>
                             <div style="min-width:0;">
-                              <div style="font-weight:1000;color:#0f172a;line-height:1.1;">
-                                <?= e($nome) ?>
-                              </div>
+                              <div style="font-weight:1000;color:#0f172a;line-height:1.1;"><?= e($nome) ?></div>
                               <div class="muted"><?= e($obs !== '' ? $obs : '—') ?></div>
                             </div>
                           </div>
