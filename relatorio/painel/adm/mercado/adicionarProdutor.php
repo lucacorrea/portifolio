@@ -81,7 +81,7 @@ $comunidades = [];
 try {
   $sqlC = "SELECT id, nome
            FROM comunidades
-           WHERE feira_id = :feira AND ativo = 3
+           WHERE feira_id = :feira AND ativo = 1
            ORDER BY nome ASC";
   $stC = $pdo->prepare($sqlC);
   $stC->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
