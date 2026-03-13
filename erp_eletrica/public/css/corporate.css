@@ -57,11 +57,16 @@ body {
     border-right: 1px solid var(--border);
     transition: all 0.3s;
     z-index: 1040;
+    position: fixed;
+    height: 100vh;
+    left: 0;
+    top: 0;
 }
 
 .sidebar-header {
     padding: 1.5rem;
     border-bottom: 1px solid var(--border);
+    background: #000000; /* Match logo background */
 }
 
 .nav-link {
@@ -91,6 +96,8 @@ body {
     flex-direction: column;
     min-width: 0;
     background: var(--erp-dark);
+    margin-left: 260px; /* Essential to prevent overlap */
+    transition: margin-left 0.3s;
 }
 
 .top-navbar {
@@ -205,6 +212,10 @@ body {
     .sidebar.active {
         left: 0;
         box-shadow: none;
+    }
+
+    .main-wrapper {
+        margin-left: 0 !important;
     }
 }
 

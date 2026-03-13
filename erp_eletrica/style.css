@@ -74,14 +74,15 @@ body {
     height: var(--header-height);
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 0 25px;
-    background: rgba(0, 0, 0, 0.2);
+    background: #000000;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
 }
 
 /* Main Content Wrapper */
-.main-content {
+.main-content, .main-wrapper {
     flex: 1;
     margin-left: var(--sidebar-width);
     transition: margin-left var(--transition);

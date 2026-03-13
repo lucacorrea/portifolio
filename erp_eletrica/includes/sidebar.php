@@ -2,8 +2,8 @@
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header d-flex align-items-center justify-content-center">
-        <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 100%; height: auto; max-height: 80px;">
+    <div class="sidebar-header d-flex align-items-center justify-content-center p-3">
+        <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 90%; height: auto; max-height: 55px; filter: drop-shadow(0 0 5px rgba(255,215,0,0.1));">
     </div>
     
     <nav class="nav flex-column sidebar-menu">
