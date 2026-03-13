@@ -83,20 +83,61 @@ class SefazConsultaService extends BaseService {
     /**
      * Consulta as NF-e destinadas via NFeDistribuicaoDFe
      */
-    public function consultarNotas($cnpjDestinario, $ultNSU = '0') {
+    public function consultarNotas($cnpjDestinario, $ultNSU = null) {
         $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
         if (empty($cnpj) || strlen($cnpj) !== 14) {
-            throw new Exception("CNPJ inválido ou não configurado (" . htmlspecialchars($cnpjDestinario) . "). Verifique os dados da sua filial utilizando o botão 'Diagnóstico Completo' na aba Fiscal > Configurações.");
+            throw new Exception("CNPJ inválido ou não configurado (" . htmlspecialchars($cnpjDestinario) . "). Verifique os dados da sua filial.");
         }
         
         $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2; 
-
-        // Preparamos o XML de solicitação seguindo NT 2014.002
-        $xml_soap = $this->gerarXmlDistDfe($cnpj, $ultNSU, $ambiente);
         
-        // Em um cenário real, usaríamos o certificado desacoplado da sefaz_config
-        $responseXml = $this->comunicarSefaz($xml_soap);
-        return $this->processarRetorno($responseXml);
+        // Se ultNSU não for fornecido, buscar das configurações
+        if ($ultNSU === null) {
+            $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
+            $stmt = $this->db->prepare("SELECT valor FROM configuracoes WHERE chave = ?");
+            $stmt->execute([$key]);
+            $ultNSU = $stmt->fetchColumn() ?: '0';
+        }
+
+        $allDocs = [];
+        $currentNSU = $ultNSU;
+        $maxIterations = 10; // Evitar loop infinito se houver erro
+        
+        do {
+            $xml_soap = $this->gerarXmlDistDfe($cnpj, $currentNSU, $ambiente);
+            $responseXml = $this->comunicarSefaz($xml_soap);
+            $resultado = $this->processarRetorno($responseXml);
+            
+            if (!empty($resultado['documentos'])) {
+                $allDocs = array_merge($allDocs, $resultado['documentos']);
+                
+                // Salvar imediatamente no banco para não perder dados se a próxima iteração falhar
+                $this->salvarNotasCache($_SESSION['filial_id'] ?? 1, $resultado['documentos']);
+                
+                // Auto-manifestar notas que vieram apenas como resumo para permitir download futuro do XML completo
+                foreach ($resultado['documentos'] as $doc) {
+                    if (strpos($doc['xml'], '<resNFe') !== false) {
+                        try {
+                            $this->manifestarNota($cnpj, $doc['chave']);
+                        } catch (Exception $me) {
+                            error_log("Erro ao auto-manifestar nota " . $doc['chave'] . ": " . $me->getMessage());
+                        }
+                    }
+                }
+            }
+            
+            $currentNSU = $resultado['ultNSU'];
+            $maxNSU = $resultado['maxNSU'];
+            
+            // Atualizar o último NSU nas configurações
+            $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
+            $stmt = $this->db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
+            $stmt->execute([$key, $currentNSU, $currentNSU]);
+            
+            $maxIterations--;
+        } while ($currentNSU < $maxNSU && $maxIterations > 0);
+
+        return ['documentos' => $allDocs, 'ultNSU' => $currentNSU, 'maxNSU' => $maxNSU];
     }
 
     private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
