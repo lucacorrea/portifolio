@@ -197,6 +197,34 @@ body {
 }
 
 .badge-warning {
-    background: rgba(245, 158, 11, 0.2);
+    background: rgba(197, 160, 40, 0.2);
     color: var(--warning);
+}
+
+/* Bootstrap Overrides for Warning */
+.btn-warning {
+    background-color: var(--warning) !important;
+    border-color: var(--warning) !important;
+    color: #000 !important;
+}
+
+.btn-warning:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+}
+
+.text-warning {
+    color: var(--warning) !important;
+}
+
+.border-warning {
+    border-color: var(--warning) !important;
+}
+
+.bg-warning {
+    background-color: var(--warning) !important;
+}
+
+.bg-opacity-10.text-warning {
+    background-color: rgba(197, 160, 40, 0.1) !important;
 }

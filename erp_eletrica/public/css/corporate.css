@@ -18,7 +18,7 @@
     --secondary-color: var(--erp-secondary);
     --border: #262626;
     --text-primary: #f8fafc !important;
-    --text-secondary: #94a3b8 !important;
+    --text-secondary: #a3a3a3 !important;
 
     --radius-sm: 4px;
     --radius-md: 8px;
@@ -204,7 +204,7 @@ body {
 #pv_search_results .list-group-item:hover,
 #customerResults .list-group-item:hover,
 #pv_client_results .list-group-item:hover {
-    background: #334155;
+    background: #262626;
 }
 
 /* Ensure parents of absolute elements don't clip */
@@ -437,7 +437,7 @@ h6 {
 
 /* Scrollbar Modernization */
 ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #262626;
 }
 
 .form-control,
@@ -453,4 +453,36 @@ h6 {
     border-color: var(--erp-primary);
     color: #f8fafc;
     box-shadow: none;
+}
+
+/* Bootstrap Warning Overrides */
+.btn-warning {
+    background-color: var(--erp-warning) !important;
+    border-color: var(--erp-warning) !important;
+    color: #000 !important;
+}
+
+.btn-warning:hover {
+    background-color: var(--erp-primary-hover) !important;
+    border-color: var(--erp-primary-hover) !important;
+}
+
+.text-warning {
+    color: var(--erp-warning) !important;
+}
+
+.border-warning {
+    border-color: var(--erp-warning) !important;
+}
+
+.bg-warning {
+    background-color: var(--erp-warning) !important;
+}
+
+.bg-opacity-10.text-warning {
+    background-color: rgba(197, 160, 40, 0.1) !important;
+}
+
+.border-start.border-warning {
+    border-left-color: var(--erp-warning) !important;
 }
