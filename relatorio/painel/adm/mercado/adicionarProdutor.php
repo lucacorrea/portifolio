@@ -229,6 +229,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
   }
+  $comunidadesLista = [];
+  $bairrosLista = [];
+
+  foreach ($comunidades as $c) {
+    if (($c['tipo'] ?? '') === 'BAIRRO') {
+      $bairrosLista[] = $c;
+    } else {
+      $comunidadesLista[] = $c;
+    }
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -701,28 +711,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <div class="form-section">
                     <div class="section-title">
-                      <i class="ti-map-alt"></i> Comunidade
+                      <i class="ti-map-alt"></i> Localidade
                     </div>
 
                     <div class="row">
-                      <div class="col-12 col-lg-6 mb-3">
-                        <label>Comunidade <span class="text-danger">*</span></label>
-                        <select
-                          name="comunidade_id"
-                          class="form-control"
-                          <?= empty($comunidades) ? 'disabled' : 'required' ?>>
-                          <option value="">Selecione</option>
-                          <?php foreach ($comunidades as $c): ?>
-                            <option
-                              value="<?= (int)$c['id'] ?>"
-                              <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
-                              <?= h($c['nome']) ?>
-                            </option>
-                          <?php endforeach; ?>
-                        </select>
-                        <small class="text-muted help-hint">
-                          Vem da tabela <b>comunidades</b> (feira_id = <?= (int)$FEIRA_ID ?>, ativo=1).
-                        </small>
+                      <div class="row">
+
+                        <!-- BAIRRO -->
+                        <div class="col-12 col-lg-6 mb-3">
+                          <label>Bairro</label>
+                          <select
+                            name="bairro_id"
+                            class="form-control"
+                            <?= empty($bairrosLista) ? 'disabled' : '' ?>>
+                            <option value="">Selecione o bairro</option>
+                            <?php foreach ($bairrosLista as $b): ?>
+                              <option
+                                value="<?= (int)$b['id'] ?>"
+                                <?= ($old['bairro_id'] !== '' && (int)$old['bairro_id'] === (int)$b['id']) ? 'selected' : '' ?>>
+                                <?= h($b['nome']) ?>
+                              </option>
+                            <?php endforeach; ?>
+                          </select>
+                          <small class="text-muted help-hint">
+                            Se o produtor morar em bairro urbano, selecione aqui.
+                          </small>
+                        </div>
+
+                        <!-- COMUNIDADE -->
+                        <div class="col-12 col-lg-6 mb-3">
+                          <label>Comunidade</label>
+                          <select
+                            name="comunidade_id"
+                            class="form-control"
+                            <?= empty($comunidadesLista) ? 'disabled' : '' ?>>
+                            <option value="">Selecione a comunidade</option>
+                            <?php foreach ($comunidadesLista as $c): ?>
+                              <option
+                                value="<?= (int)$c['id'] ?>"
+                                <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
+                                <?= h($c['nome']) ?>
+                              </option>
+                            <?php endforeach; ?>
+                          </select>
+                          <small class="text-muted help-hint">
+                            Se o produtor vier de comunidade rural, selecione aqui.
+                          </small>
+                        </div>
+
                       </div>
 
                       <div class="col-12 col-md-6 col-lg-3 mb-3">
