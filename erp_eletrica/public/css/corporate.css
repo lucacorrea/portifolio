@@ -455,16 +455,31 @@ h6 {
     box-shadow: none;
 }
 
-/* Bootstrap Warning Overrides */
+/* --- Bootstrap Overrides for Warning (Standardized Gold) --- */
 .btn-warning {
+    --bs-btn-bg: var(--erp-warning) !important;
+    --bs-btn-border-color: var(--erp-warning) !important;
+    --bs-btn-hover-bg: var(--erp-primary-hover) !important;
+    --bs-btn-hover-border-color: var(--erp-primary-hover) !important;
+    --bs-btn-active-bg: var(--erp-primary-hover) !important;
+    --bs-btn-active-border-color: var(--erp-primary-hover) !important;
+    --bs-btn-disabled-bg: var(--erp-warning) !important;
+    --bs-btn-disabled-border-color: var(--erp-warning) !important;
+    --bs-btn-color: #000 !important;
+    --bs-btn-hover-color: #000 !important;
+    --bs-btn-active-color: #000 !important;
     background-color: var(--erp-warning) !important;
     border-color: var(--erp-warning) !important;
     color: #000 !important;
 }
 
-.btn-warning:hover {
+.btn-warning:hover,
+.btn-warning:focus,
+.btn-warning:active {
     background-color: var(--erp-primary-hover) !important;
     border-color: var(--erp-primary-hover) !important;
+    color: #000 !important;
+    box-shadow: none !important;
 }
 
 .text-warning {

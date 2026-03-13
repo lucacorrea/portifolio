@@ -197,20 +197,32 @@ body {
 }
 
 .badge-warning {
-    background: rgba(197, 160, 40, 0.2);
-    color: var(--warning);
+    background: rgba(197, 160, 40, 0.2) !important;
+    color: var(--warning) !important;
 }
 
-/* Bootstrap Overrides for Warning */
+/* --- Bootstrap Overrides for Warning (Standardized Gold) --- */
 .btn-warning {
+    --bs-btn-bg: var(--warning) !important;
+    --bs-btn-border-color: var(--warning) !important;
+    --bs-btn-hover-bg: var(--primary-hover) !important;
+    --bs-btn-hover-border-color: var(--primary-hover) !important;
+    --bs-btn-active-bg: var(--primary-hover) !important;
+    --bs-btn-active-border-color: var(--primary-hover) !important;
+    --bs-btn-disabled-bg: var(--warning) !important;
+    --bs-btn-disabled-border-color: var(--warning) !important;
     background-color: var(--warning) !important;
     border-color: var(--warning) !important;
     color: #000 !important;
 }
 
-.btn-warning:hover {
+.btn-warning:hover,
+.btn-warning:focus,
+.btn-warning:active {
     background-color: var(--primary-hover) !important;
     border-color: var(--primary-hover) !important;
+    color: #000 !important;
+    box-shadow: none !important;
 }
 
 .text-warning {
