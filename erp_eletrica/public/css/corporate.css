@@ -206,12 +206,26 @@ body {
 
 /* List Groups & Tables */
 .table {
-    color: var(--text-primary);
+    --bs-table-color: var(--text-primary);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--border);
+    color: var(--text-primary) !important;
+}
+
+.table thead th {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--erp-primary) !important;
+    border-bottom: 2px solid var(--border) !important;
+    border-top: none !important;
+}
+
+.table td {
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border) !important;
 }
 
 .table-hover tbody tr:hover {
-    background-color: rgba(255, 255, 255, 0.02) !important;
-    color: var(--text-primary) !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .industrial-table td, .industrial-table th {
@@ -233,29 +247,25 @@ body {
     background-color: #0f172a !important;
 }
 
-.text-dark {
+.text-dark:not(.btn-warning) {
     color: #f8fafc !important;
 }
 
 .text-muted {
-    color: #64748b !important; /* Slightly lighter muted text */
+    color: #64748b !important;
 }
 
-/* Fix for icons appearing as "yellow balls" */
-.bg-opacity-10 i, .bg-opacity-25 i {
-    color: #ffffff !important; /* Make icons white inside colored circles */
+/* Specific fix for cashier and modals lists */
+.bg-light, .bg-light *, .modal-body, .modal-body *, .list-group-item, .list-group-item * {
+    color: var(--text-primary);
 }
 
-.bg-primary.bg-opacity-10, .bg-warning.bg-opacity-10 {
-    background-color: rgba(251, 191, 36, 0.15) !important;
+.list-group-item {
+    background-color: transparent !important;
+    border-color: var(--border) !important;
 }
 
-/* Global Cleanups */
-.bg-light {
-    background-color: rgba(255, 255, 255, 0.03) !important;
-}
-
-.text-black, .text-dark:not(body) {
+.text-black {
     color: #f8fafc !important;
 }
 

@@ -26,7 +26,7 @@
             <div class="card-body">
                 <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual em Caixa</div>
                 <h3 class="mb-0 fw-bold">
-                    <?= formatarMoeda($caixaAberto['valor_abertura'] + $cashierSummary['vendas_dinheiro'] + $cashierSummary['suprimentos'] - $cashierSummary['sangrias']) ?>
+                    <?= formatarMoeda(($caixaAberto['valor_abertura'] ?? 0) + ($cashierSummary['vendas_dinheiro'] ?? 0) + ($cashierSummary['suprimentos'] ?? 0) - ($cashierSummary['sangrias'] ?? 0)) ?>
                 </h3>
                 <div class="mt-2 small">
                     <span class="badge bg-white text-primary">CAIXA ABERTO</span>
