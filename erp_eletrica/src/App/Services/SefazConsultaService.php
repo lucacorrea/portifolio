@@ -7,6 +7,11 @@ use DOMDocument;
 class SefazConsultaService extends BaseService {
     private $db;
     private $config;
+    private $ufCodes = [
+        'AC'=>'12', 'AL'=>'27', 'AM'=>'13', 'AP'=>'16', 'BA'=>'29', 'CE'=>'23', 'DF'=>'53', 'ES'=>'32', 'GO'=>'52', 
+        'MA'=>'21', 'MG'=>'31', 'MS'=>'50', 'MT'=>'51', 'PA'=>'15', 'PB'=>'25', 'PE'=>'26', 'PI'=>'22', 'PR'=>'41', 
+        'RJ'=>'33', 'RN'=>'24', 'RO'=>'11', 'RR'=>'14', 'RS'=>'43', 'SC'=>'42', 'SE'=>'28', 'SP'=>'35', 'TO'=>'17'
+    ];
 
     public function __construct() {
         parent::__construct();
@@ -141,15 +146,26 @@ class SefazConsultaService extends BaseService {
     }
 
     private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
+        // Encontrar UF da filial baseada no CNPJ
+        $stmt = $this->db->prepare("SELECT uf FROM filiais WHERE cnpj LIKE ? OR cnpj = ? LIMIT 1");
+        // Tenta com e sem formatação
+        $cnpjLimpo = preg_replace('/\D/', '', $cnpj);
+        $cnpjFmt = substr($cnpjLimpo, 0, 2) . '.' . substr($cnpjLimpo, 2, 3) . '.' . substr($cnpjLimpo, 5, 3) . '/' . substr($cnpjLimpo, 8, 4) . '-' . substr($cnpjLimpo, 12, 2);
+        $stmt->execute(['%'.$cnpjLimpo.'%', $cnpjFmt]);
+        $siglaUf = $stmt->fetchColumn() ?: 'SP';
+        $cUF = $this->ufCodes[strtoupper($siglaUf)] ?? '35';
+
         $xml = new DOMDocument('1.0', 'UTF-8');
         $ns = 'http://www.portalfiscal.inf.br/nfe';
         $distDFeInt = $xml->createElementNS($ns, 'distDFeInt');
         $distDFeInt->setAttribute('versao', '1.01');
         
         $xml->appendChild($distDFeInt);
+        
+        // Ordem rigorosa do schema
         $distDFeInt->appendChild($xml->createElementNS($ns, 'tpAmb', $ambiente));
-        $distDFeInt->appendChild($xml->createElementNS($ns, 'cUFAutor', '91')); 
-        $distDFeInt->appendChild($xml->createElementNS($ns, 'CNPJ', $cnpj));
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'cUFAutor', $cUF)); 
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'CNPJ', $cnpjLimpo));
         
         $dist = $xml->createElementNS($ns, 'distNSU');
         $dist->appendChild($xml->createElementNS($ns, 'ultNSU', str_pad($ultNSU, 15, '0', STR_PAD_LEFT)));
