@@ -478,6 +478,7 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .     $transpXML
      .     $pagXML
      .     $infAd
+     .     . '<infRespTec><CPF>04125521247</CPF><xContato>Luiz Breno da frota</xContato><email>luizfrota2@gmail.com</email><fone>97991434585</fone></infRespTec>'
      .   '</infNFe>'
      . '</NFe>';
 
