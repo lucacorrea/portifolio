@@ -101,8 +101,16 @@ $old = [
   'ativo'         => '1',
   'observacao'    => '',
 ];
-$bairroId = isset($_POST['bairro_id']) ? (int)$_POST['bairro_id'] : 0;
-$comunidadeId = isset($_POST['comunidade_id']) ? (int)$_POST['comunidade_id'] : 0;
+$bairros = [];
+$comunidadesLista = [];
+
+foreach ($comunidades as $c) {
+    if (($c['tipo'] ?? '') === 'BAIRRO') {
+        $bairros[] = $c;
+    } else {
+        $comunidadesLista[] = $c;
+    }
+}
 
 if ($bairroId <= 0 && $comunidadeId <= 0) {
   $msgErro = 'Selecione um bairro ou uma comunidade.';
@@ -235,17 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
   }
-  $comunidadesLista = [];
-  $bairrosLista = [];
 
-  foreach ($comunidades as $c) {
-    if (($c['tipo'] ?? '') === 'BAIRRO') {
-      $bairrosLista[] = $c;
-    } else {
-      $comunidadesLista[] = $c;
-    }
-  }
-}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -721,9 +719,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="row">
+                    <div class="row">
 
-
-                      <div class="col-12 col-lg-6 mb-3">
+                      <div class="col-12 col-md-6 col-lg-3 mb-3">
                         <label>Localidades <span class="text-danger">*</span></label>
 
                         <select
