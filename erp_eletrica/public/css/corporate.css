@@ -77,6 +77,21 @@ body {
     overflow-x: hidden;
 }
 
+/* Custom Scrollbar for Sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: #0f172a; 
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #334155; 
+    border-radius: 4px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #475569; 
+}
+
 .sidebar-header {
     padding: 1.5rem;
     border-bottom: 1px solid var(--border);

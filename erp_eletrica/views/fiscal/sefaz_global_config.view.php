@@ -36,7 +36,7 @@
                     <form action="importar_automatico.php?action=config_save" method="POST" enctype="multipart/form-data">
                         <div class="mb-4">
                             <label class="form-label fw-bold small">Arquivo do Certificado (.pfx)</label>
-                            <input type="file" name="certificado_pfx" class="form-control" accept=".pfx">
+                            <input type="file" name="certificado_pfx" class="form-control bg-dark border-secondary text-light" accept=".pfx">
                             <?php if ($config && $config['certificado_path']): ?>
                                 <p class="text-success small mt-2">
                                     <i class="fas fa-check me-1"></i> Certificado atual: <?= $config['certificado_path'] ?>
@@ -97,7 +97,8 @@
 </div>
 
 <style>
-    .bg-success-light { background: #e8f5e9; }
-    .bg-danger-light { background: #ffebee; }
+    .bg-success-light { background: rgba(16, 185, 129, 0.15) !important; color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .bg-danger-light { background: rgba(239, 68, 68, 0.15) !important; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .bg-success-light .text-success, .bg-danger-light .text-danger { color: inherit !important; }
     .extra-small { font-size: 0.75rem; }
 </style>

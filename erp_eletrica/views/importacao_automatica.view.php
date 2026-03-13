@@ -19,12 +19,12 @@
     </div>
 
     <!-- Filtros e Status -->
-    <div class="alert alert-info border-0 shadow-sm mb-4">
+    <div class="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded p-3 mb-4 text-primary shadow-sm">
         <div class="d-flex align-items-center">
             <i class="fas fa-info-circle me-3 fa-2x"></i>
             <div>
                 <h6 class="mb-1 fw-bold">Como funciona?</h6>
-                <p class="mb-0 small">O sistema consulta os servidores da SEFAZ Nacional em busca de notas destinadas ao seu CNPJ. 
+                <p class="mb-0 small text-light">O sistema consulta os servidores da SEFAZ Nacional em busca de notas destinadas ao seu CNPJ. 
                 As notas aparecem aqui agrupadas por fornecedor para facilitar a entrada no estoque.</p>
             </div>
         </div>
