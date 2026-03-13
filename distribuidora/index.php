@@ -552,7 +552,7 @@ $emailValue = $emailOld !== '' ? $emailOld : $emailCookie;
                     </div>
 
                     <div class="col-md-6 mb-25 text-md-end">
-                      <a href="reset-password.html" class="forgot-link">
+                      <a href="esqueci-senha.php" class="forgot-link">
                         Esqueceu sua senha?
                       </a>
                     </div>

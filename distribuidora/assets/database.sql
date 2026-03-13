@@ -236,10 +236,5 @@ CREATE TABLE IF NOT EXISTS senha_tokens (
 
   KEY idx_senha_tokens_usuario (usuario_id),
   KEY idx_senha_tokens_email (email),
-  KEY idx_senha_tokens_expira (expira_em),
-
-  CONSTRAINT fk_senha_tokens_usuario
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
+  KEY idx_senha_tokens_expira (expira_em)
 );
