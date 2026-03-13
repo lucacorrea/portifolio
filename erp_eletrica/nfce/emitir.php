@@ -535,6 +535,7 @@ $st->execute([
     echo '<!doctype html><meta charset="utf-8">';
     echo '<script>location.replace(' . json_encode($danfeUrl) . ');</script>';
     exit;
+  }
 }
 
 // === LOGAR REJEIÇÕES TAMBÉM (sem protNFe) ===
