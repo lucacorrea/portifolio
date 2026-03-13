@@ -233,7 +233,15 @@ body {
 
 /* Hover consistency for tinted rows */
 .table-hover tbody tr.table-warning:hover {
-    background-color: rgba(199, 152, 2, 0.18) !important;
+    background-color: rgba(199, 152, 2, 0.22) !important;
+}
+
+.table-hover tbody tr.table-danger:hover {
+    background-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+.table-hover tbody tr.table-success:hover {
+    background-color: rgba(16, 185, 129, 0.18) !important;
 }
 
 /* --- Bootstrap Overrides for Warning (Standardized Gold) --- */
