@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $tokenPost = (string)($_POST['csrf_token'] ?? '');
   if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
     $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
-    header('Location: ./adicionarPermissionario.php');
+    header('Location: ./adicionarProdutor.php');
     exit;
   }
 
@@ -271,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           ]);
 
           $_SESSION['flash_ok'] = 'Permissionário cadastrado com sucesso!';
-          header('Location: ./listaPermissionario.php');
+          header('Location: ./listaProdutor.php');
           exit;
         }
       } catch (Throwable $e) {
