@@ -86,8 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         :root {
             --login-bg: #0a0a0a;
             --card-bg: #141414;
-            --accent-gold: #c79802;
-            --accent-hover: #a67f02;
+            --accent-gold: #FFC107;
+            --accent-hover: #FFB300;
             --input-bg: #0d0d0d;
             --border-color: #262626;
         }

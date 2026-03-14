@@ -1,12 +1,12 @@
 :root {
     /* Dark Modern Palette (Neutral Black) */
-    --erp-primary: #c79802;
-    /* Gold Ouro Escuro */
-    --erp-primary-hover: #a67f02;
+    --erp-primary: #FFC107;
+    /* Vibrant Yellow */
+    --erp-primary-hover: #FFB300;
     --erp-secondary: #141414;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
-    --erp-warning: #c79802;
+    --erp-warning: #FFC107;
     --erp-dark: #0a0a0a;
     --erp-light: #141414;
     --erp-glass: rgba(10, 10, 10, 0.8);
@@ -32,12 +32,12 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #c79802;
-    --bs-primary-rgb: 199, 152, 2;
-    --bs-link-color: #c79802;
-    --bs-link-hover-color: #a67f02;
+    --bs-primary: #FFC107;
+    --bs-primary-rgb: 255, 193, 7;
+    --bs-link-color: #FFC107;
+    --bs-link-hover-color: #FFB300;
     --bs-body-bg: #0a0a0a;
-    --bs-warning: #c79802;
+    --bs-warning: #FFC107;
     --bs-body-color: #f8fafc;
 }
 
@@ -491,14 +491,14 @@ h6 {
 
 /* Bootstrap Warning Overrides in corporate.css */
 .btn-warning {
-    --bs-btn-bg: #c79802 !important;
-    --bs-btn-border-color: #c79802 !important;
-    --bs-btn-hover-bg: #a67f02 !important;
-    --bs-btn-hover-border-color: #a67f02 !important;
-    --bs-btn-active-bg: #a67f02 !important;
-    --bs-btn-active-border-color: #a67f02 !important;
-    --bs-btn-disabled-bg: #c79802 !important;
-    --bs-btn-disabled-border-color: #c79802 !important;
+    --bs-btn-bg: #FFC107 !important;
+    --bs-btn-border-color: #FFC107 !important;
+    --bs-btn-hover-bg: #FFB300 !important;
+    --bs-btn-hover-border-color: #FFB300 !important;
+    --bs-btn-active-bg: #FFB300 !important;
+    --bs-btn-active-border-color: #FFB300 !important;
+    --bs-btn-disabled-bg: #FFC107 !important;
+    --bs-btn-disabled-border-color: #FFC107 !important;
     color: #000 !important;
 }
 

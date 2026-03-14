@@ -1,8 +1,8 @@
 :root {
     /* Dark Modern Palette (Neutral Black) */
-    --primary-color: #c79802;
-    /* Gold Ouro Escuro */
-    --primary-hover: #a67f02;
+    --primary-color: #FFC107;
+    /* Vibrant Yellow */
+    --primary-hover: #FFB300;
     --secondary-color: #141414;
     --bg-main: #0a0a0a;
     --surface: #141414;
@@ -10,7 +10,7 @@
     --text-secondary: #a3a3a3;
     --success: #10b981;
     --danger: #ef4444;
-    --warning: #c79802;
+    --warning: #FFC107;
     --border: #262626;
 
     /* Corporate Aliases */
@@ -167,7 +167,7 @@ body {
     background: #0d0d0d;
     border-color: var(--primary-color);
     color: var(--text-primary);
-    box-shadow: 0 0 0 0.25rem rgba(199, 152, 2, 0.25);
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
 }
 
 /* Fix for readonly and disabled inputs in dark theme */
@@ -252,14 +252,14 @@ body {
 
 /* Bootstrap Warning Overrides */
 .btn-warning {
-    --bs-btn-bg: #c79802 !important;
-    --bs-btn-border-color: #c79802 !important;
-    --bs-btn-hover-bg: #a67f02 !important;
-    --bs-btn-hover-border-color: #a67f02 !important;
-    --bs-btn-active-bg: #a67f02 !important;
-    --bs-btn-active-border-color: #a67f02 !important;
-    --bs-btn-disabled-bg: #c79802 !important;
-    --bs-btn-disabled-border-color: #c79802 !important;
+    --bs-btn-bg: #FFC107 !important;
+    --bs-btn-border-color: #FFC107 !important;
+    --bs-btn-hover-bg: #FFB300 !important;
+    --bs-btn-hover-border-color: #FFB300 !important;
+    --bs-btn-active-bg: #FFB300 !important;
+    --bs-btn-active-border-color: #FFB300 !important;
+    --bs-btn-disabled-bg: #FFC107 !important;
+    --bs-btn-disabled-border-color: #FFC107 !important;
     color: #000 !important;
 }
 
