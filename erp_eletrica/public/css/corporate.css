@@ -246,8 +246,11 @@ body {
     border-color: var(--erp-primary);
 }
 
-.btn-outline-primary:hover {
-    background-color: var(--erp-primary);
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active {
+    background-color: #0a0a0a !important;
+    border-color: #FFC107 !important;
     color: #fff !important;
 }
 

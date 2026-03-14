@@ -255,29 +255,23 @@ body .btn-gold {
     transition: all 0.2s ease-in-out !important;
 }
 
+/* Unified Hover Standard for ALL Yellow Buttons (Solid & Outline) */
 body .btn-primary:hover,
 body .btn-warning:hover,
 body .btn-yellow:hover,
 body .btn-gold:hover,
+body .btn-outline-primary:hover,
+body .btn-outline-warning:hover,
 body .btn-primary:focus,
 body .btn-warning:focus,
+body .btn-outline-primary:focus,
+body .btn-outline-warning:focus,
 body .btn-primary:active,
 body .btn-warning:active {
     background-color: #0a0a0a !important;
     border-color: #FFC107 !important;
     color: #fff !important;
-}
-
-/* Force outline buttons hover standard */
-body .btn-outline-primary:hover {
-    background-color: #FFC107 !important;
-    color: #fff !important;
-}
-
-body .btn-outline-warning:hover {
-    background-color: #0a0a0a !important;
-    border-color: #FFC107 !important;
-    color: #fff !important;
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.1) !important;
 }
 
 .text-warning {
