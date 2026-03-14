@@ -11,6 +11,7 @@ if (empty($_SESSION['usuario_logado'])) {
 
 /* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
@@ -36,7 +37,7 @@ $csrf = (string)$_SESSION['csrf_token'];
 require '../../../assets/php/conexao.php';
 $pdo = db();
 
-/* Feira do Produtor = 1 (na Feira Alternativa use 2) */
+/* Feira do Produtor = 1 | Feira Alternativa = 2 | Mercado Municipal = 3 */
 $feiraId = 3;
 
 /* ===========================
@@ -68,7 +69,7 @@ function sig_render_pagination(string $baseUrl, int $pagina, int $totalPaginas):
   $disabledPrev = ($pagina <= 1) ? 'disabled' : '';
   $disabledNext = ($pagina >= $totalPaginas) ? 'disabled' : '';
 
-  $win = 2; // 2 antes e 2 depois
+  $win = 2;
   $ini = max(1, $pagina - $win);
   $fim = min($totalPaginas, $pagina + $win);
 
@@ -210,7 +211,6 @@ try {
   $params = [':feira' => $feiraId];
 
   if ($q !== '') {
-    // placeholders diferentes (PDO MySQL com emulação OFF não permite repetir o mesmo :q)
     $params[':q1'] = '%' . $q . '%';
     $params[':q2'] = '%' . $q . '%';
     $params[':q3'] = '%' . $q . '%';
@@ -222,16 +222,16 @@ try {
       c.nome LIKE :q2 OR
       u.nome LIKE :q3 OR
       u.sigla LIKE :q4 OR
-      pr.nome LIKE :q5
+      pm.nome LIKE :q5
     )";
   }
 
   $sqlCount = "
     SELECT COUNT(*)
     FROM produtos p
-    LEFT JOIN categorias c ON c.id = p.categoria_id AND c.feira_id = p.feira_id
-    LEFT JOIN unidades   u ON u.id = p.unidade_id   AND u.feira_id = p.feira_id
-    LEFT JOIN produtores pr ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
+    LEFT JOIN categorias c       ON c.id = p.categoria_id       AND c.feira_id = p.feira_id
+    LEFT JOIN unidades u         ON u.id = p.unidade_id         AND u.feira_id = p.feira_id
+    LEFT JOIN permissionarios pm ON pm.id = p.produtor_id       AND pm.feira_id = p.feira_id
     WHERE $where
   ";
   $stmt = $pdo->prepare($sqlCount);
@@ -262,7 +262,6 @@ try {
   $params = [':feira' => $feiraId];
 
   if ($q !== '') {
-    // placeholders diferentes (PDO MySQL com emulação OFF não permite repetir o mesmo :q)
     $params[':q1'] = '%' . $q . '%';
     $params[':q2'] = '%' . $q . '%';
     $params[':q3'] = '%' . $q . '%';
@@ -274,7 +273,7 @@ try {
       c.nome LIKE :q2 OR
       u.nome LIKE :q3 OR
       u.sigla LIKE :q4 OR
-      pr.nome LIKE :q5
+      pm.nome LIKE :q5
     )";
   }
 
@@ -287,11 +286,11 @@ try {
       c.nome AS categoria_nome,
       u.sigla AS unidade_sigla,
       u.nome  AS unidade_nome,
-      pr.nome AS produtor_nome
+      pm.nome AS permissionario_nome
     FROM produtos p
-    LEFT JOIN categorias c ON c.id = p.categoria_id AND c.feira_id = p.feira_id
-    LEFT JOIN unidades   u ON u.id = p.unidade_id   AND u.feira_id = p.feira_id
-    LEFT JOIN produtores pr ON pr.id = p.produtor_id AND pr.feira_id = p.feira_id
+    LEFT JOIN categorias c       ON c.id = p.categoria_id       AND c.feira_id = p.feira_id
+    LEFT JOIN unidades u         ON u.id = p.unidade_id         AND u.feira_id = p.feira_id
+    LEFT JOIN permissionarios pm ON pm.id = p.produtor_id       AND pm.feira_id = p.feira_id
     WHERE $where
     ORDER BY p.nome ASC
     LIMIT :lim OFFSET :off
@@ -371,7 +370,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
       height: auto;
     }
 
-    /* Flash “Hostinger style” */
     .sig-flash-wrap {
       position: fixed;
       top: 78px;
@@ -391,7 +389,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
       box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
-
       opacity: 0;
       transform: translateX(10px);
       animation:
@@ -462,7 +459,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -521,7 +517,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
 
     <div class="container-fluid page-body-wrapper">
 
-      <!-- (settings-panel mantido) -->
       <div id="right-sidebar" class="settings-panel">
         <i class="settings-close ti-close"></i>
         <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
@@ -534,7 +529,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
         </ul>
       </div>
 
-      <!-- SIDEBAR -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
 
@@ -645,8 +639,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
             </div>
           </li>
 
-
-          <!-- Título DIVERSOS -->
           <li class="nav-item" style="pointer-events:none;">
             <span style="
                   display:block;
@@ -661,7 +653,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
             </span>
           </li>
 
-          <!-- Linha abaixo do título -->
           <li class="nav-item">
             <a class="nav-link" href="../index.php">
               <i class="ti-home menu-icon"></i>
@@ -672,18 +663,15 @@ $fim = min($offset + $porPagina, $totalRegistros);
             <a href="../produtor/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira do Produtor</span>
-
             </a>
           </li>
           <li class="nav-item">
             <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira Alternativa</span>
-
             </a>
           </li>
           <li class="nav-item">
-
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
@@ -693,10 +681,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
         </ul>
       </nav>
 
-      </ul>
-      </nav>
-
-      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
 
@@ -707,7 +691,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
             </div>
           </div>
 
-          <!-- Toolbar busca -->
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
@@ -715,7 +698,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
                   <form method="get" action="./listaProduto.php" class="row align-items-end">
                     <div class="col-md-6">
                       <label class="mb-1">Pesquisa</label>
-                      <input type="text" class="form-control" name="q" placeholder="Pesquisar por produto, categoria, unidade, produtor..." value="<?= h($q) ?>">
+                      <input type="text" class="form-control" name="q" placeholder="Pesquisar por produto, categoria, unidade, permissionário..." value="<?= h($q) ?>">
                     </div>
                     <div class="col-md-6 mt-3 mt-md-0">
                       <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
@@ -725,9 +708,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
                         <a class="btn btn-light" href="./listaProduto.php">
                           <i class="ti-close mr-1"></i> Limpar
                         </a>
-
                       </div>
-
                     </div>
                   </form>
                 </div>
@@ -735,7 +716,6 @@ $fim = min($offset + $porPagina, $totalRegistros);
             </div>
           </div>
 
-          <!-- Tabela -->
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
@@ -794,15 +774,15 @@ $fim = min($offset + $porPagina, $totalRegistros);
                             $unLabel = $unSigla !== '' ? $unSigla : $unNome;
                             if ($unLabel === '') $unLabel = '-';
 
-                            $produtorNome = trim((string)($p['produtor_nome'] ?? ''));
-                            if ($produtorNome === '') $produtorNome = '-';
+                            $permissionarioNome = trim((string)($p['permissionario_nome'] ?? ''));
+                            if ($permissionarioNome === '') $permissionarioNome = '-';
                             ?>
                             <tr>
                               <td><?= $id ?></td>
                               <td class="font-weight-bold"><?= h($p['nome'] ?? '') ?></td>
                               <td><?= h($categoriaNome) ?></td>
                               <td><?= h($unLabel) ?></td>
-                              <td><?= h($produtorNome) ?></td>
+                              <td><?= h($permissionarioNome) ?></td>
                               <td>R$ <?= h($precoFmt) ?></td>
                               <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                               <td>
@@ -838,9 +818,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
                       </tbody>
                     </table>
 
-                    <!-- PAGINAÇÃO (MESMO PADRÃO) -->
                     <?php sig_render_pagination('./listaProduto.php', (int)$pagina, (int)$totalPaginas); ?>
-                    <!-- /PAGINAÇÃO -->
 
                   </div>
 
@@ -870,11 +848,9 @@ $fim = min($offset + $porPagina, $totalRegistros);
 
   <script src="../../../js/off-canvas.js"></script>
   <script src="../../../js/hoverable-collapse.js"></script>
-  <script src="../../../js/hoverable-collapse.js"></script>
   <script src="../../../js/template.js"></script>
   <script src="../../../js/settings.js"></script>
   <script src="../../../js/todolist.js"></script>
-
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
 </body>
