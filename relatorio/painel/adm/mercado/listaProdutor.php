@@ -11,21 +11,38 @@ if (empty($_SESSION['usuario_logado'])) {
 
 /* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
-if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
 }
 
-function h($s)
+require '../../../assets/php/conexao.php';
+
+function h($s): string
 {
   return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
+
+function only_digits(string $s): string
+{
+  $out = preg_replace('/\D+/', '', $s);
+  return $out !== null ? $out : '';
+}
+
+/* Feira padrão desta página */
+$FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa
+
+/* Detecção opcional pela pasta (se você separou em pastas) */
+$dirLower = strtolower((string)__DIR__);
+if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
+if (strpos($dirLower, 'produtor')   !== false) $FEIRA_ID = 1;
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
 $err = (string)($_SESSION['flash_err'] ?? '');
 unset($_SESSION['flash_ok'], $_SESSION['flash_err']);
+
+$debug = (isset($_GET['debug']) && $_GET['debug'] === '1');
 
 /* CSRF */
 if (empty($_SESSION['csrf_token'])) {
@@ -34,267 +51,284 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf = (string)$_SESSION['csrf_token'];
 
 /* ===== Conexão ===== */
-require '../../../assets/php/conexao.php';
-$pdo = db();
+$produtores = [];
+$comunidades = [];
+$totalRows  = 0;
+$totalPages = 1;
+$errDetail  = '';
+$dbName     = '';
 
-/* Feira do Produtor = 1 | Feira Alternativa = 2 | Mercado Municipal = 3 */
-$feiraId = 3;
+/* Paginação */
+$perPage = 8;
+$page = (int)($_GET['p'] ?? 1);
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $perPage;
 
-/* ===========================
-   PAGINAÇÃO PADRÃO SIG (REUSO)
-   =========================== */
-function sig_build_url(string $baseUrl, array $add = [], array $removeKeys = []): string
+/* Busca (FAZ FUNCIONAR: normaliza e busca por CPF/telefone também) */
+$qRaw = trim((string)($_GET['q'] ?? ''));
+$qDigits = only_digits($qRaw);
+
+$cleanErr = function (string $m): string {
+  $m = preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $m) ?? $m;
+  $m = preg_replace('/\(SQL:\s*.*\)$/', '', $m) ?? $m;
+  return trim((string)$m);
+};
+
+function buildUrl(array $add = []): string
 {
+  $base = strtok($_SERVER['REQUEST_URI'], '?') ?: './listaProdutor.php';
   $cur = $_GET ?? [];
-
-  foreach ($removeKeys as $rk) {
-    unset($cur[$rk]);
-  }
   foreach ($add as $k => $v) {
     if ($v === null) unset($cur[$k]);
     else $cur[$k] = (string)$v;
   }
-
   $qs = http_build_query($cur);
-  return $qs ? ($baseUrl . '?' . $qs) : $baseUrl;
+  return $qs ? ($base . '?' . $qs) : $base;
 }
 
-function sig_render_pagination(string $baseUrl, int $pagina, int $totalPaginas): void
+/* Helpers modal: validação simples */
+function trunc(string $s, int $max): string
 {
-  if ($totalPaginas <= 1) return;
-
-  $prev = max(1, $pagina - 1);
-  $next = min($totalPaginas, $pagina + 1);
-
-  $disabledPrev = ($pagina <= 1) ? 'disabled' : '';
-  $disabledNext = ($pagina >= $totalPaginas) ? 'disabled' : '';
-
-  $win = 2;
-  $ini = max(1, $pagina - $win);
-  $fim = min($totalPaginas, $pagina + $win);
-
-  if (($fim - $ini) < ($win * 2)) {
-    $ini = max(1, $fim - ($win * 2));
-    $fim = min($totalPaginas, $ini + ($win * 2));
-  }
-?>
-  <div class="d-flex flex-wrap justify-content-between align-items-center mt-3">
-    <div class="text-muted">
-      Página <?= (int)$pagina ?> de <?= (int)$totalPaginas ?>
-    </div>
-
-    <nav aria-label="Paginação produtos">
-      <ul class="pagination mb-0">
-
-        <li class="page-item <?= $disabledPrev ?>">
-          <a class="page-link" href="<?= h(sig_build_url($baseUrl, ['p' => $prev])) ?>" tabindex="-1">Anterior</a>
-        </li>
-
-        <?php if ($ini > 1): ?>
-          <li class="page-item">
-            <a class="page-link" href="<?= h(sig_build_url($baseUrl, ['p' => 1])) ?>">1</a>
-          </li>
-          <?php if ($ini > 2): ?>
-            <li class="page-item disabled"><span class="page-link">…</span></li>
-          <?php endif; ?>
-        <?php endif; ?>
-
-        <?php for ($i = $ini; $i <= $fim; $i++): ?>
-          <li class="page-item <?= ($i === $pagina) ? 'active' : '' ?>">
-            <a class="page-link" href="<?= h(sig_build_url($baseUrl, ['p' => $i])) ?>"><?= (int)$i ?></a>
-          </li>
-        <?php endfor; ?>
-
-        <?php if ($fim < $totalPaginas): ?>
-          <?php if ($fim < $totalPaginas - 1): ?>
-            <li class="page-item disabled"><span class="page-link">…</span></li>
-          <?php endif; ?>
-          <li class="page-item">
-            <a class="page-link" href="<?= h(sig_build_url($baseUrl, ['p' => $totalPaginas])) ?>"><?= (int)$totalPaginas ?></a>
-          </li>
-        <?php endif; ?>
-
-        <li class="page-item <?= $disabledNext ?>">
-          <a class="page-link" href="<?= h(sig_build_url($baseUrl, ['p' => $next])) ?>">Próximo</a>
-        </li>
-
-      </ul>
-    </nav>
-  </div>
-<?php
+  $s = trim($s);
+  if ($s === '') return '';
+  if (function_exists('mb_substr')) return mb_substr($s, 0, $max, 'UTF-8');
+  return substr($s, 0, $max);
 }
-
-/* ===== Busca ===== */
-$q = trim((string)($_GET['q'] ?? ''));
-
-/* ===== Paginação (8 por página) ===== */
-$porPagina = 8;
-$pagina = (int)($_GET['p'] ?? 1);
-if ($pagina < 1) $pagina = 1;
-$offset = ($pagina - 1) * $porPagina;
-
-/* ===== Ações (Ativar/Desativar e Excluir) ===== */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $postedCsrf = (string)($_POST['csrf_token'] ?? '');
-  $acao = (string)($_POST['acao'] ?? '');
-  $id = (int)($_POST['id'] ?? 0);
-  $returnP = (int)($_POST['return_p'] ?? 1);
-  if ($returnP < 1) $returnP = 1;
-
-  if (!hash_equals($csrf, $postedCsrf)) {
-    $_SESSION['flash_err'] = 'Sessão expirada. Atualize a página e tente novamente.';
-    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
-    exit;
-  }
-
-  if ($id <= 0) {
-    $_SESSION['flash_err'] = 'ID inválido.';
-    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
-    exit;
-  }
-
-  try {
-    if ($acao === 'toggle') {
-      $sql = "UPDATE produtos
-              SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END
-              WHERE id = :id AND feira_id = :feira
-              LIMIT 1";
-      $stmt = $pdo->prepare($sql);
-      $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-      $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-      $stmt->execute();
-
-      $_SESSION['flash_ok'] = ($stmt->rowCount() > 0) ? 'Status do produto atualizado.' : 'Produto não encontrado.';
-      header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
-      exit;
-    }
-
-    if ($acao === 'excluir') {
-      $sql = "DELETE FROM produtos
-              WHERE id = :id AND feira_id = :feira
-              LIMIT 1";
-      $stmt = $pdo->prepare($sql);
-      $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-      $stmt->bindValue(':feira', $feiraId, PDO::PARAM_INT);
-      $stmt->execute();
-
-      $_SESSION['flash_ok'] = ($stmt->rowCount() > 0) ? 'Produto excluído com sucesso.' : 'Produto não encontrado.';
-      header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
-      exit;
-    }
-
-    $_SESSION['flash_err'] = 'Ação inválida.';
-    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
-    exit;
-  } catch (PDOException $e) {
-    $mysqlCode = (int)($e->errorInfo[1] ?? 0);
-    if ($mysqlCode === 1451) {
-      $_SESSION['flash_err'] = 'Não é possível excluir: existem vendas/itens usando este produto.';
-    } else {
-      $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
-    }
-    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
-    exit;
-  } catch (Throwable $e) {
-    $_SESSION['flash_err'] = 'Não foi possível concluir a ação agora.';
-    header('Location: ./listaProduto.php?p=' . $returnP . ($q !== '' ? '&q=' . urlencode($q) : ''));
-    exit;
-  }
-}
-
-/* ===== Total de registros (com busca) ===== */
-$totalRegistros = 0;
-$totalPaginas = 1;
 
 try {
-  $where = "p.feira_id = :feira";
-  $params = [':feira' => $feiraId];
+  $pdo = db();
+  $dbName = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
 
-  if ($q !== '') {
-    $params[':q1'] = '%' . $q . '%';
-    $params[':q2'] = '%' . $q . '%';
-    $params[':q3'] = '%' . $q . '%';
-    $params[':q4'] = '%' . $q . '%';
-    $params[':q5'] = '%' . $q . '%';
+  /* Checa tabelas */
+  $tblP = $pdo->query("SHOW TABLES LIKE 'produtores'")->fetchColumn();
+  if (!$tblP) throw new RuntimeException("Tabela 'produtores' não existe neste banco.");
 
-    $where .= " AND (
-      p.nome LIKE :q1 OR
-      c.nome LIKE :q2 OR
-      u.nome LIKE :q3 OR
-      u.sigla LIKE :q4 OR
-      pm.nome LIKE :q5
-    )";
+  $tblC = $pdo->query("SHOW TABLES LIKE 'comunidades'")->fetchColumn();
+  $hasComunidades = (bool)$tblC;
+
+  if ($hasComunidades) {
+    $stCom = $pdo->prepare("SELECT id, nome FROM comunidades WHERE feira_id = :f AND ativo = 1 ORDER BY nome ASC");
+    $stCom->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
+    $stCom->execute();
+    $comunidades = $stCom->fetchAll(PDO::FETCH_ASSOC);
   }
 
-  $sqlCount = "
-    SELECT COUNT(*)
-    FROM produtos p
-    LEFT JOIN categorias c       ON c.id = p.categoria_id       AND c.feira_id = p.feira_id
-    LEFT JOIN unidades u         ON u.id = p.unidade_id         AND u.feira_id = p.feira_id
-    LEFT JOIN permissionarios pm ON pm.id = p.produtor_id       AND pm.feira_id = p.feira_id
-    WHERE $where
-  ";
-  $stmt = $pdo->prepare($sqlCount);
-  $stmt->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
+  /* ===== AÇÕES POST: toggle / update (modal) ===== */
+  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $tokenPost = (string)($_POST['csrf_token'] ?? '');
+    if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
+      $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
+      header('Location: ' . buildUrl());
+      exit;
+    }
+
+    $action = (string)($_POST['action'] ?? '');
+    $id = (int)($_POST['id'] ?? 0);
+
+    if ($action === 'toggle' && $id > 0) {
+      $st = $pdo->prepare("SELECT ativo FROM produtores WHERE id = :id AND feira_id = :feira");
+      $st->bindValue(':id', $id, PDO::PARAM_INT);
+      $st->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
+      $st->execute();
+      $curAtv = $st->fetchColumn();
+
+      if ($curAtv === false) {
+        $_SESSION['flash_err'] = 'Permissionário não encontrado.';
+      } else {
+        $newAtv = ((int)$curAtv === 1) ? 0 : 1;
+        $up = $pdo->prepare("UPDATE produtores SET ativo = :a WHERE id = :id AND feira_id = :feira");
+        $up->bindValue(':a', $newAtv, PDO::PARAM_INT);
+        $up->bindValue(':id', $id, PDO::PARAM_INT);
+        $up->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
+        $up->execute();
+        $_SESSION['flash_ok'] = $newAtv ? 'Permissionário ativado com sucesso!' : 'Permissionário desativado com sucesso!';
+      }
+
+      header('Location: ' . buildUrl(['p' => $page]));
+      exit;
+    }
+
+    if ($action === 'update' && $id > 0) {
+      $nome = trunc((string)($_POST['nome'] ?? ''), 160);
+      $contato = trunc((string)($_POST['contato'] ?? ''), 60);
+      $documento = trunc(only_digits((string)($_POST['documento'] ?? '')), 30);
+      $obs = trunc((string)($_POST['observacao'] ?? ''), 255);
+      $ativo = ((string)($_POST['ativo'] ?? '1') === '1') ? 1 : 0;
+
+      $comunidade_id = (int)($_POST['comunidade_id'] ?? 0);
+
+      if ($nome === '') {
+        $_SESSION['flash_err'] = 'Informe o nome do produtor.';
+        header('Location: ' . buildUrl(['p' => $page]));
+        exit;
+      }
+
+      if ($hasComunidades) {
+        if ($comunidade_id <= 0) {
+          $_SESSION['flash_err'] = 'Selecione a comunidade.';
+          header('Location: ' . buildUrl(['p' => $page]));
+          exit;
+        }
+
+        $chk = $pdo->prepare("SELECT COUNT(*) FROM comunidades WHERE id = :id AND feira_id = :f AND ativo = 1");
+        $chk->bindValue(':id', $comunidade_id, PDO::PARAM_INT);
+        $chk->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
+        $chk->execute();
+        if ((int)$chk->fetchColumn() <= 0) {
+          $_SESSION['flash_err'] = 'Bairro / Origem inválido (não encontrado ou inativo).';
+          header('Location: ' . buildUrl(['p' => $page]));
+          exit;
+        }
+      } else {
+        // sem tabela comunidades, mantém comunidade_id como está (não atualiza)
+        $comunidade_id = 0;
+      }
+
+      // evita duplicidade por feira+nome (se você mantém UNIQUE uq_produtores_feira_nome)
+      $dupe = $pdo->prepare("SELECT COUNT(*) FROM produtores WHERE feira_id=:f AND nome=:n AND id<>:id");
+      $dupe->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
+      $dupe->bindValue(':n', $nome, PDO::PARAM_STR);
+      $dupe->bindValue(':id', $id, PDO::PARAM_INT);
+      $dupe->execute();
+      if ((int)$dupe->fetchColumn() > 0) {
+        $_SESSION['flash_err'] = 'Já existe um permissionário com esse nome.';
+        header('Location: ' . buildUrl(['p' => $page]));
+        exit;
+      }
+
+      if ($hasComunidades) {
+        $up = $pdo->prepare("UPDATE produtores
+                             SET nome=:nome, contato=:contato, documento=:doc, comunidade_id=:cid, ativo=:ativo, observacao=:obs
+                             WHERE id=:id AND feira_id=:f");
+        $up->execute([
+          ':nome' => $nome,
+          ':contato' => ($contato !== '' ? $contato : null),
+          ':doc' => ($documento !== '' ? $documento : null),
+          ':cid' => $comunidade_id,
+          ':ativo' => $ativo,
+          ':obs' => ($obs !== '' ? $obs : null),
+          ':id' => $id,
+          ':f' => $FEIRA_ID
+        ]);
+      } else {
+        $up = $pdo->prepare("UPDATE produtores
+                             SET nome=:nome, contato=:contato, documento=:doc, ativo=:ativo, observacao=:obs
+                             WHERE id=:id AND feira_id=:f");
+        $up->execute([
+          ':nome' => $nome,
+          ':contato' => ($contato !== '' ? $contato : null),
+          ':doc' => ($documento !== '' ? $documento : null),
+          ':ativo' => $ativo,
+          ':obs' => ($obs !== '' ? $obs : null),
+          ':id' => $id,
+          ':f' => $FEIRA_ID
+        ]);
+      }
+
+      $_SESSION['flash_ok'] = 'Permissionário atualizado com sucesso!';
+      header('Location: ' . buildUrl(['p' => $page]));
+      exit;
+    }
+  }
+
+  /* ===== WHERE da listagem (PESQUISA FUNCIONANDO) ===== */
+
+  $where = ["p.feira_id = :feira"];
+  $params = [':feira' => $FEIRA_ID];
+
+  if ($qRaw !== '') {
+    $parts = [];
+
+    // mesmo valor, placeholders diferentes (PDO MySQL com emulação OFF exige isso)
+    $params[':q_nome'] = '%' . $qRaw . '%';
+    $parts[] = "p.nome LIKE :q_nome";
+
+    $params[':q_contato'] = '%' . $qRaw . '%';
+    $parts[] = "p.contato LIKE :q_contato";
+
+    $params[':q_doc'] = '%' . $qRaw . '%';
+    $parts[] = "p.documento LIKE :q_doc";
+
+    if (!empty($hasComunidades)) {
+      $params[':q_com'] = '%' . $qRaw . '%';
+      $parts[] = "c.nome LIKE :q_com";
+    }
+
+    if ($qDigits !== '') {
+      $params[':qd_contato'] = '%' . $qDigits . '%';
+      $parts[] = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(p.contato,' ',''),'-',''),'(',''),')',''),'+','') LIKE :qd_contato";
+
+      $params[':qd_doc'] = '%' . $qDigits . '%';
+      $parts[] = "REPLACE(REPLACE(REPLACE(p.documento,'.',''),'-',''),' ','') LIKE :qd_doc";
+    }
+
+    $where[] = '(' . implode(' OR ', $parts) . ')';
+  }
+
+  $whereSql = ' WHERE ' . implode(' AND ', $where);
+
+  /* ===== COUNT ===== */
+  if ($hasComunidades) {
+    $sqlCount = "SELECT COUNT(*)
+                 FROM produtores p
+                 LEFT JOIN comunidades c
+                   ON c.id = p.comunidade_id AND c.feira_id = p.feira_id
+                 $whereSql";
+  } else {
+    $sqlCount = "SELECT COUNT(*) FROM produtores p $whereSql";
+  }
+
+  $stCount = $pdo->prepare($sqlCount);
+  $stCount->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
 
   foreach ($params as $k => $v) {
     if ($k === ':feira') continue;
-    $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+    $stCount->bindValue($k, (string)$v, PDO::PARAM_STR);
   }
 
-  $stmt->execute();
+  $stCount->execute();
 
-  $totalRegistros = (int)$stmt->fetchColumn();
-  $totalPaginas = max(1, (int)ceil($totalRegistros / $porPagina));
+  $totalRows = (int)$stCount->fetchColumn();
 
-  if ($pagina > $totalPaginas) {
-    $pagina = $totalPaginas;
-    $offset = ($pagina - 1) * $porPagina;
-  }
-} catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível calcular a paginação agora.';
-}
-
-/* ===== Listagem (LIMIT/OFFSET) ===== */
-$produtos = [];
-try {
-  $where = "p.feira_id = :feira";
-  $params = [':feira' => $feiraId];
-
-  if ($q !== '') {
-    $params[':q1'] = '%' . $q . '%';
-    $params[':q2'] = '%' . $q . '%';
-    $params[':q3'] = '%' . $q . '%';
-    $params[':q4'] = '%' . $q . '%';
-    $params[':q5'] = '%' . $q . '%';
-
-    $where .= " AND (
-      p.nome LIKE :q1 OR
-      c.nome LIKE :q2 OR
-      u.nome LIKE :q3 OR
-      u.sigla LIKE :q4 OR
-      pm.nome LIKE :q5
-    )";
+  $totalPages = max(1, (int)ceil($totalRows / $perPage));
+  if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $perPage;
   }
 
-  $sql = "
-    SELECT
-      p.id,
-      p.nome,
-      p.ativo,
-      p.preco_referencia,
-      c.nome AS categoria_nome,
-      u.sigla AS unidade_sigla,
-      u.nome  AS unidade_nome,
-      pm.nome AS permissionario_nome
-    FROM produtos p
-    LEFT JOIN categorias c       ON c.id = p.categoria_id       AND c.feira_id = p.feira_id
-    LEFT JOIN unidades u         ON u.id = p.unidade_id         AND u.feira_id = p.feira_id
-    LEFT JOIN permissionarios pm ON pm.id = p.produtor_id       AND pm.feira_id = p.feira_id
-    WHERE $where
-    ORDER BY p.nome ASC
-    LIMIT :lim OFFSET :off
-  ";
+  /* ===== SELECT ===== */
+  if ($hasComunidades) {
+    $sql = "SELECT
+              p.id,
+              p.nome,
+              p.contato,
+              p.documento,
+              p.ativo,
+              p.observacao,
+              p.comunidade_id,
+              c.nome AS comunidade
+            FROM produtores p
+            LEFT JOIN comunidades c
+              ON c.id = p.comunidade_id AND c.feira_id = p.feira_id
+            $whereSql
+            ORDER BY p.nome ASC
+            LIMIT :lim OFFSET :off";
+  } else {
+    $sql = "SELECT
+              p.id,
+              p.nome,
+              p.contato,
+              p.documento,
+              p.ativo,
+              p.observacao,
+              p.comunidade_id,
+              NULL AS comunidade
+            FROM produtores p
+            $whereSql
+            ORDER BY p.nome ASC
+            LIMIT :lim OFFSET :off";
+  }
+
   $stmt = $pdo->prepare($sql);
   $stmt->bindValue(':feira', (int)$params[':feira'], PDO::PARAM_INT);
 
@@ -303,18 +337,15 @@ try {
     $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
   }
 
-  $stmt->bindValue(':lim', (int)$porPagina, PDO::PARAM_INT);
+  $stmt->bindValue(':lim', (int)$perPage, PDO::PARAM_INT);
   $stmt->bindValue(':off', (int)$offset, PDO::PARAM_INT);
   $stmt->execute();
 
-  $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar os produtos agora.';
+  $err = $err ?: 'Não foi possível carregar os produtores agora.';
+  $errDetail = $cleanErr($e->getMessage());
 }
-
-/* ===== Texto “Mostrando X–Y de N” ===== */
-$inicio = ($totalRegistros === 0) ? 0 : ($offset + 1);
-$fim = min($offset + $porPagina, $totalRegistros);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -322,7 +353,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Mercado Municipal — Lista de Produtos</title>
+  <title>SIGRelatórios Mercado Municipal — Permissionários</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -352,24 +383,15 @@ $fim = min($offset + $porPagina, $totalRegistros);
       list-style: none !important;
     }
 
-    .table td,
-    .table th {
-      vertical-align: middle !important;
+    .toolbar-card .form-control {
+      height: 42px;
     }
 
-    .acoes-wrap {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+    .toolbar-card .btn {
+      height: 42px;
     }
 
-    .btn-xs {
-      padding: .25rem .5rem;
-      font-size: .75rem;
-      line-height: 1.2;
-      height: auto;
-    }
-
+    /* ===== Flash “Hostinger style” ===== */
     .sig-flash-wrap {
       position: fixed;
       top: 78px;
@@ -389,11 +411,10 @@ $fim = min($offset + $porPagina, $totalRegistros);
       box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
+
       opacity: 0;
       transform: translateX(10px);
-      animation:
-        sigToastIn .22s ease-out forwards,
-        sigToastOut .25s ease-in forwards 5.75s;
+      animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
     }
 
     .sig-toast--success {
@@ -453,12 +474,71 @@ $fim = min($offset + $porPagina, $totalRegistros);
         visibility: hidden;
       }
     }
+
+    .acoes-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn-xs {
+      padding: .25rem .5rem;
+      font-size: .75rem;
+      line-height: 1.2;
+      height: auto;
+    }
+
+    .muted-small {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .sig-pager {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+    }
+
+    .sig-pager .info {
+      color: #6c757d;
+      font-size: 13px;
+    }
+
+    .sig-pager .pagination {
+      margin: 0;
+    }
+
+    .sig-pager .page-link {
+      border-radius: 10px !important;
+    }
+
+    /* Modal ajustes leves */
+    .modal .form-control {
+      height: 42px;
+    }
+
+    .modal .btn {
+      height: 42px;
+    }
+
+    .modal .modal-header {
+      border-bottom: 1px solid rgba(0, 0, 0, .06);
+    }
+
+    .modal .modal-footer {
+      border-top: 1px solid rgba(0, 0, 0, .06);
+    }
   </style>
 </head>
 
 <body>
   <div class="container-scroller">
 
+    <!-- NAVBAR -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -468,13 +548,10 @@ $fim = min($offset + $porPagina, $totalRegistros);
         <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
           <span class="icon-menu"></span>
         </button>
-
         <ul class="navbar-nav mr-lg-2">
           <li class="nav-item nav-search d-none d-lg-block"></li>
         </ul>
-
         <ul class="navbar-nav navbar-nav-right"></ul>
-
         <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
           <span class="icon-menu"></span>
         </button>
@@ -492,9 +569,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
                 <p class="sig-toast__text"><?= h($msg) ?></p>
               </div>
             </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-              <span aria-hidden="true">&times;</span>
-            </button>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
           </div>
         <?php endif; ?>
 
@@ -504,12 +579,15 @@ $fim = min($offset + $porPagina, $totalRegistros);
               <div class="sig-toast__icon"><i class="ti-alert"></i></div>
               <div>
                 <div class="sig-toast__title">Atenção!</div>
-                <p class="sig-toast__text"><?= h($err) ?></p>
+                <p class="sig-toast__text">
+                  <?= h($err) ?>
+                  <?php if (!empty($debug) && !empty($errDetail)): ?>
+                    <br><small style="opacity:.75; display:block; margin-top:4px;"><?= h($errDetail) ?></small>
+                  <?php endif; ?>
+                </p>
               </div>
             </div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
-              <span aria-hidden="true">&times;</span>
-            </button>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
           </div>
         <?php endif; ?>
       </div>
@@ -520,30 +598,23 @@ $fim = min($offset + $porPagina, $totalRegistros);
       <div id="right-sidebar" class="settings-panel">
         <i class="settings-close ti-close"></i>
         <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
-          <li class="nav-item">
-            <a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab" aria-controls="todo-section" aria-expanded="true">TO DO LIST</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab" aria-controls="chats-section">CHATS</a>
-          </li>
+          <li class="nav-item"><a class="nav-link active" id="todo-tab" data-toggle="tab" href="#todo-section" role="tab">TO DO LIST</a></li>
+          <li class="nav-item"><a class="nav-link" id="chats-tab" data-toggle="tab" href="#chats-section" role="tab">CHATS</a></li>
         </ul>
       </div>
 
+      <!-- SIDEBAR -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
-
           <li class="nav-item">
             <a class="nav-link" href="index.php">
-              <i class="icon-grid menu-icon"></i>
-              <span class="menu-title">Dashboard</span>
+              <i class="icon-grid menu-icon"></i><span class="menu-title">Dashboard</span>
             </a>
           </li>
 
           <li class="nav-item active">
             <a class="nav-link open" data-toggle="collapse" href="#feiraCadastros" aria-expanded="true" aria-controls="feiraCadastros">
-              <i class="ti-id-badge menu-icon"></i>
-              <span class="menu-title">Cadastros</span>
-              <i class="menu-arrow"></i>
+              <i class="ti-id-badge menu-icon"></i><span class="menu-title">Cadastros</span><i class="menu-arrow"></i>
             </a>
 
             <div class="collapse show" id="feiraCadastros">
@@ -556,89 +627,50 @@ $fim = min($offset + $porPagina, $totalRegistros);
                   color: blue !important;
                 }
               </style>
-
               <ul class="nav flex-column sub-menu" style="background: white !important;">
+                <li class="nav-item"><a class="nav-link" href="./listaProduto.php"><i class="ti-clipboard mr-2"></i> Lista de Produtos</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaCategoria.php"><i class="ti-layers mr-2"></i> Categorias</a></li>
+                <li class="nav-item"><a class="nav-link" href="./listaUnidade.php"><i class="ti-ruler-pencil mr-2"></i> Unidades</a></li>
+
                 <li class="nav-item active">
-                  <a class="nav-link" href="./listaProduto.php" style="color:white !important; background: #231475C5 !important;">
-                    <i class="ti-clipboard mr-2"></i> Lista de Produtos
-                  </a>
-                </li>
-
-                <li class="nav-item">
-                  <a class="nav-link" href="./listaCategoria.php">
-                    <i class="ti-layers mr-2"></i> Categorias
-                  </a>
-                </li>
-
-                <li class="nav-item">
-                  <a class="nav-link" href="./listaUnidade.php">
-                    <i class="ti-ruler-pencil mr-2"></i> Unidades
-                  </a>
-                </li>
-
-                <li class="nav-item">
-                  <a class="nav-link" href="./listaProdutor.php">
+                  <a class="nav-link" href="./listaProdutor.php" style="color:white !important; background: #231475C5 !important;">
                     <i class="ti-user mr-2"></i> Permissionários
                   </a>
                 </li>
+
+
               </ul>
             </div>
           </li>
 
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraMovimento" aria-expanded="false" aria-controls="feiraMovimento">
-              <i class="ti-exchange-vertical menu-icon"></i>
-              <span class="menu-title">Movimento</span>
-              <i class="menu-arrow"></i>
+              <i class="ti-exchange-vertical menu-icon"></i><span class="menu-title">Movimento</span><i class="menu-arrow"></i>
             </a>
             <div class="collapse" id="feiraMovimento">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item">
-                  <a class="nav-link" href="./lancamentos.php">
-                    <i class="ti-write mr-2"></i> Lançamentos (Vendas)
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="./fechamentoDia.php">
-                    <i class="ti-check-box mr-2"></i> Fechamento do Dia
-                  </a>
-                </li>
+                <li class="nav-item"><a class="nav-link" href="./lancamentos.php"><i class="ti-write mr-2"></i> Lançamentos (Vendas)</a></li>
+                <li class="nav-item"><a class="nav-link" href="./fechamentoDia.php"><i class="ti-check-box mr-2"></i> Fechamento do Dia</a></li>
               </ul>
             </div>
           </li>
 
           <li class="nav-item">
             <a class="nav-link" data-toggle="collapse" href="#feiraRelatorios" aria-expanded="false" aria-controls="feiraRelatorios">
-              <i class="ti-clipboard menu-icon"></i>
-              <span class="menu-title">Relatórios</span>
-              <i class="menu-arrow"></i>
+              <i class="ti-clipboard menu-icon"></i><span class="menu-title">Relatórios</span><i class="menu-arrow"></i>
             </a>
             <div class="collapse text-black" id="feiraRelatorios">
               <ul class="nav flex-column sub-menu" style="background:#fff !important;">
-                <li class="nav-item">
-                  <a class="nav-link" href="./relatorioFinanceiro.php">
-                    <i class="ti-bar-chart mr-2"></i> Relatório Financeiro
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="./relatorioProdutos.php">
-                    <i class="ti-list mr-2"></i> Produtos Comercializados
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="./relatorioMensal.php">
-                    <i class="ti-calendar mr-2"></i> Resumo Mensal
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="./configRelatorio.php">
-                    <i class="ti-settings mr-2"></i> Configurar
-                  </a>
-                </li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioFinanceiro.php"><i class="ti-bar-chart mr-2"></i> Relatório Financeiro</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioProdutos.php"><i class="ti-list mr-2"></i> Produtos Comercializados</a></li>
+                <li class="nav-item"><a class="nav-link" href="./relatorioMensal.php"><i class="ti-calendar mr-2"></i> Resumo Mensal</a></li>
+                <li class="nav-item"><a class="nav-link" href="./configRelatorio.php"><i class="ti-settings mr-2"></i> Configurar</a></li>
               </ul>
             </div>
           </li>
 
+
+          <!-- Título DIVERSOS -->
           <li class="nav-item" style="pointer-events:none;">
             <span style="
                   display:block;
@@ -653,6 +685,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
             </span>
           </li>
 
+          <!-- Linha abaixo do título -->
           <li class="nav-item">
             <a class="nav-link" href="../index.php">
               <i class="ti-home menu-icon"></i>
@@ -663,15 +696,18 @@ $fim = min($offset + $porPagina, $totalRegistros);
             <a href="../produtor/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira do Produtor</span>
+
             </a>
           </li>
           <li class="nav-item">
             <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira Alternativa</span>
+
             </a>
           </li>
           <li class="nav-item">
+
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
@@ -681,34 +717,47 @@ $fim = min($offset + $porPagina, $totalRegistros);
         </ul>
       </nav>
 
+      </ul>
+      </nav>
+
+      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
 
           <div class="row">
             <div class="col-12 mb-3">
-              <h3 class="font-weight-bold">Produtos</h3>
-              <h6 class="font-weight-normal mb-0">Gerencie produtos (ativar/desativar/excluir).</h6>
+              <h3 class="font-weight-bold">Permissionários</h3>
+              <h6 class="font-weight-normal mb-0">Pesquisa funciona por nome, bairro / origem, contato e documento.</h6>
             </div>
           </div>
 
+          <?php if ($debug): ?>
+            <div class="alert alert-info">
+              <b>Debug:</b> feira_id = <?= (int)$FEIRA_ID ?> • banco = <code><?= h($dbName) ?></code>
+            </div>
+          <?php endif; ?>
+
+          <!-- Toolbar -->
           <div class="row">
-            <div class="col-lg-12 grid-margin stretch-card">
-              <div class="card">
+            <div class="col-md-12 grid-margin stretch-card">
+              <div class="card toolbar-card">
                 <div class="card-body">
-                  <form method="get" action="./listaProduto.php" class="row align-items-end">
-                    <div class="col-md-6">
+                  <form method="get" class="row align-items-center">
+                    <div class="col-md-6 mb-2 mb-md-0">
                       <label class="mb-1">Pesquisa</label>
-                      <input type="text" class="form-control" name="q" placeholder="Pesquisar por produto, categoria, unidade, permissionário..." value="<?= h($q) ?>">
+                      <input type="text" name="q" class="form-control"
+                        placeholder="Ex.: João / São Francisco / 9299... / CPF..." value="<?= h($qRaw) ?>">
+                      <?php if ($debug): ?><input type="hidden" name="debug" value="1"><?php endif; ?>
                     </div>
-                    <div class="col-md-6 mt-3 mt-md-0">
+
+                    <div class="col-md-6">
+                      <label class="mb-1 d-none d-md-block">&nbsp;</label>
                       <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
-                        <button type="submit" class="btn btn-primary">
-                          <i class="ti-search mr-1"></i> Pesquisar
-                        </button>
-                        <a class="btn btn-light" href="./listaProduto.php">
-                          <i class="ti-close mr-1"></i> Limpar
-                        </a>
+                        <button type="submit" class="btn btn-primary"><i class="ti-search mr-1"></i> Pesquisar</button>
+                        <a class="btn btn-light" href="<?= h(buildUrl(['q' => null, 'p' => null])) ?>"><i class="ti-close mr-1"></i> Limpar</a>
+
                       </div>
+
                     </div>
                   </form>
                 </div>
@@ -716,6 +765,7 @@ $fim = min($offset + $porPagina, $totalRegistros);
             </div>
           </div>
 
+          <!-- Tabela -->
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
@@ -723,13 +773,12 @@ $fim = min($offset + $porPagina, $totalRegistros);
 
                   <div class="d-flex align-items-center justify-content-between flex-wrap">
                     <div>
-                      <h4 class="card-title mb-0">Lista de Produtos</h4>
+                      <h4 class="card-title mb-0">Lista de Permissionários</h4>
                       <p class="card-description mb-0">
-                        Mostrando <?= (int)$inicio ?>–<?= (int)$fim ?> de <?= (int)$totalRegistros ?> registro(s).
+                        Total: <?= (int)$totalRows ?> — Página <?= (int)$page ?> de <?= (int)$totalPages ?>.
                       </p>
                     </div>
-
-                    <a href="./adicionarProduto.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                    <a href="./adicionarProdutor.php" class="btn btn-primary btn-sm mt-2 mt-md-0">
                       <i class="ti-plus"></i> Adicionar
                     </a>
                   </div>
@@ -739,74 +788,72 @@ $fim = min($offset + $porPagina, $totalRegistros);
                       <thead>
                         <tr>
                           <th style="width:90px;">ID</th>
-                          <th>Produto</th>
-                          <th>Categoria</th>
-                          <th>Unidade</th>
                           <th>Permissionário</th>
-                          <th style="width:140px;">Preço</th>
-                          <th style="width:160px;">Status</th>
-                          <th style="min-width:220px;">Ações</th>
+                          <th>Bairro / Origem</th>
+                          <th>Contato</th>
+                          <th>Status</th>
+                          <th style="min-width: 320px;">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <?php if (empty($produtos)): ?>
+                        <?php if (empty($produtores)): ?>
                           <tr>
-                            <td colspan="8" class="text-center text-muted py-4">
-                              Nenhum produto encontrado.
-                            </td>
+                            <td colspan="6" class="text-center text-muted py-4">Nenhum produtor encontrado.</td>
                           </tr>
                         <?php else: ?>
-                          <?php foreach ($produtos as $p): ?>
+                          <?php foreach ($produtores as $p): ?>
                             <?php
                             $id = (int)($p['id'] ?? 0);
-                            $ativoP = (int)($p['ativo'] ?? 0) === 1;
-                            $badgeClass = $ativoP ? 'badge-success' : 'badge-danger';
-                            $badgeText  = $ativoP ? 'Ativo' : 'Inativo';
+                            $ativo = ((int)($p['ativo'] ?? 0) === 1);
+                            $badgeClass = $ativo ? 'badge-success' : 'badge-danger';
+                            $badgeText  = $ativo ? 'Ativo' : 'Inativo';
 
-                            $preco = $p['preco_referencia'];
-                            $precoFmt = ($preco === null || $preco === '') ? '-' : number_format((float)$preco, 2, ',', '.');
+                            $comunidadeNome = (string)($p['comunidade'] ?? '');
+                            $comId = (int)($p['comunidade_id'] ?? 0);
+                            if ($comunidadeNome === '' && $comId > 0) $comunidadeNome = 'ID ' . $comId;
 
-                            $categoriaNome = trim((string)($p['categoria_nome'] ?? ''));
-                            if ($categoriaNome === '') $categoriaNome = '-';
-
-                            $unSigla = trim((string)($p['unidade_sigla'] ?? ''));
-                            $unNome  = trim((string)($p['unidade_nome'] ?? ''));
-                            $unLabel = $unSigla !== '' ? $unSigla : $unNome;
-                            if ($unLabel === '') $unLabel = '-';
-
-                            $permissionarioNome = trim((string)($p['permissionario_nome'] ?? ''));
-                            if ($permissionarioNome === '') $permissionarioNome = '-';
+                            $contato = trim((string)($p['contato'] ?? ''));
+                            $doc = trim((string)($p['documento'] ?? ''));
+                            $obs = trim((string)($p['observacao'] ?? ''));
                             ?>
                             <tr>
                               <td><?= $id ?></td>
-                              <td class="font-weight-bold"><?= h($p['nome'] ?? '') ?></td>
-                              <td><?= h($categoriaNome) ?></td>
-                              <td><?= h($unLabel) ?></td>
-                              <td><?= h($permissionarioNome) ?></td>
-                              <td>R$ <?= h($precoFmt) ?></td>
+                              <td>
+                                <div class="font-weight-bold"><?= h($p['nome'] ?? '') ?></div>
+                                <?php if ($doc !== ''): ?><div class="muted-small">CPF/Doc: <?= h($doc) ?></div><?php endif; ?>
+                              </td>
+                              <td><?= h($comunidadeNome) ?></td>
+                              <td><?= h($contato) ?></td>
                               <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                               <td>
                                 <div class="acoes-wrap">
 
-                                  <form method="post" class="m-0">
-                                    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                    <input type="hidden" name="acao" value="toggle">
-                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                    <input type="hidden" name="return_p" value="<?= (int)$pagina ?>">
-                                    <button type="submit" class="btn btn-outline-warning btn-xs"
-                                      onclick="return confirm('Deseja <?= $ativoP ? 'DESATIVAR' : 'ATIVAR' ?> este produto?');">
-                                      <i class="ti-power-off"></i> <?= $ativoP ? 'Desativar' : 'Ativar' ?>
-                                    </button>
-                                  </form>
+                                  <!-- EDITAR (abre modal e preenche) -->
+                                  <button
+                                    type="button"
+                                    class="btn btn-outline-primary btn-xs js-edit"
+                                    data-toggle="modal"
+                                    data-target="#modalEditProdutor"
+                                    data-id="<?= (int)$id ?>"
+                                    data-nome="<?= h($p['nome'] ?? '') ?>"
+                                    data-contato="<?= h($contato) ?>"
+                                    data-documento="<?= h($doc) ?>"
+                                    data-observacao="<?= h($obs) ?>"
+                                    data-ativo="<?= $ativo ? '1' : '0' ?>"
+                                    data-comunidade_id="<?= (int)$comId ?>">
+                                    <i class="ti-pencil"></i> Editar
+                                  </button>
 
-                                  <form method="post" class="m-0">
+                                  <!-- Toggle ativo -->
+                                  <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" style="margin:0;">
                                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
-                                    <input type="hidden" name="acao" value="excluir">
+                                    <input type="hidden" name="action" value="toggle">
                                     <input type="hidden" name="id" value="<?= $id ?>">
-                                    <input type="hidden" name="return_p" value="<?= (int)$pagina ?>">
-                                    <button type="submit" class="btn btn-outline-danger btn-xs"
-                                      onclick="return confirm('Tem certeza que deseja EXCLUIR este produto?');">
-                                      <i class="ti-trash"></i> Excluir
+                                    <button
+                                      type="submit"
+                                      class="btn btn-outline-<?= $ativo ? 'warning' : 'success' ?> btn-xs"
+                                      onclick="return confirm('Confirma <?= $ativo ? 'desativar' : 'ativar' ?> este produtor?');">
+                                      <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
                                     </button>
                                   </form>
 
@@ -818,7 +865,40 @@ $fim = min($offset + $porPagina, $totalRegistros);
                       </tbody>
                     </table>
 
-                    <?php sig_render_pagination('./listaProduto.php', (int)$pagina, (int)$totalPaginas); ?>
+                    <!-- Paginação -->
+                    <?php if ($totalPages > 1): ?>
+                      <?php
+                      $prev = max(1, $page - 1);
+                      $next = min($totalPages, $page + 1);
+
+                      $start = max(1, $page - 2);
+                      $end   = min($totalPages, $page + 2);
+                      if ($end - $start < 4) {
+                        $start = max(1, $end - 4);
+                        $end   = min($totalPages, $start + 4);
+                      }
+                      ?>
+                      <div class="sig-pager">
+                        <div class="info">
+                          Mostrando <?= (int)count($produtores) ?> de <?= (int)$totalRows ?> (<?= (int)$perPage ?> por página)
+                        </div>
+                        <nav aria-label="Paginação produtores">
+                          <ul class="pagination">
+                            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= h(buildUrl(['p' => 1])) ?>">«</a></li>
+                            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= h(buildUrl(['p' => $prev])) ?>">Anterior</a></li>
+
+                            <?php for ($i = $start; $i <= $end; $i++): ?>
+                              <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                                <a class="page-link" href="<?= h(buildUrl(['p' => $i])) ?>"><?= $i ?></a>
+                              </li>
+                            <?php endfor; ?>
+
+                            <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>"><a class="page-link" href="<?= h(buildUrl(['p' => $next])) ?>">Próxima</a></li>
+                            <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>"><a class="page-link" href="<?= h(buildUrl(['p' => $totalPages])) ?>">»</a></li>
+                          </ul>
+                        </nav>
+                      </div>
+                    <?php endif; ?>
 
                   </div>
 
@@ -843,6 +923,89 @@ $fim = min($offset + $porPagina, $totalRegistros);
     </div>
   </div>
 
+  <!-- ===================== MODAL EDITAR PRODUTOR ===================== -->
+  <div class="modal fade" id="modalEditProdutor" tabindex="-1" role="dialog" aria-labelledby="modalEditProdutorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" class="modal-content">
+        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+        <input type="hidden" name="action" value="update">
+        <input type="hidden" name="id" id="edit_id" value="">
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEditProdutorLabel"><i class="ti-pencil"></i> Editar Permissionário</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+        </div>
+
+        <div class="modal-body">
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label>Nome <span class="text-danger">*</span></label>
+              <input type="text" name="nome" id="edit_nome" class="form-control" required>
+              <small class="text-muted">Até 160 caracteres.</small>
+            </div>
+
+            <div class="col-md-3 mb-3">
+              <label>CPF / Documento</label>
+              <input type="text" name="documento" id="edit_documento" class="form-control" placeholder="Somente números">
+              <small class="text-muted">Opcional.</small>
+            </div>
+
+            <div class="col-md-3 mb-3">
+              <label>Contato</label>
+              <input type="text" name="contato" id="edit_contato" class="form-control" placeholder="Ex.: 9299...">
+              <small class="text-muted">Opcional.</small>
+            </div>
+          </div>
+
+          <div class="row">
+            <?php if (!empty($comunidades)): ?>
+              <div class="col-md-6 mb-3">
+                <label>Bairro / Origem <span class="text-danger">*</span></label>
+                <select name="comunidade_id" id="edit_comunidade_id" class="form-control" required>
+                  <option value="">Selecione</option>
+                  <?php foreach ($comunidades as $c): ?>
+                    <option value="<?= (int)$c['id'] ?>"><?= h($c['nome']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <small class="text-muted">Somente bairros / origens ativos.</small>
+              </div>
+            <?php else: ?>
+              <div class="col-md-6 mb-3">
+                <label>Bairro / Origem</label>
+                <input type="text" class="form-control" value="Tabela de bairros / origens não encontrada" disabled>
+                <small class="text-muted">Cadastre bairros / origens para habilitar este campo.</small>
+              </div>
+            <?php endif; ?>
+
+            <div class="col-md-3 mb-3">
+              <label>Status</label>
+              <select name="ativo" id="edit_ativo" class="form-control">
+                <option value="1">Ativo</option>
+                <option value="0">Inativo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12 mb-2">
+              <label>Observação</label>
+              <textarea name="observacao" id="edit_observacao" class="form-control" rows="4" placeholder="Ex.: produtor de farinha..."></textarea>
+              <small class="text-muted">Até 255 caracteres.</small>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-dismiss="modal"><i class="ti-close mr-1"></i> Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="ti-save mr-1"></i> Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- ================================================================ -->
+
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
 
@@ -851,8 +1014,44 @@ $fim = min($offset + $porPagina, $totalRegistros);
   <script src="../../../js/template.js"></script>
   <script src="../../../js/settings.js"></script>
   <script src="../../../js/todolist.js"></script>
+
   <script src="../../../js/dashboard.js"></script>
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
+
+  <script>
+    // Preenche modal com dados do botão
+    (function() {
+      var modal = document.getElementById('modalEditProdutor');
+      if (!modal) return;
+
+      // jQuery está presente no vendor.bundle.base.js
+      $('#modalEditProdutor').on('show.bs.modal', function(event) {
+        var btn = $(event.relatedTarget);
+        $('#edit_id').val(btn.data('id') || '');
+        $('#edit_nome').val(btn.data('nome') || '');
+        $('#edit_contato').val(btn.data('contato') || '');
+        $('#edit_documento').val(btn.data('documento') || '');
+        $('#edit_observacao').val(btn.data('observacao') || '');
+        $('#edit_ativo').val(String(btn.data('ativo') ?? '1'));
+
+        var cid = btn.data('comunidade_id');
+        if (cid !== undefined && cid !== null && cid !== '') {
+          $('#edit_comunidade_id').val(String(cid));
+        }
+      });
+
+      // Limpa ao fechar (evita “vazar” dados de um produtor pra outro)
+      $('#modalEditProdutor').on('hidden.bs.modal', function() {
+        $('#edit_id').val('');
+        $('#edit_nome').val('');
+        $('#edit_contato').val('');
+        $('#edit_documento').val('');
+        $('#edit_observacao').val('');
+        $('#edit_ativo').val('1');
+        $('#edit_comunidade_id').val('');
+      });
+    })();
+  </script>
 </body>
 
 </html>
