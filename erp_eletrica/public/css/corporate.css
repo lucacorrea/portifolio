@@ -230,13 +230,14 @@ body {
     background-color: var(--erp-primary);
     border-color: var(--erp-primary);
     color: #000 !important;
+    transition: all 0.2s ease-in-out !important;
 }
 
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active {
-    background-color: var(--erp-primary-hover) !important;
-    border-color: var(--erp-primary-hover) !important;
+    background-color: #E6A700 !important;
+    border-color: #E6A700 !important;
     color: #fff !important;
 }
 
@@ -495,20 +496,21 @@ h6 {
 .btn-warning {
     --bs-btn-bg: #FFC107 !important;
     --bs-btn-border-color: #FFC107 !important;
-    --bs-btn-hover-bg: #FFB300 !important;
-    --bs-btn-hover-border-color: #FFB300 !important;
-    --bs-btn-active-bg: #FFB300 !important;
-    --bs-btn-active-border-color: #FFB300 !important;
+    --bs-btn-hover-bg: #E6A700 !important;
+    --bs-btn-hover-border-color: #E6A700 !important;
+    --bs-btn-active-bg: #E6A700 !important;
+    --bs-btn-active-border-color: #E6A700 !important;
     --bs-btn-disabled-bg: #FFC107 !important;
     --bs-btn-disabled-border-color: #FFC107 !important;
     color: #000 !important;
+    transition: all 0.2s ease-in-out !important;
 }
 
 .btn-warning:hover,
 .btn-warning:focus,
 .btn-warning:active {
-    background-color: #FFB300 !important;
-    border-color: #FFB300 !important;
+    background-color: #E6A700 !important;
+    border-color: #E6A700 !important;
     color: #fff !important;
     box-shadow: none !important;
 }

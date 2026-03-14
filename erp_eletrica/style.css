@@ -252,6 +252,7 @@ body .btn-gold {
     background-color: #FFC107 !important;
     border-color: #FFC107 !important;
     color: #000 !important;
+    transition: all 0.2s ease-in-out !important;
 }
 
 body .btn-primary:hover,
@@ -262,8 +263,8 @@ body .btn-primary:focus,
 body .btn-warning:focus,
 body .btn-primary:active,
 body .btn-warning:active {
-    background-color: #FFB300 !important;
-    border-color: #FFB300 !important;
+    background-color: #E6A700 !important;
+    border-color: #E6A700 !important;
     color: #fff !important;
 }
 
@@ -274,7 +275,7 @@ body .btn-outline-primary:hover {
 }
 
 body .btn-outline-warning:hover {
-    background-color: #FFB300 !important;
+    background-color: #E6A700 !important;
     color: #fff !important;
 }
 
