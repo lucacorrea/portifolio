@@ -250,6 +250,13 @@ body {
     color: #000 !important;
 }
 
+.btn-primary,
+.btn-warning,
+.btn-yellow,
+.btn-gold {
+    color: #000 !important;
+}
+
 /* Bootstrap Warning Overrides */
 .btn-warning {
     --bs-btn-bg: #FFC107 !important;

@@ -68,7 +68,7 @@
     <!-- Right Side: Summary and History -->
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm h-100 d-flex flex-column">
-            <div class="card-header bg-primary text-white py-3">
+            <div class="card-header bg-primary text-black py-3">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-file-invoice-dollar me-2"></i>Resumo da Entrada</h5>
             </div>
             <div class="card-body flex-grow-1">

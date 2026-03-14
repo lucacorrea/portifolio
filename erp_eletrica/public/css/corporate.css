@@ -229,7 +229,7 @@ body {
 .btn-primary {
     background-color: var(--erp-primary);
     border-color: var(--erp-primary);
-    color: #000;
+    color: #000 !important;
 }
 
 .btn-primary:hover,
@@ -247,7 +247,7 @@ body {
 
 .btn-outline-primary:hover {
     background-color: var(--erp-primary);
-    color: #000;
+    color: #000 !important;
 }
 
 /* List Groups & Tables */
