@@ -255,7 +255,7 @@ body .btn-gold {
     transition: all 0.2s ease-in-out !important;
 }
 
-/* Unified Hover Standard for ALL Yellow Buttons (Solid & Outline) */
+/* Unified Hover Standard: Solid Yellow with Black Text */
 body .btn-primary:hover,
 body .btn-warning:hover,
 body .btn-yellow:hover,
@@ -268,10 +268,10 @@ body .btn-outline-primary:focus,
 body .btn-outline-warning:focus,
 body .btn-primary:active,
 body .btn-warning:active {
-    background-color: #0a0a0a !important;
+    background-color: #FFC107 !important;
     border-color: #FFC107 !important;
-    color: #fff !important;
-    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.1) !important;
+    color: #000 !important;
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2) !important;
 }
 
 .text-warning {

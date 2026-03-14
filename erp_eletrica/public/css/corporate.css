@@ -249,9 +249,9 @@ body {
 .btn-outline-primary:hover,
 .btn-outline-primary:focus,
 .btn-outline-primary:active {
-    background-color: #0a0a0a !important;
+    background-color: #FFC107 !important;
     border-color: #FFC107 !important;
-    color: #fff !important;
+    color: #000 !important;
 }
 
 /* List Groups & Tables */
