@@ -237,7 +237,7 @@ body {
 }
 
 .table-hover tbody tr.table-danger:hover {
-    background-color: rgba(239, 68, 68, 0.55) !important;
+    background-color: #4d0000 !important;
 }
 
 .table-hover tbody tr.table-success:hover {
