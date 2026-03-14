@@ -3,34 +3,6 @@
 declare(strict_types=1);
 session_start();
 
-/*
-Tabela usada nesta página:
-
-CREATE TABLE permissionarios (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  feira_id TINYINT UNSIGNED NOT NULL,
-
-  nome VARCHAR(160) NOT NULL,
-  contato VARCHAR(60) DEFAULT NULL,
-  comunidade_id BIGINT UNSIGNED NOT NULL,
-  documento VARCHAR(30) DEFAULT NULL,
-  foto VARCHAR(255) DEFAULT NULL,
-
-  box_numero VARCHAR(30) DEFAULT NULL,
-  setor VARCHAR(100) DEFAULT NULL,
-  ramo_atividade VARCHAR(120) DEFAULT NULL,
-
-  ativo TINYINT(1) NOT NULL DEFAULT 1,
-  observacao VARCHAR(255) DEFAULT NULL,
-  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-  atualizado_em DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(),
-
-  PRIMARY KEY (id),
-  KEY idx_permissionarios_feira (feira_id),
-  KEY idx_permissionarios_comunidade (comunidade_id),
-  KEY idx_permissionarios_box (box_numero)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-*/
 
 /* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
@@ -157,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $tokenPost = (string)($_POST['csrf_token'] ?? '');
   if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
     $_SESSION['flash_err'] = 'Falha de segurança (CSRF). Recarregue a página e tente novamente.';
-    header('Location: ./adicionarPermissionario.php');
+    header('Location: ./adicionarProdutor.php');
     exit;
   }
 
@@ -271,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           ]);
 
           $_SESSION['flash_ok'] = 'Permissionário cadastrado com sucesso!';
-          header('Location: ./listaPermissionario.php');
+          header('Location: ./listaProdutor.php');
           exit;
         }
       } catch (Throwable $e) {
