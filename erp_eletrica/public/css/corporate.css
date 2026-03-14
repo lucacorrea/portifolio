@@ -227,18 +227,18 @@ body {
 
 /* Bootstrap 5 Theme Overrides */
 .btn-primary {
-    background-color: var(--erp-primary);
-    border-color: var(--erp-primary);
-    color: #000 !important;
+    background-color: #0a0a0a !important;
+    border: 1px solid #FFC107 !important;
+    color: #fff !important;
     transition: all 0.2s ease-in-out !important;
 }
 
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active {
-    background-color: #0a0a0a !important;
+    background-color: #FFC107 !important;
     border-color: #FFC107 !important;
-    color: #fff !important;
+    color: #000 !important;
 }
 
 .btn-outline-primary {
@@ -497,24 +497,24 @@ h6 {
 
 /* Bootstrap Warning Overrides in corporate.css */
 .btn-warning {
-    --bs-btn-bg: #FFC107 !important;
+    --bs-btn-bg: #0a0a0a !important;
     --bs-btn-border-color: #FFC107 !important;
-    --bs-btn-hover-bg: #0a0a0a !important;
+    --bs-btn-hover-bg: #FFC107 !important;
     --bs-btn-hover-border-color: #FFC107 !important;
-    --bs-btn-active-bg: #0a0a0a !important;
+    --bs-btn-active-bg: #FFC107 !important;
     --bs-btn-active-border-color: #FFC107 !important;
-    --bs-btn-disabled-bg: #FFC107 !important;
+    --bs-btn-disabled-bg: #0a0a0a !important;
     --bs-btn-disabled-border-color: #FFC107 !important;
-    color: #000 !important;
+    color: #fff !important;
     transition: all 0.2s ease-in-out !important;
 }
 
 .btn-warning:hover,
 .btn-warning:focus,
 .btn-warning:active {
-    background-color: #0a0a0a !important;
+    background-color: #FFC107 !important;
     border-color: #FFC107 !important;
-    color: #fff !important;
+    color: #000 !important;
     box-shadow: none !important;
 }
 

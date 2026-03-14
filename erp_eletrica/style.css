@@ -249,9 +249,9 @@ body .btn-primary,
 body .btn-warning,
 body .btn-yellow,
 body .btn-gold {
-    background-color: #FFC107 !important;
-    border-color: #FFC107 !important;
-    color: #000 !important;
+    background-color: #0a0a0a !important;
+    border: 1px solid #FFC107 !important;
+    color: #fff !important;
     transition: all 0.2s ease-in-out !important;
 }
 
