@@ -356,15 +356,17 @@ body {
 }
 
 /* Specific fix for cashier, sales and modals */
-.bg-light,
-.bg-light *,
+/* Neutralize aggressive global color overrides */
 .modal-body,
-.modal-body *:not(.btn):not(.btn *),
-.list-group-item,
-.list-group-item *:not(.btn):not(.btn *),
+.modal-body *,
 .card-body,
-.card-body *:not(.btn):not(.btn *) {
+.card-body * {
     color: var(--text-primary);
+}
+
+/* Force buttons to ignore the above */
+.btn {
+    color: inherit;
 }
 
 .list-group-item {

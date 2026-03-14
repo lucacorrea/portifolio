@@ -244,45 +244,38 @@ body {
     background-color: rgba(16, 185, 129, 0.18) !important;
 }
 
-/* --- Bootstrap Overrides for Warning (Standardized Gold) --- */
-.badge-warning {
+/* --- FINAL BUTTON COLOR STANDARDS (HIGH SPECIFICITY) --- */
+body .btn-primary,
+body .btn-warning,
+body .btn-yellow,
+body .btn-gold {
     background-color: #FFC107 !important;
-    --bs-btn-hover-color: #fff !important;
-    --bs-btn-active-color: #fff !important;
+    border-color: #FFC107 !important;
     color: #000 !important;
 }
 
-.btn-primary,
-.btn-warning,
-.btn-yellow,
-.btn-gold {
-    --bs-btn-hover-color: #fff !important;
-    --bs-btn-active-color: #fff !important;
-    color: #000 !important;
-}
-
-/* Bootstrap Warning Overrides */
-.btn-warning {
-    --bs-btn-bg: #FFC107 !important;
-    --bs-btn-border-color: #FFC107 !important;
-    --bs-btn-hover-bg: #FFB300 !important;
-    --bs-btn-hover-border-color: #FFB300 !important;
-    --bs-btn-active-bg: #FFB300 !important;
-    --bs-btn-active-border-color: #FFB300 !important;
-    --bs-btn-disabled-bg: #FFC107 !important;
-    --bs-btn-disabled-border-color: #FFC107 !important;
-    --bs-btn-hover-color: #fff !important;
-    --bs-btn-active-color: #fff !important;
-    color: #000 !important;
-}
-
-.btn-warning:hover,
-.btn-warning:focus,
-.btn-warning:active {
+body .btn-primary:hover,
+body .btn-warning:hover,
+body .btn-yellow:hover,
+body .btn-gold:hover,
+body .btn-primary:focus,
+body .btn-warning:focus,
+body .btn-primary:active,
+body .btn-warning:active {
     background-color: #FFB300 !important;
     border-color: #FFB300 !important;
     color: #fff !important;
-    box-shadow: none !important;
+}
+
+/* Force outline buttons hover standard */
+body .btn-outline-primary:hover {
+    background-color: #FFC107 !important;
+    color: #fff !important;
+}
+
+body .btn-outline-warning:hover {
+    background-color: #FFB300 !important;
+    color: #fff !important;
 }
 
 .text-warning {
