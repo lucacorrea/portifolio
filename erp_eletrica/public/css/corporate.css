@@ -17,8 +17,8 @@
     --primary-hover: var(--erp-primary-hover);
     --secondary-color: var(--erp-secondary);
     --border: #262626;
-    --text-primary: #f8fafc !important;
-    --text-secondary: #a3a3a3 !important;
+    --text-primary: #f8fafc;
+    --text-secondary: #a3a3a3;
 
     --radius-sm: 4px;
     --radius-md: 8px;
@@ -359,11 +359,11 @@ body {
 .bg-light,
 .bg-light *,
 .modal-body,
-.modal-body *,
+.modal-body *:not(.btn):not(.btn *),
 .list-group-item,
-.list-group-item *,
+.list-group-item *:not(.btn):not(.btn *),
 .card-body,
-.card-body * {
+.card-body *:not(.btn):not(.btn *) {
     color: var(--text-primary);
 }
 
@@ -373,7 +373,7 @@ body {
 }
 
 .text-black {
-    color: #f8fafc !important;
+    color: #000 !important;
 }
 
 /* Animations Disabled */
@@ -507,7 +507,7 @@ h6 {
 .btn-warning:active {
     background-color: #FFB300 !important;
     border-color: #FFB300 !important;
-    color: #000 !important;
+    color: #fff !important;
     box-shadow: none !important;
 }
 
