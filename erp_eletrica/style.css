@@ -214,9 +214,9 @@ body {
 
 /* Specific Table Row Backgrounds (Dark Theme Optimization) */
 .table-warning {
-    --bs-table-bg: rgba(199, 152, 2, 0.15) !important;
+    --bs-table-bg: rgba(255, 193, 7, 0.15) !important;
     --bs-table-color: #f8fafc !important;
-    border-color: rgba(199, 152, 2, 0.25) !important;
+    border-color: rgba(255, 193, 7, 0.25) !important;
 }
 
 .table-danger {
@@ -233,7 +233,7 @@ body {
 
 /* Hover consistency for tinted rows */
 .table-hover tbody tr.table-warning:hover {
-    background-color: rgba(199, 152, 2, 0.22) !important;
+    background-color: rgba(255, 193, 7, 0.22) !important;
 }
 
 .table-hover tbody tr.table-danger:hover {
@@ -246,7 +246,7 @@ body {
 
 /* --- Bootstrap Overrides for Warning (Standardized Gold) --- */
 .badge-warning {
-    background-color: #c79802 !important;
+    background-color: #FFC107 !important;
     color: #000 !important;
 }
 
@@ -266,26 +266,26 @@ body {
 .btn-warning:hover,
 .btn-warning:focus,
 .btn-warning:active {
-    background-color: #a67f02 !important;
-    border-color: #a67f02 !important;
+    background-color: #FFB300 !important;
+    border-color: #FFB300 !important;
     color: #000 !important;
     box-shadow: none !important;
 }
 
 .text-warning {
-    color: #c79802 !important;
+    color: #FFC107 !important;
 }
 
 .border-warning {
-    border-color: #c79802 !important;
+    border-color: #FFC107 !important;
 }
 
 .bg-warning {
-    background-color: #c79802 !important;
+    background-color: #FFC107 !important;
 }
 
 .bg-opacity-10.text-warning {
-    background-color: rgba(199, 152, 2, 0.1) !important;
+    background-color: rgba(255, 193, 7, 0.1) !important;
 }
 
 /* File Input Styling */
@@ -331,7 +331,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .alert-warning {
-    background-color: rgba(199, 152, 2, 0.15) !important;
+    background-color: rgba(255, 193, 7, 0.15) !important;
     color: #ffd75e !important;
     /* Lighter gold for visibility */
 }
