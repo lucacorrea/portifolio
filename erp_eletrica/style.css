@@ -247,6 +247,8 @@ body {
 /* --- Bootstrap Overrides for Warning (Standardized Gold) --- */
 .badge-warning {
     background-color: #FFC107 !important;
+    --bs-btn-hover-color: #fff !important;
+    --bs-btn-active-color: #fff !important;
     color: #000 !important;
 }
 
@@ -254,6 +256,8 @@ body {
 .btn-warning,
 .btn-yellow,
 .btn-gold {
+    --bs-btn-hover-color: #fff !important;
+    --bs-btn-active-color: #fff !important;
     color: #000 !important;
 }
 
@@ -267,6 +271,8 @@ body {
     --bs-btn-active-border-color: #FFB300 !important;
     --bs-btn-disabled-bg: #FFC107 !important;
     --bs-btn-disabled-border-color: #FFC107 !important;
+    --bs-btn-hover-color: #fff !important;
+    --bs-btn-active-color: #fff !important;
     color: #000 !important;
 }
 
@@ -275,7 +281,7 @@ body {
 .btn-warning:active {
     background-color: #FFB300 !important;
     border-color: #FFB300 !important;
-    color: #000 !important;
+    color: #fff !important;
     box-shadow: none !important;
 }
 

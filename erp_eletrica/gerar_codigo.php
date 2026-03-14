@@ -143,6 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         .btn-primary:hover {
             background-color: var(--accent-hover) !important;
             transform: translateY(-1px);
+            color: #fff !important;
         }
 
         .btn-outline-primary {
@@ -154,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
         .btn-outline-primary:hover {
             background-color: var(--accent-gold) !important;
-            color: #000 !important;
+            color: #fff !important;
         }
 
         .alert {

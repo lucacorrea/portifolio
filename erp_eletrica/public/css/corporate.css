@@ -237,7 +237,7 @@ body {
 .btn-primary:active {
     background-color: var(--erp-primary-hover) !important;
     border-color: var(--erp-primary-hover) !important;
-    color: #000 !important;
+    color: #fff !important;
 }
 
 .btn-outline-primary {
@@ -247,7 +247,7 @@ body {
 
 .btn-outline-primary:hover {
     background-color: var(--erp-primary);
-    color: #000 !important;
+    color: #fff !important;
 }
 
 /* List Groups & Tables */

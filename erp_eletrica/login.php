@@ -211,6 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         .btn-login:hover {
             background: var(--accent-hover);
             transform: translateY(-1px);
+            color: #fff !important;
         }
 
         .alert {
