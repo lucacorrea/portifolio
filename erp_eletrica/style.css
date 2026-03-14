@@ -263,8 +263,8 @@ body .btn-primary:focus,
 body .btn-warning:focus,
 body .btn-primary:active,
 body .btn-warning:active {
-    background-color: #E6A700 !important;
-    border-color: #E6A700 !important;
+    background-color: #0a0a0a !important;
+    border-color: #FFC107 !important;
     color: #fff !important;
 }
 
@@ -275,7 +275,8 @@ body .btn-outline-primary:hover {
 }
 
 body .btn-outline-warning:hover {
-    background-color: #E6A700 !important;
+    background-color: #0a0a0a !important;
+    border-color: #FFC107 !important;
     color: #fff !important;
 }
 

@@ -209,7 +209,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         .btn-login:hover {
-            background: #E6A700 !important;
+            background: #0a0a0a !important;
+            border: 2px solid #FFC107 !important;
             transform: translateY(-1px);
             color: #fff !important;
         }

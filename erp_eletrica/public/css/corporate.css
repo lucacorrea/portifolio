@@ -236,8 +236,8 @@ body {
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active {
-    background-color: #E6A700 !important;
-    border-color: #E6A700 !important;
+    background-color: #0a0a0a !important;
+    border-color: #FFC107 !important;
     color: #fff !important;
 }
 
@@ -496,10 +496,10 @@ h6 {
 .btn-warning {
     --bs-btn-bg: #FFC107 !important;
     --bs-btn-border-color: #FFC107 !important;
-    --bs-btn-hover-bg: #E6A700 !important;
-    --bs-btn-hover-border-color: #E6A700 !important;
-    --bs-btn-active-bg: #E6A700 !important;
-    --bs-btn-active-border-color: #E6A700 !important;
+    --bs-btn-hover-bg: #0a0a0a !important;
+    --bs-btn-hover-border-color: #FFC107 !important;
+    --bs-btn-active-bg: #0a0a0a !important;
+    --bs-btn-active-border-color: #FFC107 !important;
     --bs-btn-disabled-bg: #FFC107 !important;
     --bs-btn-disabled-border-color: #FFC107 !important;
     color: #000 !important;
@@ -509,8 +509,8 @@ h6 {
 .btn-warning:hover,
 .btn-warning:focus,
 .btn-warning:active {
-    background-color: #E6A700 !important;
-    border-color: #E6A700 !important;
+    background-color: #0a0a0a !important;
+    border-color: #FFC107 !important;
     color: #fff !important;
     box-shadow: none !important;
 }
