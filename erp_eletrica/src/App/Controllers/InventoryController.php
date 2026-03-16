@@ -21,7 +21,7 @@ class InventoryController extends BaseController {
             'total_itens' => $this->sum('produtos', 'quantidade'),
             'valor_custo' => $this->sum('produtos', 'preco_custo * quantidade'),
             'itens_criticos' => count($productModel->getCriticalStock(!$isMatriz ? $filialId : null)),
-            'mov_mes' => $this->count('movimentacao_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)")
+            'mov_mes' => $this->count('movimentacao_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)", 'deposito_id')
         ];
 
         $page = (int)($_GET['page'] ?? 1);
@@ -78,19 +78,19 @@ class InventoryController extends BaseController {
         }
     }
 
-    private function sum($table, $expression) {
+    private function sum($table, $expression, $filialCol = 'filial_id') {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? null;
         $isMatriz = $_SESSION['is_matriz'] ?? false;
-        $where = (!$isMatriz && $filialId) ? " WHERE filial_id = $filialId" : "";
+        $where = (!$isMatriz && $filialId) ? " WHERE $filialCol = $filialId" : "";
         return $db->query("SELECT SUM($expression) FROM $table $where")->fetchColumn() ?: 0;
     }
 
-    private function count($table, $condition = "1=1") {
+    private function count($table, $condition = "1=1", $filialCol = 'filial_id') {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? null;
         $isMatriz = $_SESSION['is_matriz'] ?? false;
-        $whereFilial = (!$isMatriz && $filialId) ? " AND filial_id = $filialId" : "";
+        $whereFilial = (!$isMatriz && $filialId) ? " AND $filialCol = $filialId" : "";
         return $db->query("SELECT COUNT(*) FROM $table WHERE ($condition) $whereFilial")->fetchColumn() ?: 0;
     }
 }
