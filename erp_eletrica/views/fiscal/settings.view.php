@@ -28,9 +28,11 @@
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <h6 class="fw-bold mb-0">Configuração de Certificado Global A1</h6>
-                            <a href="importar_automatico.php?action=config" class="btn btn-sm btn-primary fw-bold">
-                                <i class="fas fa-cog me-2"></i>GERENCIAR GLOBAL
-                            </a>
+                            <?php if ($_SESSION['is_matriz'] ?? false): ?>
+                                <a href="importar_automatico.php?action=config" class="btn btn-sm btn-primary fw-bold">
+                                    <i class="fas fa-cog me-2"></i>GERENCIAR GLOBAL
+                                </a>
+                            <?php endif; ?>
                         </div>
                         <?php if ($globalConfig && $globalConfig['certificado_path']): ?>
                             <div class="text-success small fw-bold">
