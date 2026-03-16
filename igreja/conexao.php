@@ -1,8 +1,8 @@
 <?php
 $host = "localhost";
-$db   = "igreja";
-$user = "root";
-$pass = "";
+$db   = "u784961086_igreja_membros";
+$user = "u784961086_igreja_membros";
+$pass = "G/q4fb2j^5W";
 $charset = "utf8mb4";
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
