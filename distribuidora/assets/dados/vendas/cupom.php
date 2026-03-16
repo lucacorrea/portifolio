@@ -2,11 +2,6 @@
 
 declare(strict_types=1);
 
-/**
- * cupom.php (Cupom Fiscal BÁSICO - 58mm)
- * - Layout mais estreito
- * - Área útil reduzida para caber melhor em bobina 58mm
- */
 
 require_once __DIR__ . '/../../conexao.php';
 
@@ -119,8 +114,11 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
   <style>
     :root {
       --page-w: 58mm;
-      --content-w: 48mm;
-      /* mais estreito pra sair melhor */
+      --pad-x: 1.2mm;
+      --pad-top: 1.5mm;
+      --pad-bottom: 2mm;
+
+      --fs-8: 8px;
       --fs-9: 9px;
       --fs-10: 10px;
       --fs-11: 11px;
@@ -143,21 +141,23 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       margin: 0;
       padding: 0;
       width: var(--page-w);
+      min-width: var(--page-w);
+      max-width: var(--page-w);
       background: #fff;
       color: #000;
       font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
     }
 
     body {
-      display: flex;
-      justify-content: center;
+      display: block;
     }
 
     .paper {
-      width: var(--content-w);
-      max-width: var(--content-w);
-      padding: 1.5mm 0 2mm 0;
-      margin: 0 auto;
+      width: var(--page-w);
+      max-width: var(--page-w);
+      margin: 0;
+      padding: var(--pad-top) var(--pad-x) var(--pad-bottom) var(--pad-x);
     }
 
     .c {
@@ -174,6 +174,10 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     .b {
       font-weight: 700;
+    }
+
+    .t8 {
+      font-size: var(--fs-8);
     }
 
     .t9 {
@@ -196,12 +200,14 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       border-top: 1px dashed #000;
       margin: 4px 0;
       height: 0;
+      width: 100%;
     }
 
     .line2 {
       border-top: 1px solid #000;
       margin: 4px 0;
       height: 0;
+      width: 100%;
     }
 
     .wrap {
@@ -227,6 +233,7 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: .2px;
     }
 
     .meta div,
@@ -262,7 +269,7 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     }
 
     .col-total {
-      width: 13mm;
+      width: 15mm;
     }
 
     .itemname {
@@ -271,6 +278,7 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       line-height: 1.1;
       word-break: break-word;
       overflow-wrap: break-word;
+      padding-right: 2px;
     }
 
     .subline {
@@ -279,6 +287,7 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       color: #111;
       word-break: break-word;
       overflow-wrap: break-word;
+      padding-right: 2px;
     }
 
     .totrow {
@@ -289,17 +298,20 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       font-size: 9.5px;
       line-height: 1.2;
       margin: 1px 0;
+      width: 100%;
     }
 
     .totrow .lbl {
       font-weight: 700;
       flex: 1 1 auto;
+      min-width: 0;
     }
 
     .totrow .val {
       font-weight: 700;
       white-space: nowrap;
       text-align: right;
+      flex: 0 0 auto;
     }
 
     .grand {
@@ -335,16 +347,18 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
       html,
       body {
-        width: 58mm;
-        min-width: 58mm;
-        max-width: 58mm;
+        width: 58mm !important;
+        min-width: 58mm !important;
+        max-width: 58mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
       .paper {
-        width: 48mm;
-        max-width: 48mm;
-        margin: 0 auto;
-        padding-top: 1mm;
+        width: 58mm !important;
+        max-width: 58mm !important;
+        margin: 0 !important;
+        padding: 1mm 1.2mm 2mm 1.2mm !important;
       }
 
       .btns {
@@ -428,9 +442,20 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     <div class="line2"></div>
 
-    <div class="totrow"><span class="lbl">Subtotal</span><span class="val"><?= money($subtotal) ?></span></div>
-    <div class="totrow"><span class="lbl">Desconto</span><span class="val">- <?= money($desconto) ?></span></div>
-    <div class="totrow"><span class="lbl">Taxa Entrega</span><span class="val"><?= money($taxaEnt) ?></span></div>
+    <div class="totrow">
+      <span class="lbl">Subtotal</span>
+      <span class="val"><?= money($subtotal) ?></span>
+    </div>
+
+    <div class="totrow">
+      <span class="lbl">Desconto</span>
+      <span class="val">- <?= money($desconto) ?></span>
+    </div>
+
+    <div class="totrow">
+      <span class="lbl">Taxa Entrega</span>
+      <span class="val"><?= money($taxaEnt) ?></span>
+    </div>
 
     <div class="line2"></div>
 
