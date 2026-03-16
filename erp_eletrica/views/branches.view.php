@@ -261,7 +261,12 @@
                     </div>
                     <div class="col-md-6 mt-3">
                         <label class="form-label small fw-bold">Senha do Certificado</label>
-                        <input type="password" name="certificado_senha" id="branch_cert_senha" class="form-control shadow-sm" placeholder="Deixe em branco para manter">
+                        <div class="input-group input-group-sm">
+                            <input type="password" name="certificado_senha" id="branch_cert_senha" class="form-control shadow-sm" placeholder="Deixe em branco para manter">
+                            <button class="btn btn-outline-secondary border-start-0 shadow-sm" type="button" onclick="togglePasswordVisibility(this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

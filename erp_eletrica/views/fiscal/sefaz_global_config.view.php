@@ -48,7 +48,12 @@
 
                         <div class="mb-4">
                             <label class="form-label fw-bold small">Senha do Certificado</label>
-                            <input type="password" name="certificado_senha" class="form-control" placeholder="Digite a senha" required>
+                            <div class="input-group">
+                                <input type="password" name="certificado_senha" class="form-control" placeholder="Digite a senha" required>
+                                <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                             <p class="text-muted extra-small">A senha será armazenada de forma segura.</p>
                         </div>
 
