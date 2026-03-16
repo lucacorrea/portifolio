@@ -341,7 +341,17 @@ function editBranch(branch) {
     document.getElementById('branch_csc_token').value = branch.csc_token || '';
     document.getElementById('branch_cert_senha').value = branch.certificado_senha || '';
     
-    document.getElementById('cert_info').innerText = branch.certificado_pfx ? 'Certificado atual: ' + branch.certificado_pfx : 'Nenhum certificado carregado';
+    const globalCert = '<?= $globalCert ?? '' ?>';
+    if (branch.certificado_pfx) {
+        document.getElementById('cert_info').className = 'extra-small text-success mt-1 fw-bold';
+        document.getElementById('cert_info').innerText = 'Certificado específico: ' + branch.certificado_pfx;
+    } else if (globalCert) {
+        document.getElementById('cert_info').className = 'extra-small text-info mt-1 fw-bold';
+        document.getElementById('cert_info').innerText = 'Utilizando Certificado Global: ' + globalCert;
+    } else {
+        document.getElementById('cert_info').className = 'extra-small text-warning mt-1 fw-bold';
+        document.getElementById('cert_info').innerText = 'Nenhum certificado carregado (Global ou Específico)';
+    }
     
     modal.show();
 }

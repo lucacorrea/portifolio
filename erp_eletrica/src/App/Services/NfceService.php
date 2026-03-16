@@ -38,8 +38,11 @@ class NfceService extends BaseService {
 
         $config = [];
         foreach ($fields as $field) {
+            // Special handling for certificate path column names
+            $filialKey = ($field === 'certificado_path') ? 'certificado_pfx' : $field;
+            
             // Priority: Filial (if it has the field populated differently from default/null)
-            $val = (!empty($filial[$field])) ? $filial[$field] : ($global[$field] ?? null);
+            $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : ($global[$field] ?? null);
             $config[$field] = $val;
         }
 
