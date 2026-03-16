@@ -1907,8 +1907,12 @@ $total12m = array_sum($chart1);
             },
             tooltip: {
               intersect: false,
-              backgroundColor: "#fbfbfb",
-              displayColors: false,
+              backgroundColor: "#000",
+              titleColor: "#fff",
+              bodyColor: "#fff",
+              borderColor: "#000",
+              borderWidth: 1,
+              displayColors: true,
               callbacks: {
                 label: (c) => `${c.dataset.label}: ${fmtBRL(c.parsed.y)}`
               }
