@@ -2,9 +2,11 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body d-flex justify-content-between align-items-center py-3">
         <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-network-wired me-2"></i>Unidades Operacionais</h6>
-        <button class="btn btn-primary fw-bold" onclick="newBranch()">
-            <i class="fas fa-plus-circle me-2"></i>Expandir Operação
-        </button>
+        <?php if ($_SESSION['is_matriz'] ?? false): ?>
+            <button class="btn btn-primary fw-bold" onclick="newBranch()">
+                <i class="fas fa-plus-circle me-2"></i>Expandir Operação
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
