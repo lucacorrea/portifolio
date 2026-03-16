@@ -12,7 +12,7 @@ function valor($campo, $padrao = '')
 <div class="page-header mb-4">
     <div>
         <h2 class="page-title mb-1">Cadastrar membro</h2>
-        <p class="page-subtitle mb-0">Preencha os dados em etapas para tornar o cadastro mais rápido e organizado.</p>
+        <p class="page-subtitle mb-0">Preencha os dados em etapas para manter o cadastro organizado e rápido.</p>
     </div>
 
     <div class="page-actions">
@@ -22,36 +22,38 @@ function valor($campo, $padrao = '')
     </div>
 </div>
 
-<form action="salvar.php" method="post" enctype="multipart/form-data" class="member-form" id="multiStepForm">
-    <div class="stepper-card mb-4">
-        <div class="stepper">
+<form action="salvar.php" method="post" enctype="multipart/form-data" id="multiStepForm" class="member-form">
+    <div class="stepper-wrapper mb-4">
+        <div class="stepper-card">
+            <div class="stepper-line"></div>
+
             <div class="step-item active" data-step="1">
-                <div class="step-bullet">1</div>
-                <div class="step-text">
+                <div class="step-circle">1</div>
+                <div class="step-label">
                     <strong>Dados pessoais</strong>
                     <span>Informações básicas</span>
                 </div>
             </div>
 
             <div class="step-item" data-step="2">
-                <div class="step-bullet">2</div>
-                <div class="step-text">
+                <div class="step-circle">2</div>
+                <div class="step-label">
                     <strong>Endereço</strong>
                     <span>Contato e localização</span>
                 </div>
             </div>
 
             <div class="step-item" data-step="3">
-                <div class="step-bullet">3</div>
-                <div class="step-text">
+                <div class="step-circle">3</div>
+                <div class="step-label">
                     <strong>Dados eclesiásticos</strong>
                     <span>Vínculo com a igreja</span>
                 </div>
             </div>
 
             <div class="step-item" data-step="4">
-                <div class="step-bullet">4</div>
-                <div class="step-text">
+                <div class="step-circle">4</div>
+                <div class="step-label">
                     <strong>Finalizar</strong>
                     <span>Revisão e envio</span>
                 </div>
@@ -60,55 +62,53 @@ function valor($campo, $padrao = '')
     </div>
 
     <!-- ETAPA 1 -->
-    <div class="form-step active" data-step="1">
-        <div class="row g-4">
-            <div class="col-12 col-xl-4">
-                <div class="form-card sticky-card">
-                    <div class="form-card-header">
-                        <h5 class="mb-1">Foto do membro</h5>
-                        <p class="mb-0">Adicione uma foto para identificação.</p>
+    <section class="form-step active" data-step="1">
+        <div class="step-layout">
+            <aside class="step-sidebar">
+                <div class="form-panel photo-panel">
+                    <div class="form-panel-header">
+                        <h5>Foto do membro</h5>
+                        <p>Adicione uma foto para facilitar a identificação.</p>
                     </div>
 
-                    <div class="form-card-body">
-                        <div class="photo-upload-box">
-                            <div class="photo-preview-wrap">
-                                <?php if (!empty($membro['foto'])): ?>
-                                    <img src="uploads/<?= valor('foto') ?>" id="previewFoto" class="member-photo-preview" alt="foto">
-                                <?php else: ?>
-                                    <img src="https://via.placeholder.com/220x260?text=Foto" id="previewFoto" class="member-photo-preview" alt="foto">
-                                <?php endif; ?>
-                            </div>
-
-                            <label for="fotoInput" class="upload-label mt-3">Selecionar foto</label>
-                            <input type="file" name="foto" class="form-control d-none" accept="image/*" id="fotoInput">
-
-                            <small class="text-muted d-block mt-2 text-center">
-                                Formatos aceitos: JPG, PNG, WEBP
-                            </small>
+                    <div class="form-panel-body">
+                        <div class="photo-preview-box">
+                            <?php if (!empty($membro['foto'])): ?>
+                                <img src="uploads/<?= valor('foto') ?>" id="previewFoto" class="member-photo-preview" alt="foto">
+                            <?php else: ?>
+                                <img src="https://via.placeholder.com/240x280?text=Foto" id="previewFoto" class="member-photo-preview" alt="foto">
+                            <?php endif; ?>
                         </div>
 
-                        <div class="info-mini-card mt-4">
-                            <div class="info-mini-item">
+                        <label for="fotoInput" class="upload-btn mt-3">
+                            <i class="fas fa-image me-2"></i>Selecionar foto
+                        </label>
+                        <input type="file" name="foto" class="d-none" accept="image/*" id="fotoInput">
+
+                        <small class="upload-help">Formatos aceitos: JPG, PNG e WEBP</small>
+
+                        <div class="tip-box mt-4">
+                            <div class="tip-item">
                                 <span>Obrigatório</span>
                                 <strong>Nome completo</strong>
                             </div>
-                            <div class="info-mini-item">
+                            <div class="tip-item">
                                 <span>Importante</span>
-                                <strong>Sexo e data de nascimento</strong>
+                                <strong>Sexo e nascimento</strong>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </aside>
 
-            <div class="col-12 col-xl-8">
-                <div class="form-card">
-                    <div class="form-card-header">
-                        <h5 class="mb-1">Dados pessoais</h5>
-                        <p class="mb-0">Informações principais do membro.</p>
+            <div class="step-content">
+                <div class="form-panel">
+                    <div class="form-panel-header">
+                        <h5>Dados pessoais</h5>
+                        <p>Informações principais do membro.</p>
                     </div>
 
-                    <div class="form-card-body">
+                    <div class="form-panel-body">
                         <div class="row g-3">
                             <div class="col-md-8">
                                 <label class="form-label">Nome completo <span class="text-danger">*</span></label>
@@ -199,24 +199,24 @@ function valor($campo, $padrao = '')
                     </div>
                 </div>
 
-                <div class="form-actions mt-4">
-                    <button type="button" class="btn btn-primary btn-save next-step">
+                <div class="step-actions">
+                    <button type="button" class="btn btn-primary next-step">
                         Próxima etapa <i class="fas fa-arrow-right ms-2"></i>
                     </button>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- ETAPA 2 -->
-    <div class="form-step" data-step="2">
-        <div class="form-card mb-4">
-            <div class="form-card-header">
-                <h5 class="mb-1">Endereço residencial</h5>
-                <p class="mb-0">Dados de localização e contato.</p>
+    <section class="form-step" data-step="2">
+        <div class="form-panel">
+            <div class="form-panel-header">
+                <h5>Endereço residencial</h5>
+                <p>Dados de localização e contato do membro.</p>
             </div>
 
-            <div class="form-card-body">
+            <div class="form-panel-body">
                 <div class="row g-3">
                     <div class="col-md-5">
                         <label class="form-label">Rua</label>
@@ -256,25 +256,25 @@ function valor($campo, $padrao = '')
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="button" class="btn btn-light btn-cancel prev-step">
+        <div class="step-actions">
+            <button type="button" class="btn btn-light prev-step">
                 <i class="fas fa-arrow-left me-2"></i>Voltar
             </button>
-            <button type="button" class="btn btn-primary btn-save next-step">
+            <button type="button" class="btn btn-primary next-step">
                 Próxima etapa <i class="fas fa-arrow-right ms-2"></i>
             </button>
         </div>
-    </div>
+    </section>
 
     <!-- ETAPA 3 -->
-    <div class="form-step" data-step="3">
-        <div class="form-card mb-4">
-            <div class="form-card-header">
-                <h5 class="mb-1">Dados eclesiásticos</h5>
-                <p class="mb-0">Informações de ingresso e vínculo com a igreja.</p>
+    <section class="form-step" data-step="3">
+        <div class="form-panel">
+            <div class="form-panel-header">
+                <h5>Dados eclesiásticos</h5>
+                <p>Informações sobre ingresso e vínculo com a igreja.</p>
             </div>
 
-            <div class="form-card-body">
+            <div class="form-panel-body">
                 <div class="row g-3">
                     <div class="col-md-3">
                         <label class="form-label">Tipo de ingresso</label>
@@ -315,31 +315,31 @@ function valor($campo, $padrao = '')
 
                     <div class="col-md-12">
                         <label class="form-label">Observação</label>
-                        <textarea name="observacao" rows="4" class="form-control custom-input"><?= valor('observacao') ?></textarea>
+                        <textarea name="observacao" rows="5" class="form-control custom-input"><?= valor('observacao') ?></textarea>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="button" class="btn btn-light btn-cancel prev-step">
+        <div class="step-actions">
+            <button type="button" class="btn btn-light prev-step">
                 <i class="fas fa-arrow-left me-2"></i>Voltar
             </button>
-            <button type="button" class="btn btn-primary btn-save next-step">
+            <button type="button" class="btn btn-primary next-step">
                 Revisar <i class="fas fa-arrow-right ms-2"></i>
             </button>
         </div>
-    </div>
+    </section>
 
     <!-- ETAPA 4 -->
-    <div class="form-step" data-step="4">
-        <div class="form-card mb-4">
-            <div class="form-card-header">
-                <h5 class="mb-1">Revisão final</h5>
-                <p class="mb-0">Confira os dados antes de salvar.</p>
+    <section class="form-step" data-step="4">
+        <div class="form-panel">
+            <div class="form-panel-header">
+                <h5>Revisão final</h5>
+                <p>Confira os dados antes de salvar.</p>
             </div>
 
-            <div class="form-card-body">
+            <div class="form-panel-body">
                 <div class="review-grid">
                     <div class="review-item">
                         <span>Nome</span>
@@ -377,16 +377,15 @@ function valor($campo, $padrao = '')
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="button" class="btn btn-light btn-cancel prev-step">
+        <div class="step-actions">
+            <button type="button" class="btn btn-light prev-step">
                 <i class="fas fa-arrow-left me-2"></i>Voltar
             </button>
-
-            <button type="submit" class="btn btn-primary btn-save">
+            <button type="submit" class="btn btn-primary">
                 <i class="fas fa-save me-2"></i>Salvar cadastro
             </button>
         </div>
-    </div>
+    </section>
 </form>
 
 <script>
@@ -457,13 +456,6 @@ document.addEventListener('DOMContentLoaded', function () {
     prevButtons.forEach(btn => {
         btn.addEventListener('click', function () {
             if (currentStep > 1) showStep(currentStep - 1);
-        });
-    });
-
-    indicators.forEach(item => {
-        item.addEventListener('click', function () {
-            const target = Number(this.dataset.step);
-            if (target < currentStep) showStep(target);
         });
     });
 
