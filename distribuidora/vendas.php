@@ -965,7 +965,7 @@ function fmtMoney($v): string
                     <div class="row g-2">
                       <div class="col-6">
                         <label class="form-label">Taxa entrega</label>
-                        <input class="form-control compact" id="cEntrega" placeholder="0,00" value="0,00" />
+                        <input class="form-control compact" id="cEntrega" placeholder="0,00" />
                       </div>
                       <div class="col-6">
                         <label class="form-label">Observação</label>
@@ -1010,11 +1010,11 @@ function fmtMoney($v): string
                       <div class="row g-2">
                         <div class="col-6">
                           <label class="form-label">Valor pago</label>
-                          <input class="form-control compact" id="pValor" placeholder="0,00" value="0,00" />
+                          <input class="form-control compact" id="pValor" placeholder="0,00" />
                         </div>
                         <div class="col-6">
                           <label class="form-label">Troco</label>
-                          <input class="form-control compact" id="pTroco" value="0,00" readonly />
+                          <input class="form-control compact" id="pTroco" readonly />
                         </div>
                       </div>
                       <div class="muted mt-1" id="hintTroco" style="display:none;">Em dinheiro pode ser maior que o total (troco automático).</div>
