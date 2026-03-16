@@ -25,6 +25,7 @@ $porCongregacao = $pdo->query("
 
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,6 +34,7 @@ $porCongregacao = $pdo->query("
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/css.css">
 </head>
+
 <body>
     <div class="dashboard">
         <div class="header">
@@ -124,86 +126,94 @@ $porCongregacao = $pdo->query("
         </div>
 
         <div class="charts-section">
+
+            <!-- ÚLTIMOS MEMBROS -->
             <div class="chart-card">
+
                 <div class="chart-header">
-                    <h3>Distribuição rápida</h3>
-                    <div class="chart-legend">
-                        <div class="legend-item">
-                            <span class="legend-color color-blue"></span>
-                            <span>Total geral</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color color-cyan"></span>
-                            <span>Batismos</span>
-                        </div>
-                    </div>
+                    <h3>Últimos membros cadastrados</h3>
+                    <a href="listar.php" class="info-link">Ver todos</a>
                 </div>
 
-                <div class="bar-chart">
-                    <div class="bar-container">
-                        <div class="bar" style="height: <?= max(20, min(180, $total * 4)) ?>px;"></div>
-                        <div class="bar secondary" style="height: <?= max(12, min(150, $totalBatismo * 4)) ?>px;"></div>
-                        <span class="bar-label">Membros</span>
-                    </div>
+                <?php if (!$ultimos): ?>
+                    <p class="text-muted">Nenhum membro cadastrado.</p>
+                <?php else: ?>
 
-                    <div class="bar-container">
-                        <div class="bar" style="height: <?= max(20, min(180, $totalMasc * 4)) ?>px;"></div>
-                        <div class="bar secondary" style="height: <?= max(12, min(150, $totalFem * 4)) ?>px;"></div>
-                        <span class="bar-label">Sexo</span>
-                    </div>
+                    <?php foreach ($ultimos as $m): ?>
 
-                    <div class="bar-container">
-                        <div class="bar" style="height: <?= max(20, min(180, count($porCongregacao) * 30)) ?>px;"></div>
-                        <div class="bar secondary" style="height: <?= max(12, min(150, count($ultimos) * 25)) ?>px;"></div>
-                        <span class="bar-label">Resumo</span>
-                    </div>
-                </div>
+                        <?php
+                        $iniciais = '';
+                        $partes = explode(' ', trim($m['nome_completo']));
+                        foreach (array_slice($partes, 0, 2) as $p) {
+                            $iniciais .= strtoupper(substr($p, 0, 1));
+                        }
+                        ?>
+
+                        <div class="member-item">
+
+                            <div class="member-avatar">
+                                <?= $iniciais ?>
+                            </div>
+
+                            <div class="member-info">
+                                <h4><?= htmlspecialchars($m['nome_completo']) ?></h4>
+                                <p><?= htmlspecialchars($m['congregacao'] ?? 'Sem congregação') ?></p>
+                            </div>
+
+                            <div class="member-status">
+                                <?= date('d/m/Y', strtotime($m['criado_em'])) ?>
+                            </div>
+
+                        </div>
+
+                    <?php endforeach; ?>
+
+                <?php endif; ?>
+
             </div>
 
+
+            <!-- CONGREGAÇÕES -->
             <div class="chart-card">
+
                 <div class="chart-header">
-                    <h3>Atividades recentes</h3>
-                    <i class="fas fa-ellipsis-h" style="color: #7b99cc; cursor: pointer;"></i>
+                    <h3>Congregações com mais membros</h3>
                 </div>
 
-                <div class="activity-list">
-                    <div class="activity-item">
-                        <div class="activity-icon"><i class="fas fa-user-plus"></i></div>
-                        <div class="activity-details">
-                            <div class="activity-title">Novo cadastro disponível</div>
-                            <div class="activity-time">Acesse a tela de cadastro</div>
-                        </div>
-                        <div class="activity-badge">Ação</div>
-                    </div>
+                <?php if (!$porCongregacao): ?>
+                    <p class="text-muted">Sem dados cadastrados.</p>
+                <?php else: ?>
 
-                    <div class="activity-item">
-                        <div class="activity-icon"><i class="fas fa-users"></i></div>
-                        <div class="activity-details">
-                            <div class="activity-title">Lista de membros atualizada</div>
-                            <div class="activity-time">Visualização em tempo real</div>
-                        </div>
-                        <div class="activity-badge">Lista</div>
-                    </div>
+                    <?php foreach ($porCongregacao as $c): ?>
 
-                    <div class="activity-item">
-                        <div class="activity-icon"><i class="fas fa-id-card"></i></div>
-                        <div class="activity-details">
-                            <div class="activity-title">Fichas individuais prontas</div>
-                            <div class="activity-time">Use visualizar ou imprimir</div>
-                        </div>
-                        <div class="activity-badge">Ficha</div>
-                    </div>
+                        <div class="activity-item">
 
-                    <div class="activity-item">
-                        <div class="activity-icon"><i class="fas fa-database"></i></div>
-                        <div class="activity-details">
-                            <div class="activity-title">Total no sistema: <?= $total ?> registros</div>
-                            <div class="activity-time">Banco sincronizado</div>
+                            <div class="activity-icon">
+                                <i class="fas fa-church"></i>
+                            </div>
+
+                            <div class="activity-details">
+                                <div class="activity-title">
+                                    <?= htmlspecialchars($c['congregacao']) ?>
+                                </div>
+
+                                <div class="activity-time">
+                                    <?= $c['total'] ?> membros cadastrados
+                                </div>
+                            </div>
+
+                            <div class="activity-badge">
+                                <?= $c['total'] ?>
+                            </div>
+
                         </div>
-                        <div class="activity-badge">Atual</div>
-                    </div>
-                </div>
+
+                    <?php endforeach; ?>
+
+                <?php endif; ?>
+
             </div>
+
         </div>
 
         <div class="bottom-grid">
@@ -277,4 +287,5 @@ $porCongregacao = $pdo->query("
         </div>
     </div>
 </body>
+
 </html>
