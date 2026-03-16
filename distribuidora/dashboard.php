@@ -1836,7 +1836,13 @@ $total12m = array_sum($chart1);
             },
             tooltip: {
               intersect: false,
-              backgroundColor: "#fbfbfb",
+              backgroundColor: "#000",
+              titleColor: "#fff",
+              bodyColor: "#fff",
+              borderColor: "#222",
+              borderWidth: 1,
+              cornerRadius: 4,
+              padding: 10,
               displayColors: false,
               callbacks: {
                 label: (c) => fmtBRL(c.parsed.y)
@@ -1907,8 +1913,12 @@ $total12m = array_sum($chart1);
             },
             tooltip: {
               intersect: false,
-              backgroundColor: "#fbfbfb",
-              displayColors: false,
+              backgroundColor: "#000",
+              titleColor: "#fff",
+              bodyColor: "#fff",
+              borderColor: "#000",
+              borderWidth: 1,
+              displayColors: true,
               callbacks: {
                 label: (c) => `${c.dataset.label}: ${fmtBRL(c.parsed.y)}`
               }

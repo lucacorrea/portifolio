@@ -12,8 +12,8 @@
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="public/css/corporate.css?v=3.2">
-    <link rel="stylesheet" href="style.css?v=3.2">
+    <link rel="stylesheet" href="public/css/corporate.css?v=5.5">
+    <link rel="stylesheet" href="style.css?v=5.5">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -37,12 +37,12 @@
                 
                 <div class="d-flex align-items-center gap-3">
                     <div class="text-end d-none d-md-block border-end pe-3">
-                        <div class="fw-bold small text-dark"><?= $_SESSION['usuario_nome'] ?></div>
-                        <div class="badge bg-primary bg-opacity-10 text-primary extra-small text-uppercase"><?= $_SESSION['usuario_nivel'] ?></div>
+                        <div class="fw-bold small erp-user-name"><?= $_SESSION['usuario_nome'] ?></div>
+                        <div class="badge erp-user-badge extra-small text-uppercase"><?= $_SESSION['usuario_nivel'] ?></div>
                     </div>
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
-                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                            <div class="bg-primary text-black rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
                                 <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
                             </div>
                         </a>

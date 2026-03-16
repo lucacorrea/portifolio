@@ -223,3 +223,18 @@ CREATE TABLE IF NOT EXISTS usuarios (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS senha_tokens (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT UNSIGNED NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  codigo_hash CHAR(64) NOT NULL,
+  expira_em DATETIME NOT NULL,
+  usado_em DATETIME NULL,
+  tentativas INT UNSIGNED NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  KEY idx_senha_tokens_usuario (usuario_id),
+  KEY idx_senha_tokens_email (email),
+  KEY idx_senha_tokens_expira (expira_em)
+);

@@ -44,6 +44,8 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .card-style .body {
@@ -111,6 +113,71 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
             color: #1e2a78;
             white-space: normal;
             word-break: break-word;
+        }
+
+        /* ===== Botões compactos ===== */
+        .btn-compact {
+            height: 40px !important;
+            min-height: 40px !important;
+            padding: 0 16px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 500;
+            line-height: 1 !important;
+        }
+
+        .btn-compact i {
+            font-size: 15px;
+            line-height: 1;
+            margin: 0 !important;
+        }
+
+        .btn-icon-compact {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 10px !important;
+            line-height: 1 !important;
+        }
+
+        .btn-icon-compact i {
+            font-size: 15px;
+            line-height: 1;
+            margin: 0 !important;
+        }
+
+        .btn-save-compact {
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 0 18px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 500;
+            line-height: 1 !important;
+        }
+
+        .modal-header h5 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #303651;
+        }
+
+        .modal-footer {
+            padding-top: 10px;
+            padding-bottom: 12px;
         }
     </style>
 </head>
@@ -231,6 +298,7 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
     </aside>
 
     <div class="overlay"></div>
+
     <main class="main-wrapper">
         <!-- Header -->
         <header class="header">
@@ -279,19 +347,30 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
                                 </nav>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
-                <?php if ($flashOk): ?><div class="alert alert-success"><?= e($flashOk) ?></div><?php endif; ?>
-                <?php if ($flashErr): ?><div class="alert alert-danger"><?= e($flashErr) ?></div><?php endif; ?>
+                <?php if ($flashOk): ?>
+                    <div class="alert alert-success"><?= e($flashOk) ?></div>
+                <?php endif; ?>
+
+                <?php if ($flashErr): ?>
+                    <div class="alert alert-danger"><?= e($flashErr) ?></div>
+                <?php endif; ?>
+
                 <div class="card-style mb-3">
                     <div class="head">
                         <div>
                             <h5 class="mb-0">Parâmetros do Sistema</h5>
                             <div class="muted">Configurações globais</div>
-                        </div><button id="btnNovo" class="main-btn primary-btn btn-hover"><i class="lni lni-plus"></i> Novo</button>
+                        </div>
+
+                        <button id="btnNovo" class="main-btn primary-btn btn-hover btn-compact" type="button">
+                            <i class="lni lni-plus"></i>
+                            <span>Novo</span>
+                        </button>
                     </div>
+
                     <div class="body">
                         <div class="table-wrap">
                             <table class="table" id="tbParams">
@@ -310,7 +389,16 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
                                             <td><?= e($r['valor']) ?></td>
                                             <td class="muted"><?= e($r['descricao']) ?></td>
                                             <td class="text-end">
-                                                <button class="main-btn primary-btn btn-sm btnEdit" data-id="<?= $r['id'] ?>" data-chave="<?= e($r['chave']) ?>" data-valor="<?= e($r['valor']) ?>" data-desc="<?= e($r['descricao']) ?>"><i class="lni lni-pencil"></i></button>
+                                                <button
+                                                    type="button"
+                                                    class="main-btn primary-btn btn-hover btnEdit btn-icon-compact"
+                                                    data-id="<?= (int)$r['id'] ?>"
+                                                    data-chave="<?= e($r['chave']) ?>"
+                                                    data-valor="<?= e($r['valor']) ?>"
+                                                    data-desc="<?= e($r['descricao']) ?>"
+                                                    title="Editar">
+                                                    <i class="lni lni-pencil"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -322,28 +410,49 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
             </div>
         </section>
     </main>
-    <div class="modal fade" id="mdForm" tabindex="-1">
+
+    <div class="modal fade" id="mdForm" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="post" action="assets/dados/parametros/salvarParametros.php">
                     <div class="modal-header">
-                        <h5>Parâmetro</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h5>Parâmetro</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
+
                     <div class="modal-body">
-                        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>"><input type="hidden" name="id" id="fmId">
-                        <div class="mb-3"><label class="form-label">Chave</label><input type="text" class="form-control" name="chave" id="fmChave" required></div>
-                        <div class="mb-3"><label class="form-label">Valor</label><textarea class="form-control" name="valor" id="fmValor" rows="3"></textarea></div>
-                        <div class="mb-3"><label class="form-label">Descrição</label><input type="text" class="form-control" name="descricao" id="fmDesc"></div>
+                        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                        <input type="hidden" name="id" id="fmId">
+
+                        <div class="mb-3">
+                            <label class="form-label">Chave</label>
+                            <input type="text" class="form-control" name="chave" id="fmChave" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Valor</label>
+                            <textarea class="form-control" name="valor" id="fmValor" rows="3"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Descrição</label>
+                            <input type="text" class="form-control" name="descricao" id="fmDesc">
+                        </div>
                     </div>
-                    <div class="modal-footer"><button class="main-btn primary-btn" type="submit">Salvar</button></div>
+
+                    <div class="modal-footer">
+                        <button class="main-btn primary-btn btn-hover btn-save-compact" type="submit">Salvar</button>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
+
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
     <script>
         const modal = new bootstrap.Modal(document.getElementById('mdForm'));
+
         document.getElementById('btnNovo').onclick = () => {
             document.getElementById('fmId').value = '';
             document.getElementById('fmChave').value = '';
@@ -351,6 +460,7 @@ $rows = $pdo->query("SELECT * FROM parametros ORDER BY chave ASC")->fetchAll(PDO
             document.getElementById('fmDesc').value = '';
             modal.show();
         };
+
         document.querySelectorAll('.btnEdit').forEach(b => {
             b.onclick = () => {
                 document.getElementById('fmId').value = b.dataset.id;

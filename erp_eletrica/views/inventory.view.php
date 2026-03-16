@@ -81,7 +81,7 @@
                 </thead>
                 <tbody>
                     <?php foreach ($products as $p): ?>
-                    <tr class="<?= $p['quantidade'] <= $p['estoque_minimo'] ? 'table-warning bg-opacity-10' : '' ?>">
+                    <tr class="<?= $p['quantidade'] <= $p['estoque_minimo'] ? 'table-danger' : '' ?>">
                         <td class="ps-4">
                             <div class="fw-bold text-primary small"><?= $p['codigo'] ?></div>
                             <div class="text-muted extra-small">NCM: <?= $p['ncm'] ?: '---' ?></div>
@@ -183,7 +183,7 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Código Interno</label>
-                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono'; background-color: #f1f3f5;" value="<?php echo 'PRD' . str_pad((int)(\App\Config\Database::getInstance()->getConnection())->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>" readonly>
+                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" value="<?php echo 'PRD' . str_pad((int)(\App\Config\Database::getInstance()->getConnection())->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>" readonly>
                     </div>
                     <div class="col-md-8">
                         <label class="form-label small fw-bold">Nome / Descrição do Material *</label>

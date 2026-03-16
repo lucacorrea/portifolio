@@ -107,7 +107,7 @@
 <div class="modal fade" id="modalItens" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white border-0">
+            <div class="modal-header bg-primary text-black border-0">
                 <h5 class="modal-title fw-bold"><i class="fas fa-box-open me-2"></i>Produtos da Nota Fiscal</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>

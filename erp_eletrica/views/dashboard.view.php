@@ -22,7 +22,7 @@
 <?php if ($caixaAberto): ?>
 <div class="row g-4 mb-4">
     <div class="col-md-3">
-        <div class="card h-100 border-0 shadow-sm bg-primary text-white">
+        <div class="card h-100 border-0 shadow-sm bg-primary text-black">
             <div class="card-body">
                 <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual em Caixa</div>
                 <h3 class="mb-0 fw-bold">

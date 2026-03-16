@@ -11,6 +11,7 @@ if (empty($_SESSION['usuario_logado'])) {
 
 /* Obrigatório ser ADMIN */
 $perfis = $_SESSION['perfis'] ?? [];
+if (!is_array($perfis)) $perfis = [$perfis];
 if (!in_array('ADMIN', $perfis, true)) {
   header('Location: ../../operador/index.php');
   exit;
@@ -30,12 +31,13 @@ function only_digits(string $s): string
 }
 
 /* Feira padrão desta página */
-$FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa
+$FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa | 3=Mercado Municipal
 
-/* Detecção opcional pela pasta (se você separou em pastas) */
+/* Detecção opcional pela pasta */
 $dirLower = strtolower((string)__DIR__);
 if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
-if (strpos($dirLower, 'produtor')   !== false) $FEIRA_ID = 1;
+if (strpos($dirLower, 'produtor') !== false) $FEIRA_ID = 1;
+if (strpos($dirLower, 'mercado') !== false) $FEIRA_ID = 3;
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
@@ -51,7 +53,7 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf = (string)$_SESSION['csrf_token'];
 
 /* ===== Conexão ===== */
-$produtores = [];
+$permissionarios = [];
 $comunidades = [];
 $totalRows  = 0;
 $totalPages = 1;
@@ -64,7 +66,7 @@ $page = (int)($_GET['p'] ?? 1);
 if ($page < 1) $page = 1;
 $offset = ($page - 1) * $perPage;
 
-/* Busca (FAZ FUNCIONAR: normaliza e busca por CPF/telefone também) */
+/* Busca */
 $qRaw = trim((string)($_GET['q'] ?? ''));
 $qDigits = only_digits($qRaw);
 
@@ -86,7 +88,6 @@ function buildUrl(array $add = []): string
   return $qs ? ($base . '?' . $qs) : $base;
 }
 
-/* Helpers modal: validação simples */
 function trunc(string $s, int $max): string
 {
   $s = trim($s);
@@ -100,20 +101,25 @@ try {
   $dbName = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
 
   /* Checa tabelas */
-  $tblP = $pdo->query("SHOW TABLES LIKE 'produtores'")->fetchColumn();
-  if (!$tblP) throw new RuntimeException("Tabela 'produtores' não existe neste banco.");
+  $tblP = $pdo->query("SHOW TABLES LIKE 'permissionarios'")->fetchColumn();
+  if (!$tblP) throw new RuntimeException("Tabela 'permissionarios' não existe neste banco.");
 
   $tblC = $pdo->query("SHOW TABLES LIKE 'comunidades'")->fetchColumn();
   $hasComunidades = (bool)$tblC;
 
   if ($hasComunidades) {
-    $stCom = $pdo->prepare("SELECT id, nome FROM comunidades WHERE feira_id = :f AND ativo = 1 ORDER BY nome ASC");
+    $stCom = $pdo->prepare("
+      SELECT id, nome
+      FROM comunidades
+      WHERE feira_id = :f AND ativo = 1
+      ORDER BY nome ASC
+    ");
     $stCom->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
     $stCom->execute();
     $comunidades = $stCom->fetchAll(PDO::FETCH_ASSOC);
   }
 
-  /* ===== AÇÕES POST: toggle / update (modal) ===== */
+  /* ===== AÇÕES POST: toggle / update ===== */
   if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tokenPost = (string)($_POST['csrf_token'] ?? '');
     if (!$tokenPost || !hash_equals($csrf, $tokenPost)) {
@@ -126,7 +132,11 @@ try {
     $id = (int)($_POST['id'] ?? 0);
 
     if ($action === 'toggle' && $id > 0) {
-      $st = $pdo->prepare("SELECT ativo FROM produtores WHERE id = :id AND feira_id = :feira");
+      $st = $pdo->prepare("
+        SELECT ativo
+        FROM permissionarios
+        WHERE id = :id AND feira_id = :feira
+      ");
       $st->bindValue(':id', $id, PDO::PARAM_INT);
       $st->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
       $st->execute();
@@ -136,12 +146,19 @@ try {
         $_SESSION['flash_err'] = 'Permissionário não encontrado.';
       } else {
         $newAtv = ((int)$curAtv === 1) ? 0 : 1;
-        $up = $pdo->prepare("UPDATE produtores SET ativo = :a WHERE id = :id AND feira_id = :feira");
+        $up = $pdo->prepare("
+          UPDATE permissionarios
+          SET ativo = :a
+          WHERE id = :id AND feira_id = :feira
+        ");
         $up->bindValue(':a', $newAtv, PDO::PARAM_INT);
         $up->bindValue(':id', $id, PDO::PARAM_INT);
         $up->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
         $up->execute();
-        $_SESSION['flash_ok'] = $newAtv ? 'Permissionário ativado com sucesso!' : 'Permissionário desativado com sucesso!';
+
+        $_SESSION['flash_ok'] = $newAtv
+          ? 'Permissionário ativado com sucesso!'
+          : 'Permissionário desativado com sucesso!';
       }
 
       header('Location: ' . buildUrl(['p' => $page]));
@@ -153,12 +170,15 @@ try {
       $contato = trunc((string)($_POST['contato'] ?? ''), 60);
       $documento = trunc(only_digits((string)($_POST['documento'] ?? '')), 30);
       $obs = trunc((string)($_POST['observacao'] ?? ''), 255);
+      $boxNumero = trunc((string)($_POST['box_numero'] ?? ''), 30);
+      $setor = trunc((string)($_POST['setor'] ?? ''), 100);
+      $ramoAtividade = trunc((string)($_POST['ramo_atividade'] ?? ''), 120);
       $ativo = ((string)($_POST['ativo'] ?? '1') === '1') ? 1 : 0;
 
       $comunidade_id = (int)($_POST['comunidade_id'] ?? 0);
 
       if ($nome === '') {
-        $_SESSION['flash_err'] = 'Informe o nome do produtor.';
+        $_SESSION['flash_err'] = 'Informe o nome do permissionário.';
         header('Location: ' . buildUrl(['p' => $page]));
         exit;
       }
@@ -170,26 +190,34 @@ try {
           exit;
         }
 
-        $chk = $pdo->prepare("SELECT COUNT(*) FROM comunidades WHERE id = :id AND feira_id = :f AND ativo = 1");
+        $chk = $pdo->prepare("
+          SELECT COUNT(*)
+          FROM comunidades
+          WHERE id = :id AND feira_id = :f AND ativo = 1
+        ");
         $chk->bindValue(':id', $comunidade_id, PDO::PARAM_INT);
         $chk->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
         $chk->execute();
+
         if ((int)$chk->fetchColumn() <= 0) {
           $_SESSION['flash_err'] = 'Bairro / Origem inválido (não encontrado ou inativo).';
           header('Location: ' . buildUrl(['p' => $page]));
           exit;
         }
       } else {
-        // sem tabela comunidades, mantém comunidade_id como está (não atualiza)
         $comunidade_id = 0;
       }
 
-      // evita duplicidade por feira+nome (se você mantém UNIQUE uq_produtores_feira_nome)
-      $dupe = $pdo->prepare("SELECT COUNT(*) FROM produtores WHERE feira_id=:f AND nome=:n AND id<>:id");
+      $dupe = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM permissionarios
+        WHERE feira_id = :f AND nome = :n AND id <> :id
+      ");
       $dupe->bindValue(':f', $FEIRA_ID, PDO::PARAM_INT);
       $dupe->bindValue(':n', $nome, PDO::PARAM_STR);
       $dupe->bindValue(':id', $id, PDO::PARAM_INT);
       $dupe->execute();
+
       if ((int)$dupe->fetchColumn() > 0) {
         $_SESSION['flash_err'] = 'Já existe um permissionário com esse nome.';
         header('Location: ' . buildUrl(['p' => $page]));
@@ -197,27 +225,54 @@ try {
       }
 
       if ($hasComunidades) {
-        $up = $pdo->prepare("UPDATE produtores
-                             SET nome=:nome, contato=:contato, documento=:doc, comunidade_id=:cid, ativo=:ativo, observacao=:obs
-                             WHERE id=:id AND feira_id=:f");
+        $up = $pdo->prepare("
+          UPDATE permissionarios
+          SET
+            nome = :nome,
+            contato = :contato,
+            documento = :doc,
+            comunidade_id = :cid,
+            box_numero = :box_numero,
+            setor = :setor,
+            ramo_atividade = :ramo_atividade,
+            ativo = :ativo,
+            observacao = :obs
+          WHERE id = :id AND feira_id = :f
+        ");
         $up->execute([
           ':nome' => $nome,
           ':contato' => ($contato !== '' ? $contato : null),
           ':doc' => ($documento !== '' ? $documento : null),
           ':cid' => $comunidade_id,
+          ':box_numero' => ($boxNumero !== '' ? $boxNumero : null),
+          ':setor' => ($setor !== '' ? $setor : null),
+          ':ramo_atividade' => ($ramoAtividade !== '' ? $ramoAtividade : null),
           ':ativo' => $ativo,
           ':obs' => ($obs !== '' ? $obs : null),
           ':id' => $id,
           ':f' => $FEIRA_ID
         ]);
       } else {
-        $up = $pdo->prepare("UPDATE produtores
-                             SET nome=:nome, contato=:contato, documento=:doc, ativo=:ativo, observacao=:obs
-                             WHERE id=:id AND feira_id=:f");
+        $up = $pdo->prepare("
+          UPDATE permissionarios
+          SET
+            nome = :nome,
+            contato = :contato,
+            documento = :doc,
+            box_numero = :box_numero,
+            setor = :setor,
+            ramo_atividade = :ramo_atividade,
+            ativo = :ativo,
+            observacao = :obs
+          WHERE id = :id AND feira_id = :f
+        ");
         $up->execute([
           ':nome' => $nome,
           ':contato' => ($contato !== '' ? $contato : null),
           ':doc' => ($documento !== '' ? $documento : null),
+          ':box_numero' => ($boxNumero !== '' ? $boxNumero : null),
+          ':setor' => ($setor !== '' ? $setor : null),
+          ':ramo_atividade' => ($ramoAtividade !== '' ? $ramoAtividade : null),
           ':ativo' => $ativo,
           ':obs' => ($obs !== '' ? $obs : null),
           ':id' => $id,
@@ -231,15 +286,13 @@ try {
     }
   }
 
-  /* ===== WHERE da listagem (PESQUISA FUNCIONANDO) ===== */
-
+  /* ===== WHERE da listagem ===== */
   $where = ["p.feira_id = :feira"];
   $params = [':feira' => $FEIRA_ID];
 
   if ($qRaw !== '') {
     $parts = [];
 
-    // mesmo valor, placeholders diferentes (PDO MySQL com emulação OFF exige isso)
     $params[':q_nome'] = '%' . $qRaw . '%';
     $parts[] = "p.nome LIKE :q_nome";
 
@@ -248,6 +301,15 @@ try {
 
     $params[':q_doc'] = '%' . $qRaw . '%';
     $parts[] = "p.documento LIKE :q_doc";
+
+    $params[':q_box'] = '%' . $qRaw . '%';
+    $parts[] = "p.box_numero LIKE :q_box";
+
+    $params[':q_setor'] = '%' . $qRaw . '%';
+    $parts[] = "p.setor LIKE :q_setor";
+
+    $params[':q_ramo'] = '%' . $qRaw . '%';
+    $parts[] = "p.ramo_atividade LIKE :q_ramo";
 
     if (!empty($hasComunidades)) {
       $params[':q_com'] = '%' . $qRaw . '%';
@@ -269,13 +331,15 @@ try {
 
   /* ===== COUNT ===== */
   if ($hasComunidades) {
-    $sqlCount = "SELECT COUNT(*)
-                 FROM produtores p
-                 LEFT JOIN comunidades c
-                   ON c.id = p.comunidade_id AND c.feira_id = p.feira_id
-                 $whereSql";
+    $sqlCount = "
+      SELECT COUNT(*)
+      FROM permissionarios p
+      LEFT JOIN comunidades c
+        ON c.id = p.comunidade_id AND c.feira_id = p.feira_id
+      $whereSql
+    ";
   } else {
-    $sqlCount = "SELECT COUNT(*) FROM produtores p $whereSql";
+    $sqlCount = "SELECT COUNT(*) FROM permissionarios p $whereSql";
   }
 
   $stCount = $pdo->prepare($sqlCount);
@@ -287,7 +351,6 @@ try {
   }
 
   $stCount->execute();
-
   $totalRows = (int)$stCount->fetchColumn();
 
   $totalPages = max(1, (int)ceil($totalRows / $perPage));
@@ -298,35 +361,45 @@ try {
 
   /* ===== SELECT ===== */
   if ($hasComunidades) {
-    $sql = "SELECT
-              p.id,
-              p.nome,
-              p.contato,
-              p.documento,
-              p.ativo,
-              p.observacao,
-              p.comunidade_id,
-              c.nome AS comunidade
-            FROM produtores p
-            LEFT JOIN comunidades c
-              ON c.id = p.comunidade_id AND c.feira_id = p.feira_id
-            $whereSql
-            ORDER BY p.nome ASC
-            LIMIT :lim OFFSET :off";
+    $sql = "
+      SELECT
+        p.id,
+        p.nome,
+        p.contato,
+        p.documento,
+        p.ativo,
+        p.observacao,
+        p.comunidade_id,
+        p.box_numero,
+        p.setor,
+        p.ramo_atividade,
+        c.nome AS comunidade
+      FROM permissionarios p
+      LEFT JOIN comunidades c
+        ON c.id = p.comunidade_id AND c.feira_id = p.feira_id
+      $whereSql
+      ORDER BY p.nome ASC
+      LIMIT :lim OFFSET :off
+    ";
   } else {
-    $sql = "SELECT
-              p.id,
-              p.nome,
-              p.contato,
-              p.documento,
-              p.ativo,
-              p.observacao,
-              p.comunidade_id,
-              NULL AS comunidade
-            FROM produtores p
-            $whereSql
-            ORDER BY p.nome ASC
-            LIMIT :lim OFFSET :off";
+    $sql = "
+      SELECT
+        p.id,
+        p.nome,
+        p.contato,
+        p.documento,
+        p.ativo,
+        p.observacao,
+        p.comunidade_id,
+        p.box_numero,
+        p.setor,
+        p.ramo_atividade,
+        NULL AS comunidade
+      FROM permissionarios p
+      $whereSql
+      ORDER BY p.nome ASC
+      LIMIT :lim OFFSET :off
+    ";
   }
 
   $stmt = $pdo->prepare($sql);
@@ -341,9 +414,9 @@ try {
   $stmt->bindValue(':off', (int)$offset, PDO::PARAM_INT);
   $stmt->execute();
 
-  $produtores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $permissionarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-  $err = $err ?: 'Não foi possível carregar os produtores agora.';
+  $err = $err ?: 'Não foi possível carregar os permissionários agora.';
   $errDetail = $cleanErr($e->getMessage());
 }
 ?>
@@ -391,7 +464,6 @@ try {
       height: 42px;
     }
 
-    /* ===== Flash “Hostinger style” ===== */
     .sig-flash-wrap {
       position: fixed;
       top: 78px;
@@ -411,7 +483,6 @@ try {
       box-shadow: 0 10px 28px rgba(0, 0, 0, .10) !important;
       font-size: 13px !important;
       margin-bottom: 10px !important;
-
       opacity: 0;
       transform: translateX(10px);
       animation: sigToastIn .22s ease-out forwards, sigToastOut .25s ease-in forwards 5.75s;
@@ -516,7 +587,6 @@ try {
       border-radius: 10px !important;
     }
 
-    /* Modal ajustes leves */
     .modal .form-control {
       height: 42px;
     }
@@ -538,7 +608,6 @@ try {
 <body>
   <div class="container-scroller">
 
-    <!-- NAVBAR -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
         <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -603,7 +672,6 @@ try {
         </ul>
       </div>
 
-      <!-- SIDEBAR -->
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
           <li class="nav-item">
@@ -637,8 +705,6 @@ try {
                     <i class="ti-user mr-2"></i> Permissionários
                   </a>
                 </li>
-
-
               </ul>
             </div>
           </li>
@@ -669,23 +735,20 @@ try {
             </div>
           </li>
 
-
-          <!-- Título DIVERSOS -->
           <li class="nav-item" style="pointer-events:none;">
             <span style="
-                  display:block;
-                  padding: 5px 15px 5px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  color: #6c757d;
-                  text-transform: uppercase;
-                ">
+              display:block;
+              padding: 5px 15px 5px;
+              font-size: 11px;
+              font-weight: 600;
+              letter-spacing: 1px;
+              color: #6c757d;
+              text-transform: uppercase;
+            ">
               Links Diversos
             </span>
           </li>
 
-          <!-- Linha abaixo do título -->
           <li class="nav-item">
             <a class="nav-link" href="../index.php">
               <i class="ti-home menu-icon"></i>
@@ -696,38 +759,30 @@ try {
             <a href="../produtor/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira do Produtor</span>
-
             </a>
           </li>
           <li class="nav-item">
             <a href="../alternativa/" class="nav-link">
               <i class="ti-shopping-cart menu-icon"></i>
               <span class="menu-title">Feira Alternativa</span>
-
             </a>
           </li>
           <li class="nav-item">
-
             <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
               <i class="ti-headphone-alt menu-icon"></i>
               <span class="menu-title">Suporte</span>
             </a>
           </li>
-
         </ul>
       </nav>
 
-      </ul>
-      </nav>
-
-      <!-- MAIN -->
       <div class="main-panel">
         <div class="content-wrapper">
 
           <div class="row">
             <div class="col-12 mb-3">
               <h3 class="font-weight-bold">Permissionários</h3>
-              <h6 class="font-weight-normal mb-0">Pesquisa funciona por nome, bairro / origem, contato e documento.</h6>
+              <h6 class="font-weight-normal mb-0">Pesquisa por nome, bairro / origem, contato, documento, box, setor e ramo de atividade.</h6>
             </div>
           </div>
 
@@ -737,7 +792,6 @@ try {
             </div>
           <?php endif; ?>
 
-          <!-- Toolbar -->
           <div class="row">
             <div class="col-md-12 grid-margin stretch-card">
               <div class="card toolbar-card">
@@ -746,7 +800,8 @@ try {
                     <div class="col-md-6 mb-2 mb-md-0">
                       <label class="mb-1">Pesquisa</label>
                       <input type="text" name="q" class="form-control"
-                        placeholder="Ex.: João / São Francisco / 9299... / CPF..." value="<?= h($qRaw) ?>">
+                        placeholder="Ex.: João / São Francisco / 9299... / CPF / box..."
+                        value="<?= h($qRaw) ?>">
                       <?php if ($debug): ?><input type="hidden" name="debug" value="1"><?php endif; ?>
                     </div>
 
@@ -755,9 +810,7 @@ try {
                       <div class="d-flex flex-wrap justify-content-md-end" style="gap:8px;">
                         <button type="submit" class="btn btn-primary"><i class="ti-search mr-1"></i> Pesquisar</button>
                         <a class="btn btn-light" href="<?= h(buildUrl(['q' => null, 'p' => null])) ?>"><i class="ti-close mr-1"></i> Limpar</a>
-
                       </div>
-
                     </div>
                   </form>
                 </div>
@@ -765,7 +818,6 @@ try {
             </div>
           </div>
 
-          <!-- Tabela -->
           <div class="row">
             <div class="col-lg-12 grid-margin stretch-card">
               <div class="card">
@@ -791,17 +843,18 @@ try {
                           <th>Permissionário</th>
                           <th>Bairro / Origem</th>
                           <th>Contato</th>
+                          <th>Box / Setor</th>
                           <th>Status</th>
                           <th style="min-width: 320px;">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <?php if (empty($produtores)): ?>
+                        <?php if (empty($permissionarios)): ?>
                           <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Nenhum produtor encontrado.</td>
+                            <td colspan="7" class="text-center text-muted py-4">Nenhum permissionário encontrado.</td>
                           </tr>
                         <?php else: ?>
-                          <?php foreach ($produtores as $p): ?>
+                          <?php foreach ($permissionarios as $p): ?>
                             <?php
                             $id = (int)($p['id'] ?? 0);
                             $ativo = ((int)($p['ativo'] ?? 0) === 1);
@@ -815,20 +868,27 @@ try {
                             $contato = trim((string)($p['contato'] ?? ''));
                             $doc = trim((string)($p['documento'] ?? ''));
                             $obs = trim((string)($p['observacao'] ?? ''));
+                            $boxNumero = trim((string)($p['box_numero'] ?? ''));
+                            $setor = trim((string)($p['setor'] ?? ''));
+                            $ramoAtividade = trim((string)($p['ramo_atividade'] ?? ''));
+
+                            $boxSetor = trim(($boxNumero !== '' ? 'Box ' . $boxNumero : '') . ($setor !== '' ? ' • ' . $setor : ''));
+                            if ($boxSetor === '') $boxSetor = '-';
                             ?>
                             <tr>
                               <td><?= $id ?></td>
                               <td>
                                 <div class="font-weight-bold"><?= h($p['nome'] ?? '') ?></div>
                                 <?php if ($doc !== ''): ?><div class="muted-small">CPF/Doc: <?= h($doc) ?></div><?php endif; ?>
+                                <?php if ($ramoAtividade !== ''): ?><div class="muted-small">Ramo: <?= h($ramoAtividade) ?></div><?php endif; ?>
                               </td>
-                              <td><?= h($comunidadeNome) ?></td>
-                              <td><?= h($contato) ?></td>
+                              <td><?= h($comunidadeNome !== '' ? $comunidadeNome : '-') ?></td>
+                              <td><?= h($contato !== '' ? $contato : '-') ?></td>
+                              <td><?= h($boxSetor) ?></td>
                               <td><label class="badge <?= $badgeClass ?>"><?= $badgeText ?></label></td>
                               <td>
                                 <div class="acoes-wrap">
 
-                                  <!-- EDITAR (abre modal e preenche) -->
                                   <button
                                     type="button"
                                     class="btn btn-outline-primary btn-xs js-edit"
@@ -840,11 +900,13 @@ try {
                                     data-documento="<?= h($doc) ?>"
                                     data-observacao="<?= h($obs) ?>"
                                     data-ativo="<?= $ativo ? '1' : '0' ?>"
-                                    data-comunidade_id="<?= (int)$comId ?>">
+                                    data-comunidade_id="<?= (int)$comId ?>"
+                                    data-box_numero="<?= h($boxNumero) ?>"
+                                    data-setor="<?= h($setor) ?>"
+                                    data-ramo_atividade="<?= h($ramoAtividade) ?>">
                                     <i class="ti-pencil"></i> Editar
                                   </button>
 
-                                  <!-- Toggle ativo -->
                                   <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" style="margin:0;">
                                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                                     <input type="hidden" name="action" value="toggle">
@@ -852,7 +914,7 @@ try {
                                     <button
                                       type="submit"
                                       class="btn btn-outline-<?= $ativo ? 'warning' : 'success' ?> btn-xs"
-                                      onclick="return confirm('Confirma <?= $ativo ? 'desativar' : 'ativar' ?> este produtor?');">
+                                      onclick="return confirm('Confirma <?= $ativo ? 'desativar' : 'ativar' ?> este permissionário?');">
                                       <i class="ti-power-off"></i> <?= $ativo ? 'Desativar' : 'Ativar' ?>
                                     </button>
                                   </form>
@@ -865,7 +927,6 @@ try {
                       </tbody>
                     </table>
 
-                    <!-- Paginação -->
                     <?php if ($totalPages > 1): ?>
                       <?php
                       $prev = max(1, $page - 1);
@@ -880,9 +941,9 @@ try {
                       ?>
                       <div class="sig-pager">
                         <div class="info">
-                          Mostrando <?= (int)count($produtores) ?> de <?= (int)$totalRows ?> (<?= (int)$perPage ?> por página)
+                          Mostrando <?= (int)count($permissionarios) ?> de <?= (int)$totalRows ?> (<?= (int)$perPage ?> por página)
                         </div>
-                        <nav aria-label="Paginação produtores">
+                        <nav aria-label="Paginação permissionarios">
                           <ul class="pagination">
                             <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= h(buildUrl(['p' => 1])) ?>">«</a></li>
                             <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= h(buildUrl(['p' => $prev])) ?>">Anterior</a></li>
@@ -923,7 +984,6 @@ try {
     </div>
   </div>
 
-  <!-- ===================== MODAL EDITAR PRODUTOR ===================== -->
   <div class="modal fade" id="modalEditProdutor" tabindex="-1" role="dialog" aria-labelledby="modalEditProdutorLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
       <form method="post" action="<?= h(buildUrl(['p' => $page])) ?>" class="modal-content">
@@ -979,6 +1039,11 @@ try {
             <?php endif; ?>
 
             <div class="col-md-3 mb-3">
+              <label>Box</label>
+              <input type="text" name="box_numero" id="edit_box_numero" class="form-control" placeholder="Ex.: 12">
+            </div>
+
+            <div class="col-md-3 mb-3">
               <label>Status</label>
               <select name="ativo" id="edit_ativo" class="form-control">
                 <option value="1">Ativo</option>
@@ -988,9 +1053,21 @@ try {
           </div>
 
           <div class="row">
+            <div class="col-md-6 mb-3">
+              <label>Setor</label>
+              <input type="text" name="setor" id="edit_setor" class="form-control" placeholder="Ex.: Hortifruti">
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label>Ramo de atividade</label>
+              <input type="text" name="ramo_atividade" id="edit_ramo_atividade" class="form-control" placeholder="Ex.: Venda de verduras">
+            </div>
+          </div>
+
+          <div class="row">
             <div class="col-md-12 mb-2">
               <label>Observação</label>
-              <textarea name="observacao" id="edit_observacao" class="form-control" rows="4" placeholder="Ex.: produtor de farinha..."></textarea>
+              <textarea name="observacao" id="edit_observacao" class="form-control" rows="4" placeholder="Ex.: trabalha no box 12..."></textarea>
               <small class="text-muted">Até 255 caracteres.</small>
             </div>
           </div>
@@ -1004,7 +1081,6 @@ try {
       </form>
     </div>
   </div>
-  <!-- ================================================================ -->
 
   <script src="../../../vendors/js/vendor.bundle.base.js"></script>
   <script src="../../../vendors/chart.js/Chart.min.js"></script>
@@ -1019,12 +1095,10 @@ try {
   <script src="../../../js/Chart.roundedBarCharts.js"></script>
 
   <script>
-    // Preenche modal com dados do botão
     (function() {
       var modal = document.getElementById('modalEditProdutor');
       if (!modal) return;
 
-      // jQuery está presente no vendor.bundle.base.js
       $('#modalEditProdutor').on('show.bs.modal', function(event) {
         var btn = $(event.relatedTarget);
         $('#edit_id').val(btn.data('id') || '');
@@ -1032,6 +1106,9 @@ try {
         $('#edit_contato').val(btn.data('contato') || '');
         $('#edit_documento').val(btn.data('documento') || '');
         $('#edit_observacao').val(btn.data('observacao') || '');
+        $('#edit_box_numero').val(btn.data('box_numero') || '');
+        $('#edit_setor').val(btn.data('setor') || '');
+        $('#edit_ramo_atividade').val(btn.data('ramo_atividade') || '');
         $('#edit_ativo').val(String(btn.data('ativo') ?? '1'));
 
         var cid = btn.data('comunidade_id');
@@ -1040,13 +1117,15 @@ try {
         }
       });
 
-      // Limpa ao fechar (evita “vazar” dados de um produtor pra outro)
       $('#modalEditProdutor').on('hidden.bs.modal', function() {
         $('#edit_id').val('');
         $('#edit_nome').val('');
         $('#edit_contato').val('');
         $('#edit_documento').val('');
         $('#edit_observacao').val('');
+        $('#edit_box_numero').val('');
+        $('#edit_setor').val('');
+        $('#edit_ramo_atividade').val('');
         $('#edit_ativo').val('1');
         $('#edit_comunidade_id').val('');
       });

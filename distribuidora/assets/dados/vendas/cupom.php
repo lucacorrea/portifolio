@@ -2,12 +2,6 @@
 
 declare(strict_types=1);
 
-/**
- * cupom.php (Cupom Fiscal BÁSICO - 58mm)
- * - Layout mais estreito
- * - Área útil reduzida para caber melhor em bobina 58mm
- */
-
 require_once __DIR__ . '/../../conexao.php';
 
 $pdo = db();
@@ -37,7 +31,7 @@ $itens = $st2->fetchAll(PDO::FETCH_ASSOC) ?: [];
    CONFIG DO EMITENTE
 ========================= */
 $EMIT = [
-  'nome'     => 'DISTRIBUIDORA (NOME FANTASIA)',
+  'nome'     => 'DISTRIBUIDORA PLBH',
   'cnpj'     => '00.000.000/0001-00',
   'ie'       => 'ISENTO',
   'endereco' => 'Rua Exemplo, 123 - Centro - Coari/AM',
@@ -120,7 +114,11 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     :root {
       --page-w: 58mm;
       --content-w: 48mm;
-      /* mais estreito pra sair melhor */
+
+      --pad-top: 2.8mm;
+      --pad-bottom: 3.5mm;
+
+      --fs-8: 8px;
       --fs-9: 9px;
       --fs-10: 10px;
       --fs-11: 11px;
@@ -143,21 +141,24 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       margin: 0;
       padding: 0;
       width: var(--page-w);
+      min-width: var(--page-w);
+      max-width: var(--page-w);
       background: #fff;
       color: #000;
       font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
     }
 
     body {
-      display: flex;
-      justify-content: center;
+      display: block;
     }
 
     .paper {
       width: var(--content-w);
       max-width: var(--content-w);
-      padding: 1.5mm 0 2mm 0;
       margin: 0 auto;
+      padding-top: var(--pad-top);
+      padding-bottom: var(--pad-bottom);
     }
 
     .c {
@@ -174,6 +175,10 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     .b {
       font-weight: 700;
+    }
+
+    .t8 {
+      font-size: var(--fs-8);
     }
 
     .t9 {
@@ -194,14 +199,16 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     .line {
       border-top: 1px dashed #000;
-      margin: 4px 0;
+      margin: 5px 0;
       height: 0;
+      width: 100%;
     }
 
     .line2 {
       border-top: 1px solid #000;
-      margin: 4px 0;
+      margin: 5px 0;
       height: 0;
+      width: 100%;
     }
 
     .wrap {
@@ -211,30 +218,32 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     }
 
     .head-emit .nome {
-      font-size: 11px;
+      font-size: 10.8px;
       font-weight: 700;
-      line-height: 1.15;
+      line-height: 1.2;
       text-transform: uppercase;
     }
 
     .head-emit .sub {
-      font-size: 8.8px;
-      line-height: 1.15;
+      font-size: 8.6px;
+      line-height: 1.2;
+      margin-top: 1px;
     }
 
     .sec-title {
       text-align: center;
-      font-size: 10px;
+      font-size: 9.8px;
       font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: .2px;
     }
 
     .meta div,
     .client div,
     .pay div {
-      font-size: 9px;
-      line-height: 1.2;
-      margin-bottom: 1px;
+      font-size: 8.8px;
+      line-height: 1.25;
+      margin-bottom: 2px;
     }
 
     table {
@@ -245,15 +254,15 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     th,
     td {
-      padding: 1px 0;
+      padding: 2px 0;
       vertical-align: top;
-      font-size: 9px;
-      line-height: 1.15;
+      font-size: 8.8px;
+      line-height: 1.2;
     }
 
     thead th {
       border-bottom: 1px solid #000;
-      padding-bottom: 2px;
+      padding-bottom: 3px;
       font-weight: 700;
     }
 
@@ -262,23 +271,25 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     }
 
     .col-total {
-      width: 13mm;
+      width: 14mm;
     }
 
     .itemname {
-      font-size: 9px;
+      font-size: 8.8px;
       font-weight: 700;
-      line-height: 1.1;
+      line-height: 1.15;
       word-break: break-word;
       overflow-wrap: break-word;
+      padding-right: 2px;
     }
 
     .subline {
-      font-size: 8.5px;
-      line-height: 1.1;
+      font-size: 8.2px;
+      line-height: 1.15;
       color: #111;
       word-break: break-word;
       overflow-wrap: break-word;
+      padding-right: 2px;
     }
 
     .totrow {
@@ -286,39 +297,42 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       justify-content: space-between;
       align-items: flex-start;
       gap: 6px;
-      font-size: 9.5px;
-      line-height: 1.2;
-      margin: 1px 0;
+      font-size: 9.2px;
+      line-height: 1.25;
+      margin: 2px 0;
+      width: 100%;
     }
 
     .totrow .lbl {
       font-weight: 700;
       flex: 1 1 auto;
+      min-width: 0;
     }
 
     .totrow .val {
       font-weight: 700;
       white-space: nowrap;
       text-align: right;
+      flex: 0 0 auto;
     }
 
     .grand {
-      font-size: 11px;
+      font-size: 10.6px;
       font-weight: 700;
     }
 
     .footer-msg {
       text-align: center;
-      font-size: 9px;
-      line-height: 1.2;
-      margin-top: 2px;
+      font-size: 8.8px;
+      line-height: 1.25;
+      margin-top: 4px;
     }
 
     .btns {
       display: flex;
       gap: 6px;
       justify-content: center;
-      margin-top: 8px;
+      margin-top: 10px;
     }
 
     button {
@@ -335,16 +349,19 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
       html,
       body {
-        width: 58mm;
-        min-width: 58mm;
-        max-width: 58mm;
+        width: 58mm !important;
+        min-width: 58mm !important;
+        max-width: 58mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
       .paper {
-        width: 48mm;
-        max-width: 48mm;
-        margin: 0 auto;
-        padding-top: 1mm;
+        width: 48mm !important;
+        max-width: 48mm !important;
+        margin: 0 auto !important;
+        padding-top: 2.8mm !important;
+        padding-bottom: 3.5mm !important;
       }
 
       .btns {
@@ -359,7 +376,7 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     <div class="head-emit c">
       <div class="nome"><?= h($EMIT['nome']) ?></div>
-      <div class="sub">CNPJ: <?= h($EMIT['cnpj']) ?><?= $EMIT['ie'] ? ' • IE: ' . h($EMIT['ie']) : '' ?></div>
+      <div class="sub">CNPJ: <?= h($EMIT['cnpj']) ?></div>
       <div class="sub wrap"><?= h($EMIT['endereco']) ?></div>
       <div class="sub"><?= h($EMIT['fone']) ?></div>
     </div>
@@ -428,9 +445,20 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     <div class="line2"></div>
 
-    <div class="totrow"><span class="lbl">Subtotal</span><span class="val"><?= money($subtotal) ?></span></div>
-    <div class="totrow"><span class="lbl">Desconto</span><span class="val">- <?= money($desconto) ?></span></div>
-    <div class="totrow"><span class="lbl">Taxa Entrega</span><span class="val"><?= money($taxaEnt) ?></span></div>
+    <div class="totrow">
+      <span class="lbl">Subtotal</span>
+      <span class="val"><?= money($subtotal) ?></span>
+    </div>
+
+    <div class="totrow">
+      <span class="lbl">Desconto</span>
+      <span class="val">- <?= money($desconto) ?></span>
+    </div>
+
+    <div class="totrow">
+      <span class="lbl">Taxa Entrega</span>
+      <span class="val"><?= money($taxaEnt) ?></span>
+    </div>
 
     <div class="line2"></div>
 

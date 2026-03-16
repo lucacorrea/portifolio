@@ -130,6 +130,7 @@ define('EMIT_XMUN',    trim((string)($fiscal['cidade'] ?? $fiscal['municipio'] ?
 define('EMIT_UF',      trim((string)($fiscal['uf'] ?? '')));
 define('EMIT_CEP',     so_digitos($fiscal['cep']));
 define('EMIT_CMUN',    (string)($fiscal['codigo_municipio'] ?? ''));
+define('EMIT_FONE',    so_digitos($fiscal['fone'] ?? $fiscal['telefone'] ?? ''));
 define('COD_MUN',      EMIT_CMUN);
 define('COD_UF',       substr(EMIT_CMUN, 0, 2));
 

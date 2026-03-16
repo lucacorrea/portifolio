@@ -3,15 +3,6 @@
 declare(strict_types=1);
 session_start();
 
-/*
-✅ 1) Rode 1x no banco:
-ALTER TABLE produtores ADD COLUMN foto VARCHAR(255) DEFAULT NULL AFTER documento;
-ALTER TABLE produtores ADD COLUMN tipo ENUM('PRODUTOR RURAL','FEIRANTE','MARRETEIRO') NOT NULL DEFAULT 'PRODUTOR RURAL' AFTER nome;
-
-✅ 2) Crie a pasta (se não existir):
-/uploads/produtores
-e dê permissão de escrita no servidor.
-*/
 
 /* Obrigatório estar logado */
 if (empty($_SESSION['usuario_logado'])) {
@@ -27,7 +18,7 @@ if (!in_array('ADMIN', $perfis, true)) {
   exit;
 }
 
-/* Conexão (padrão do seu sistema: db(): PDO) */
+/* Conexão */
 require '../../../assets/php/conexao.php';
 
 function h($s): string
@@ -43,6 +34,14 @@ function trunc255(string $s): string
   return substr($s, 0, 255);
 }
 
+function truncLen(string $s, int $max): string
+{
+  $s = trim($s);
+  if ($s === '') return '';
+  if (function_exists('mb_substr')) return mb_substr($s, 0, $max, 'UTF-8');
+  return substr($s, 0, $max);
+}
+
 function only_digits(string $s): string
 {
   $out = preg_replace('/\D+/', '', $s);
@@ -56,12 +55,13 @@ function ensure_dir(string $absDir): bool
 }
 
 /* Feira padrão desta página */
-$FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa
+$FEIRA_ID = 3; // 1=Feira do Produtor | 2=Feira Alternativa | 3=Mercado Municipal
 
 /* Detecção opcional pela pasta */
 $dirLower = strtolower((string)__DIR__);
 if (strpos($dirLower, 'alternativa') !== false) $FEIRA_ID = 2;
 if (strpos($dirLower, 'produtor') !== false) $FEIRA_ID = 1;
+if (strpos($dirLower, 'mercado') !== false) $FEIRA_ID = 3;
 
 /* Flash */
 $msg = (string)($_SESSION['flash_ok'] ?? '');
@@ -76,13 +76,15 @@ $csrf = (string)$_SESSION['csrf_token'];
 
 $pdo = db();
 
-/* ===== Comunidades (para o SELECT) ===== */
+/* ===== Comunidades / Bairros (para o SELECT agrupado) ===== */
 $comunidades = [];
 try {
-  $sqlC = "SELECT id, nome
+  $sqlC = "SELECT id, nome, tipo
            FROM comunidades
            WHERE feira_id = :feira AND ativo = 1
-           ORDER BY nome ASC";
+           ORDER BY
+             CASE WHEN UPPER(COALESCE(tipo,'')) = 'BAIRRO' THEN 0 ELSE 1 END,
+             nome ASC";
   $stC = $pdo->prepare($sqlC);
   $stC->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
   $stC->execute();
@@ -91,25 +93,36 @@ try {
   $comunidades = [];
 }
 
+/* Separa bairros e comunidades para optgroup */
+$bairrosLista = [];
+$comunidadesLista = [];
+
+foreach ($comunidades as $c) {
+  if (strtoupper((string)($c['tipo'] ?? '')) === 'BAIRRO') {
+    $bairrosLista[] = $c;
+  } else {
+    $comunidadesLista[] = $c;
+  }
+}
+
 /* Valores antigos */
 $old = [
-  'nome'          => '',
-  'tipo'          => 'Mercado Municipal',
-  'documento'     => '',
-  'contato'       => '',
-  'comunidade_id' => '',
-  'ativo'         => '1',
-  'observacao'    => '',
+  'nome'           => '',
+  'documento'      => '',
+  'contato'        => '',
+  'comunidade_id'  => '',
+  'box_numero'     => '',
+  'setor'          => '',
+  'ramo_atividade' => '',
+  'ativo'          => '1',
+  'observacao'     => '',
 ];
 
 /* Upload (base64 da câmera via navegador) */
 $BASE_DIR = realpath(__DIR__ . '/../../../');
-$UPLOAD_REL_DIR = 'uploads/produtores';
+$UPLOAD_REL_DIR = 'uploads/permissionarios';
 $UPLOAD_ABS_DIR = $BASE_DIR ? ($BASE_DIR . DIRECTORY_SEPARATOR . $UPLOAD_REL_DIR) : null;
 $MAX_BASE64_BYTES = 3 * 1024 * 1024; // 3MB em bytes decodificados
-
-/* Tipos válidos */
-$tiposValidos = ['PRODUTOR RURAL', 'FEIRANTE', 'MARRETEIRO'];
 
 /* POST */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -120,30 +133,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  $old['nome']          = trim((string)($_POST['nome'] ?? ''));
-  $old['tipo']          = trim((string)($_POST['tipo'] ?? 'PRODUTOR RURAL'));
-  $old['documento']     = trim((string)($_POST['documento'] ?? ''));
-  $old['contato']       = trim((string)($_POST['contato'] ?? ''));
-  $old['comunidade_id'] = trim((string)($_POST['comunidade_id'] ?? ''));
-  $old['ativo']         = (string)($_POST['ativo'] ?? '1');
-  $old['observacao']    = trim((string)($_POST['observacao'] ?? ''));
-
-  if (!in_array($old['tipo'], $tiposValidos, true)) {
-    $old['tipo'] = 'PRODUTOR RURAL';
-  }
+  $old['nome']           = trim((string)($_POST['nome'] ?? ''));
+  $old['documento']      = trim((string)($_POST['documento'] ?? ''));
+  $old['contato']        = trim((string)($_POST['contato'] ?? ''));
+  $old['comunidade_id']  = trim((string)($_POST['comunidade_id'] ?? ''));
+  $old['box_numero']     = trim((string)($_POST['box_numero'] ?? ''));
+  $old['setor']          = trim((string)($_POST['setor'] ?? ''));
+  $old['ramo_atividade'] = trim((string)($_POST['ramo_atividade'] ?? ''));
+  $old['ativo']          = (string)($_POST['ativo'] ?? '1');
+  $old['observacao']     = trim((string)($_POST['observacao'] ?? ''));
 
   if ($old['nome'] === '') {
-    $err = 'Informe o nome do produtor.';
+    $err = 'Informe o nome do permissionário.';
   } elseif ($old['comunidade_id'] === '' || !ctype_digit($old['comunidade_id'])) {
-    $err = 'Selecione a comunidade do produtor.';
+    $err = 'Selecione a localidade do permissionário.';
   } else {
-    $nome = trunc255($old['nome']);
-    $tipo = $old['tipo'];
-    $contato = trunc255($old['contato']);
+    $nome = truncLen($old['nome'], 160);
+    $contato = truncLen($old['contato'], 60);
+    $boxNumero = truncLen($old['box_numero'], 30);
+    $setor = truncLen($old['setor'], 100);
+    $ramoAtividade = truncLen($old['ramo_atividade'], 120);
 
-    // documento: salva somente dígitos
+    /* documento: salva somente dígitos */
     $docDigits = only_digits($old['documento']);
-    $documento = $docDigits !== '' ? trunc255($docDigits) : null;
+    $documento = $docDigits !== '' ? truncLen($docDigits, 30) : null;
 
     $observacao = trunc255($old['observacao']);
     $ativo = ($old['ativo'] === '1') ? 1 : 0;
@@ -155,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_POST['foto_base64'])) {
       $dataUrl = (string)$_POST['foto_base64'];
 
-      if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl, $m) !== 1) {
+      if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $dataUrl) !== 1) {
         $err = 'Foto inválida (formato não suportado).';
       } else {
         $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
@@ -171,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           if (!ensure_dir($UPLOAD_ABS_DIR)) {
             $err = 'Não foi possível criar a pasta de upload.';
           } else {
-            $fileName = 'produtor_' . bin2hex(random_bytes(10)) . '.jpg';
+            $fileName = 'permissionario_' . bin2hex(random_bytes(10)) . '.jpg';
             $destAbs = $UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . $fileName;
 
             if (@file_put_contents($destAbs, $bin) === false) {
@@ -186,9 +199,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($err === '') {
       try {
-        $chk = $pdo->prepare("SELECT COUNT(*)
-                              FROM comunidades
-                              WHERE id = :id AND feira_id = :feira AND ativo = 1");
+        $chk = $pdo->prepare("
+          SELECT COUNT(*)
+          FROM comunidades
+          WHERE id = :id
+            AND feira_id = :feira
+            AND ativo = 1
+        ");
         $chk->bindValue(':id', $comunidadeId, PDO::PARAM_INT);
         $chk->bindValue(':feira', $FEIRA_ID, PDO::PARAM_INT);
         $chk->execute();
@@ -198,26 +215,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           if ($fotoDbValue) {
             @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
           }
-          $err = 'Comunidade inválida (não encontrada ou inativa).';
+          $err = 'Localidade inválida (não encontrada ou inativa).';
         } else {
-          $sql = "INSERT INTO produtores
-                    (feira_id, nome, tipo, contato, comunidade_id, documento, foto, ativo, observacao)
+          $sql = "INSERT INTO permissionarios
+                    (
+                      feira_id, nome, contato, comunidade_id, documento, foto,
+                      box_numero, setor, ramo_atividade, ativo, observacao
+                    )
                   VALUES
-                    (:feira_id, :nome, :tipo, :contato, :comunidade_id, :documento, :foto, :ativo, :observacao)";
+                    (
+                      :feira_id, :nome, :contato, :comunidade_id, :documento, :foto,
+                      :box_numero, :setor, :ramo_atividade, :ativo, :observacao
+                    )";
           $stmt = $pdo->prepare($sql);
           $stmt->execute([
             ':feira_id'      => $FEIRA_ID,
             ':nome'          => $nome,
-            ':tipo'          => $tipo,
             ':contato'       => ($contato !== '' ? $contato : null),
             ':comunidade_id' => $comunidadeId,
             ':documento'     => $documento,
             ':foto'          => $fotoDbValue,
+            ':box_numero'    => ($boxNumero !== '' ? $boxNumero : null),
+            ':setor'         => ($setor !== '' ? $setor : null),
+            ':ramo_atividade' => ($ramoAtividade !== '' ? $ramoAtividade : null),
             ':ativo'         => $ativo,
             ':observacao'    => ($observacao !== '' ? $observacao : null),
           ]);
 
-          $_SESSION['flash_ok'] = 'Produtor cadastrado com sucesso!';
+          $_SESSION['flash_ok'] = 'Permissionário cadastrado com sucesso!';
           header('Location: ./listaProdutor.php');
           exit;
         }
@@ -225,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($fotoDbValue && $UPLOAD_ABS_DIR) {
           @unlink($UPLOAD_ABS_DIR . DIRECTORY_SEPARATOR . basename($fotoDbValue));
         }
-        $err = 'Erro ao salvar produtor: ' . $e->getMessage();
+        $err = 'Erro ao salvar permissionário: ' . $e->getMessage();
       }
     }
   }
@@ -237,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>SIGRelatórios Feira do Produtor — Adicionar Produtor</title>
+  <title>SIGRelatórios Feira do Produtor — Adicionar Permissionário</title>
 
   <link rel="stylesheet" href="../../../vendors/feather/feather.css">
   <link rel="stylesheet" href="../../../vendors/ti-icons/css/themify-icons.css">
@@ -365,7 +390,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
-  <!-- NAVBAR -->
   <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
     <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
       <a class="navbar-brand brand-logo mr-5" href="index.php">SIGRelatórios</a>
@@ -390,7 +414,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <div class="container-fluid page-body-wrapper">
 
-    <!-- settings-panel (mantido) -->
     <div id="right-sidebar" class="settings-panel">
       <i class="settings-close ti-close"></i>
       <ul class="nav nav-tabs border-top" id="setting-panel" role="tablist">
@@ -403,7 +426,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </ul>
     </div>
 
-    <!-- SIDEBAR -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
       <ul class="nav">
 
@@ -458,7 +480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               </li>
 
               <li class="nav-item active">
-                <a class="nav-link" href="./adicionarProdutor.php" style="color:white !important; background: #231475C5 !important;">
+                <a class="nav-link" href="./adicionarPermissionario.php" style="color:white !important; background: #231475C5 !important;">
                   <i class="ti-plus mr-2"></i> Adicionar Permissionário
                 </a>
               </li>
@@ -522,7 +544,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </li>
 
-        <!-- Título DIVERSOS -->
         <li class="nav-item" style="pointer-events:none;">
           <span style="
                   display:block;
@@ -537,7 +558,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </span>
         </li>
 
-        <!-- Linha abaixo do título -->
         <li class="nav-item">
           <a class="nav-link" href="../index.php">
             <i class="ti-home menu-icon"></i>
@@ -548,18 +568,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <a href="../produtor/" class="nav-link">
             <i class="ti-shopping-cart menu-icon"></i>
             <span class="menu-title">Feira do Produtor</span>
-
           </a>
         </li>
         <li class="nav-item">
           <a href="../alternativa/" class="nav-link">
             <i class="ti-shopping-cart menu-icon"></i>
             <span class="menu-title">Feira Alternativa</span>
-
           </a>
         </li>
         <li class="nav-item">
-
           <a class="nav-link" href="https://wa.me/92991515710" target="_blank">
             <i class="ti-headphone-alt menu-icon"></i>
             <span class="menu-title">Suporte</span>
@@ -574,8 +591,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="row">
           <div class="col-12 mb-3">
-            <h3 class="font-weight-bold">Adicionar Produtor</h3>
-            <h6 class="font-weight-normal mb-0">Cadastro de produtor/feirante/marreteiro.</h6>
+            <h3 class="font-weight-bold">Adicionar Permissionário</h3>
+            <h6 class="font-weight-normal mb-0">Cadastro de permissionário do mercado/feira.</h6>
           </div>
         </div>
 
@@ -593,13 +610,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="card-title-row">
                   <div>
-                    <h4 class="card-title mb-0">Dados do Produtor</h4>
+                    <h4 class="card-title mb-0">Dados do Permissionário</h4>
                     <p class="card-description mb-0">
-                      Comunidade é obrigatória e vem do cadastro de comunidades.
+                      Localidade é obrigatória e vem do cadastro de comunidades.
                       <span class="req-badge">Obrigatório</span>
                     </p>
                   </div>
-                  <a href="./listaProdutor.php" class="btn btn-light btn-sm">
+                  <a href="./listaPermissionario.php" class="btn btn-light btn-sm">
                     <i class="ti-arrow-left"></i> Voltar
                   </a>
                 </div>
@@ -607,7 +624,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if (empty($comunidades)): ?>
                   <div class="alert alert-warning mt-3">
                     Nenhuma comunidade ativa cadastrada para esta feira.
-                    Cadastre comunidades primeiro para poder cadastrar produtores.
+                    Cadastre comunidades primeiro para poder cadastrar permissionários.
                   </div>
                 <?php endif; ?>
 
@@ -622,7 +639,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="row">
                       <div class="col-12 col-lg-6 mb-3">
-                        <label>Nome do produtor <span class="text-danger">*</span></label>
+                        <label>Nome do permissionário <span class="text-danger">*</span></label>
                         <input
                           name="nome"
                           type="text"
@@ -630,31 +647,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           placeholder="Ex.: João Batista da Silva"
                           required
                           value="<?= h($old['nome']) ?>">
-                        <small class="text-muted help-hint">Nome completo ou como é conhecido na feira.</small>
-                      </div>
-
-                      <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Função <span class="text-danger">*</span></label>
-                        <select name="tipo" class="form-control" required>
-                          <option value="PRODUTOR RURAL" <?= $old['tipo'] === 'PRODUTOR RURAL' ? 'selected' : '' ?>>Produtor Rural</option>
-                          <option value="FEIRANTE" <?= $old['tipo'] === 'FEIRANTE' ? 'selected' : '' ?>>Feirante</option>
-                          <option value="MARRETEIRO" <?= $old['tipo'] === 'MARRETEIRO' ? 'selected' : '' ?>>Marreteiro</option>
-                        </select>
-                        <small class="text-muted help-hint">Informe a função do cadastrado.</small>
+                        <small class="text-muted help-hint">Nome completo ou como é conhecido.</small>
                       </div>
 
                       <div class="col-12 col-md-6 col-lg-3 mb-3">
                         <label>CPF / Documento</label>
                         <input
                           name="documento"
-                          type="number"
+                          type="text"
                           class="form-control"
                           placeholder="Somente números"
                           inputmode="numeric"
-                          min="0"
-                          step="1"
                           value="<?= h($old['documento']) ?>">
-                        <small class="text-muted help-hint">Opcional (salvo em <b>produtores.documento</b>).</small>
+                        <small class="text-muted help-hint">Opcional.</small>
                       </div>
 
                       <div class="col-12 col-md-6 col-lg-3 mb-3">
@@ -665,11 +670,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           class="form-control"
                           placeholder="Ex.: 92991112222"
                           value="<?= h($old['contato']) ?>">
-                        <small class="text-muted help-hint">Opcional (salvo em <b>produtores.contato</b>).</small>
+                        <small class="text-muted help-hint">Opcional.</small>
+                      </div>
+
+                      <div class="col-12 col-md-6 col-lg-3 mb-3">
+                        <label>Nº do Box</label>
+                        <input
+                          name="box_numero"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: B-12"
+                          value="<?= h($old['box_numero']) ?>">
+                        <small class="text-muted help-hint">Opcional.</small>
+                      </div>
+
+                      <div class="col-12 col-md-6 col-lg-3 mb-3">
+                        <label>Setor</label>
+                        <input
+                          name="setor"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: Hortifruti"
+                          value="<?= h($old['setor']) ?>">
+                        <small class="text-muted help-hint">Opcional.</small>
                       </div>
 
                       <div class="col-12 col-lg-6 mb-3">
-                        <label>Foto do produtor (câmera)</label>
+                        <label>Ramo de atividade</label>
+                        <input
+                          name="ramo_atividade"
+                          type="text"
+                          class="form-control"
+                          placeholder="Ex.: Venda de verduras e legumes"
+                          value="<?= h($old['ramo_atividade']) ?>">
+                        <small class="text-muted help-hint">Opcional.</small>
+                      </div>
+
+                      <div class="col-12 col-lg-6 mb-3">
+                        <label>Foto do permissionário (câmera)</label>
 
                         <div class="cam-box">
                           <video id="cameraVideo" autoplay playsinline></video>
@@ -693,7 +731,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
 
                         <small class="text-muted help-hint d-block mt-1">
-                          A foto é comprimida em JPEG antes de enviar (bem mais leve).
+                          A foto é comprimida em JPEG antes de enviar.
                         </small>
                       </div>
                     </div>
@@ -701,32 +739,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                   <div class="form-section">
                     <div class="section-title">
-                      <i class="ti-map-alt"></i> Comunidade
+                      <i class="ti-map-alt"></i> Localidade
                     </div>
 
                     <div class="row">
                       <div class="col-12 col-lg-6 mb-3">
-                        <label>Comunidade <span class="text-danger">*</span></label>
+                        <label>Localidade <span class="text-danger">*</span></label>
+
                         <select
                           name="comunidade_id"
                           class="form-control"
                           <?= empty($comunidades) ? 'disabled' : 'required' ?>>
+
                           <option value="">Selecione</option>
-                          <?php foreach ($comunidades as $c): ?>
-                            <option
-                              value="<?= (int)$c['id'] ?>"
-                              <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
-                              <?= h($c['nome']) ?>
-                            </option>
-                          <?php endforeach; ?>
+
+                          <?php if (!empty($bairrosLista)): ?>
+                            <optgroup label="Bairros">
+                              <?php foreach ($bairrosLista as $b): ?>
+                                <option
+                                  value="<?= (int)$b['id'] ?>"
+                                  <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$b['id']) ? 'selected' : '' ?>>
+                                  <?= h($b['nome']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </optgroup>
+                          <?php endif; ?>
+
+                          <?php if (!empty($comunidadesLista)): ?>
+                            <optgroup label="Comunidades">
+                              <?php foreach ($comunidadesLista as $c): ?>
+                                <option
+                                  value="<?= (int)$c['id'] ?>"
+                                  <?= ($old['comunidade_id'] !== '' && (int)$old['comunidade_id'] === (int)$c['id']) ? 'selected' : '' ?>>
+                                  <?= h($c['nome']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </optgroup>
+                          <?php endif; ?>
+
                         </select>
+
                         <small class="text-muted help-hint">
-                          Vem da tabela <b>comunidades</b> (feira_id = <?= (int)$FEIRA_ID ?>, ativo=1).
+                          Selecione o bairro ou a comunidade de origem.
                         </small>
                       </div>
 
                       <div class="col-12 col-md-6 col-lg-3 mb-3">
-                        <label>Status</label>
+                        <label>Status geral</label>
                         <select name="ativo" class="form-control">
                           <option value="1" <?= ($old['ativo'] === '1' ? 'selected' : '') ?>>Ativo</option>
                           <option value="0" <?= ($old['ativo'] === '0' ? 'selected' : '') ?>>Inativo</option>
@@ -740,7 +799,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           name="observacao"
                           class="form-control"
                           rows="4"
-                          placeholder="Ex.: produtor de farinha tradicional, entrega na sexta..."><?= h($old['observacao']) ?></textarea>
+                          placeholder="Ex.: trabalha no box 12, documentação pendente..."><?= h($old['observacao']) ?></textarea>
                         <small class="text-muted help-hint">Opcional (até 255 caracteres).</small>
                       </div>
                     </div>
