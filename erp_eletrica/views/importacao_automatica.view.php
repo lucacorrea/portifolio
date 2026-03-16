@@ -7,7 +7,7 @@
             <p class="text-muted small mb-0">Notas Fiscais emitidas para o seu CNPJ via Certificado A1</p>
         </div>
         <div class="col-auto">
-            <?php if (in_array($_SESSION['usuario_nivel'], ['master', 'admin'])): ?>
+            <?php if (in_array($_SESSION['usuario_nivel'], ['master', 'admin']) && ($_SESSION['is_matriz'] ?? false)): ?>
                 <a href="importar_automatico.php?action=config" class="btn btn-outline-secondary fw-bold me-2">
                     <i class="fas fa-cog me-2"></i>CONFIGURAÇÕES GLOBAIS
                 </a>
