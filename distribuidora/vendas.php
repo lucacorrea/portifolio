@@ -5,7 +5,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/assets/auth/auth.php';
 auth_require('index.php');
 
-
 if (function_exists('ob_start')) {
   @ob_start();
 }
@@ -30,6 +29,31 @@ function json_out(array $data, int $code = 200): void
   exit;
 }
 
+function fmtDateTimeBR(?string $v): string
+{
+  $v = trim((string)$v);
+  if ($v === '') return '—';
+
+  if (preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:\s+|T)?(\d{2})?:?(\d{2})?:?(\d{2})?/', $v, $m)) {
+    $data = $m[3] . '/' . $m[2] . '/' . $m[1];
+    $hh   = $m[4] ?? null;
+    $ii   = $m[5] ?? null;
+    $ss   = $m[6] ?? null;
+
+    if ($hh !== null && $ii !== null) {
+      return $data . ' ' . $hh . ':' . $ii . ($ss !== null ? ':' . $ss : '');
+    }
+
+    return $data;
+  }
+
+  try {
+    return (new DateTime($v))->format('d/m/Y H:i:s');
+  } catch (Throwable $e) {
+    return $v;
+  }
+}
+
 /* =========================
    ENDPOINT INTERNO (AJAX)
    - só pra "ultimasVendas"
@@ -49,7 +73,7 @@ if (isset($_GET['ajax'])) {
       $items = array_map(static function (array $r): array {
         return [
           'id'    => (int)($r['id'] ?? 0),
-          'date'  => (string)($r['created_at'] ?? ''),
+          'date'  => fmtDateTimeBR((string)($r['created_at'] ?? '')),
           'total' => (float)($r['total'] ?? 0),
           'canal' => (string)($r['canal'] ?? ''),
         ];
@@ -1062,7 +1086,7 @@ function fmtMoney($v): string
                           <div class="cup" style="cursor:pointer;" data-id="<?= (int)$s['id'] ?>" title="Clique para imprimir">
                             <div class="left">
                               <div class="n">Venda #<?= (int)$s['id'] ?></div>
-                                <div class="s"><?= e(date('d/m/Y H:i', strtotime($s['created_at']))) ?></div>
+                              <div class="s"><?= e(fmtDateTimeBR((string)($s['created_at'] ?? ''))) ?></div>
                             </div>
                             <div class="right">
                               <div class="v"><?= e(fmtMoney((float)$s['total'])) ?></div>
@@ -1131,6 +1155,32 @@ function fmtMoney($v): string
     function numberToMoney(n) {
       const v = Number(n || 0);
       return "R$ " + v.toFixed(2).replace(".", ",");
+    }
+
+    function fmtDateTimeBR(dt) {
+      if (!dt) return "—";
+
+      const s = String(dt).trim();
+
+      if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+        return s;
+      }
+
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+      if (m) {
+        const data = `${m[3]}/${m[2]}/${m[1]}`;
+        const hh = m[4];
+        const ii = m[5];
+        const ss = m[6];
+
+        if (hh && ii) {
+          return `${data} ${hh}:${ii}${ss ? ':' + ss : ''}`;
+        }
+
+        return data;
+      }
+
+      return s;
     }
 
     // HORÁRIO DO DISPOSITIVO
@@ -1623,7 +1673,7 @@ function fmtMoney($v): string
           <div class="cup" style="cursor:pointer;" data-id="${Number(s.id)}" title="Clique para imprimir">
             <div class="left">
               <div class="n">Venda #${Number(s.id)}</div>
-              <div class="s">${safeText(s.date || "")}</div>
+              <div class="s">${safeText(fmtDateTimeBR(s.date || ""))}</div>
             </div>
             <div class="right">
               <div class="v">${numberToMoney(s.total || 0)}</div>
