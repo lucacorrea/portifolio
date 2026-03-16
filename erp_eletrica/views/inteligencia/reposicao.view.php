@@ -3,7 +3,7 @@
     <div class="col-md-6 mb-3">
         <div class="card border-start border-4 border-warning shadow-sm">
             <div class="card-body d-flex align-items-center">
-                <div class="flex-shrink-0 bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                <div class="flex-shrink-0 bg-warning text-black rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
                 <div class="ms-3 flex-grow-1">

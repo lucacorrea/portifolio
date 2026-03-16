@@ -57,7 +57,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-primary border-0 h-100 bg-primary text-white">
+            <div class="card border-primary border-0 h-100 bg-primary text-black">
                 <div class="card-body">
                     <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual (Dinheiro)</div>
                     <h3 class="mb-0 fw-bold">
