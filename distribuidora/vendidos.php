@@ -565,6 +565,15 @@ function fetch_initial_result(): array
     ];
 }
 
+function fmtDate(string $iso): string
+{
+    if ($iso === '') return '—';
+    $s = substr($iso, 0, 10);
+    $p = explode('-', $s);
+    if (count($p) === 3) return "{$p[2]}/{$p[1]}/{$p[0]}";
+    return $iso;
+}
+
 function render_table_rows(array $rows): string
 {
     if (!$rows) {
@@ -615,7 +624,7 @@ function render_table_rows(array $rows): string
             <tr>
                 <td class="td-nowrap"><b>#' . $id . '</b></td>
                 <td>
-                    <div class="mini">' . e((string)$data) . '</div>
+                    <div class="mini">' . fmtDate($data) . '</div>
                     <div class="muted2">' . e((string)$createdAt) . '</div>
                 </td>
                 <td>
