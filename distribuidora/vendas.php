@@ -984,7 +984,7 @@ function fmtMoney($v): string
                         </select>
                       </div>
                       <div class="col-7">
-                        <input class="form-control compact" id="dValor" placeholder="0" value="0" />
+                        <input class="form-control compact" id="dValor" placeholder="0" />
                       </div>
                     </div>
                     <div class="muted mt-1">Desconto aplicado no subtotal (antes da taxa).</div>
