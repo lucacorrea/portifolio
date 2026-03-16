@@ -341,7 +341,7 @@
 <div class="modal fade" id="modalCompleteClient" data-bs-backdrop="static" tabindex="-1" style="z-index: 1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white border-0">
+            <div class="modal-header bg-primary text-black border-0">
                 <h6 class="modal-title fw-bold"><i class="fas fa-user-edit me-2"></i>Completar Cadastro para Fiado</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -604,7 +604,7 @@ function renderCustomerSearchResults(clients, term = '') {
 
     if (isDoc) {
         const avulsoBtn = document.createElement('button');
-        avulsoBtn.className = 'list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center bg-primary text-white shadow';
+        avulsoBtn.className = 'list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center bg-primary text-black shadow';
         avulsoBtn.innerHTML = `
             <div>
                 <div class="fw-bold">IDENTIFICAR CONSUMIDOR</div>

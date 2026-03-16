@@ -1,12 +1,12 @@
 :root {
     /* Dark Modern Palette (Neutral Black) */
-    --erp-primary: #c79802;
-    /* Gold Ouro Escuro */
-    --erp-primary-hover: #a67f02;
+    --erp-primary: #FFC107;
+    /* Vibrant Yellow */
+    --erp-primary-hover: #FFB300;
     --erp-secondary: #141414;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
-    --erp-warning: #c79802;
+    --erp-warning: #FFC107;
     --erp-dark: #0a0a0a;
     --erp-light: #141414;
     --erp-glass: rgba(10, 10, 10, 0.8);
@@ -17,8 +17,8 @@
     --primary-hover: var(--erp-primary-hover);
     --secondary-color: var(--erp-secondary);
     --border: #262626;
-    --text-primary: #f8fafc !important;
-    --text-secondary: #a3a3a3 !important;
+    --text-primary: #f8fafc;
+    --text-secondary: #a3a3a3;
 
     --radius-sm: 4px;
     --radius-md: 8px;
@@ -32,12 +32,12 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #c79802;
-    --bs-primary-rgb: 199, 152, 2;
-    --bs-link-color: #c79802;
-    --bs-link-hover-color: #a67f02;
+    --bs-primary: #FFC107;
+    --bs-primary-rgb: 255, 193, 7;
+    --bs-link-color: #FFC107;
+    --bs-link-hover-color: #FFB300;
     --bs-body-bg: #0a0a0a;
-    --bs-warning: #c79802;
+    --bs-warning: #FFC107;
     --bs-body-color: #f8fafc;
 }
 
@@ -227,16 +227,17 @@ body {
 
 /* Bootstrap 5 Theme Overrides */
 .btn-primary {
-    background-color: var(--erp-primary);
-    border-color: var(--erp-primary);
-    color: #000;
+    background-color: #0a0a0a !important;
+    border: 1px solid #FFC107 !important;
+    color: #fff !important;
+    transition: all 0.2s ease-in-out !important;
 }
 
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active {
-    background-color: var(--erp-primary-hover) !important;
-    border-color: var(--erp-primary-hover) !important;
+    background-color: #FFC107 !important;
+    border-color: #FFC107 !important;
     color: #000 !important;
 }
 
@@ -245,9 +246,12 @@ body {
     border-color: var(--erp-primary);
 }
 
-.btn-outline-primary:hover {
-    background-color: var(--erp-primary);
-    color: #000;
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active {
+    background-color: #FFC107 !important;
+    border-color: #FFC107 !important;
+    color: #000 !important;
 }
 
 /* List Groups & Tables */
@@ -300,9 +304,9 @@ body {
 }
 
 .erp-user-badge {
-    background: rgba(199, 152, 2, 0.15) !important;
-    color: #c79802 !important;
-    border: 1px solid rgba(199, 152, 2, 0.3) !important;
+    background: rgba(255, 193, 7, 0.15) !important;
+    color: #FFC107 !important;
+    border: 1px solid rgba(255, 193, 7, 0.3) !important;
     padding: 0.4em 0.8em !important;
     font-weight: 700 !important;
     letter-spacing: 0.5px;
@@ -356,15 +360,17 @@ body {
 }
 
 /* Specific fix for cashier, sales and modals */
-.bg-light,
-.bg-light *,
+/* Neutralize aggressive global color overrides */
 .modal-body,
 .modal-body *,
-.list-group-item,
-.list-group-item *,
 .card-body,
 .card-body * {
     color: var(--text-primary);
+}
+
+/* Force buttons to ignore the above */
+.btn {
+    color: inherit;
 }
 
 .list-group-item {
@@ -373,7 +379,7 @@ body {
 }
 
 .text-black {
-    color: #f8fafc !important;
+    color: #000 !important;
 }
 
 /* Animations Disabled */
@@ -491,44 +497,45 @@ h6 {
 
 /* Bootstrap Warning Overrides in corporate.css */
 .btn-warning {
-    --bs-btn-bg: #c79802 !important;
-    --bs-btn-border-color: #c79802 !important;
-    --bs-btn-hover-bg: #a67f02 !important;
-    --bs-btn-hover-border-color: #a67f02 !important;
-    --bs-btn-active-bg: #a67f02 !important;
-    --bs-btn-active-border-color: #a67f02 !important;
-    --bs-btn-disabled-bg: #c79802 !important;
-    --bs-btn-disabled-border-color: #c79802 !important;
-    color: #000 !important;
+    --bs-btn-bg: #0a0a0a !important;
+    --bs-btn-border-color: #FFC107 !important;
+    --bs-btn-hover-bg: #FFC107 !important;
+    --bs-btn-hover-border-color: #FFC107 !important;
+    --bs-btn-active-bg: #FFC107 !important;
+    --bs-btn-active-border-color: #FFC107 !important;
+    --bs-btn-disabled-bg: #0a0a0a !important;
+    --bs-btn-disabled-border-color: #FFC107 !important;
+    color: #fff !important;
+    transition: all 0.2s ease-in-out !important;
 }
 
 .btn-warning:hover,
 .btn-warning:focus,
 .btn-warning:active {
-    background-color: #a67f02 !important;
-    border-color: #a67f02 !important;
+    background-color: #FFC107 !important;
+    border-color: #FFC107 !important;
     color: #000 !important;
     box-shadow: none !important;
 }
 
 .text-warning {
-    color: #c79802 !important;
+    color: #FFC107 !important;
 }
 
 .border-warning {
-    border-color: #c79802 !important;
+    border-color: #FFC107 !important;
 }
 
 .bg-warning {
-    background-color: #c79802 !important;
+    background-color: #FFC107 !important;
 }
 
 .bg-opacity-10.text-warning {
-    background-color: rgba(199, 152, 2, 0.1) !important;
+    background-color: rgba(255, 193, 7, 0.1) !important;
 }
 
 .border-start.border-warning {
-    border-left-color: #c79802 !important;
+    border-left-color: #FFC107 !important;
 }
 
 /* File Input Styling */
@@ -573,7 +580,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .alert-warning {
-    background-color: rgba(212, 175, 55, 0.15) !important;
+    background-color: rgba(255, 193, 7, 0.15) !important;
     color: #ffd75e !important;
 }
 
@@ -607,9 +614,9 @@ input[type="file"]::file-selector-button:hover {
 
 /* Table Multi-state Clean-up (Dark Mode) */
 .table-warning {
-    --bs-table-bg: rgba(199, 152, 2, 0.15) !important;
+    --bs-table-bg: rgba(255, 193, 7, 0.15) !important;
     --bs-table-color: #f8fafc !important;
-    --bs-table-border-color: rgba(199, 152, 2, 0.25) !important;
+    --bs-table-border-color: rgba(255, 193, 7, 0.25) !important;
 }
 
 .table-danger {
@@ -625,7 +632,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .table-hover tbody tr.table-warning:hover td {
-    background-color: rgba(199, 152, 2, 0.22) !important;
+    background-color: rgba(255, 193, 7, 0.22) !important;
 }
 
 .table-hover tbody tr.table-danger:hover td {

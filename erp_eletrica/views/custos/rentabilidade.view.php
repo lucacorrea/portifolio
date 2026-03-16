@@ -16,7 +16,7 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card border-primary border-0 shadow-sm h-100 bg-primary text-white">
+        <div class="card border-primary border-0 shadow-sm h-100 bg-primary text-black">
             <div class="card-body p-4">
                 <div class="text-white-50 small fw-bold text-uppercase mb-2">Lucro Operacional Estimado</div>
                 <h2 class="fw-bold mb-0"><?= formatarMoeda($lucro ?? 0) ?></h2>

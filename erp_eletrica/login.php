@@ -80,14 +80,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="style.css?v=3.8">
-    <link rel="stylesheet" href="public/css/corporate.css?v=3.8">
+    <link rel="stylesheet" href="style.css?v=4.9">
+    <link rel="stylesheet" href="public/css/corporate.css?v=4.9">
     <style>
         :root {
             --login-bg: #0a0a0a;
             --card-bg: #141414;
-            --accent-gold: #c79802;
-            --accent-hover: #a67f02;
+            --accent-gold: #FFC107;
+            --accent-hover: #FFB300;
             --input-bg: #0d0d0d;
             --border-color: #262626;
         }
@@ -209,8 +209,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         .btn-login:hover {
-            background: var(--accent-hover);
+            background: #0a0a0a !important;
+            border: 2px solid #FFC107 !important;
             transform: translateY(-1px);
+            color: #fff !important;
         }
 
         .alert {

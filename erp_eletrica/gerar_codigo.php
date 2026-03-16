@@ -44,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         :root {
             --login-bg: #0a0a0a;
             --card-bg: #141414;
-            --accent-gold: #c79802;
-            --accent-hover: #a67f02;
+            --accent-gold: #FFC107;
+            --accent-hover: #FFB300;
             --input-bg: #0d0d0d;
             --border-color: #262626;
         }
@@ -137,12 +137,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             text-transform: uppercase;
             letter-spacing: 1px;
             padding: 14px !important;
-            transition: all 0.2s !important;
+            transition: all 0.2s ease-in-out !important;
         }
 
         .btn-primary:hover {
-            background-color: var(--accent-hover) !important;
+            background-color: #0a0a0a !important;
+            border-color: #FFC107 !important;
             transform: translateY(-1px);
+            color: #fff !important;
         }
 
         .btn-outline-primary {
@@ -153,8 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
 
         .btn-outline-primary:hover {
-            background-color: var(--accent-gold) !important;
-            color: #000 !important;
+            background-color: #0a0a0a !important;
+            border-color: #FFC107 !important;
+            color: #fff !important;
         }
 
         .alert {

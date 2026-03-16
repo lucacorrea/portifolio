@@ -12,8 +12,8 @@
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="public/css/corporate.css?v=4.8">
-    <link rel="stylesheet" href="style.css?v=4.8">
+    <link rel="stylesheet" href="public/css/corporate.css?v=5.5">
+    <link rel="stylesheet" href="style.css?v=5.5">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -42,7 +42,7 @@
                     </div>
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
-                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                            <div class="bg-primary text-black rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
                                 <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
                             </div>
                         </a>

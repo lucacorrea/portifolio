@@ -56,7 +56,7 @@
 
     <!-- Info/Help Column -->
     <div class="col-lg-4">
-        <div class="card border-0 shadow-sm mb-4 bg-primary text-white">
+        <div class="card border-0 shadow-sm mb-4 bg-primary text-black">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3"><i class="fas fa-info-circle me-2"></i>Dica do Sistema</h6>
                 <p class="small opacity-75 mb-0">

@@ -1,7 +1,7 @@
 <div class="row g-4 mb-4">
     <!-- Consolidated KPI Cards -->
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-primary text-white">
+        <div class="card border-0 shadow-sm bg-primary text-black">
             <div class="card-body">
                 <h6 class="text-white-50 small text-uppercase fw-bold">Unidades Ativas</h6>
                 <h3 class="fw-bold mb-0"><?= count($branches) ?></h3>
