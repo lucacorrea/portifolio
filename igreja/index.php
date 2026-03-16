@@ -33,6 +33,7 @@ $porArea = $pdo->query("
 ?>
 
 <link rel="stylesheet" href="./assets/css/style.css">
+<?php include 'includes/header.php'; ?>
 
 <div class="dashboard-wrapper">
 
