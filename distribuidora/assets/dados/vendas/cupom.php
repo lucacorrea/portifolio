@@ -320,7 +320,7 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
         width: 58mm !important;
         min-width: 58mm !important;
         max-width: 58mm !important;
-        zoom: 115% !important;
+        zoom: 110% !important;
         margin: 0 !important;
         padding: 0 !important;
       }
