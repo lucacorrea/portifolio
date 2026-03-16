@@ -1062,7 +1062,7 @@ function fmtMoney($v): string
                           <div class="cup" style="cursor:pointer;" data-id="<?= (int)$s['id'] ?>" title="Clique para imprimir">
                             <div class="left">
                               <div class="n">Venda #<?= (int)$s['id'] ?></div>
-                              <div class="s"><?= e((string)$s['created_at']) ?></div>
+                                <div class="s"><?= e(date('d/m/Y H:i', strtotime($s['created_at']))) ?></div>
                             </div>
                             <div class="right">
                               <div class="v"><?= e(fmtMoney((float)$s['total'])) ?></div>
