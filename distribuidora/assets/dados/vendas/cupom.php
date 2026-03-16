@@ -32,7 +32,7 @@ $itens = $st2->fetchAll(PDO::FETCH_ASSOC) ?: [];
    CONFIG DO EMITENTE
 ========================= */
 $EMIT = [
-  'nome'     => 'DISTRIBUIDORA (NOME FANTASIA)',
+  'nome'     => 'DISTRIBUIDORA PLBH',
   'cnpj'     => '00.000.000/0001-00',
   'ie'       => 'ISENTO',
   'endereco' => 'Rua Exemplo, 123 - Centro - Coari/AM',
@@ -373,7 +373,7 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     <div class="head-emit c">
       <div class="nome"><?= h($EMIT['nome']) ?></div>
-      <div class="sub">CNPJ: <?= h($EMIT['cnpj']) ?><?= $EMIT['ie'] ? ' • IE: ' . h($EMIT['ie']) : '' ?></div>
+      <div class="sub">CNPJ: <?= h($EMIT['cnpj']) ?></div>
       <div class="sub wrap"><?= h($EMIT['endereco']) ?></div>
       <div class="sub"><?= h($EMIT['fone']) ?></div>
     </div>
