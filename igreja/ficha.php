@@ -39,7 +39,7 @@ $cep = trim((string)($m['cep'] ?? ''));
 $telefone = trim((string)($m['telefone'] ?? ''));
 
 $fotoSistema = !empty($m['foto']) ? 'uploads/' . $m['foto'] : '';
-$logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√°rio
+$logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -50,6 +50,11 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
 <style>
     * { box-sizing: border-box; }
 
+    @page {
+        size: A4 portrait;
+        margin: 8mm;
+    }
+
     body {
         margin: 0;
         background: #ececec;
@@ -58,16 +63,17 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
     }
 
     .page-wrap {
-        max-width: 1020px;
-        margin: 14px auto;
-        padding: 0 8px;
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        padding: 8px;
     }
 
     .no-print {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         gap: 10px;
     }
 
@@ -76,9 +82,9 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
         border: 1px solid #333;
         background: #fff;
         color: #111;
-        padding: 9px 14px;
+        padding: 8px 12px;
         text-decoration: none;
-        font-size: 14px;
+        font-size: 13px;
         border-radius: 6px;
         cursor: pointer;
     }
@@ -89,27 +95,30 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
     }
 
     .sheet {
+        width: 194mm;
+        min-height: 279mm;
         background: #fff;
         border: 1px solid #b7b7b7;
-        padding: 12px 16px 18px;
+        padding: 8px 10px 10px;
+        margin: 0 auto;
+        overflow: hidden;
     }
 
     .top-header {
         position: relative;
         text-align: center;
-        padding-top: 4px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #8f8f8f;
-        margin-bottom: 10px;
-        min-height: 86px;
+        padding: 2px 0 7px;
+        border-bottom: 1px solid #8f8f8f;
+        margin-bottom: 8px;
+        min-height: 68px;
     }
 
     .top-logo {
         position: absolute;
         left: 0;
         top: 0;
-        width: 93px;
-        height: 82px;
+        width: 74px;
+        height: 66px;
         border: 1px solid #8f8f8f;
         overflow: hidden;
         background: #fff;
@@ -124,85 +133,87 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
     .church-title {
         margin: 0;
         font-family: "Times New Roman", Georgia, serif;
-        font-size: 33px;
+        font-size: 23px;
         font-weight: 700;
         color: #5d5d5d;
-        letter-spacing: .4px;
         text-transform: uppercase;
         line-height: 1.05;
+        letter-spacing: .2px;
+    }
+
+    .church-sub,
+    .church-cnpj {
+        color: #5f5f5f;
+        font-weight: 700;
+        line-height: 1.1;
     }
 
     .church-sub {
-        margin-top: 8px;
-        font-size: 17px;
-        color: #5f5f5f;
-        font-weight: 600;
+        margin-top: 5px;
+        font-size: 12px;
     }
 
     .church-cnpj {
-        margin-top: 6px;
-        font-size: 18px;
-        color: #5f5f5f;
-        font-weight: 700;
+        margin-top: 3px;
+        font-size: 13px;
     }
 
     .main-grid {
         display: grid;
-        grid-template-columns: 130px 1fr;
-        gap: 14px;
+        grid-template-columns: 108px 1fr;
+        gap: 10px;
         align-items: start;
     }
 
     .photo-box {
         border: 1px solid #8f8f8f;
-        min-height: 195px;
+        height: 160px;
         text-align: center;
-        padding: 10px 8px;
+        padding: 8px 6px;
     }
 
     .photo-box .placeholder {
-        margin-top: 44px;
-        font-size: 18px;
+        margin-top: 32px;
+        font-size: 15px;
         color: #666;
         font-weight: 700;
-        line-height: 1.8;
+        line-height: 1.6;
     }
 
     .photo-box img {
-        width: 100%;
-        max-width: 112px;
-        height: 145px;
+        width: 92px;
+        height: 122px;
         object-fit: cover;
-        margin-top: 8px;
+        margin-top: 6px;
         border: 1px solid #999;
         background: #fafafa;
     }
 
     .main-content {
-        padding-top: 2px;
+        padding-top: 1px;
     }
 
     .form-title {
-        margin: 4px 0 10px;
+        margin: 2px 0 6px;
         text-align: center;
         font-family: Georgia, "Times New Roman", serif;
-        font-size: 39px;
+        font-size: 28px;
         font-weight: 800;
         color: #5c5c5c;
         text-transform: uppercase;
-        letter-spacing: .3px;
+        letter-spacing: .2px;
     }
 
     .choice-row {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-        margin: 4px 0 10px;
-        padding: 0 6px;
+        gap: 10px;
+        margin: 2px 0 6px;
+        padding: 0 4px;
     }
 
     .choice-item {
-        font-size: 18px;
+        font-size: 14px;
         font-weight: 700;
         color: #5a5a5a;
         white-space: nowrap;
@@ -212,126 +223,124 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
     .section-title {
         text-align: center;
         font-family: Georgia, "Times New Roman", serif;
-        font-size: 28px;
+        font-size: 20px;
         font-weight: 800;
         color: #5b5b5b;
         text-transform: uppercase;
         text-decoration: underline;
-        margin: 10px 0 8px;
+        margin: 6px 0 6px;
+        line-height: 1;
     }
 
     .form-grid {
         display: grid;
         grid-template-columns: repeat(12, 1fr);
-        gap: 8px 8px;
+        gap: 5px;
     }
 
     .field {
         border: 1px solid #8f8f8f;
-        min-height: 34px;
-        padding: 2px 7px 5px;
+        min-height: 28px;
+        padding: 1px 5px 3px;
         background: #fff;
-    }
-
-    .field.tall {
-        min-height: 42px;
     }
 
     .field-label {
         display: block;
-        font-size: 10px;
+        font-size: 8.5px;
         color: #5d5d5d;
         font-weight: 700;
-        margin-bottom: 3px;
-        line-height: 1.05;
+        margin-bottom: 2px;
+        line-height: 1;
     }
 
     .field-value {
-        min-height: 14px;
-        font-size: 13px;
-        line-height: 1.2;
+        min-height: 12px;
+        font-size: 11px;
+        line-height: 1.12;
         color: #222;
         word-break: break-word;
     }
 
     .field-inline {
-        font-size: 12px;
-        line-height: 1.2;
+        font-size: 10px;
+        line-height: 1.1;
     }
 
     .field-note {
-        font-size: 10px;
+        font-size: 8px;
         color: #5d5d5d;
-        line-height: 1.05;
-        margin-top: 2px;
+        line-height: 1;
+        margin-top: 1px;
     }
 
     .declaracao-text {
         text-align: center;
-        max-width: 800px;
-        margin: 8px auto 20px;
-        font-size: 14px;
-        line-height: 1.42;
+        max-width: 760px;
+        margin: 4px auto 10px;
+        font-size: 11.5px;
+        line-height: 1.28;
         font-weight: 700;
         color: #4d4d4d;
     }
 
     .data-local {
         text-align: right;
-        margin: 4px 28px 22px 0;
-        font-size: 16px;
+        margin: 2px 18px 10px 0;
+        font-size: 12px;
         font-weight: 700;
         color: #4d4d4d;
     }
 
     .footer-grid {
         display: grid;
-        grid-template-columns: 1fr 280px;
-        gap: 28px;
+        grid-template-columns: 1fr 235px;
+        gap: 18px;
         align-items: end;
+        margin-top: 2px;
     }
 
     .signature-name {
-        min-height: 28px;
+        min-height: 18px;
         text-align: center;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         font-family: "Brush Script MT", cursive;
-        font-size: 18px;
+        font-size: 15px;
         color: #4257a8;
     }
 
     .signature-line {
         border-top: 1px solid #444;
         text-align: center;
-        padding-top: 6px;
-        font-size: 13px;
+        padding-top: 4px;
+        font-size: 11px;
         font-weight: 700;
         color: #444;
-        margin-top: 24px;
+        margin-top: 18px;
     }
 
     .secretaria-box {
-        min-height: 138px;
+        height: 108px;
         border: 1px solid #6f92be;
         background: linear-gradient(180deg, #8eb5df 0%, #7fa7d4 100%);
         color: #fff;
         text-align: center;
-        padding: 16px 12px;
+        padding: 12px 10px;
         font-weight: 700;
     }
 
     .secretaria-top {
-        margin-top: 2px;
-        margin-bottom: 56px;
-        font-size: 13px;
+        margin-top: 0;
+        margin-bottom: 40px;
+        font-size: 11px;
     }
 
     .secretaria-bottom {
-        font-size: 13px;
+        font-size: 11px;
     }
 
-    .mt-8 { margin-top: 8px; }
-    .mt-12 { margin-top: 12px; }
+    .mt-8 { margin-top: 5px; }
+    .mt-12 { margin-top: 7px; }
 
     @media print {
         body {
@@ -339,7 +348,8 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
         }
 
         .page-wrap {
-            max-width: 100%;
+            width: auto;
+            min-height: auto;
             margin: 0;
             padding: 0;
         }
@@ -349,25 +359,36 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
         }
 
         .sheet {
+            width: 100%;
+            min-height: auto;
             border: none;
-            padding: 8px 10px 12px;
+            padding: 0;
+            margin: 0;
         }
     }
 
-    @media (max-width: 900px) {
+    @media screen and (max-width: 900px) {
+        .page-wrap {
+            width: 100%;
+        }
+
+        .sheet {
+            width: 100%;
+            min-height: auto;
+        }
+
         .church-title {
-            font-size: 24px;
-            margin-left: 90px;
-            margin-right: 0;
+            font-size: 20px;
+            margin-left: 76px;
         }
 
         .form-title {
-            font-size: 28px;
+            font-size: 24px;
         }
 
         .choice-row {
             grid-template-columns: 1fr;
-            gap: 6px;
+            gap: 4px;
         }
 
         .footer-grid {
@@ -375,18 +396,19 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
         }
     }
 
-    @media (max-width: 700px) {
+    @media screen and (max-width: 700px) {
         .main-grid {
             grid-template-columns: 1fr;
         }
 
         .top-logo {
             position: static;
-            margin: 0 auto 8px;
+            margin: 0 auto 6px;
         }
 
         .church-title {
-            margin: 0;
+            margin-left: 0;
+            font-size: 18px;
         }
     }
 </style>
@@ -515,17 +537,13 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
                     </div>
 
                     <div class="field" style="grid-column: span 6;">
-                        <span class="field-label">Filia√ß√£o</span>
-                        <div class="field-value">
-                            <strong style="font-size:11px;color:#5d5d5d;">Pai:</strong> <?= h($m['pai']) ?>
-                        </div>
+                        <span class="field-label">Pai:</span>
+                        <div class="field-value"><?= h($m['pai']) ?></div>
                     </div>
 
                     <div class="field" style="grid-column: span 6;">
-                        <span class="field-label">&nbsp;</span>
-                        <div class="field-value">
-                            <strong style="font-size:11px;color:#5d5d5d;">M√£e:</strong> <?= h($m['mae']) ?>
-                        </div>
+                        <span class="field-label">M√£e:</span>
+                        <div class="field-value"><?= h($m['mae']) ?></div>
                     </div>
 
                     <div class="field" style="grid-column: span 3;">
@@ -622,8 +640,7 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
         <div class="declaracao-text">
             Declaro que estou ciente dos princ√≠pios b√≠blicos e doutrin√°rios, projetos gerais, trabalhos e atividades
             desta Igreja, estando dispostos a cumpri-los, procurando cuidar da mesma, bem como, colaborar com seus
-            projetos materiais, espirituais e financeiros. Solicito, respeitosamente meu ingresso a membresia desta
-            Igreja.
+            projetos materiais, espirituais e financeiros. Solicito, respeitosamente meu ingresso a membresia desta Igreja.
         </div>
 
         <div class="data-local">
@@ -634,7 +651,7 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg'; // ajuste se necess√
             <div>
                 <div class="signature-name"><?= h($m['nome_completo']) ?></div>
                 <div class="signature-line">Assinatura do Solicitante</div>
-                <div class="signature-line" style="margin-top: 38px;">Assinatura do Pastor Presidente</div>
+                <div class="signature-line" style="margin-top: 24px;">Assinatura do Pastor Presidente</div>
             </div>
 
             <div class="secretaria-box">
