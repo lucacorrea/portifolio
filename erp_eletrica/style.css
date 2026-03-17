@@ -1,18 +1,18 @@
-﻿/* ERP El├®trica - Technical/Corporate Design System (v3.0) */
+/* ERP El├®trica - Technical/Corporate Design System (v3.0) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
 
 :root {
     /* Prime Industrial Palette */
-    --primary-color: #0056b3;
-    --primary-hover: #004494;
-    --secondary-color: #1a202c;
+    --primary-color: #FFC107;
+    --primary-hover: #FFB300;
+    --secondary-color: #141414;
     --bg-main: #f8fafc;
     --surface: #ffffff;
     --text-primary: #1e293b;
     --text-secondary: #64748b;
     --success: #10b981;
     --danger: #ef4444;
-    --warning: #f59e0b;
+    --warning: #FFC107;
     --border: #e2e8f0;
 
     /* Corporate Aliases */
@@ -81,14 +81,14 @@ body {
     display: flex;
     align-items: center;
     padding: 0 25px;
-    background: rgba(0, 0, 0, 0.2);
+    background: #000000;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     white-space: nowrap;
 }
 
 .sidebar-header i {
     font-size: 1.8rem;
-    color: #4da3ff;
+    color: #FFC107;
     min-width: 32px;
 }
 
@@ -152,11 +152,11 @@ body {
 .sidebar-menu li.active a {
     background: rgba(255, 255, 255, 0.05);
     color: white;
-    border-left-color: var(--primary-color);
+    border-left-color: #FFC107;
 }
 
 .sidebar-menu li.active a i {
-    color: #4da3ff;
+    color: #FFC107;
 }
 
 /* Main Content Wrapper */
