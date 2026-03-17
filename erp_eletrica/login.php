@@ -80,180 +80,122 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="style.css?v=4.9">
-    <link rel="stylesheet" href="public/css/corporate.css?v=4.9">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="public/css/corporate.css">
     <style>
-        :root {
-            --login-bg: #0a0a0a;
-            --card-bg: #141414;
-            --accent-gold: #FFC107;
-            --accent-hover: #FFB300;
-            --input-bg: #0d0d0d;
-            --border-color: #262626;
-        }
-
         body {
-            background-color: var(--login-bg);
+            background-color: #f4f7f6;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
-            color: #f8fafc;
         }
-
         .login-card {
-            background: var(--card-bg);
+            background: white;
             padding: 50px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
             width: 100%;
             max-width: 450px;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             position: relative;
-            overflow: hidden;
         }
-
         .login-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: var(--accent-gold);
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary-color), #4da3ff);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
         }
-
         .login-header {
             text-align: center;
             margin-bottom: 40px;
         }
-
         .login-header i {
             font-size: 3.5rem;
-            color: var(--accent-gold);
+            color: var(--primary-color);
             margin-bottom: 15px;
-            filter: drop-shadow(0 0 10px rgba(197, 160, 40, 0.3));
+            filter: drop-shadow(0 4px 6px rgba(0,86,179,0.2));
         }
-
         .login-header h1 {
             font-size: 1.75rem;
-            color: #fff;
+            color: var(--secondary-color);
             margin: 0;
             font-weight: 800;
-            letter-spacing: 2px;
-        }
-
-        .login-header p {
-            color: #a3a3a3;
-            font-size: 0.85rem;
-            margin-top: 5px;
             letter-spacing: 1px;
-            font-weight: 500;
         }
-
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 5px;
+        }
         .form-group {
             margin-bottom: 25px;
         }
-
         .form-label {
             display: block;
             margin-bottom: 10px;
             font-weight: 700;
-            color: #a3a3a3;
-            font-size: 0.7rem;
-            letter-spacing: 1px;
+            color: var(--secondary-color);
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
         }
-
         .form-control {
             width: 100%;
             padding: 14px 18px;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 1rem;
-            transition: all 0.2s;
-            background: var(--input-bg);
-            color: #fff !important;
+            transition: var(--transition);
+            background: #fcfdfe;
         }
-
         .form-control:focus {
-            border-color: var(--accent-gold);
-            background: var(--input-bg);
+            border-color: var(--primary-color);
+            background: #fff;
             outline: none;
-            box-shadow: none;
-            color: #fff;
+            box-shadow: 0 0 0 4px rgba(0,86,179,0.1);
         }
-
-        .form-control::placeholder {
-            color: #475569 !important;
-        }
-
         .btn-login {
             width: 100%;
             padding: 15px;
-            background: var(--accent-gold);
-            color: #000;
+            background: var(--primary-color);
+            color: white;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: var(--transition);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
-
         .btn-login:hover {
-            background: #0a0a0a !important;
-            border: 2px solid #FFC107 !important;
-            transform: translateY(-1px);
-            color: #fff !important;
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,86,179,0.3);
         }
-
         .alert {
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 25px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             font-weight: 500;
             display: flex;
             align-items: center;
             gap: 10px;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            background-color: rgba(239, 68, 68, 0.15) !important;
-            color: #ff8a8a !important;
         }
-
-        .alert-info {
-            background-color: rgba(59, 130, 246, 0.15) !important;
-            color: #93c5fd !important;
-            border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        .alert-danger {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fee2e2;
         }
-
-        .text-accent {
-            color: var(--accent-gold) !important;
-        }
-
-        .footer-info {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 0.7rem;
-            color: #404040;
-            font-family: 'Roboto Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        select.form-control option {
-            background-color: var(--card-bg);
-            color: #fff;
-        }
-
         @media (max-width: 480px) {
             .login-card {
                 padding: 30px 20px;
@@ -262,13 +204,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                border: none;
+            }
+            body {
+                background: white;
             }
         }
     </style>
 </head>
 <body>
-    <div class="login-card">
+    <div class="login-card fade-in">
         <div class="login-header">
             <i class="fas fa-bolt"></i>
             <h1>ERP ELÉTRICA</h1>
@@ -282,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php endif; ?>
 
         <?php if (isset($_GET['msg'])): ?>
-            <div class="alert alert-info">
+            <div class="alert" style="background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb;">
                 <i class="fas fa-info-circle"></i> <?php echo htmlspecialchars($_GET['msg']); ?>
             </div>
         <?php endif; ?>
@@ -305,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label class="form-label">SENHA TÉCNICA</label>
                 <div class="input-group">
                     <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
-                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: #475569;">
+                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border); background: #fcfdfe; color: var(--text-secondary);">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
@@ -315,13 +259,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </button>
         </form>
 
-        <div class="mt-4 text-center">
-            <a href="gerar_codigo.php" class="text-accent small fw-bold text-decoration-none transition-all">
+        <div class="mt-3 text-center">
+            <a href="gerar_codigo.php" class="text-primary small fw-bold text-decoration-none transition-all">
                 <i class="fas fa-key me-1"></i> Gerar Código de Autorização (Admin)
             </a>
         </div>
 
-        <div class="footer-info">
+        <div style="margin-top: 25px; text-align: center; font-size: 0.75rem; color: #bdc3c7; font-family: 'Roboto Mono', monospace;">
             VERSÃO <?php echo APP_VERSION; ?> | SECURE INDUSTRIAL ACCESS
         </div>
     </div>
@@ -330,3 +274,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="public/js/corporate.js"></script>
 </body>
 </html>
+
