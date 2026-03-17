@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
             background: 'transparent'
         },
         theme: {
-            mode: 'dark'
+            mode: 'light'
         },
         plotOptions: {
             bar: {
