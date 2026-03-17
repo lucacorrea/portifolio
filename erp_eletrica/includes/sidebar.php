@@ -101,9 +101,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="fiscal.php?action=settings" class="nav-link <?= ($current_page == 'fiscal.php' && ($_GET['action'] ?? '') == 'settings') ? 'active' : '' ?>">
             <i class="fas fa-server"></i> <span>Conectividade SEFAZ</span>
         </a>
+        <?php if ($_SESSION['is_matriz'] ?? false): ?>
         <a href="importar_automatico.php?action=config" class="nav-link <?= ($current_page == 'importar_automatico.php' && ($_GET['action'] ?? '') == 'config') ? 'active' : '' ?>">
             <i class="fas fa-shield-halved"></i> <span>Certificado Global A1</span>
         </a>
+        <?php endif; ?>
         <?php endif; ?>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>

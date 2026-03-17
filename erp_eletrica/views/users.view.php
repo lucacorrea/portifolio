@@ -166,7 +166,12 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Senha <span id="pwd-label" class="text-muted">(Obrigatória)</span></label>
-                        <input type="password" name="senha" id="edit-user-senha" class="form-control shadow-sm">
+                        <div class="input-group">
+                            <input type="password" name="senha" id="edit-user-senha" class="form-control shadow-sm">
+                            <button class="btn btn-outline-secondary border-start-0 shadow-sm" type="button" onclick="togglePasswordVisibility(this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                         <small class="text-muted extra-small">Deixe em branco para manter a senha atual ao editar.</small>
                     </div>
                 </div>

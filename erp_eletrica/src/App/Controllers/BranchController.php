@@ -11,8 +11,13 @@ class BranchController extends BaseController {
         // Se não for matriz, só vê a própria
         $branches = $model->getAllBranches($isMatriz ? null : $_SESSION['filial_id']);
 
+        // Fetch Global Certificate info
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $globalCert = $db->query("SELECT certificado_path FROM sefaz_config LIMIT 1")->fetchColumn();
+
         $this->render('branches', [
             'branches' => $branches,
+            'globalCert' => $globalCert,
             'title' => 'Gestão de Filiais & Unidades',
             'pageTitle' => 'Administração de Unidades de Negócio'
         ]);

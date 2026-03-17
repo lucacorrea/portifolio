@@ -114,7 +114,6 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     :root {
       --page-w: 58mm;
       --content-w: 48mm;
-
       --pad-top: 2.8mm;
       --pad-bottom: 3.5mm;
 
@@ -161,41 +160,16 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       padding-bottom: var(--pad-bottom);
     }
 
-    .c {
-      text-align: center;
-    }
+    .c { text-align: center; }
+    .r { text-align: right; }
+    .l { text-align: left; }
+    .b { font-weight: 700; }
 
-    .r {
-      text-align: right;
-    }
-
-    .l {
-      text-align: left;
-    }
-
-    .b {
-      font-weight: 700;
-    }
-
-    .t8 {
-      font-size: var(--fs-8);
-    }
-
-    .t9 {
-      font-size: var(--fs-9);
-    }
-
-    .t10 {
-      font-size: var(--fs-10);
-    }
-
-    .t11 {
-      font-size: var(--fs-11);
-    }
-
-    .t12 {
-      font-size: var(--fs-12);
-    }
+    .t8 { font-size: var(--fs-8); }
+    .t9 { font-size: var(--fs-9); }
+    .t10 { font-size: var(--fs-10); }
+    .t11 { font-size: var(--fs-11); }
+    .t12 { font-size: var(--fs-12); }
 
     .line {
       border-top: 1px dashed #000;
@@ -266,13 +240,8 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       font-weight: 700;
     }
 
-    .col-n {
-      width: 4mm;
-    }
-
-    .col-total {
-      width: 14mm;
-    }
+    .col-n { width: 4mm; }
+    .col-total { width: 14mm; }
 
     .itemname {
       font-size: 8.8px;
@@ -346,12 +315,12 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     }
 
     @media print {
-
       html,
       body {
         width: 58mm !important;
         min-width: 58mm !important;
         max-width: 58mm !important;
+        zoom: 110% !important;
         margin: 0 !important;
         padding: 0 !important;
       }
@@ -511,8 +480,14 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
   <script>
     <?php if ($auto): ?>
       window.addEventListener('load', () => {
-        setTimeout(() => window.print(), 250);
+        setTimeout(() => {
+          window.print();
+        }, 150);
       });
+
+      window.onafterprint = () => {
+        window.close();
+      };
     <?php endif; ?>
   </script>
 </body>

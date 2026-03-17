@@ -252,7 +252,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 </div>
                 <div class="mb-4">
                     <label class="form-label">SENHA</label>
-                    <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
+                    <div class="input-group">
+                        <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
+                        <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: #475569;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <hr class="my-4">
@@ -285,5 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             </form>
         <?php endif; ?>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="public/js/corporate.js"></script>
 </body>
 </html>

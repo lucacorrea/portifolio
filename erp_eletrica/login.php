@@ -303,7 +303,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <div class="form-group">
                 <label class="form-label">SENHA TÉCNICA</label>
-                <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
+                <div class="input-group">
+                    <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
+                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: #475569;">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="btn-login">
                 AUTENTICAR ACESSO <i class="fas fa-shield-alt"></i>
@@ -320,5 +325,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             VERSÃO <?php echo APP_VERSION; ?> | SECURE INDUSTRIAL ACCESS
         </div>
     </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="public/js/corporate.js"></script>
 </body>
 </html>

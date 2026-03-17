@@ -186,7 +186,12 @@
 
                         <div class="mb-0">
                             <label class="form-label small fw-bold">Senha do Administrador</label>
-                            <input type="password" name="auth_password" class="form-control form-control-sm text-center" placeholder="••••••••">
+                            <div class="input-group input-group-sm">
+                                <input type="password" name="auth_password" class="form-control text-center" placeholder="••••••••">
+                                <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

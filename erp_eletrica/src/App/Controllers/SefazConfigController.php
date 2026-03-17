@@ -5,6 +5,10 @@ use App\Services\AuditLogService;
 
 class SefazConfigController extends BaseController {
     public function index() {
+        if (!($_SESSION['is_matriz'] ?? false)) {
+            $this->redirect('index.php?msg=Acesso negado');
+            return;
+        }
         $db = \App\Config\Database::getInstance()->getConnection();
         $stmt = $db->query("SELECT * FROM sefaz_config LIMIT 1");
         $config = $stmt->fetch();
@@ -25,6 +29,10 @@ class SefazConfigController extends BaseController {
     }
 
     public function save() {
+        if (!($_SESSION['is_matriz'] ?? false)) {
+            $this->redirect('index.php?msg=Acesso negado');
+            return;
+        }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db = \App\Config\Database::getInstance()->getConnection();
             $audit = new AuditLogService();
