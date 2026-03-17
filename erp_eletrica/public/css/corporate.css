@@ -1,8 +1,8 @@
-:root {
+﻿:root {
     /* Primary Color Standardization (Blue Theme) */
-    --erp-primary: #000000;
-    --erp-primary-hover: #333333;
-    --erp-secondary: #141414;
+    --erp-primary: #0056b3;
+    --erp-primary-hover: #004494;
+    --erp-secondary: #1a202c;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
     --erp-warning: #f59e0b;
@@ -31,10 +31,10 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #000000;
-    --bs-primary-rgb: 0, 0, 0;
-    --bs-link-color: #000000;
-    --bs-link-hover-color: #333333;
+    --bs-primary: #0056b3;
+    --bs-primary-rgb: 0, 86, 179;
+    --bs-link-color: #0056b3;
+    --bs-link-hover-color: #004494;
 }
 
 body {
@@ -49,7 +49,7 @@ body {
 /* Sidebar Styling */
 .sidebar {
     width: 260px;
-    background: var(--erp-secondary);
+    background: #ffffff;
     /* Default, will be overridden by --erp-sidebar-bg if defined */
     border-right: 1px solid #e2e8f0;
     transition: all 0.3s;

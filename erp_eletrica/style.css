@@ -1,11 +1,11 @@
-/* ERP El├®trica - Technical/Corporate Design System (v3.0) */
+﻿/* ERP El├®trica - Technical/Corporate Design System (v3.0) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
 
 :root {
     /* Prime Industrial Palette */
-    --primary-color: #000000;
-    --primary-hover: #333333;
-    --secondary-color: #141414;
+    --primary-color: #0056b3;
+    --primary-hover: #004494;
+    --secondary-color: #1a202c;
     --bg-main: #f8fafc;
     --surface: #ffffff;
     --text-primary: #1e293b;
@@ -88,7 +88,7 @@ body {
 
 .sidebar-header i {
     font-size: 1.8rem;
-    color: #FFC107;
+    color: #4da3ff;
     min-width: 32px;
 }
 
@@ -152,11 +152,11 @@ body {
 .sidebar-menu li.active a {
     background: rgba(255, 255, 255, 0.05);
     color: white;
-    border-left-color: #FFC107;
+    border-left-color: var(--primary-color);
 }
 
 .sidebar-menu li.active a i {
-    color: #FFC107;
+    color: #4da3ff;
 }
 
 /* Main Content Wrapper */
