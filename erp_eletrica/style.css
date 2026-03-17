@@ -167,9 +167,15 @@ body {
 
 .sidebar-menu li:hover a,
 .sidebar-menu li.active a {
-    background: rgba(255, 255, 255, 0.05);
-    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    color: #FFC107;
     border-left-color: #FFC107;
+}
+
+/* Sidebar Section Titles Visibility in style.css */
+.sidebar-menu .text-muted.opacity-50 {
+    color: rgba(255, 255, 255, 0.7) !important;
+    opacity: 1 !important;
 }
 
 .sidebar-menu li.active a i {
