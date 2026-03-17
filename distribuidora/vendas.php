@@ -1532,7 +1532,7 @@ function fmtMoney($v): string
     }
 
     function ensureOnePayRow() {
-      if (!paysWrap.querySelector(".pay-split-row")) paysWrap.innerHTML = payRowTpl("PIX", "0,00");
+      if (!paysWrap.querySelector(".pay-split-row")) paysWrap.innerHTML = payRowTpl("PIX", "");
     }
 
     function computeMultiPay() {

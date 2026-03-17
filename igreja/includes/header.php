@@ -26,7 +26,7 @@ function ativo($arquivo, $pagina)
                 <i class="fas fa-church"></i>
             </div>
             <div class="logo-text">
-                <h1>Igreja Vida Nova</h1>
+                <h1>Deus Nascer de Novo.</h1>
                 <p>Administração eclesiástica</p>
             </div>
         </div>
@@ -41,9 +41,7 @@ function ativo($arquivo, $pagina)
             <a href="listar.php" class="nav-item <?= ativo('listar.php', $pagina) ?>">
                 <i class="fas fa-users"></i> Membros
             </a>
-            <a href="listar.php" class="nav-item">
-                <i class="fas fa-file-alt"></i> Fichas
-            </a>
+            
         </div>
 
         <div class="user-profile">
