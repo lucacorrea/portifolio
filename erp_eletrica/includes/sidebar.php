@@ -2,7 +2,7 @@
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header d-flex align-items-center justify-content-center p-3" style="background: #000000; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+    <div class="sidebar-header d-flex align-items-center justify-content-center p-3">
         <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 90%; height: auto; max-height: 55px;">
     </div>
     
@@ -32,14 +32,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
         
-        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão de Materiais</div>
+        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold">Gestão de Materiais</div>
         
         <a href="estoque.php" class="nav-link <?= $current_page == 'estoque.php' ? 'active' : '' ?>">
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
         </a>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
-        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Relacionamento</div>
+        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold">Relacionamento</div>
         
         <a href="clientes.php" class="nav-link <?= $current_page == 'clientes.php' ? 'active' : '' ?>">
             <i class="fas fa-users"></i> <span>Base de Clientes</span>
@@ -51,7 +51,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-cloud-download-alt"></i> <span>Importação Automática</span>
         </a>
         
-        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Financeiro</div>
+        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold">Financeiro</div>
         
         <a href="financeiro.php" class="nav-link <?= $current_page == 'financeiro.php' ? 'active' : '' ?>">
             <i class="fas fa-wallet"></i> <span>Fluxo de Caixa</span>
@@ -79,7 +79,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php endif; ?>
 
         <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin'])): ?>
-        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão Estratégica</div>
+        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold">Gestão Estratégica</div>
         
         <a href="custos.php" class="nav-link <?= $current_page == 'custos.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie"></i> <span>Centro de Custos</span>
@@ -90,7 +90,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php endif; ?>
 
         <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin'])): ?>
-        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
+        <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold">Administração</div>
         
         <a href="filiais.php" class="nav-link <?= $current_page == 'filiais.php' ? 'active' : '' ?>">
             <i class="fas fa-landmark"></i> <span>Filiais / Lojas</span>
@@ -109,7 +109,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php endif; ?>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
-        <a href="configuracoes.php" class="nav-link mt-auto border-top border-secondary border-opacity-10 <?= $current_page == 'configuracoes.php' ? 'active' : '' ?>">
+        <a href="configuracoes.php" class="nav-link mt-auto border-top border-white border-opacity-10 <?= $current_page == 'configuracoes.php' ? 'active' : '' ?>">
             <i class="fas fa-sliders-h"></i> <span>Ajustes Gerais</span>
         </a>
         <?php endif; ?>
