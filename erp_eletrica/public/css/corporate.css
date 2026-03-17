@@ -97,11 +97,12 @@ body {
     min-width: 0;
     margin-left: 260px;
     transition: margin-left 0.3s;
+    background-color: #f8fafc !important;
 }
 
 .top-navbar {
     height: 70px;
-    background: #ffffff;
+    background: #ffffff !important;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
@@ -116,10 +117,24 @@ body {
 
 /* Enhanced Cards */
 .card {
+    background-color: #ffffff !important;
     border-radius: 0.75rem;
-    border: none;
+    border: 1px solid #e2e8f0 !important;
     box-shadow: var(--erp-card-shadow);
     transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card * {
+    color: #1e293b !important;
+}
+
+.card .stat-value, .card .text-primary, .card i, .card .btn {
+    color: inherit !important;
+}
+
+.card-header {
+    background-color: #fafbfc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .card:hover {
