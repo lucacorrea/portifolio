@@ -58,20 +58,18 @@
  /* Sidebar Refined (Light Theme) */
  .sidebar {
      width: var(--sidebar-width);
-     background: #ffffff;
-     /* Consistent white background */
-     color: var(--text-primary);
+     background: #0f172a;
+     color: rgba(255, 255, 255, 0.7);
      height: 100vh;
-     position: fixed;
-     left: 0;
+     position: sticky;
      top: 0;
      z-index: 1040;
      transition: width var(--transition), transform var(--transition);
      display: flex;
      flex-direction: column;
      overflow: hidden;
-     box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
-     border-right: 1px solid var(--border);
+     box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+     border-right: 1px solid rgba(255, 255, 255, 0.05);
  }
 
  .sidebar.collapsed {
@@ -82,8 +80,9 @@
      height: var(--header-height);
      display: flex;
      align-items: center;
+     justify-content: center;
      padding: 0 25px;
-     background: rgba(0, 0, 0, 0.2);
+     background: #000000;
      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
      white-space: nowrap;
  }
@@ -112,11 +111,19 @@
      padding: 20px 0;
      flex: 1;
      overflow-y: auto;
-     scrollbar-width: none;
+ }
+ 
+ .sidebar-menu::-webkit-scrollbar {
+     width: 4px;
  }
 
- .sidebar-menu::-webkit-scrollbar {
-     display: none;
+ .sidebar-menu::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+ }
+
+ .sidebar-menu::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
  }
 
  .sidebar-menu li {
@@ -127,17 +134,13 @@
      display: flex;
      align-items: center;
      padding: 12px 25px;
-     color: #334155;
-     /* Darker Slate for high contrast */
+     color: rgba(255, 255, 255, 0.6);
      text-decoration: none;
      transition: all 0.2s ease;
      border-left: 4px solid transparent;
      margin: 0;
-     /* Remove any floating margin */
      border-radius: 0;
-     /* No rounded corners for full integration */
-     background: transparent !important;
-     /* Force transparent background by default */
+     background: transparent;
  }
 
  .sidebar-menu li a i {
@@ -155,14 +158,13 @@
  }
 
  .sidebar-menu li:hover a {
-     background: #f1f5f9 !important;
-     color: var(--primary-color);
+     background: rgba(255, 255, 255, 0.05) !important;
+     color: #ffffff;
  }
-
+ 
  .sidebar-menu li.active a {
-     background: #f1f5f9 !important;
-     /* Very light gray/blue background */
-     color: var(--primary-color) !important;
+     background: rgba(255, 255, 255, 0.1) !important;
+     color: #ffffff !important;
      border-left: 4px solid var(--primary-color) !important;
      font-weight: 700;
  }
@@ -176,14 +178,14 @@
      padding: 20px 25px 5px !important;
      font-size: 0.65rem !important;
      letter-spacing: 1.5px !important;
-     color: #94a3b8 !important;
+     color: rgba(255, 255, 255, 0.4) !important;
      font-weight: 800 !important;
  }
 
  /* Main Content Wrapper */
  .main-content {
      flex: 1;
-     margin-left: var(--sidebar-width);
+     margin-left: 0;
      transition: margin-left var(--transition);
      display: flex;
      flex-direction: column;
@@ -411,6 +413,7 @@
 
  @media (max-width: 1024px) {
      .sidebar {
+         position: fixed;
          transform: translateX(-100%);
          width: var(--sidebar-width) !important;
      }
