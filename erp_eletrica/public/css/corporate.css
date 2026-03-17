@@ -95,7 +95,7 @@ body {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    margin-left: 260px;
+    margin-left: 260px !important;
     transition: margin-left 0.3s;
     background-color: #f8fafc !important;
 }

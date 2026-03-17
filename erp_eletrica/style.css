@@ -20,7 +20,7 @@
     --erp-secondary: var(--secondary-color);
 
     /* Technical Spacing */
-    --sidebar-width: 280px;
+    --sidebar-width: 260px;
     --sidebar-collapsed: 80px;
     --header-height: 70px;
 
@@ -133,7 +133,11 @@ body {
     list-style: none;
     padding: 20px 0;
     flex: 1;
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     height: calc(100vh - 70px) !important;
     min-height: 0;
 }
