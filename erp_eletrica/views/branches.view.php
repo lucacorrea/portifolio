@@ -388,9 +388,11 @@ async function consultarCNPJ() {
     btn.disabled = true;
 
     try {
-        const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        // Calling local proxy instead of direkt BrasilAPI to avoid CORS/Fetch errors
+        const response = await fetch(`api/cnpj_search.php?cnpj=${cnpj}`);
         if (!response.ok) {
-            throw new Error('Falha na consulta. CNPJ rejeitado ou limitação de API.');
+            const errData = await response.json();
+            throw new Error(errData.error || 'Falha na consulta. CNPJ rejeitado ou limitação de API.');
         }
         
         const data = await response.json();
@@ -398,7 +400,8 @@ async function consultarCNPJ() {
         let ibgeCode = '';
         if (data.cep) {
             try {
-                const cepRes = await fetch(`https://brasilapi.com.br/api/cep/v2/${data.cep.replace(/\D/g, '')}`);
+                // Also proxying CEP lookup
+                const cepRes = await fetch(`api/cep_search.php?cep=${data.cep.replace(/\D/g, '')}`);
                 if (cepRes.ok) {
                     const cepData = await cepRes.json();
                     if (cepData.ibge) ibgeCode = cepData.ibge;
