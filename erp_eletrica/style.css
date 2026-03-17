@@ -5,7 +5,7 @@
     /* Prime Industrial Palette */
     --primary-color: #FFC107;
     --primary-hover: #FFB300;
-    --secondary-color: #141414;
+    --secondary-color: #000000;
     --bg-main: #f8fafc;
     --surface: #ffffff;
     --text-primary: #1e293b;
@@ -68,8 +68,27 @@ body {
     transition: width var(--transition), transform var(--transition);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Custom Scrollbar for Sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: #000000;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #262626;
+    border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #404040;
 }
 
 .sidebar.collapsed {
