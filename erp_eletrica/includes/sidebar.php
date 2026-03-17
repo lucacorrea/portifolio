@@ -2,7 +2,7 @@
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header d-flex align-items-center justify-content-center p-3" style="background: #ffffff; border-bottom: 1px solid var(--border);">
+    <div class="sidebar-header d-flex align-items-center justify-content-center p-3" style="background: #000000; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
         <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 90%; height: auto; max-height: 55px;">
     </div>
     
