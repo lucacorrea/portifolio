@@ -179,9 +179,9 @@
 <div class="modal fade" id="modalDetalhes" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-light border-0">
+            <div class="modal-header bg-dark text-white border-0">
                 <h5 class="modal-title fw-bold"><i class="fas fa-eye me-2 text-primary"></i>Detalhes da Dívida</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="row g-4">
@@ -217,33 +217,36 @@
 <div class="modal fade" id="modalPagamento" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-success text-white border-0">
-                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Receber Pagamento (AVS)</h6>
+            <div class="modal-header bg-dark text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2 text-primary"></i>Receber Pagamento (AVS)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="mb-3 p-2 bg-light rounded text-center">
-                    <div class="small text-muted mb-1" id="pay-cliente-nome"></div>
-                    <div class="fw-bold text-danger" id="pay-saldo-display"></div>
+                <div class="mb-4 p-3 bg-light rounded text-center border">
+                    <div class="small fw-bold text-muted text-uppercase mb-1" id="pay-cliente-nome"></div>
+                    <div class="fs-4 fw-bold text-danger" id="pay-saldo-display"></div>
+                    <div class="extra-small text-muted">Saldo em aberto</div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label small fw-bold">VALOR RECEBIDO (R$)</label>
-                    <input type="number" id="pay-valor" class="form-control form-control-lg fw-bold text-center border-2 border-success border-opacity-25" step="0.01">
+                    <label class="form-label small fw-bold text-uppercase opacity-75">Valor Recebido (R$)</label>
+                    <input type="number" id="pay-valor" class="form-control form-control-lg fw-bold text-center border-2 shadow-sm" step="0.01" placeholder="0,00">
                 </div>
                 
                 <div class="mb-4">
-                    <label class="form-label small fw-bold">MÉTODO</label>
-                    <select id="pay-metodo" class="form-select border-2">
-                        <option value="DINHEIRO">🛒 DINHEIRO</option>
-                        <option value="PIX">⚡ PIX</option>
-                        <option value="CARTAO">💳 CARTÃO</option>
+                    <label class="form-label small fw-bold text-uppercase opacity-75">Método de Pagamento</label>
+                    <select id="pay-metodo" class="form-select border-2 shadow-sm">
+                        <option value="DINHEIRO">🛒 Dinheiro</option>
+                        <option value="PIX">⚡ Pix</option>
+                        <option value="CARTAO">💳 Cartão</option>
                     </select>
                 </div>
 
-                <button class="btn btn-success btn-lg w-100 fw-bold py-3 rounded-3 shadow-sm" onclick="confirmarPagamento()">
-                    CONFIRMAR BAIXA (AVS)
-                </button>
+                <div class="d-grid">
+                    <button class="btn btn-dark btn-lg fw-bold py-3 shadow-sm border-0" onclick="confirmarPagamento()">
+                        <i class="fas fa-check-circle me-2 text-primary"></i>CONFIRMAR BAIXA (AVS)
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -321,9 +324,9 @@
                 <td class="ps-4 fw-bold text-primary">#${r.venda_id}</td>
                 <td class="small text-muted">${fmtDate(r.created_at)}</td>
                 <td class="fw-bold">${r.cliente_nome}</td>
-                <td class="text-end fw-bold">${fmtBRL(r.valor)}</td>
-                <td class="text-end text-success small">${fmtBRL(r.valor_pago)}</td>
-                <td class="text-end fw-bold text-danger">${fmtBRL(r.saldo)}</td>
+                <td class="text-end fw-bold">${fmtBRL(r.valor || 0)}</td>
+                <td class="text-end text-success small">${fmtBRL(r.valor_pago || 0)}</td>
+                <td class="text-end fw-bold text-danger">${fmtBRL(r.saldo || (r.valor - (r.valor_pago || 0)))}</td>
                 <td class="text-center">
                     <span class="fi-status-badge fi-status-${r.status.toLowerCase()}">${r.status}</span>
                 </td>
