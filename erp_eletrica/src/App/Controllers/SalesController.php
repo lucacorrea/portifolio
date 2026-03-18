@@ -268,7 +268,7 @@ class SalesController extends BaseController {
                     $valorDivida = (float)$data['total'] - $entrada;
 
                     $receivableModel = new \App\Models\AccountReceivable();
-                    $receivableModel->create([
+                    $receivableId = $receivableModel->create([
                         'venda_id'        => $saleId,
                         'cliente_id'      => $data['cliente_id'],
                         'valor'           => $data['total'],
@@ -278,6 +278,15 @@ class SalesController extends BaseController {
                         'data_vencimento' => date('Y-m-d', strtotime('+30 days')),
                         'filial_id'       => $_SESSION['filial_id'] ?? 1,
                     ]);
+
+                    if ($entrada > 0) {
+                        $paymentModel = new \App\Models\AccountReceivablePayment();
+                        $paymentModel->create([
+                            'fiado_id' => $receivableId,
+                            'valor' => $entrada,
+                            'metodo' => 'DINHEIRO' // Initial entry is usually recorded as cash in this context
+                        ]);
+                    }
 
                     $audit = new \App\Services\AuditLogService();
                     $audit->record('Venda fiado criada', 'vendas', $saleId, null, json_encode([

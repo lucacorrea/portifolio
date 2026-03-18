@@ -42,12 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     <link rel="stylesheet" href="public/css/corporate.css?v=3.9">
     <style>
         :root {
-            --login-bg: #0a0a0a;
-            --card-bg: #141414;
+            --login-bg: #f8fafc;
+            --card-bg: #ffffff;
             --accent-gold: #FFC107;
             --accent-hover: #FFB300;
-            --input-bg: #0d0d0d;
-            --border-color: #262626;
+            --input-bg: #ffffff;
+            --border-color: #e2e8f0;
         }
 
         body {
@@ -58,14 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             min-height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
-            color: #f8fafc;
+            color: #1e293b;
         }
 
         .auth-card {
             background: var(--card-bg);
             padding: 40px;
             border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
             width: 100%;
             max-width: 500px;
             border: 1px solid var(--border-color);
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             letter-spacing: 8px;
             font-weight: 800;
             color: var(--accent-gold);
-            background: var(--input-bg);
+            background: #f1f5f9;
             padding: 25px;
             border-radius: 12px;
             border: 2px dashed var(--border-color);
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             display: block;
             margin-bottom: 8px;
             font-weight: 700;
-            color: #a3a3a3;
+            color: #64748b;
             font-size: 0.7rem;
             letter-spacing: 1px;
             text-transform: uppercase;
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             font-size: 0.95rem;
             transition: all 0.2s;
             background: var(--input-bg);
-            color: #fff !important;
+            color: #1e293b !important;
         }
 
         .form-control:focus, .form-select:focus {
@@ -123,6 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             background: var(--input-bg);
             outline: none;
             box-shadow: none;
+            color: #1e293b;
         }
 
         .form-control::placeholder {
@@ -169,8 +170,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
 
         .alert-danger {
-            background-color: rgba(239, 68, 68, 0.15) !important;
-            color: #ff8a8a !important;
+            background-color: #fef2f2 !important;
+            color: #ef4444 !important;
+            border: 1px solid #fee2e2 !important;
         }
 
         .alert-warning {
@@ -192,8 +194,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
 
         select option {
-            background: var(--card-bg);
-            color: #fff;
+            background: #ffffff;
+            color: #1e293b;
         }
 
         @media (max-width: 480px) {

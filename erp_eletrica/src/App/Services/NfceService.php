@@ -124,7 +124,7 @@ class NfceService extends BaseService {
             if (!file_exists($pfxPath)) throw new Exception("Certificado não encontrado em: $pfxPath");
             
             $pfx = file_get_contents($pfxPath);
-            $cert = Certificate::readPfx($pfx, base64_decode($fiscal['certificado_senha']));
+            $cert = Certificate::readPfx($pfx, $fiscal['certificado_senha']);
             
             $tools = new \NFePHP\NFe\Tools($configJson, $cert);
             $tools->model('65');
@@ -221,7 +221,7 @@ class NfceService extends BaseService {
             if (!file_exists($pfxPath)) throw new Exception("Certificado não encontrado em: $pfxPath");
             
             $pfx = file_get_contents($pfxPath);
-            $cert = Certificate::readPfx($pfx, base64_decode($fiscal['certificado_senha']));
+            $cert = Certificate::readPfx($pfx, $fiscal['certificado_senha']);
             
             $tools = new \NFePHP\NFe\Tools($configJson, $cert);
             $tools->model('65');

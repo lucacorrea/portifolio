@@ -1,18 +1,18 @@
-/* ERP El├®trica - Technical/Corporate Design System (v3.0) */
+﻿/* ERP El├®trica - Technical/Corporate Design System (v3.0) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
 
 :root {
     /* Prime Industrial Palette */
-    --primary-color: #FFC107;
-    --primary-hover: #FFB300;
-    --secondary-color: #000000;
+    --primary-color: #0056b3;
+    --primary-hover: #004494;
+    --secondary-color: #1a202c;
     --bg-main: #f8fafc;
     --surface: #ffffff;
     --text-primary: #1e293b;
     --text-secondary: #64748b;
     --success: #10b981;
     --danger: #ef4444;
-    --warning: #FFC107;
+    --warning: #f59e0b;
     --border: #e2e8f0;
 
     /* Corporate Aliases */
@@ -20,7 +20,7 @@
     --erp-secondary: var(--secondary-color);
 
     /* Technical Spacing */
-    --sidebar-width: 260px;
+    --sidebar-width: 280px;
     --sidebar-collapsed: 80px;
     --header-height: 70px;
 
@@ -72,30 +72,6 @@ body {
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
 }
 
-/* Custom Scrollbar for Sidebar */
-.sidebar::-webkit-scrollbar,
-.sidebar-menu::-webkit-scrollbar {
-    width: 8px !important;
-    display: block !important;
-}
-
-.sidebar::-webkit-scrollbar-track,
-.sidebar-menu::-webkit-scrollbar-track {
-    background: #000000 !important;
-}
-
-.sidebar::-webkit-scrollbar-thumb,
-.sidebar-menu::-webkit-scrollbar-thumb {
-    background: #666666 !important;
-    border-radius: 4px !important;
-    border: 1px solid #000000 !important;
-}
-
-.sidebar::-webkit-scrollbar-thumb:hover,
-.sidebar-menu::-webkit-scrollbar-thumb:hover {
-    background: #888888 !important;
-}
-
 .sidebar.collapsed {
     width: var(--sidebar-collapsed);
 }
@@ -105,14 +81,14 @@ body {
     display: flex;
     align-items: center;
     padding: 0 25px;
-    background: #000000;
+    background: rgba(0, 0, 0, 0.2);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     white-space: nowrap;
 }
 
 .sidebar-header i {
     font-size: 1.8rem;
-    color: #FFC107;
+    color: #4da3ff;
     min-width: 32px;
 }
 
@@ -133,13 +109,12 @@ body {
     list-style: none;
     padding: 20px 0;
     flex: 1;
-    display: flex !important;
-    flex-direction: column !important;
-    flex-wrap: nowrap !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    height: calc(100vh - 70px) !important;
-    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.sidebar-menu::-webkit-scrollbar {
+    display: none;
 }
 
 .sidebar-menu li {
@@ -175,21 +150,13 @@ body {
 
 .sidebar-menu li:hover a,
 .sidebar-menu li.active a {
-    background: rgba(255, 255, 255, 0.1);
-    color: #FFC107;
-    border-left-color: #FFC107;
-}
-
-/* Sidebar Section Titles Visibility */
-.sidebar .text-muted.opacity-50 {
-    color: rgba(255, 255, 255, 0.7) !important;
-    opacity: 1 !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-    font-weight: 700 !important;
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    border-left-color: var(--primary-color);
 }
 
 .sidebar-menu li.active a i {
-    color: #FFC107;
+    color: #4da3ff;
 }
 
 /* Main Content Wrapper */

@@ -1,11 +1,11 @@
-:root {
+﻿:root {
     /* Primary Color Standardization (Blue Theme) */
-    --erp-primary: #FFC107;
-    --erp-primary-hover: #FFB300;
-    --erp-secondary: #000000;
+    --erp-primary: #0056b3;
+    --erp-primary-hover: #004494;
+    --erp-secondary: #1a202c;
     --erp-success: #10b981;
     --erp-danger: #ef4444;
-    --erp-warning: #FFC107;
+    --erp-warning: #f59e0b;
     --erp-dark: #1e293b;
     --erp-light: #f8fafc;
     --erp-glass: rgba(255, 255, 255, 0.7);
@@ -31,10 +31,10 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #FFC107;
-    --bs-primary-rgb: 255, 193, 7;
-    --bs-link-color: #FFC107;
-    --bs-link-hover-color: #FFB300;
+    --bs-primary: #0056b3;
+    --bs-primary-rgb: 0, 86, 179;
+    --bs-link-color: #0056b3;
+    --bs-link-hover-color: #004494;
 }
 
 body {
@@ -49,7 +49,7 @@ body {
 /* Sidebar Styling */
 .sidebar {
     width: 260px;
-    background: var(--erp-secondary);
+    background: #ffffff;
     /* Default, will be overridden by --erp-sidebar-bg if defined */
     border-right: 1px solid #e2e8f0;
     transition: all 0.3s;
@@ -74,19 +74,12 @@ body {
 
 .nav-link:hover,
 .nav-link.active {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--erp-primary);
+    background-color: #f8fafc;
+    color: var(--primary-color);
 }
 
 .nav-link i {
     width: 20px;
-}
-
-/* Sidebar Section Titles Visibility */
-.sidebar .text-muted.opacity-50 {
-    color: rgba(255, 255, 255, 0.7) !important;
-    opacity: 1 !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
 /* Main Content area */
@@ -95,14 +88,11 @@ body {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    margin-left: 260px !important;
-    transition: margin-left 0.3s;
-    background-color: #f8fafc !important;
 }
 
 .top-navbar {
     height: 70px;
-    background: #ffffff !important;
+    background: #ffffff;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
@@ -117,24 +107,10 @@ body {
 
 /* Enhanced Cards */
 .card {
-    background-color: #ffffff !important;
     border-radius: 0.75rem;
-    border: 1px solid #e2e8f0 !important;
+    border: none;
     box-shadow: var(--erp-card-shadow);
     transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.card * {
-    color: #1e293b !important;
-}
-
-.card .stat-value, .card .text-primary, .card i, .card .btn {
-    color: inherit !important;
-}
-
-.card-header {
-    background-color: #fafbfc !important;
-    border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .card:hover {
@@ -209,10 +185,6 @@ body {
     .sidebar.active {
         left: 0;
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
-    }
-    
-    .main-wrapper {
-        margin-left: 0;
     }
 }
 

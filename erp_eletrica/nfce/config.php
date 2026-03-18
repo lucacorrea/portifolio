@@ -135,14 +135,6 @@ define('COD_MUN',      EMIT_CMUN);
 define('COD_UF',       substr(EMIT_CMUN, 0, 2));
 
 $PFX_PASSWORD = (string)($fiscal['certificado_senha'] ?? '');
-
-// Lógica de Descodificação Base64 (Caso esteja codificado no banco)
-if (preg_match('/^[a-zA-Z0-9\/\+=]+$/', $PFX_PASSWORD) && strlen($PFX_PASSWORD) >= 8) {
-    $decoded = base64_decode($PFX_PASSWORD, true);
-    if ($decoded !== false && base64_encode($decoded) === $PFX_PASSWORD) {
-        $PFX_PASSWORD = $decoded;
-    }
-}
 $PFX_PATH     = resolve_cert_path($fiscal['certificado_pfx'] ?? $fiscal['certificado_path'] ?? null);
 
 if (!$PFX_PATH) {
