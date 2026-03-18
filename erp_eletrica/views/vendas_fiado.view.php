@@ -237,8 +237,8 @@
                 <div class="mb-3">
                     <label class="form-label fw-bold">Forma de Recebimento</label>
                     <select id="pay-metodo" class="form-select" required>
-                        <option value="DINHEIRO">🛒 Dinheiro em Espécie</option>
-                        <option value="PIX">⚡ Transferência PIX</option>
+                        <option value="DINHEIRO">💵 Dinheiro em Espécie</option>
+                        <option value="PIX">💎 Transferência PIX</option>
                         <option value="CARTAO">💳 Cartão (Crédito/Débito)</option>
                     </select>
                 </div>
