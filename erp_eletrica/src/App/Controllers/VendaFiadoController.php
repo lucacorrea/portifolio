@@ -18,6 +18,10 @@ class VendaFiadoController extends BaseController {
         $model = new AccountReceivable();
         $db = \App\Config\Database::getInstance()->getConnection();
         
+        // Defensive: Check if migration already ran
+        $hasValorPago = $model->columnExists('valor_pago');
+        $saldoSql = $hasValorPago ? "(COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0))" : "cr.valor";
+
         $filialId = $_SESSION['filial_id'] ?? null;
         $di = $_GET['di'] ?? '';
         $df = $_GET['df'] ?? '';
@@ -45,9 +49,7 @@ class VendaFiadoController extends BaseController {
         }
 
         $sql = "
-            SELECT cr.*, 
-                   (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
-                   c.nome as cliente_nome
+            SELECT cr.*, $saldoSql as saldo, c.nome as cliente_nome
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             $where
@@ -66,9 +68,9 @@ class VendaFiadoController extends BaseController {
             'total_restante' => 0
         ];
         foreach ($rows as $r) {
-            $totais['total_venda'] += (float)$r['valor'];
-            $totais['total_pago'] += (float)$r['valor_pago'];
-            $totais['total_restante'] += (float)$r['saldo'];
+            $totais['total_venda'] += (float)($r['valor'] ?? 0);
+            $totais['total_pago'] += (float)($r['valor_pago'] ?? 0);
+            $totais['total_restante'] += (float)($r['saldo'] ?? 0);
         }
 
         echo json_encode([
@@ -86,11 +88,16 @@ class VendaFiadoController extends BaseController {
             exit;
         }
 
+        $model = new AccountReceivable();
+        $hasValorPago = $model->columnExists('valor_pago');
+        $saldoSql = $hasValorPago ? "(COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0))" : "cr.valor";
+        $valorPagoSelect = $hasValorPago ? "cr.valor_pago," : "";
+
         $db = \App\Config\Database::getInstance()->getConnection();
         $sql = "
-            SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, cr.valor_pago, cr.status, 
-                   cr.data_vencimento, cr.created_at,
-                   (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
+            SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, $valorPagoSelect cr.status, 
+                   cr.data_vencimento,
+                   $saldoSql as saldo, 
                    c.nome as cliente_nome, v.created_at as data_venda
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
@@ -141,7 +148,9 @@ class VendaFiadoController extends BaseController {
                 exit;
             }
 
-            $saldoAtual = (float)$debito['valor'] - (float)$debito['valor_pago'];
+            $saldoAtual = (isset($debito['valor_pago'])) 
+                ? (float)$debito['valor'] - (float)$debito['valor_pago'] 
+                : (float)$debito['valor'];
 
             if ($valorPago > $saldoAtual + 0.01) {
                 echo json_encode(['ok' => false, 'msg' => 'O valor informado é maior que o saldo devedor.']);
