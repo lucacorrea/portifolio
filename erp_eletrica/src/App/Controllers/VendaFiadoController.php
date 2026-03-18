@@ -45,7 +45,8 @@ class VendaFiadoController extends BaseController {
         }
 
         $sql = "
-            SELECT cr.*, 
+            SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, cr.valor_pago, cr.status, 
+                   cr.data_vencimento, cr.created_at,
                    (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
                    c.nome as cliente_nome, 
                    DATEDIFF(CURRENT_DATE(), cr.data_vencimento) as dias_atraso
@@ -88,14 +89,14 @@ class VendaFiadoController extends BaseController {
         }
 
         $db = \App\Config\Database::getInstance()->getConnection();
-        $sql = "
-            SELECT cr.*, (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
+            SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, cr.valor_pago, cr.status, 
+                   cr.data_vencimento, cr.created_at,
+                   (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
                    c.nome as cliente_nome, v.created_at as data_venda
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             LEFT JOIN vendas v ON cr.venda_id = v.id
             WHERE cr.id = ?
-        ";
         $stmt = $db->prepare($sql);
         $stmt->execute([$id]);
         $debito = $stmt->fetch();
