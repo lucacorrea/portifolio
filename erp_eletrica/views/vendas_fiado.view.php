@@ -179,8 +179,8 @@
 <div class="modal fade" id="modalDetalhes" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-dark text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="fas fa-eye me-2 text-primary"></i>Detalhes da Dívida</h5>
+            <div class="modal-header bg-dark border-0 py-3 px-4">
+                <h5 class="modal-title fw-bold text-white shadow-sm"><i class="fas fa-eye me-2 text-warning"></i><span style="color: #ffffff !important;">DETALHES DA DÍVIDA</span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -217,8 +217,8 @@
 <div class="modal fade" id="modalPagamento" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-dark text-white border-0 py-3">
-                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2 text-primary"></i>RECEBER PAGAMENTO (AVS)</h6>
+            <div class="modal-header bg-dark border-0 py-3 px-4">
+                <h6 class="modal-title fw-bold text-white shadow-sm"><i class="fas fa-hand-holding-dollar me-2 text-warning"></i><span style="color: #ffffff !important;">RECEBER PAGAMENTO (AVS)</span></h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
