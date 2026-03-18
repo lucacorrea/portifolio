@@ -179,16 +179,16 @@
 <div class="modal fade" id="modalDetalhes" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-dark border-0 py-3 px-4">
-                <h5 class="modal-title fw-bold text-white shadow-sm"><i class="fas fa-eye me-2 text-warning"></i><span style="color: #ffffff !important;">DETALHES DA DÍVIDA</span></h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header border-0 py-3 px-4">
+                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-eye me-2 text-primary"></i>DETALHES DA DÍVIDA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-4 pt-0">
                 <div class="row g-4">
                     <div class="col-md-6">
                         <h6 class="fw-bold text-uppercase small text-muted mb-3 border-bottom pb-2">Informações Gerais</h6>
-                        <div class="mb-2"><span class="text-muted small">Cliente:</span> <span id="det-cliente" class="fw-bold d-block"></span></div>
-                        <div class="mb-2"><span class="text-muted small">Venda:</span> <span id="det-venda" class="fw-bold d-block"></span></div>
+                        <div class="mb-2 text-dark"><span class="text-muted small">Cliente:</span> <span id="det-cliente" class="fw-bold d-block"></span></div>
+                        <div class="mb-2 text-dark"><span class="text-muted small">Venda:</span> <span id="det-venda" class="fw-bold d-block"></span></div>
                         <div class="mb-2"><span class="text-muted small">Vencimento:</span> <span id="det-vencimento" class="fw-bold d-block text-danger"></span></div>
                         
                         <h6 class="fw-bold text-uppercase small text-muted mb-3 mt-4 border-bottom pb-2">Produtos da Venda</h6>
@@ -198,9 +198,9 @@
                     </div>
                     <div class="col-md-6 border-start">
                         <h6 class="fw-bold text-uppercase small text-muted mb-3 border-bottom pb-2">Resumo Financeiro</h6>
-                        <div class="d-flex justify-content-between mb-2"><span>Total da Venda:</span> <span id="det-total" class="fw-bold"></span></div>
-                        <div class="d-flex justify-content-between mb-2"><span>Total Recebido:</span> <span id="det-pago" class="fw-bold text-success"></span></div>
-                        <div class="d-flex justify-content-between mb-3"><span>Saldo Devedor:</span> <span id="det-restante" class="fw-bold text-danger fs-5"></span></div>
+                        <div class="d-flex justify-content-between mb-2 text-dark"><span>Total da Venda:</span> <span id="det-total" class="fw-bold"></span></div>
+                        <div class="d-flex justify-content-between mb-2 text-dark"><span>Total Recebido:</span> <span id="det-pago" class="fw-bold text-success"></span></div>
+                        <div class="d-flex justify-content-between mb-3 text-dark"><span>Saldo Devedor:</span> <span id="det-restante" class="fw-bold text-danger fs-5"></span></div>
 
                         <h6 class="fw-bold text-uppercase small text-muted mb-3 mt-4 border-bottom pb-2">Histórico (AVS)</h6>
                         <div id="det-pagos" class="small overflow-auto" style="max-height: 200px;">
@@ -208,6 +208,12 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary fw-bold" id="btn-reimprimir-recibo">
+                    <i class="fas fa-print me-2"></i>REIMPRIMIR RECIBO
+                </button>
             </div>
         </div>
     </div>
@@ -378,28 +384,35 @@
            document.getElementById('det-cliente').innerText = f.cliente_nome;
            document.getElementById('det-venda').innerText = `#${f.venda_id} (${fmtDate(f.data_venda)})`;
            document.getElementById('det-vencimento').innerText = fmtDate(f.data_vencimento, false);
-           document.getElementById('det-total').innerText = fmtBRL(f.valor_total);
+           document.getElementById('det-total').innerText = fmtBRL(f.valor);
            document.getElementById('det-pago').innerText = fmtBRL(f.valor_pago);
-           document.getElementById('det-restante').innerText = fmtBRL(f.valor_restante);
+           document.getElementById('det-restante').innerText = fmtBRL(f.saldo);
            
+           // Print button logic
+           document.getElementById('btn-reimprimir-recibo').onclick = () => imprimirRecibo(f.venda_id);
+
            // Itens
            document.getElementById('det-itens').innerHTML = data.items.map(i => `
-               <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom">
-                   <div>${i.quantidade}x ${i.produto_nome}</div>
+               <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom text-dark">
+                   <div>${parseFloat(i.quantidade)}x ${i.produto_nome}</div>
                    <div class="fw-bold">${fmtBRL(i.preco_unitario * i.quantidade)}</div>
                </div>
            `).join('') || '<div class="text-muted small">Nenhum item encontrado.</div>';
 
            // Pagos
            document.getElementById('det-pagos').innerHTML = data.payments.map(p => `
-               <div class="fi-history-item small mb-2">
+               <div class="fi-history-item small mb-2 text-dark">
                    <div class="fw-bold text-primary">${fmtBRL(p.valor)} <span class="text-muted font-normal">• ${p.metodo}</span></div>
                    <div class="text-muted extra-small">${fmtDate(p.created_at)}</div>
                </div>
            `).join('') || '<div class="text-muted small">Sem pagamentos registrados.</div>';
 
-           new bootstrap.Modal('#modalDetalhes').show();
+           bootstrap.Modal.getOrCreateInstance('#modalDetalhes').show();
         }
+    }
+
+    function imprimirRecibo(saleId) {
+        window.open('recibo_venda.php?id=' + saleId, '_blank', 'width=480,height=700,toolbar=0,menubar=0,location=0');
     }
 
     async function abrirPagar(id) {
