@@ -7,6 +7,42 @@ use App\Models\Client;
 use App\Services\AuditLogService;
 
 class VendaFiadoController extends BaseController {
+    public function __construct() {
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema() {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        
+        // 1. Ensure fiados_pagamentos table
+        $db->exec("CREATE TABLE IF NOT EXISTS fiados_pagamentos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            fiado_id INT NOT NULL,
+            valor DECIMAL(10,2) NOT NULL,
+            metodo VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_fiado_id (fiado_id)
+        ) ENGINE=InnoDB;");
+
+        // 2. Ensure columns in contas_receber
+        try {
+            // Check if valor_pago exists
+            $stmt = $db->query("SHOW COLUMNS FROM contas_receber LIKE 'valor_pago'");
+            if (!$stmt->fetch()) {
+                $db->exec("ALTER TABLE contas_receber ADD COLUMN valor_pago DECIMAL(10,2) DEFAULT 0.00 AFTER valor");
+            }
+            
+            // Check if saldo exists
+            $stmt = $db->query("SHOW COLUMNS FROM contas_receber LIKE 'saldo'");
+            if (!$stmt->fetch()) {
+                $db->exec("ALTER TABLE contas_receber ADD COLUMN saldo DECIMAL(10,2) DEFAULT 0.00 AFTER valor_pago");
+                $db->exec("UPDATE contas_receber SET saldo = (valor - valor_pago)");
+            }
+        } catch (\Exception $e) {
+            error_log("Schema sync error: " . $e->getMessage());
+        }
+    }
+
     public function index() {
         $this->render('vendas_fiado', [
             'title' => 'Gestão de Vendas Fiado',
