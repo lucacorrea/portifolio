@@ -26,7 +26,7 @@ function ativo($arquivo, $pagina)
                 <i class="fas fa-church"></i>
             </div>
             <div class="logo-text">
-                <h1>Deus Nascer de Novo.</h1>
+                <h1>Igreja de Deus Nascer de Novo.</h1>
                 <p>Administração eclesiástica</p>
             </div>
         </div>
