@@ -234,13 +234,28 @@
                     <input type="number" id="pay-valor" class="form-control form-control-lg text-center fw-bold" step="0.01" placeholder="0.00" required>
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-4">
                     <label class="form-label fw-bold">Forma de Recebimento</label>
-                    <select id="pay-metodo" class="form-select" required>
-                        <option value="DINHEIRO">💵 Dinheiro em Espécie</option>
-                        <option value="PIX">💎 Transferência PIX</option>
-                        <option value="CARTAO">💳 Cartão (Crédito/Débito)</option>
-                    </select>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_dinheiro" value="DINHEIRO" checked>
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_met_dinheiro">
+                                <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_pix" value="PIX">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_met_pix">
+                                <i class="fa-brands fa-pix me-2 text-info"></i> Pix
+                            </label>
+                        </div>
+                        <div class="col-12">
+                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_cartao" value="CARTAO">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_met_cartao">
+                                <i class="fas fa-credit-card me-2 text-primary"></i> Cartão
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
