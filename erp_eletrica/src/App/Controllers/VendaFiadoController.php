@@ -89,6 +89,7 @@ class VendaFiadoController extends BaseController {
         }
 
         $db = \App\Config\Database::getInstance()->getConnection();
+        $sql = "
             SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, cr.valor_pago, cr.status, 
                    cr.data_vencimento, cr.created_at,
                    (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
@@ -97,6 +98,7 @@ class VendaFiadoController extends BaseController {
             JOIN clientes c ON cr.cliente_id = c.id 
             LEFT JOIN vendas v ON cr.venda_id = v.id
             WHERE cr.id = ?
+        ";
         $stmt = $db->prepare($sql);
         $stmt->execute([$id]);
         $debito = $stmt->fetch();
