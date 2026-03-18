@@ -109,6 +109,8 @@ class VendaFiadoController extends BaseController {
             $totais['total_restante'] += (float)($r['saldo'] ?? 0);
         }
 
+        header('Content-Type: application/json');
+        if (ob_get_length()) ob_clean();
         echo json_encode([
             'ok' => true,
             'rows' => $rows,
@@ -155,6 +157,8 @@ class VendaFiadoController extends BaseController {
         $paymentModel = new AccountReceivablePayment();
         $payments = $paymentModel->findByFiado($id);
 
+        header('Content-Type: application/json');
+        if (ob_get_length()) ob_clean();
         echo json_encode([
             'ok' => true,
             'fiado' => $debito,
@@ -226,9 +230,13 @@ class VendaFiadoController extends BaseController {
                 ]));
 
                 $db->commit();
+                header('Content-Type: application/json');
+                if (ob_get_length()) ob_clean();
                 echo json_encode(['ok' => true, 'msg' => 'Pagamento registrado com sucesso.']);
             } catch (\Exception $e) {
                 if ($db->inTransaction()) $db->rollBack();
+                header('Content-Type: application/json');
+                if (ob_get_length()) ob_clean();
                 echo json_encode(['ok' => false, 'msg' => 'Erro ao processar pagamento: ' . $e->getMessage()]);
             }
             exit;
