@@ -280,8 +280,10 @@
                 console.error("Server Response Error:", text);
                 tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">
                     <i class="fas fa-exclamation-circle mb-2 d-block fs-3"></i>
-                    <strong>Erro na resposta do servidor</strong><br>
-                    <small class="opacity-75">O servidor retornou algo que não é um JSON válido. Verifique os logs do servidor.</small>
+                    <strong>Erro na resposta do servidor (JSON Inválido)</strong><br>
+                    <div class="text-start mt-2 p-3 bg-dark text-white rounded small overflow-auto" style="max-height: 250px; white-space: pre-wrap;">
+                        ${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+                    </div>
                 </td></tr>`;
                 return;
             }

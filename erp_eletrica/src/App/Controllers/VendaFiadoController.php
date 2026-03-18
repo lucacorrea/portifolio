@@ -45,11 +45,9 @@ class VendaFiadoController extends BaseController {
         }
 
         $sql = "
-            SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, cr.valor_pago, cr.status, 
-                   cr.data_vencimento, cr.created_at,
+            SELECT cr.*, 
                    (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
-                   c.nome as cliente_nome, 
-                   DATEDIFF(CURRENT_DATE(), cr.data_vencimento) as dias_atraso
+                   c.nome as cliente_nome
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             $where
