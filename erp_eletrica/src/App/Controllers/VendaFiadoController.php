@@ -45,8 +45,10 @@ class VendaFiadoController extends BaseController {
         }
 
         $sql = "
-            SELECT cr.*, (cr.valor - cr.valor_pago) as saldo, c.nome as cliente_nome, 
-                   DATEDIFF(CURRENT_DATE, cr.data_vencimento) as dias_atraso
+            SELECT cr.*, 
+                   (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
+                   c.nome as cliente_nome, 
+                   DATEDIFF(CURRENT_DATE(), cr.data_vencimento) as dias_atraso
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             $where
@@ -78,15 +80,17 @@ class VendaFiadoController extends BaseController {
         exit;
     }
 
-    public function get_details() {
-        $id = $_GET['id'] ?? null;
-        if (!$id) {
-            echo json_encode(['ok' => false, 'msg' => 'ID inválido.']);
-            exit;
-        }
-
-        $model = new AccountReceivable();
-        $debito = $model->findWithDetails($id);
+        $sql = "
+            SELECT cr.*, (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
+                   c.nome as cliente_nome, v.created_at as data_venda
+            FROM contas_receber cr 
+            JOIN clientes c ON cr.cliente_id = c.id 
+            LEFT JOIN vendas v ON cr.venda_id = v.id
+            WHERE cr.id = ?
+        ";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$id]);
+        $debito = $stmt->fetch();
 
         if (!$debito) {
             echo json_encode(['ok' => false, 'msg' => 'Débito não encontrado.']);

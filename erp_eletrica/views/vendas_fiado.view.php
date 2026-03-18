@@ -264,21 +264,46 @@
     });
 
     async function loadFiados() {
-        const di = document.getElementById('fi-di').value;
-        const df = document.getElementById('fi-df').value;
-        const status = document.getElementById('fi-status').value;
+        const tbody = document.getElementById('fi-tbody');
+        try {
+            const di = document.getElementById('fi-di').value || '';
+            const df = document.getElementById('fi-df').value || '';
+            const status = document.getElementById('fi-status').value || 'TODOS';
 
-        const res = await fetch(`fiado.php?action=fetch&di=${di}&df=${df}&status=${status}`);
-        const data = await res.json();
-
-        if (data.ok) {
-            allFiados = data.rows;
-            document.getElementById('tot-total').innerText = fmtBRL(data.totais.total_venda);
-            document.getElementById('tot-pago').innerText = fmtBRL(data.totais.total_pago);
-            document.getElementById('tot-restante').innerText = fmtBRL(data.totais.total_restante);
-            document.getElementById('tot-qtd').innerText = data.totais.qtd;
+            const res = await fetch(`fiado.php?action=fetch&di=${di}&df=${df}&status=${status}`);
+            const text = await res.text();
             
-            renderTable(allFiados);
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error("Server Response Error:", text);
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">
+                    <i class="fas fa-exclamation-circle mb-2 d-block fs-3"></i>
+                    <strong>Erro na resposta do servidor</strong><br>
+                    <small class="opacity-75">O servidor retornou algo que não é um JSON válido. Verifique os logs do servidor.</small>
+                </td></tr>`;
+                return;
+            }
+
+            if (data.ok) {
+                allFiados = data.rows || [];
+                document.getElementById('tot-total').innerText = fmtBRL(data.totais.total_venda);
+                document.getElementById('tot-pago').innerText = fmtBRL(data.totais.total_pago);
+                document.getElementById('tot-restante').innerText = fmtBRL(data.totais.total_restante);
+                document.getElementById('tot-qtd').innerText = data.totais.qtd;
+                
+                renderTable(allFiados);
+            } else {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">
+                    <strong>Erro:</strong> ${data.msg || 'Erro desconhecido'}
+                </td></tr>`;
+            }
+        } catch (err) {
+            console.error("Fetch Error:", err);
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">
+                <strong>Falha na conexão:</strong> ${err.message}
+            </td></tr>`;
         }
     }
 
