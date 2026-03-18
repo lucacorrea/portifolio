@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Secretaria de Terras e Habitação | Landing Page</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        :root {
+            /* Paleta pastel */
+            --primary: #86efac;
+            /* emerald-200 */
+            --primary-600: #10b981;
+            /* emerald-500/600 para detalhes */
+            --mint: #a7f3d0;
+            /* green-200 */
+            --sky: #bae6fd;
+            /* sky-200 */
+            --ink: #0f172a;
+            /* slate-900 */
+            --muted: #64748b;
+            /* slate-500 */
+            --bg: #f8fafc;
+            /* slate-50 */
+        }
+
+        html,
+        body {
+            font-family: 'Inter', system-ui, ui-sans-serif;
+            scroll-behavior: smooth;
+            background: var(--bg);
+            color: var(--ink)
+        }
+
+        .container-max {
+            max-width: 1200px
+        }
+
+        /* NAV */
+        .navglass {
+            backdrop-filter: saturate(140%) blur(8px);
+            background: rgba(255, 255, 255, .8);
+            border-bottom: 1px solid rgba(15, 23, 42, .06);
+            transition: all .3s
+        }
+
+        .navglass.scrolled {
+            background: rgba(255, 255, 255, .95);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .08)
+        }
+
+        /* HERO + PARALLAX (vídeo) */
+        .hero {
+            position: relative;
+            isolation: isolate
+        }
+
+        .parallax-layer {
+            position: absolute;
+            inset: -6% -6% 0;
+            will-change: transform;
+            transition: transform .12s linear
+        }
+
+        .hero video.parallax-layer {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: saturate(110%) contrast(1.04) brightness(1.06)
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .76), rgba(255, 255, 255, .9));
+            z-index: -1
+        }
+
+        .parallax-tint {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(1200px 600px at 12% 10%, rgba(134, 239, 172, .28), transparent 60%), radial-gradient(1100px 550px at 88% 14%, rgba(186, 230, 253, .24), transparent 60%);
+            pointer-events: none
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .parallax-layer {
+                transition: none;
+                transform: none !important
+            }
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .6rem;
+            padding: .85rem 1.15rem;
+            border-radius: 14px;
+            font-weight: 600
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--mint));
+            color: #064e3b;
+            border: 1px solid rgba(16, 185, 129, .25)
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.06)
+        }
+
+        .btn-ghost {
+            background: rgba(16, 185, 129, .06);
+            color: #065f46;
+            border: 1px solid rgba(16, 185, 129, .15)
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, .2)
+        }
+
+        /* Cards */
+        .card {
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, .08);
+            border-radius: 20px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, .06)
+        }
+
+        .shadow-soft {
+            box-shadow: 0 22px 44px rgba(0, 0, 0, .25)
+        }
+
+        /* Slider */
+        .slider {
+            position: relative;
+            overflow: hidden;
+            border-radius: 18px
+        }
+
+        .slides {
+            display: flex;
+            transition: transform .5s ease
+        }
+
+        .slide {
+            min-width: 100%;
+            position: relative
+        }
+
+        .slide img {
+            width: 100%;
+            height: 420px;
+            object-fit: cover;
+            display: block
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #a7f3d0;
+            opacity: .6
+        }
+
+        .dot.active {
+            opacity: 1;
+            background: #10b981
+        }
+
+        /* Masonry Gallery */
+        .masonry {
+            column-count: 1;
+            column-gap: 1.25rem
+        }
+
+        @media (min-width:768px) {
+            .masonry {
+                column-count: 2
+            }
+        }
+
+        @media (min-width:1024px) {
+            .masonry {
+                column-count: 3
+            }
+        }
+
+        .masonry-item {
+            break-inside: avoid;
+            margin: 0 0 1.25rem;
+            position: relative
+        }
+
+        .masonry-item img {
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 10px 18px rgba(15, 23, 42, .08)
+        }
+
+        .badge {
+            position: absolute;
+            top: .75rem;
+            left: .75rem;
+            background: rgba(255, 255, 255, .95);
+            color: #065f46;
+            padding: .35rem .6rem;
+            border-radius: 999px;
+            font-size: .75rem;
+            border: 1px solid rgba(16, 185, 129, .25)
+        }
+
+        .hover-zoom {
+            overflow: hidden;
+            border-radius: 16px
+        }
+
+        .hover-zoom img {
+            transition: transform .5s ease
+        }
+
+        .hover-zoom:hover img {
+            transform: scale(1.06)
+        }
+
+        /* Itens da galeria: legenda na imagem */
+        .caption {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, transparent, rgba(2, 6, 23, .65));
+            color: #fff;
+            padding: .85rem 1rem;
+            border-radius: 0 0 16px 16px;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: all .25s ease
+        }
+
+        .hover-zoom:hover .caption {
+            opacity: 1;
+            transform: translateY(0)
+        }
+
+        /* Lightbox */
+        dialog::backdrop {
+            background: rgba(0, 0, 0, .75)
+        }
+
+        dialog {
+            border: none;
+            border-radius: 18px;
+            max-width: min(1000px, 94vw);
+            width: fit-content;
+            padding: 0;
+            overflow: hidden;
+            background: #0b1324
+        }
+
+        /* Filter pills */
+        .pill {
+            border: 1px solid rgba(15, 23, 42, .08);
+            background: #fff;
+            padding: .5rem .9rem;
+            border-radius: 999px;
+            color: #065f46
+        }
+
+        .pill.active {
+            background: linear-gradient(135deg, #a7f3d0, #86efac);
+            border-color: transparent;
+            color: #064e3b
+        }
+
+        /* Chips de tags */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .25rem .55rem;
+            border-radius: 999px;
+            background: #ecfeff;
+            color: #0369a1;
+            font-size: .75rem
+        }
+    </style>
+</head>
+
+<body>
+    <!-- NAV -->
+    <header class="fixed top-0 inset-x-0 z-50 navglass">
+        <nav class="container mx-auto container-max px-5 py-4 flex items-center justify-between">
+            <a href="#home" class="flex items-center gap-3" aria-label="Ir para o início">
+                <span
+                    class="inline-grid place-items-center w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--mint)] text-emerald-900"><i
+                        class="fa-solid fa-map-location-dot"></i></span>
+                <strong class="text-emerald-800 text-lg tracking-tight">Secretaria de Terras <span
+                        class="text-emerald-700">& Habitação</span></strong>
+            </a>
+            <ul class="hidden md:flex items-center gap-8 text-slate-700">
+                <li><a class="hover:text-emerald-600" href="#servicos">Serviços</a></li>
+                <li><a class="hover:text-emerald-600" href="#galeria">Galeria</a></li>
+                <li><a class="hover:text-emerald-600" href="#sobre">Sobre</a></li>
+
+            </ul>
+
+            <button id="btnMenu" class="md:hidden text-emerald-900 text-2xl" aria-label="Abrir menu"><i
+                    class="fa-solid fa-bars"></i></button>
+        </nav>
+        <!-- mobile sheet -->
+        <div id="sheet" class="md:hidden hidden px-6 pb-5">
+            <div class="grid gap-3 text-slate-800">
+                <a class="py-2" href="#servicos">Serviços</a>
+                <a class="py-2" href="#galeria">Galeria</a>
+                <a class="py-2" href="#sobre">Sobre</a>
+
+
+            </div>
+        </div>
+    </header>
+
+    <section id="home" class="hero relative pt-20 md:pt-24">
+        <!-- camada/parallax -->
+        <div class="parallax-tint -z-10" data-speed="0.15" aria-hidden="true"></div>
+
+        <!-- fundo sutil em tons pastel -->
+        <div class="absolute inset-0 -z-10 bg-gradient-to-b from-emerald-50/50 via-white to-white"></div>
+
+        <div class="container mx-auto container-max px-5 relative py-16 md:py-20">
+            <div class="grid md:grid-cols-2 gap-8 md:gap-10 items-start">
+                <!-- ESQUERDA (mantido) -->
+                <div class="max-w-2xl">
+                    <p class="tracking-widest text-emerald-700/90 text-[11px] mb-2 font-semibold">
+                        Plataforma pública digital
+                    </p>
+                    <h1 class="text-3xl md:text-5xl font-extrabold leading-tight">
+                        Secretaria de Terras e Habitação
+                    </h1>
+                    <p class="mt-4 text-slate-700 text-base md:text-lg">
+                        Publique medições, regularizações, vistorias e mapas aéreos; organize documentos, monitore
+                        indicadores e atenda a população com transparência.
+                    </p>
+                    <div class="mt-6 flex flex-wrap items-center gap-3">
+                        <a class="btn btn-primary shadow-soft text-emerald-900" href="#servicos">
+                            <i class="fa-solid fa-rocket"></i> Começar agora
+                        </a>
+                        <a class="btn btn-ghost" href="#galeria">
+                            <i class="fa-regular fa-circle-play"></i> Ver galeria
+                        </a>
+                    </div>
+
+                    <!-- ===== Informações extras (opcional) ===== -->
+
+                    <!-- ===== fim extras ===== -->
+                </div>
+
+
+                <!-- DIREITA (cards menores) -->
+                <section id="cards" class="grid gap-4" aria-label="Serviços disponíveis">
+                    <!-- CARD BASE: classes utilitárias menores -->
+                    <article
+                        class="rounded-2xl border border-emerald-100/70 bg-white/70 backdrop-blur-sm p-4 md:p-5 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                        aria-labelledby="card-cadastro-titulo" aria-describedby="card-cadastro-desc card-cadastro-nota">
+                        <header class="flex items-center justify-between">
+                            <span
+                                class="inline-flex items-center gap-2 text-emerald-800 text-[10px] md:text-[11px] font-semibold bg-emerald-50/90 border border-emerald-200/70 px-2 py-0.5 rounded-full">
+                                <i class="fa-solid fa-id-card-clip text-emerald-600"></i> SIMCAD
+                            </span>
+                        </header>
+
+                        <div class="mt-3">
+                            <h3 id="card-cadastro-titulo" class="text-[18px] md:text-[19px] font-bold text-emerald-900">
+                                Cadastro do Cidadão
+                            </h3>
+                            <p id="card-cadastro-desc" class="mt-1.5 text-slate-600 text-sm leading-relaxed">
+                                Realize seu cadastro no Sistema Municipal de Habitação para acesso aos programas e à
+                                regularização de terras em Coari.
+                            </p>
+                        </div>
+
+                        <hr class="my-4 border-slate-200/70">
+
+                        <div class="mt-auto flex items-center justify-between gap-3">
+                            <a class="btn btn-primary text-emerald-900 shadow-soft !py-1.5 !px-3 text-sm"
+                                href="./meular.html" target="_blank" rel="noopener"
+                                aria-label="Iniciar cadastro de cidadão no HABITARSIS">
+                                Iniciar cadastro
+                                <i class="fa-solid fa-arrow-right-long"></i>
+                            </a>
+                            <span id="card-cadastro-nota" class="text-[11px] text-slate-500 hidden sm:block">
+                                Dados usados para políticas habitacionais.
+                            </span>
+                        </div>
+                    </article>
+
+                    <article
+                        class="rounded-2xl border border-emerald-100/70 bg-white/70 backdrop-blur-sm p-4 md:p-5 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                        aria-labelledby="card-mapa-titulo" aria-describedby="card-mapa-desc card-mapa-nota">
+                        <header class="flex items-center justify-between">
+                            <span
+                                class="inline-flex items-center gap-2 text-emerald-800 text-[10px] md:text-[11px] font-semibold bg-emerald-50/90 border border-emerald-200/70 px-2 py-0.5 rounded-full">
+                                <i class="fa-solid fa-map-location-dot text-emerald-600"></i> GEOCOARI
+                            </span>
+                        </header>
+
+                        <div class="mt-3">
+                            <h3 id="card-mapa-titulo" class="text-[18px] md:text-[19px] font-bold text-emerald-900">
+                                Malha Cartográfica Municipal
+                            </h3>
+                            <p id="card-mapa-desc" class="mt-1.5 text-slate-600 text-sm leading-relaxed">
+                                Explore o mapa dinâmico de Coari com camadas geográficas, dados urbanos e infraestrutura
+                                para análise territorial em tempo real.
+                            </p>
+                        </div>
+
+                        <hr class="my-4 border-slate-200/70">
+
+                        <div class="mt-auto flex items-center justify-between gap-3">
+                            <a class="btn btn-ghost !py-1.5 !px-3 text-sm" href="./webGis/index.php" target="_blank"
+                                rel="noopener" aria-label="Abrir mapa público">
+                                Abrir mapa público
+                                <i class="fa-solid fa-arrow-right-long"></i>
+                            </a>
+                            <span id="card-mapa-nota" class="text-[11px] text-slate-500 hidden sm:block">
+                                UTM SIRGAS 2000 e WGS84.
+                            </span>
+                        </div>
+                    </article>
+                </section>
+            </div>
+        </div>
+    </section>
+
+
+
+
+    <!-- SERVIÇOS -->
+    <section id="servicos" class="py-20 bg-white">
+        <div class="container mx-auto container-max px-5">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-5xl font-extrabold text-emerald-900">O que a Secretaria Entrega</h2>
+                <p class="text-slate-500 mt-3">Trabalhos e funcionalidades para gestão fundiária municipal</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-6">
+                <article class="card p-7 hover:-translate-y-0.5 transition">
+                    <div
+                        class="w-14 h-14 grid place-items-center rounded-xl bg-gradient-to-br from-sky-300 to-sky-400 text-emerald-900 mb-4">
+                        <i class="fa-solid fa-calendar-days text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Vistorias e Agendamentos</h3>
+                    <p class="text-slate-600 mt-2">Agendamentos de vistorias em campo, check‑in no local e painel do
+                        fiscal.</p>
+                    <ul class="mt-4 space-y-2 text-sm text-slate-700">
+                        <li><i class="fa-solid fa-check text-emerald-500 mr-2"></i>Notificações automáticas</li>
+                        <li><i class="fa-solid fa-check text-emerald-500 mr-2"></i>Integração com calendários</li>
+                    </ul>
+                </article>
+                <article class="card p-7 hover:-translate-y-0.5 transition">
+                    <div
+                        class="w-14 h-14 grid place-items-center rounded-xl bg-gradient-to-br from-emerald-300 to-emerald-400 text-emerald-900 mb-4">
+                        <i class="fa-solid fa-file-shield text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Gestão de Processos e Documentos</h3>
+                    <p class="text-slate-600 mt-2">Protocolos, anexos (fotos, plantas, ofícios), busca semântica e
+                        trilhas de auditoria.</p>
+                    <ul class="mt-4 space-y-2 text-sm text-slate-700">
+                        <li><i class="fa-solid fa-check text-emerald-500 mr-2"></i>Assinatura eletrônica</li>
+                        <li><i class="fa-solid fa-check text-emerald-500 mr-2"></i>Conformidade LGPD</li>
+                    </ul>
+                </article>
+                <article class="card p-7 hover:-translate-y-0.5 transition">
+                    <div
+                        class="w-14 h-14 grid place-items-center rounded-xl bg-gradient-to-br from-sky-200 to-emerald-200 text-emerald-900 mb-4">
+                        <i class="fa-solid fa-chart-line text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Indicadores & Relatórios</h3>
+                    <p class="text-slate-600 mt-2">Dashboards (lotes, áreas regularizadas, vistorias), exportação
+                        XLSX/PDF e metas por bairro.</p>
+                    <ul class="mt-4 space-y-2 text-sm text-slate-700">
+                        <li><i class="fa-solid fa-check text-emerald-500 mr-2"></i>Filtros por território</li>
+                        <li><i class="fa-solid fa-check text-emerald-500 mr-2"></i>Comparativos históricos</li>
+                    </ul>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- GALERIA -->
+    <section id="galeria" class="py-24 bg-[#f1f5f9]">
+        <div class="container mx-auto container-max px-5">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+                <div>
+                    <h2 class="text-3xl md:text-5xl font-extrabold text-emerald-900">Galeria de Trabalhos</h2>
+                    <p class="text-slate-600 mt-2">Álbuns de medições, regularizações, fiscalizações e mapeamentos
+                        (drone).</p>
+                    <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                        <span class="chip"><i class="fa-solid fa-tag"></i> Rua Profeta Jeremias</span>
+                        <span class="chip"><i class="fa-solid fa-tag"></i> Quadra 12</span>
+                        <span class="chip"><i class="fa-solid fa-location-dot"></i> Vale da Benção</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Masonry images + vídeos com lightbox -->
+            <div class="masonry" id="masonry">
+                <!-- item medição -->
+                <figure class="masonry-item filter-medicao hover-zoom" data-bairro="Vale da Benção" data-ano="2025"
+                    data-lote="57">
+                    <span class="badge">Medição • Lote 57</span>
+                    <div class="relative">
+                        <img loading="lazy"
+                            src="https://images.unsplash.com/photo-1603791440384-56cd371ee9a7?q=80&w=1200&auto=format&fit=crop"
+                            alt="Medição topográfica" data-type="image" data-title="Levantamento — Rua Profeta Jeremias"
+                            data-desc="Medições: D 22,15 m • E 21,25 m • Fd 12,20 m • Fr 11,90 m. Confrontantes identificados. Situação: apto à regularização." />
+                        <figcaption class="caption"><strong>Rua Profeta Jeremias</strong><br><small>Lote 57 • 2025 •
+                                Vale da Benção</small></figcaption>
+                    </div>
+                </figure>
+                <!-- item regularização -->
+                <figure class="masonry-item filter-regularizacao hover-zoom" data-bairro="Centro" data-ano="2025">
+                    <span class="badge">Regularização</span>
+                    <div class="relative">
+                        <img loading="lazy"
+                            src="https://images.unsplash.com/photo-1581093458791-9d09f49b1f8a?q=80&w=1200&auto=format&fit=crop"
+                            alt="Regularização" data-type="image" data-title="Processo de Regularização — Quadra 12"
+                            data-desc="Conferência de títulos, identificação de confrontantes e emissão de parecer técnico." />
+                        <figcaption class="caption"><strong>Quadra 12</strong><br><small>Processo 2025-0198 •
+                                Centro</small></figcaption>
+                    </div>
+                </figure>
+                <!-- item fiscalização -->
+                <figure class="masonry-item filter-fiscalizacao hover-zoom" data-bairro="Itamaraty" data-ano="2024">
+                    <span class="badge">Fiscalização</span>
+                    <div class="relative">
+                        <img loading="lazy"
+                            src="https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1200&auto=format&fit=crop"
+                            alt="Fiscalização" data-type="image" data-title="Vistoria — Ocupação Irregular"
+                            data-desc="Relatório fotográfico e orientação para adequação conforme legislação municipal." />
+                        <figcaption class="caption"><strong>Ocupação Irregular</strong><br><small>Termo orientativo
+                                emitido • 2024</small></figcaption>
+                    </div>
+                </figure>
+                <!-- item mapeamento -->
+                <figure class="masonry-item filter-mapeamento hover-zoom" data-bairro="Zona Leste" data-ano="2024">
+                    <span class="badge">Mapeamento Aéreo</span>
+                    <div class="relative">
+                        <img loading="lazy"
+                            src="https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?q=80&w=1200&auto=format&fit=crop"
+                            alt="Ortomosaico" data-type="image" data-title="Ortomosaico — Setor Leste"
+                            data-desc="Levantamento com drone, ortomosaico em alta resolução e delimitação de quadras." />
+                        <figcaption class="caption"><strong>Setor Leste</strong><br><small>Ortomosaico • 2024</small>
+                        </figcaption>
+                    </div>
+                </figure>
+                <!-- item vídeo -->
+                <figure class="masonry-item filter-video" data-ano="2025">
+                    <div class="relative hover-zoom">
+                        <span class="badge">Vídeo</span>
+                        <img loading="lazy" src="https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
+                            alt="Vídeo Secretaria" data-type="video"
+                            data-src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                            data-title="Secretaria em Ação — Regularizações 2025" />
+                        <i
+                            class="fa-solid fa-circle-play text-white/90 text-5xl absolute inset-0 m-auto w-max h-max drop-shadow"></i>
+                        <figcaption class="caption"><strong>Secretaria em Ação</strong><br><small>Regularizações
+                                2025</small></figcaption>
+                    </div>
+                </figure>
+            </div>
+
+            <div class="text-center mt-6">
+                <button id="btnMore" class="btn btn-ghost">Carregar mais</button>
+            </div>
+        </div>
+
+        <!-- Lightbox dialog -->
+        <dialog id="lightbox" aria-label="Visualização de mídia">
+            <div class="relative">
+                <button id="closeLb"
+                    class="absolute top-3 right-3 z-10 bg-white/10 hover:bg-white/20 text-white w-10 h-10 rounded-full grid place-items-center"
+                    aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+                <div class="grid md:grid-cols-5 gap-0">
+                    <div class="md:col-span-3 max-h-[80vh] overflow-hidden bg-black">
+                        <iframe id="lbVideo" class="hidden w-[min(80vw,1000px)] h-[70vh]"
+                            allow="accelerometer;autoplay;encrypted-media;gyroscope;picture-in-picture"
+                            allowfullscreen></iframe>
+                        <img id="lbImage" class="w-full h-full object-contain bg-black/30" alt="preview" />
+                    </div>
+                    <aside class="md:col-span-2 p-6 text-slate-200 bg-[#0b1324]">
+                        <h3 id="lbTitle" class="text-2xl font-bold"></h3>
+                        <p id="lbDesc" class="mt-3 text-slate-300"></p>
+                    </aside>
+                </div>
+            </div>
+        </dialog>
+    </section>
+
+    <!-- SOBRE (cards alinhados e alguns abaixo do Atendimento) -->
+    <section id="sobre" class="py-24 bg-white">
+        <div class="container mx-auto container-max px-5 grid lg:grid-cols-12 gap-8">
+            <!-- Coluna principal (8/12 no desktop) -->
+            <div class="lg:col-span-8">
+                <h2 class="text-3xl md:text-5xl font-extrabold text-emerald-900">Sobre a Secretaria</h2>
+                <p class="mt-4 text-slate-600">
+                    Somos responsáveis pela gestão fundiária municipal — planejamento, regularização, fiscalização e
+                    cadastro territorial —
+                    para garantir <strong>segurança jurídica</strong>, <strong>uso adequado do solo</strong> e
+                    <strong>desenvolvimento urbano sustentável</strong>.
+                </p>
+
+                <!-- Competências / Processos -->
+                <div class="grid md:grid-cols-2 gap-5 mt-6 items-stretch [grid-auto-rows:1fr]">
+                    <div class="card p-6 h-full flex flex-col">
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="inline-grid w-9 h-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                <i class="fa-solid fa-diagram-project"></i>
+                            </span>
+                            <h3 class="font-bold text-emerald-900">Competências</h3>
+                        </div>
+                        <ul class="mt-4 space-y-2 text-slate-600 text-sm">
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-check text-emerald-600 mt-1"></i>Regularização e <span
+                                    class="font-medium ml-1">titulação</span> (urbana e rural)</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-check text-emerald-600 mt-1"></i>Vistorias, laudos e pareceres
+                                técnicos</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-check text-emerald-600 mt-1"></i>Cadastro, georreferenciamento e
+                                ortomosaicos</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-check text-emerald-600 mt-1"></i>Monitoramento de ocupações e
+                                conflitos de uso</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-check text-emerald-600 mt-1"></i>Gestão de ZEIS, parcelamentos e
+                                demarcações</li>
+                        </ul>
+                    </div>
+
+                    <div class="card p-6 h-full flex flex-col">
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="inline-grid w-9 h-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                <i class="fa-solid fa-gears"></i>
+                            </span>
+                            <h3 class="font-bold text-emerald-900">Processos</h3>
+                        </div>
+                        <ul class="mt-4 space-y-2 text-slate-600 text-sm">
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-circle-dot text-emerald-600 mt-1"></i>Protocolo digital com
+                                anexos (plantas, ofícios, fotos)</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-circle-dot text-emerald-600 mt-1"></i>Fluxos por etapas e prazos
+                                com notificações</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-circle-dot text-emerald-600 mt-1"></i>Relatórios e indicadores
+                                por território</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-solid fa-circle-dot text-emerald-600 mt-1"></i>Atendimento ao cidadão e
+                                audiência pública</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Programas prioritários (2 ficam na coluna principal) -->
+                <div class="grid sm:grid-cols-2 gap-5 mt-6 items-stretch [grid-auto-rows:1fr]">
+                    <div class="card p-5 h-full flex flex-col">
+                        <div class="text-[10px] uppercase tracking-wider text-emerald-700/90">Programa</div>
+                        <h4 class="font-bold text-emerald-900 mt-1">Regulariza Bairro</h4>
+                        <p class="text-slate-600 text-sm mt-1">Mutirões de cadastro e emissão de títulos por quadra.</p>
+                    </div>
+                    <div class="card p-5 h-full flex flex-col">
+                        <div class="text-[10px] uppercase tracking-wider text-emerald-700/90">Programa</div>
+                        <h4 class="font-bold text-emerald-900 mt-1">Mapa Vivo</h4>
+                        <p class="text-slate-600 text-sm mt-1">Atualização contínua do cadastro e ortofotos.</p>
+                    </div>
+                </div>
+
+                <!-- Passo a passo do cidadão -->
+                <div class="card p-6 mt-6">
+                    <div class="flex items-center gap-2">
+                        <span
+                            class="inline-grid w-9 h-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            <i class="fa-solid fa-person-walking"></i>
+                        </span>
+                        <h3 class="font-bold text-emerald-900">Como solicitar regularização</h3>
+                    </div>
+                    <ol class="mt-4 grid sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <li
+                            class="border border-emerald-100 rounded-xl p-4 bg-emerald-50 min-h-28 flex flex-col justify-between">
+                            <div class="flex items-center gap-2 font-semibold"><span
+                                    class="w-6 h-6 inline-grid place-items-center rounded-full bg-white border border-emerald-200">1</span>
+                                Protocolo</div>
+                            <div class="text-slate-600">Abra o processo e anexe documentos.</div>
+                        </li>
+                        <li
+                            class="border border-emerald-100 rounded-xl p-4 bg-emerald-50 min-h-28 flex flex-col justify-between">
+                            <div class="flex items-center gap-2 font-semibold"><span
+                                    class="w-6 h-6 inline-grid place-items-center rounded-full bg-white border border-emerald-200">2</span>
+                                Vistoria</div>
+                            <div class="text-slate-600">Equipe agenda visita técnica ao local.</div>
+                        </li>
+                        <li
+                            class="border border-emerald-100 rounded-xl p-4 bg-emerald-50 min-h-28 flex flex-col justify-between">
+                            <div class="flex items-center gap-2 font-semibold"><span
+                                    class="w-6 h-6 inline-grid place-items-center rounded-full bg-white border border-emerald-200">3</span>
+                                Análise</div>
+                            <div class="text-slate-600">Conferência de confrontantes e parecer.</div>
+                        </li>
+                        <li
+                            class="border border-emerald-100 rounded-xl p-4 bg-emerald-50 min-h-28 flex flex-col justify-between">
+                            <div class="flex items-center gap-2 font-semibold"><span
+                                    class="w-6 h-6 inline-grid place-items-center rounded-full bg-white border border-emerald-200">4</span>
+                                Título</div>
+                            <div class="text-slate-600">Emissão/entrega do documento de posse.</div>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Coluna lateral (4/12 no desktop) -->
+            <aside class="lg:col-span-4">
+                <div class="card p-6">
+                    <h3 class="font-bold text-emerald-900 text-lg">Atendimento</h3>
+                    <ul class="mt-3 text-slate-700 text-sm space-y-2">
+                        <li><i class="fa-solid fa-clock text-emerald-600 mr-2"></i> Seg–Sex, 8h–17h</li>
+                        <li><i class="fa-solid fa-location-dot text-emerald-600 mr-2"></i> Av. Exemplo, 1000 — Centro
+                        </li>
+                        <li><i class="fa-solid fa-envelope text-emerald-600 mr-2"></i> atendimento@sechab.gov.br</li>
+                    </ul>
+                    <div class="mt-4 grid gap-2">
+                        <a class="btn btn-primary w-full justify-center" href="#contato"><i
+                                class="fa-solid fa-paper-plane"></i> Fale conosco</a>
+                        <a class="btn btn-ghost w-full justify-center" href="#galeria"><i
+                                class="fa-solid fa-images"></i> Ver galeria</a>
+                    </div>
+                    <div class="mt-6 border-t border-slate-200 pt-4 text-sm">
+                        <div class="font-semibold text-emerald-900">Downloads úteis</div>
+                        <ul class="mt-2 text-slate-700 space-y-1">
+                            <li class="flex items-center gap-2"><i
+                                    class="fa-regular fa-file-lines text-emerald-600"></i> Checklist de documentos (PDF)
+                            </li>
+                            <li class="flex items-center gap-2"><i
+                                    class="fa-regular fa-file-lines text-emerald-600"></i> Requerimento de vistoria
+                                (PDF)</li>
+                            <li class="flex items-center gap-2"><i
+                                    class="fa-regular fa-file-lines text-emerald-600"></i> Manual do protocolo digital
+                                (PDF)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 🔽 Cards que vão para BAIXO do Atendimento no desktop -->
+                <div class="mt-6 grid gap-5">
+                    <div class="card p-5">
+                        <div class="text-[10px] uppercase tracking-wider text-emerald-700/90">Programa</div>
+                        <h4 class="font-bold text-emerald-900 mt-1">Fiscaliza Já</h4>
+                        <p class="text-slate-600 text-sm mt-1">Vistorias em campo com check-in e painéis do fiscal.</p>
+                    </div>
+
+                    <div class="card p-6">
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="inline-grid w-9 h-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                <i class="fa-solid fa-scale-balanced"></i>
+                            </span>
+                            <h3 class="font-bold text-emerald-900">Base legal (resumo)</h3>
+                        </div>
+                        <ul class="mt-3 space-y-2 text-slate-600 text-sm">
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-regular fa-file-lines text-emerald-600 mt-1"></i>Lei de Regularização
+                                Fundiária Urbana (Reurb)</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-regular fa-file-lines text-emerald-600 mt-1"></i>Plano Diretor e Leis de
+                                Uso e Ocupação do Solo</li>
+                            <li class="flex items-start gap-2"><i
+                                    class="fa-regular fa-file-lines text-emerald-600 mt-1"></i>Normas cartoriais e de
+                                georreferenciamento</li>
+                        </ul>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- =====================  BLOCOS EM LARGURA TOTAL DA SEÇÃO  ===================== -->
+            <!-- Indicadores (12 colunas) -->
+            <div class="lg:col-span-12">
+                <div class="mt-6 grid sm:grid-cols-2 md:grid-cols-3 gap-5 items-stretch [grid-auto-rows:1fr]">
+                    <div class="card p-6 text-center h-full flex flex-col justify-center">
+                        <div class="text-3xl font-extrabold text-emerald-700">1.284</div>
+                        <div class="text-slate-500 text-sm">Títulos emitidos (12 meses)</div>
+                    </div>
+                    <div class="card p-6 text-center h-full flex flex-col justify-center">
+                        <div class="text-3xl font-extrabold text-emerald-700">312</div>
+                        <div class="text-slate-500 text-sm">Vistorias no último trimestre</div>
+                    </div>
+                    <div class="card p-6 text-center h-full flex flex-col justify-center">
+                        <div class="text-3xl font-extrabold text-emerald-700">92%</div>
+                        <div class="text-slate-500 text-sm">Satisfação do cidadão</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FAQ (12 colunas) -->
+            <div class="lg:col-span-12">
+                <div class="mt-6">
+                    <details class="card p-6">
+                        <summary class="font-bold text-emerald-900 cursor-pointer">Perguntas frequentes</summary>
+                        <div class="mt-3 text-slate-600 text-sm space-y-2">
+                            <p><strong>Como iniciar uma regularização?</strong> Abra um protocolo, anexe documentos
+                                pessoais e de posse, e aguarde o agendamento de vistoria.</p>
+                            <p><strong>Quais documentos são aceitos?</strong> RG/CPF, comprovante de residência,
+                                croqui/planta, fotos e eventuais contratos/declarações.</p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+            <!-- ============================================================================ -->
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="py-10 bg-white text-slate-600 text-sm border-t border-slate-200">
+        <div class="container mx-auto container-max px-5 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <span
+                    class="inline-grid place-items-center w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--mint)] text-emerald-900"><i
+                        class="fa-solid fa-map-location-dot"></i></span>
+                <span>© 2025 Secretaria de Terras & Habitação. Todos os direitos reservados.</span>
+            </div>
+            <div class="opacity-70">Política de Privacidade • Termos</div>
+        </div>
+    </footer>
+
+    <script>
+        // Sticky nav + parallax (vídeo mais forte, com inércia e economia de recursos)
+        const header = document.querySelector('header');
+        const hero = document.getElementById('home');
+        const layers = [...document.querySelectorAll('.parallax-layer')];
+
+        let targetY = 0, currentY = 0, rafId = null, running = false;
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const isMobile = window.matchMedia('(max-width: 640px)').matches;
+
+        function tick() {
+            currentY += (targetY - currentY) * 0.1; // inércia levemente maior
+            layers.forEach(el => {
+                const speed = parseFloat(el.dataset.speed || 0.4);
+                el.style.transform = `translateY(${-currentY * speed}px)`;
+            });
+            rafId = requestAnimationFrame(tick);
+        }
+
+        function onScroll() {
+            header.classList.toggle('scrolled', window.scrollY > 10);
+            const maxY = isMobile ? 120 : 260; // maior alcance para o efeito
+            targetY = Math.min(window.scrollY, maxY);
+            if (!running && !prefersReduced) { running = true; tick(); }
+        }
+
+        // Pausar animação quando o herói não está visível (economia de recursos)
+        const io = new IntersectionObserver((entries) => {
+            const e = entries[0]; if (!e) return;
+            if (e.isIntersecting) { if (!prefersReduced && !running) { running = true; tick(); } }
+            else { running = false; cancelAnimationFrame(rafId); rafId = null; }
+        }, { threshold: 0 });
+        io.observe(hero);
+
+        window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+        // Controle do vídeo (autoplay e pausa quando fora de vista/aba em segundo plano)
+        const heroVideo = document.getElementById('heroVideo');
+        if (heroVideo) {
+            const tryPlay = () => heroVideo.play?.().catch(() => { });
+            tryPlay();
+            const ioVid = new IntersectionObserver((entries) => {
+                entries.forEach(e => { if (e.isIntersecting) tryPlay(); else heroVideo.pause?.(); });
+            }, { threshold: 0.2 });
+            ioVid.observe(heroVideo);
+            document.addEventListener('visibilitychange', () => { if (document.hidden) heroVideo.pause?.(); else tryPlay(); });
+        }
+
+        // Mobile sheet
+        document.getElementById('btnMenu').addEventListener('click', () => {
+            document.getElementById('sheet').classList.toggle('hidden');
+        });
+
+        // Featured slider
+        (function () {
+            const slider = document.getElementById('featuredSlider');
+            const track = slider.querySelector('.slides');
+            const slides = [...slider.querySelectorAll('.slide')];
+            const btnPrev = slider.querySelectorAll('button')[0];
+            const btnNext = slider.querySelectorAll('button')[1];
+            const dotsWrap = slider.querySelector('div.absolute.bottom-3');
+            let i = 0; let autoint;
+            const go = n => { i = (n + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`;[...dotsWrap.children].forEach((d, idx) => d.classList.toggle('active', idx === i)); };
+            slides.forEach((_, idx) => { const d = document.createElement('span'); d.className = 'dot'; d.addEventListener('click', () => go(idx)); dotsWrap.appendChild(d) });
+            go(0);
+            const next = () => go(i + 1), prev = () => go(i - 1);
+            btnNext.addEventListener('click', next); btnPrev.addEventListener('click', prev);
+            const start = () => autoint = setInterval(next, 5000), stop = () => clearInterval(autoint);
+            slider.addEventListener('mouseenter', stop); slider.addEventListener('mouseleave', start); start();
+        })();
+
+        // Lightbox
+        const lb = document.getElementById('lightbox');
+        const lbImg = document.getElementById('lbImage');
+        const lbVid = document.getElementById('lbVideo');
+        const lbTitle = document.getElementById('lbTitle');
+        const lbDesc = document.getElementById('lbDesc');
+        document.getElementById('closeLb').addEventListener('click', () => { lb.close(); lbVid.src = ''; });
+
+        document.getElementById('masonry').addEventListener('click', e => {
+            const img = e.target.closest('img'); if (!img) return;
+            const type = img.dataset.type; lbTitle.textContent = img.dataset.title || ''; lbDesc.textContent = img.dataset.desc || '';
+            if (type === 'video') {
+                lbVid.classList.remove('hidden'); lbImg.classList.add('hidden'); lbVid.src = img.dataset.src + '?autoplay=1';
+            } else {
+                lbImg.classList.remove('hidden'); lbVid.classList.add('hidden'); lbImg.src = img.src;
+            }
+            if (typeof lb.showModal === 'function') { lb.showModal(); } else { alert('Seu navegador não suporta dialog modal.'); }
+        });
+
+        // Filtros (pílulas + busca + selects) + contadores + paginação simples
+        const pills = [...document.querySelectorAll('.pill')];
+        const itemsAll = [...document.querySelectorAll('.masonry-item')];
+        let page = 1; const perPage = 9;
+
+        function applyFilters() {
+            const active = document.querySelector('.pill.active')?.dataset.filter || 'all';
+            const q = (document.getElementById('q')?.value || '').toLowerCase();
+            const bairro = (document.getElementById('fBairro')?.value || '').toLowerCase();
+            const ano = (document.getElementById('fAno')?.value || '');
+            const filtered = itemsAll.filter(it => {
+                const hasClass = [...it.classList].some(c => c.startsWith('filter-') && c.endsWith(active));
+                const matchPill = active === 'all' || hasClass;
+                const meta = ((it.dataset.bairro || '') + ' ' + (it.dataset.lote || '') + ' ' + (it.dataset.ano || '')).toLowerCase();
+                const matchText = !q || meta.includes(q);
+                const matchBairro = !bairro || (it.dataset.bairro || '').toLowerCase() === bairro;
+                const matchAno = !ano || (it.dataset.ano || '') === ano;
+                return (matchPill && matchText && matchBairro && matchAno);
+            });
+
+            // contadores por categoria
+            const counts = {
+                all: filtered.length,
+                medicao: filtered.filter(x => x.classList.contains('filter-medicao')).length,
+                regularizacao: filtered.filter(x => x.classList.contains('filter-regularizacao')).length,
+                fiscalizacao: filtered.filter(x => x.classList.contains('filter-fiscalizacao')).length,
+                mapeamento: filtered.filter(x => x.classList.contains('filter-mapeamento')).length,
+                video: filtered.filter(x => x.classList.contains('filter-video')).length,
+            };
+            for (const k of Object.keys(counts)) {
+                const el = document.getElementById(`count-${k}`); if (el) el.textContent = `(${counts[k]})`;
+            }
+
+            // paginação
+            itemsAll.forEach(it => it.classList.add('hidden'));
+            const max = page * perPage;
+            filtered.slice(0, max).forEach(it => it.classList.remove('hidden'));
+            document.getElementById('btnMore').classList.toggle('hidden', filtered.length <= max);
+        }
+
+        pills.forEach(p => p.addEventListener('click', () => { pills.forEach(x => x.classList.remove('active')); p.classList.add('active'); page = 1; applyFilters(); }));
+        ['q', 'fBairro', 'fAno'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => { page = 1; applyFilters(); }) });
+        document.getElementById('btnMore').addEventListener('click', () => { page++; applyFilters(); });
+        applyFilters();
+    </script>
+</body>
+
+</html>
