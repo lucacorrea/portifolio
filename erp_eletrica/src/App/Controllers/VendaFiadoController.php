@@ -80,6 +80,14 @@ class VendaFiadoController extends BaseController {
         exit;
     }
 
+    public function get_details() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            echo json_encode(['ok' => false, 'msg' => 'ID inválido.']);
+            exit;
+        }
+
+        $db = \App\Config\Database::getInstance()->getConnection();
         $sql = "
             SELECT cr.*, (COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0)) as saldo, 
                    c.nome as cliente_nome, v.created_at as data_venda
@@ -97,6 +105,7 @@ class VendaFiadoController extends BaseController {
             exit;
         }
 
+        $model = new AccountReceivable();
         $items = $model->getItems($debito['venda_id']);
         
         $paymentModel = new AccountReceivablePayment();
