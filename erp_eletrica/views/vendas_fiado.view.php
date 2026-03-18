@@ -152,7 +152,7 @@
 <div class="fi-table-card shadow-sm">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead class="bg-light text-secondary">
+            <thead class="bg-light text-secondary border-bottom">
                 <tr>
                     <th class="ps-4 py-3">Venda #</th>
                     <th>Data</th>
@@ -161,7 +161,7 @@
                     <th class="text-end">Recebido</th>
                     <th class="text-end">Saldo</th>
                     <th class="text-center">Status</th>
-                    <th class="text-center pe-4">Ações</th>
+                    <th class="text-end pe-4">Ações</th>
                 </tr>
             </thead>
             <tbody id="fi-tbody">
@@ -175,74 +175,75 @@
     </div>
 </div>
 
-<!-- Modal Detalhes -->
+<!-- Modal Detalhes (Apenas Visualização) -->
 <div class="modal fade" id="modalDetalhes" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title fw-bold"><i class="fas fa-info-circle me-2"></i>Detalhes do Débito</h5>
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-eye me-2 text-primary"></i>Detalhes da Dívida</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="row g-3">
-                    <!-- Esquerda: Info e Itens -->
-                    <div class="col-md-7">
-                        <div class="fi-modal-info shadow-none">
-                            <div class="row mb-2">
-                                <div class="col-4 text-muted small">Cliente:</div>
-                                <div class="col-8 fw-bold" id="det-cliente"></div>
-                            </div>
-                            <div class="row mb-2">
-                                <div class="col-4 text-muted small">Venda:</div>
-                                <div class="col-8 fw-bold" id="det-venda"></div>
-                            </div>
-                            <div class="row mb-2">
-                                <div class="col-4 text-muted small">Vencimento:</div>
-                                <div class="col-8 fw-bold text-danger" id="det-vencimento"></div>
-                            </div>
-                        </div>
-
-                        <h6 class="fw-bold mb-3 mt-4"><i class="fas fa-shopping-cart me-2"></i>Itens da Venda</h6>
-                        <div id="det-itens" class="border rounded p-3 bg-white" style="max-height: 200px; overflow-y: auto;">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-uppercase small text-muted mb-3 border-bottom pb-2">Informações Gerais</h6>
+                        <div class="mb-2"><span class="text-muted small">Cliente:</span> <span id="det-cliente" class="fw-bold d-block"></span></div>
+                        <div class="mb-2"><span class="text-muted small">Venda:</span> <span id="det-venda" class="fw-bold d-block"></span></div>
+                        <div class="mb-2"><span class="text-muted small">Vencimento:</span> <span id="det-vencimento" class="fw-bold d-block text-danger"></span></div>
+                        
+                        <h6 class="fw-bold text-uppercase small text-muted mb-3 mt-4 border-bottom pb-2">Produtos da Venda</h6>
+                        <div id="det-itens" class="small overflow-auto" style="max-height: 250px;">
                             <!-- Itens via JS -->
                         </div>
                     </div>
+                    <div class="col-md-6 border-start">
+                        <h6 class="fw-bold text-uppercase small text-muted mb-3 border-bottom pb-2">Resumo Financeiro</h6>
+                        <div class="d-flex justify-content-between mb-2"><span>Total da Venda:</span> <span id="det-total" class="fw-bold"></span></div>
+                        <div class="d-flex justify-content-between mb-2"><span>Total Recebido:</span> <span id="det-pago" class="fw-bold text-success"></span></div>
+                        <div class="d-flex justify-content-between mb-3"><span>Saldo Devedor:</span> <span id="det-restante" class="fw-bold text-danger fs-5"></span></div>
 
-                    <!-- Direita: Histórico e Receber -->
-                    <div class="col-md-5">
-                        <div class="card border-0 bg-light-subtle h-100">
-                            <div class="card-body">
-                                <h6 class="fw-bold mb-3"><i class="fas fa-history me-2"></i>Histórico de Pagos</h6>
-                                <div id="det-pagos" class="mb-4" style="max-height: 150px; overflow-y: auto;">
-                                    <!-- Pagamentos via JS -->
-                                </div>
-
-                                <div class="border-top pt-3" id="box-pagamento">
-                                    <h6 class="fw-bold mb-3">Registrar Recebimento</h6>
-                                    <div class="mb-3">
-                                        <label class="form-label small">Valor (R$)</label>
-                                        <input type="number" id="pay-valor" class="form-control form-control-lg fw-bold" step="0.01">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">Método</label>
-                                        <select id="pay-metodo" class="form-select">
-                                            <option value="DINHEIRO">Dinheiro</option>
-                                            <option value="PIX">Pix</option>
-                                            <option value="CARTAO">Cartão</option>
-                                        </select>
-                                    </div>
-                                    <button class="btn btn-primary w-100 fw-bold py-2 rounded-3" onclick="confirmarPagamento()">
-                                        Confirmar Recebimento
-                                    </button>
-                                </div>
-                                <div id="box-quitado" class="text-center py-4 d-none">
-                                    <i class="fas fa-check-circle text-success fs-1 mb-2"></i>
-                                    <div class="fw-bold text-success text-uppercase">Totalmente Pago</div>
-                                </div>
-                            </div>
+                        <h6 class="fw-bold text-uppercase small text-muted mb-3 mt-4 border-bottom pb-2">Histórico (AVS)</h6>
+                        <div id="det-pagos" class="small overflow-auto" style="max-height: 200px;">
+                            <!-- Pagamentos via JS -->
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Receber AVS (Pagamento Individual) -->
+<div class="modal fade" id="modalPagamento" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Receber Pagamento (AVS)</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3 p-2 bg-light rounded text-center">
+                    <div class="small text-muted mb-1" id="pay-cliente-nome"></div>
+                    <div class="fw-bold text-danger" id="pay-saldo-display"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">VALOR RECEBIDO (R$)</label>
+                    <input type="number" id="pay-valor" class="form-control form-control-lg fw-bold text-center border-2 border-success border-opacity-25" step="0.01">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label small fw-bold">MÉTODO</label>
+                    <select id="pay-metodo" class="form-select border-2">
+                        <option value="DINHEIRO">🛒 DINHEIRO</option>
+                        <option value="PIX">⚡ PIX</option>
+                        <option value="CARTAO">💳 CARTÃO</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-success btn-lg w-100 fw-bold py-3 rounded-3 shadow-sm" onclick="confirmarPagamento()">
+                    CONFIRMAR BAIXA (AVS)
+                </button>
             </div>
         </div>
     </div>
@@ -253,7 +254,7 @@
     let currentId = null;
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Set default dates (last month)
+        // Set default dates (beginning of current month to today)
         const now = new Date();
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
         document.getElementById('fi-di').value = firstDay.toISOString().split('T')[0];
@@ -299,10 +300,17 @@
                 <td class="text-center">
                     <span class="fi-status-badge fi-status-${r.status.toLowerCase()}">${r.status}</span>
                 </td>
-                <td class="text-center pe-4">
-                    <button class="btn btn-light fi-btn-detail border" onclick="verDetalhes(${r.id})">
-                        <i class="fas fa-eye me-1 text-primary"></i> Verificar
-                    </button>
+                <td class="text-end pe-4">
+                    <div class="btn-group shadow-sm rounded-3">
+                        <button class="btn btn-sm btn-white border" onclick="verDetalhes(${r.id})" title="Ver Detalhes">
+                            <i class="fas fa-eye text-primary"></i> <span class="d-none d-md-inline ms-1 small">Visualizar</span>
+                        </button>
+                        ${parseFloat(r.saldo) > 0.01 ? `
+                        <button class="btn btn-sm btn-success text-white px-3" onclick="abrirPagar(${r.id})" title="Baixar AVS">
+                            <i class="fas fa-hand-holding-dollar"></i> <span class="d-none d-md-inline ms-1 small">Receber AVS</span>
+                        </button>
+                        ` : ''}
+                    </div>
                 </td>
             </tr>
         `).join('');
@@ -318,7 +326,6 @@
     }
 
     async function verDetalhes(id) {
-        currentId = id;
         const res = await fetch(`fiado.php?action=get_details&id=${id}`);
         const data = await res.json();
 
@@ -327,6 +334,9 @@
            document.getElementById('det-cliente').innerText = f.cliente_nome;
            document.getElementById('det-venda').innerText = `#${f.venda_id} (${fmtDate(f.data_venda)})`;
            document.getElementById('det-vencimento').innerText = fmtDate(f.data_vencimento, false);
+           document.getElementById('det-total').innerText = fmtBRL(f.valor_total);
+           document.getElementById('det-pago').innerText = fmtBRL(f.valor_pago);
+           document.getElementById('det-restante').innerText = fmtBRL(f.valor_restante);
            
            // Itens
            document.getElementById('det-itens').innerHTML = data.items.map(i => `
@@ -337,26 +347,27 @@
            `).join('') || '<div class="text-muted small">Nenhum item encontrado.</div>';
 
            // Pagos
-           const h = data.payments;
-           document.getElementById('det-pagos').innerHTML = h.map(p => `
+           document.getElementById('det-pagos').innerHTML = data.payments.map(p => `
                <div class="fi-history-item small mb-2">
                    <div class="fw-bold text-primary">${fmtBRL(p.valor)} <span class="text-muted font-normal">• ${p.metodo}</span></div>
                    <div class="text-muted extra-small">${fmtDate(p.created_at)}</div>
                </div>
            `).join('') || '<div class="text-muted small">Sem pagamentos registrados.</div>';
 
-           // Box Pay
-           document.getElementById('pay-valor').value = parseFloat(f.saldo).toFixed(2);
-           if (parseFloat(f.saldo) <= 0.01) {
-               document.getElementById('box-pagamento').classList.add('d-none');
-               document.getElementById('box-quitado').classList.remove('d-none');
-           } else {
-               document.getElementById('box-pagamento').classList.remove('d-none');
-               document.getElementById('box-quitado').classList.add('d-none');
-           }
-
            new bootstrap.Modal('#modalDetalhes').show();
         }
+    }
+
+    async function abrirPagar(id) {
+        currentId = id;
+        const fiado = allFiados.find(f => f.id == id);
+        if (!fiado) return;
+
+        document.getElementById('pay-cliente-nome').innerText = fiado.cliente_nome;
+        document.getElementById('pay-saldo-display').innerText = `Saldo em aberto: ${fmtBRL(fiado.saldo)}`;
+        document.getElementById('pay-valor').value = parseFloat(fiado.saldo).toFixed(2);
+        
+        new bootstrap.Modal('#modalPagamento').show();
     }
 
     async function confirmarPagamento() {
@@ -373,7 +384,7 @@
 
         const data = await res.json();
         if (data.ok) {
-            bootstrap.Modal.getInstance('#modalDetalhes').hide();
+            bootstrap.Modal.getInstance('#modalPagamento').hide();
             await loadFiados();
             alert(data.msg);
         } else {
@@ -394,6 +405,7 @@
         if (!d) return '—';
         const date = new Date(d);
         if (isNaN(date)) return d;
+        // Adjust for timezone if needed, but simple local conversion is usually fine
         return time ? date.toLocaleString('pt-BR') : date.toLocaleDateString('pt-BR');
     }
 </script>
