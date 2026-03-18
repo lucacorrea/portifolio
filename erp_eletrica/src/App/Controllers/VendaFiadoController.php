@@ -136,7 +136,7 @@ class VendaFiadoController extends BaseController {
             SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, $valorPagoSelect cr.status, 
                    cr.data_vencimento,
                    $saldoSql as saldo, 
-                   c.nome as cliente_nome, v.created_at as data_venda
+                   c.nome as cliente_nome, v.data_venda as data_venda
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             LEFT JOIN vendas v ON cr.venda_id = v.id
