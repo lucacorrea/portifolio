@@ -378,43 +378,55 @@
     async function verDetalhes(id) {
         try {
             const res = await fetch(`fiado.php?action=get_details&id=${id}`);
-            const data = await res.json();
+            const text = await res.text();
+            
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error("JSON Error:", text);
+                return alert("Erro no servidor (Resposta não é JSON). Verifique o console ou contate o suporte.");
+            }
 
             if (data.ok) {
                 const f = data.fiado;
+                if (!f) return alert("Erro: Dados do débito não encontrados.");
                 
-                // Elements safety check
-                const elCliente = document.getElementById('det-cliente');
-                const elVenda = document.getElementById('det-venda');
-                const elVenc = document.getElementById('det-vencimento');
-                const elTotal = document.getElementById('det-total');
-                const elPago = document.getElementById('det-pago');
-                const elRestante = document.getElementById('det-restante');
-                const elBtn = document.getElementById('btn-reimprimir-recibo');
+                // Elements safety check (must exist in HTML)
+                const safelySetText = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = val;
+                };
 
-                if (elCliente) elCliente.innerText = f.cliente_nome;
-                if (elVenda) elVenda.innerText = `#${f.venda_id} (${fmtDate(f.data_venda)})`;
-                if (elVenc) elVenc.innerText = fmtDate(f.data_vencimento, false);
-                if (elTotal) elTotal.innerText = fmtBRL(f.valor);
-                if (elPago) elPago.innerText = fmtBRL(f.valor_pago);
-                if (elRestante) elRestante.innerText = fmtBRL(f.saldo);
+                safelySetText('det-cliente', f.cliente_nome || 'Não informado');
+                safelySetText('det-venda', `#${f.venda_id || '—'} (${fmtDate(f.data_venda)})`);
+                safelySetText('det-vencimento', fmtDate(f.data_vencimento, false));
+                safelySetText('det-total', fmtBRL(f.valor));
+                safelySetText('det-pago', fmtBRL(f.valor_pago));
+                safelySetText('det-restante', fmtBRL(f.saldo));
                 
-                if (elBtn) elBtn.onclick = () => imprimirRecibo(f.venda_id);
+                const btnPrint = document.getElementById('btn-reimprimir-recibo');
+                if (btnPrint) {
+                    btnPrint.onclick = () => {
+                        if (f.venda_id) imprimirRecibo(f.venda_id);
+                        else alert('ID de venda não disponível para impressão.');
+                    };
+                }
 
-                // Itens
+                // Itens table mapping
                 const elItens = document.getElementById('det-itens');
-                if (elItens) {
+                if (elItens && data.items) {
                     elItens.innerHTML = data.items.map(i => `
                         <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom text-dark">
-                            <div>${parseFloat(i.quantidade)}x ${i.produto_nome}</div>
-                            <div class="fw-bold">${fmtBRL(i.preco_unitario * i.quantidade)}</div>
+                            <div>${parseFloat(i.quantidade || 0)}x ${i.produto_nome || 'Produto desconhecido'}</div>
+                            <div class="fw-bold">${fmtBRL((i.preco_unitario || 0) * (i.quantidade || 0))}</div>
                         </div>
                     `).join('') || '<div class="text-muted small">Nenhum item encontrado.</div>';
                 }
 
-                // Pagos
+                // Payments history mapping
                 const elPagos = document.getElementById('det-pagos');
-                if (elPagos) {
+                if (elPagos && data.payments) {
                     elPagos.innerHTML = data.payments.map(p => `
                         <div class="fi-history-item small mb-2 text-dark">
                             <div class="fw-bold text-primary">${fmtBRL(p.valor)} <span class="text-muted font-normal">• ${p.metodo}</span></div>
@@ -423,14 +435,19 @@
                     `).join('') || '<div class="text-muted small">Sem pagamentos registrados.</div>';
                 }
 
-                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDetalhes'));
-                modal.show();
+                const modalEl = document.getElementById('modalDetalhes');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                } else {
+                    console.error("Modal element #modalDetalhes not found!");
+                }
             } else {
                 alert('Erro ao carregar detalhes: ' + (data.msg || 'Erro desconhecido'));
             }
         } catch (err) {
-            console.error("Erro verDetalhes:", err);
-            alert("Erro ao processar solicitação. Verifique o console.");
+            console.error("Error in verDetalhes:", err);
+            alert("Erro inesperado: " + err.message);
         }
     }
 
