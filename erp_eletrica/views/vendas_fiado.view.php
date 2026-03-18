@@ -352,8 +352,8 @@
                 </td>
                 <td class="text-end pe-4">
                     <div class="btn-group shadow-sm rounded-3">
-                        <button class="btn btn-sm btn-white border" onclick="verDetalhes(${r.id})" title="Ver Detalhes">
-                            <i class="fas fa-eye text-primary"></i> <span class="d-none d-md-inline ms-1 small">Visualizar</span>
+                        <button class="btn btn-sm btn-light border" onclick="verDetalhes(${r.id})" title="Ver Detalhes">
+                            <i class="fas fa-eye text-warning"></i> <span class="d-none d-md-inline ms-1 small">Visualizar</span>
                         </button>
                         ${parseFloat(r.saldo) > 0.01 ? `
                         <button class="btn btn-sm btn-success text-white px-3" onclick="abrirPagar(${r.id})" title="Baixar AVS">
@@ -424,7 +424,7 @@
         document.getElementById('pay-saldo-display').innerText = `Saldo em aberto: ${fmtBRL(fiado.saldo)}`;
         document.getElementById('pay-valor').value = parseFloat(fiado.saldo).toFixed(2);
         
-        new bootstrap.Modal('#modalPagamento').show();
+        bootstrap.Modal.getOrCreateInstance('#modalPagamento').show();
     }
 
     async function confirmarPagamento() {
@@ -441,7 +441,7 @@
 
         const data = await res.json();
         if (data.ok) {
-            bootstrap.Modal.getInstance('#modalPagamento').hide();
+            bootstrap.Modal.getOrCreateInstance('#modalPagamento').hide();
             await loadFiados();
             alert(data.msg);
         } else {
