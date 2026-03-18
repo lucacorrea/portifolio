@@ -45,7 +45,7 @@ class VendaFiadoController extends BaseController {
         }
 
         $sql = "
-            SELECT cr.*, c.nome as cliente_nome, 
+            SELECT cr.*, (cr.valor - cr.valor_pago) as saldo, c.nome as cliente_nome, 
                    DATEDIFF(CURRENT_DATE, cr.data_vencimento) as dias_atraso
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
@@ -127,7 +127,9 @@ class VendaFiadoController extends BaseController {
                 exit;
             }
 
-            if ($valorPago > (float)$debito['saldo']) {
+            $saldoAtual = (float)$debito['valor'] - (float)$debito['valor_pago'];
+
+            if ($valorPago > $saldoAtual + 0.01) {
                 echo json_encode(['ok' => false, 'msg' => 'O valor informado é maior que o saldo devedor.']);
                 exit;
             }
@@ -190,7 +192,7 @@ class VendaFiadoController extends BaseController {
         }
 
         $sql = "
-            SELECT cr.*, c.nome as cliente_nome
+            SELECT cr.*, (cr.valor - cr.valor_pago) as saldo, c.nome as cliente_nome
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             $where

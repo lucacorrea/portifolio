@@ -41,7 +41,7 @@ class AccountReceivable extends BaseModel {
         }
 
         $sql = "
-            SELECT cr.*, c.nome as cliente_nome, v.created_at as data_venda
+            SELECT cr.*, (cr.valor - cr.valor_pago) as saldo, c.nome as cliente_nome, v.created_at as data_venda
             FROM {$this->table} cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             LEFT JOIN vendas v ON cr.venda_id = v.id
