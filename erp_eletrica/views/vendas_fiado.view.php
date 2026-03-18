@@ -416,7 +416,7 @@
 
     async function confirmarPagamento() {
         const valor = document.getElementById('pay-valor').value;
-        const metodo = document.getElementById('pay-metodo').value;
+        const metodo = document.querySelector('input[name="pay_metodo_radio"]:checked').value;
 
         if (!valor || valor <= 0) return alert('Valor inválido.');
 
