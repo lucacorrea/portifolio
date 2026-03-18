@@ -215,57 +215,37 @@
 
 <!-- Modal Receber AVS (Pagamento Individual) -->
 <div class="modal fade" id="modalPagamento" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-dark border-0 py-3 px-4">
-                <h6 class="modal-title fw-bold text-white shadow-sm"><i class="fas fa-hand-holding-dollar me-2 text-warning"></i><span style="color: #ffffff !important;">RECEBER PAGAMENTO (AVS)</span></h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Receber Pagamento (AVS)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
-                <!-- Balance Card -->
-                <div class="mb-4 border-0 shadow-sm rounded-4 overflow-hidden">
-                    <div class="bg-primary bg-opacity-10 p-3 text-center">
-                        <div class="small fw-bold text-primary text-uppercase mb-1" id="pay-cliente-nome" style="letter-spacing: 0.5px;"></div>
-                        <div class="fs-2 fw-bold text-dark" id="pay-saldo-display"></div>
-                        <div class="extra-small text-muted text-uppercase fw-bold opacity-75">Saldo Devedor Atual</div>
-                    </div>
+            <div class="modal-body">
+                <!-- Info Box -->
+                <div class="bg-light p-3 rounded mb-4 text-center">
+                    <div class="text-muted small fw-bold text-uppercase mb-1" id="pay-cliente-nome"></div>
+                    <div class="h4 mb-0 fw-bold text-dark" id="pay-saldo-display"></div>
+                    <div class="extra-small text-muted mt-1">Saldo Devedor Atual</div>
                 </div>
 
-                <!-- Input Group: Valor -->
                 <div class="mb-3">
-                    <label class="form-label extra-small fw-bold text-uppercase text-muted ps-1">Valor a Receber</label>
-                    <div class="input-group input-group-lg shadow-sm">
-                        <span class="input-group-text bg-white border-end-0 text-success fw-bold">R$</span>
-                        <input type="number" id="pay-valor" class="form-control border-start-0 ps-0 fw-bold fs-4" step="0.01" placeholder="0,00">
-                    </div>
-                </div>
-                
-                <!-- Input Group: Método -->
-                <div class="mb-4">
-                    <label class="form-label extra-small fw-bold text-uppercase text-muted ps-1">Forma de Recebimento</label>
-                    <div class="input-group shadow-sm">
-                        <span class="input-group-text bg-white border-end-0 text-muted">
-                            <i class="fas fa-credit-card"></i>
-                        </span>
-                        <select id="pay-metodo" class="form-select border-start-0 ps-0 fw-bold">
-                            <option value="DINHEIRO">🛒 Dinheiro em Espécie</option>
-                            <option value="PIX">⚡ Transferência PIX</option>
-                            <option value="CARTAO">💳 Cartão (Crédito/Débito)</option>
-                        </select>
-                    </div>
+                    <label class="form-label fw-bold">Valor a Receber (R$)</label>
+                    <input type="number" id="pay-valor" class="form-control form-control-lg text-center fw-bold" step="0.01" placeholder="0.00" required>
                 </div>
 
-                <div class="d-grid gap-2 mt-4">
-                    <button class="btn btn-dark btn-lg fw-bold py-3 shadow border-0 rounded-3 position-relative overflow-hidden" onclick="confirmarPagamento()">
-                        <div class="position-absolute top-0 start-0 w-100 h-100 bg-primary opacity-10"></div>
-                        <span class="position-relative">
-                           <i class="fas fa-check-circle me-2 text-primary"></i>CONFIRMAR BAIXA (AVS)
-                        </span>
-                    </button>
-                    <button class="btn btn-link btn-sm text-muted text-decoration-none fw-bold" data-bs-dismiss="modal">
-                        Cancelar operação
-                    </button>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Forma de Recebimento</label>
+                    <select id="pay-metodo" class="form-select" required>
+                        <option value="DINHEIRO">🛒 Dinheiro em Espécie</option>
+                        <option value="PIX">⚡ Transferência PIX</option>
+                        <option value="CARTAO">💳 Cartão (Crédito/Débito)</option>
+                    </select>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning fw-bold text-dark" onclick="confirmarPagamento()">Confirmar Recebimento</button>
             </div>
         </div>
     </div>
