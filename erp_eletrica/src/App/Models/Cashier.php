@@ -53,14 +53,18 @@ class Cashier extends BaseModel {
         $stmtMov = $this->db->prepare($sqlMov);
         $stmtMov->execute([$caixaId]);
         $movs = $stmtMov->fetch();
-
+        
         $vendasDinheiro = (float)($vendasPorForma['dinheiro'] ?? 0);
         $vendasPix = (float)($vendasPorForma['pix'] ?? 0);
         $vendasCC = (float)($vendasPorForma['cartao_credito'] ?? 0);
         $vendasCD = (float)($vendasPorForma['cartao_debito'] ?? 0);
+        $vendasCG = (float)($vendasPorForma['cartao'] ?? 0);
+        $vendasBoleto = (float)($vendasPorForma['boleto'] ?? 0);
         $vendasFiado = (float)($vendasPorForma['fiado'] ?? 0);
         
-        $totalBruto = $vendasDinheiro + $vendasPix + $vendasCC + $vendasCD + $vendasFiado;
+        $vendasCartaoTotal = $vendasCC + $vendasCD + $vendasCG;
+        
+        $totalBruto = $vendasDinheiro + $vendasPix + $vendasCartaoTotal + $vendasBoleto + $vendasFiado;
 
         // O que realmente deve estar na gaveta física do caixa
         $dinheiroEmGaveta = $vendasDinheiro + $entradasFiadoDinheiro + $movs['suprimentos'] - $movs['sangrias'];
@@ -68,8 +72,8 @@ class Cashier extends BaseModel {
         return [
             'vendas_dinheiro' => $vendasDinheiro,
             'vendas_pix' => $vendasPix,
-            'vendas_cartao_credito' => $vendasCC,
-            'vendas_cartao_debito' => $vendasCD,
+            'vendas_cartao' => $vendasCartaoTotal,
+            'vendas_boleto' => $vendasBoleto,
             'vendas_fiado' => $vendasFiado,
             'entradas_fiado_dinheiro' => $entradasFiadoDinheiro,
             'suprimentos' => $movs['suprimentos'],
