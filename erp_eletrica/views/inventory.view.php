@@ -98,7 +98,9 @@
                         <th>Categoria</th>
                         <th class="text-center">Quantidade</th>
                         <th>Preços (C / V)</th>
+                        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor'])): ?>
                         <th class="text-end pe-4">Ações</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -140,6 +142,7 @@
                             <div class="text-muted small">C: <?= formatarMoeda($p['preco_custo']) ?></div>
                             <div class="fw-bold text-success">V: <?= formatarMoeda($p['preco_venda']) ?></div>
                         </td>
+                        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor'])): ?>
                         <td class="text-end pe-4">
                             <div class="dropstart">
                                 <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -164,6 +167,7 @@
                                 </ul>
                             </div>
                         </td>
+                        <?php endif; ?>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
