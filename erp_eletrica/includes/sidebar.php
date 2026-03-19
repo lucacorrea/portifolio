@@ -41,7 +41,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
         </a>
         
-        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor'])): ?>
+        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
         <a href="estoque_baixo.php" class="nav-link <?= $current_page == 'estoque_baixo.php' ? 'active' : '' ?>">
             <i class="fas fa-triangle-exclamation"></i> <span>Estoque Baixo</span>
             <?php 
