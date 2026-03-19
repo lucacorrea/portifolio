@@ -385,8 +385,8 @@
                         <input type="text" name="lote" class="form-control shadow-sm" placeholder="Ex: LOTE-2024-001 (Opcional)">
                     </div>
                     <div class="col-12 text-start">
-                        <label class="form-label small fw-bold text-secondary"><i class="fas fa-comment-alt me-1"></i>Motivo / Observação</label>
-                        <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Compra de mercadoria, Baixa para OS, etc"></textarea>
+                        <label class="form-label small fw-bold text-secondary"><i class="fas fa-comment-alt me-1"></i>Motivo / Observação (Opcional)</label>
+                        <textarea name="motivo" class="form-control shadow-sm" rows="3" placeholder="Ex: Compra de mercadoria, Baixa para OS, etc"></textarea>
                     </div>
                 </div>
             </div>
