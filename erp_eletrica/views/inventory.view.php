@@ -64,6 +64,17 @@
     </div>
 </div>
 
+<style>
+/* Allow dropdowns to overflow the table container */
+.table-responsive {
+    overflow: visible !important;
+    padding-bottom: 60px; /* Extra space for dropdowns on the last row */
+}
+.card-body {
+    overflow: visible !important;
+}
+</style>
+
 <!-- Products Table -->
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
