@@ -20,30 +20,44 @@ class Cashier extends BaseModel {
         $caixa = $stmtOp->fetch();
 
         $dataAbertura = $caixa['data_abertura'] ?? date('Y-m-d H:i:s');
-        $dataFechamento = $caixa['data_fechamento'] ?? date('Y-m-d H:i:s');
+        $dataFechamento = $caixa['data_fechamento']; // Será NULL se aberto
         $filialId = $caixa['filial_id'] ?? 0;
+
+        $whereTime = "AND data_venda >= ?";
+        $paramsTime = [$filialId, $dataAbertura];
+        if ($dataFechamento) {
+            $whereTime .= " AND data_venda <= ?";
+            $paramsTime[] = $dataFechamento;
+        }
 
         // 1. Vendas diretas concluídas na sessão
         $sqlVendas = "
             SELECT LOWER(forma_pagamento), COALESCE(SUM(valor_total), 0) as total
             FROM vendas 
-            WHERE filial_id = ? AND data_venda >= ? AND data_venda <= ? AND status = 'concluido'
+            WHERE filial_id = ? $whereTime AND status = 'concluido'
             GROUP BY forma_pagamento
         ";
         $stmtVendas = $this->db->prepare($sqlVendas);
-        $stmtVendas->execute([$filialId, $dataAbertura, $dataFechamento]);
+        $stmtVendas->execute($paramsTime);
         $vendasPorForma = $stmtVendas->fetchAll(\PDO::FETCH_KEY_PAIR);
 
         // 2. Pagamentos de Fiados (contas a receber) recebidos NA SESSÃO
+        $whereTimePagos = "AND fp.created_at >= ?";
+        $paramsTimePagos = [$filialId, $dataAbertura];
+        if ($dataFechamento) {
+            $whereTimePagos .= " AND fp.created_at <= ?";
+            $paramsTimePagos[] = $dataFechamento;
+        }
+
         $sqlPagos = "
             SELECT LOWER(fp.metodo), COALESCE(SUM(fp.valor), 0) as total
             FROM fiados_pagamentos fp
             JOIN contas_receber cr ON fp.fiado_id = cr.id
-            WHERE cr.filial_id = ? AND fp.created_at >= ? AND fp.created_at <= ?
+            WHERE cr.filial_id = ? $whereTimePagos
             GROUP BY fp.metodo
         ";
         $stmtPagos = $this->db->prepare($sqlPagos);
-        $stmtPagos->execute([$filialId, $dataAbertura, $dataFechamento]);
+        $stmtPagos->execute($paramsTimePagos);
         $pagosPorForma = $stmtPagos->fetchAll(\PDO::FETCH_KEY_PAIR);
 
         // Somar todas as entradas no caixa que tenham "Fiado" no motivo (com ou sem parênteses)
