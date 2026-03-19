@@ -37,7 +37,8 @@ class DashboardController extends BaseController {
                     JOIN produtos p ON vi.produto_id = p.id
                     JOIN vendas v ON vi.venda_id = v.id
                     WHERE MONTH(v.data_venda) = $mes_atual " . ($is_matriz ? "" : "AND v.filial_id = $filial_id") . "
-                ")->fetchColumn() ?: 0
+                ")->fetchColumn() ?: 0,
+                'fiado_pendente' => $db->query("SELECT SUM(saldo) FROM contas_receber WHERE status = 'pendente' " . ($is_matriz ? "" : "AND filial_id = $filial_id"))->fetchColumn() ?: 0
             ];
 
             // Billing History (Last 6 months)
