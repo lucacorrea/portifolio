@@ -15,6 +15,10 @@ class Cashier extends BaseModel {
     }
 
     public function getSummary($caixaId) {
+        $stmtOp = $this->db->prepare("SELECT operador_id, data_abertura, data_fechamento, filial_id FROM caixas WHERE id = ?");
+        $stmtOp->execute([$caixaId]);
+        $caixa = $stmtOp->fetch();
+
         $dataAbertura = $caixa['data_abertura'] ?? date('Y-m-d H:i:s');
         $dataFechamento = $caixa['data_fechamento'] ?? date('Y-m-d H:i:s');
         $filialId = $caixa['filial_id'] ?? 0;
@@ -75,7 +79,6 @@ class Cashier extends BaseModel {
         $pagosPix = (float)($pagosPorForma['PIX'] ?? ($pagosPorForma['pix'] ?? 0));
         $pagosCartao = (float)($pagosPorForma['CARTAO'] ?? ($pagosPorForma['cartao'] ?? 0));
         $pagosBoleto = (float)($pagosPorForma['BOLETO'] ?? ($pagosPorForma['boleto'] ?? 0));
-        // Nota: DINHEIRO já entra via entradasFiadoDinheiro (caixa_movimentacoes)
         
         $vendasCartaoTotal = $vendasCC + $vendasCD + $vendasCG + $pagosCartao;
         $totalPix = $vendasPix + $pagosPix;
@@ -98,6 +101,5 @@ class Cashier extends BaseModel {
             'dinheiro_em_gaveta' => $dinheiroEmGaveta,
             'total_bruto' => $totalBruto
         ];
-    }
     }
 }
