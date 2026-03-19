@@ -69,6 +69,7 @@
 .table-responsive {
     overflow: visible !important;
     padding-bottom: 60px; /* Extra space for dropdowns on the last row */
+    min-height: 400px; /* Ensure space even with few rows */
 }
 .card-body {
     overflow: visible !important;
