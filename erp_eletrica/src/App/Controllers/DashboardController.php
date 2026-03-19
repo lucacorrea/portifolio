@@ -37,11 +37,6 @@ class DashboardController extends BaseController {
                     JOIN produtos p ON vi.produto_id = p.id
                     JOIN vendas v ON vi.venda_id = v.id
                     WHERE MONTH(v.data_venda) = $mes_atual " . ($is_matriz ? "" : "AND v.filial_id = $filial_id") . "
-                ")->fetchColumn() ?: 0,
-                'fiado_pendente' => $db->query("
-                    SELECT SUM(COALESCE(valor, 0) - COALESCE(valor_pago, 0)) 
-                    FROM contas_receber 
-                    WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
                 ")->fetchColumn() ?: 0
             ];
 
@@ -72,6 +67,18 @@ class DashboardController extends BaseController {
                 'top_products' => $top_produtos
             ], 600); // 10 minutes cache
         }
+        
+        // --- REAL TIME STATS (ALWAYS FRESH) ---
+        $stats['fiado_pendente'] = $db->query("
+            SELECT SUM(COALESCE(valor, 0) - COALESCE(valor_pago, 0)) 
+            FROM contas_receber 
+            WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
+        ")->fetchColumn() ?: 0;
+
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForFilial($filial_id);
+        $cashierSummary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
+        // --------------------------------------
 
         $recentes_vendas = $db->query("
             SELECT v.*, c.nome as cliente_nome 
@@ -80,10 +87,6 @@ class DashboardController extends BaseController {
             " . ($is_matriz ? "" : "WHERE v.filial_id = $filial_id") . "
             ORDER BY v.data_venda DESC LIMIT 5
         ")->fetchAll();
-
-        $cashierModel = new \App\Models\Cashier();
-        $caixaAberto = $cashierModel->getOpenForFilial($filial_id);
-        $cashierSummary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
 
         $this->render('dashboard', [
             'stats' => $stats,
@@ -125,6 +128,7 @@ class DashboardController extends BaseController {
         }
 
         header('Content-Type: application/json');
+        header('Cache-Control: no-cache, must-revalidate');
         echo json_encode([
             'ok' => true,
             'stats' => [
