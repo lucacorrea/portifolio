@@ -88,18 +88,42 @@ class Cashier extends BaseModel {
         $vendasCD = (float)($vendasPorForma['cartao_debito'] ?? 0);
         $vendasCG = (float)($vendasPorForma['cartao'] ?? 0);
         $vendasBoleto = (float)($vendasPorForma['boleto'] ?? 0);
-        $vendasFiado = (float)($vendasPorForma['fiado'] ?? 0);
+        $vendasFiadoTotal = (float)($vendasPorForma['fiado'] ?? 0);
         
+        // Calcular quanto do Fiado de HOJE já foi pago na entrada (Sinal)
+        // Isso evita que o card "Fiado" mostre o valor bruto se o cliente deu entrada.
+        $sqlSinal = "
+            SELECT COALESCE(SUM(fp.valor), 0)
+            FROM fiados_pagamentos fp
+            JOIN contas_receber cr ON fp.fiado_id = cr.id
+            JOIN vendas v ON cr.venda_id = v.id
+            WHERE cr.filial_id = ? AND v.data_venda >= ? " . ($dataFechamento ? "AND v.data_venda <= ?" : "") . "
+            AND v.forma_pagamento = 'fiado'
+            AND fp.created_at >= ? " . ($dataFechamento ? "AND fp.created_at <= ?" : "") . "
+        ";
+        $stmtSinal = $this->db->prepare($sqlSinal);
+        $paramsSinal = [$filialId, $dataAbertura];
+        if ($dataFechamento) $paramsSinal[] = $dataFechamento;
+        $paramsSinal[] = $dataAbertura;
+        if ($dataFechamento) $paramsSinal[] = $dataFechamento;
+        
+        $stmtSinal->execute($paramsSinal);
+        $totalSinalFiado = (float)$stmtSinal->fetchColumn();
+
+        $vendasFiadoPendente = $vendasFiadoTotal - $totalSinalFiado;
+
         // Adicionar pagamentos de fiados feitos em meios digitais
-        $pagosPix = (float)($pagosPorForma['PIX'] ?? ($pagosPorForma['pix'] ?? 0));
-        $pagosCartao = (float)($pagosPorForma['CARTAO'] ?? ($pagosPorForma['cartao'] ?? 0));
-        $pagosBoleto = (float)($pagosPorForma['BOLETO'] ?? ($pagosPorForma['boleto'] ?? 0));
+        $pagosPix = (float)($pagosPorForma['pix'] ?? 0);
+        $pagosCartao = (float)($pagosPorForma['cartao'] ?? 0);
+        $pagosBoleto = (float)($pagosPorForma['boleto'] ?? 0);
         
         $vendasCartaoTotal = $vendasCC + $vendasCD + $vendasCG + $pagosCartao;
         $totalPix = $vendasPix + $pagosPix;
         $totalBoleto = $vendasBoleto + $pagosBoleto;
         
-        $totalBruto = $vendasDinheiro + $vendasPix + ($vendasCC + $vendasCD + $vendasCG) + $vendasBoleto + $vendasFiado + array_sum($pagosPorForma);
+        // Total Bruto: Vendas Diretas + Vendas Fiado (valor cheio) + Pagamentos de Fiados Antigos (que não sejam sinais de vendas de hoje)
+        // Simplificando: Soma de tudo que entrou em vendas + Soma de todos os pagamentos recebidos
+        $totalBruto = $vendasDinheiro + $vendasPix + ($vendasCC + $vendasCD + $vendasCG) + $vendasBoleto + $vendasFiadoTotal + (array_sum($pagosPorForma) - $totalSinalFiado);
 
         // O que realmente deve estar na gaveta física do caixa
         $dinheiroEmGaveta = $vendasDinheiro + $entradasFiadoDinheiro + $movs['suprimentos'] - $movs['sangrias'];
@@ -109,7 +133,7 @@ class Cashier extends BaseModel {
             'vendas_pix' => $totalPix,
             'vendas_cartao' => $vendasCartaoTotal,
             'vendas_boleto' => $totalBoleto,
-            'vendas_fiado' => $vendasFiado,
+            'vendas_fiado' => $vendasFiadoPendente,
             'entradas_fiado_dinheiro' => $entradasFiadoDinheiro,
             'suprimentos' => $movs['suprimentos'],
             'sangrias' => $movs['sangrias'],

@@ -265,6 +265,7 @@ class SalesController extends BaseController {
                     }
 
                     $entrada = (float)($data['entrada_valor'] ?? 0);
+                    $entradaMetodo = $data['entrada_metodo'] ?? 'dinheiro';
                     $valorDivida = (float)$data['total'] - $entrada;
 
                     $receivableModel = new \App\Models\AccountReceivable();
@@ -274,7 +275,7 @@ class SalesController extends BaseController {
                         'valor'           => $data['total'],
                         'valor_pago'      => $entrada,
                         'saldo'           => $valorDivida,
-                        'status'          => 'pendente',
+                        'status'          => ($valorDivida <= 0) ? 'pago' : 'pendente',
                         'data_vencimento' => date('Y-m-d', strtotime('+30 days')),
                         'filial_id'       => $_SESSION['filial_id'] ?? 1,
                     ]);
@@ -284,17 +285,19 @@ class SalesController extends BaseController {
                         $paymentModel->create([
                             'fiado_id' => $receivableId,
                             'valor' => $entrada,
-                            'metodo' => 'DINHEIRO' // Initial entry is usually recorded as cash in this context
+                            'metodo' => strtoupper($entradaMetodo)
                         ]);
 
-                        $movementModel = new \App\Models\CashierMovement();
-                        $movementModel->create([
-                            'caixa_id' => $caixaAberto['id'],
-                            'tipo' => 'entrada',
-                            'valor' => $entrada,
-                            'motivo' => "Entrada Venda #{$saleId} (Fiado) - Cliente: {$nomePersist}",
-                            'operador_id' => $_SESSION['usuario_id']
-                        ]);
+                        if (strtolower($entradaMetodo) === 'dinheiro') {
+                            $movementModel = new \App\Models\CashierMovement();
+                            $movementModel->create([
+                                'caixa_id' => $caixaAberto['id'],
+                                'tipo' => 'entrada',
+                                'valor' => $entrada,
+                                'motivo' => "Entrada Venda #{$saleId} Fiado - Cliente: {$nomePersist}",
+                                'operador_id' => $_SESSION['usuario_id']
+                            ]);
+                        }
                     }
 
                     $audit = new \App\Services\AuditLogService();
