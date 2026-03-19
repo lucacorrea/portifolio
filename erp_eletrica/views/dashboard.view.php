@@ -21,8 +21,8 @@
 
 <?php if ($caixaAberto): ?>
 <div class="row g-4 mb-4">
-    <!-- Primeira Linha: Saldo e Vendas -->
-    <div class="col-md-3">
+    <!-- Primeira Linha: Métricas Principais -->
+    <div class="col-md-4">
         <div class="card h-100 border-0 shadow-sm bg-primary text-white">
             <div class="card-body">
                 <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual em Caixa</div>
@@ -35,44 +35,38 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
+            <div class="card-body text-center">
                 <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-chart-line me-2 text-primary"></i>Vendido (Total)</div>
-                <h4 class="mb-0 fw-bold text-primary"><?= formatarMoeda($cashierSummary['total_bruto'] ?? 0) ?></h4>
+                <h3 class="mb-0 fw-bold text-primary"><?= formatarMoeda($cashierSummary['total_bruto'] ?? 0) ?></h3>
+                <div class="extra-small text-muted mt-2">Cash + Digital</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-money-bill-wave me-2 text-success"></i>Vendas (Dinheiro)</div>
-                <h4 class="mb-0 fw-bold text-success">+ <?= formatarMoeda($cashierSummary['vendas_dinheiro'] ?? 0) ?></h4>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
+            <div class="card-body text-center">
                 <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-hand-holding-dollar me-2 text-warning"></i>Fiado (A Receber)</div>
-                <h4 class="mb-0 fw-bold text-warning"><?= formatarMoeda($stats['fiado_pendente'] ?? 0) ?></h4>
+                <h3 class="mb-0 fw-bold text-warning"><?= formatarMoeda($stats['fiado_pendente'] ?? 0) ?></h3>
+                <div class="extra-small text-muted mt-2">Saldo Total Pendente</div>
             </div>
         </div>
     </div>
 
-    <!-- Segunda Linha: Sangrias e Suprimentos -->
-    <div class="col-md-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Sangrias</div>
+    <!-- Segunda Linha: Ajustes -->
+    <div class="col-md-6">
+        <div class="card h-100 border-0 shadow-sm border-start border-danger border-4">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div class="text-muted small fw-bold text-uppercase">Sangrias (Retiradas)</div>
                 <h4 class="mb-0 fw-bold text-danger">- <?= formatarMoeda($cashierSummary['sangrias'] ?? 0) ?></h4>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Suprimentos</div>
+    <div class="col-md-6">
+        <div class="card h-100 border-0 shadow-sm border-start border-info border-4">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div class="text-muted small fw-bold text-uppercase">Suprimentos (Entradas)</div>
                 <h4 class="mb-0 fw-bold text-info">+ <?= formatarMoeda($cashierSummary['suprimentos'] ?? 0) ?></h4>
             </div>
         </div>
