@@ -25,7 +25,7 @@ class Cashier extends BaseModel {
 
         // 1. Vendas diretas concluídas na sessão
         $sqlVendas = "
-            SELECT forma_pagamento, COALESCE(SUM(valor_total), 0) as total
+            SELECT LOWER(forma_pagamento), COALESCE(SUM(valor_total), 0) as total
             FROM vendas 
             WHERE filial_id = ? AND data_venda >= ? AND data_venda <= ? AND status = 'concluido'
             GROUP BY forma_pagamento
@@ -36,7 +36,7 @@ class Cashier extends BaseModel {
 
         // 2. Pagamentos de Fiados (contas a receber) recebidos NA SESSÃO
         $sqlPagos = "
-            SELECT fp.metodo, COALESCE(SUM(fp.valor), 0) as total
+            SELECT LOWER(fp.metodo), COALESCE(SUM(fp.valor), 0) as total
             FROM fiados_pagamentos fp
             JOIN contas_receber cr ON fp.fiado_id = cr.id
             WHERE cr.filial_id = ? AND fp.created_at >= ? AND fp.created_at <= ?
@@ -46,10 +46,11 @@ class Cashier extends BaseModel {
         $stmtPagos->execute([$filialId, $dataAbertura, $dataFechamento]);
         $pagosPorForma = $stmtPagos->fetchAll(\PDO::FETCH_KEY_PAIR);
 
+        // Somar todas as entradas no caixa que tenham "Fiado" no motivo (com ou sem parênteses)
         $vTrasFiado = "
             SELECT COALESCE(SUM(valor), 0) 
             FROM caixa_movimentacoes 
-            WHERE caixa_id = ? AND tipo = 'entrada' AND motivo LIKE '%(Fiado)%'
+            WHERE caixa_id = ? AND tipo = 'entrada' AND motivo LIKE '%Fiado%'
         ";
         $stmtEntradaFiado = $this->db->prepare($vTrasFiado);
         $stmtEntradaFiado->execute([$caixaId]);
