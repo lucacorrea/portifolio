@@ -40,6 +40,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="estoque.php" class="nav-link <?= $current_page == 'estoque.php' ? 'active' : '' ?>">
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
         </a>
+        <a href="estoque_baixo.php" class="nav-link <?= $current_page == 'estoque_baixo.php' ? 'active' : '' ?>">
+            <i class="fas fa-triangle-exclamation"></i> <span>Estoque Baixo</span>
+            <?php 
+                $productModel = new \App\Models\Product();
+                $s_filialId = $_SESSION['filial_id'] ?? null;
+                $s_isMatriz = $_SESSION['is_matriz'] ?? false;
+                $stats = $productModel->getStockStats(!$s_isMatriz ? $s_filialId : null);
+                if ($stats['critical'] > 0): 
+            ?>
+                <span class="badge bg-danger ms-auto rounded-pill" style="font-size: 0.6rem;"><?= $stats['critical'] ?></span>
+            <?php elseif ($stats['low'] > 0): ?>
+                <span class="badge bg-warning ms-auto rounded-pill text-dark" style="font-size: 0.6rem;"><?= $stats['low'] ?></span>
+            <?php endif; ?>
+        </a>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Relacionamento</div>

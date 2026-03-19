@@ -17,13 +17,53 @@ class Product extends BaseModel {
     }
 
     public function getCriticalStock($filialId = null) {
-        $sql = "SELECT * FROM {$this->table} WHERE quantidade <= estoque_minimo";
+        $sql = "SELECT * FROM {$this->table} WHERE quantidade <= estoque_minimo AND estoque_minimo > 0";
         $params = [];
         if ($filialId) {
             $sql .= " AND filial_id = ?";
             $params[] = $filialId;
         }
         return $this->query($sql, $params)->fetchAll();
+    }
+
+    public function getLowStock($filialId = null) {
+        $sql = "SELECT * FROM {$this->table} WHERE quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
+        $params = [];
+        if ($filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+        return $this->query($sql, $params)->fetchAll();
+    }
+
+    public function getOkStock($filialId = null) {
+        $sql = "SELECT * FROM {$this->table} WHERE (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
+        $params = [];
+        if ($filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+        return $this->query($sql, $params)->fetchAll();
+    }
+
+    public function getStockStats($filialId = null) {
+        $where = " WHERE 1=1";
+        $params = [];
+        if ($filialId) {
+            $where .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        $critical = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND quantidade <= estoque_minimo AND estoque_minimo > 0", $params)->fetchColumn();
+        $low      = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0", $params)->fetchColumn();
+        $ok       = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)", $params)->fetchColumn();
+
+        return [
+            'critical' => (int)$critical,
+            'low'      => (int)$low,
+            'ok'       => (int)$ok,
+            'total'    => (int)($critical + $low + $ok)
+        ];
     }
 
     public function updateStock($id, $qty, $type = 'entrada') {
