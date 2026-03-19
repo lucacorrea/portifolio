@@ -66,6 +66,43 @@ class Product extends BaseModel {
         ];
     }
 
+    public function searchStockAlarms($filters, $filialId = null) {
+        $sql = "SELECT * FROM {$this->table} WHERE 1=1";
+        $params = [];
+
+        if ($filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        if (!empty($filters['q'])) {
+            $sql .= " AND (nome LIKE ? OR codigo LIKE ?)";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+        }
+
+        if (!empty($filters['categoria'])) {
+            $sql .= " AND categoria = ?";
+            $params[] = $filters['categoria'];
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'CRITICO') {
+                $sql .= " AND quantidade <= estoque_minimo AND estoque_minimo > 0";
+            } elseif ($filters['status'] === 'BAIXO') {
+                $sql .= " AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
+            } elseif ($filters['status'] === 'OK') {
+                $sql .= " AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
+            }
+        }
+
+        $sql .= " ORDER BY (quantidade - estoque_minimo) ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
     public function updateStock($id, $qty, $type = 'entrada') {
         $operator = ($type == 'entrada') ? '+' : '-';
         return $this->query("UPDATE {$this->table} SET quantidade = quantidade $operator ? WHERE id = ?", [$qty, $id]);
