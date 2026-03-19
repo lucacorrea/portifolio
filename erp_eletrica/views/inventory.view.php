@@ -18,7 +18,7 @@
     </div>
     <div class="col-md-3">
         <a href="estoque_baixo.php" class="text-decoration-none">
-            <div class="card h-100 border-0 shadow-sm card-hover" style="border-right: 6px solid #ffc107 !important;">
+            <div class="card h-100 border-0 shadow-sm card-hover" style="border-left: 6px solid #ffc107 !important;">
                 <div class="card-body">
                     <div class="text-muted small fw-bold text-uppercase mb-2">Alertas de Baixa</div>
                     <h3 class="mb-0 fw-bold text-warning"><?= $stats['itens_criticos'] ?> <small class="fw-normal fs-6 text-muted">itens</small></h3>
