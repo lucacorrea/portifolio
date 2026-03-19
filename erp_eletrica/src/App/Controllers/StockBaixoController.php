@@ -13,6 +13,9 @@ class StockBaixoController extends BaseController {
         
         $targetFilial = !$isMatriz ? $filialId : null;
         
+        $page = (int)($_GET['page'] ?? 1);
+        if ($page < 1) $page = 1;
+        
         $filters = [
             'q' => $_GET['q'] ?? '',
             'categoria' => $_GET['categoria'] ?? '',
@@ -20,14 +23,16 @@ class StockBaixoController extends BaseController {
         ];
         
         $stats = $productModel->getStockStats($targetFilial);
-        $products = $productModel->searchStockAlarms($filters, $targetFilial);
+        $pagination = $productModel->paginateStockAlarms($filters, $page, 15, $targetFilial);
+        $products = $pagination['data'];
         $categories = $productModel->getCategories();
         
         $this->render('stock_baixo', [
             'products' => $products,
             'stats' => $stats,
             'categories' => $categories,
-            'filters' => $filters
+            'filters' => $filters,
+            'pagination' => $pagination
         ]);
     }
 }

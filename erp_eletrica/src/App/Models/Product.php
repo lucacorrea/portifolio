@@ -103,6 +103,57 @@ class Product extends BaseModel {
         return $stmt->fetchAll();
     }
 
+    public function paginateStockAlarms($filters, $page = 1, $perPage = 15, $filialId = null) {
+        $where = " WHERE 1=1";
+        $params = [];
+
+        if ($filialId) {
+            $where .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        if (!empty($filters['q'])) {
+            $where .= " AND (nome LIKE ? OR codigo LIKE ?)";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+        }
+
+        if (!empty($filters['categoria'])) {
+            $where .= " AND categoria = ?";
+            $params[] = $filters['categoria'];
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'CRITICO') {
+                $where .= " AND quantidade <= estoque_minimo AND estoque_minimo > 0";
+            } elseif ($filters['status'] === 'BAIXO') {
+                $where .= " AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
+            } elseif ($filters['status'] === 'OK') {
+                $where .= " AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
+            }
+        }
+
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} $where");
+        $totalStmt->execute($params);
+        $total = $totalStmt->fetchColumn();
+
+        $pages = ceil($total / $perPage);
+        $offset = ($page - 1) * $perPage;
+
+        $sql = "SELECT * FROM {$this->table} $where ORDER BY (quantidade - estoque_minimo) ASC LIMIT $perPage OFFSET $offset";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $data = $stmt->fetchAll();
+
+        return [
+            'data' => $data,
+            'total' => $total,
+            'pages' => $pages,
+            'current' => $page,
+            'per_page' => $perPage
+        ];
+    }
+
     public function updateStock($id, $qty, $type = 'entrada') {
         $operator = ($type == 'entrada') ? '+' : '-';
         return $this->query("UPDATE {$this->table} SET quantidade = quantidade $operator ? WHERE id = ?", [$qty, $id]);
