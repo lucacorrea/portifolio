@@ -15,7 +15,7 @@ class Cashier extends BaseModel {
     }
 
     public function getSummary($caixaId) {
-        $stmtOp = $this->db->prepare("SELECT operador_id, data_abertura FROM caixas WHERE id = ?");
+        $stmtOp = $this->db->prepare("SELECT operador_id, data_abertura, filial_id FROM caixas WHERE id = ?");
         $stmtOp->execute([$caixaId]);
         $caixa = $stmtOp->fetch();
         
