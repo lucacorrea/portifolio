@@ -31,7 +31,7 @@ class SettingController extends BaseController {
 
             // 1. Save Corporate Settings (Empresa Nome, CNPJ, etc.)
             foreach ($_POST as $key => $value) {
-                if (in_array($key, ['empresa_nome', 'empresa_cnpj', 'empresa_fone', 'empresa_email', 'estoque_min_default', 'msg_orcamento'])) {
+                if (in_array($key, ['empresa_nome', 'empresa_cnpj', 'empresa_fone', 'empresa_email', 'estoque_min_default'])) {
                     $model->set($key, $value);
                 }
             }
@@ -39,10 +39,14 @@ class SettingController extends BaseController {
             // 2. Save Sefaz Global Config
             $ambiente = $_POST['ambiente'] ?? 'homologacao';
             $senha = $_POST['certificado_senha'] ?? '';
+            $csc_id = $_POST['csc_id_global'] ?? '';
+            $csc_token = $_POST['csc_token_global'] ?? '';
             
             $dataSefaz = [
                 'ambiente' => $ambiente,
-                'certificado_senha' => $senha
+                'certificado_senha' => $senha,
+                'csc_id' => $csc_id,
+                'csc' => $csc_token
             ];
 
             if (isset($_FILES['certificado_pfx']) && $_FILES['certificado_pfx']['error'] == 0) {
@@ -65,8 +69,8 @@ class SettingController extends BaseController {
 
             $existing = $db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch();
             if ($existing) {
-                $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?";
-                $params = [$dataSefaz['ambiente'], $dataSefaz['certificado_senha']];
+                $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc = ?";
+                $params = [$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc']];
                 if (isset($dataSefaz['certificado_path'])) {
                     $sql .= ", certificado_path = ?";
                     $params[] = $dataSefaz['certificado_path'];
@@ -75,8 +79,8 @@ class SettingController extends BaseController {
                 $params[] = $existing['id'];
                 $db->prepare($sql)->execute($params);
             } else {
-                $db->prepare("INSERT INTO sefaz_config (certificado_path, certificado_senha, ambiente) VALUES (?, ?, ?)")
-                   ->execute([$dataSefaz['certificado_path'] ?? null, $dataSefaz['certificado_senha'], $dataSefaz['ambiente']]);
+                $db->prepare("INSERT INTO sefaz_config (certificado_path, certificado_senha, ambiente, csc_id, csc) VALUES (?, ?, ?, ?, ?)")
+                   ->execute([$dataSefaz['certificado_path'] ?? null, $dataSefaz['certificado_senha'], $dataSefaz['ambiente'], $dataSefaz['csc_id'], $dataSefaz['csc']]);
             }
 
             $audit->record('Configurações da Matriz Atualizadas', 'configuracoes');
