@@ -64,12 +64,6 @@
     </div>
 </div>
 
-<style>
-.table-responsive, .card-body {
-    overflow: visible !important;
-}
-</style>
-
 <!-- Products Table -->
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -125,25 +119,25 @@
                             <div class="fw-bold text-success">V: <?= formatarMoeda($p['preco_venda']) ?></div>
                         </td>
                         <td class="text-end pe-4">
-                            <div class="dropdown">
-                                <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed"}'>
+                            <div class="dropstart">
+                                <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                                <ul class="dropdown-menu shadow-lg border-0">
                                     <li><h6 class="dropdown-header text-uppercase small opacity-50">Movimentação</h6></li>
                                     <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'entrada')">
-                                        <i class="fas fa-plus-circle text-success me-2"></i>Entrada de Estoque
+                                        <i class="fas fa-plus-circle text-success me-2"></i>Entrada
                                     </a></li>
                                     <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'saida')">
-                                        <i class="fas fa-minus-circle text-danger me-2"></i>Saída de Estoque
+                                        <i class="fas fa-minus-circle text-danger me-2"></i>Saída
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header text-uppercase small opacity-50">Gestão</h6></li>
                                     <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)">
-                                        <i class="fas fa-edit text-primary me-2"></i>Editar Material
+                                        <i class="fas fa-edit text-primary me-2"></i>Editar
                                     </a></li>
                                     <li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="deleteProduct(<?= $p['id'] ?>)">
-                                        <i class="fas fa-trash me-2"></i>Excluir Permanente
+                                        <i class="fas fa-trash me-2"></i>Excluir
                                     </a></li>
                                 </ul>
                             </div>
