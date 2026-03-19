@@ -13,7 +13,7 @@ class Setting extends BaseModel {
         return $settings;
     }
 
-    public function save($key, $value) {
+    public function set($key, $value) {
         $stmt = $this->db->prepare("INSERT INTO {$this->table} (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
         return $stmt->execute([$key, $value, $value]);
     }

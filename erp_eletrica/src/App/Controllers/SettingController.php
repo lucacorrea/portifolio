@@ -20,7 +20,7 @@ class SettingController extends BaseController {
             $model = new Setting();
             foreach ($_POST as $key => $value) {
                 if ($key != 'action') {
-                    $model->save($key, $value);
+                    $model->set($key, $value);
                 }
             }
             $this->redirect('configuracoes.php?msg=Configurações salvas');
