@@ -117,11 +117,16 @@ class VendaFiadoController extends BaseController {
             JOIN clientes c ON cr.cliente_id = c.id 
             $where
             ORDER BY cr.created_at DESC, cr.id DESC
-            LIMIT ? OFFSET ?
+            LIMIT :limit OFFSET :offset
         ";
         
         $stmt = $db->prepare($sql);
-        $stmt->execute(array_merge($params, [$limit, $offset]));
+        foreach ($params as $i => $val) {
+            $stmt->bindValue($i + 1, $val);
+        }
+        $stmt->bindValue(':limit', (int)$limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, \PDO::PARAM_INT);
+        $stmt->execute();
         $rows = $stmt->fetchAll();
 
         header('Content-Type: application/json');
