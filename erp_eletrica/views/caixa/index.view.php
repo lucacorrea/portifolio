@@ -80,15 +80,6 @@
             </div>
         </div>
         
-        <div class="col">
-            <div class="card border-0 h-100 shadow-sm bg-warning bg-opacity-10">
-                <div class="card-body">
-                    <div class="text-warning small fw-bold text-uppercase mb-2"><i class="fas fa-book-open me-2"></i>Fiado</div>
-                    <h5 class="mb-0 fw-bold text-warning"><?= formatarMoeda($summary['vendas_fiado']) ?></h5>
-                    <div class="text-muted extra-small mt-2 opacity-75">A Receber</div>
-                </div>
-            </div>
-        </div>
     </div>
     <?php endif; ?>
 

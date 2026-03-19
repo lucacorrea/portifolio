@@ -30,7 +30,7 @@ class Cashier extends BaseModel {
             $paramsTime[] = $dataFechamento;
         }
 
-        // 1. Vendas diretas concluídas na sessão
+        // 1. Vendas diretas (incluindo Fiado valor bruto)
         $sqlVendas = "
             SELECT LOWER(forma_pagamento), COALESCE(SUM(valor_total), 0) as total
             FROM vendas 
@@ -41,7 +41,7 @@ class Cashier extends BaseModel {
         $stmtVendas->execute($paramsTime);
         $vendasPorForma = $stmtVendas->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-        // 2. Pagamentos de Fiados (contas a receber) recebidos NA SESSÃO
+        // 2. Pagamentos de Fiados (Recebimentos de hoje, de qualquer venda)
         $whereTimePagos = "AND fp.created_at >= ?";
         $paramsTimePagos = [$filialId, $dataAbertura];
         if ($dataFechamento) {
@@ -60,17 +60,16 @@ class Cashier extends BaseModel {
         $stmtPagos->execute($paramsTimePagos);
         $pagosPorForma = $stmtPagos->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-        // Somar todas as entradas no caixa que tenham "Fiado" no motivo (com ou sem parênteses)
+        // 3. Movimentações (sangria/suprimento/entradas manuais)
         $vTrasFiado = "
             SELECT COALESCE(SUM(valor), 0) 
             FROM caixa_movimentacoes 
-            WHERE caixa_id = ? AND tipo = 'entrada' AND motivo LIKE '%Fiado%'
+            WHERE caixa_id = ? AND tipo = 'entrada' AND (LOWER(motivo) LIKE '%fiado%' OR LOWER(motivo) LIKE '%recebimento%')
         ";
         $stmtEntradaFiado = $this->db->prepare($vTrasFiado);
         $stmtEntradaFiado->execute([$caixaId]);
-        $entradasFiadoDinheiro = (float)$stmtEntradaFiado->fetchColumn();
+        $entradasExtrasDinheiro = (float)$stmtEntradaFiado->fetchColumn();
 
-        // Movimentações (sangria/suprimento)
         $sqlMov = "
             SELECT 
                 COALESCE(SUM(CASE WHEN tipo = 'suprimento' THEN valor ELSE 0 END), 0) as suprimentos,
@@ -82,63 +81,46 @@ class Cashier extends BaseModel {
         $stmtMov->execute([$caixaId]);
         $movs = $stmtMov->fetch();
         
-        $vendasDinheiro = (float)($vendasPorForma['dinheiro'] ?? 0);
-        $vendasPix = (float)($vendasPorForma['pix'] ?? 0);
-        $vendasCC = (float)($vendasPorForma['cartao_credito'] ?? 0);
-        $vendasCD = (float)($vendasPorForma['cartao_debito'] ?? 0);
-        $vendasCG = (float)($vendasPorForma['cartao'] ?? 0);
-        $vendasBoleto = (float)($vendasPorForma['boleto'] ?? 0);
-        $vendasFiadoTotal = (float)($vendasPorForma['fiado'] ?? 0);
+        // --- CÁLCULOS FINAIS ---
+        $vendasDinheiroDireto = (float)($vendasPorForma['dinheiro'] ?? 0);
+        $vendasPixDireto = (float)($vendasPorForma['pix'] ?? 0);
+        $vendasCartaoDireto = (float)($vendasPorForma['cartao_credito'] ?? 0) + (float)($vendasPorForma['cartao_debito'] ?? 0) + (float)($vendasPorForma['cartao'] ?? 0);
+        $vendasBoletoDireto = (float)($vendasPorForma['boleto'] ?? 0);
+        $vendasFiadoBruto = (float)($vendasPorForma['fiado'] ?? 0);
         
-        // Calcular quanto do Fiado de HOJE já foi pago na entrada (Sinal)
-        // Isso evita que o card "Fiado" mostre o valor bruto se o cliente deu entrada.
-        $sqlSinal = "
-            SELECT COALESCE(SUM(fp.valor), 0)
-            FROM fiados_pagamentos fp
-            JOIN contas_receber cr ON fp.fiado_id = cr.id
-            JOIN vendas v ON cr.venda_id = v.id
-            WHERE cr.filial_id = ? AND v.data_venda >= ? " . ($dataFechamento ? "AND v.data_venda <= ?" : "") . "
-            AND v.forma_pagamento = 'fiado'
-            AND fp.created_at >= ? " . ($dataFechamento ? "AND fp.created_at <= ?" : "") . "
-        ";
-        $stmtSinal = $this->db->prepare($sqlSinal);
-        $paramsSinal = [$filialId, $dataAbertura];
-        if ($dataFechamento) $paramsSinal[] = $dataFechamento;
-        $paramsSinal[] = $dataAbertura;
-        if ($dataFechamento) $paramsSinal[] = $dataFechamento;
-        
-        $stmtSinal->execute($paramsSinal);
-        $totalSinalFiado = (float)$stmtSinal->fetchColumn();
-
-        $vendasFiadoPendente = $vendasFiadoTotal - $totalSinalFiado;
-
-        // Adicionar pagamentos de fiados feitos em meios digitais
+        // Pagamentos Recebidos hoje (AVS)
+        $pagosDinheiro = (float)($pagosPorForma['dinheiro'] ?? 0);
         $pagosPix = (float)($pagosPorForma['pix'] ?? 0);
         $pagosCartao = (float)($pagosPorForma['cartao'] ?? 0);
         $pagosBoleto = (float)($pagosPorForma['boleto'] ?? 0);
         
-        $vendasCartaoTotal = $vendasCC + $vendasCD + $vendasCG + $pagosCartao;
-        $totalPix = $vendasPix + $pagosPix;
-        $totalBoleto = $vendasBoleto + $pagosBoleto;
+        // Físico = Vendas Diretas em Dinheiro + Pagamentos em Dinheiro (ou via movimentos 'fiado')
+        // Usamos o maior valor entre pagosDinheiro e entradasExtrasDinheiro para evitar duplicidade 
+        // mas garantir que se um falhar o outro pegue (já que ambos registram a mesma entrada física).
+        $totalDinheiroEntrou = $vendasDinheiroDireto + max($pagosDinheiro, $entradasExtrasDinheiro);
         
-        // Total Bruto: Vendas Diretas + Vendas Fiado (valor cheio) + Pagamentos de Fiados Antigos (que não sejam sinais de vendas de hoje)
-        // Simplificando: Soma de tudo que entrou em vendas + Soma de todos os pagamentos recebidos
-        $totalBruto = $vendasDinheiro + $vendasPix + ($vendasCC + $vendasCD + $vendasCG) + $vendasBoleto + $vendasFiadoTotal + (array_sum($pagosPorForma) - $totalSinalFiado);
+        $totalPix = $vendasPixDireto + $pagosPix;
+        $totalCartao = $vendasCartaoDireto + $pagosCartao;
+        $totalBoleto = $vendasBoletoDireto + $pagosBoleto;
+        
+        // Saldo Gaveta
+        $dinheiroEmGaveta = $totalDinheiroEntrou + $movs['suprimentos'] - $movs['sangrias'];
 
-        // O que realmente deve estar na gaveta física do caixa
-        $dinheiroEmGaveta = $vendasDinheiro + $entradasFiadoDinheiro + $movs['suprimentos'] - $movs['sangrias'];
+        // Total Bruto (O que foi vendido hoje + o que foi recebido de dívidas antigas - entradas de hoje para não duplicar no bruto)
+        // Na verdade, o usuário quer ver o "Vendido Total" como a soma de tudo que foi faturado hoje.
+        $totalBrutoVendidoHoje = $vendasDinheiroDireto + $vendasPixDireto + $vendasCartaoDireto + $vendasBoletoDireto + $vendasFiadoBruto;
 
         return [
-            'vendas_dinheiro' => $vendasDinheiro,
+            'vendas_dinheiro' => $totalDinheiroEntrou,
             'vendas_pix' => $totalPix,
-            'vendas_cartao' => $vendasCartaoTotal,
+            'vendas_cartao' => $totalCartao,
             'vendas_boleto' => $totalBoleto,
-            'vendas_fiado' => $vendasFiadoPendente,
-            'entradas_fiado_dinheiro' => $entradasFiadoDinheiro,
+            'vendas_fiado' => 0, // Card removido
+            'entradas_fiado_dinheiro' => 0, // Já incluído em vendas_dinheiro
             'suprimentos' => $movs['suprimentos'],
             'sangrias' => $movs['sangrias'],
             'dinheiro_em_gaveta' => $dinheiroEmGaveta,
-            'total_bruto' => $totalBruto
+            'total_bruto' => $totalBrutoVendidoHoje
         ];
     }
 }
