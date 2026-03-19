@@ -357,9 +357,10 @@
                 <h5 class="modal-title fw-bold">Movimentar Inventário</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <div class="modal-body p-4">
                 <div class="row g-3">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                    <div class="col-12">
+                    <div class="col-12 text-start">
                         <label class="form-label small fw-bold">Produto</label>
                         <select name="produto_id" class="form-select shadow-sm" required>
                             <?php foreach ($allProducts as $p): ?>
@@ -367,27 +368,28 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Quantidade</label>
-                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required>
+                    <div class="col-md-6 text-start">
+                        <label class="form-label small fw-bold text-success"><i class="fas fa-layer-group me-1"></i>Quantidade</label>
+                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required placeholder="0,00">
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Tipo</label>
+                    <div class="col-md-6 text-start">
+                        <label class="form-label small fw-bold text-primary"><i class="fas fa-exchange-alt me-1"></i>Tipo</label>
                         <select name="tipo" class="form-select shadow-sm" required>
                             <option value="entrada">Entrada (+)</option>
                             <option value="saida">Saída (-)</option>
                             <option value="ajuste">Ajuste de Saldo</option>
                         </select>
                     </div>
-                    <div class="col-md-12">
-                        <label class="form-label small fw-bold">Lote / Rastreabilidade (Opcional)</label>
-                        <input type="text" name="lote" class="form-control shadow-sm" placeholder="Ex: LOTE-2024-001">
+                    <div class="col-md-12 text-start">
+                        <label class="form-label small fw-bold text-warning"><i class="fas fa-barcode me-1"></i>Lote / Rastreabilidade</label>
+                        <input type="text" name="lote" class="form-control shadow-sm" placeholder="Ex: LOTE-2024-001 (Opcional)">
                     </div>
-                    <div class="col-12">
-                        <label class="form-label small fw-bold">Motivo / Observação</label>
+                    <div class="col-12 text-start">
+                        <label class="form-label small fw-bold text-secondary"><i class="fas fa-comment-alt me-1"></i>Motivo / Observação</label>
                         <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Compra de mercadoria, Baixa para OS, etc"></textarea>
                     </div>
                 </div>
+            </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
                 <button type="submit" class="btn btn-success px-4 fw-bold">Processar Movimento</button>
