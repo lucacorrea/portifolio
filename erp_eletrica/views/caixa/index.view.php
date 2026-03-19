@@ -37,101 +37,55 @@
 
     <?php if ($caixaAberto): ?>
     <!-- Resumo do Caixa Aberto -->
-    <div class="row g-4 mb-4">
-        <!-- Linha 1: Gaveta Física -->
-        <div class="col-md-3">
-            <div class="card border-0 h-100 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-box-open me-2"></i>Abertura</div>
-                    <h4 class="mb-0 fw-bold"><?= formatarMoeda($caixaAberto['valor_abertura']) ?></h4>
-                    <div class="text-info extra-small mt-2 fw-bold">
-                        <i class="fas fa-clock me-1"></i><?= date('H:i', strtotime($caixaAberto['data_abertura'])) ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 h-100 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-money-bill-wave me-2"></i>Entradas (Dinheiro)</div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small text-secondary">Venda Direta:</span>
-                        <span class="small fw-bold text-success">+ <?= formatarMoeda($summary['vendas_dinheiro']) ?></span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2 pb-1 border-bottom">
-                        <span class="small text-secondary">Fiado (Sinal):</span>
-                        <span class="small fw-bold text-success">+ <?= formatarMoeda($summary['entradas_fiado_dinheiro']) ?></span>
-                    </div>
-                    <h5 class="mb-0 fw-bold text-success text-end">+ <?= formatarMoeda($summary['vendas_dinheiro'] + $summary['entradas_fiado_dinheiro']) ?></h5>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 h-100 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-exchange-alt me-2"></i>Movimentações</div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="text-success small">+ Sup:</span>
-                        <span class="small fw-bold text-success">+ <?= formatarMoeda($summary['suprimentos']) ?></span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2 pb-1 border-bottom">
-                        <span class="text-danger small">- San:</span>
-                        <span class="small fw-bold text-danger">- <?= formatarMoeda($summary['sangrias']) ?></span>
-                    </div>
-                    <h5 class="mb-0 fw-bold text-dark text-end"><?= formatarMoeda($summary['suprimentos'] - $summary['sangrias']) ?></h5>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
+    <div class="row row-cols-1 row-cols-md-5 g-3 mb-4">
+        <div class="col">
             <div class="card border-primary border-0 h-100 bg-primary text-black shadow-lg" style="transform: scale(1.02);">
                 <div class="card-body">
-                    <div class="text-white-50 small fw-bold text-uppercase mb-2"><i class="fas fa-wallet me-2"></i>Saldo (Gaveta)</div>
-                    <h2 class="mb-0 fw-bold text-white">
+                    <div class="text-white-50 small fw-bold text-uppercase mb-2"><i class="fas fa-wallet me-2"></i>Saldo Gaveta</div>
+                    <h3 class="mb-0 fw-bold text-white">
                         <?= formatarMoeda($summary['dinheiro_em_gaveta']) ?>
-                    </h2>
-                    <div class="text-white-50 extra-small mt-2 fw-bold">Valor esperado físico no caixa</div>
+                    </h3>
+                    <div class="text-white-50 extra-small mt-2 fw-bold">Esperado Físico</div>
                 </div>
             </div>
         </div>
         
-        <!-- Linha 2: Digitais e Total -->
-        <div class="col-md-3">
-            <div class="card border-0 h-100 shadow-sm bg-light">
-                <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fab fa-pix text-primary me-2"></i>Recebimento PIX</div>
-                    <h4 class="mb-0 fw-bold text-primary"><?= formatarMoeda($summary['vendas_pix']) ?></h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 h-100 shadow-sm bg-light">
-                <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-credit-card text-info me-2"></i>Cartões</div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small text-secondary">Crédito:</span>
-                        <span class="small fw-bold text-info"><?= formatarMoeda($summary['vendas_cartao_credito']) ?></span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2 pb-1 border-bottom">
-                        <span class="small text-secondary">Débito:</span>
-                        <span class="small fw-bold text-info"><?= formatarMoeda($summary['vendas_cartao_debito']) ?></span>
-                    </div>
-                    <h6 class="mb-0 fw-bold text-info text-end"><?= formatarMoeda($summary['vendas_cartao_credito'] + $summary['vendas_cartao_debito']) ?></h6>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 h-100 shadow-sm bg-warning bg-opacity-10">
-                <div class="card-body">
-                    <div class="text-warning small fw-bold text-uppercase mb-2"><i class="fas fa-book-open me-2"></i>Fiado (Pendente)</div>
-                    <h4 class="mb-0 fw-bold text-warning"><?= formatarMoeda($summary['vendas_fiado']) ?></h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
+        <div class="col">
             <div class="card border-0 h-100 shadow-sm bg-secondary text-white">
                 <div class="card-body">
-                    <div class="text-white-50 small fw-bold text-uppercase mb-2"><i class="fas fa-chart-line me-2"></i>Total Vendido (Bruto)</div>
-                    <h3 class="mb-0 fw-bold text-white"><?= formatarMoeda($summary['total_bruto']) ?></h3>
+                    <div class="text-white-50 small fw-bold text-uppercase mb-2"><i class="fas fa-chart-line me-2"></i>Vendido (Total)</div>
+                    <h4 class="mb-0 fw-bold text-white"><?= formatarMoeda($summary['total_bruto']) ?></h4>
+                    <div class="text-white-50 extra-small mt-2 fw-bold">Base: Todos os tipos</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card border-0 h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-money-bill-wave me-2"></i>Físico</div>
+                    <h5 class="mb-0 fw-bold text-success">+ <?= formatarMoeda($summary['vendas_dinheiro'] + $summary['entradas_fiado_dinheiro']) ?></h5>
+                    <div class="text-muted extra-small mt-2">Dinheiro + Sinal</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col">
+            <div class="card border-0 h-100 shadow-sm bg-light">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fab fa-pix text-primary me-2"></i>Digitais</div>
+                    <h5 class="mb-0 fw-bold text-primary">+ <?= formatarMoeda($summary['vendas_pix'] + $summary['vendas_cartao'] + $summary['vendas_boleto']) ?></h5>
+                    <div class="text-muted extra-small mt-2">Pix, Cartões e Boleto</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col">
+            <div class="card border-0 h-100 shadow-sm bg-warning bg-opacity-10">
+                <div class="card-body">
+                    <div class="text-warning small fw-bold text-uppercase mb-2"><i class="fas fa-book-open me-2"></i>Fiado</div>
+                    <h5 class="mb-0 fw-bold text-warning"><?= formatarMoeda($summary['vendas_fiado']) ?></h5>
+                    <div class="text-muted extra-small mt-2 opacity-75">A Receber</div>
                 </div>
             </div>
         </div>
