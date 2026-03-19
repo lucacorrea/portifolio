@@ -42,7 +42,8 @@ class InventoryController extends BaseController {
             'allProducts' => $allProducts,
             'pagination' => $pagination,
             'movements' => $movements,
-            'categories' => $categories
+            'categories' => $categories,
+            'filters' => $filters
         ]);
     }
 

@@ -38,17 +38,17 @@
 <!-- Filters Bar -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body py-3">
-        <form method="GET" action="estoque_baixo.php" class="row g-3 align-items-center">
-            <div class="col-md-4">
+        <form method="GET" action="estoque_baixo.php" class="row g-3 align-items-center" id="filterForm">
+            <div class="col-md-6">
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0 text-muted">
                         <i class="fas fa-search"></i>
                     </span>
-                    <input type="text" name="q" class="form-control border-start-0" placeholder="Código ou nome..." value="<?= htmlspecialchars($filters['q']) ?>">
+                    <input type="text" name="q" id="searchInput" class="form-control border-start-0" placeholder="Pesquisar por código ou nome..." value="<?= htmlspecialchars($filters['q']) ?>" autocomplete="off">
                 </div>
             </div>
             <div class="col-md-3">
-                <select name="categoria" class="form-select">
+                <select name="categoria" class="form-select" onchange="this.form.submit()">
                     <option value="">Todas Categorias</option>
                     <?php foreach ($categories as $cat): ?>
                         <option value="<?= $cat ?>" <?= $filters['categoria'] == $cat ? 'selected' : '' ?>><?= $cat ?></option>
@@ -56,17 +56,12 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <select name="status" class="form-select">
+                <select name="status" class="form-select" onchange="this.form.submit()">
                     <option value="">Todos Status</option>
                     <option value="CRITICO" <?= $filters['status'] == 'CRITICO' ? 'selected' : '' ?>>Crítico</option>
                     <option value="BAIXO" <?= $filters['status'] == 'BAIXO' ? 'selected' : '' ?>>Baixo</option>
                     <option value="OK" <?= $filters['status'] == 'OK' ? 'selected' : '' ?>>OK</option>
                 </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100 fw-bold">
-                    <i class="fas fa-filter me-2"></i>Filtrar
-                </button>
             </div>
         </form>
     </div>
@@ -205,6 +200,24 @@ function exportToExcel() {
     link.setAttribute("download", "estoque_baixo_" + new Date().toISOString().slice(0,10) + ".csv");
     document.body.appendChild(link);
     link.click();
+}
+
+// Debounced Auto-submit for search
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        document.getElementById('filterForm').submit();
+    }, 600);
+});
+
+// Maintain focus on search input after reload if it was active
+if (window.location.search.includes('q=')) {
+    const input = document.getElementById('searchInput');
+    input.focus();
+    const val = input.value;
+    input.value = '';
+    input.value = val;
 }
 </script>
 

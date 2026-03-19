@@ -37,20 +37,20 @@
 <!-- Actions Bar -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body d-flex justify-content-between align-items-center py-3">
-        <div class="d-flex gap-2 w-50">
+        <form method="GET" action="estoque.php" class="d-flex gap-2 w-50" id="inventoryFilterForm">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0 text-muted">
                     <i class="fas fa-search"></i>
                 </span>
-                <input type="text" id="productSearch" class="form-control border-start-0" placeholder="Pesquisar por nome ou código...">
+                <input type="text" name="q" id="productSearch" class="form-control border-start-0" placeholder="Pesquisar por nome ou código..." value="<?= htmlspecialchars($filters['q']) ?>" autocomplete="off">
             </div>
-            <select class="form-select w-auto" id="filterCategory">
+            <select name="categoria" class="form-select w-auto" id="filterCategory" onchange="this.form.submit()">
                 <option value="">Todas Categorias</option>
                 <?php foreach ($categories as $cat): ?>
-                    <option value="<?= $cat ?>"><?= $cat ?></option>
+                    <option value="<?= $cat ?>" <?= $filters['categoria'] == $cat ? 'selected' : '' ?>><?= $cat ?></option>
                 <?php endforeach; ?>
             </select>
-        </div>
+        </form>
         <div class="d-flex gap-2">
             <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
             <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#newProductModal">
@@ -144,7 +144,7 @@
         <nav aria-label="Navegação de estoque">
             <ul class="pagination pagination-sm mb-0 justify-content-center">
                 <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>" aria-label="Anterior">
+                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>" aria-label="Anterior">
                         <i class="fas fa-chevron-left small"></i>
                     </a>
                 </li>
@@ -155,11 +155,11 @@
                 for($i = $start; $i <= $end; $i++): 
                 ?>
                 <li class="page-item <?= $i == $pagination['current'] ? 'active' : '' ?>">
-                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                    <a class="page-link" href="?page=<?= $i ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>"><?= $i ?></a>
                 </li>
                 <?php endfor; ?>
                 <li class="page-item <?= $pagination['current'] >= $pagination['pages'] ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>" aria-label="Próximo">
+                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>" aria-label="Próximo">
                         <i class="fas fa-chevron-right small"></i>
                     </a>
                 </li>
@@ -416,16 +416,23 @@ function deleteProduct(id) {
     }
 }
 
-// Client-side Inventory search logic
-document.getElementById('productSearch').addEventListener('keyup', function() {
-    let value = this.value.toLowerCase();
-    let rows = document.querySelectorAll('#inventoryTable tbody tr');
-    
-    rows.forEach(row => {
-        let text = row.innerText.toLowerCase();
-        row.style.display = text.includes(value) ? '' : 'none';
-    });
+// Debounced Auto-submit for inventory search
+let inventorySearchTimer;
+document.getElementById('productSearch').addEventListener('input', function() {
+    clearTimeout(inventorySearchTimer);
+    inventorySearchTimer = setTimeout(() => {
+        document.getElementById('inventoryFilterForm').submit();
+    }, 600);
 });
+
+// Maintain focus on search input after reload if it was active
+if (window.location.search.includes('q=')) {
+    const input = document.getElementById('productSearch');
+    input.focus();
+    const val = input.value;
+    input.value = '';
+    input.value = val;
+}
 
 // NCM Search Logic with Inline Dropdown Autocomplete
 let ncmDebounceTimer;
