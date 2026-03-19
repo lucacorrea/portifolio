@@ -286,6 +286,15 @@ class SalesController extends BaseController {
                             'valor' => $entrada,
                             'metodo' => 'DINHEIRO' // Initial entry is usually recorded as cash in this context
                         ]);
+
+                        $movementModel = new \App\Models\CashierMovement();
+                        $movementModel->create([
+                            'caixa_id' => $caixaAberto['id'],
+                            'tipo' => 'entrada',
+                            'valor' => $entrada,
+                            'motivo' => "Entrada Venda #{$saleId} (Fiado) - Cliente: {$nomePersist}",
+                            'usuario_id' => $_SESSION['usuario_id']
+                        ]);
                     }
 
                     $audit = new \App\Services\AuditLogService();

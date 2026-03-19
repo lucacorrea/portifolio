@@ -209,6 +209,22 @@ class VendaFiadoController extends BaseController {
                     'metodo' => $metodo
                 ]);
 
+                // Register in cashier movement if payment is in cash and there is an open box for the branch
+                if ($metodo === 'DINHEIRO') {
+                    $cashierModel = new \App\Models\Cashier();
+                    $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
+                    if ($caixaAberto) {
+                        $movementModel = new \App\Models\CashierMovement();
+                        $movementModel->create([
+                            'caixa_id' => $caixaAberto['id'],
+                            'tipo' => 'entrada',
+                            'valor' => $valorPago,
+                            'motivo' => "Recebimento Fiado (Venda #{$debito['venda_id']}) - Cliente: {$debito['cliente_nome']}",
+                            'usuario_id' => $_SESSION['usuario_id']
+                        ]);
+                    }
+                }
+
                 $novoValorPagoTotal = (float)$debito['valor_pago'] + $valorPago;
                 $novoSaldo = (float)$debito['valor'] - $novoValorPagoTotal;
                 $status = ($novoSaldo <= 0.01) ? 'pago' : 'pendente';
