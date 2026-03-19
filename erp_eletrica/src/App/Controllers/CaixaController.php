@@ -143,7 +143,7 @@ class CaixaController extends BaseController {
             }
 
             $summary = $cashierModel->getSummary($caixaId);
-            $totalSistema = $caixa['valor_abertura'] + $summary['vendas_dinheiro'] + $summary['suprimentos'] - $summary['sangrias'];
+            $totalSistema = $caixa['valor_abertura'] + $summary['dinheiro_em_gaveta'];
             $diferenca = $valorInformado - $totalSistema;
 
             $cashierModel->update($caixaId, [

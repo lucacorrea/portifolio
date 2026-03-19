@@ -15,18 +15,32 @@ class Cashier extends BaseModel {
     }
 
     public function getSummary($caixaId) {
-        // Vendas em dinheiro durante o período do caixa
+        $stmtOp = $this->db->prepare("SELECT operador_id, data_abertura FROM caixas WHERE id = ?");
+        $stmtOp->execute([$caixaId]);
+        $caixa = $stmtOp->fetch();
+        
+        $operadorId = $caixa['operador_id'] ?? 0;
+        $dataAbertura = $caixa['data_abertura'] ?? date('Y-m-d H:i:s');
+
+        // Totals grouped by forma_pagamento
         $sqlVendas = "
-            SELECT COALESCE(SUM(valor_total), 0) 
+            SELECT forma_pagamento, COALESCE(SUM(valor_total), 0) as total
             FROM vendas 
-            WHERE usuario_id = (SELECT operador_id FROM caixas WHERE id = ?) 
-            AND data_venda >= (SELECT data_abertura FROM caixas WHERE id = ?)
-            AND forma_pagamento = 'dinheiro'
-            AND status = 'concluido'
+            WHERE usuario_id = ? AND data_venda >= ? AND status = 'concluido'
+            GROUP BY forma_pagamento
         ";
         $stmtVendas = $this->db->prepare($sqlVendas);
-        $stmtVendas->execute([$caixaId, $caixaId]);
-        $vendasDinheiro = $stmtVendas->fetchColumn();
+        $stmtVendas->execute([$operadorId, $dataAbertura]);
+        $vendasPorForma = $stmtVendas->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+        $vTrasFiado = "
+            SELECT COALESCE(SUM(valor), 0) 
+            FROM caixa_movimentacoes 
+            WHERE caixa_id = ? AND tipo = 'entrada' AND motivo LIKE '%(Fiado)%'
+        ";
+        $stmtEntradaFiado = $this->db->prepare($vTrasFiado);
+        $stmtEntradaFiado->execute([$caixaId]);
+        $entradasFiadoDinheiro = (float)$stmtEntradaFiado->fetchColumn();
 
         // Movimentações (sangria/suprimento)
         $sqlMov = "
@@ -40,10 +54,28 @@ class Cashier extends BaseModel {
         $stmtMov->execute([$caixaId]);
         $movs = $stmtMov->fetch();
 
+        $vendasDinheiro = (float)($vendasPorForma['dinheiro'] ?? 0);
+        $vendasPix = (float)($vendasPorForma['pix'] ?? 0);
+        $vendasCC = (float)($vendasPorForma['cartao_credito'] ?? 0);
+        $vendasCD = (float)($vendasPorForma['cartao_debito'] ?? 0);
+        $vendasFiado = (float)($vendasPorForma['fiado'] ?? 0);
+        
+        $totalBruto = $vendasDinheiro + $vendasPix + $vendasCC + $vendasCD + $vendasFiado;
+
+        // O que realmente deve estar na gaveta física do caixa
+        $dinheiroEmGaveta = $vendasDinheiro + $entradasFiadoDinheiro + $movs['suprimentos'] - $movs['sangrias'];
+
         return [
             'vendas_dinheiro' => $vendasDinheiro,
+            'vendas_pix' => $vendasPix,
+            'vendas_cartao_credito' => $vendasCC,
+            'vendas_cartao_debito' => $vendasCD,
+            'vendas_fiado' => $vendasFiado,
+            'entradas_fiado_dinheiro' => $entradasFiadoDinheiro,
             'suprimentos' => $movs['suprimentos'],
-            'sangrias' => $movs['sangrias']
+            'sangrias' => $movs['sangrias'],
+            'dinheiro_em_gaveta' => $dinheiroEmGaveta,
+            'total_bruto' => $totalBruto
         ];
     }
 }
