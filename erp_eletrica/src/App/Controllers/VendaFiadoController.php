@@ -54,7 +54,6 @@ class VendaFiadoController extends BaseController {
         $model = new AccountReceivable();
         $db = \App\Config\Database::getInstance()->getConnection();
         
-        // Defensive: Check if migration already ran
         $hasValorPago = $model->columnExists('valor_pago');
         $saldoSql = $hasValorPago ? "(COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0))" : "cr.valor";
 
@@ -62,6 +61,11 @@ class VendaFiadoController extends BaseController {
         $di = $_GET['di'] ?? '';
         $df = $_GET['df'] ?? '';
         $status = $_GET['status'] ?? 'TODOS';
+        $q = $_GET['q'] ?? '';
+        
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = 9; // User requested 9 per page
+        $offset = ($page - 1) * $limit;
         
         $where = "WHERE 1=1";
         $params = [];
@@ -83,38 +87,60 @@ class VendaFiadoController extends BaseController {
             $where .= " AND cr.status = ?";
             $params[] = strtolower($status);
         }
+        if ($q) {
+            $where .= " AND (c.nome LIKE ? OR cr.venda_id LIKE ?)";
+            $params[] = "%$q%";
+            $params[] = "%$q%";
+        }
 
+        // Count TOTAL based on filters (for pagination and totals)
+        $sqlCount = "
+            SELECT COUNT(*) as total_count, 
+                   SUM(cr.valor) as total_venda, 
+                   SUM(cr.valor_pago) as total_pago, 
+                   SUM($saldoSql) as total_restante
+            FROM contas_receber cr 
+            JOIN clientes c ON cr.cliente_id = c.id 
+            $where
+        ";
+        $stmtCount = $db->prepare($sqlCount);
+        $stmtCount->execute($params);
+        $summary = $stmtCount->fetch();
+
+        $totalRecords = (int)$summary['total_count'];
+        $totalPages = ceil($totalRecords / $limit);
+
+        // Fetch PAGE rows
         $sql = "
             SELECT cr.*, $saldoSql as saldo, c.nome as cliente_nome
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             $where
-            ORDER BY cr.data_vencimento ASC
+            ORDER BY cr.created_at DESC, cr.id DESC
+            LIMIT ? OFFSET ?
         ";
         
         $stmt = $db->prepare($sql);
-        $stmt->execute($params);
+        $stmt->execute(array_merge($params, [$limit, $offset]));
         $rows = $stmt->fetchAll();
-
-        // Calculate totals
-        $totais = [
-            'qtd' => count($rows),
-            'total_venda' => 0,
-            'total_pago' => 0,
-            'total_restante' => 0
-        ];
-        foreach ($rows as $r) {
-            $totais['total_venda'] += (float)($r['valor'] ?? 0);
-            $totais['total_pago'] += (float)($r['valor_pago'] ?? 0);
-            $totais['total_restante'] += (float)($r['saldo'] ?? 0);
-        }
 
         header('Content-Type: application/json');
         if (ob_get_length()) ob_clean();
         echo json_encode([
             'ok' => true,
             'rows' => $rows,
-            'totais' => $totais
+            'pagination' => [
+                'total_records' => $totalRecords,
+                'total_pages' => $totalPages,
+                'current_page' => $page,
+                'limit' => $limit
+            ],
+            'totais' => [
+                'qtd' => $totalRecords,
+                'total_venda' => (float)$summary['total_venda'],
+                'total_pago' => (float)$summary['total_pago'],
+                'total_restante' => (float)$summary['total_restante']
+            ]
         ]);
         exit;
     }

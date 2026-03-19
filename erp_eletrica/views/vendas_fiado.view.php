@@ -151,7 +151,7 @@
 <!-- Tabela de Fiados -->
 <div class="fi-table-card shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0 text-dark">
             <thead class="bg-light text-secondary border-bottom">
                 <tr>
                     <th class="ps-4 py-3">Venda #</th>
@@ -172,6 +172,18 @@
                 </tr>
             </tbody>
         </table>
+    </div>
+    
+    <!-- Paginação -->
+    <div class="bg-light p-3 border-top d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+        <div class="text-muted small">
+            Mostrando <span id="pag-showing" class="fw-bold">0</span> de <span id="pag-total" class="fw-bold">0</span> registros
+        </div>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="fi-pagination">
+                <!-- Injected via JS -->
+            </ul>
+        </nav>
     </div>
 </div>
 
@@ -273,8 +285,9 @@
 </div>
 
 <script>
-    let allFiados = [];
-    let currentId = null;
+    let searchTimeout = null;
+    let currentPage = 1;
+    let currentPageRows = [];
 
     document.addEventListener('DOMContentLoaded', () => {
         // Set default dates (beginning of current month to today)
@@ -286,14 +299,16 @@
         loadFiados();
     });
 
-    async function loadFiados() {
+    async function loadFiados(page = 1) {
+        currentPage = page;
         const tbody = document.getElementById('fi-tbody');
         try {
             const di = document.getElementById('fi-di').value || '';
             const df = document.getElementById('fi-df').value || '';
             const status = document.getElementById('fi-status').value || 'TODOS';
+            const q = document.getElementById('fi-search').value || '';
 
-            const res = await fetch(`fiado.php?action=fetch&di=${di}&df=${df}&status=${status}`);
+            const res = await fetch(`fiado.php?action=fetch&di=${di}&df=${df}&status=${status}&page=${page}&q=${q}`);
             const text = await res.text();
             
             let data;
@@ -312,13 +327,17 @@
             }
 
             if (data.ok) {
-                allFiados = data.rows || [];
+                currentPageRows = data.rows || [];
+                renderTable(currentPageRows);
+                renderPagination(data.pagination);
+                
                 document.getElementById('tot-total').innerText = fmtBRL(data.totais.total_venda);
                 document.getElementById('tot-pago').innerText = fmtBRL(data.totais.total_pago);
                 document.getElementById('tot-restante').innerText = fmtBRL(data.totais.total_restante);
                 document.getElementById('tot-qtd').innerText = data.totais.qtd;
                 
-                renderTable(allFiados);
+                document.getElementById('pag-showing').innerText = data.rows.length;
+                document.getElementById('pag-total').innerText = data.pagination.total_records;
             } else {
                 tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">
                     <strong>Erro:</strong> ${data.msg || 'Erro desconhecido'}
@@ -366,13 +385,44 @@
         `).join('');
     }
 
+    function renderPagination(p) {
+        const pag = document.getElementById('fi-pagination');
+        if (!p || p.total_pages <= 1) {
+            pag.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        
+        // Botão Anterior
+        html += `<li class="page-item ${p.current_page === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${p.current_page - 1})"><i class="fas fa-chevron-left"></i></a>
+        </li>`;
+
+        // Páginas
+        for (let i = 1; i <= p.total_pages; i++) {
+            if (i === 1 || i === p.total_pages || (i >= p.current_page - 2 && i <= p.current_page + 2)) {
+                html += `<li class="page-item ${i === p.current_page ? 'active' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${i})">${i}</a>
+                </li>`;
+            } else if (i === p.current_page - 3 || i === p.current_page + 3) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // Próximo
+        html += `<li class="page-item ${p.current_page === p.total_pages ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${p.current_page + 1})"><i class="fas fa-chevron-right"></i></a>
+        </li>`;
+
+        pag.innerHTML = html;
+    }
+
     function filterTable() {
-        const q = document.getElementById('fi-search').value.toLowerCase();
-        const filtered = allFiados.filter(r => 
-            r.cliente_nome.toLowerCase().includes(q) || 
-            r.venda_id.toString().includes(q)
-        );
-        renderTable(filtered);
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            loadFiados(1);
+        }, 500);
     }
 
     async function verDetalhes(id) {
@@ -457,7 +507,7 @@
 
     async function abrirPagar(id) {
         currentId = id;
-        const fiado = allFiados.find(f => f.id == id);
+        const fiado = currentPageRows.find(f => f.id == id);
         if (!fiado) return;
 
         document.getElementById('pay-cliente-nome').innerText = fiado.cliente_nome;
