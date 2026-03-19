@@ -15,24 +15,32 @@ class Cashier extends BaseModel {
     }
 
     public function getSummary($caixaId) {
-        $stmtOp = $this->db->prepare("SELECT operador_id, data_abertura, filial_id FROM caixas WHERE id = ?");
-        $stmtOp->execute([$caixaId]);
-        $caixa = $stmtOp->fetch();
-        
-        $operadorId = $caixa['operador_id'] ?? 0;
         $dataAbertura = $caixa['data_abertura'] ?? date('Y-m-d H:i:s');
+        $dataFechamento = $caixa['data_fechamento'] ?? date('Y-m-d H:i:s');
         $filialId = $caixa['filial_id'] ?? 0;
 
-        // Totals grouped by forma_pagamento for the entire branch during this session
+        // 1. Vendas diretas concluídas na sessão
         $sqlVendas = "
             SELECT forma_pagamento, COALESCE(SUM(valor_total), 0) as total
             FROM vendas 
-            WHERE filial_id = ? AND data_venda >= ? AND status = 'concluido'
+            WHERE filial_id = ? AND data_venda >= ? AND data_venda <= ? AND status = 'concluido'
             GROUP BY forma_pagamento
         ";
         $stmtVendas = $this->db->prepare($sqlVendas);
-        $stmtVendas->execute([$filialId, $dataAbertura]);
+        $stmtVendas->execute([$filialId, $dataAbertura, $dataFechamento]);
         $vendasPorForma = $stmtVendas->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+        // 2. Pagamentos de Fiados (contas a receber) recebidos NA SESSÃO
+        $sqlPagos = "
+            SELECT fp.metodo, COALESCE(SUM(fp.valor), 0) as total
+            FROM fiados_pagamentos fp
+            JOIN contas_receber cr ON fp.fiado_id = cr.id
+            WHERE cr.filial_id = ? AND fp.created_at >= ? AND fp.created_at <= ?
+            GROUP BY fp.metodo
+        ";
+        $stmtPagos = $this->db->prepare($sqlPagos);
+        $stmtPagos->execute([$filialId, $dataAbertura, $dataFechamento]);
+        $pagosPorForma = $stmtPagos->fetchAll(\PDO::FETCH_KEY_PAIR);
 
         $vTrasFiado = "
             SELECT COALESCE(SUM(valor), 0) 
@@ -63,18 +71,26 @@ class Cashier extends BaseModel {
         $vendasBoleto = (float)($vendasPorForma['boleto'] ?? 0);
         $vendasFiado = (float)($vendasPorForma['fiado'] ?? 0);
         
-        $vendasCartaoTotal = $vendasCC + $vendasCD + $vendasCG;
+        // Adicionar pagamentos de fiados feitos em meios digitais
+        $pagosPix = (float)($pagosPorForma['PIX'] ?? ($pagosPorForma['pix'] ?? 0));
+        $pagosCartao = (float)($pagosPorForma['CARTAO'] ?? ($pagosPorForma['cartao'] ?? 0));
+        $pagosBoleto = (float)($pagosPorForma['BOLETO'] ?? ($pagosPorForma['boleto'] ?? 0));
+        // Nota: DINHEIRO já entra via entradasFiadoDinheiro (caixa_movimentacoes)
         
-        $totalBruto = $vendasDinheiro + $vendasPix + $vendasCartaoTotal + $vendasBoleto + $vendasFiado;
+        $vendasCartaoTotal = $vendasCC + $vendasCD + $vendasCG + $pagosCartao;
+        $totalPix = $vendasPix + $pagosPix;
+        $totalBoleto = $vendasBoleto + $pagosBoleto;
+        
+        $totalBruto = $vendasDinheiro + $vendasPix + ($vendasCC + $vendasCD + $vendasCG) + $vendasBoleto + $vendasFiado + array_sum($pagosPorForma);
 
         // O que realmente deve estar na gaveta física do caixa
         $dinheiroEmGaveta = $vendasDinheiro + $entradasFiadoDinheiro + $movs['suprimentos'] - $movs['sangrias'];
 
         return [
             'vendas_dinheiro' => $vendasDinheiro,
-            'vendas_pix' => $vendasPix,
+            'vendas_pix' => $totalPix,
             'vendas_cartao' => $vendasCartaoTotal,
-            'vendas_boleto' => $vendasBoleto,
+            'vendas_boleto' => $totalBoleto,
             'vendas_fiado' => $vendasFiado,
             'entradas_fiado_dinheiro' => $entradasFiadoDinheiro,
             'suprimentos' => $movs['suprimentos'],
@@ -82,5 +98,6 @@ class Cashier extends BaseModel {
             'dinheiro_em_gaveta' => $dinheiroEmGaveta,
             'total_bruto' => $totalBruto
         ];
+    }
     }
 }
