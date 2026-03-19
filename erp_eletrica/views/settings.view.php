@@ -1,79 +1,337 @@
-<div class="row g-4">
-    <div class="col-lg-8">
-        <form action="configuracoes.php?action=save" method="POST">
-            <!-- Identity Card -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white py-3">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-building me-2 text-primary"></i>Identidade Corporativa</h6>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label small fw-bold">Nome da Empresa / Razão Social</label>
-                            <input type="text" name="empresa_nome" class="form-control shadow-sm" value="<?= $settings['empresa_nome'] ?? APP_NAME ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">CNPJ Principal</label>
-                            <input type="text" name="empresa_cnpj" class="form-control shadow-sm" value="<?= $settings['empresa_cnpj'] ?? '' ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Telefone de Suporte</label>
-                            <input type="text" name="empresa_fone" class="form-control shadow-sm" value="<?= $settings['empresa_fone'] ?? '' ?>">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small fw-bold">Email Institucional</label>
-                            <input type="email" name="empresa_email" class="form-control shadow-sm" value="<?= $settings['empresa_email'] ?? '' ?>">
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-0">
+        <ul class="nav nav-pills nav-fill p-2 bg-light rounded-top" id="settingsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold py-3" id="matriz-tab" data-bs-toggle="tab" data-bs-target="#matriz" type="button" role="tab">
+                    <i class="fas fa-building me-2"></i>Matriz & Certificado Global
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-3" id="unidades-tab" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab">
+                    <i class="fas fa-network-wired me-2"></i>Gestão de Unidades (Filiais)
+                </button>
+            </li>
+        </ul>
+    </div>
+</div>
 
-            <!-- Parameters Card -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white py-3">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-sliders-h me-2 text-secondary"></i>Parâmetros de Operação</h6>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Alerta de Estoque Mínimo (Padrão)</label>
-                            <input type="number" name="estoque_min_default" class="form-control shadow-sm" value="<?= $settings['estoque_min_default'] ?? '5' ?>">
+<div class="tab-content" id="settingsTabsContent">
+    <!-- ABA 1: MATRIZ & CERTIFICADO -->
+    <div class="tab-pane fade show active" id="matriz" role="tabpanel">
+        <form action="configuracoes.php?action=saveMatriz" method="POST" enctype="multipart/form-data">
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <!-- Identidade -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white py-3">
+                            <h6 class="mb-0 fw-bold text-primary">Identidade Corporativa (Matriz)</h6>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label small fw-bold">Mensagem Padrão para Orçamentos/PV</label>
-                            <textarea name="msg_orcamento" class="form-control shadow-sm" rows="4" placeholder="Esta mensagem aparecerá impressa no rodapé dos orçamentos..."><?= $settings['msg_orcamento'] ?? '' ?></textarea>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold">Razão Social / Nome da Empresa</label>
+                                    <input type="text" name="empresa_nome" class="form-control" value="<?= $settings['empresa_nome'] ?? '' ?>" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">CNPJ</label>
+                                    <input type="text" name="empresa_cnpj" class="form-control" value="<?= $settings['empresa_cnpj'] ?? '' ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Telefone</label>
+                                    <input type="text" name="empresa_fone" class="form-control" value="<?= $settings['empresa_fone'] ?? '' ?>">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold">Email</label>
+                                    <input type="email" name="empresa_email" class="form-control" value="<?= $settings['empresa_email'] ?? '' ?>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mensagem Orçamento -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white py-3">
+                            <h6 class="mb-0 fw-bold text-secondary">Preferências de Impressão</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <label class="form-label small fw-bold">Rodapé Padrão (Orçamentos/PV)</label>
+                            <textarea name="msg_orcamento" class="form-control" rows="3"><?= $settings['msg_orcamento'] ?? '' ?></textarea>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer bg-light border-0 py-3 text-end px-4">
-                    <button type="submit" class="btn btn-primary fw-bold px-4">
-                        <i class="fas fa-save me-2"></i>Salvar Alterações
-                    </button>
+
+                <div class="col-lg-5">
+                    <!-- Certificado Digital Global -->
+                    <div class="card border-0 shadow-sm h-100 bg-dark text-white border-top border-4 border-warning">
+                        <div class="card-body p-4">
+                            <h6 class="fw-bold mb-3"><i class="fas fa-certificate me-2 text-warning"></i>Certificado Digital A1 (Concentrado)</h6>
+                            <p class="extra-small text-white-50 mb-4">Utilize este certificado para que todas as filiais emitam notas através de uma única assinatura digital da matriz.</p>
+                            
+                            <?php if (!empty($sefaz['certificado_path'])): ?>
+                                <div class="alert alert-soft-warning border-0 small d-flex align-items-center mb-4">
+                                    <i class="fas fa-check-circle me-3 fa-2x"></i>
+                                    <div>
+                                        <strong>Certificado Ativo:</strong><br>
+                                        <span class="opacity-75"><?= $sefaz['certificado_path'] ?></span>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="mb-3">
+                                <label class="form-label small border-bottom border-secondary pb-1 d-block">Arquivo do Certificado (.pfx)</label>
+                                <input type="file" name="certificado_pfx" class="form-control form-control-sm bg-secondary border-0 text-white">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small border-bottom border-secondary pb-1 d-block">Senha do Certificado</label>
+                                <input type="password" name="certificado_senha" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['certificado_senha'] ?? '' ?>">
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label small border-bottom border-secondary pb-1 d-block">Ambiente Sefaz</label>
+                                <select name="ambiente" class="form-select form-select-sm bg-secondary border-0 text-white">
+                                    <option value="homologacao" <?= ($sefaz['ambiente'] ?? '') === 'homologacao' ? 'selected' : '' ?>>Homologação (Testes)</option>
+                                    <option value="producao" <?= ($sefaz['ambiente'] ?? '') === 'producao' ? 'selected' : '' ?>>Produção (Real)</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-warning w-100 fw-bold">
+                                <i class="fas fa-save me-2"></i>Salvar Tudo
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>
     </div>
 
-    <!-- Info/Help Column -->
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm mb-4 bg-primary text-black">
-            <div class="card-body p-4">
-                <h6 class="fw-bold mb-3"><i class="fas fa-info-circle me-2"></i>Dica do Sistema</h6>
-                <p class="small opacity-75 mb-0">
-                    Estas informações são fundamentais para a emissão de documentos fiscais e relatórios técnicos. Mantenha os dados sempre atualizados para garantir a conformidade da sua operação.
-                </p>
-            </div>
+    <!-- ABA 2: GESTÃO DE UNIDADES (FILIAIS) -->
+    <div class="tab-pane fade" id="unidades" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="mb-0 fw-bold text-dark">Unidades Registradas</h5>
+            <button class="btn btn-primary btn-sm px-4 fw-bold" onclick="abrirModalFilial()">
+                <i class="fas fa-plus me-2"></i>Nova Unidade
+            </button>
         </div>
-        
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3">
-                <h6 class="mb-0 fw-bold"><i class="fas fa-history me-2"></i>Últimas Alterações</h6>
-            </div>
-            <div class="card-body p-0">
-                <ul class="list-group list-group-flush small">
-                    <li class="list-group-item py-3 opacity-50 text-center">Nenhum histórico disponível</li>
-                </ul>
-            </div>
+
+        <div class="row g-3">
+            <?php foreach ($branches as $branch): ?>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 hover-shadow transition">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="bg-light p-3 rounded-circle">
+                                    <i class="fas fa-store text-primary fa-lg"></i>
+                                </div>
+                                <span class="badge <?= $branch['principal'] ? 'bg-primary' : 'bg-secondary' ?> small">
+                                    <?= $branch['principal'] ? 'MATRIZ' : 'FILIAL' ?>
+                                </span>
+                            </div>
+                            <h6 class="fw-bold mb-1"><?= $branch['nome'] ?></h6>
+                            <p class="extra-small text-muted mb-3"><?= $branch['cnpj'] ?></p>
+                            
+                            <div class="extra-small text-muted border-top pt-2 mb-3">
+                                <i class="fas fa-map-marker-alt me-1"></i> <?= $branch['municipio'] ?> - <?= $branch['uf'] ?>
+                            </div>
+
+                            <div class="d-grid">
+                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick='abrirModalFilial(<?= json_encode($branch) ?>)'>
+                                    <i class="fas fa-edit me-2"></i>Gerenciar Dados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </div>
+
+<!-- MODAL: CADASTRO/EDIÇÃO DE FILIAL -->
+<div class="modal fade" id="modalFilial" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <form action="configuracoes.php?action=saveFilial" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="id" id="f_id">
+                <div class="modal-header bg-dark text-white py-3 border-0">
+                    <h6 class="modal-title fw-bold" id="modalTitle"><i class="fas fa-store me-2"></i>Dados da Unidade</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <!-- Nav Tabs Inside Modal -->
+                    <ul class="nav nav-pills mb-4 small fw-bold" id="modalTabs">
+                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-basico" type="button">Básico & Endereço</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-fiscal" type="button">Emissão Fiscal (NFC-e)</button></li>
+                        <li class="nav-item"><button class="nav-link text-warning" data-bs-toggle="pill" data-bs-target="#tab-cert" type="button">Certificado Próprio</button></li>
+                    </ul>
+
+                    <div class="tab-content border-top pt-4">
+                        <!-- Aba Básico -->
+                        <div class="tab-pane fade show active" id="tab-basico">
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label small fw-bold">Nome Fantasia</label>
+                                    <input type="text" name="nome" id="f_nome" class="form-control shadow-sm" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">CNPJ</label>
+                                    <input type="text" name="cnpj" id="f_cnpj" class="form-control shadow-sm" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold">Razão Social</label>
+                                    <input type="text" name="razao_social" id="f_razao" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Insc. Estadual</label>
+                                    <input type="text" name="inscricao_estadual" id="f_ie" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">CEP</label>
+                                    <input type="text" name="cep" id="f_cep" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Município</label>
+                                    <input type="text" name="municipio" id="f_municipio" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-9">
+                                    <label class="form-label small fw-bold">Logradouro</label>
+                                    <input type="text" name="logradouro" id="f_logradouro" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Número</label>
+                                    <input type="text" name="numero" id="f_numero" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Bairro</label>
+                                    <input type="text" name="bairro" id="f_bairro" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Complemento</label>
+                                    <input type="text" name="complemento" id="f_complemento" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">UF</label>
+                                    <input type="text" name="uf" id="f_uf" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Telefone</label>
+                                    <input type="text" name="telefone" id="f_fone" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-bold">E-mail</label>
+                                    <input type="email" name="email" id="f_email" class="form-control shadow-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aba Fiscal -->
+                        <div class="tab-pane fade" id="tab-fiscal">
+                            <div class="alert alert-soft-primary small mb-4">
+                                <i class="fas fa-info-circle me-2"></i>Estes parâmetros são usados para a emissão de cupons fiscais (NFC-e) específicos desta unidade.
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">CSC ID (Token ID)</label>
+                                    <input type="text" name="csc_id" id="f_csc_id" class="form-control shadow-sm" placeholder="Ex: 000001">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label small fw-bold">CSC Token (Código)</label>
+                                    <input type="text" name="csc_token" id="f_csc_token" class="form-control shadow-sm" placeholder="Ex: AAAA-BBBB-CCCC">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Série NFC-e</label>
+                                    <input type="number" name="serie_nfce" id="f_serie" class="form-control shadow-sm" value="1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Último Nº NFC-e</label>
+                                    <input type="number" name="ultimo_numero_nfce" id="f_ultimo" class="form-control shadow-sm" value="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Ambiente</label>
+                                    <select name="ambiente" id="f_ambiente" class="form-select shadow-sm">
+                                        <option value="2">Homologação</option>
+                                        <option value="1">Produção</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aba Certificado Próprio -->
+                        <div class="tab-pane fade" id="tab-cert">
+                            <div class="card border-warning border-dashed bg-white p-4">
+                                <h6 class="fw-bold mb-3">Certificado Exclusivo (Opcional)</h6>
+                                <p class="small text-muted mb-4">Se esta unidade possuir um certificado diferente da matriz, faça o upload aqui. Caso contrário, o sistema usará o Certificado Global configurado na página principal.</p>
+                                
+                                <div class="row g-3">
+                                    <div class="col-md-7">
+                                        <label class="form-label small fw-bold">Novo Arquivo .pfx</label>
+                                        <input type="file" name="certificado" class="form-control shadow-sm">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-bold">Senha do Certificado</label>
+                                        <input type="password" name="certificado_senha_filial" id="f_cert_senha" class="form-control shadow-sm">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" name="principal" id="f_principal" value="0">
+                <input type="hidden" name="is_matriz" id="f_is_matriz" value="0">
+                <input type="hidden" name="crt" id="f_crt" value="1">
+
+                <div class="modal-footer bg-white border-0 py-3">
+                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-5 fw-bold"><i class="fas fa-save me-2"></i>Salvar Unidade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalFilial(data = null) {
+    const modal = new bootstrap.Modal(document.getElementById('modalFilial'));
+    document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2"></i>Editar Unidade' : '<i class="fas fa-plus me-2"></i>Nova Unidade';
+    
+    // Reset inputs
+    document.getElementById('f_id').value = data ? data.id : '';
+    document.getElementById('f_nome').value = data ? data.nome : '';
+    document.getElementById('f_cnpj').value = data ? data.cnpj : '';
+    document.getElementById('f_razao').value = data ? data.razao_social : '';
+    document.getElementById('f_ie').value = data ? data.inscricao_estadual : '';
+    document.getElementById('f_cep').value = data ? data.cep : '';
+    document.getElementById('f_municipio').value = data ? data.municipio : '';
+    document.getElementById('f_logradouro').value = data ? data.logradouro : '';
+    document.getElementById('f_numero').value = data ? data.numero : '';
+    document.getElementById('f_bairro').value = data ? data.bairro : '';
+    document.getElementById('f_complemento').value = data ? data.complemento : '';
+    document.getElementById('f_uf').value = data ? data.uf : '';
+    document.getElementById('f_fone').value = data ? data.telefone : '';
+    document.getElementById('f_email').value = data ? data.email : '';
+    
+    document.getElementById('f_csc_id').value = data ? data.csc_id : '';
+    document.getElementById('f_csc_token').value = data ? data.csc_token : '';
+    document.getElementById('f_serie').value = data ? data.serie_nfce : '1';
+    document.getElementById('f_ultimo').value = data ? data.ultimo_numero_nfce : '0';
+    document.getElementById('f_ambiente').value = data ? data.ambiente : '2';
+    document.getElementById('f_principal').value = data ? data.principal : '0';
+
+    modal.show();
+}
+
+// Auto behavior for hash
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash === '#unidades') {
+        const tab = new bootstrap.Tab(document.getElementById('unidades-tab'));
+        tab.show();
+    }
+});
+</script>
+
+<style>
+.hover-shadow:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; transform: translateY(-3px); }
+.transition { transition: all .2s ease-in-out; }
+.alert-soft-warning { background-color: rgba(255, 193, 7, 0.1); color: #856404; }
+.alert-soft-primary { background-color: rgba(13, 110, 253, 0.1); color: #084298; }
+.border-dashed { border-style: dashed !important; }
+.extra-small { font-size: 0.75rem; }
+</style>
