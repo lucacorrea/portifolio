@@ -34,8 +34,22 @@ class PreSaleController extends BaseController {
             }
 
             $model = new PreSale();
+            $productModel = new Product();
             $clientModel = new Client();
             
+            // Validation: Stock Check
+            if (!empty($data['items'])) {
+                foreach ($data['items'] as $item) {
+                    if (!$productModel->hasEnoughStock($item['id'], $item['qty'])) {
+                        $stmtProd = \App\Config\Database::getInstance()->getConnection()->prepare("SELECT nome FROM produtos WHERE id = ?");
+                        $stmtProd->execute([$item['id']]);
+                        $productName = $stmtProd->fetchColumn();
+                        echo json_encode(['success' => false, 'error' => "Estoque insuficiente para a pré-venda: $productName."]);
+                        exit;
+                    }
+                }
+            }
+
             $data['usuario_id'] = $_SESSION['usuario_id'];
             $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
 

@@ -23,6 +23,14 @@ class InventoryService extends BaseService {
         $lote = $data['lote'] ?? null;
         $filialId = $data['filial_id'] ?? 1;
 
+        // Validation: Prevent negative stock on manual 'saida'
+        if ($type === 'saida' && !$this->productModel->hasEnoughStock($productId, $qty)) {
+            $stmtProd = $this->db->prepare("SELECT nome FROM produtos WHERE id = ?");
+            $stmtProd->execute([$productId]);
+            $productName = $stmtProd->fetchColumn();
+            throw new \Exception("Saldo insuficiente para realizar a saída do produto: $productName.");
+        }
+
         // Update main stock
         $this->productModel->updateStock($productId, $qty, $type);
 

@@ -159,6 +159,13 @@ class Product extends BaseModel {
         return $this->query("UPDATE {$this->table} SET quantidade = quantidade $operator ? WHERE id = ?", [$qty, $id]);
     }
 
+    public function hasEnoughStock($id, $requiredQty) {
+        $stmt = $this->db->prepare("SELECT quantidade FROM {$this->table} WHERE id = ?");
+        $stmt->execute([$id]);
+        $currentQty = $stmt->fetchColumn();
+        return ($currentQty !== false && $currentQty >= $requiredQty);
+    }
+
     public function save($data) {
         // Detect which optional columns exist (forward/backward compat)
         $hasCean          = $this->columnExists('cean');

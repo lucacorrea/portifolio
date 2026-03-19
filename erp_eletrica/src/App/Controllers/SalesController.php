@@ -309,6 +309,14 @@ class SalesController extends BaseController {
                 $hasCfop = in_array('cfop', $existingCols);
 
                 foreach ($data['items'] as $item) {
+                     // Check stock before proceeding
+                    if (!$productModel->hasEnoughStock($item['id'], $item['qty'])) {
+                        $stmtProd = $db->prepare("SELECT nome FROM produtos WHERE id = ?");
+                        $stmtProd->execute([$item['id']]);
+                        $productName = $stmtProd->fetchColumn();
+                        throw new \Exception("Estoque insuficiente para o produto: $productName. Verifique o saldo atual.");
+                    }
+
                      // Get product data regardless
                     $stmtProd = $db->prepare("SELECT * FROM produtos WHERE id = ? LIMIT 1");
                     $stmtProd->execute([$item['id']]);
