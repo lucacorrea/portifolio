@@ -64,6 +64,12 @@
     </div>
 </div>
 
+<style>
+.table-responsive, .card-body {
+    overflow: visible !important;
+}
+</style>
+
 <!-- Products Table -->
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -120,7 +126,7 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="dropdown">
-                                <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
