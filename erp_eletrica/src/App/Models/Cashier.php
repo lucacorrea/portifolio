@@ -4,13 +4,13 @@ namespace App\Models;
 class Cashier extends BaseModel {
     protected $table = 'caixas';
 
-    public function getOpenForOperador($operadorId, $filialId) {
+    public function getOpenForFilial($filialId) {
         $stmt = $this->db->prepare("
             SELECT * FROM {$this->table} 
-            WHERE operador_id = ? AND filial_id = ? AND status = 'aberto' 
+            WHERE filial_id = ? AND status = 'aberto' 
             LIMIT 1
         ");
-        $stmt->execute([$operadorId, $filialId]);
+        $stmt->execute([$filialId]);
         return $stmt->fetch();
     }
 
@@ -21,16 +21,17 @@ class Cashier extends BaseModel {
         
         $operadorId = $caixa['operador_id'] ?? 0;
         $dataAbertura = $caixa['data_abertura'] ?? date('Y-m-d H:i:s');
+        $filialId = $caixa['filial_id'] ?? 0;
 
-        // Totals grouped by forma_pagamento
+        // Totals grouped by forma_pagamento for the entire branch during this session
         $sqlVendas = "
             SELECT forma_pagamento, COALESCE(SUM(valor_total), 0) as total
             FROM vendas 
-            WHERE usuario_id = ? AND data_venda >= ? AND status = 'concluido'
+            WHERE filial_id = ? AND data_venda >= ? AND status = 'concluido'
             GROUP BY forma_pagamento
         ";
         $stmtVendas = $this->db->prepare($sqlVendas);
-        $stmtVendas->execute([$operadorId, $dataAbertura]);
+        $stmtVendas->execute([$filialId, $dataAbertura]);
         $vendasPorForma = $stmtVendas->fetchAll(\PDO::FETCH_KEY_PAIR);
 
         $vTrasFiado = "
