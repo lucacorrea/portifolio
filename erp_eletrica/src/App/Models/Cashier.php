@@ -106,9 +106,8 @@ class Cashier extends BaseModel {
         // Saldo Gaveta
         $dinheiroEmGaveta = $totalDinheiroEntrou + $movs['suprimentos'] - $movs['sangrias'];
 
-        // Total Bruto (O que foi vendido hoje + o que foi recebido de dívidas antigas - entradas de hoje para não duplicar no bruto)
-        // Na verdade, o usuário quer ver o "Vendido Total" como a soma de tudo que foi faturado hoje.
-        $totalBrutoVendidoHoje = $vendasDinheiroDireto + $vendasPixDireto + $vendasCartaoDireto + $vendasBoletoDireto + $vendasFiadoBruto;
+        // Total Bruto (Soma de tudo que entrou fisicamente ou digitalmente na sessão)
+        $totalEntradasSessao = $totalDinheiroEntrou + $totalPix + $totalCartao + $totalBoleto;
 
         return [
             'vendas_dinheiro' => $totalDinheiroEntrou,
@@ -120,7 +119,7 @@ class Cashier extends BaseModel {
             'suprimentos' => $movs['suprimentos'],
             'sangrias' => $movs['sangrias'],
             'dinheiro_em_gaveta' => $dinheiroEmGaveta,
-            'total_bruto' => $totalBrutoVendidoHoje
+            'total_bruto' => $totalEntradasSessao
         ];
     }
 }
