@@ -26,11 +26,11 @@
         <div class="card h-100 border-0 shadow-sm bg-primary text-white">
             <div class="card-body">
                 <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual em Caixa</div>
-                <h3 class="mb-0 fw-bold">
+                <h3 class="mb-0 fw-bold" id="val-saldo-caixa">
                     <?= formatarMoeda(($caixaAberto['valor_abertura'] ?? 0) + ($cashierSummary['vendas_dinheiro'] ?? 0) + ($cashierSummary['suprimentos'] ?? 0) - ($cashierSummary['sangrias'] ?? 0)) ?>
                 </h3>
                 <div class="mt-2 small">
-                    <span class="badge bg-white text-primary">CAIXA ABERTO</span>
+                    <span class="badge bg-white text-primary" id="status-caixa">CAIXA ABERTO</span>
                 </div>
             </div>
         </div>
@@ -39,7 +39,7 @@
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body text-center">
                 <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-chart-line me-2 text-primary"></i>Vendido (Total)</div>
-                <h3 class="mb-0 fw-bold text-primary"><?= formatarMoeda($cashierSummary['total_bruto'] ?? 0) ?></h3>
+                <h3 class="mb-0 fw-bold text-primary" id="val-vendido-total"><?= formatarMoeda($cashierSummary['total_bruto'] ?? 0) ?></h3>
                 <div class="extra-small text-muted mt-2">Cash + Digital</div>
             </div>
         </div>
@@ -48,7 +48,7 @@
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body text-center">
                 <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-hand-holding-dollar me-2 text-warning"></i>Fiado (A Receber)</div>
-                <h3 class="mb-0 fw-bold text-warning"><?= formatarMoeda($stats['fiado_pendente'] ?? 0) ?></h3>
+                <h3 class="mb-0 fw-bold text-warning" id="val-fiado-pendente"><?= formatarMoeda($stats['fiado_pendente'] ?? 0) ?></h3>
                 <div class="extra-small text-muted mt-2">Saldo Total Pendente</div>
             </div>
         </div>
@@ -59,7 +59,7 @@
         <div class="card h-100 border-0 shadow-sm border-start border-danger border-4">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div class="text-muted small fw-bold text-uppercase">Sangrias (Retiradas)</div>
-                <h4 class="mb-0 fw-bold text-danger">- <?= formatarMoeda($cashierSummary['sangrias'] ?? 0) ?></h4>
+                <h4 class="mb-0 fw-bold text-danger" id="val-sangrias">- <?= formatarMoeda($cashierSummary['sangrias'] ?? 0) ?></h4>
             </div>
         </div>
     </div>
@@ -67,7 +67,7 @@
         <div class="card h-100 border-0 shadow-sm border-start border-info border-4">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div class="text-muted small fw-bold text-uppercase">Suprimentos (Entradas)</div>
-                <h4 class="mb-0 fw-bold text-info">+ <?= formatarMoeda($cashierSummary['suprimentos'] ?? 0) ?></h4>
+                <h4 class="mb-0 fw-bold text-info" id="val-suprimentos">+ <?= formatarMoeda($cashierSummary['suprimentos'] ?? 0) ?></h4>
             </div>
         </div>
     </div>
@@ -230,5 +230,41 @@
 
         var chart = new ApexCharts(document.querySelector("#chart-faturamento"), options);
         chart.render();
+
+        // Realtime Poller
+        const fmtMoeda = (val) => "R$ " + parseFloat(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        setInterval(async () => {
+            try {
+                const res = await fetch('index.php?action=getRealtimeStats');
+                const data = await res.json();
+                if (data.ok && data.stats) {
+                    const s = data.stats;
+                    
+                    const elSaldo = document.getElementById('val-saldo-caixa');
+                    if (elSaldo) elSaldo.innerText = fmtMoeda(s.saldo_caixa);
+
+                    const elVendido = document.getElementById('val-vendido-total');
+                    if (elVendido) elVendido.innerText = fmtMoeda(s.vendido_total);
+
+                    const elFiado = document.getElementById('val-fiado-pendente');
+                    if (elFiado) elFiado.innerText = fmtMoeda(s.fiado_pendente);
+
+                    const elSangrias = document.getElementById('val-sangrias');
+                    if (elSangrias) elSangrias.innerText = "- " + fmtMoeda(s.sangrias);
+
+                    const elSuprimentos = document.getElementById('val-suprimentos');
+                    if (elSuprimentos) elSuprimentos.innerText = "+ " + fmtMoeda(s.suprimentos);
+
+                    const elStatus = document.getElementById('status-caixa');
+                    if (elStatus) {
+                        elStatus.innerText = s.caixa_aberto ? "CAIXA ABERTO" : "CAIXA FECHADO";
+                        elStatus.className = s.caixa_aberto ? "badge bg-white text-primary" : "badge bg-secondary text-white";
+                    }
+                }
+            } catch (err) {
+                console.warn("Realtime update failed", err);
+            }
+        }, 15000); // 15 seconds
     });
 </script>

@@ -38,7 +38,11 @@ class DashboardController extends BaseController {
                     JOIN vendas v ON vi.venda_id = v.id
                     WHERE MONTH(v.data_venda) = $mes_atual " . ($is_matriz ? "" : "AND v.filial_id = $filial_id") . "
                 ")->fetchColumn() ?: 0,
-                'fiado_pendente' => $db->query("SELECT SUM(saldo) FROM contas_receber WHERE status = 'pendente' " . ($is_matriz ? "" : "AND filial_id = $filial_id"))->fetchColumn() ?: 0
+                'fiado_pendente' => $db->query("
+                    SELECT SUM(COALESCE(valor, 0) - COALESCE(valor_pago, 0)) 
+                    FROM contas_receber 
+                    WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
+                ")->fetchColumn() ?: 0
             ];
 
             // Billing History (Last 6 months)
@@ -91,5 +95,47 @@ class DashboardController extends BaseController {
             'title' => 'Gestão de Materiais Elétricos',
             'pageTitle' => 'Painel de Operações Comerciais'
         ]);
+    }
+
+    public function getRealtimeStats() {
+        $db = Database::getInstance()->getConnection();
+        $filial_id = $_SESSION['filial_id'] ?? null;
+        $is_matriz = $_SESSION['is_matriz'] ?? false;
+        
+        $where_filial = "";
+        if (!$is_matriz && $filial_id) {
+            $where_filial = " AND filial_id = $filial_id";
+        }
+
+        // Get Cashier Summary (Realtime)
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForFilial($filial_id);
+        $summary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
+
+        // Correct Fiado Pending (Total from all time)
+        $fiado_pendente = $db->query("
+            SELECT SUM(COALESCE(valor, 0) - COALESCE(valor_pago, 0)) 
+            FROM contas_receber 
+            WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
+        ")->fetchColumn() ?: 0;
+
+        $saldo_caixa = 0;
+        if ($caixaAberto && $summary) {
+            $saldo_caixa = ($caixaAberto['valor_abertura'] ?? 0) + ($summary['vendas_dinheiro'] ?? 0) + ($summary['suprimentos'] ?? 0) - ($summary['sangrias'] ?? 0);
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'ok' => true,
+            'stats' => [
+                'saldo_caixa' => (float)$saldo_caixa,
+                'vendido_total' => (float)($summary['total_bruto'] ?? 0),
+                'fiado_pendente' => (float)$fiado_pendente,
+                'sangrias' => (float)($summary['sangrias'] ?? 0),
+                'suprimentos' => (float)($summary['suprimentos'] ?? 0),
+                'caixa_aberto' => !!$caixaAberto
+            ]
+        ]);
+        exit;
     }
 }
