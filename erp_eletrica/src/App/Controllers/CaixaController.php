@@ -146,12 +146,6 @@ class CaixaController extends BaseController {
             $totalSistema = $caixa['valor_abertura'] + $summary['vendas_dinheiro'] + $summary['suprimentos'] - $summary['sangrias'];
             $diferenca = $valorInformado - $totalSistema;
 
-            if ($diferenca != 0 && empty($justificativa)) {
-                // Em cenário real, retornar para a view com erro, aqui simplificamos
-                header('Location: caixa.php?error=Justificativa obrigatória para divergência.');
-                exit;
-            }
-
             $cashierModel->update($caixaId, [
                 'valor_fechamento' => $valorInformado,
                 'status' => 'fechado',

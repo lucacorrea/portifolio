@@ -1,4 +1,17 @@
 <div class="container-fluid py-4">
+    <?php if (isset($_GET['error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i><?= htmlspecialchars($_GET['error']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="this.parentElement.remove()"></button>
+        </div>
+    <?php endif; ?>
+    <?php if (isset($_GET['success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+            <i class="fas fa-check-circle me-2"></i><?= htmlspecialchars($_GET['success']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="this.parentElement.remove()"></button>
+        </div>
+    <?php endif; ?>
+
     <div class="row mb-4 align-items-center">
         <div class="col">
             <h2 class="fw-bold mb-0"><?= $pageTitle ?></h2>
@@ -233,8 +246,8 @@
                     <input type="number" step="0.01" name="valor_fechamento" class="form-control form-control-lg text-center fw-bold" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Observações / Justificativa</label>
-                    <textarea name="justificativa" class="form-control" rows="3" placeholder="Obrigatório em caso de divergência..."></textarea>
+                    <label class="form-label fw-bold">Observações / Justificativa (Opcional)</label>
+                    <textarea name="justificativa" class="form-control" rows="3" placeholder="Ex: Diferença de troco, troca de turno..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">
