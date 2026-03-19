@@ -119,18 +119,28 @@
                             <div class="fw-bold text-success">V: <?= formatarMoeda($p['preco_venda']) ?></div>
                         </td>
                         <td class="text-end pe-4">
-                            <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-light border" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)" title="Editar">
-                                    <i class="fas fa-edit text-primary"></i>
+                            <div class="dropdown">
+                                <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-v"></i>
                                 </button>
-                                <button class="btn btn-light border text-danger" onclick="deleteProduct(<?= $p['id'] ?>)" title="Excluir">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                                    <li><h6 class="dropdown-header text-uppercase small opacity-50">Movimentação</h6></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'entrada')">
+                                        <i class="fas fa-plus-circle text-success me-2"></i>Entrada de Estoque
+                                    </a></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'saida')">
+                                        <i class="fas fa-minus-circle text-danger me-2"></i>Saída de Estoque
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header text-uppercase small opacity-50">Gestão</h6></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)">
+                                        <i class="fas fa-edit text-primary me-2"></i>Editar Material
+                                    </a></li>
+                                    <li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="deleteProduct(<?= $p['id'] ?>)">
+                                        <i class="fas fa-trash me-2"></i>Excluir Permanente
+                                    </a></li>
+                                </ul>
                             </div>
-                            <?php else: ?>
-                                <span class="text-muted small italic">Somente Leitura</span>
-                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -414,6 +424,14 @@ function deleteProduct(id) {
     if (confirm('Deseja realmente excluir este material do estoque?')) {
         window.location.href = 'estoque.php?action=delete&id=' + id;
     }
+}
+
+function openMovement(productId, type) {
+    const modal = new bootstrap.Modal(document.getElementById('movementModal'));
+    const form = document.querySelector('#movementModal form');
+    form.querySelector('select[name="produto_id"]').value = productId;
+    form.querySelector('select[name="tipo"]').value = type;
+    modal.show();
 }
 
 // Debounced Auto-submit for inventory search

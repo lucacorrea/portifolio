@@ -25,10 +25,12 @@ class StockBaixoController extends BaseController {
         $stats = $productModel->getStockStats($targetFilial);
         $pagination = $productModel->paginateStockAlarms($filters, $page, 15, $targetFilial);
         $products = $pagination['data'];
+        $allProducts = $productModel->all("nome ASC");
         $categories = $productModel->getCategories();
         
         $this->render('stock_baixo', [
             'products' => $products,
+            'allProducts' => $allProducts,
             'stats' => $stats,
             'categories' => $categories,
             'filters' => $filters,
