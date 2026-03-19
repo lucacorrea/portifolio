@@ -11,7 +11,7 @@ class SalesController extends BaseController {
         $sales = $saleModel->getRecent();
 
         $cashierModel = new \App\Models\Cashier();
-        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+        $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
 
         $this->render('sales', [
             'sales' => $sales,
@@ -160,7 +160,7 @@ class SalesController extends BaseController {
 
                 // Validation: Cashier Open Check
                 $cashierModel = new \App\Models\Cashier();
-                $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+                $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
                 if (!$caixaAberto) {
                     throw new \Exception("É necessário abrir o caixa antes de realizar vendas.");
                 }

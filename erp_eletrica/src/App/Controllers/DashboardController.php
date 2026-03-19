@@ -77,7 +77,7 @@ class DashboardController extends BaseController {
         ")->fetchAll();
 
         $cashierModel = new \App\Models\Cashier();
-        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $filial_id);
+        $caixaAberto = $cashierModel->getOpenForFilial($filial_id);
         $cashierSummary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
 
         $this->render('dashboard', [
