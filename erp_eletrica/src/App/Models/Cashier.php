@@ -4,33 +4,33 @@ namespace App\Models;
 class Cashier extends BaseModel {
     protected $table = 'caixas';
 
-    public function getOpenForFilial($filialId) {
+    public function getOpenForOperador($operadorId, $filialId) {
         $stmt = $this->db->prepare("
             SELECT * FROM {$this->table} 
-            WHERE filial_id = ? AND status = 'aberto' 
-            ORDER BY data_abertura DESC LIMIT 1
+            WHERE operador_id = ? AND filial_id = ? AND status = 'aberto' 
+            LIMIT 1
         ");
-        $stmt->execute([$filialId]);
+        $stmt->execute([$operadorId, $filialId]);
         return $stmt->fetch();
     }
 
     public function getSummary($caixaId) {
-        $stmtOp = $this->db->prepare("SELECT filial_id, data_abertura FROM caixas WHERE id = ?");
+        $stmtOp = $this->db->prepare("SELECT operador_id, data_abertura FROM caixas WHERE id = ?");
         $stmtOp->execute([$caixaId]);
         $caixa = $stmtOp->fetch();
         
-        $filialId = $caixa['filial_id'] ?? 1;
+        $operadorId = $caixa['operador_id'] ?? 0;
         $dataAbertura = $caixa['data_abertura'] ?? date('Y-m-d H:i:s');
 
-        // Totals grouped by forma_pagamento (Todas as vendas da FILIAL na mesma sessão)
+        // Totals grouped by forma_pagamento
         $sqlVendas = "
             SELECT forma_pagamento, COALESCE(SUM(valor_total), 0) as total
             FROM vendas 
-            WHERE filial_id = ? AND data_venda >= ? AND status = 'concluido'
+            WHERE usuario_id = ? AND data_venda >= ? AND status = 'concluido'
             GROUP BY forma_pagamento
         ";
         $stmtVendas = $this->db->prepare($sqlVendas);
-        $stmtVendas->execute([$filialId, $dataAbertura]);
+        $stmtVendas->execute([$operadorId, $dataAbertura]);
         $vendasPorForma = $stmtVendas->fetchAll(\PDO::FETCH_KEY_PAIR);
 
         $vTrasFiado = "

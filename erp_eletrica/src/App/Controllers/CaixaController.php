@@ -16,7 +16,7 @@ class CaixaController extends BaseController {
         // O BaseModel já lida com o filtro de filial_id automaticamente se não for Master.
         $caixas = $cashierModel->all("data_abertura DESC");
 
-        $caixaAberto = $cashierModel->getOpenForFilial($filialId);
+        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $filialId);
         
         $summary = null;
         if ($caixaAberto) {
@@ -40,9 +40,9 @@ class CaixaController extends BaseController {
             $cashierModel = new Cashier();
             
             // Valida se já existe aberto
-            $existente = $cashierModel->getOpenForFilial($_SESSION['filial_id']);
+            $existente = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id']);
             if ($existente) {
-                header('Location: caixa.php?error=Já existe um caixa aberto nesta filial.');
+                header('Location: caixa.php?error=Você já possui um caixa aberto.');
                 exit;
             }
 
