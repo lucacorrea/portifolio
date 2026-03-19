@@ -139,33 +139,9 @@
                             <?php endif; ?>
                         </td>
                         <td class="text-end pe-4">
-                            <div class="d-flex justify-content-end gap-1">
-                                <a href="estoque.php?q=<?= $p['codigo'] ?>" class="btn btn-sm btn-light border shadow-sm" title="Ver no Estoque">
-                                    <i class="fas fa-eye text-primary"></i>
-                                </a>
-                                <div class="dropdown">
-                                    <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Mais Ações">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                                        <li><h6 class="dropdown-header text-uppercase small opacity-50">Movimentação</h6></li>
-                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'entrada')">
-                                            <i class="fas fa-plus-circle text-success me-2"></i>Entrada
-                                        </a></li>
-                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'saida')">
-                                            <i class="fas fa-minus-circle text-danger me-2"></i>Saída
-                                        </a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><h6 class="dropdown-header text-uppercase small opacity-50">Gestão</h6></li>
-                                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)">
-                                            <i class="fas fa-edit text-primary me-2"></i>Editar
-                                        </a></li>
-                                        <li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="deleteProduct(<?= $p['id'] ?>)">
-                                            <i class="fas fa-trash me-2"></i>Excluir
-                                        </a></li>
-                                    </ul>
-                                </div>
-                            </div>
+                            <a href="estoque.php?q=<?= $p['codigo'] ?>" class="btn btn-sm btn-light border shadow-sm" title="Ver no Estoque">
+                                <i class="fas fa-eye text-primary"></i>
+                            </a>
                         </td>
                     </tr>
                     <?php endforeach; ?>
