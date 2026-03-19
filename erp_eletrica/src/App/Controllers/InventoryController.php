@@ -52,6 +52,11 @@ class InventoryController extends BaseController {
             validateCsrf($_POST['csrf_token'] ?? '');
             $model = new \App\Models\Product();
             $data = $_POST;
+            
+            // Fix: ensure product is linked to the correct filial
+            if (empty($data['filial_id'])) {
+                $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
+            }
 
             if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
                 $dir = dirname(__DIR__, 3) . "/public/uploads/produtos/";
