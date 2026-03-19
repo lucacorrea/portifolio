@@ -17,12 +17,14 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card h-100 border-0 shadow-sm border-start border-danger border-4">
-            <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Alertas de Baixa</div>
-                <h3 class="mb-0 fw-bold text-danger"><?= $stats['itens_criticos'] ?> <small class="fw-normal fs-6">itens</small></h3>
+        <a href="estoque_baixo.php" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm border-start border-warning border-4 card-hover">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2">Alertas de Baixa</div>
+                    <h3 class="mb-0 fw-bold text-warning"><?= $stats['itens_criticos'] ?> <small class="fw-normal fs-6 text-muted">itens</small></h3>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-3">
         <div class="card h-100 border-0 shadow-sm border-start border-info border-4">
@@ -73,6 +75,14 @@
 }
 .card-body {
     overflow: visible !important;
+}
+.card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
 }
 </style>
 
