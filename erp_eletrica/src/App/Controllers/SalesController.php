@@ -293,7 +293,7 @@ class SalesController extends BaseController {
                             'tipo' => 'entrada',
                             'valor' => $entrada,
                             'motivo' => "Entrada Venda #{$saleId} (Fiado) - Cliente: {$nomePersist}",
-                            'usuario_id' => $_SESSION['usuario_id']
+                            'operador_id' => $_SESSION['usuario_id']
                         ]);
                     }
 

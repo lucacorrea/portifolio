@@ -220,7 +220,7 @@ class VendaFiadoController extends BaseController {
                             'tipo' => 'entrada',
                             'valor' => $valorPago,
                             'motivo' => "Recebimento Fiado (Venda #{$debito['venda_id']}) - Cliente: {$debito['cliente_nome']}",
-                            'usuario_id' => $_SESSION['usuario_id']
+                            'operador_id' => $_SESSION['usuario_id']
                         ]);
                     }
                 }
