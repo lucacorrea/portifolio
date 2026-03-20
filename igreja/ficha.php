@@ -156,11 +156,12 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
         font-weight: 700;
     }
 
+    /* FOTO + DADOS PESSOAIS */
     .top-content {
         display: grid;
         grid-template-columns: 112px 1fr;
         gap: 12px;
-        align-items: stretch;
+        align-items: start;
         margin-bottom: 14px;
     }
 
@@ -168,13 +169,14 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
         border: 1px solid #8f8f8f;
         min-height: 100%;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         padding: 8px 6px;
         background: #fff;
     }
 
     .photo-box .placeholder {
+        margin-top: 34px;
         font-size: 15px;
         line-height: 1.6;
         color: #666;
@@ -188,6 +190,7 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
         object-fit: cover;
         border: 1px solid #9a9a9a;
         background: #fafafa;
+        margin-top: 4px;
     }
 
     .right-content {
@@ -452,6 +455,7 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
                 </div>
             </div>
 
+            <!-- FOTO FICA ALINHADA SOMENTE ATÉ DADOS PESSOAIS -->
             <div class="top-content">
                 <div class="photo-box">
                     <?php if ($fotoSistema): ?>
@@ -589,6 +593,7 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
                 </div>
             </div>
 
+            <!-- RESTANTE FICA EMBAIXO DOS DOIS -->
             <div class="section-title">ENDEREÇO RESIDÊNCIAL</div>
 
             <div class="form-grid">
@@ -596,7 +601,7 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
                     <span class="field-label">Endereço (rua, número e bairro)</span>
                     <div class="field-value">
                         Rua: <?= h($m['rua']) ?>
-                        <?php if (!empty($m['numero'])): ?> &nbsp;&nbsp; N°:<?= h($m['numero']) ?><?php endif; ?>
+                        <?php if (!empty($m['numero'])): ?> &nbsp;&nbsp; N°: <?= h($m['numero']) ?><?php endif; ?>
                         <?php if (!empty($m['bairro'])): ?> &nbsp;&nbsp; Bairro: <?= h($m['bairro']) ?><?php endif; ?>
                     </div>
                 </div>
@@ -660,8 +665,8 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
 
             <div class="declaracao-text">
                 Declaro que estou ciente dos princípios bíblicos e doutrinários, projetos gerais, trabalhos e atividades desta Igreja,
-                estando dispostos a cumpri-los, procurando cuidar da mesma, bem como, colaborar com seus projetos materiais,
-                espirituais e financeiros. Solicito, respeitosamente meu ingresso a membresia desta Igreja.
+                estando disposto a cumpri-los, procurando cuidar da mesma, bem como colaborar com seus projetos materiais,
+                espirituais e financeiros. Solicito, respeitosamente, meu ingresso à membresia desta Igreja.
             </div>
 
             <div class="data-local">
