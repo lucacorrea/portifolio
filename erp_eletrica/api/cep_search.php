@@ -18,7 +18,7 @@ if (empty($cep) || strlen($cep) !== 8) {
     exit;
 }
 
-$url = "https://brasilapi.com.br/api/cep/v2/" . $cep;
+$url = "https://brasilapi.com.br/api/cep/v1/" . $cep;
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $url);
