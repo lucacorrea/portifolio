@@ -120,7 +120,7 @@ $logoIgreja = 'assets/img/LOGO.jpng';
 
     .top-logo img {
         width: 100%;
-        height: 130%;
+        height: 100%;
     }
 
     .church-title {
