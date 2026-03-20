@@ -413,7 +413,7 @@ $logoIgreja = 'assets/img/LOGO.jpng';
         <div>
             <div class="top-header">
                 <div class="top-logo">
-                    <img src="<?= h($logoIgreja) ?>" alt="Logo da igreja">
+                    <img src="./assets/img/LOGO.jpeg" alt="Logo da Igreja">
                 </div>
 
                 <h1 class="church-title">IGREJA DE DEUS NASCER DE NOVO</h1>
