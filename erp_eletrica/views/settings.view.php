@@ -28,23 +28,27 @@
                             <div class="row g-3">
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Razão Social / Nome da Empresa</label>
-                                    <input type="text" name="empresa_nome" class="form-control bg-light" value="<?= $settings['empresa_nome'] ?? '' ?>" required>
+                                    <input type="text" name="empresa_nome" class="form-control bg-light" value="<?= $settings['empresa_nome'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">CNPJ</label>
-                                    <input type="text" name="empresa_cnpj" class="form-control bg-light" value="<?= $settings['empresa_cnpj'] ?? '' ?>">
+                                    <input type="text" name="empresa_cnpj" class="form-control bg-light" value="<?= $settings['empresa_cnpj'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">Telefone</label>
-                                    <input type="text" name="empresa_fone" class="form-control bg-light" value="<?= $settings['empresa_fone'] ?? '' ?>">
+                                    <input type="text" name="empresa_fone" class="form-control bg-light" value="<?= $settings['empresa_fone'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Email</label>
-                                    <input type="email" name="empresa_email" class="form-control bg-light" value="<?= $settings['empresa_email'] ?? '' ?>">
+                                    <input type="email" name="empresa_email" class="form-control bg-light" value="<?= $settings['empresa_email'] ?? '' ?>" readonly>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">Alerta Estoque Mínimo</label>
-                                    <input type="number" name="estoque_min_default" class="form-control bg-light" value="<?= $settings['estoque_min_default'] ?? '5' ?>">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">ID Token CSC</label>
+                                    <input type="text" name="csc_id_global" class="form-control bg-light text-muted" value="<?= $sefaz['csc_id'] ?? '' ?>" readonly>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label small fw-bold">Token CSC</label>
+                                    <input type="text" name="csc_token_global" class="form-control bg-light text-muted" value="<?= $sefaz['csc'] ?? '' ?>" readonly>
                                 </div>
                             </div>
                         </div>
@@ -77,18 +81,6 @@
                                 <input type="password" name="certificado_senha" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['certificado_senha'] ?? '' ?>">
                             </div>
                             
-                            <!-- CSC Global Fields -->
-                            <div class="row g-2 mb-3">
-                                <div class="col-4">
-                                    <label class="form-label extra-small text-white-50 mb-1">ID Token CSC</label>
-                                    <input type="text" name="csc_id_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['csc_id'] ?? '' ?>" placeholder="000001">
-                                </div>
-                                <div class="col-8">
-                                    <label class="form-label extra-small text-white-50 mb-1">Token CSC</label>
-                                    <input type="text" name="csc_token_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
-                                </div>
-                            </div>
-
                             <div class="mb-4">
                                 <label class="form-label extra-small text-white-50 mb-1">Ambiente Sefaz</label>
                                 <select name="ambiente" class="form-select form-select-sm bg-secondary border-0 text-white">
