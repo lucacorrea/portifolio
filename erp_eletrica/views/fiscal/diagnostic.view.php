@@ -16,8 +16,7 @@
     </div>
 </div>
 
-<!-- Seção de Seleção Removida por Solicitação do Usuário -->
-
+<div class="row g-4 mb-4">
     <!-- NOVO COMPONENTE: AÇAIDINHOS STATUS NFC-e -->
     <div class="col-12 mb-2">
         <div class="card border-0 shadow-sm">
@@ -72,6 +71,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- 1. Database Validation -->
