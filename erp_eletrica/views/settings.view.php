@@ -188,6 +188,14 @@
                                     <input type="text" name="razao_social" id="f_razao" class="form-control shadow-sm">
                                 </div>
                                 <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Regime (CRT)</label>
+                                    <select name="crt" id="f_crt" class="form-select shadow-sm">
+                                        <option value="1">1 - Simples Nacional</option>
+                                        <option value="2">2 - Simples Nac. (Sublimite)</option>
+                                        <option value="3">3 - Regime Normal</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label small fw-bold">Insc. Estadual</label>
                                     <input type="text" name="inscricao_estadual" id="f_ie" class="form-control shadow-sm">
                                 </div>
@@ -195,9 +203,13 @@
                                     <label class="form-label small fw-bold">CEP</label>
                                     <input type="text" name="cep" id="f_cep" class="form-control shadow-sm">
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label small fw-bold">Município</label>
                                     <input type="text" name="municipio" id="f_municipio" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Cód IBGE Mun.</label>
+                                    <input type="text" name="codigo_municipio" id="f_ibge_mun" class="form-control shadow-sm">
                                 </div>
                                 <div class="col-md-9">
                                     <label class="form-label small fw-bold">Logradouro</label>
@@ -215,9 +227,13 @@
                                     <label class="form-label small fw-bold">Complemento</label>
                                     <input type="text" name="complemento" id="f_complemento" class="form-control shadow-sm">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label small fw-bold">UF</label>
                                     <input type="text" name="uf" id="f_uf" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Código UF</label>
+                                    <input type="text" name="codigo_uf" id="f_cod_uf" class="form-control shadow-sm">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">Telefone</label>
@@ -236,28 +252,60 @@
                                 <i class="fas fa-info-circle me-2"></i>Estes parâmetros são usados para a emissão de cupons fiscais (NFC-e) específicos desta unidade.
                             </div>
                             <div class="row g-3">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label small fw-bold">CSC ID (Token ID)</label>
                                     <input type="text" name="csc_id" id="f_csc_id" class="form-control shadow-sm" placeholder="Ex: 000001">
                                 </div>
-                                <div class="col-md-8">
+                                <div class="col-md-6">
                                     <label class="form-label small fw-bold">CSC Token (Código)</label>
                                     <input type="text" name="csc_token" id="f_csc_token" class="form-control shadow-sm" placeholder="Ex: AAAA-BBBB-CCCC">
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-bold">Série NFC-e</label>
-                                    <input type="number" name="serie_nfce" id="f_serie" class="form-control shadow-sm" value="1">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-bold">Último Nº NFC-e</label>
-                                    <input type="number" name="ultimo_numero_nfce" id="f_ultimo" class="form-control shadow-sm" value="0">
-                                </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label small fw-bold">Ambiente</label>
                                     <select name="ambiente" id="f_ambiente" class="form-select shadow-sm">
                                         <option value="2">Homologação</option>
                                         <option value="1">Produção</option>
                                     </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Tipo Emissão</label>
+                                    <select name="tipo_emissao" id="f_tipo_emissao" class="form-select shadow-sm">
+                                        <option value="Normal">Normal</option>
+                                        <option value="Contingencia">Contingência</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Finalidade</label>
+                                    <select name="finalidade_emissao" id="f_finalidade" class="form-select shadow-sm">
+                                        <option value="Normal">Normal</option>
+                                        <option value="Complementar">Complementar</option>
+                                        <option value="Ajuste">Ajuste</option>
+                                        <option value="Devolucao">Devolução</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Ind. Presença</label>
+                                    <select name="indicador_presenca" id="f_presenca" class="form-select shadow-sm">
+                                        <option value="Operacao presencial">Presencial</option>
+                                        <option value="Nao presencial, pela Internet">Internet</option>
+                                        <option value="Nao presencial, Teleatendimento">Telemarketing</option>
+                                        <option value="Nao se aplica">Não se aplica</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Tipo Impressão</label>
+                                    <select name="tipo_impressao_danfe" id="f_impressao" class="form-select shadow-sm">
+                                        <option value="NFC-e">NFC-e (Bobina)</option>
+                                        <option value="Simplificada">Simplificada</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Série NFC-e</label>
+                                    <input type="number" name="serie_nfce" id="f_serie" class="form-control shadow-sm" value="1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Último Nº NFC-e</label>
+                                    <input type="number" name="ultimo_numero_nfce" id="f_ultimo" class="form-control shadow-sm" value="0">
                                 </div>
                             </div>
                         </div>
@@ -313,14 +361,17 @@ function abrirModalFilial(data = null) {
     document.getElementById('f_nome').value = data ? data.nome : '';
     document.getElementById('f_cnpj').value = data ? data.cnpj : '';
     document.getElementById('f_razao').value = data ? data.razao_social : '';
+    document.getElementById('f_crt').value = data ? data.crt : '1';
     document.getElementById('f_ie').value = data ? data.inscricao_estadual : '';
     document.getElementById('f_cep').value = data ? data.cep : '';
     document.getElementById('f_municipio').value = data ? data.municipio : '';
+    document.getElementById('f_ibge_mun').value = data ? data.codigo_municipio : '';
     document.getElementById('f_logradouro').value = data ? data.logradouro : '';
     document.getElementById('f_numero').value = data ? data.numero : '';
     document.getElementById('f_bairro').value = data ? data.bairro : '';
     document.getElementById('f_complemento').value = data ? data.complemento : '';
     document.getElementById('f_uf').value = data ? data.uf : '';
+    document.getElementById('f_cod_uf').value = data ? data.codigo_uf : '';
     document.getElementById('f_fone').value = data ? data.telefone : '';
     document.getElementById('f_email').value = data ? data.email : '';
     
@@ -330,6 +381,12 @@ function abrirModalFilial(data = null) {
     document.getElementById('f_serie').value = data ? data.serie_nfce : '1';
     document.getElementById('f_ultimo').value = data ? data.ultimo_numero_nfce : '0';
     document.getElementById('f_ambiente').value = data ? data.ambiente : defaultSefaz.ambiente;
+    
+    document.getElementById('f_tipo_emissao').value = data ? data.tipo_emissao : 'Normal';
+    document.getElementById('f_finalidade').value = data ? data.finalidade_emissao : 'Normal';
+    document.getElementById('f_presenca').value = data ? data.indicador_presenca : 'Operacao presencial';
+    document.getElementById('f_impressao').value = data ? data.tipo_impressao_danfe : 'NFC-e';
+
     document.getElementById('f_cert_senha').value = data ? data.certificado_senha : defaultSefaz.senha;
     
     document.getElementById('f_principal').value = data ? data.principal : '0';
