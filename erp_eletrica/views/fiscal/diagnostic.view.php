@@ -65,15 +65,14 @@
                     <a href="configuracoes.php?tab=unidades#unidades" class="btn btn-outline-primary btn-sm fw-bold">
                         <i class="fas fa-edit me-1"></i> Editar Dados da Filial
                     </a>
-                    <a href="fiscal.php?action=settings" class="btn btn-primary btn-sm fw-bold ms-2">
+                    <a href="fiscal.php?action=settings" class="btn btn-warning btn-sm fw-bold ms-2">
                         <i class="fas fa-cog me-1"></i> Configurações SEFAZ
                     </a>
                 </div>
-            </div>
-        </div>
     </div>
-    </div>
+</div>
 
+<div class="row g-4 mb-4">
     <!-- 1. Database Validation -->
     <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100 <?= array_product($dbStatus) ? 'border-top border-success border-4' : 'border-top border-danger border-4' ?>">
