@@ -118,9 +118,8 @@ $logoIgreja = 'assets/img/LOGO.jpng';
     }
 
     .top-logo img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+        width: 50%;
+        height: 50%;
     }
 
     .church-title {
