@@ -526,11 +526,10 @@ async function buscarCEP() {
             
             atualizarCodigoUF();
             
-            if (data.ibge) {
-                document.getElementById('f_ibge_mun').value = data.ibge;
-            } else {
-                buscarIBGEPorNome();
-            }
+        if (data.ibge) {
+            document.getElementById('f_ibge_mun').value = data.ibge;
+        } else {
+            buscarIBGEPorNome();
         }
     } catch (e) {
         console.error("Erro ao buscar CEP", e);
