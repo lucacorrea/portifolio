@@ -14,10 +14,18 @@ class SettingController extends BaseController {
         $filialModel = new \App\Models\Filial();
         $branches = $filialModel->getAllBranches();
 
+        // Dados da unidade logada
+        $currentBranchId = $_SESSION['filial_id'] ?? null;
+        $currentBranch = null;
+        if ($currentBranchId) {
+            $currentBranch = $db->query("SELECT * FROM filiais WHERE id = " . (int)$currentBranchId)->fetch();
+        }
+
         $this->render('settings', [
             'settings' => $settings,
             'sefaz' => $sefaz,
             'branches' => $branches,
+            'currentBranch' => $currentBranch,
             'title' => 'Configurações de Redes & Fiscal',
             'pageTitle' => 'Painel de Gestão Centralizada'
         ]);
