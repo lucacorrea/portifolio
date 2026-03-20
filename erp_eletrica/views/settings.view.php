@@ -203,37 +203,21 @@
                                     <label class="form-label small fw-bold">CEP</label>
                                     <input type="text" name="cep" id="f_cep" class="form-control shadow-sm">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-5">
                                     <label class="form-label small fw-bold">Município</label>
                                     <input type="text" name="municipio" id="f_municipio" class="form-control shadow-sm">
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-bold">Cód IBGE Mun.</label>
-                                    <input type="text" name="codigo_municipio" id="f_ibge_mun" class="form-control shadow-sm">
-                                </div>
-                                <div class="col-md-9">
-                                    <label class="form-label small fw-bold">Logradouro</label>
-                                    <input type="text" name="logradouro" id="f_logradouro" class="form-control shadow-sm">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-bold">Número</label>
-                                    <input type="text" name="numero" id="f_numero" class="form-control shadow-sm">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">Bairro</label>
-                                    <input type="text" name="bairro" id="f_bairro" class="form-control shadow-sm">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">Complemento</label>
-                                    <input type="text" name="complemento" id="f_complemento" class="form-control shadow-sm">
-                                </div>
-                                <div class="col-md-2">
+                                <div class="col-md-1">
                                     <label class="form-label small fw-bold">UF</label>
-                                    <input type="text" name="uf" id="f_uf" class="form-control shadow-sm">
+                                    <input type="text" name="uf" id="f_uf" class="form-control shadow-sm text-center">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold">Código UF</label>
                                     <input type="text" name="codigo_uf" id="f_cod_uf" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Cód IBGE Mun.</label>
+                                    <input type="text" name="codigo_municipio" id="f_ibge_mun" class="form-control shadow-sm">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">Telefone</label>
