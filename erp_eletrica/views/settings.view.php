@@ -300,12 +300,12 @@ function abrirModalFilial(data = null) {
     const modal = new bootstrap.Modal(document.getElementById('modalFilial'));
     document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2"></i>Editar Unidade' : '<i class="fas fa-plus me-2"></i>Nova Unidade';
     
-    // Global defaults for pre-filling (from Matriz/sefaz_config)
+    // Global defaults for pre-filling (from actual Matriz/Principal branch)
     const defaultSefaz = {
-        csc_id: '<?= $sefaz['csc_id'] ?? '' ?>',
-        csc_token: '<?= $sefaz['csc'] ?? '' ?>',
-        ambiente: '<?= ($sefaz['ambiente'] ?? '') === 'producao' ? '1' : '2' ?>',
-        senha: '<?= $sefaz['certificado_senha'] ?? '' ?>'
+        csc_id: '<?= $matrizConfig['csc_id'] ?? '' ?>',
+        csc_token: '<?= $matrizConfig['csc'] ?? '' ?>',
+        ambiente: '<?= ($matrizConfig['ambiente'] ?? '') == '1' || ($matrizConfig['ambiente'] ?? '') == 'producao' ? '1' : '2' ?>',
+        senha: '<?= $matrizConfig['certificado_senha'] ?? '' ?>'
     };
 
     // Reset inputs

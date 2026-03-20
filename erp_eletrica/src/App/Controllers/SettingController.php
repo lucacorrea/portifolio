@@ -27,12 +27,17 @@ class SettingController extends BaseController {
             $activeConfig = $nfceService->getConfig($currentBranchId);
         }
 
+        // Configuração da Matriz para usar como padrão em novas unidades
+        $matrizBranch = $db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1")->fetch();
+        $matrizConfig = $matrizBranch ? $nfceService->getConfig($matrizBranch['id']) : $activeConfig;
+
         $this->render('settings', [
             'settings' => $settings,
             'sefaz' => $sefaz,
             'branches' => $branches,
             'currentBranch' => $currentBranch,
             'activeConfig' => $activeConfig,
+            'matrizConfig' => $matrizConfig,
             'title' => 'Configurações de Redes & Fiscal',
             'pageTitle' => 'Painel de Gestão Centralizada'
         ]);
