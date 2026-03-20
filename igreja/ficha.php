@@ -109,6 +109,7 @@ $logoIgreja = 'assets/img/LOGO.jpng';
     .top-logo {
         position: absolute;
         left: 0;
+        align-items: end;
         top: 0;
         width: 98px;
         height: 98px;
@@ -143,6 +144,7 @@ $logoIgreja = 'assets/img/LOGO.jpng';
 
     .church-cnpj {
         margin-top: 4px;
+
         font-size: 13px;
         color: #5f5f5f;
         font-weight: 700;
@@ -153,7 +155,7 @@ $logoIgreja = 'assets/img/LOGO.jpng';
         grid-template-columns: 110px 1fr;
         gap: 10px;
         align-items: start;
-        margin-bottom: 6px;
+        margin-bottom: 36px !important;
     }
 
     .photo-box {
