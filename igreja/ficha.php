@@ -102,7 +102,7 @@ $logoIgreja = 'assets/img/LOGO.jpng';
         text-align: center;
         padding-bottom: 8px;
         border-bottom: 1px solid #888;
-        margin-bottom: 8px;
+        margin-bottom: 45px !important;
         min-height: 72px;
     }
 
