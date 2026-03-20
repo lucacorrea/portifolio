@@ -141,7 +141,7 @@
                             </div>
 
                             <div class="d-grid">
-                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick='abrirModalFilial(<?= json_encode($branch) ?>)'>
+                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick='abrirModalFilial(<?= htmlspecialchars(json_encode($branch), ENT_QUOTES, "UTF-8") ?>)'>
                                     <i class="fas fa-edit me-2"></i>Gerenciar Dados
                                 </button>
                             </div>
@@ -337,7 +337,7 @@
                 </div>
                 <input type="hidden" name="principal" id="f_principal" value="0">
                 <input type="hidden" name="is_matriz" id="f_is_matriz" value="0">
-                <input type="hidden" name="crt" id="f_crt" value="1">
+                <input type="hidden" name="crt" id="f_crt_hidden" value="1">
 
                 <div class="modal-footer bg-white border-0 py-3">
                     <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
@@ -361,15 +361,16 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function abrirModalFilial(data = null) {
-    const modal = new bootstrap.Modal(document.getElementById('modalFilial'));
+    const modalEl = document.getElementById('modalFilial');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2 text-white"></i><span class="text-white">Editar Unidade</span>' : '<i class="fas fa-plus me-2 text-white"></i><span class="text-white">Nova Unidade</span>';
     
     // Global defaults for pre-filling (from actual Matriz/Principal branch)
     const defaultSefaz = {
-        csc_id: '<?= $matrizConfig['csc_id'] ?? '' ?>',
-        csc_token: '<?= $matrizConfig['csc'] ?? '' ?>',
-        ambiente: '<?= ($matrizConfig['ambiente'] ?? '') == '1' || ($matrizConfig['ambiente'] ?? '') == 'producao' ? '1' : '2' ?>',
-        senha: '<?= $matrizConfig['certificado_senha'] ?? '' ?>'
+        csc_id: <?= json_encode($matrizConfig['csc_id'] ?? '') ?>,
+        csc_token: <?= json_encode($matrizConfig['csc'] ?? '') ?>,
+        ambiente: <?= json_encode(($matrizConfig['ambiente'] ?? '') == '1' || ($matrizConfig['ambiente'] ?? '') == 'producao' ? '1' : '2') ?>,
+        senha: <?= json_encode($matrizConfig['certificado_senha'] ?? '') ?>
     };
 
     // Reset inputs
