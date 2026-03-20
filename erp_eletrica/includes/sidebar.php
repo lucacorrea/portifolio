@@ -112,7 +112,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
         
-        <a href="configuracoes.php#unidades" class="nav-link <?= $current_page == 'configuracoes.php' && strpos($_SERVER['REQUEST_URI'], '#unidades') !== false ? 'active' : '' ?>">
+        <a href="configuracoes.php?tab=unidades#unidades" class="nav-link <?= ($current_page == 'configuracoes.php' && ($_GET['tab'] ?? '') == 'unidades') ? 'active' : '' ?>">
             <i class="fas fa-landmark"></i> <span>Filiais / Lojas</span>
         </a>
         <a href="usuarios.php" class="nav-link <?= $current_page == 'usuarios.php' ? 'active' : '' ?>">
@@ -124,7 +124,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php endif; ?>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
-        <a href="configuracoes.php" class="nav-link mt-auto border-top border-secondary border-opacity-10 <?= $current_page == 'configuracoes.php' ? 'active' : '' ?>">
+        <a href="configuracoes.php" class="nav-link mt-auto border-top border-secondary border-opacity-10 <?= ($current_page == 'configuracoes.php' && !isset($_GET['tab'])) ? 'active' : '' ?>">
             <i class="fas fa-sliders-h"></i> <span>Ajustes Gerais</span>
         </a>
         <?php endif; ?>

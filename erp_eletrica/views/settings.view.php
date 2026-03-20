@@ -344,6 +344,17 @@
 </div>
 
 <script>
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+    if (activeTab === 'unidades') {
+        const triggerEl = document.querySelector('#unidades-tab');
+        if (triggerEl) {
+            bootstrap.Tab.getOrCreateInstance(triggerEl).show();
+        }
+    }
+});
+
 function abrirModalFilial(data = null) {
     const modal = new bootstrap.Modal(document.getElementById('modalFilial'));
     document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2 text-white"></i><span class="text-white">Editar Unidade</span>' : '<i class="fas fa-plus me-2 text-white"></i><span class="text-white">Nova Unidade</span>';
