@@ -31,7 +31,7 @@ $ingresso = strtoupper((string)($m['tipo_ingresso'] ?? ''));
 $escolaridade = strtoupper((string)($m['escolaridade'] ?? ''));
 
 $fotoSistema = !empty($m['foto']) ? 'uploads/' . $m['foto'] : '';
-$logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
+$logoIgreja = 'assets/img/LOGO.jpng';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
