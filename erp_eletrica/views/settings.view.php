@@ -300,6 +300,14 @@ function abrirModalFilial(data = null) {
     const modal = new bootstrap.Modal(document.getElementById('modalFilial'));
     document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2"></i>Editar Unidade' : '<i class="fas fa-plus me-2"></i>Nova Unidade';
     
+    // Global defaults for pre-filling (from Matriz/sefaz_config)
+    const defaultSefaz = {
+        csc_id: '<?= $sefaz['csc_id'] ?? '' ?>',
+        csc_token: '<?= $sefaz['csc'] ?? '' ?>',
+        ambiente: '<?= ($sefaz['ambiente'] ?? '') === 'producao' ? '1' : '2' ?>',
+        senha: '<?= $sefaz['certificado_senha'] ?? '' ?>'
+    };
+
     // Reset inputs
     document.getElementById('f_id').value = data ? data.id : '';
     document.getElementById('f_nome').value = data ? data.nome : '';
@@ -316,11 +324,14 @@ function abrirModalFilial(data = null) {
     document.getElementById('f_fone').value = data ? data.telefone : '';
     document.getElementById('f_email').value = data ? data.email : '';
     
-    document.getElementById('f_csc_id').value = data ? data.csc_id : '';
-    document.getElementById('f_csc_token').value = data ? data.csc_token : '';
+    // Pre-fill fiscal and certificate with data if editing, or global defaults if new
+    document.getElementById('f_csc_id').value = data ? data.csc_id : defaultSefaz.csc_id;
+    document.getElementById('f_csc_token').value = data ? data.csc_token : defaultSefaz.csc_token;
     document.getElementById('f_serie').value = data ? data.serie_nfce : '1';
     document.getElementById('f_ultimo').value = data ? data.ultimo_numero_nfce : '0';
-    document.getElementById('f_ambiente').value = data ? data.ambiente : '2';
+    document.getElementById('f_ambiente').value = data ? data.ambiente : defaultSefaz.ambiente;
+    document.getElementById('f_cert_senha').value = data ? data.certificado_senha : defaultSefaz.senha;
+    
     document.getElementById('f_principal').value = data ? data.principal : '0';
 
     modal.show();
