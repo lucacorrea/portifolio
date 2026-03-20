@@ -111,7 +111,7 @@ $logoIgreja = 'assets/img/LOGO.jpng';
         left: 0;
         top: 0;
         width: 78px;
-        height: 68px;
+        height: 78px;
         border: 1px solid #8f8f8f;
         overflow: hidden;
         background: #fff;
