@@ -206,11 +206,11 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">CEP</label>
-                                    <input type="text" name="cep" id="f_cep" class="form-control shadow-sm">
+                                    <input type="text" name="cep" id="f_cep" class="form-control shadow-sm" onblur="buscarCEP()">
                                 </div>
                                 <div class="col-md-5">
                                     <label class="form-label small fw-bold">Município</label>
-                                    <input type="text" name="municipio" id="f_municipio" class="form-control shadow-sm">
+                                    <input type="text" name="municipio" id="f_municipio" class="form-control shadow-sm" onblur="buscarIBGEPorNome()">
                                 </div>
                                 <div class="col-md-1">
                                     <label class="form-label small fw-bold">UF</label>
@@ -451,17 +451,6 @@ async function consultarCNPJ() {
         
         const data = await response.json();
         
-        let ibgeCode = '';
-        if (data.cep) {
-            try {
-                const cepRes = await fetch(`api/cep_search.php?cep=${data.cep.replace(/\D/g, '')}`);
-                if (cepRes.ok) {
-                    const cepData = await cepRes.json();
-                    if (cepData.ibge) ibgeCode = cepData.ibge;
-                }
-            } catch(e) {}
-        }
-        
         // Auto-Fill Fields based on settings.view.php IDs
         const fieldMapping = {
             'f_razao': data.razao_social || '',
@@ -483,8 +472,13 @@ async function consultarCNPJ() {
         });
         
         atualizarCodigoUF();
-        const ibgeEl = document.getElementById('f_ibge_mun');
-        if (ibgeEl) ibgeEl.value = ibgeCode;
+        
+        // Now try to get IBGE via CEP
+        if (data.cep) {
+            await buscarCEP();
+        } else {
+            buscarIBGEPorNome();
+        }
         
         btn.innerHTML = '<i class="fas fa-check text-success"></i>';
         setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
@@ -493,6 +487,62 @@ async function consultarCNPJ() {
         alert('Erro ao buscar CNPJ: ' + error.message);
         btn.innerHTML = originalText;
         btn.disabled = false;
+    }
+}
+
+async function buscarCEP() {
+    const cepInput = document.getElementById('f_cep');
+    if (!cepInput) return;
+    const cep = cepInput.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+
+    try {
+        const response = await fetch(`api/cep_search.php?cep=${cep}`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.logradouro) document.getElementById('f_logradouro').value = data.logradouro;
+            if (data.bairro) document.getElementById('f_bairro').value = data.bairro;
+            if (data.localidade || data.city) document.getElementById('f_municipio').value = data.localidade || data.city;
+            if (data.uf || data.state) document.getElementById('f_uf').value = data.uf || data.state;
+            
+            atualizarCodigoUF();
+            
+            if (data.ibge) {
+                document.getElementById('f_ibge_mun').value = data.ibge;
+            } else {
+                buscarIBGEPorNome();
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao buscar CEP", e);
+    }
+}
+
+async function buscarIBGEPorNome() {
+    const munInput = document.getElementById('f_municipio');
+    const ufInput = document.getElementById('f_uf');
+    const ibgeInput = document.getElementById('f_ibge_mun');
+    
+    if (!munInput || !ufInput || !ibgeInput) return;
+    if (munInput.value === '' || ufInput.value === '') return;
+
+    try {
+        const uf = ufInput.value.trim().toUpperCase();
+        const municipio = munInput.value.trim().toUpperCase();
+        
+        const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+        if (response.ok) {
+            const municipios = await response.json();
+            const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+            const target = normalize(municipio);
+            
+            const match = municipios.find(m => normalize(m.nome) === target);
+            if (match) {
+                ibgeInput.value = match.id;
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao buscar IBGE por nome", e);
     }
 }
 
