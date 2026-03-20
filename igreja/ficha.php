@@ -188,7 +188,6 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
         width: 94px;
         height: 126px;
         object-fit: cover;
-        border: 1px solid #9a9a9a;
         background: #fafafa;
         margin-top: 4px;
     }
