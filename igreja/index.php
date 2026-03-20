@@ -41,7 +41,7 @@ $porCongregacao = $pdo->query("
             <div class="logo-area">
                 
                 <div class="logo-text">
-                    <h1>Igreja de Deus Nascer de Novo.</h1>
+                    <h1>IGREJA DE DEUS NASCER DE NOVO</h1>
                     <p>Administração eclesiástica</p>
                 </div>
             </div>
