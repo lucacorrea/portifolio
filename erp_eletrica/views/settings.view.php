@@ -219,6 +219,22 @@
                                     <label class="form-label small fw-bold">Cód IBGE Mun.</label>
                                     <input type="text" name="codigo_municipio" id="f_ibge_mun" class="form-control shadow-sm">
                                 </div>
+                                <div class="col-md-9">
+                                    <label class="form-label small fw-bold">Logradouro</label>
+                                    <input type="text" name="logradouro" id="f_logradouro" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Número</label>
+                                    <input type="text" name="numero" id="f_numero" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Bairro</label>
+                                    <input type="text" name="bairro" id="f_bairro" class="form-control shadow-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Complemento</label>
+                                    <input type="text" name="complemento" id="f_complemento" class="form-control shadow-sm">
+                                </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">Telefone</label>
                                     <input type="text" name="telefone" id="f_fone" class="form-control shadow-sm">
