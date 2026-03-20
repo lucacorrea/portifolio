@@ -167,7 +167,7 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
 
     .photo-box {
         border: 1px solid #8f8f8f;
-        min-height: 100%;
+        
         display: flex;
         align-items: flex-start;
         justify-content: center;
