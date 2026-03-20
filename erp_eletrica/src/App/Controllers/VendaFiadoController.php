@@ -54,7 +54,6 @@ class VendaFiadoController extends BaseController {
         $model = new AccountReceivable();
         $db = \App\Config\Database::getInstance()->getConnection();
         
-        // Defensive: Check if migration already ran
         $hasValorPago = $model->columnExists('valor_pago');
         $saldoSql = $hasValorPago ? "(COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0))" : "cr.valor";
 
@@ -62,6 +61,11 @@ class VendaFiadoController extends BaseController {
         $di = $_GET['di'] ?? '';
         $df = $_GET['df'] ?? '';
         $status = $_GET['status'] ?? 'TODOS';
+        $q = $_GET['q'] ?? '';
+        
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = 9; // User requested 9 per page
+        $offset = ($page - 1) * $limit;
         
         $where = "WHERE 1=1";
         $params = [];
@@ -83,36 +87,66 @@ class VendaFiadoController extends BaseController {
             $where .= " AND cr.status = ?";
             $params[] = strtolower($status);
         }
+        if ($q) {
+            $where .= " AND (c.nome LIKE ? OR cr.venda_id LIKE ?)";
+            $params[] = "%$q%";
+            $params[] = "%$q%";
+        }
 
+        // Count TOTAL based on filters (for pagination and totals)
+        $sqlCount = "
+            SELECT COUNT(*) as total_count, 
+                   SUM(cr.valor) as total_venda, 
+                   SUM(cr.valor_pago) as total_pago, 
+                   SUM($saldoSql) as total_restante
+            FROM contas_receber cr 
+            JOIN clientes c ON cr.cliente_id = c.id 
+            $where
+        ";
+        $stmtCount = $db->prepare($sqlCount);
+        $stmtCount->execute($params);
+        $summary = $stmtCount->fetch();
+
+        $totalRecords = (int)$summary['total_count'];
+        $totalPages = ceil($totalRecords / $limit);
+
+        // Fetch PAGE rows
         $sql = "
             SELECT cr.*, $saldoSql as saldo, c.nome as cliente_nome
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             $where
-            ORDER BY cr.data_vencimento ASC
+            ORDER BY cr.created_at DESC, cr.id DESC
+            LIMIT ? OFFSET ?
         ";
         
         $stmt = $db->prepare($sql);
-        $stmt->execute($params);
+        $idx = 1;
+        foreach ($params as $val) {
+            $stmt->bindValue($idx++, $val);
+        }
+        $stmt->bindValue($idx++, (int)$limit, \PDO::PARAM_INT);
+        $stmt->bindValue($idx++, (int)$offset, \PDO::PARAM_INT);
+        $stmt->execute();
         $rows = $stmt->fetchAll();
 
-        // Calculate totals
-        $totais = [
-            'qtd' => count($rows),
-            'total_venda' => 0,
-            'total_pago' => 0,
-            'total_restante' => 0
-        ];
-        foreach ($rows as $r) {
-            $totais['total_venda'] += (float)($r['valor'] ?? 0);
-            $totais['total_pago'] += (float)($r['valor_pago'] ?? 0);
-            $totais['total_restante'] += (float)($r['saldo'] ?? 0);
-        }
-
+        header('Content-Type: application/json');
+        if (ob_get_length()) ob_clean();
         echo json_encode([
             'ok' => true,
             'rows' => $rows,
-            'totais' => $totais
+            'pagination' => [
+                'total_records' => $totalRecords,
+                'total_pages' => $totalPages,
+                'current_page' => $page,
+                'limit' => $limit
+            ],
+            'totais' => [
+                'qtd' => $totalRecords,
+                'total_venda' => (float)$summary['total_venda'],
+                'total_pago' => (float)$summary['total_pago'],
+                'total_restante' => (float)$summary['total_restante']
+            ]
         ]);
         exit;
     }
@@ -134,7 +168,7 @@ class VendaFiadoController extends BaseController {
             SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, $valorPagoSelect cr.status, 
                    cr.data_vencimento,
                    $saldoSql as saldo, 
-                   c.nome as cliente_nome, v.created_at as data_venda
+                   c.nome as cliente_nome, v.data_venda as data_venda
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             LEFT JOIN vendas v ON cr.venda_id = v.id
@@ -155,6 +189,8 @@ class VendaFiadoController extends BaseController {
         $paymentModel = new AccountReceivablePayment();
         $payments = $paymentModel->findByFiado($id);
 
+        header('Content-Type: application/json');
+        if (ob_get_length()) ob_clean();
         echo json_encode([
             'ok' => true,
             'fiado' => $debito,
@@ -205,6 +241,22 @@ class VendaFiadoController extends BaseController {
                     'metodo' => $metodo
                 ]);
 
+                // Register in cashier movement if payment is in cash and there is an open box for the branch
+                if ($metodo === 'DINHEIRO') {
+                    $cashierModel = new \App\Models\Cashier();
+                    $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
+                    if ($caixaAberto) {
+                        $movementModel = new \App\Models\CashierMovement();
+                        $movementModel->create([
+                            'caixa_id' => $caixaAberto['id'],
+                            'tipo' => 'entrada',
+                            'valor' => $valorPago,
+                            'motivo' => "Recebimento Fiado (Venda #{$debito['venda_id']}) - Cliente: {$debito['cliente_nome']}",
+                            'operador_id' => $_SESSION['usuario_id']
+                        ]);
+                    }
+                }
+
                 $novoValorPagoTotal = (float)$debito['valor_pago'] + $valorPago;
                 $novoSaldo = (float)$debito['valor'] - $novoValorPagoTotal;
                 $status = ($novoSaldo <= 0.01) ? 'pago' : 'pendente';
@@ -226,9 +278,13 @@ class VendaFiadoController extends BaseController {
                 ]));
 
                 $db->commit();
+                header('Content-Type: application/json');
+                if (ob_get_length()) ob_clean();
                 echo json_encode(['ok' => true, 'msg' => 'Pagamento registrado com sucesso.']);
             } catch (\Exception $e) {
                 if ($db->inTransaction()) $db->rollBack();
+                header('Content-Type: application/json');
+                if (ob_get_length()) ob_clean();
                 echo json_encode(['ok' => false, 'msg' => 'Erro ao processar pagamento: ' . $e->getMessage()]);
             }
             exit;

@@ -13,15 +13,9 @@ $action = $_GET['action'] ?? 'index';
 
 switch($action) {
     case 'config':
-        if (!($_SESSION['is_matriz'] ?? false)) die("Acesso negado. Apenas o administrador da Matriz pode configurar o certificado global.");
-        $configController = new \App\Controllers\SefazConfigController();
-        $configController->index();
-        break;
     case 'config_save':
-        if (!($_SESSION['is_matriz'] ?? false)) die("Acesso negado.");
-        $configController = new \App\Controllers\SefazConfigController();
-        $configController->save();
-        break;
+        header("Location: configuracoes.php");
+        exit;
     case 'sincronizar':
         $controller->sincronizar();
         break;

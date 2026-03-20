@@ -151,7 +151,7 @@
 <!-- Tabela de Fiados -->
 <div class="fi-table-card shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0 text-dark">
             <thead class="bg-light text-secondary border-bottom">
                 <tr>
                     <th class="ps-4 py-3">Venda #</th>
@@ -173,22 +173,34 @@
             </tbody>
         </table>
     </div>
+    
+    <!-- Paginação -->
+    <div class="bg-light p-3 border-top d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+        <div class="text-muted small">
+            Mostrando <span id="pag-showing" class="fw-bold">0</span> de <span id="pag-total" class="fw-bold">0</span> registros
+        </div>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="fi-pagination">
+                <!-- Injected via JS -->
+            </ul>
+        </nav>
+    </div>
 </div>
 
 <!-- Modal Detalhes (Apenas Visualização) -->
 <div class="modal fade" id="modalDetalhes" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-dark border-0 py-3 px-4">
-                <h5 class="modal-title fw-bold text-white shadow-sm"><i class="fas fa-eye me-2 text-warning"></i><span style="color: #ffffff !important;">DETALHES DA DÍVIDA</span></h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header border-0 py-3 px-4">
+                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-eye me-2 text-primary"></i>DETALHES DA DÍVIDA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-4 pt-0">
                 <div class="row g-4">
                     <div class="col-md-6">
                         <h6 class="fw-bold text-uppercase small text-muted mb-3 border-bottom pb-2">Informações Gerais</h6>
-                        <div class="mb-2"><span class="text-muted small">Cliente:</span> <span id="det-cliente" class="fw-bold d-block"></span></div>
-                        <div class="mb-2"><span class="text-muted small">Venda:</span> <span id="det-venda" class="fw-bold d-block"></span></div>
+                        <div class="mb-2 text-dark"><span class="text-muted small">Cliente:</span> <span id="det-cliente" class="fw-bold d-block"></span></div>
+                        <div class="mb-2 text-dark"><span class="text-muted small">Venda:</span> <span id="det-venda" class="fw-bold d-block"></span></div>
                         <div class="mb-2"><span class="text-muted small">Vencimento:</span> <span id="det-vencimento" class="fw-bold d-block text-danger"></span></div>
                         
                         <h6 class="fw-bold text-uppercase small text-muted mb-3 mt-4 border-bottom pb-2">Produtos da Venda</h6>
@@ -198,9 +210,9 @@
                     </div>
                     <div class="col-md-6 border-start">
                         <h6 class="fw-bold text-uppercase small text-muted mb-3 border-bottom pb-2">Resumo Financeiro</h6>
-                        <div class="d-flex justify-content-between mb-2"><span>Total da Venda:</span> <span id="det-total" class="fw-bold"></span></div>
-                        <div class="d-flex justify-content-between mb-2"><span>Total Recebido:</span> <span id="det-pago" class="fw-bold text-success"></span></div>
-                        <div class="d-flex justify-content-between mb-3"><span>Saldo Devedor:</span> <span id="det-restante" class="fw-bold text-danger fs-5"></span></div>
+                        <div class="d-flex justify-content-between mb-2 text-dark"><span>Total da Venda:</span> <span id="det-total" class="fw-bold"></span></div>
+                        <div class="d-flex justify-content-between mb-2 text-dark"><span>Total Recebido:</span> <span id="det-pago" class="fw-bold text-success"></span></div>
+                        <div class="d-flex justify-content-between mb-3 text-dark"><span>Saldo Devedor:</span> <span id="det-restante" class="fw-bold text-danger fs-5"></span></div>
 
                         <h6 class="fw-bold text-uppercase small text-muted mb-3 mt-4 border-bottom pb-2">Histórico (AVS)</h6>
                         <div id="det-pagos" class="small overflow-auto" style="max-height: 200px;">
@@ -208,6 +220,12 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary fw-bold" id="btn-reimprimir-recibo">
+                    <i class="fas fa-print me-2"></i>REIMPRIMIR RECIBO
+                </button>
             </div>
         </div>
     </div>
@@ -267,8 +285,9 @@
 </div>
 
 <script>
-    let allFiados = [];
-    let currentId = null;
+    let searchTimeout = null;
+    let currentPage = 1;
+    let currentPageRows = [];
 
     document.addEventListener('DOMContentLoaded', () => {
         // Set default dates (beginning of current month to today)
@@ -280,14 +299,16 @@
         loadFiados();
     });
 
-    async function loadFiados() {
+    async function loadFiados(page = 1) {
+        currentPage = page;
         const tbody = document.getElementById('fi-tbody');
         try {
             const di = document.getElementById('fi-di').value || '';
             const df = document.getElementById('fi-df').value || '';
             const status = document.getElementById('fi-status').value || 'TODOS';
+            const q = document.getElementById('fi-search').value || '';
 
-            const res = await fetch(`fiado.php?action=fetch&di=${di}&df=${df}&status=${status}`);
+            const res = await fetch(`fiado.php?action=fetch&di=${di}&df=${df}&status=${status}&page=${page}&q=${q}`);
             const text = await res.text();
             
             let data;
@@ -306,13 +327,17 @@
             }
 
             if (data.ok) {
-                allFiados = data.rows || [];
+                currentPageRows = data.rows || [];
+                renderTable(currentPageRows);
+                renderPagination(data.pagination);
+                
                 document.getElementById('tot-total').innerText = fmtBRL(data.totais.total_venda);
                 document.getElementById('tot-pago').innerText = fmtBRL(data.totais.total_pago);
                 document.getElementById('tot-restante').innerText = fmtBRL(data.totais.total_restante);
                 document.getElementById('tot-qtd').innerText = data.totais.qtd;
                 
-                renderTable(allFiados);
+                document.getElementById('pag-showing').innerText = data.rows.length;
+                document.getElementById('pag-total').innerText = data.pagination.total_records;
             } else {
                 tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">
                     <strong>Erro:</strong> ${data.msg || 'Erro desconhecido'}
@@ -346,8 +371,8 @@
                 </td>
                 <td class="text-end pe-4">
                     <div class="btn-group shadow-sm rounded-3">
-                        <button class="btn btn-sm btn-white border" onclick="verDetalhes(${r.id})" title="Ver Detalhes">
-                            <i class="fas fa-eye text-primary"></i> <span class="d-none d-md-inline ms-1 small">Visualizar</span>
+                        <button class="btn btn-sm btn-light border" onclick="verDetalhes(${r.id})" title="Ver Detalhes">
+                            <i class="fas fa-eye text-warning"></i> <span class="d-none d-md-inline ms-1 small">Visualizar</span>
                         </button>
                         ${parseFloat(r.saldo) > 0.01 ? `
                         <button class="btn btn-sm btn-success text-white px-3" onclick="abrirPagar(${r.id})" title="Baixar AVS">
@@ -360,58 +385,137 @@
         `).join('');
     }
 
+    function renderPagination(p) {
+        const pag = document.getElementById('fi-pagination');
+        if (!p || p.total_pages <= 1) {
+            pag.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        
+        // Botão Anterior
+        html += `<li class="page-item ${p.current_page === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${p.current_page - 1})"><i class="fas fa-chevron-left"></i></a>
+        </li>`;
+
+        // Páginas
+        for (let i = 1; i <= p.total_pages; i++) {
+            if (i === 1 || i === p.total_pages || (i >= p.current_page - 2 && i <= p.current_page + 2)) {
+                html += `<li class="page-item ${i === p.current_page ? 'active' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${i})">${i}</a>
+                </li>`;
+            } else if (i === p.current_page - 3 || i === p.current_page + 3) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // Próximo
+        html += `<li class="page-item ${p.current_page === p.total_pages ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${p.current_page + 1})"><i class="fas fa-chevron-right"></i></a>
+        </li>`;
+
+        pag.innerHTML = html;
+    }
+
     function filterTable() {
-        const q = document.getElementById('fi-search').value.toLowerCase();
-        const filtered = allFiados.filter(r => 
-            r.cliente_nome.toLowerCase().includes(q) || 
-            r.venda_id.toString().includes(q)
-        );
-        renderTable(filtered);
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            loadFiados(1);
+        }, 500);
     }
 
     async function verDetalhes(id) {
-        const res = await fetch(`fiado.php?action=get_details&id=${id}`);
-        const data = await res.json();
+        try {
+            const res = await fetch(`fiado.php?action=get_details&id=${id}`);
+            const text = await res.text();
+            
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error("JSON Error:", text);
+                return alert("Erro no servidor (Resposta não é JSON). Verifique o console ou contate o suporte.");
+            }
 
-        if (data.ok) {
-           const f = data.fiado;
-           document.getElementById('det-cliente').innerText = f.cliente_nome;
-           document.getElementById('det-venda').innerText = `#${f.venda_id} (${fmtDate(f.data_venda)})`;
-           document.getElementById('det-vencimento').innerText = fmtDate(f.data_vencimento, false);
-           document.getElementById('det-total').innerText = fmtBRL(f.valor_total);
-           document.getElementById('det-pago').innerText = fmtBRL(f.valor_pago);
-           document.getElementById('det-restante').innerText = fmtBRL(f.valor_restante);
-           
-           // Itens
-           document.getElementById('det-itens').innerHTML = data.items.map(i => `
-               <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom">
-                   <div>${i.quantidade}x ${i.produto_nome}</div>
-                   <div class="fw-bold">${fmtBRL(i.preco_unitario * i.quantidade)}</div>
-               </div>
-           `).join('') || '<div class="text-muted small">Nenhum item encontrado.</div>';
+            if (data.ok) {
+                const f = data.fiado;
+                if (!f) return alert("Erro: Dados do débito não encontrados.");
+                
+                // Elements safety check (must exist in HTML)
+                const safelySetText = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = val;
+                };
 
-           // Pagos
-           document.getElementById('det-pagos').innerHTML = data.payments.map(p => `
-               <div class="fi-history-item small mb-2">
-                   <div class="fw-bold text-primary">${fmtBRL(p.valor)} <span class="text-muted font-normal">• ${p.metodo}</span></div>
-                   <div class="text-muted extra-small">${fmtDate(p.created_at)}</div>
-               </div>
-           `).join('') || '<div class="text-muted small">Sem pagamentos registrados.</div>';
+                safelySetText('det-cliente', f.cliente_nome || 'Não informado');
+                safelySetText('det-venda', `#${f.venda_id || '—'} (${fmtDate(f.data_venda)})`);
+                safelySetText('det-vencimento', fmtDate(f.data_vencimento, false));
+                safelySetText('det-total', fmtBRL(f.valor));
+                safelySetText('det-pago', fmtBRL(f.valor_pago));
+                safelySetText('det-restante', fmtBRL(f.saldo));
+                
+                const btnPrint = document.getElementById('btn-reimprimir-recibo');
+                if (btnPrint) {
+                    btnPrint.onclick = () => {
+                        if (f.venda_id) imprimirRecibo(f.venda_id);
+                        else alert('ID de venda não disponível para impressão.');
+                    };
+                }
 
-           new bootstrap.Modal('#modalDetalhes').show();
+                // Itens table mapping
+                const elItens = document.getElementById('det-itens');
+                if (elItens && data.items) {
+                    elItens.innerHTML = data.items.map(i => `
+                        <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom text-dark">
+                            <div>${parseFloat(i.quantidade || 0)}x ${i.produto_nome || 'Produto desconhecido'}</div>
+                            <div class="fw-bold">${fmtBRL((i.preco_unitario || 0) * (i.quantidade || 0))}</div>
+                        </div>
+                    `).join('') || '<div class="text-muted small">Nenhum item encontrado.</div>';
+                }
+
+                // Payments history mapping
+                const elPagos = document.getElementById('det-pagos');
+                if (elPagos && data.payments) {
+                    elPagos.innerHTML = data.payments.map(p => `
+                        <div class="fi-history-item small mb-2 text-dark">
+                            <div class="fw-bold text-primary">${fmtBRL(p.valor)} <span class="text-muted font-normal">• ${p.metodo}</span></div>
+                            <div class="text-muted extra-small">${fmtDate(p.created_at)}</div>
+                        </div>
+                    `).join('') || '<div class="text-muted small">Sem pagamentos registrados.</div>';
+                }
+
+                const modalEl = document.getElementById('modalDetalhes');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                } else {
+                    console.error("Modal element #modalDetalhes not found!");
+                }
+            } else {
+                alert('Erro ao carregar detalhes: ' + (data.msg || 'Erro desconhecido'));
+            }
+        } catch (err) {
+            console.error("Error in verDetalhes:", err);
+            alert("Erro inesperado: " + err.message);
         }
+    }
+
+    function imprimirRecibo(saleId) {
+        window.open('recibo_venda.php?id=' + saleId, '_blank', 'width=480,height=700,toolbar=0,menubar=0,location=0');
     }
 
     async function abrirPagar(id) {
         currentId = id;
-        const fiado = allFiados.find(f => f.id == id);
+        const fiado = currentPageRows.find(f => f.id == id);
         if (!fiado) return;
 
         document.getElementById('pay-cliente-nome').innerText = fiado.cliente_nome;
         document.getElementById('pay-saldo-display').innerText = `Saldo em aberto: ${fmtBRL(fiado.saldo)}`;
         document.getElementById('pay-valor').value = parseFloat(fiado.saldo).toFixed(2);
         
-        new bootstrap.Modal('#modalPagamento').show();
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPagamento'));
+        modal.show();
     }
 
     async function confirmarPagamento() {
@@ -428,7 +532,8 @@
 
         const data = await res.json();
         if (data.ok) {
-            bootstrap.Modal.getInstance('#modalPagamento').hide();
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPagamento'));
+            modal.hide();
             await loadFiados();
             alert(data.msg);
         } else {

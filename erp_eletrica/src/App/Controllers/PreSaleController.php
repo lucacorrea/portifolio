@@ -11,7 +11,7 @@ class PreSaleController extends BaseController {
         $recent = $model->getRecent();
 
         $cashierModel = new \App\Models\Cashier();
-        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+        $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
 
         $this->render('pre_sales', [
             'recent' => $recent,
@@ -27,15 +27,29 @@ class PreSaleController extends BaseController {
             
             // Validation: Cashier Open Check
             $cashierModel = new \App\Models\Cashier();
-            $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+            $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
             if (!$caixaAberto) {
                 echo json_encode(['success' => false, 'error' => "É necessário abrir o caixa antes de gerar pré-vendas."]);
                 exit;
             }
 
             $model = new PreSale();
+            $productModel = new Product();
             $clientModel = new Client();
             
+            // Validation: Stock Check
+            if (!empty($data['items'])) {
+                foreach ($data['items'] as $item) {
+                    if (!$productModel->hasEnoughStock($item['id'], $item['qty'])) {
+                        $stmtProd = \App\Config\Database::getInstance()->getConnection()->prepare("SELECT nome FROM produtos WHERE id = ?");
+                        $stmtProd->execute([$item['id']]);
+                        $productName = $stmtProd->fetchColumn();
+                        echo json_encode(['success' => false, 'error' => "Estoque insuficiente para a pré-venda: $productName."]);
+                        exit;
+                    }
+                }
+            }
+
             $data['usuario_id'] = $_SESSION['usuario_id'];
             $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
 

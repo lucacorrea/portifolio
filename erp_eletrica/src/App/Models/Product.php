@@ -17,7 +17,7 @@ class Product extends BaseModel {
     }
 
     public function getCriticalStock($filialId = null) {
-        $sql = "SELECT * FROM {$this->table} WHERE quantidade <= estoque_minimo";
+        $sql = "SELECT * FROM {$this->table} WHERE quantidade <= estoque_minimo AND estoque_minimo > 0";
         $params = [];
         if ($filialId) {
             $sql .= " AND filial_id = ?";
@@ -26,9 +26,144 @@ class Product extends BaseModel {
         return $this->query($sql, $params)->fetchAll();
     }
 
+    public function getLowStock($filialId = null) {
+        $sql = "SELECT * FROM {$this->table} WHERE quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
+        $params = [];
+        if ($filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+        return $this->query($sql, $params)->fetchAll();
+    }
+
+    public function getOkStock($filialId = null) {
+        $sql = "SELECT * FROM {$this->table} WHERE (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
+        $params = [];
+        if ($filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+        return $this->query($sql, $params)->fetchAll();
+    }
+
+    public function getStockStats($filialId = null) {
+        $where = " WHERE 1=1";
+        $params = [];
+        if ($filialId) {
+            $where .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        $critical = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND quantidade <= estoque_minimo AND estoque_minimo > 0", $params)->fetchColumn();
+        $low      = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0", $params)->fetchColumn();
+        $ok       = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)", $params)->fetchColumn();
+
+        return [
+            'critical' => (int)$critical,
+            'low'      => (int)$low,
+            'ok'       => (int)$ok,
+            'total'    => (int)($critical + $low + $ok)
+        ];
+    }
+
+    public function searchStockAlarms($filters, $filialId = null) {
+        $sql = "SELECT * FROM {$this->table} WHERE 1=1";
+        $params = [];
+
+        if ($filialId) {
+            $sql .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        if (!empty($filters['q'])) {
+            $sql .= " AND (nome LIKE ? OR codigo LIKE ?)";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+        }
+
+        if (!empty($filters['categoria'])) {
+            $sql .= " AND categoria = ?";
+            $params[] = $filters['categoria'];
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'CRITICO') {
+                $sql .= " AND quantidade <= estoque_minimo AND estoque_minimo > 0";
+            } elseif ($filters['status'] === 'BAIXO') {
+                $sql .= " AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
+            } elseif ($filters['status'] === 'OK') {
+                $sql .= " AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
+            }
+        }
+
+        $sql .= " ORDER BY (quantidade - estoque_minimo) ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function paginateStockAlarms($filters, $page = 1, $perPage = 15, $filialId = null) {
+        $where = " WHERE 1=1";
+        $params = [];
+
+        if ($filialId) {
+            $where .= " AND filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        if (!empty($filters['q'])) {
+            $where .= " AND (nome LIKE ? OR codigo LIKE ?)";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+        }
+
+        if (!empty($filters['categoria'])) {
+            $where .= " AND categoria = ?";
+            $params[] = $filters['categoria'];
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'CRITICO') {
+                $where .= " AND quantidade <= estoque_minimo AND estoque_minimo > 0";
+            } elseif ($filters['status'] === 'BAIXO') {
+                $where .= " AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
+            } elseif ($filters['status'] === 'OK') {
+                $where .= " AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
+            }
+        }
+
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} $where");
+        $totalStmt->execute($params);
+        $total = $totalStmt->fetchColumn();
+
+        $pages = ceil($total / $perPage);
+        $offset = ($page - 1) * $perPage;
+
+        $sql = "SELECT * FROM {$this->table} $where ORDER BY (quantidade - estoque_minimo) ASC LIMIT $perPage OFFSET $offset";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $data = $stmt->fetchAll();
+
+        return [
+            'data' => $data,
+            'total' => $total,
+            'pages' => $pages,
+            'current' => $page,
+            'per_page' => $perPage
+        ];
+    }
+
     public function updateStock($id, $qty, $type = 'entrada') {
         $operator = ($type == 'entrada') ? '+' : '-';
         return $this->query("UPDATE {$this->table} SET quantidade = quantidade $operator ? WHERE id = ?", [$qty, $id]);
+    }
+
+    public function hasEnoughStock($id, $requiredQty) {
+        $stmt = $this->db->prepare("SELECT quantidade FROM {$this->table} WHERE id = ?");
+        $stmt->execute([$id]);
+        $currentQty = $stmt->fetchColumn();
+        return ($currentQty !== false && $currentQty >= $requiredQty);
     }
 
     public function save($data) {

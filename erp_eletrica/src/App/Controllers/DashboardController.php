@@ -67,6 +67,18 @@ class DashboardController extends BaseController {
                 'top_products' => $top_produtos
             ], 600); // 10 minutes cache
         }
+        
+        // --- REAL TIME STATS (ALWAYS FRESH) ---
+        $stats['fiado_pendente'] = $db->query("
+            SELECT SUM(COALESCE(valor, 0) - COALESCE(valor_pago, 0)) 
+            FROM contas_receber 
+            WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
+        ")->fetchColumn() ?: 0;
+
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForFilial($filial_id);
+        $cashierSummary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
+        // --------------------------------------
 
         $recentes_vendas = $db->query("
             SELECT v.*, c.nome as cliente_nome 
@@ -75,10 +87,6 @@ class DashboardController extends BaseController {
             " . ($is_matriz ? "" : "WHERE v.filial_id = $filial_id") . "
             ORDER BY v.data_venda DESC LIMIT 5
         ")->fetchAll();
-
-        $cashierModel = new \App\Models\Cashier();
-        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $filial_id);
-        $cashierSummary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
 
         $this->render('dashboard', [
             'stats' => $stats,
@@ -90,5 +98,48 @@ class DashboardController extends BaseController {
             'title' => 'Gestão de Materiais Elétricos',
             'pageTitle' => 'Painel de Operações Comerciais'
         ]);
+    }
+
+    public function getRealtimeStats() {
+        $db = Database::getInstance()->getConnection();
+        $filial_id = $_SESSION['filial_id'] ?? null;
+        $is_matriz = $_SESSION['is_matriz'] ?? false;
+        
+        $where_filial = "";
+        if (!$is_matriz && $filial_id) {
+            $where_filial = " AND filial_id = $filial_id";
+        }
+
+        // Get Cashier Summary (Realtime)
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForFilial($filial_id);
+        $summary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
+
+        // Correct Fiado Pending (Total from all time)
+        $fiado_pendente = $db->query("
+            SELECT SUM(COALESCE(valor, 0) - COALESCE(valor_pago, 0)) 
+            FROM contas_receber 
+            WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
+        ")->fetchColumn() ?: 0;
+
+        $saldo_caixa = 0;
+        if ($caixaAberto && $summary) {
+            $saldo_caixa = ($caixaAberto['valor_abertura'] ?? 0) + ($summary['vendas_dinheiro'] ?? 0) + ($summary['suprimentos'] ?? 0) - ($summary['sangrias'] ?? 0);
+        }
+
+        header('Content-Type: application/json');
+        header('Cache-Control: no-cache, must-revalidate');
+        echo json_encode([
+            'ok' => true,
+            'stats' => [
+                'saldo_caixa' => (float)$saldo_caixa,
+                'vendido_total' => (float)($summary['total_bruto'] ?? 0),
+                'fiado_pendente' => (float)$fiado_pendente,
+                'sangrias' => (float)($summary['sangrias'] ?? 0),
+                'suprimentos' => (float)($summary['suprimentos'] ?? 0),
+                'caixa_aberto' => !!$caixaAberto
+            ]
+        ]);
+        exit;
     }
 }

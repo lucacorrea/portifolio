@@ -25,7 +25,12 @@ class InventoryController extends BaseController {
         ];
 
         $page = (int)($_GET['page'] ?? 1);
-        $pagination = $productModel->paginate(6, $page, "categoria ASC, nome ASC");
+        $filters = [
+            'q' => $_GET['q'] ?? '',
+            'categoria' => $_GET['categoria'] ?? ''
+        ];
+        
+        $pagination = $productModel->paginate(15, $page, "categoria ASC, nome ASC", $filters);
         $products = $pagination['data'];
         $allProducts = $productModel->all("nome ASC");
         $movements = $movementModel->getHistory(null, 20);
@@ -37,7 +42,8 @@ class InventoryController extends BaseController {
             'allProducts' => $allProducts,
             'pagination' => $pagination,
             'movements' => $movements,
-            'categories' => $categories
+            'categories' => $categories,
+            'filters' => $filters
         ]);
     }
 
@@ -46,6 +52,11 @@ class InventoryController extends BaseController {
             validateCsrf($_POST['csrf_token'] ?? '');
             $model = new \App\Models\Product();
             $data = $_POST;
+            
+            // Fix: ensure product is linked to the correct filial
+            if (empty($data['filial_id'])) {
+                $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
+            }
 
             if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
                 $dir = dirname(__DIR__, 3) . "/public/uploads/produtos/";

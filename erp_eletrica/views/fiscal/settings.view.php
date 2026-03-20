@@ -115,7 +115,7 @@
                                         <button class="btn btn-sm btn-outline-primary fw-bold" onclick="testConnection(<?= $b['id'] ?>)">
                                             <i class="fas fa-plug-circle-check me-2"></i>Testar Conexão
                                         </button>
-                                        <button class="btn btn-sm btn-light border" title="Editar Configuração" onclick="window.location.href='filiais.php'">
+                                        <button class="btn btn-sm btn-light border" title="Editar Configuração" onclick="window.location.href='configuracoes.php?tab=unidades#unidades'">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                     </div>

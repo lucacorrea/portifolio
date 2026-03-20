@@ -321,10 +321,18 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 text-center">
-                <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada em dinheiro</strong> para esta venda fiado?</p>
+                <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada / sinal</strong> para esta venda fiado?</p>
                 <div class="mb-3 text-start">
                     <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor da Entrada (R$)</label>
                     <input type="number" id="entradaValor" class="form-control form-control-lg text-center fw-bold text-success" placeholder="0,00" step="0.01" min="0">
+                </div>
+                <div class="mb-3 text-start">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Meio de Pagamento da Entrada</label>
+                    <select id="entradaMetodo" class="form-select">
+                        <option value="dinheiro">Dinheiro (Gaveta)</option>
+                        <option value="pix">PIX</option>
+                        <option value="cartao">Cartão</option>
+                    </select>
                 </div>
                 <div class="d-grid">
                     <button class="btn btn-warning fw-bold py-2 shadow-sm" onclick="confirmarCheckoutFiado()">
@@ -1049,6 +1057,7 @@ async function processarCheckout() {
     const total = subtotal * (1 - (discountPercent / 100));
     const payment = document.querySelector('input[name="payment"]:checked').value;
     const entrada = parseFloat(document.getElementById('entradaValor')?.value) || 0;
+    const entradaMetodo = document.getElementById('entradaMetodo')?.value || 'dinheiro';
 
     // Troco / valor recebido (only relevant for dinheiro)
     let valorRecebido = null;
@@ -1074,6 +1083,7 @@ async function processarCheckout() {
         items: cart,
         pagamento: payment,
         entrada_valor: entrada,
+        entrada_metodo: entradaMetodo,
         valor_recebido: valorRecebido,
         troco: troco,
         cliente_id: selectedCustomerId,
