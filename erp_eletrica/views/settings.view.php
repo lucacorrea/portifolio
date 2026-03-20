@@ -445,8 +445,11 @@ async function consultarCNPJ() {
     try {
         const response = await fetch(`api/cnpj_search.php?cnpj=${cnpj}`);
         if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error || 'Falha na consulta.');
+            if (response.status === 429) throw new Error('Limite de consultas excedido. Aguarde alguns minutos e tente novamente.');
+            const text = await response.text();
+            let errMessage = 'Falha na consulta.';
+            try { const errData = JSON.parse(text); errMessage = errData.error || errMessage; } catch(e) {}
+            throw new Error(errMessage);
         }
         
         const data = await response.json();
@@ -498,8 +501,11 @@ async function buscarCEP() {
 
     try {
         const response = await fetch(`api/cep_search.php?cep=${cep}`);
-        if (response.ok) {
-            const data = await response.json();
+        if (!response.ok) {
+            if (response.status === 429) return; // Silent limit reached
+            return;
+        }
+        const data = await response.json();
             if (data.logradouro) document.getElementById('f_logradouro').value = data.logradouro;
             if (data.bairro) document.getElementById('f_bairro').value = data.bairro;
             if (data.localidade || data.city) document.getElementById('f_municipio').value = data.localidade || data.city;
