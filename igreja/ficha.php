@@ -431,7 +431,7 @@ $logoIgreja = 'assets/img/LOGO.jpng';
                 </div>
 
                 <div>
-                    <div class="form-title">INTEGRAÇÃO À MEMBRESIA</div>
+                    <div class="form-title">INTEGRAÇÃO À MEMBRASIA</div>
 
                     <div class="choice-row">
                         <div class="choice-item">( <?= marcado($ingresso, 'MUDANCA') ?> ) MUDANÇA</div>
