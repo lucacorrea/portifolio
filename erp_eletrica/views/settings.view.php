@@ -346,7 +346,7 @@
 <script>
 function abrirModalFilial(data = null) {
     const modal = new bootstrap.Modal(document.getElementById('modalFilial'));
-    document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2"></i>Editar Unidade' : '<i class="fas fa-plus me-2"></i>Nova Unidade';
+    document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2 text-white"></i><span class="text-white">Editar Unidade</span>' : '<i class="fas fa-plus me-2 text-white"></i><span class="text-white">Nova Unidade</span>';
     
     // Global defaults for pre-filling (from actual Matriz/Principal branch)
     const defaultSefaz = {
@@ -410,4 +410,13 @@ document.addEventListener('DOMContentLoaded', () => {
 .alert-soft-primary { background-color: rgba(13, 110, 253, 0.1); color: #084298; }
 .border-dashed { border-style: dashed !important; }
 .extra-small { font-size: 0.75rem; }
+
+/* Custom Overrides for Tabs */
+.nav-pills .nav-link.active {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+.nav-pills .nav-link {
+    color: #6c757d;
+}
 </style>
