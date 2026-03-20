@@ -181,7 +181,12 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">CNPJ</label>
-                                    <input type="text" name="cnpj" id="f_cnpj" class="form-control shadow-sm" required>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="cnpj" id="f_cnpj" class="form-control shadow-sm" required onkeyup="mascaraCNPJ(this)">
+                                        <button type="button" class="btn btn-primary fw-bold" onclick="consultarCNPJ()">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Razão Social</label>
@@ -209,7 +214,7 @@
                                 </div>
                                 <div class="col-md-1">
                                     <label class="form-label small fw-bold">UF</label>
-                                    <input type="text" name="uf" id="f_uf" class="form-control shadow-sm text-center">
+                                    <input type="text" name="uf" id="f_uf" class="form-control shadow-sm text-center" maxlength="2" onchange="atualizarCodigoUF()">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold">Código UF</label>
@@ -412,6 +417,101 @@ document.addEventListener('DOMContentLoaded', () => {
         tab.show();
     }
 });
+function mascaraCNPJ(input) {
+    let v = input.value.replace(/\D/g, "");
+    if (v.length > 14) v = v.substring(0, 14);
+    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+    v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+    v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    input.value = v;
+}
+
+async function consultarCNPJ() {
+    const cnpjInput = document.getElementById('f_cnpj');
+    if (!cnpjInput) return;
+    const cnpj = cnpjInput.value.replace(/\D/g, '');
+    const btn = cnpjInput.parentElement.querySelector('button');
+    const originalText = btn.innerHTML;
+    
+    if (cnpj.length !== 14) {
+        alert('Por favor, informe um CNPJ válido com 14 dígitos.');
+        return;
+    }
+
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`api/cnpj_search.php?cnpj=${cnpj}`);
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error || 'Falha na consulta.');
+        }
+        
+        const data = await response.json();
+        
+        let ibgeCode = '';
+        if (data.cep) {
+            try {
+                const cepRes = await fetch(`api/cep_search.php?cep=${data.cep.replace(/\D/g, '')}`);
+                if (cepRes.ok) {
+                    const cepData = await cepRes.json();
+                    if (cepData.ibge) ibgeCode = cepData.ibge;
+                }
+            } catch(e) {}
+        }
+        
+        // Auto-Fill Fields based on settings.view.php IDs
+        const fieldMapping = {
+            'f_razao': data.razao_social || '',
+            'f_nome': data.nome_fantasia || data.razao_social || '',
+            'f_fone': data.ddd_telefone_1 || '',
+            'f_email': data.email || '',
+            'f_cep': data.cep || '',
+            'f_logradouro': data.logradouro || '',
+            'f_numero': data.numero || '',
+            'f_complemento': data.complemento || '',
+            'f_bairro': data.bairro || '',
+            'f_municipio': data.municipio || '',
+            'f_uf': data.uf || ''
+        };
+
+        Object.keys(fieldMapping).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = fieldMapping[id];
+        });
+        
+        atualizarCodigoUF();
+        const ibgeEl = document.getElementById('f_ibge_mun');
+        if (ibgeEl) ibgeEl.value = ibgeCode;
+        
+        btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+        setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+        
+    } catch (error) {
+        alert('Erro ao buscar CNPJ: ' + error.message);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+const MAP_UF_IBGE = {
+    "RO": 11, "AC": 12, "AM": 13, "RR": 14, "PA": 15, "AP": 16, "TO": 17,
+    "MA": 21, "PI": 22, "CE": 23, "RN": 24, "PB": 25, "PE": 26, "AL": 27, "SE": 28, "BA": 29,
+    "MG": 31, "ES": 32, "RJ": 33, "SP": 35, "PR": 41, "SC": 42, "RS": 43, "MS": 50, "MT": 51, "GO": 52, "DF": 53
+};
+
+function atualizarCodigoUF() {
+    const ufInput = document.getElementById('f_uf');
+    if (!ufInput) return;
+    const uf = ufInput.value.trim().toUpperCase();
+    const codigo = MAP_UF_IBGE[uf] || '';
+    if (codigo) {
+        const codUfInput = document.getElementById('f_cod_uf');
+        if (codUfInput) codUfInput.value = codigo;
+    }
+}
 </script>
 
 <style>
