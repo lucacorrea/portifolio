@@ -115,7 +115,6 @@ $logoIgreja = 'assets/img/LOGO.jpng';
         border: 1px solid #8f8f8f;
         overflow: hidden;
         background: #fff;
-        margin-top: -10px !important;
     }
 
     .top-logo img {
