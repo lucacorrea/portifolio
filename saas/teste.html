@@ -681,8 +681,7 @@
     // Inicializar tudo
     renderDashboard();
     initMobileAndNav();
-
-    // pequeno ajuste de evento resize para fechar sidebar ao redimensionar para desktop
+    
     window.addEventListener('resize', () => {
         const sidebar = document.getElementById('sidebar');
         if (window.innerWidth > 768) {
