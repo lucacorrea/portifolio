@@ -11,7 +11,7 @@ function ativo($arquivo, $pagina)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Igreja Vida Nova</title>
+    <title>Igreja de Deus Nascer de Novo</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -22,11 +22,9 @@ function ativo($arquivo, $pagina)
 <div class="dashboard">
     <div class="header">
         <div class="logo-area">
-            <div class="logo-icon">
-                <i class="fas fa-church"></i>
-            </div>
+           
             <div class="logo-text">
-                <h1>Igreja Vida Nova</h1>
+                <h1>IGREJA DE DEUS NASCER DE NOVO</h1>
                 <p>Administração eclesiástica</p>
             </div>
         </div>
@@ -41,9 +39,7 @@ function ativo($arquivo, $pagina)
             <a href="listar.php" class="nav-item <?= ativo('listar.php', $pagina) ?>">
                 <i class="fas fa-users"></i> Membros
             </a>
-            <a href="listar.php" class="nav-item">
-                <i class="fas fa-file-alt"></i> Fichas
-            </a>
+            
         </div>
 
         <div class="user-profile">

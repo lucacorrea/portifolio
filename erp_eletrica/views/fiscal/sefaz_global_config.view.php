@@ -36,7 +36,7 @@
                     <form action="importar_automatico.php?action=config_save" method="POST" enctype="multipart/form-data">
                         <div class="mb-4">
                             <label class="form-label fw-bold small">Arquivo do Certificado (.pfx)</label>
-                            <input type="file" name="certificado_pfx" class="form-control bg-dark border-secondary text-light" accept=".pfx">
+                            <input type="file" name="certificado_pfx" class="form-control" accept=".pfx">
                             <?php if ($config && $config['certificado_path']): ?>
                                 <p class="text-success small mt-2">
                                     <i class="fas fa-check me-1"></i> Certificado atual: <?= $config['certificado_path'] ?>
@@ -48,7 +48,12 @@
 
                         <div class="mb-4">
                             <label class="form-label fw-bold small">Senha do Certificado</label>
-                            <input type="password" name="certificado_senha" class="form-control" placeholder="Digite a senha" required>
+                            <div class="input-group">
+                                <input type="password" name="certificado_senha" class="form-control" placeholder="Digite a senha" required>
+                                <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                             <p class="text-muted extra-small">A senha será armazenada de forma segura.</p>
                         </div>
 

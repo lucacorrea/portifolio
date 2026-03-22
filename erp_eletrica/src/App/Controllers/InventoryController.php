@@ -21,11 +21,16 @@ class InventoryController extends BaseController {
             'total_itens' => $this->sum('produtos', 'quantidade'),
             'valor_custo' => $this->sum('produtos', 'preco_custo * quantidade'),
             'itens_criticos' => count($productModel->getCriticalStock(!$isMatriz ? $filialId : null)),
-            'mov_mes' => $this->count('movimentacao_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)")
+            'mov_mes' => $this->count('movimentacao_estoque', "MONTH(data_movimento) = MONTH(CURRENT_DATE)", 'deposito_id')
         ];
 
         $page = (int)($_GET['page'] ?? 1);
-        $pagination = $productModel->paginate(6, $page, "categoria ASC, nome ASC");
+        $filters = [
+            'q' => $_GET['q'] ?? '',
+            'categoria' => $_GET['categoria'] ?? ''
+        ];
+        
+        $pagination = $productModel->paginate(15, $page, "categoria ASC, nome ASC", $filters);
         $products = $pagination['data'];
         $allProducts = $productModel->all("nome ASC");
         $movements = $movementModel->getHistory(null, 20);
@@ -37,7 +42,8 @@ class InventoryController extends BaseController {
             'allProducts' => $allProducts,
             'pagination' => $pagination,
             'movements' => $movements,
-            'categories' => $categories
+            'categories' => $categories,
+            'filters' => $filters
         ]);
     }
 
@@ -46,6 +52,11 @@ class InventoryController extends BaseController {
             validateCsrf($_POST['csrf_token'] ?? '');
             $model = new \App\Models\Product();
             $data = $_POST;
+            
+            // Fix: ensure product is linked to the correct filial
+            if (empty($data['filial_id'])) {
+                $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
+            }
 
             if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
                 $dir = dirname(__DIR__, 3) . "/public/uploads/produtos/";
@@ -78,19 +89,19 @@ class InventoryController extends BaseController {
         }
     }
 
-    private function sum($table, $expression) {
+    private function sum($table, $expression, $filialCol = 'filial_id') {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? null;
         $isMatriz = $_SESSION['is_matriz'] ?? false;
-        $where = (!$isMatriz && $filialId) ? " WHERE filial_id = $filialId" : "";
+        $where = (!$isMatriz && $filialId) ? " WHERE $filialCol = $filialId" : "";
         return $db->query("SELECT SUM($expression) FROM $table $where")->fetchColumn() ?: 0;
     }
 
-    private function count($table, $condition = "1=1") {
+    private function count($table, $condition = "1=1", $filialCol = 'filial_id') {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? null;
         $isMatriz = $_SESSION['is_matriz'] ?? false;
-        $whereFilial = (!$isMatriz && $filialId) ? " AND filial_id = $filialId" : "";
+        $whereFilial = (!$isMatriz && $filialId) ? " AND $filialCol = $filialId" : "";
         return $db->query("SELECT COUNT(*) FROM $table WHERE ($condition) $whereFilial")->fetchColumn() ?: 0;
     }
 }

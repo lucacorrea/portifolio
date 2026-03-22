@@ -2,16 +2,72 @@
 namespace App\Controllers;
 
 use App\Models\AccountReceivable;
+use App\Models\AccountReceivablePayment;
 use App\Models\Client;
 use App\Services\AuditLogService;
 
 class VendaFiadoController extends BaseController {
+    public function __construct() {
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema() {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        
+        // 1. Ensure fiados_pagamentos table
+        $db->exec("CREATE TABLE IF NOT EXISTS fiados_pagamentos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            fiado_id INT NOT NULL,
+            valor DECIMAL(10,2) NOT NULL,
+            metodo VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_fiado_id (fiado_id)
+        ) ENGINE=InnoDB;");
+
+        // 2. Ensure columns in contas_receber
+        try {
+            // Check if valor_pago exists
+            $stmt = $db->query("SHOW COLUMNS FROM contas_receber LIKE 'valor_pago'");
+            if (!$stmt->fetch()) {
+                $db->exec("ALTER TABLE contas_receber ADD COLUMN valor_pago DECIMAL(10,2) DEFAULT 0.00 AFTER valor");
+            }
+            
+            // Check if saldo exists
+            $stmt = $db->query("SHOW COLUMNS FROM contas_receber LIKE 'saldo'");
+            if (!$stmt->fetch()) {
+                $db->exec("ALTER TABLE contas_receber ADD COLUMN saldo DECIMAL(10,2) DEFAULT 0.00 AFTER valor_pago");
+                $db->exec("UPDATE contas_receber SET saldo = (valor - valor_pago)");
+            }
+        } catch (\Exception $e) {
+            error_log("Schema sync error: " . $e->getMessage());
+        }
+    }
+
     public function index() {
+        $this->render('vendas_fiado', [
+            'title' => 'Gestão de Vendas Fiado',
+            'pageTitle' => 'Controle de Débitos de Clientes'
+        ]);
+    }
+
+    public function fetch() {
         $model = new AccountReceivable();
         $db = \App\Config\Database::getInstance()->getConnection();
         
+        $hasValorPago = $model->columnExists('valor_pago');
+        $saldoSql = $hasValorPago ? "(COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0))" : "cr.valor";
+
         $filialId = $_SESSION['filial_id'] ?? null;
-        $where = "WHERE cr.status = 'pendente'";
+        $di = $_GET['di'] ?? '';
+        $df = $_GET['df'] ?? '';
+        $status = $_GET['status'] ?? 'TODOS';
+        $q = $_GET['q'] ?? '';
+        
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = 9; // User requested 9 per page
+        $offset = ($page - 1) * $limit;
+        
+        $where = "WHERE 1=1";
         $params = [];
         
         if ($filialId && ($_SESSION['usuario_nivel'] ?? '') !== 'master') {
@@ -19,9 +75,239 @@ class VendaFiadoController extends BaseController {
             $params[] = $filialId;
         }
 
+        if ($di) {
+            $where .= " AND DATE(cr.created_at) >= ?";
+            $params[] = $di;
+        }
+        if ($df) {
+            $where .= " AND DATE(cr.created_at) <= ?";
+            $params[] = $df;
+        }
+        if ($status !== 'TODOS') {
+            $where .= " AND cr.status = ?";
+            $params[] = strtolower($status);
+        }
+        if ($q) {
+            $where .= " AND (c.nome LIKE ? OR cr.venda_id LIKE ?)";
+            $params[] = "%$q%";
+            $params[] = "%$q%";
+        }
+
+        // Count TOTAL based on filters (for pagination and totals)
+        $sqlCount = "
+            SELECT COUNT(*) as total_count, 
+                   SUM(cr.valor) as total_venda, 
+                   SUM(cr.valor_pago) as total_pago, 
+                   SUM($saldoSql) as total_restante
+            FROM contas_receber cr 
+            JOIN clientes c ON cr.cliente_id = c.id 
+            $where
+        ";
+        $stmtCount = $db->prepare($sqlCount);
+        $stmtCount->execute($params);
+        $summary = $stmtCount->fetch();
+
+        $totalRecords = (int)$summary['total_count'];
+        $totalPages = ceil($totalRecords / $limit);
+
+        // Fetch PAGE rows
         $sql = "
-            SELECT cr.*, c.nome as cliente_nome, 
-                   DATEDIFF(CURRENT_DATE, cr.data_vencimento) as dias_atraso
+            SELECT cr.*, $saldoSql as saldo, c.nome as cliente_nome
+            FROM contas_receber cr 
+            JOIN clientes c ON cr.cliente_id = c.id 
+            $where
+            ORDER BY cr.created_at DESC, cr.id DESC
+            LIMIT ? OFFSET ?
+        ";
+        
+        $stmt = $db->prepare($sql);
+        $idx = 1;
+        foreach ($params as $val) {
+            $stmt->bindValue($idx++, $val);
+        }
+        $stmt->bindValue($idx++, (int)$limit, \PDO::PARAM_INT);
+        $stmt->bindValue($idx++, (int)$offset, \PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+
+        header('Content-Type: application/json');
+        if (ob_get_length()) ob_clean();
+        echo json_encode([
+            'ok' => true,
+            'rows' => $rows,
+            'pagination' => [
+                'total_records' => $totalRecords,
+                'total_pages' => $totalPages,
+                'current_page' => $page,
+                'limit' => $limit
+            ],
+            'totais' => [
+                'qtd' => $totalRecords,
+                'total_venda' => (float)$summary['total_venda'],
+                'total_pago' => (float)$summary['total_pago'],
+                'total_restante' => (float)$summary['total_restante']
+            ]
+        ]);
+        exit;
+    }
+
+    public function get_details() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            echo json_encode(['ok' => false, 'msg' => 'ID inválido.']);
+            exit;
+        }
+
+        $model = new AccountReceivable();
+        $hasValorPago = $model->columnExists('valor_pago');
+        $saldoSql = $hasValorPago ? "(COALESCE(cr.valor, 0) - COALESCE(cr.valor_pago, 0))" : "cr.valor";
+        $valorPagoSelect = $hasValorPago ? "cr.valor_pago," : "";
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $sql = "
+            SELECT cr.id, cr.venda_id, cr.cliente_id, cr.valor, $valorPagoSelect cr.status, 
+                   cr.data_vencimento,
+                   $saldoSql as saldo, 
+                   c.nome as cliente_nome, v.data_venda as data_venda
+            FROM contas_receber cr 
+            JOIN clientes c ON cr.cliente_id = c.id 
+            LEFT JOIN vendas v ON cr.venda_id = v.id
+            WHERE cr.id = ?
+        ";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$id]);
+        $debito = $stmt->fetch();
+
+        if (!$debito) {
+            echo json_encode(['ok' => false, 'msg' => 'Débito não encontrado.']);
+            exit;
+        }
+
+        $model = new AccountReceivable();
+        $items = $model->getItems($debito['venda_id']);
+        
+        $paymentModel = new AccountReceivablePayment();
+        $payments = $paymentModel->findByFiado($id);
+
+        header('Content-Type: application/json');
+        if (ob_get_length()) ob_clean();
+        echo json_encode([
+            'ok' => true,
+            'fiado' => $debito,
+            'items' => $items,
+            'payments' => $payments
+        ]);
+        exit;
+    }
+
+    public function pagar() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? null;
+            $valorPago = (float)($data['valor'] ?? 0);
+            $metodo = $data['metodo'] ?? 'DINHEIRO';
+
+            if (!$id || $valorPago <= 0) {
+                echo json_encode(['ok' => false, 'msg' => 'Dados inválidos.']);
+                exit;
+            }
+
+            $model = new AccountReceivable();
+            $debito = $model->find($id);
+
+            if (!$debito) {
+                echo json_encode(['ok' => false, 'msg' => 'Lançamento não encontrado.']);
+                exit;
+            }
+
+            $saldoAtual = (isset($debito['valor_pago'])) 
+                ? (float)$debito['valor'] - (float)$debito['valor_pago'] 
+                : (float)$debito['valor'];
+
+            if ($valorPago > $saldoAtual + 0.01) {
+                echo json_encode(['ok' => false, 'msg' => 'O valor informado é maior que o saldo devedor.']);
+                exit;
+            }
+
+            try {
+                $db = \App\Config\Database::getInstance()->getConnection();
+                $db->beginTransaction();
+
+                // Record payment history
+                $paymentModel = new AccountReceivablePayment();
+                $paymentModel->create([
+                    'fiado_id' => $id,
+                    'valor' => $valorPago,
+                    'metodo' => $metodo
+                ]);
+
+                // Register in cashier movement if payment is in cash and there is an open box for the branch
+                if ($metodo === 'DINHEIRO') {
+                    $cashierModel = new \App\Models\Cashier();
+                    $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
+                    if ($caixaAberto) {
+                        $movementModel = new \App\Models\CashierMovement();
+                        $movementModel->create([
+                            'caixa_id' => $caixaAberto['id'],
+                            'tipo' => 'entrada',
+                            'valor' => $valorPago,
+                            'motivo' => "Recebimento Fiado (Venda #{$debito['venda_id']}) - Cliente: {$debito['cliente_nome']}",
+                            'operador_id' => $_SESSION['usuario_id']
+                        ]);
+                    }
+                }
+
+                $novoValorPagoTotal = (float)$debito['valor_pago'] + $valorPago;
+                $novoSaldo = (float)$debito['valor'] - $novoValorPagoTotal;
+                $status = ($novoSaldo <= 0.01) ? 'pago' : 'pendente';
+
+                $model->update($id, [
+                    'valor_pago' => $novoValorPagoTotal,
+                    'saldo' => max(0, $novoSaldo),
+                    'status' => $status,
+                    'data_pagamento' => ($status === 'pago') ? date('Y-m-d') : null
+                ]);
+
+                // Record audit log
+                $audit = new AuditLogService();
+                $audit->record('Pagamento fiado', 'contas_receber', $id, json_encode($debito), json_encode([
+                    'valor_pago_agora' => $valorPago,
+                    'metodo' => $metodo,
+                    'novo_saldo' => $novoSaldo,
+                    'status_final' => $status
+                ]));
+
+                $db->commit();
+                header('Content-Type: application/json');
+                if (ob_get_length()) ob_clean();
+                echo json_encode(['ok' => true, 'msg' => 'Pagamento registrado com sucesso.']);
+            } catch (\Exception $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                header('Content-Type: application/json');
+                if (ob_get_length()) ob_clean();
+                echo json_encode(['ok' => false, 'msg' => 'Erro ao processar pagamento: ' . $e->getMessage()]);
+            }
+            exit;
+        }
+    }
+
+    public function excel() {
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="relatorio_fiados_' . date('Ymd_His') . '.xls"');
+        
+        $model = new AccountReceivable();
+        $db = \App\Config\Database::getInstance()->getConnection();
+        
+        $filialId = $_SESSION['filial_id'] ?? null;
+        $where = "WHERE 1=1";
+        $params = [];
+        if ($filialId && ($_SESSION['usuario_nivel'] ?? '') !== 'master') {
+            $where .= " AND cr.filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        $sql = "
+            SELECT cr.*, (cr.valor - cr.valor_pago) as saldo, c.nome as cliente_nome
             FROM contas_receber cr 
             JOIN clientes c ON cr.cliente_id = c.id 
             $where
@@ -30,77 +316,24 @@ class VendaFiadoController extends BaseController {
         
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
-        $debitos = $stmt->fetchAll();
+        $rows = $stmt->fetchAll();
 
-        $this->render('vendas_fiado', [
-            'debitos' => $debitos,
-            'title' => 'Gestão de Vendas Fiado',
-            'pageTitle' => 'Controle de Débitos de Clientes'
-        ]);
-    }
-
-    public function pagar() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = json_decode(file_get_contents('php://input'), true);
-            $id = $data['id'] ?? null;
-            $valorPago = (float)($data['valor'] ?? 0);
-
-            if (!$id || $valorPago <= 0) {
-                echo json_encode(['success' => false, 'error' => 'Dados inválidos.']);
-                exit;
-            }
-
-            $model = new AccountReceivable();
-            $debito = $model->find($id);
-
-            if (!$debito) {
-                echo json_encode(['success' => false, 'error' => 'Lançamento não encontrado.']);
-                exit;
-            }
-
-            $novoValorPago = (float)$debito['valor_pago'] + $valorPago;
-            $novoSaldo = (float)$debito['valor'] - $novoValorPago;
-            $status = ($novoSaldo <= 0.01) ? 'pago' : 'pendente';
-
-            try {
-                $db = \App\Config\Database::getInstance()->getConnection();
-                $db->beginTransaction();
-
-                $model->update($id, [
-                    'valor_pago' => $novoValorPago,
-                    'saldo' => max(0, $novoSaldo),
-                    'status' => $status,
-                    'data_pagamento' => ($status === 'pago') ? date('Y-m-d') : null
-                ]);
-
-                $audit = new AuditLogService();
-                $audit->record('Pagamento fiado', 'contas_receber', $id, json_encode($debito), json_encode([
-                    'valor_pago_agora' => $valorPago,
-                    'novo_saldo' => $novoSaldo,
-                    'status_final' => $status
-                ]));
-
-                $db->commit();
-                echo json_encode(['success' => true]);
-            } catch (\Exception $e) {
-                $db->rollBack();
-                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-            }
-            exit;
+        echo "\xEF\xBB\xBF"; // UTF-8 BOM
+        echo "<table>";
+        echo "<thead><tr><th>Venda #</th><th>Cliente</th><th>Valor Total</th><th>Valor Pago</th><th>Saldo</th><th>Vencimento</th><th>Status</th></tr></thead>";
+        echo "<tbody>";
+        foreach ($rows as $r) {
+            echo "<tr>";
+            echo "<td>" . $r['venda_id'] . "</td>";
+            echo "<td>" . htmlspecialchars($r['cliente_nome']) . "</td>";
+            echo "<td>" . number_format($r['valor'], 2, ',', '.') . "</td>";
+            echo "<td>" . number_format($r['valor_pago'], 2, ',', '.') . "</td>";
+            echo "<td>" . number_format($r['saldo'], 2, ',', '.') . "</td>";
+            echo "<td>" . date('d/m/Y', strtotime($r['data_vencimento'])) . "</td>";
+            echo "<td>" . strtoupper($r['status']) . "</td>";
+            echo "</tr>";
         }
-    public function get_items() {
-        $vendaId = $_GET['venda_id'] ?? null;
-        if (!$vendaId) exit;
-
-        $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("
-            SELECT vi.*, p.nome as produto_nome 
-            FROM vendas_itens vi 
-            JOIN produtos p ON vi.produto_id = p.id 
-            WHERE vi.venda_id = ?
-        ");
-        $stmt->execute([$vendaId]);
-        echo json_encode($stmt->fetchAll());
+        echo "</tbody></table>";
         exit;
     }
 }

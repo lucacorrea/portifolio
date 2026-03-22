@@ -64,18 +64,40 @@ abstract class BaseModel {
         return $this->db->query("SELECT * FROM {$this->table} ORDER BY {$order}")->fetchAll();
     }
 
-    public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC") {
+    public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC", $filters = []) {
         $filialId = $this->getFilialContext();
         $col = $this->getTenantColumn();
         $offset = ($currentPage - 1) * $perPage;
         
-        $where = ($filialId && $col) ? "WHERE $col = $filialId" : "";
+        $where = "WHERE 1=1";
+        $params = [];
         
-        $total = $this->db->query("SELECT COUNT(*) FROM {$this->table} $where")->fetchColumn();
+        if ($filialId && $col) {
+            $where .= " AND $col = ?";
+            $params[] = $filialId;
+        }
+
+        if (!empty($filters['q'])) {
+            $where .= " AND (nome LIKE ? OR codigo LIKE ?)";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+        }
+
+        if (!empty($filters['categoria'])) {
+            $where .= " AND categoria = ?";
+            $params[] = $filters['categoria'];
+        }
+        
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} $where");
+        $totalStmt->execute($params);
+        $total = $totalStmt->fetchColumn();
+        
         $pages = ceil($total / $perPage);
         
         $sql = "SELECT * FROM {$this->table} $where ORDER BY {$order} LIMIT $perPage OFFSET $offset";
-        $data = $this->db->query($sql)->fetchAll();
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $data = $stmt->fetchAll();
         
         return [
             'data' => $data,

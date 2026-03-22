@@ -1,4 +1,17 @@
 <div class="container-fluid py-4">
+    <?php if (isset($_GET['error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i><?= htmlspecialchars($_GET['error']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="this.parentElement.remove()"></button>
+        </div>
+    <?php endif; ?>
+    <?php if (isset($_GET['success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+            <i class="fas fa-check-circle me-2"></i><?= htmlspecialchars($_GET['success']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="this.parentElement.remove()"></button>
+        </div>
+    <?php endif; ?>
+
     <div class="row mb-4 align-items-center">
         <div class="col">
             <h2 class="fw-bold mb-0"><?= $pageTitle ?></h2>
@@ -24,48 +37,49 @@
 
     <?php if ($caixaAberto): ?>
     <!-- Resumo do Caixa Aberto -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0  h-100">
+    <div class="row row-cols-1 row-cols-md-5 g-3 mb-4">
+        <div class="col">
+            <div class="card border-primary border-0 h-100 bg-primary text-black shadow-lg" style="transform: scale(1.02);">
                 <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2">Abertura</div>
-                    <h4 class="mb-0 fw-bold"><?= formatarMoeda($caixaAberto['valor_abertura']) ?></h4>
-                    <div class="text-info small mt-2">
-                        <i class="fas fa-clock me-1"></i><?= date('H:i', strtotime($caixaAberto['data_abertura'])) ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2">Vendas (Dinheiro)</div>
-                    <h4 class="mb-0 fw-bold text-success">+ <?= formatarMoeda($summary['vendas_dinheiro']) ?></h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0  h-100">
-                <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2">Movimentações</div>
-                    <div class="d-flex justify-content-between">
-                        <span class="text-success small">+ Sup: <?= formatarMoeda($summary['suprimentos']) ?></span>
-                        <span class="text-danger small">- San: <?= formatarMoeda($summary['sangrias']) ?></span>
-                    </div>
-                    <h4 class="mb-0 fw-bold mt-1"><?= formatarMoeda($summary['suprimentos'] - $summary['sangrias']) ?></h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-primary border-0 h-100 bg-primary text-black">
-                <div class="card-body">
-                    <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual (Dinheiro)</div>
-                    <h3 class="mb-0 fw-bold">
-                        <?= formatarMoeda($caixaAberto['valor_abertura'] + $summary['vendas_dinheiro'] + $summary['suprimentos'] - $summary['sangrias']) ?>
+                    <div class="text-white-50 small fw-bold text-uppercase mb-2"><i class="fas fa-wallet me-2"></i>Saldo Gaveta</div>
+                    <h3 class="mb-0 fw-bold text-white">
+                        <?= formatarMoeda($summary['dinheiro_em_gaveta']) ?>
                     </h3>
+                    <div class="text-white-50 extra-small mt-2 fw-bold">Esperado Físico</div>
                 </div>
             </div>
         </div>
+        
+        <div class="col">
+            <div class="card border-0 h-100 shadow-sm bg-secondary text-white">
+                <div class="card-body">
+                    <div class="text-white-50 small fw-bold text-uppercase mb-2"><i class="fas fa-chart-line me-2"></i>Vendido (Total)</div>
+                    <h4 class="mb-0 fw-bold text-white"><?= formatarMoeda($summary['total_bruto']) ?></h4>
+                    <div class="text-white-50 extra-small mt-2 fw-bold">Base: Todos os tipos</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card border-0 h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-money-bill-wave me-2"></i>Físico</div>
+                    <h5 class="mb-0 fw-bold text-success">+ <?= formatarMoeda($summary['vendas_dinheiro'] + $summary['entradas_fiado_dinheiro']) ?></h5>
+                    <div class="text-muted extra-small mt-2">Dinheiro + Sinal</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col">
+            <div class="card border-0 h-100 shadow-sm bg-light">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fab fa-pix text-primary me-2"></i>Digitais</div>
+                    <h5 class="mb-0 fw-bold text-primary">+ <?= formatarMoeda($summary['vendas_pix'] + $summary['vendas_cartao'] + $summary['vendas_boleto']) ?></h5>
+                    <div class="text-muted extra-small mt-2">Pix, Cartões e Boleto</div>
+                </div>
+            </div>
+        </div>
+        
     </div>
     <?php endif; ?>
 
@@ -186,7 +200,12 @@
 
                         <div class="mb-0">
                             <label class="form-label small fw-bold">Senha do Administrador</label>
-                            <input type="password" name="auth_password" class="form-control form-control-sm text-center" placeholder="••••••••">
+                            <div class="input-group input-group-sm">
+                                <input type="password" name="auth_password" class="form-control text-center" placeholder="••••••••">
+                                <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -216,7 +235,7 @@
                             <div class="text-muted small">Saldo Sistema</div>
                             <div class="fw-bold">
                                 <?php 
-                                    $totalSistema = $caixaAberto['valor_abertura'] + $summary['vendas_dinheiro'] + $summary['suprimentos'] - $summary['sangrias'];
+                                    $totalSistema = $caixaAberto['valor_abertura'] + $summary['dinheiro_em_gaveta'];
                                     echo formatarMoeda($totalSistema);
                                 ?>
                             </div>
@@ -228,8 +247,8 @@
                     <input type="number" step="0.01" name="valor_fechamento" class="form-control form-control-lg text-center fw-bold" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Observações / Justificativa</label>
-                    <textarea name="justificativa" class="form-control" rows="3" placeholder="Obrigatório em caso de divergência..."></textarea>
+                    <label class="form-label fw-bold">Observações / Justificativa (Opcional)</label>
+                    <textarea name="justificativa" class="form-control" rows="3" placeholder="Ex: Diferença de troco, troca de turno..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">

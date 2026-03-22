@@ -11,7 +11,7 @@ class SalesController extends BaseController {
         $sales = $saleModel->getRecent();
 
         $cashierModel = new \App\Models\Cashier();
-        $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+        $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
 
         $this->render('sales', [
             'sales' => $sales,
@@ -160,7 +160,7 @@ class SalesController extends BaseController {
 
                 // Validation: Cashier Open Check
                 $cashierModel = new \App\Models\Cashier();
-                $caixaAberto = $cashierModel->getOpenForOperador($_SESSION['usuario_id'], $_SESSION['filial_id'] ?? 1);
+                $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
                 if (!$caixaAberto) {
                     throw new \Exception("É necessário abrir o caixa antes de realizar vendas.");
                 }
@@ -265,19 +265,40 @@ class SalesController extends BaseController {
                     }
 
                     $entrada = (float)($data['entrada_valor'] ?? 0);
+                    $entradaMetodo = $data['entrada_metodo'] ?? 'dinheiro';
                     $valorDivida = (float)$data['total'] - $entrada;
 
                     $receivableModel = new \App\Models\AccountReceivable();
-                    $receivableModel->create([
+                    $receivableId = $receivableModel->create([
                         'venda_id'        => $saleId,
                         'cliente_id'      => $data['cliente_id'],
                         'valor'           => $data['total'],
                         'valor_pago'      => $entrada,
                         'saldo'           => $valorDivida,
-                        'status'          => 'pendente',
+                        'status'          => ($valorDivida <= 0) ? 'pago' : 'pendente',
                         'data_vencimento' => date('Y-m-d', strtotime('+30 days')),
                         'filial_id'       => $_SESSION['filial_id'] ?? 1,
                     ]);
+
+                    if ($entrada > 0) {
+                        $paymentModel = new \App\Models\AccountReceivablePayment();
+                        $paymentModel->create([
+                            'fiado_id' => $receivableId,
+                            'valor' => $entrada,
+                            'metodo' => strtoupper($entradaMetodo)
+                        ]);
+
+                        if (strtolower($entradaMetodo) === 'dinheiro') {
+                            $movementModel = new \App\Models\CashierMovement();
+                            $movementModel->create([
+                                'caixa_id' => $caixaAberto['id'],
+                                'tipo' => 'entrada',
+                                'valor' => $entrada,
+                                'motivo' => "Entrada Venda #{$saleId} Fiado - Cliente: {$nomePersist}",
+                                'operador_id' => $_SESSION['usuario_id']
+                            ]);
+                        }
+                    }
 
                     $audit = new \App\Services\AuditLogService();
                     $audit->record('Venda fiado criada', 'vendas', $saleId, null, json_encode([
@@ -300,6 +321,14 @@ class SalesController extends BaseController {
                 $hasCfop = in_array('cfop', $existingCols);
 
                 foreach ($data['items'] as $item) {
+                     // Check stock before proceeding
+                    if (!$productModel->hasEnoughStock($item['id'], $item['qty'])) {
+                        $stmtProd = $db->prepare("SELECT nome FROM produtos WHERE id = ?");
+                        $stmtProd->execute([$item['id']]);
+                        $productName = $stmtProd->fetchColumn();
+                        throw new \Exception("Estoque insuficiente para o produto: $productName. Verifique o saldo atual.");
+                    }
+
                      // Get product data regardless
                     $stmtProd = $db->prepare("SELECT * FROM produtos WHERE id = ? LIMIT 1");
                     $stmtProd->execute([$item['id']]);

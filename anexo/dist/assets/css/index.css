@@ -1,0 +1,45 @@
+/* remove fundo branco global */
+html,
+body {
+    background: transparent !important;
+}
+
+/* footer transparente */
+#footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: transparent !important;
+
+
+}
+
+footer.footer {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0;
+    padding: 10px 20px;
+}
+
+.footer-inner {
+    display: flex;
+    gap: .75rem;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.footer-text {
+    color: #111;
+    /* se seu fundo for escuro, mude para #fff */
+    margin: 0;
+    font-size: 14px;
+    background: transparent !important;
+}
+
+@media (max-width: 576px) {
+    .footer-inner {
+        justify-content: center;
+        text-align: center;
+    }
+}

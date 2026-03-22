@@ -24,6 +24,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
         </a>
+        <a href="fiado.php" class="nav-link <?= $current_page == 'fiado.php' ? 'active' : '' ?>">
+            <i class="fas fa-hand-holding-dollar"></i> <span>Gestão de Fiados</span>
+        </a>
         <?php endif; ?>
 
         <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'vendedor'])): ?>
@@ -37,6 +40,23 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="estoque.php" class="nav-link <?= $current_page == 'estoque.php' ? 'active' : '' ?>">
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
         </a>
+        
+        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
+        <a href="estoque_baixo.php" class="nav-link <?= $current_page == 'estoque_baixo.php' ? 'active' : '' ?>">
+            <i class="fas fa-triangle-exclamation"></i> <span>Estoque Baixo</span>
+            <?php 
+                $productModel = new \App\Models\Product();
+                $s_filialId = $_SESSION['filial_id'] ?? null;
+                $s_isMatriz = $_SESSION['is_matriz'] ?? false;
+                $stats = $productModel->getStockStats(!$s_isMatriz ? $s_filialId : null);
+                if ($stats['critical'] > 0): 
+            ?>
+                <span class="badge bg-danger ms-auto rounded-pill" style="font-size: 0.6rem;"><?= $stats['critical'] ?></span>
+            <?php elseif ($stats['low'] > 0): ?>
+                <span class="badge bg-warning ms-auto rounded-pill text-dark" style="font-size: 0.6rem;"><?= $stats['low'] ?></span>
+            <?php endif; ?>
+        </a>
+        <?php endif; ?>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Relacionamento</div>
@@ -92,7 +112,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin'])): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
         
-        <a href="filiais.php" class="nav-link <?= $current_page == 'filiais.php' ? 'active' : '' ?>">
+        <a href="configuracoes.php?tab=unidades#unidades" class="nav-link <?= ($current_page == 'configuracoes.php' && ($_GET['tab'] ?? '') == 'unidades') ? 'active' : '' ?>">
             <i class="fas fa-landmark"></i> <span>Filiais / Lojas</span>
         </a>
         <a href="usuarios.php" class="nav-link <?= $current_page == 'usuarios.php' ? 'active' : '' ?>">
@@ -101,13 +121,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="fiscal.php?action=settings" class="nav-link <?= ($current_page == 'fiscal.php' && ($_GET['action'] ?? '') == 'settings') ? 'active' : '' ?>">
             <i class="fas fa-server"></i> <span>Conectividade SEFAZ</span>
         </a>
-        <a href="importar_automatico.php?action=config" class="nav-link <?= ($current_page == 'importar_automatico.php' && ($_GET['action'] ?? '') == 'config') ? 'active' : '' ?>">
-            <i class="fas fa-shield-halved"></i> <span>Certificado Global A1</span>
-        </a>
         <?php endif; ?>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
-        <a href="configuracoes.php" class="nav-link mt-auto border-top border-secondary border-opacity-10 <?= $current_page == 'configuracoes.php' ? 'active' : '' ?>">
+        <a href="configuracoes.php" class="nav-link mt-auto border-top border-secondary border-opacity-10 <?= ($current_page == 'configuracoes.php' && !isset($_GET['tab'])) ? 'active' : '' ?>">
             <i class="fas fa-sliders-h"></i> <span>Ajustes Gerais</span>
         </a>
         <?php endif; ?>

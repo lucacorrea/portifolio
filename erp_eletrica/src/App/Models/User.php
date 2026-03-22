@@ -118,7 +118,7 @@ class User extends BaseModel {
         }
     }
 
-    public function paginate($perPage = 15, $currentPage = 1, $order = "u.id DESC") {
+    public function paginate($perPage = 15, $currentPage = 1, $order = "u.id DESC", $filters = []) {
         $filialId = $this->getFilialContext();
         $offset = ($currentPage - 1) * $perPage;
         

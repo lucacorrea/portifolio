@@ -38,8 +38,14 @@ class NfceService extends BaseService {
 
         $config = [];
         foreach ($fields as $field) {
+            // Special handling for certificate path and CSC column names in filiais table
+            $filialKey = $field;
+            if ($field === 'certificado_path') $filialKey = 'certificado_pfx';
+            if ($field === 'csc') $filialKey = 'csc_token';
+            if ($field === 'nome_fantasia') $filialKey = 'nome';
+            
             // Priority: Filial (if it has the field populated differently from default/null)
-            $val = (!empty($filial[$field])) ? $filial[$field] : ($global[$field] ?? null);
+            $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : ($global[$field] ?? null);
             $config[$field] = $val;
         }
 
@@ -121,7 +127,7 @@ class NfceService extends BaseService {
             if (!file_exists($pfxPath)) throw new Exception("Certificado não encontrado em: $pfxPath");
             
             $pfx = file_get_contents($pfxPath);
-            $cert = Certificate::readPfx($pfx, base64_decode($fiscal['certificado_senha']));
+            $cert = Certificate::readPfx($pfx, $fiscal['certificado_senha']);
             
             $tools = new \NFePHP\NFe\Tools($configJson, $cert);
             $tools->model('65');
@@ -218,7 +224,7 @@ class NfceService extends BaseService {
             if (!file_exists($pfxPath)) throw new Exception("Certificado não encontrado em: $pfxPath");
             
             $pfx = file_get_contents($pfxPath);
-            $cert = Certificate::readPfx($pfx, base64_decode($fiscal['certificado_senha']));
+            $cert = Certificate::readPfx($pfx, $fiscal['certificado_senha']);
             
             $tools = new \NFePHP\NFe\Tools($configJson, $cert);
             $tools->model('65');

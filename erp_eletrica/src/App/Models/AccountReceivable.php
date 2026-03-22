@@ -29,4 +29,35 @@ class AccountReceivable extends BaseModel {
             ORDER BY cr.data_vencimento ASC LIMIT $limit
         ", $params)->fetchAll();
     }
+
+    public function findWithDetails($id) {
+        $filialId = $this->getFilialContext();
+        $where = "WHERE cr.id = ?";
+        $params = [$id];
+        
+        if ($filialId && ($_SESSION['usuario_nivel'] ?? '') !== 'master') {
+            $where .= " AND cr.filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        $sql = "
+            SELECT cr.*, (cr.valor - cr.valor_pago) as saldo, c.nome as cliente_nome, v.data_venda as data_venda
+            FROM {$this->table} cr 
+            JOIN clientes c ON cr.cliente_id = c.id 
+            LEFT JOIN vendas v ON cr.venda_id = v.id
+            $where
+        ";
+        
+        return $this->query($sql, $params)->fetch();
+    }
+
+    public function getItems($vendaId) {
+        $sql = "
+            SELECT vi.*, p.nome as produto_nome, p.unidade
+            FROM vendas_itens vi 
+            JOIN produtos p ON vi.produto_id = p.id 
+            WHERE vi.venda_id = ?
+        ";
+        return $this->query($sql, [$vendaId])->fetchAll();
+    }
 }

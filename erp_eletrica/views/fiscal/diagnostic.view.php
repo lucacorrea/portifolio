@@ -17,36 +17,6 @@
 </div>
 
 <div class="row g-4 mb-4">
-    <!-- Seleção de Filial -->
-    <?php if ($_SESSION['is_matriz'] && count($branches) > 1): ?>
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-3 d-flex align-items-center">
-                <i class="fas fa-building text-primary fs-4 me-3"></i>
-                <div class="flex-grow-1">
-                    <h6 class="fw-bold mb-1">Unidade Analisada</h6>
-                    <select class="form-select form-select-sm w-auto fw-bold" onchange="window.location.href='?action=diagnostic&id='+this.value">
-                        <?php foreach($branches as $b): ?>
-                            <option value="<?= $b['id'] ?>" <?= $b['id'] == $selectedBranchId ? 'selected' : '' ?>><?= $b['nome'] ?> (<?= current(explode(' ', $b['cnpj'])) ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div>
-                    <button class="btn btn-primary btn-sm fw-bold" onclick="runLiveTest(<?= $selectedBranchId ?>)">
-                        <i class="fas fa-play-circle me-1"></i> EXECUTAR TESTE DE COMUNICAÇÃO SEFAZ
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php else: ?>
-    <div class="col-12 text-end">
-        <button class="btn btn-primary fw-bold" onclick="runLiveTest(<?= $selectedBranchId ?>)">
-            <i class="fas fa-play-circle me-2"></i> EXECUTAR TESTE DE COMUNICAÇÃO SEFAZ
-        </button>
-    </div>
-    <?php endif; ?>
-
     <!-- NOVO COMPONENTE: AÇAIDINHOS STATUS NFC-e -->
     <div class="col-12 mb-2">
         <div class="card border-0 shadow-sm">
@@ -85,17 +55,24 @@
                     </div>
                 </div>
             </div>
-            <div class="card-footer bg-light border-0 text-end">
-                <a href="filiais.php?action=edit&id=<?= $selectedBranchId ?>" class="btn btn-outline-primary btn-sm fw-bold">
-                    <i class="fas fa-edit me-1"></i> Editar Dados da Filial
-                </a>
-                <a href="fiscal.php?action=settings" class="btn btn-primary btn-sm fw-bold ms-2">
-                    <i class="fas fa-cog me-1"></i> Configurações SEFAZ
-                </a>
-            </div>
-        </div>
+            <div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center">
+                <div>
+                    <button class="btn btn-warning btn-sm fw-bold" onclick="runLiveTest(<?= $selectedBranchId ?>)">
+                        <i class="fas fa-play-circle me-1"></i> EXECUTAR TESTE DE COMUNICAÇÃO SEFAZ
+                    </button>
+                </div>
+                <div>
+                    <a href="configuracoes.php?tab=unidades#unidades" class="btn btn-outline-primary btn-sm fw-bold">
+                        <i class="fas fa-edit me-1"></i> Editar Dados da Filial
+                    </a>
+                    <a href="fiscal.php?action=settings" class="btn btn-warning btn-sm fw-bold ms-2">
+                        <i class="fas fa-cog me-1"></i> Configurações SEFAZ
+                    </a>
+                </div>
     </div>
+</div>
 
+<div class="row g-4 mb-4">
     <!-- 1. Database Validation -->
     <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100 <?= array_product($dbStatus) ? 'border-top border-success border-4' : 'border-top border-danger border-4' ?>">

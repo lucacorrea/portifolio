@@ -13,13 +13,9 @@ $action = $_GET['action'] ?? 'index';
 
 switch($action) {
     case 'config':
-        $configController = new \App\Controllers\SefazConfigController();
-        $configController->index();
-        break;
     case 'config_save':
-        $configController = new \App\Controllers\SefazConfigController();
-        $configController->save();
-        break;
+        header("Location: configuracoes.php");
+        exit;
     case 'sincronizar':
         $controller->sincronizar();
         break;

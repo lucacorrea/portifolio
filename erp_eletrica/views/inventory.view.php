@@ -17,12 +17,14 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card h-100 border-0 shadow-sm border-start border-danger border-4">
-            <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Alertas de Baixa</div>
-                <h3 class="mb-0 fw-bold text-danger"><?= $stats['itens_criticos'] ?> <small class="fw-normal fs-6">itens</small></h3>
+        <a href="estoque_baixo.php" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm card-hover" style="border-left: 6px solid #ffc107 !important;">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2">Alertas de Baixa</div>
+                    <h3 class="mb-0 fw-bold text-warning"><?= $stats['itens_criticos'] ?> <small class="fw-normal fs-6 text-muted">itens</small></h3>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-3">
         <div class="card h-100 border-0 shadow-sm border-start border-info border-4">
@@ -37,20 +39,20 @@
 <!-- Actions Bar -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body d-flex justify-content-between align-items-center py-3">
-        <div class="d-flex gap-2 w-50">
+        <form method="GET" action="estoque.php" class="d-flex gap-2 w-50" id="inventoryFilterForm">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0 text-muted">
                     <i class="fas fa-search"></i>
                 </span>
-                <input type="text" id="productSearch" class="form-control border-start-0" placeholder="Pesquisar por nome ou código...">
+                <input type="text" name="q" id="productSearch" class="form-control border-start-0" placeholder="Pesquisar por nome ou código..." value="<?= htmlspecialchars($filters['q']) ?>" autocomplete="off">
             </div>
-            <select class="form-select w-auto" id="filterCategory">
+            <select name="categoria" class="form-select w-auto" id="filterCategory" onchange="this.form.submit()">
                 <option value="">Todas Categorias</option>
                 <?php foreach ($categories as $cat): ?>
-                    <option value="<?= $cat ?>"><?= $cat ?></option>
+                    <option value="<?= $cat ?>" <?= $filters['categoria'] == $cat ? 'selected' : '' ?>><?= $cat ?></option>
                 <?php endforeach; ?>
             </select>
-        </div>
+        </form>
         <div class="d-flex gap-2">
             <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
             <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#newProductModal">
@@ -64,6 +66,26 @@
     </div>
 </div>
 
+<style>
+/* Allow dropdowns to overflow the table container */
+.table-responsive {
+    overflow: visible !important;
+    padding-bottom: 60px; /* Extra space for dropdowns on the last row */
+    min-height: 400px; /* Ensure space even with few rows */
+}
+.card-body {
+    overflow: visible !important;
+}
+.card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+</style>
+
 <!-- Products Table -->
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -76,7 +98,9 @@
                         <th>Categoria</th>
                         <th class="text-center">Quantidade</th>
                         <th>Preços (C / V)</th>
+                        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
                         <th class="text-end pe-4">Ações</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -118,20 +142,32 @@
                             <div class="text-muted small">C: <?= formatarMoeda($p['preco_custo']) ?></div>
                             <div class="fw-bold text-success">V: <?= formatarMoeda($p['preco_venda']) ?></div>
                         </td>
+                        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
                         <td class="text-end pe-4">
-                            <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-light border" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)" title="Editar">
-                                    <i class="fas fa-edit text-primary"></i>
+                            <div class="dropstart">
+                                <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-v"></i>
                                 </button>
-                                <button class="btn btn-light border text-danger" onclick="deleteProduct(<?= $p['id'] ?>)" title="Excluir">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                <ul class="dropdown-menu shadow-lg border-0">
+                                    <li><h6 class="dropdown-header text-uppercase small opacity-50">Movimentação</h6></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'entrada')">
+                                        <i class="fas fa-plus-circle text-success me-2"></i>Entrada
+                                    </a></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'saida')">
+                                        <i class="fas fa-minus-circle text-danger me-2"></i>Saída
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header text-uppercase small opacity-50">Gestão</h6></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)">
+                                        <i class="fas fa-edit text-primary me-2"></i>Editar
+                                    </a></li>
+                                    <li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="deleteProduct(<?= $p['id'] ?>)">
+                                        <i class="fas fa-trash me-2"></i>Excluir
+                                    </a></li>
+                                </ul>
                             </div>
-                            <?php else: ?>
-                                <span class="text-muted small italic">Somente Leitura</span>
-                            <?php endif; ?>
                         </td>
+                        <?php endif; ?>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -144,7 +180,7 @@
         <nav aria-label="Navegação de estoque">
             <ul class="pagination pagination-sm mb-0 justify-content-center">
                 <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>" aria-label="Anterior">
+                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>" aria-label="Anterior">
                         <i class="fas fa-chevron-left small"></i>
                     </a>
                 </li>
@@ -155,11 +191,11 @@
                 for($i = $start; $i <= $end; $i++): 
                 ?>
                 <li class="page-item <?= $i == $pagination['current'] ? 'active' : '' ?>">
-                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                    <a class="page-link" href="?page=<?= $i ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>"><?= $i ?></a>
                 </li>
                 <?php endfor; ?>
                 <li class="page-item <?= $pagination['current'] >= $pagination['pages'] ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>" aria-label="Próximo">
+                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>" aria-label="Próximo">
                         <i class="fas fa-chevron-right small"></i>
                     </a>
                 </li>
@@ -335,9 +371,10 @@
                 <h5 class="modal-title fw-bold">Movimentar Inventário</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <div class="modal-body p-4">
                 <div class="row g-3">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                    <div class="col-12">
+                    <div class="col-12 text-start">
                         <label class="form-label small fw-bold">Produto</label>
                         <select name="produto_id" class="form-select shadow-sm" required>
                             <?php foreach ($allProducts as $p): ?>
@@ -345,27 +382,28 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Quantidade</label>
-                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required>
+                    <div class="col-md-6 text-start">
+                        <label class="form-label small fw-bold text-success"><i class="fas fa-layer-group me-1"></i>Quantidade</label>
+                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required placeholder="0,00">
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Tipo</label>
+                    <div class="col-md-6 text-start">
+                        <label class="form-label small fw-bold text-primary"><i class="fas fa-exchange-alt me-1"></i>Tipo</label>
                         <select name="tipo" class="form-select shadow-sm" required>
                             <option value="entrada">Entrada (+)</option>
                             <option value="saida">Saída (-)</option>
                             <option value="ajuste">Ajuste de Saldo</option>
                         </select>
                     </div>
-                    <div class="col-md-12">
-                        <label class="form-label small fw-bold">Lote / Rastreabilidade (Opcional)</label>
-                        <input type="text" name="lote" class="form-control shadow-sm" placeholder="Ex: LOTE-2024-001">
+                    <div class="col-md-12 text-start">
+                        <label class="form-label small fw-bold text-warning"><i class="fas fa-barcode me-1"></i>Lote / Rastreabilidade</label>
+                        <input type="text" name="lote" class="form-control shadow-sm" placeholder="Ex: LOTE-2024-001 (Opcional)">
                     </div>
-                    <div class="col-12">
-                        <label class="form-label small fw-bold">Motivo / Observação</label>
-                        <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Compra de mercadoria, Baixa para OS, etc"></textarea>
+                    <div class="col-12 text-start">
+                        <label class="form-label small fw-bold text-secondary"><i class="fas fa-comment-alt me-1"></i>Motivo / Observação (Opcional)</label>
+                        <textarea name="motivo" class="form-control shadow-sm" rows="3" placeholder="Ex: Compra de mercadoria, Baixa para OS, etc"></textarea>
                     </div>
                 </div>
+            </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
                 <button type="submit" class="btn btn-success px-4 fw-bold">Processar Movimento</button>
@@ -416,16 +454,31 @@ function deleteProduct(id) {
     }
 }
 
-// Client-side Inventory search logic
-document.getElementById('productSearch').addEventListener('keyup', function() {
-    let value = this.value.toLowerCase();
-    let rows = document.querySelectorAll('#inventoryTable tbody tr');
-    
-    rows.forEach(row => {
-        let text = row.innerText.toLowerCase();
-        row.style.display = text.includes(value) ? '' : 'none';
-    });
+function openMovement(productId, type) {
+    const modal = new bootstrap.Modal(document.getElementById('movementModal'));
+    const form = document.querySelector('#movementModal form');
+    form.querySelector('select[name="produto_id"]').value = productId;
+    form.querySelector('select[name="tipo"]').value = type;
+    modal.show();
+}
+
+// Debounced Auto-submit for inventory search
+let inventorySearchTimer;
+document.getElementById('productSearch').addEventListener('input', function() {
+    clearTimeout(inventorySearchTimer);
+    inventorySearchTimer = setTimeout(() => {
+        document.getElementById('inventoryFilterForm').submit();
+    }, 600);
 });
+
+// Maintain focus on search input after reload if it was active
+if (window.location.search.includes('q=')) {
+    const input = document.getElementById('productSearch');
+    input.focus();
+    const val = input.value;
+    input.value = '';
+    input.value = val;
+}
 
 // NCM Search Logic with Inline Dropdown Autocomplete
 let ncmDebounceTimer;

@@ -2,9 +2,11 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body d-flex justify-content-between align-items-center py-3">
         <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-network-wired me-2"></i>Unidades Operacionais</h6>
-        <button class="btn btn-primary fw-bold" onclick="newBranch()">
-            <i class="fas fa-plus-circle me-2"></i>Expandir Operação
-        </button>
+        <?php if ($_SESSION['is_matriz'] ?? false): ?>
+            <button class="btn btn-primary fw-bold" onclick="newBranch()">
+                <i class="fas fa-plus-circle me-2"></i>Expandir Operação
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -259,7 +261,12 @@
                     </div>
                     <div class="col-md-6 mt-3">
                         <label class="form-label small fw-bold">Senha do Certificado</label>
-                        <input type="password" name="certificado_senha" id="branch_cert_senha" class="form-control shadow-sm" placeholder="Deixe em branco para manter">
+                        <div class="input-group input-group-sm">
+                            <input type="password" name="certificado_senha" id="branch_cert_senha" class="form-control shadow-sm" placeholder="Deixe em branco para manter">
+                            <button class="btn btn-outline-secondary border-start-0 shadow-sm" type="button" onclick="togglePasswordVisibility(this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -341,7 +348,17 @@ function editBranch(branch) {
     document.getElementById('branch_csc_token').value = branch.csc_token || '';
     document.getElementById('branch_cert_senha').value = branch.certificado_senha || '';
     
-    document.getElementById('cert_info').innerText = branch.certificado_pfx ? 'Certificado atual: ' + branch.certificado_pfx : 'Nenhum certificado carregado';
+    const globalCert = '<?= $globalCert ?? '' ?>';
+    if (branch.certificado_pfx) {
+        document.getElementById('cert_info').className = 'extra-small text-success mt-1 fw-bold';
+        document.getElementById('cert_info').innerText = 'Certificado específico: ' + branch.certificado_pfx;
+    } else if (globalCert) {
+        document.getElementById('cert_info').className = 'extra-small text-info mt-1 fw-bold';
+        document.getElementById('cert_info').innerText = 'Utilizando Certificado Global: ' + globalCert;
+    } else {
+        document.getElementById('cert_info').className = 'extra-small text-warning mt-1 fw-bold';
+        document.getElementById('cert_info').innerText = 'Nenhum certificado carregado (Global ou Específico)';
+    }
     
     modal.show();
 }
@@ -371,9 +388,11 @@ async function consultarCNPJ() {
     btn.disabled = true;
 
     try {
-        const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        // Calling local proxy instead of direkt BrasilAPI to avoid CORS/Fetch errors
+        const response = await fetch(`api/cnpj_search.php?cnpj=${cnpj}`);
         if (!response.ok) {
-            throw new Error('Falha na consulta. CNPJ rejeitado ou limitação de API.');
+            const errData = await response.json();
+            throw new Error(errData.error || 'Falha na consulta. CNPJ rejeitado ou limitação de API.');
         }
         
         const data = await response.json();
@@ -381,7 +400,8 @@ async function consultarCNPJ() {
         let ibgeCode = '';
         if (data.cep) {
             try {
-                const cepRes = await fetch(`https://brasilapi.com.br/api/cep/v2/${data.cep.replace(/\D/g, '')}`);
+                // Also proxying CEP lookup
+                const cepRes = await fetch(`api/cep_search.php?cep=${data.cep.replace(/\D/g, '')}`);
                 if (cepRes.ok) {
                     const cepData = await cepRes.json();
                     if (cepData.ibge) ibgeCode = cepData.ibge;

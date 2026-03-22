@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-
 require_once __DIR__ . '/../../conexao.php';
 
 $pdo = db();
@@ -114,9 +113,9 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
   <style>
     :root {
       --page-w: 58mm;
-      --pad-x: 1.2mm;
-      --pad-top: 1.5mm;
-      --pad-bottom: 2mm;
+      --content-w: 48mm;
+      --pad-top: 2.8mm;
+      --pad-bottom: 3.5mm;
 
       --fs-8: 8px;
       --fs-9: 9px;
@@ -154,58 +153,34 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     }
 
     .paper {
-      width: var(--page-w);
-      max-width: var(--page-w);
-      margin: 0;
-      padding: var(--pad-top) var(--pad-x) var(--pad-bottom) var(--pad-x);
+      width: var(--content-w);
+      max-width: var(--content-w);
+      margin: 0 auto;
+      padding-top: var(--pad-top);
+      padding-bottom: var(--pad-bottom);
     }
 
-    .c {
-      text-align: center;
-    }
+    .c { text-align: center; }
+    .r { text-align: right; }
+    .l { text-align: left; }
+    .b { font-weight: 700; }
 
-    .r {
-      text-align: right;
-    }
-
-    .l {
-      text-align: left;
-    }
-
-    .b {
-      font-weight: 700;
-    }
-
-    .t8 {
-      font-size: var(--fs-8);
-    }
-
-    .t9 {
-      font-size: var(--fs-9);
-    }
-
-    .t10 {
-      font-size: var(--fs-10);
-    }
-
-    .t11 {
-      font-size: var(--fs-11);
-    }
-
-    .t12 {
-      font-size: var(--fs-12);
-    }
+    .t8 { font-size: var(--fs-8); }
+    .t9 { font-size: var(--fs-9); }
+    .t10 { font-size: var(--fs-10); }
+    .t11 { font-size: var(--fs-11); }
+    .t12 { font-size: var(--fs-12); }
 
     .line {
       border-top: 1px dashed #000;
-      margin: 4px 0;
+      margin: 5px 0;
       height: 0;
       width: 100%;
     }
 
     .line2 {
       border-top: 1px solid #000;
-      margin: 4px 0;
+      margin: 5px 0;
       height: 0;
       width: 100%;
     }
@@ -217,20 +192,21 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     }
 
     .head-emit .nome {
-      font-size: 11px;
+      font-size: 10.8px;
       font-weight: 700;
-      line-height: 1.15;
+      line-height: 1.2;
       text-transform: uppercase;
     }
 
     .head-emit .sub {
-      font-size: 8.8px;
-      line-height: 1.15;
+      font-size: 8.6px;
+      line-height: 1.2;
+      margin-top: 1px;
     }
 
     .sec-title {
       text-align: center;
-      font-size: 10px;
+      font-size: 9.8px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .2px;
@@ -239,9 +215,9 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     .meta div,
     .client div,
     .pay div {
-      font-size: 9px;
-      line-height: 1.2;
-      margin-bottom: 1px;
+      font-size: 8.8px;
+      line-height: 1.25;
+      margin-bottom: 2px;
     }
 
     table {
@@ -252,38 +228,33 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
 
     th,
     td {
-      padding: 1px 0;
+      padding: 2px 0;
       vertical-align: top;
-      font-size: 9px;
-      line-height: 1.15;
+      font-size: 8.8px;
+      line-height: 1.2;
     }
 
     thead th {
       border-bottom: 1px solid #000;
-      padding-bottom: 2px;
+      padding-bottom: 3px;
       font-weight: 700;
     }
 
-    .col-n {
-      width: 4mm;
-    }
-
-    .col-total {
-      width: 15mm;
-    }
+    .col-n { width: 4mm; }
+    .col-total { width: 14mm; }
 
     .itemname {
-      font-size: 9px;
+      font-size: 8.8px;
       font-weight: 700;
-      line-height: 1.1;
+      line-height: 1.15;
       word-break: break-word;
       overflow-wrap: break-word;
       padding-right: 2px;
     }
 
     .subline {
-      font-size: 8.5px;
-      line-height: 1.1;
+      font-size: 8.2px;
+      line-height: 1.15;
       color: #111;
       word-break: break-word;
       overflow-wrap: break-word;
@@ -295,9 +266,9 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
       justify-content: space-between;
       align-items: flex-start;
       gap: 6px;
-      font-size: 9.5px;
-      line-height: 1.2;
-      margin: 1px 0;
+      font-size: 9.2px;
+      line-height: 1.25;
+      margin: 2px 0;
       width: 100%;
     }
 
@@ -315,22 +286,22 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     }
 
     .grand {
-      font-size: 11px;
+      font-size: 10.6px;
       font-weight: 700;
     }
 
     .footer-msg {
       text-align: center;
-      font-size: 9px;
-      line-height: 1.2;
-      margin-top: 2px;
+      font-size: 8.8px;
+      line-height: 1.25;
+      margin-top: 4px;
     }
 
     .btns {
       display: flex;
       gap: 6px;
       justify-content: center;
-      margin-top: 8px;
+      margin-top: 10px;
     }
 
     button {
@@ -344,21 +315,22 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
     }
 
     @media print {
-
       html,
       body {
         width: 58mm !important;
         min-width: 58mm !important;
         max-width: 58mm !important;
+        zoom: 110% !important;
         margin: 0 !important;
         padding: 0 !important;
       }
 
       .paper {
-        width: 58mm !important;
-        max-width: 58mm !important;
-        margin: 0 !important;
-        padding: 1mm 1.2mm 2mm 1.2mm !important;
+        width: 48mm !important;
+        max-width: 48mm !important;
+        margin: 0 auto !important;
+        padding-top: 2.8mm !important;
+        padding-bottom: 3.5mm !important;
       }
 
       .btns {
@@ -508,8 +480,14 @@ $parts = is_array($pagData['parts'] ?? null) ? $pagData['parts'] : [];
   <script>
     <?php if ($auto): ?>
       window.addEventListener('load', () => {
-        setTimeout(() => window.print(), 250);
+        setTimeout(() => {
+          window.print();
+        }, 150);
       });
+
+      window.onafterprint = () => {
+        window.close();
+      };
     <?php endif; ?>
   </script>
 </body>

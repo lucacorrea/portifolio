@@ -1,11 +1,9 @@
 <?php if (!$caixaAberto): ?>
-<div class="alert alert-dark shadow-sm border-0 d-flex align-items-center mb-4 p-3 rounded-4" style="background: rgba(251, 191, 36, 0.1); border: 1px solid var(--primary-color) !important;">
+<div class="alert alert-warning shadow-sm border-0 d-flex align-items-center mb-4 p-3 rounded-4" style="background: rgba(251, 191, 36, 0.1); border: 1px solid var(--primary-color) !important;">
     <i class="fas fa-cash-register fa-2x me-3 text-warning"></i>
     <div class="flex-grow-1">
-        <h6 class="mb-1 fw-bold text-white">CAIXA FECHADO PARA ESTA FILIAL</h6>
-        <p class="mb-0 small text-light">A geração de pré-vendas (orçamentos) requer que você tenha um caixa aberto. 
-           <a href="caixa.php" class="fw-bold text-primary text-decoration-underline ms-1">Abrir meu caixa agora.</a>
-        </p>
+        <h6 class="mb-1 fw-bold text-dark">CAIXA FECHADO PARA ESTA FILIAL</h6>
+        <p class="mb-0 small text-secondary">A geração de pré-vendas (orçamentos) requer que você tenha um caixa aberto.</p>
     </div>
 </div>
 <?php endif; ?>

@@ -7,7 +7,7 @@
             <p class="text-muted small mb-0">Notas Fiscais emitidas para o seu CNPJ via Certificado A1</p>
         </div>
         <div class="col-auto">
-            <?php if (in_array($_SESSION['usuario_nivel'], ['master', 'admin'])): ?>
+            <?php if (in_array($_SESSION['usuario_nivel'], ['master', 'admin']) && ($_SESSION['is_matriz'] ?? false)): ?>
                 <a href="importar_automatico.php?action=config" class="btn btn-outline-secondary fw-bold me-2">
                     <i class="fas fa-cog me-2"></i>CONFIGURAÇÕES GLOBAIS
                 </a>
@@ -19,14 +19,12 @@
     </div>
 
     <!-- Filtros e Status -->
-    <div class="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded p-3 mb-4 text-primary shadow-sm">
-        <div class="d-flex align-items-center">
-            <i class="fas fa-info-circle me-3 fa-2x"></i>
-            <div>
-                <h6 class="mb-1 fw-bold">Como funciona?</h6>
-                <p class="mb-0 small text-light">O sistema consulta os servidores da SEFAZ Nacional em busca de notas destinadas ao seu CNPJ. 
-                As notas aparecem aqui agrupadas por fornecedor para facilitar a entrada no estoque.</p>
-            </div>
+    <div class="alert alert-dark shadow-sm border-0 d-flex align-items-center mb-4 p-3 rounded-4" style="background: rgba(251, 191, 36, 0.1); border: 1px solid var(--primary-color) !important;">
+        <i class="fas fa-info-circle me-3 fa-2x text-warning"></i>
+        <div class="flex-grow-1">
+            <h6 class="mb-1 fw-bold text-dark">Como funciona?</h6>
+            <p class="mb-0 small text-muted">O sistema consulta os servidores da SEFAZ Nacional em busca de notas destinadas ao seu CNPJ. 
+            As notas aparecem aqui agrupadas por fornecedor para facilitar a entrada no estoque.</p>
         </div>
     </div>
 

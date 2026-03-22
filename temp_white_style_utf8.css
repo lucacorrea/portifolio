@@ -1,0 +1,367 @@
+﻿:root {
+    /* Dark Modern Palette (Neutral Black) */
+    --primary-color: #FFC107;
+    /* Vibrant Yellow */
+    --primary-hover: #FFB300;
+    --secondary-color: #141414;
+    --bg-main: #0a0a0a;
+    --surface: #141414;
+    --text-primary: #f8fafc;
+    --text-secondary: #a3a3a3;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #FFC107;
+    --border: #262626;
+
+    /* Corporate Aliases */
+    --erp-primary: var(--primary-color);
+    --erp-secondary: var(--secondary-color);
+
+    /* Technical Spacing */
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 80px;
+    --header-height: 70px;
+
+    /* UX Tokens - No Shadows */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --transition: 0.15s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* --- Layout Architecture --- */
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar Refined (Darker) */
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--surface);
+    color: white;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1040;
+    transition: width var(--transition), transform var(--transition);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: none;
+    border-right: 1px solid var(--border);
+}
+
+.sidebar-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 25px;
+    background: #000000;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+/* Main Content Wrapper */
+.main-content,
+.main-wrapper {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    transition: margin-left var(--transition);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--bg-main);
+}
+
+/* Top Bar Styling - Dark */
+.top-bar {
+    height: var(--header-height);
+    background: var(--bg-main);
+    padding: 0 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: none;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
+
+/* Corporate Cards - Flat */
+.card {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    box-shadow: none;
+    margin-bottom: 30px;
+    overflow: visible !important;
+    /* Allow search dropdowns to overflow */
+    border: 1px solid var(--border);
+    transition: none !important;
+}
+
+/* Icons visibility */
+.bg-opacity-10 i,
+.bg-opacity-25 i,
+.rounded-circle i {
+    color: #ffffff !important;
+}
+
+.card-header {
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border);
+}
+
+.stat-card {
+    background: var(--surface);
+    padding: 25px;
+    border-radius: var(--radius-md);
+    box-shadow: none;
+    border: 1px solid var(--border);
+    transition: none !important;
+}
+
+.stat-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.industrial-table th {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-secondary);
+}
+
+.industrial-table tr:hover td {
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.form-control {
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+}
+
+.form-control:focus {
+    background: #0d0d0d;
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+}
+
+/* Fix for readonly and disabled inputs in dark theme */
+.form-control:disabled,
+.form-control[readonly] {
+    background-color: #1a1a1a !important;
+    border-color: #333 !important;
+    color: #a3a3a3 !important;
+    opacity: 0.8;
+}
+
+/* Fix for white background in input-group-text */
+.input-group-text {
+    background-color: #1a1a1a !important;
+    border-color: var(--border) !important;
+    color: #a3a3a3 !important;
+}
+
+/* Animations Disabled */
+.fade-in {
+    animation: none !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Badges System */
+.badge-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.badge-danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+/* Specific Table Row Backgrounds (Dark Theme Optimization) */
+.table-warning {
+    --bs-table-bg: rgba(255, 193, 7, 0.15) !important;
+    --bs-table-color: #f8fafc !important;
+    border-color: rgba(255, 193, 7, 0.25) !important;
+}
+
+.table-danger {
+    --bs-table-bg: rgba(239, 68, 68, 0.35) !important;
+    --bs-table-color: #f8fafc !important;
+    border-color: rgba(239, 68, 68, 0.45) !important;
+}
+
+.table-success {
+    --bs-table-bg: rgba(16, 185, 129, 0.12) !important;
+    --bs-table-color: #f8fafc !important;
+    border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Hover consistency for tinted rows */
+.table-hover tbody tr.table-warning:hover {
+    background-color: rgba(255, 193, 7, 0.22) !important;
+}
+
+.table-hover tbody tr.table-danger:hover {
+    background-color: #4d0000 !important;
+}
+
+.table-hover tbody tr.table-success:hover {
+    background-color: rgba(16, 185, 129, 0.18) !important;
+}
+
+/* --- FINAL BUTTON COLOR STANDARDS (HIGH SPECIFICITY) --- */
+body .btn-primary,
+body .btn-warning,
+body .btn-yellow,
+body .btn-gold {
+    background-color: #0a0a0a !important;
+    border: 1px solid #FFC107 !important;
+    color: #fff !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+/* Unified Hover Standard: Solid Yellow with Black Text */
+body .btn-primary:hover,
+body .btn-warning:hover,
+body .btn-yellow:hover,
+body .btn-gold:hover,
+body .btn-outline-primary:hover,
+body .btn-outline-warning:hover,
+body .btn-primary:focus,
+body .btn-warning:focus,
+body .btn-outline-primary:focus,
+body .btn-outline-warning:focus,
+body .btn-primary:active,
+body .btn-warning:active {
+    background-color: #FFC107 !important;
+    border-color: #FFC107 !important;
+    color: #000 !important;
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2) !important;
+}
+
+.text-warning {
+    color: #FFC107 !important;
+}
+
+.border-warning {
+    border-color: #FFC107 !important;
+}
+
+.bg-warning {
+    background-color: #FFC107 !important;
+}
+
+.bg-opacity-10.text-warning {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+/* File Input Styling */
+input[type="file"] {
+    background-color: #0d0d0d !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border) !important;
+    padding: 0.2rem !important;
+}
+
+input[type="file"]::file-selector-button {
+    background-color: var(--primary-color) !important;
+    color: #000 !important;
+    border: none !important;
+    padding: 0.4rem 1rem !important;
+    border-radius: var(--radius-sm) !important;
+    cursor: pointer !important;
+    margin-right: 1rem !important;
+    font-weight: bold !important;
+    transition: background-color 0.2s !important;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background-color: var(--primary-hover) !important;
+}
+
+/* Alert Visibility Overrides (Dark Theme) */
+.alert {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(4px);
+}
+
+.alert-danger {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    color: #ff8a8a !important;
+    /* Lighter red for visibility */
+}
+
+.alert-danger i,
+.alert-danger h6,
+.alert-danger a {
+    color: #ff8a8a !important;
+}
+
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.15) !important;
+    color: #ffd75e !important;
+    /* Lighter gold for visibility */
+}
+
+.alert-warning i,
+.alert-warning h6,
+.alert-warning a {
+    color: #ffd75e !important;
+}
+
+.alert-info {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    color: #93c5fd !important;
+}
+
+.alert-info i,
+.alert-info h6,
+.alert-info a {
+    color: #93c5fd !important;
+}
+
+.alert-success {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    color: #6ee7b7 !important;
+}
+
+.alert-success i,
+.alert-success h6,
+.alert-success a {
+    color: #6ee7b7 !important;
+}

@@ -1,0 +1,204 @@
+:root {
+    --coari-teal: #004fbbe0;
+    --bg-soft: #f5f7fb;
+    --hero-h: 360px;
+    /* altura do banner */
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-soft);
+    color: #1f2a37;
+}
+
+/* HEADER */
+.top-header {
+    background: #fff;
+    border-bottom: 3px solid var(--coari-teal);
+    width: 100%;
+}
+
+.top-header .container-fluid {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.brand-wrap {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    white-space: nowrap;
+}
+
+.brand-wrap img {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+}
+
+/* HERO - largura total (cover) */
+.hero {
+    position: relative;
+    width: 100%;
+    height: var(--hero-h);
+    background: url('./dist/assets/images/logo/catedral-coari.jpg') center / cover no-repeat;
+    /* largura total */
+    /* Para mostrar a imagem inteira (sem cortar), troque 'cover' por 'contain' */
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, .22) 0%, rgba(0, 0, 0, .42) 65%, rgba(0, 0, 0, .52) 100%);
+}
+
+.hero-inner {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 1rem;
+}
+
+.hero-inner h1 {
+    color: #fff;
+    font-weight: 900;
+    letter-spacing: -.3px;
+    margin: 0;
+    text-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+    font-size: clamp(1.6rem, 2.5vw + 1rem, 2.8rem);
+}
+
+/* CARD */
+.main-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .10);
+    padding: 2rem;
+    margin-top: -18px;
+}
+
+.section-title {
+    text-transform: uppercase;
+    font-weight: 800;
+    letter-spacing: .4px;
+    color: #0a1f2e;
+}
+
+.requirements {
+    background: #f8fafc;
+    border: 1px dashed #d1d5db;
+    border-radius: .6rem;
+    padding: .9rem 1rem;
+    color: #334155;
+    font-size: .95rem;
+}
+
+.btn-coari {
+    background: var(--coari-teal);
+    color: #fff;
+    border: none;
+    font-weight: 800;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    padding: 1rem 1.25rem;
+    border-radius: .7rem;
+    width: 100%;
+}
+
+.btn-coari:hover {
+    background: #098e90;
+    color: #fff;
+}
+
+/* FOOTER */
+footer {
+    margin-top: auto;
+    background: #0d1b24;
+    color: #cfe6ea;
+    border-top: 4px solid var(--coari-teal);
+    text-align: center;
+    padding: 1rem 0;
+}
+
+footer a {
+    color: #e6f9fb;
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+.dark-wizard {
+    font-size: 15px !important;
+}
+
+label {
+    color: #000;
+    font-weight: 400;
+    font-size: 13px !important;
+}
+
+h5 {
+    font-size: 15px !important;
+}
+
+small {
+    font-size: 12px !important;
+    text-align: justify !important;
+}
+
+.helper {
+    display: block;
+    /* Quebra embaixo do label */
+    margin-left: 1.8rem;
+    /* Alinha com o texto do label */
+    font-size: 0.875rem;
+    /* Tamanho menor */
+    color: #6c757d;
+    /* Cinza Bootstrap */
+}
+
+.renda {
+    display: block;
+    margin-left: 0 !important;
+}
+
+.form-card {
+    margin-top: -40px !important;
+}
+
+@media (max-width: 776px) {
+    .btn-add-membro-responsive {
+        font-size: 13px !important;
+        padding: 0.65rem 0.8rem;
+    }
+}
+
+/* Responsivo */
+@media (max-width:576px) {
+    :root {
+        --hero-h: 260px;
+    }
+
+    .brand-wrap img {
+        height: 34px;
+    }
+
+    .main-card {
+        padding: 1.25rem;
+        margin-top: -14px;
+    }
+}

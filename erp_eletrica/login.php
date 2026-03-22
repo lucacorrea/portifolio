@@ -84,12 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="public/css/corporate.css?v=4.9">
     <style>
         :root {
-            --login-bg: #0a0a0a;
-            --card-bg: #141414;
+            --login-bg: #f8fafc;
+            --card-bg: #ffffff;
             --accent-gold: #FFC107;
             --accent-hover: #FFB300;
-            --input-bg: #0d0d0d;
-            --border-color: #262626;
+            --input-bg: #ffffff;
+            --border-color: #e2e8f0;
         }
 
         body {
@@ -100,14 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             min-height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
-            color: #f8fafc;
+            color: #1e293b;
         }
 
         .login-card {
             background: var(--card-bg);
             padding: 50px;
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
             width: 100%;
             max-width: 450px;
             border: 1px solid var(--border-color);
@@ -139,14 +139,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .login-header h1 {
             font-size: 1.75rem;
-            color: #fff;
+            color: #1e293b;
             margin: 0;
             font-weight: 800;
             letter-spacing: 2px;
         }
 
         .login-header p {
-            color: #a3a3a3;
+            color: #64748b;
             font-size: 0.85rem;
             margin-top: 5px;
             letter-spacing: 1px;
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             display: block;
             margin-bottom: 10px;
             font-weight: 700;
-            color: #a3a3a3;
+            color: #64748b;
             font-size: 0.7rem;
             letter-spacing: 1px;
         }
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: 1rem;
             transition: all 0.2s;
             background: var(--input-bg);
-            color: #fff !important;
+            color: #1e293b !important;
         }
 
         .form-control:focus {
@@ -182,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             background: var(--input-bg);
             outline: none;
             box-shadow: none;
-            color: #fff;
+            color: #1e293b;
         }
 
         .form-control::placeholder {
@@ -250,8 +250,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         select.form-control option {
-            background-color: var(--card-bg);
-            color: #fff;
+            background-color: #ffffff;
+            color: #1e293b;
         }
 
         @media (max-width: 480px) {
@@ -303,7 +303,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <div class="form-group">
                 <label class="form-label">SENHA TÉCNICA</label>
-                <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
+                <div class="input-group">
+                    <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
+                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: #475569;">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="btn-login">
                 AUTENTICAR ACESSO <i class="fas fa-shield-alt"></i>
@@ -320,5 +325,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             VERSÃO <?php echo APP_VERSION; ?> | SECURE INDUSTRIAL ACCESS
         </div>
     </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="public/js/corporate.js"></script>
 </body>
 </html>

@@ -29,7 +29,7 @@ $porCongregacao = $pdo->query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Igreja Vida Nova - Dashboard</title>
+    <title>Igreja de Deus Nascer de Novo - Dashboard</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/css.css">
@@ -39,11 +39,9 @@ $porCongregacao = $pdo->query("
     <div class="dashboard">
         <div class="header">
             <div class="logo-area">
-                <div class="logo-icon">
-                    <i class="fas fa-church"></i>
-                </div>
+                
                 <div class="logo-text">
-                    <h1>Igreja Vida Nova</h1>
+                    <h1>IGREJA DE DEUS NASCER DE NOVO</h1>
                     <p>Administração eclesiástica</p>
                 </div>
             </div>
@@ -58,9 +56,7 @@ $porCongregacao = $pdo->query("
                 <a href="listar.php" class="nav-item">
                     <i class="fas fa-users"></i> Membros
                 </a>
-                <a href="listar.php" class="nav-item">
-                    <i class="fas fa-file-alt"></i> Fichas
-                </a>
+              
             </div>
 
             <div class="user-profile">

@@ -11,4 +11,8 @@ if (($_SESSION['usuario_nivel'] ?? '') === 'gerente') {
 }
 
 $controller = new \App\Controllers\DashboardController();
-$controller->index();
+if (isset($_GET['action']) && $_GET['action'] === 'getRealtimeStats') {
+    $controller->getRealtimeStats();
+} else {
+    $controller->index();
+}

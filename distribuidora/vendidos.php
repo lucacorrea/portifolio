@@ -74,6 +74,47 @@ function brl(float $v): string
     return 'R$ ' . number_format($v, 2, ',', '.');
 }
 
+function br_date(?string $v): string
+{
+    $v = trim((string)$v);
+    if ($v === '') return '—';
+
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', substr($v, 0, 10), $m)) {
+        return $m[3] . '/' . $m[2] . '/' . $m[1];
+    }
+
+    try {
+        return (new DateTime($v))->format('d/m/Y');
+    } catch (Throwable $e) {
+        return $v;
+    }
+}
+
+function br_datetime(?string $v): string
+{
+    $v = trim((string)$v);
+    if ($v === '') return '—';
+
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:\s+|T)?(\d{2})?:?(\d{2})?:?(\d{2})?/', $v, $m)) {
+        $data = $m[3] . '/' . $m[2] . '/' . $m[1];
+        $hh   = $m[4] ?? null;
+        $ii   = $m[5] ?? null;
+        $ss   = $m[6] ?? null;
+
+        if ($hh !== null && $ii !== null) {
+            return $data . ' ' . $hh . ':' . $ii . ($ss !== null ? ':' . $ss : '');
+        }
+
+        return $data;
+    }
+
+    try {
+        return (new DateTime($v))->format('d/m/Y H:i:s');
+    } catch (Throwable $e) {
+        return $v;
+    }
+}
+
 function table_exists(PDO $pdo, string $table): bool
 {
     $sql = "SELECT COUNT(*)
@@ -573,15 +614,15 @@ function render_table_rows(array $rows): string
 
     $html = '';
     foreach ($rows as $r) {
-        $id        = (int)$r['id'];
-        $data      = e((string)$r['data']);
-        $createdAt = e((string)$r['created_at']);
-        $cliente   = e((string)($r['cliente'] ?? '—'));
-        $canal     = strtoupper((string)($r['canal'] ?? ''));
-        $pagamento = e((string)($r['pagamento'] ?? '—'));
-        $endereco  = e((string)($r['endereco'] ?? ''));
-        $total     = brl((float)$r['total']);
-        $recebido  = brl((float)$r['recebido']);
+        $id          = (int)$r['id'];
+        $dataBr      = e(br_date((string)($r['data'] ?? '')));
+        $createdAtBr = e(br_datetime((string)($r['created_at'] ?? '')));
+        $cliente     = e((string)($r['cliente'] ?? '—'));
+        $canal       = strtoupper((string)($r['canal'] ?? ''));
+        $pagamento   = e((string)($r['pagamento'] ?? '—'));
+        $endereco    = e((string)($r['endereco'] ?? ''));
+        $total       = brl((float)$r['total']);
+        $recebido    = brl((float)$r['recebido']);
 
         $canalBadge = $canal === 'DELIVERY'
             ? '<span class="badge-soft b-open">DELIVERY</span>'
@@ -615,8 +656,8 @@ function render_table_rows(array $rows): string
             <tr>
                 <td class="td-nowrap"><b>#' . $id . '</b></td>
                 <td>
-                    <div class="mini">' . e((string)$data) . '</div>
-                    <div class="muted2">' . e((string)$createdAt) . '</div>
+                    <div class="mini">' . $dataBr . '</div>
+                    <div class="muted2">' . $createdAtBr . '</div>
                 </td>
                 <td>
                     <div class="td-clip mini">' . $cliente . '</div>
@@ -700,8 +741,10 @@ if ($action === 'excel') {
     $rows = $result['rows'];
 
     $agora = date('d/m/Y H:i');
-    $di = get_str('di') ?: '—';
-    $df = get_str('df') ?: '—';
+    $diRaw = get_str('di');
+    $dfRaw = get_str('df');
+    $di = $diRaw !== '' ? br_date($diRaw) : '—';
+    $df = $dfRaw !== '' ? br_date($dfRaw) : '—';
     $canal = get_str('canal', 'TODOS');
     $pag = get_str('pag', 'TODOS');
     $q = get_str('q') ?: '—';
@@ -912,7 +955,7 @@ if ($action === 'excel') {
                     ?>
                         <tr>
                             <td class="center"><?= (int)$r['id'] ?></td>
-                            <td class="center"><?= e((string)$r['data']) ?></td>
+                            <td class="center"><?= e(br_date((string)$r['data'])) ?></td>
                             <td class="left"><?= e((string)($r['cliente'] ?? '')) ?></td>
                             <td class="center"><?= e((string)($r['canal'] ?? '')) ?></td>
                             <td class="center"><?= e((string)($r['pagamento'] ?? '')) ?></td>
@@ -1491,7 +1534,6 @@ $initialTotais = $initial['totais'];
             word-break: break-word;
         }
 
-
         @media(max-width:1199.98px) {
             .summary-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1617,7 +1659,6 @@ $initialTotais = $initial['totais'];
     <div class="overlay"></div>
 
     <main class="main-wrapper">
-        <!-- Header -->
         <header class="header">
             <div class="container-fluid">
                 <div class="row">
@@ -1931,15 +1972,37 @@ $initialTotais = $initial['totais'];
 
         function fmtDate(iso) {
             if (!iso) return '—';
-            const s = String(iso).slice(0, 10);
-            const p = s.split('-');
-            if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
-            return iso;
+
+            const s = String(iso).trim();
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+            if (m) {
+                return `${m[3]}/${m[2]}/${m[1]}`;
+            }
+
+            return s;
         }
 
         function fmtDateTime(dt) {
             if (!dt) return '—';
-            return String(dt);
+
+            const s = String(dt).trim();
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+
+            if (m) {
+                const data = `${m[3]}/${m[2]}/${m[1]}`;
+                const hh = m[4];
+                const ii = m[5];
+                const ss = m[6];
+
+                if (hh && ii) {
+                    return `${data} ${hh}:${ii}${ss ? ':' + ss : ''}`;
+                }
+
+                return data;
+            }
+
+            return s;
         }
 
         function escapeHtml(s) {
@@ -1949,7 +2012,7 @@ $initialTotais = $initial['totais'];
                 '>': '&gt;',
                 '"': '&quot;',
                 "'": '&#039;'
-            } [m]));
+            }[m]));
         }
 
         function numQ(v) {
@@ -2161,7 +2224,7 @@ $initialTotais = $initial['totais'];
                 state.lastCupomId = Number(v.id || 0);
 
                 el('dId').textContent = `#${v.id || '—'}`;
-                el('dDt').textContent = `${v.data || '—'} • ${v.created_at || '—'}`;
+                el('dDt').textContent = `${fmtDate(v.data)} • ${fmtDateTime(v.created_at)}`;
                 el('dCli').textContent = v.cliente || '—';
                 el('dCanal').textContent = v.canal || '—';
                 el('dPag').textContent = v.pagamento || '—';

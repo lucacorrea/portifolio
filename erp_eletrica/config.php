@@ -85,5 +85,3 @@ $_SESSION['LAST_ACTIVITY'] = time();
 function checkAuth($niveis_permitidos = []) {
     \App\Services\AuthService::check($niveis_permitidos);
 }
-?>
-
