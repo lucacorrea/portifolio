@@ -1,0 +1,151 @@
+meu-saas/
+│
+├── app/
+│   ├── Core/
+│   │   ├── App.php
+│   │   ├── Controller.php
+│   │   ├── Model.php
+│   │   ├── Router.php
+│   │   ├── View.php
+│   │   ├── Auth.php
+│   │   ├── Csrf.php
+│   │   ├── Session.php
+│   │   └── Validator.php
+│   │
+│   ├── Helpers/
+│   │   ├── url.php
+│   │   ├── asset.php
+│   │   ├── auth.php
+│   │   ├── format.php
+│   │   └── flash.php
+│   │
+│   ├── Middleware/
+│   │   ├── AuthMiddleware.php
+│   │   ├── GuestMiddleware.php
+│   │   └── PermissionMiddleware.php
+│   │
+│   ├── Services/
+│   │   ├── MenuService.php
+│   │   ├── DashboardService.php
+│   │   ├── UsuarioService.php
+│   │   └── EmpresaService.php
+│   │
+│   ├── Config/
+│   │   ├── app.php
+│   │   ├── database.php
+│   │   ├── permissions.php
+│   │   └── menu.php
+│   │
+│   └── Modules/
+│       ├── Dashboard/
+│       │   ├── Controllers/
+│       │   │   └── DashboardController.php
+│       │   ├── Views/
+│       │   │   └── index.php
+│       │   └── routes.php
+│       │
+│       ├── Clientes/
+│       │   ├── Controllers/
+│       │   │   └── ClientesController.php
+│       │   ├── Models/
+│       │   │   └── Cliente.php
+│       │   ├── Views/
+│       │   │   ├── index.php
+│       │   │   ├── create.php
+│       │   │   ├── edit.php
+│       │   │   └── show.php
+│       │   └── routes.php
+│       │
+│       ├── Financeiro/
+│       ├── Documentos/
+│       ├── Obrigacoes/
+│       ├── Configuracoes/
+│       ├── Usuarios/
+│       └── Auth/
+│
+├── bootstrap/
+│   ├── app.php
+│   └── helpers.php
+│
+├── public/
+│   ├── index.php
+│   ├── .htaccess
+│   │
+│   ├── assets/
+│   │   ├── css/
+│   │   │   ├── app.css
+│   │   │   ├── layout/
+│   │   │   │   ├── sidebar.css
+│   │   │   │   ├── topbar.css
+│   │   │   │   ├── dashboard.css
+│   │   │   │   └── responsive.css
+│   │   │   ├── components/
+│   │   │   │   ├── cards.css
+│   │   │   │   ├── tables.css
+│   │   │   │   ├── forms.css
+│   │   │   │   ├── buttons.css
+│   │   │   │   ├── badges.css
+│   │   │   │   └── alerts.css
+│   │   │   └── pages/
+│   │   │       ├── dashboard.css
+│   │   │       ├── clientes.css
+│   │   │       └── financeiro.css
+│   │   │
+│   │   ├── js/
+│   │   │   ├── app.js
+│   │   │   ├── sidebar.js
+│   │   │   ├── dashboard.js
+│   │   │   └── modules/
+│   │   │       ├── clientes.js
+│   │   │       └── financeiro.js
+│   │   │
+│   │   ├── img/
+│   │   └── vendor/
+│   │
+│   └── uploads/
+│       ├── empresas/
+│       ├── usuarios/
+│       └── documentos/
+│
+├── resources/
+│   ├── views/
+│   │   ├── layouts/
+│   │   │   ├── app.php
+│   │   │   ├── auth.php
+│   │   │   └── guest.php
+│   │   │
+│   │   ├── partials/
+│   │   │   ├── head.php
+│   │   │   ├── sidebar.php
+│   │   │   ├── topbar.php
+│   │   │   ├── footer.php
+│   │   │   ├── scripts.php
+│   │   │   ├── flash.php
+│   │   │   └── breadcrumbs.php
+│   │   │
+│   │   └── errors/
+│   │       ├── 403.php
+│   │       ├── 404.php
+│   │       └── 500.php
+│   │
+│   └── database/
+│       ├── migrations/
+│       ├── seeds/
+│       └── sql/
+│
+├── routes/
+│   ├── web.php
+│   ├── auth.php
+│   └── api.php
+│
+├── storage/
+│   ├── cache/
+│   ├── logs/
+│   ├── sessions/
+│   └── backups/
+│
+├── vendor/
+├── .env
+├── .env.example
+├── composer.json
+└── README.md
