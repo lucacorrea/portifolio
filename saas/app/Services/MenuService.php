@@ -14,7 +14,6 @@ final class MenuService
                 'route' => \url('dashboard'),
                 'key'   => 'dashboard',
             ],
-
             [
                 'label' => 'Clientes',
                 'icon'  => 'users',
@@ -32,7 +31,6 @@ final class MenuService
                     ],
                 ],
             ],
-
             [
                 'label' => 'Documentos',
                 'icon'  => 'file',
@@ -50,7 +48,6 @@ final class MenuService
                     ],
                 ],
             ],
-
             [
                 'label' => 'Financeiro',
                 'icon'  => 'money',
@@ -73,7 +70,6 @@ final class MenuService
                     ],
                 ],
             ],
-
             [
                 'label' => 'Assinaturas',
                 'icon'  => 'card',
@@ -96,7 +92,6 @@ final class MenuService
                     ],
                 ],
             ],
-
             [
                 'label' => 'Configurações',
                 'icon'  => 'settings',
@@ -119,6 +114,6 @@ final class MenuService
 
     public static function isActive(string $active, string $key): bool
     {
-        return $active === $key || str_starts_with($active, $key . '.');
+        return $active === $key || strpos($active, $key . '.') === 0;
     }
 }
