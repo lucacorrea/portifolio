@@ -1,17 +1,37 @@
 <?php
+declare(strict_types=1);
+
 namespace App\Modules\Auth\Controllers;
 
-class LoginController {
-    public function index(){
-        return view('auth/login');
+final class LoginController
+{
+    public function index(): string
+    {
+        return view('auth/login', [
+            'title'   => 'Login',
+            'error'   => flash_get('error'),
+            'success' => flash_get('success'),
+        ]);
     }
 
-    public function authenticate(){
-        if($_POST['email']=='admin@saas.com' && $_POST['senha']=='123'){
-            $_SESSION['auth']=true;
-            header('Location: dashboard');
+    public function authenticate(): void
+    {
+        $email = trim((string)($_POST['email'] ?? ''));
+        $senha = trim((string)($_POST['senha'] ?? ''));
+
+        if ($email === 'admin@saas.com' && $senha === '123456') {
+            $_SESSION['auth'] = [
+                'nome'  => 'Administrador',
+                'email' => $email,
+            ];
+
+            flash_set('success', 'Login realizado com sucesso.');
+            header('Location: ' . url('dashboard'));
             exit;
         }
-        echo "Login inválido";
+
+        flash_set('error', 'E-mail ou senha inválidos.');
+        header('Location: ' . url('login'));
+        exit;
     }
 }

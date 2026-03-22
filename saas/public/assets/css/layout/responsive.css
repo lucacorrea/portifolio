@@ -1,52 +1,10 @@
 @media (max-width: 1200px) {
-  .topbar-search {
-    min-width: 200px;
-  }
+  .topbar h1 { font-size: 1.3rem; }
 }
-
-@media (max-width: 991px) {
-  .sidebar {
-    width: 280px;
-  }
-
-  .topbar h1 {
-    font-size: 1.3rem;
-  }
-
-  .topbar p {
-    font-size: 0.84rem;
-  }
-}
-
 @media (max-width: 767px) {
-  .topbar-actions {
-    gap: 10px;
-  }
-
-  .btn {
-    height: 40px;
-    padding: 0 14px;
-  }
-
-  .data-table {
-    min-width: 680px;
-  }
+  .btn { height: 40px; padding: 0 14px; }
 }
-
 @media (max-width: 575px) {
-  .topbar {
-    padding: 12px 14px;
-  }
-
-  .topbar-avatar,
-  .topbar-icon-btn,
-  .topbar-mobile-toggle {
-    width: 40px;
-    height: 40px;
-  }
-
-  .section-title,
-  .panel-header h2 {
-    font-size: 0.96rem;
-  }
+  .topbar { padding: 12px 14px; }
+  .topbar-avatar, .topbar-mobile-toggle { width: 40px; height: 40px; }
 }
