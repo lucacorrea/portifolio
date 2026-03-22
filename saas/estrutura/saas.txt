@@ -1,4 +1,4 @@
-meu-saas/
+meu-saas/(decide o nome)
 │
 ├── app/
 │   ├── Core/
