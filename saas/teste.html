@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ContaFlow | Dashboard de Contabilidade</title>
+    <style>
+        /* ----- RESET & GLOBAL ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            background: #F5F7FA;
+            color: #1A2C3E;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+
+        /* Variáveis de design (inspirado em Stripe/Linear) */
+        :root {
+            --bg-page: #F5F7FA;
+            --card-white: #FFFFFF;
+            --sidebar-bg: #FFFFFF;
+            --border-light: #E9EDF2;
+            --text-primary: #1A2C3E;
+            --text-secondary: #5B6E8C;
+            --text-muted: #8A99B0;
+            --accent-blue: #1E4B8F;
+            --accent-blue-soft: #2C6E9E;
+            --accent-green-soft: #10B981;
+            --accent-green-bg: #EFFAF5;
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.03), 0 2px 6px rgba(0, 0, 0, 0.05);
+            --radius-md: 12px;
+            --radius-sm: 10px;
+            --transition: all 0.2s ease;
+        }
+
+        /* Layout principal */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ----- SIDEBAR (FIXA) ----- */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-light);
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            backdrop-filter: blur(0px);
+        }
+
+        .logo-area {
+            padding: 28px 24px;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 24px;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #1E4B8F 0%, #2C6E9E 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .nav {
+            flex: 1;
+            padding: 0 12px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            margin: 4px 0;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .nav-item.active {
+            background: #F0F4F9;
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .nav-item:hover:not(.active) {
+            background: #F8FAFE;
+            color: var(--accent-blue-soft);
+        }
+
+        /* Mobile menu toggle */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 18px;
+            left: 20px;
+            z-index: 30;
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 8px;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* ----- TOPBAR ----- */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            width: calc(100% - 260px);
+        }
+
+        .topbar {
+            background: var(--card-white);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-light);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+        }
+
+        .company-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: #F5F7FA;
+            border-radius: 40px;
+            padding: 6px 16px;
+            gap: 8px;
+            border: 1px solid var(--border-light);
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            padding: 8px 0;
+            font-size: 0.9rem;
+            width: 200px;
+            outline: none;
+        }
+
+        .notification-icon, .avatar {
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            background: #E9EDF2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        /* ----- CONTEÚDO PRINCIPAL ----- */
+        .dashboard-container {
+            padding: 32px 32px 48px;
+        }
+
+        /* Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: var(--card-white);
+            border-radius: var(--radius-md);
+            padding: 20px 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .card-value {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .card-trend {
+            font-size: 0.75rem;
+            color: var(--accent-green-soft);
+            background: var(--accent-green-bg);
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 30px;
+        }
+
+        /* Flex grid para gráfico + alertas */
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 0.9fr;
+            gap: 28px;
+            margin-bottom: 40px;
+        }
+
+        .chart-card, .alerts-card {
+            background: var(--card-white);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+            padding: 20px 24px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        /* Gráfico simplificado barras SVG */
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .bar-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .bar {
+            background: var(--accent-blue);
+            height: var(--h);
+            min-height: 4px;
+            border-radius: 8px;
+            transition: height 0.2s;
+            opacity: 0.8;
+        }
+
+        .bar-label {
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Tabela */
+        .table-wrapper {
+            background: var(--card-white);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+            overflow-x: auto;
+            margin-bottom: 0px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 16px 20px;
+            background: #FBFCFE;
+            border-bottom: 1px solid var(--border-light);
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .data-table td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-primary);
+        }
+
+        .status-badge {
+            background: #EFFAF5;
+            color: #0E7B4E;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 30px;
+            display: inline-block;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .alert-dot {
+            width: 8px;
+            height: 8px;
+            background: #F59E0B;
+            border-radius: 50%;
+            margin-top: 6px;
+        }
+
+        .alert-text {
+            flex: 1;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .alert-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* responsividade */
+        @media (max-width: 1024px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            .two-columns {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 260px;
+                box-shadow: 2px 0 12px rgba(0,0,0,0.05);
+            }
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+            .mobile-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .topbar {
+                padding: 12px 20px;
+                margin-left: 48px;
+            }
+            .search-box input {
+                width: 130px;
+            }
+            .dashboard-container {
+                padding: 24px 20px;
+            }
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .topbar-actions .search-box {
+                display: none;
+            }
+            .card-value {
+                font-size: 1.8rem;
+            }
+        }
+
+        /* utilitários */
+        .no-select {
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <!-- Botão mobile -->
+    <div class="mobile-toggle" id="mobileMenuToggle">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </div>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="logo-area">
+            <div class="logo">ContaFlow</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">para contadores</div>
+        </div>
+        <nav class="nav">
+            <div class="nav-item active" data-nav="dashboard">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9L12 3L21 9L12 15L3 9Z" />
+                    <path d="M3 15L12 21L21 15" />
+                </svg>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" data-nav="notas">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span>Notas fiscais</span>
+            </div>
+            <div class="nav-item" data-nav="clientes">
+                <svg viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>Clientes</span>
+            </div>
+            <div class="nav-item" data-nav="docs">
+                <svg viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M4 4h16v16H4z" />
+                    <line x1="8" y1="8" x2="16" y2="8" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="16" x2="12" y2="16" />
+                </svg>
+                <span>Documentos</span>
+            </div>
+            <div class="nav-item" data-nav="obrigacoes">
+                <svg viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+                <span>Obrigações</span>
+            </div>
+            <div class="nav-item" data-nav="financeiro">
+                <svg viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M12 2v20M17 7l-5-5-5 5M7 17l5 5 5-5" />
+                </svg>
+                <span>Financeiro</span>
+            </div>
+            <div class="nav-item" data-nav="config">
+                <svg viewBox="0 0 24 24" stroke="currentColor">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H5.78a1.65 1.65 0 0 0-1.51 1 1.65 1.65 0 0 0 .33 1.82l.04.04A10 10 0 0 0 12 17.66a10 10 0 0 0 6.36-2.62l.04-.04z" />
+                </svg>
+                <span>Configurações</span>
+            </div>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="company-name">Escritório Monte Castelo | Contabilidade</div>
+            <div class="topbar-actions">
+                <div class="search-box">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="10" cy="10" r="7"/><line x1="21" y1="21" x2="15" y2="15"/></svg>
+                    <input type="text" placeholder="Buscar cliente, nota..." id="searchInput">
+                </div>
+                <div class="notification-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+                </div>
+                <div class="avatar">CR</div>
+            </div>
+        </header>
+
+        <div class="dashboard-container" id="dashboardContent">
+            <!-- cards dinâmicos serão preenchidos via JS, mas estrutura estática integrada -->
+        </div>
+    </main>
+</div>
+
+<script>
+    // Dados mock (simulando integração futura com PHP)
+    const dashboardData = {
+        totalNotas: 284,
+        clientesAtivos: 127,
+        pendencias: 14,
+        faturamentoMes: 87420,
+        notasPorMes: [42, 38, 47, 52, 48, 62, 58, 71, 65, 59, 48, 44],
+        ultimasNotas: [
+            { cliente: "Alfa Consultoria", valor: "R$ 2.450,00", data: "10/04/2025", status: "Emitida" },
+            { cliente: "Beta Serviços LTDA", valor: "R$ 8.230,00", data: "09/04/2025", status: "Pendente" },
+            { cliente: "Gama Comércio", valor: "R$ 1.200,00", data: "08/04/2025", status: "Emitida" },
+            { cliente: "Delta Soluções", valor: "R$ 5.340,00", data: "05/04/2025", status: "Cancelada" },
+            { cliente: "Omega Tech", valor: "R$ 12.100,00", data: "02/04/2025", status: "Emitida" }
+        ],
+        alertasPendencias: [
+            { titulo: "Documentos fiscais pendentes", descricao: "3 clientes não enviaram NF referente Março", tipo: "documento" },
+            { titulo: "Notas não emitidas", descricao: "Cliente 'Nova Fase' aguarda emissão desde 05/04", tipo: "nota" },
+            { titulo: "Tarefas atrasadas", descricao: "Obrigação acessória: Simples Nacional - prazo 15/04", tipo: "tarefa" },
+            { titulo: "Clientes sem envio de documentos", descricao: "2 clientes com pendência de balancete", tipo: "alerta" }
+        ]
+    };
+
+    function formatMoney(value) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function renderDashboard() {
+        const container = document.getElementById('dashboardContent');
+        if (!container) return;
+        // estrutura HTML completa
+        container.innerHTML = `
+            <div class="cards-grid">
+                <div class="card"><div class="card-title">Total de notas emitidas</div><div class="card-value">${dashboardData.totalNotas}</div><span class="card-trend">+12% este mês</span></div>
+                <div class="card"><div class="card-title">Clientes ativos</div><div class="card-value">${dashboardData.clientesAtivos}</div><span class="card-trend">+4 novos</span></div>
+                <div class="card"><div class="card-title">Pendências</div><div class="card-value">${dashboardData.pendencias}</div><span class="card-trend">-3 vs mês anterior</span></div>
+                <div class="card"><div class="card-title">Faturamento do mês</div><div class="card-value">${formatMoney(dashboardData.faturamentoMes)}</div><span class="card-trend">↑ 8%</span></div>
+            </div>
+            <div class="two-columns">
+                <div class="chart-card">
+                    <div class="section-title">📊 Emissão de notas por mês</div>
+                    <div class="chart-bars" id="chartBars"></div>
+                </div>
+                <div class="alerts-card">
+                    <div class="section-title">⚠️ Alertas e pendências</div>
+                    <div id="alertsList"></div>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Cliente</th><th>Valor</th><th>Data</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="notasTableBody"></tbody>
+                </table>
+            </div>
+        `;
+        // gráfico barras
+        const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const valores = dashboardData.notasPorMes;
+        const maxVal = Math.max(...valores);
+        const barsContainer = document.getElementById('chartBars');
+        if (barsContainer) {
+            barsContainer.innerHTML = '';
+            valores.forEach((val, idx) => {
+                const heightPercent = maxVal ? (val / maxVal) * 80 : 40;
+                const barDiv = document.createElement('div');
+                barDiv.className = 'bar-item';
+                barDiv.innerHTML = `<div class="bar" style="height: ${Math.max(28, heightPercent)}px; background: #1E4B8F;"></div><div class="bar-label">${meses[idx]}</div><div style="font-size:11px; font-weight:500;">${val}</div>`;
+                barsContainer.appendChild(barDiv);
+            });
+        }
+        // tabela
+        const tbody = document.getElementById('notasTableBody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            dashboardData.ultimasNotas.forEach(nota => {
+                const row = tbody.insertRow();
+                row.insertCell(0).innerText = nota.cliente;
+                row.insertCell(1).innerHTML = `<strong>${nota.valor}</strong>`;
+                row.insertCell(2).innerText = nota.data;
+                const statusClass = nota.status === 'Emitida' ? 'status-badge' : (nota.status === 'Pendente' ? 'status-badge' : 'status-badge');
+                const bgColor = nota.status === 'Emitida' ? '#EFFAF5' : (nota.status === 'Pendente' ? '#FFF4E5' : '#FEF2F0');
+                const textColor = nota.status === 'Emitida' ? '#0E7B4E' : (nota.status === 'Pendente' ? '#B45F06' : '#B91C1C');
+                row.insertCell(3).innerHTML = `<span style="background:${bgColor}; color:${textColor}; padding:4px 10px; border-radius:30px; font-size:0.7rem; font-weight:500;">${nota.status}</span>`;
+            });
+        }
+        // alertas dinâmicos
+        const alertsDiv = document.getElementById('alertsList');
+        if (alertsDiv) {
+            alertsDiv.innerHTML = '';
+            dashboardData.alertasPendencias.forEach(alert => {
+                const alertEl = document.createElement('div');
+                alertEl.className = 'alert-item';
+                alertEl.innerHTML = `
+                    <div class="alert-dot"></div>
+                    <div class="alert-text">
+                        <div style="font-weight: 600;">${alert.titulo}</div>
+                        <div class="alert-sub">${alert.descricao}</div>
+                    </div>
+                `;
+                alertsDiv.appendChild(alertEl);
+            });
+        }
+    }
+
+    // Simular integração com menu e mobile (navegação visual)
+    function initMobileAndNav() {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('mobileMenuToggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sidebar.classList.toggle('mobile-open');
+            });
+        }
+        // Fechar sidebar ao clicar em link no mobile
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                // atualizar estado visual ativo
+                navItems.forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('mobile-open');
+                }
+                // Simular mudança de contexto, mas manter dashboard ativo neste exemplo.
+                // Porém para protótipo funcional mantemos dashboard.
+                const navName = item.getAttribute('data-nav');
+                if (navName !== 'dashboard') {
+                    // Mostrar alerta temporário informativo para protótipo
+                    const container = document.getElementById('dashboardContent');
+                    if (container && navName) {
+                        container.innerHTML = `<div style="background:white; border-radius:20px; padding:48px; text-align:center; margin-top:40px;"><h3 style="font-weight:500;">Módulo ${item.innerText.trim()}</h3><p style="color:var(--text-muted); margin-top:12px;">Integração futura com backend PHP. Interface pronta para expansão.</p><button style="margin-top:24px; background:#1E4B8F; border:none; padding:10px 24px; color:white; border-radius:30px; cursor:pointer;" id="backToDashboardBtn">Voltar ao Dashboard</button></div>`;
+                        const backBtn = document.getElementById('backToDashboardBtn');
+                        if (backBtn) backBtn.onclick = () => { renderDashboard(); initMobileAndNav(); };
+                    }
+                } else {
+                    renderDashboard();
+                    initMobileAndNav();
+                }
+            });
+        });
+        // Search mock
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('#notasTableBody tr');
+                if (rows.length) {
+                    rows.forEach(row => {
+                        const cliente = row.cells[0]?.innerText.toLowerCase() || '';
+                        row.style.display = cliente.includes(term) ? '' : 'none';
+                    });
+                }
+            });
+        }
+    }
+
+    // Inicializar tudo
+    renderDashboard();
+    initMobileAndNav();
+
+    // pequeno ajuste de evento resize para fechar sidebar ao redimensionar para desktop
+    window.addEventListener('resize', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (window.innerWidth > 768) {
+            sidebar.classList.remove('mobile-open');
+        }
+    });
+</script>
+</body>
+</html>
