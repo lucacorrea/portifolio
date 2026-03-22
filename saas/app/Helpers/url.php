@@ -8,7 +8,7 @@ if (!function_exists('url')) {
         $baseDir = str_replace('\\', '/', dirname($scriptName));
         $baseDir = rtrim($baseDir, '/');
 
-        if ($baseDir === '.' || $baseDir === '/public') {
+        if ($baseDir === '.' || $baseDir === '/') {
             $baseDir = '';
         }
 
