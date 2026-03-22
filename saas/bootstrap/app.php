@@ -1,29 +1,13 @@
 <?php
-declare(strict_types=1);
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
 
 define('BASE_PATH', dirname(__DIR__));
 
-if (!function_exists('base_path')) {
-    function base_path(string $path = ''): string
-    {
-        return BASE_PATH . ($path ? '/' . ltrim($path, '/\\') : '');
-    }
+function base_path($p=''){ return BASE_PATH.($p?'/'.$p:''); }
+
+function view($v,$d=[]){
+    extract($d);
+    ob_start();
+    require base_path('resources/views/'.$v.'.php');
+    return ob_get_clean();
 }
-
-if (!function_exists('view')) {
-    function view(string $view, array $data = []): string
-    {
-        extract($data, EXTR_OVERWRITE);
-
-        ob_start();
-        require base_path('resources/views/' . $view . '.php');
-        return (string) ob_get_clean();
-    }
-}
-
-require_once base_path('app/Helpers/url.php');
-require_once base_path('app/Helpers/asset.php');
