@@ -47,14 +47,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 
-// CSS-Only Zoom Modal Logic (Global)
+// Robust Zoom Modal (Bootstrap-based)
 window.openLightbox = function(src) {
     if (!src || src.includes('fa-image') || src.includes('no-image')) return;
 
-    const modalImg = document.getElementById('img-zoom-content');
-    if (modalImg) {
+    const modalEl = document.getElementById('erp-image-zoom-modal');
+    const modalImg = document.getElementById('erp-zoom-image-content');
+    
+    if (modalEl && modalImg) {
         modalImg.src = src;
-        window.location.hash = 'img-zoom-modal';
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
     }
 };
 

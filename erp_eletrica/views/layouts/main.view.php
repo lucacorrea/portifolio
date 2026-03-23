@@ -89,11 +89,15 @@
         </div>
     </div>
 
-    <!-- CSS-Only Zoom Modal (User suggested approach) -->
-    <div id="img-zoom-modal" class="zoom-modal">
-        <a href="#" class="zoom-modal-close">&times;</a>
-        <div class="zoom-modal-content">
-            <img id="img-zoom-content" src="" alt="Zoom">
+    <!-- Standard Bootstrap Zoom Modal (Guaranteed Compatibility) -->
+    <div class="modal fade" id="erp-image-zoom-modal" tabindex="-1" aria-hidden="true" style="z-index: 10001;">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content bg-transparent border-0 shadow-none">
+                <div class="modal-body p-0 text-center position-relative">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close" style="z-index: 10002;"></button>
+                    <img id="erp-zoom-image-content" src="" class="img-fluid rounded shadow-lg" style="max-height: 90vh; object-fit: contain;">
+                </div>
+            </div>
         </div>
     </div>
 
