@@ -119,7 +119,7 @@
                             <td><?= formatarMoeda($c['valor_abertura']) ?></td>
                             <td><?= $c['valor_fechamento'] ? formatarMoeda($c['valor_fechamento']) : '-' ?></td>
                             <td class="pe-4 text-end">
-                                <button class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></button>
+                                <a href="caixa.php?action=detalhes&id=<?= $c['id'] ?>" class="btn btn-sm btn-outline-primary" title="Ver detalhes"><i class="fas fa-eye"></i></a>
                             </td>
                         </tr>
                         <?php endforeach; ?>

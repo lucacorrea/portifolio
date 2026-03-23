@@ -122,4 +122,83 @@ class Cashier extends BaseModel {
             'total_bruto' => $totalEntradasSessao
         ];
     }
+
+    public function getSessionDetails($caixaId) {
+        // 1. Dados do caixa + operador
+        $stmt = $this->db->prepare("
+            SELECT c.*, u.nome as operador_nome 
+            FROM caixas c 
+            LEFT JOIN usuarios u ON c.operador_id = u.id 
+            WHERE c.id = ?
+        ");
+        $stmt->execute([$caixaId]);
+        $caixa = $stmt->fetch();
+
+        if (!$caixa) return null;
+
+        $dataAbertura = $caixa['data_abertura'];
+        $dataFechamento = $caixa['data_fechamento'];
+        $filialId = $caixa['filial_id'];
+
+        // 2. Summary (reutiliza método existente)
+        $summary = $this->getSummary($caixaId);
+
+        // 3. Vendas do período
+        $whereTime = "AND v.data_venda >= ?";
+        $paramsVendas = [$filialId, $dataAbertura];
+        if ($dataFechamento) {
+            $whereTime .= " AND v.data_venda <= ?";
+            $paramsVendas[] = $dataFechamento;
+        }
+
+        $stmtVendas = $this->db->prepare("
+            SELECT v.*, 
+                   IFNULL(cl.nome, v.nome_cliente_avulso) as cliente_nome,
+                   u.nome as vendedor_nome
+            FROM vendas v 
+            LEFT JOIN clientes cl ON v.cliente_id = cl.id
+            LEFT JOIN usuarios u ON v.usuario_id = u.id
+            WHERE v.filial_id = ? $whereTime AND v.status = 'concluido'
+            ORDER BY v.data_venda DESC
+        ");
+        $stmtVendas->execute($paramsVendas);
+        $vendas = $stmtVendas->fetchAll();
+
+        // 4. Recebimentos de Fiados no período
+        $whereTimeFiado = "AND fp.created_at >= ?";
+        $paramsFiado = [$filialId, $dataAbertura];
+        if ($dataFechamento) {
+            $whereTimeFiado .= " AND fp.created_at <= ?";
+            $paramsFiado[] = $dataFechamento;
+        }
+
+        $stmtFiados = $this->db->prepare("
+            SELECT fp.*, cr.cliente_nome, cr.valor_total as valor_fiado_total
+            FROM fiados_pagamentos fp
+            JOIN contas_receber cr ON fp.fiado_id = cr.id
+            WHERE cr.filial_id = ? $whereTimeFiado
+            ORDER BY fp.created_at DESC
+        ");
+        $stmtFiados->execute($paramsFiado);
+        $fiadosPagamentos = $stmtFiados->fetchAll();
+
+        // 5. Movimentações
+        $stmtMov = $this->db->prepare("
+            SELECT cm.*, u.nome as operador_nome
+            FROM caixa_movimentacoes cm
+            LEFT JOIN usuarios u ON cm.operador_id = u.id
+            WHERE cm.caixa_id = ?
+            ORDER BY cm.created_at ASC
+        ");
+        $stmtMov->execute([$caixaId]);
+        $movimentacoes = $stmtMov->fetchAll();
+
+        return [
+            'caixa' => $caixa,
+            'summary' => $summary,
+            'vendas' => $vendas,
+            'fiados_pagamentos' => $fiadosPagamentos,
+            'movimentacoes' => $movimentacoes
+        ];
+    }
 }

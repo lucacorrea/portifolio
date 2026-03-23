@@ -201,6 +201,30 @@ class CaixaController extends BaseController {
         }
     }
 
+    public function detalhes() {
+        AuthService::checkPermission('caixa', 'visualizar');
+
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            header('Location: caixa.php?error=Sessão não encontrada.');
+            exit;
+        }
+
+        $cashierModel = new Cashier();
+        $details = $cashierModel->getSessionDetails($id);
+
+        if (!$details) {
+            header('Location: caixa.php?error=Sessão não encontrada.');
+            exit;
+        }
+
+        $this->render('caixa/detalhes', [
+            'details' => $details,
+            'title' => 'Detalhes da Sessão',
+            'pageTitle' => 'Detalhes da Sessão #' . $id
+        ]);
+    }
+
     protected function logAction(string $action, string $table = null, int $id = null, $old = null, $new = null) {
         $audit = new \App\Services\AuditLogService();
         $audit->record($action, $table, $id, $old, $new);
