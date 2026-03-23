@@ -100,6 +100,14 @@ body {
     background-color: #f8fafc !important;
 }
 
+body.sidebar-collapsed .sidebar {
+    left: -260px;
+}
+
+body.sidebar-collapsed .main-wrapper {
+    margin-left: 0 !important;
+}
+
 .top-navbar {
     height: 70px;
     background: #ffffff !important;

@@ -26,7 +26,7 @@
             <!-- Top Navbar -->
             <nav class="top-navbar px-4 border-0 mb-4 sticky-top">
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-light me-3 d-lg-none" id="sidebarToggle">
+                    <button class="btn btn-light me-3" id="sidebarToggle">
                         <i class="fas fa-bars"></i>
                     </button>
                     <div class="page-title-context">

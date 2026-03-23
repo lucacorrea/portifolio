@@ -14,7 +14,7 @@
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-7 d-flex flex-column">
         <div class="row g-4 mb-4">
-            <div class="col-md-8" style="z-index: 1025;">
+            <div class="col-md-7" style="z-index: 1025;">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body" style="overflow: visible !important;">
                         <div class="position-relative">
@@ -36,10 +36,9 @@
                     </div>
                 </div>
             </div>
-            <!-- Product Preview Pane -->
-            <div class="col-md-4">
+            <div class="col-md-5">
                 <div class="card border-0 shadow-sm h-100 text-center d-flex flex-column align-items-center justify-content-center p-3">
-                    <div id="productPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border" style="width: 120px; height: 120px; overflow: hidden;">
+                    <div id="productPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border" style="width: 100%; height: auto; min-height: 200px; max-height: 300px; aspect-ratio: 1/1; overflow: hidden;">
                         <i class="fas fa-image fs-1 text-muted opacity-25"></i>
                     </div>
                     <div id="productPreviewName" class="small fw-bold text-uppercase text-muted">Aguardando...</div>

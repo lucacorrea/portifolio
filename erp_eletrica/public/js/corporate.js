@@ -1,14 +1,32 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Sidebar toggle for mobile
+    // Sidebar toggle for and desktop/mobile persistence
     const toggle = document.getElementById('sidebarToggle');
+    const closeBtn = document.getElementById('sidebarClose');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const body = document.body;
     
-    if (toggle && sidebar) {
-        toggle.addEventListener('click', () => {
+    // Load persisted state
+    if (localStorage.getItem('sidebar-collapsed') === 'true' && window.innerWidth > 991) {
+        body.classList.add('sidebar-collapsed');
+    }
+
+    function toggleSidebar() {
+        if (window.innerWidth <= 991) {
             sidebar.classList.toggle('active');
             if (overlay) overlay.classList.toggle('active');
-        });
+        } else {
+            body.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebar-collapsed', body.classList.contains('sidebar-collapsed'));
+        }
+    }
+
+    if (toggle) {
+        toggle.addEventListener('click', toggleSidebar);
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', toggleSidebar);
     }
 
     if (overlay) {

@@ -2,8 +2,11 @@
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header d-flex align-items-center justify-content-center p-3">
-        <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 90%; height: auto; max-height: 55px; filter: drop-shadow(0 0 5px rgba(255,193,7,0.2));">
+    <div class="sidebar-header d-flex align-items-center justify-content-between p-3">
+        <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 80%; height: auto; max-height: 55px; filter: drop-shadow(0 0 5px rgba(255,193,7,0.2));">
+        <button class="btn btn-link text-white p-0 d-none d-lg-block" id="sidebarClose" title="Fechar Menu">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
     
     <nav class="nav flex-column sidebar-menu">
