@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Sidebar toggle for and desktop/mobile persistence
     const toggle = document.getElementById('sidebarToggle');
-    const closeBtn = document.getElementById('sidebarClose');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const html = document.documentElement;
@@ -17,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (toggle) toggle.addEventListener('click', toggleSidebar);
-    if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
 
 
     if (overlay) {
