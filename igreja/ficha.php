@@ -31,7 +31,7 @@ $ingresso = strtoupper((string)($m['tipo_ingresso'] ?? ''));
 $escolaridade = strtoupper((string)($m['escolaridade'] ?? ''));
 
 $fotoSistema = !empty($m['foto']) ? 'uploads/' . $m['foto'] : '';
-$logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
+$logoIgreja = 'assets/img/LOGO.jpeg';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -98,29 +98,37 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
     }
 
     .top-header {
-        position: relative;
-        text-align: center;
-        padding-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        padding-bottom: 10px;
         border-bottom: 1px solid #888;
-        margin-bottom: 8px;
-        min-height: 72px;
+        margin-bottom: 18px;
+        min-height: 92px;
+    }
+
+    .top-header-text {
+        flex: 1;
+        text-align: center;
+        padding-left: 102px;
     }
 
     .top-logo {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 78px;
-        height: 68px;
+        width: 98px;
+        height: 98px;
         border: 1px solid #8f8f8f;
         overflow: hidden;
         background: #fff;
+        flex-shrink: 0;
+        order: 2;
     }
 
     .top-logo img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
     }
 
     .church-title {
@@ -148,19 +156,23 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
         font-weight: 700;
     }
 
-    .intro-grid {
+    /* FOTO + DADOS PESSOAIS */
+    .top-content {
         display: grid;
-        grid-template-columns: 110px 1fr;
-        gap: 10px;
+        grid-template-columns: 112px 1fr;
+        gap: 12px;
         align-items: start;
-        margin-bottom: 6px;
+        margin-bottom: 14px;
     }
 
     .photo-box {
         border: 1px solid #8f8f8f;
-        height: 165px;
-        text-align: center;
+        
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
         padding: 8px 6px;
+        background: #fff;
     }
 
     .photo-box .placeholder {
@@ -169,15 +181,19 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
         line-height: 1.6;
         color: #666;
         font-weight: 700;
+        text-align: center;
     }
 
     .photo-box img {
         width: 94px;
         height: 126px;
         object-fit: cover;
-        border: 1px solid #9a9a9a;
-        margin-top: 4px;
         background: #fafafa;
+        margin-top: 4px;
+    }
+
+    .right-content {
+        display: block;
     }
 
     .form-title {
@@ -369,7 +385,10 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
 
         .church-title {
             font-size: 20px;
-            margin-left: 82px;
+        }
+
+        .top-header-text {
+            padding-left: 0;
         }
 
         .form-title {
@@ -386,18 +405,30 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
     }
 
     @media screen and (max-width: 700px) {
-        .intro-grid {
-            grid-template-columns: 1fr;
+        .top-header {
+            flex-direction: column;
+        }
+
+        .top-header-text {
+            order: 1;
+            padding-left: 0;
         }
 
         .top-logo {
-            position: static;
+            order: 0;
             margin: 0 auto 6px;
         }
 
         .church-title {
-            margin-left: 0;
             font-size: 18px;
+        }
+
+        .top-content {
+            grid-template-columns: 1fr;
+        }
+
+        .photo-box {
+            min-height: 165px;
         }
     }
 </style>
@@ -412,16 +443,19 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
     <div class="sheet">
         <div>
             <div class="top-header">
-                <div class="top-logo">
-                    <img src="<?= h($logoIgreja) ?>" alt="Logo da igreja">
+                <div class="top-header-text">
+                    <h1 class="church-title">IGREJA DE DEUS NASCER DE NOVO</h1>
+                    <div class="church-sub">Avenida Joanico 195 Urucu CEP: 69460-000</div>
+                    <div class="church-cnpj">CNPJ: 26.938.216/0001-96</div>
                 </div>
 
-                <h1 class="church-title">IGREJA DE DEUS NASCER DE NOVO</h1>
-                <div class="church-sub">Avenida Joanico 195 Urucu CEP: 69460-000</div>
-                <div class="church-cnpj">CNPJ: 26.938.216/0001-96</div>
+                <div class="top-logo">
+                    <img src="<?= h($logoIgreja) ?>" alt="Logo da Igreja">
+                </div>
             </div>
 
-            <div class="intro-grid">
+            <!-- FOTO FICA ALINHADA SOMENTE ATÉ DADOS PESSOAIS -->
+            <div class="top-content">
                 <div class="photo-box">
                     <?php if ($fotoSistema): ?>
                         <img src="<?= h($fotoSistema) ?>" alt="Foto 3x4">
@@ -430,7 +464,7 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
                     <?php endif; ?>
                 </div>
 
-                <div>
+                <div class="right-content">
                     <div class="form-title">INTEGRAÇÃO À MEMBRESIA</div>
 
                     <div class="choice-row">
@@ -558,6 +592,7 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
                 </div>
             </div>
 
+            <!-- RESTANTE FICA EMBAIXO DOS DOIS -->
             <div class="section-title">ENDEREÇO RESIDÊNCIAL</div>
 
             <div class="form-grid">
@@ -565,7 +600,7 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
                     <span class="field-label">Endereço (rua, número e bairro)</span>
                     <div class="field-value">
                         Rua: <?= h($m['rua']) ?>
-                        <?php if (!empty($m['numero'])): ?> &nbsp;&nbsp; N°:<?= h($m['numero']) ?><?php endif; ?>
+                        <?php if (!empty($m['numero'])): ?> &nbsp;&nbsp; N°: <?= h($m['numero']) ?><?php endif; ?>
                         <?php if (!empty($m['bairro'])): ?> &nbsp;&nbsp; Bairro: <?= h($m['bairro']) ?><?php endif; ?>
                     </div>
                 </div>
@@ -582,7 +617,7 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
 
                 <div class="field" style="grid-column: span 9;">
                     <span class="field-label">Cidade/UF</span>
-                    <div class="field-value"><?= h(trim(($m['cidade'] ?? '') . ' ' . ($m['estado'] ?? ''))) ?></div>
+                    <div class="field-value"><?= h(trim(($m['cidade'] ?? '') . ' / ' . ($m['estado'] ?? ''))) ?></div>
                 </div>
             </div>
 
@@ -629,12 +664,12 @@ $logoIgreja = 'WhatsApp Image 2026-02-17 at 10.34.10.jpeg';
 
             <div class="declaracao-text">
                 Declaro que estou ciente dos princípios bíblicos e doutrinários, projetos gerais, trabalhos e atividades desta Igreja,
-                estando dispostos a cumpri-los, procurando cuidar da mesma, bem como, colaborar com seus projetos materiais,
-                espirituais e financeiros. Solicito, respeitosamente meu ingresso a membresia desta Igreja.
+                estando disposto a cumpri-los, procurando cuidar da mesma, bem como colaborar com seus projetos materiais,
+                espirituais e financeiros. Solicito, respeitosamente, meu ingresso à membresia desta Igreja.
             </div>
 
             <div class="data-local">
-                Coari – Am ____ de __________________ de ______
+                Coari – AM ____ de __________________ de ______
             </div>
         </div>
 

@@ -141,7 +141,7 @@
                             </div>
 
                             <div class="d-grid">
-                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick='abrirModalFilial(<?= json_encode($branch) ?>)'>
+                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick='abrirModalFilial(<?= json_encode($branch, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                     <i class="fas fa-edit me-2"></i>Gerenciar Dados
                                 </button>
                             </div>
@@ -337,7 +337,7 @@
                 </div>
                 <input type="hidden" name="principal" id="f_principal" value="0">
                 <input type="hidden" name="is_matriz" id="f_is_matriz" value="0">
-                <input type="hidden" name="crt" id="f_crt" value="1">
+                <input type="hidden" name="crt" id="f_crt_hidden" value="1">
 
                 <div class="modal-footer bg-white border-0 py-3">
                     <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
@@ -360,54 +360,67 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Global function for unit modal
 function abrirModalFilial(data = null) {
-    const modal = new bootstrap.Modal(document.getElementById('modalFilial'));
-    document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2 text-white"></i><span class="text-white">Editar Unidade</span>' : '<i class="fas fa-plus me-2 text-white"></i><span class="text-white">Nova Unidade</span>';
-    
-    // Global defaults for pre-filling (from actual Matriz/Principal branch)
-    const defaultSefaz = {
-        csc_id: '<?= $matrizConfig['csc_id'] ?? '' ?>',
-        csc_token: '<?= $matrizConfig['csc'] ?? '' ?>',
-        ambiente: '<?= ($matrizConfig['ambiente'] ?? '') == '1' || ($matrizConfig['ambiente'] ?? '') == 'producao' ? '1' : '2' ?>',
-        senha: '<?= $matrizConfig['certificado_senha'] ?? '' ?>'
-    };
+    console.log("Abrindo modal unidade...", data);
+    try {
+        const modalEl = document.getElementById('modalFilial');
+        if (!modalEl) {
+            console.error("Elemento modalFilial não encontrado!");
+            return;
+        }
 
-    // Reset inputs
-    document.getElementById('f_id').value = data ? data.id : '';
-    document.getElementById('f_nome').value = data ? data.nome : '';
-    document.getElementById('f_cnpj').value = data ? data.cnpj : '';
-    document.getElementById('f_razao').value = data ? data.razao_social : '';
-    document.getElementById('f_crt').value = data ? data.crt : '1';
-    document.getElementById('f_ie').value = data ? data.inscricao_estadual : '';
-    document.getElementById('f_cep').value = data ? data.cep : '';
-    document.getElementById('f_municipio').value = data ? data.municipio : '';
-    document.getElementById('f_ibge_mun').value = data ? data.codigo_municipio : '';
-    document.getElementById('f_logradouro').value = data ? data.logradouro : '';
-    document.getElementById('f_numero').value = data ? data.numero : '';
-    document.getElementById('f_bairro').value = data ? data.bairro : '';
-    document.getElementById('f_complemento').value = data ? data.complemento : '';
-    document.getElementById('f_uf').value = data ? data.uf : '';
-    document.getElementById('f_cod_uf').value = data ? data.codigo_uf : '';
-    document.getElementById('f_fone').value = data ? data.telefone : '';
-    document.getElementById('f_email').value = data ? data.email : '';
-    
-    // Pre-fill fiscal and certificate with data if editing, or global defaults if new
-    document.getElementById('f_csc_id').value = data ? data.csc_id : defaultSefaz.csc_id;
-    document.getElementById('f_csc_token').value = data ? data.csc_token : defaultSefaz.csc_token;
-    document.getElementById('f_serie').value = data ? data.serie_nfce : '1';
-    document.getElementById('f_ultimo').value = data ? data.ultimo_numero_nfce : '0';
-    document.getElementById('f_ambiente').value = data ? data.ambiente : defaultSefaz.ambiente;
-    
-    document.getElementById('f_tipo_emissao').value = data ? data.tipo_emissao : 'Normal';
-    document.getElementById('f_finalidade').value = data ? data.finalidade_emissao : 'Normal';
-    document.getElementById('f_presenca').value = data ? data.indicador_presenca : 'Operacao presencial';
-    document.getElementById('f_impressao').value = data ? data.tipo_impressao_danfe : 'NFC-e';
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl) || new bootstrap.Modal(modalEl);
+        document.getElementById('modalTitle').innerHTML = data ? '<i class="fas fa-edit me-2 text-white"></i><span class="text-white">Editar Unidade</span>' : '<i class="fas fa-plus me-2 text-white"></i><span class="text-white">Nova Unidade</span>';
+        
+        // Global defaults for pre-filling (from actual Matriz/Principal branch)
+        const defaultSefaz = {
+            csc_id: <?= json_encode($matrizConfig['csc_id'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+            csc_token: <?= json_encode($matrizConfig['csc'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+            ambiente: <?= json_encode(($matrizConfig['ambiente'] ?? '') == '1' || ($matrizConfig['ambiente'] ?? '') == 'producao' ? '1' : '2') ?>,
+            senha: <?= json_encode($matrizConfig['certificado_senha'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+        };
 
-    document.getElementById('f_cert_senha').value = data ? data.certificado_senha : defaultSefaz.senha;
-    
-    document.getElementById('f_principal').value = data ? data.principal : '0';
+        // Reset inputs
+        document.getElementById('f_id').value = data ? (data.id || '') : '';
+        document.getElementById('f_nome').value = data ? (data.nome || '') : '';
+        document.getElementById('f_cnpj').value = data ? (data.cnpj || '') : '';
+        document.getElementById('f_razao').value = data ? (data.razao_social || '') : '';
+        document.getElementById('f_crt').value = data ? (data.crt || '1') : '1';
+        document.getElementById('f_ie').value = data ? (data.inscricao_estadual || '') : '';
+        document.getElementById('f_cep').value = data ? (data.cep || '') : '';
+        document.getElementById('f_municipio').value = data ? (data.municipio || '') : '';
+        document.getElementById('f_ibge_mun').value = data ? (data.codigo_municipio || '') : '';
+        document.getElementById('f_logradouro').value = data ? (data.logradouro || '') : '';
+        document.getElementById('f_numero').value = data ? (data.numero || '') : '';
+        document.getElementById('f_bairro').value = data ? (data.bairro || '') : '';
+        document.getElementById('f_complemento').value = data ? (data.complemento || '') : '';
+        document.getElementById('f_uf').value = data ? (data.uf || '') : '';
+        document.getElementById('f_cod_uf').value = data ? (data.codigo_uf || '') : '';
+        document.getElementById('f_fone').value = data ? (data.telefone || '') : '';
+        document.getElementById('f_email').value = data ? (data.email || '') : '';
+        
+        // Pre-fill fiscal and certificate with data if editing, or global defaults if new
+        document.getElementById('f_csc_id').value = data ? (data.csc_id || defaultSefaz.csc_id) : defaultSefaz.csc_id;
+        document.getElementById('f_csc_token').value = data ? (data.csc_token || defaultSefaz.csc_token) : defaultSefaz.csc_token;
+        document.getElementById('f_serie').value = data ? (data.serie_nfce || '1') : '1';
+        document.getElementById('f_ultimo').value = data ? (data.ultimo_numero_nfce || '0') : '0';
+        document.getElementById('f_ambiente').value = data ? (data.ambiente || defaultSefaz.ambiente) : defaultSefaz.ambiente;
+        
+        document.getElementById('f_tipo_emissao').value = data ? (data.tipo_emissao || 'Normal') : 'Normal';
+        document.getElementById('f_finalidade').value = data ? (data.finalidade_emissao || 'Normal') : 'Normal';
+        document.getElementById('f_presenca').value = data ? (data.indicador_presenca || 'Operacao presencial') : 'Operacao presencial';
+        document.getElementById('f_impressao').value = data ? (data.tipo_impressao_danfe || 'NFC-e') : 'NFC-e';
 
-    modal.show();
+        document.getElementById('f_cert_senha').value = data ? (data.certificado_senha || defaultSefaz.senha) : defaultSefaz.senha;
+        
+        document.getElementById('f_principal').value = data ? (data.principal || '0') : '0';
+
+        modal.show();
+    } catch (e) {
+        console.error("Erro ao abrir modal:", e);
+        alert("Ocorreu um erro ao abrir os dados da unidade. Verifique o console.");
+    }
 }
 
 // Auto behavior for hash
@@ -513,11 +526,10 @@ async function buscarCEP() {
             
             atualizarCodigoUF();
             
-            if (data.ibge) {
-                document.getElementById('f_ibge_mun').value = data.ibge;
-            } else {
-                buscarIBGEPorNome();
-            }
+        if (data.ibge) {
+            document.getElementById('f_ibge_mun').value = data.ibge;
+        } else {
+            buscarIBGEPorNome();
         }
     } catch (e) {
         console.error("Erro ao buscar CEP", e);
