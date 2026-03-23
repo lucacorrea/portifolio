@@ -56,10 +56,15 @@ body {
     position: fixed;
     left: 0;
     height: 100vh;
+    transform: translateX(0);
+    visibility: visible;
+    opacity: 1;
 }
 
 .sidebar-collapsed .sidebar {
-    left: -260px;
+    transform: translateX(-100%);
+    visibility: hidden;
+    opacity: 0;
 }
 
 .sidebar-header {
@@ -107,6 +112,7 @@ body {
 
 .sidebar-collapsed .main-wrapper {
     margin-left: 0;
+    width: 100%;
 }
 
 .top-navbar {
