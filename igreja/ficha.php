@@ -164,7 +164,6 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
     }
 
     .photo-box {
-        border: 1px solid #8f8f8f;
         
         display: flex;
         align-items: flex-start;
