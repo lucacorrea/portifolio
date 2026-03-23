@@ -173,9 +173,10 @@ class Cashier extends BaseModel {
         }
 
         $stmtFiados = $this->db->prepare("
-            SELECT fp.*, cr.cliente_nome, cr.valor_total as valor_fiado_total
+            SELECT fp.*, c.nome as cliente_nome, cr.valor as valor_fiado_total
             FROM fiados_pagamentos fp
             JOIN contas_receber cr ON fp.fiado_id = cr.id
+            JOIN clientes c ON cr.cliente_id = c.id
             WHERE cr.filial_id = ? $whereTimeFiado
             ORDER BY fp.created_at DESC
         ");
