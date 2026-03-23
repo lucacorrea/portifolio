@@ -80,6 +80,15 @@
             </div>
         </div>
         
+        <div class="col">
+            <div class="card border-0 h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-arrow-up text-danger me-2"></i>Sangrias</div>
+                    <h5 class="mb-0 fw-bold text-danger">- <?= formatarMoeda($summary['sangrias']) ?></h5>
+                    <div class="text-muted extra-small mt-2">Retiradas do caixa</div>
+                </div>
+            </div>
+        </div>
     </div>
     <?php endif; ?>
 
