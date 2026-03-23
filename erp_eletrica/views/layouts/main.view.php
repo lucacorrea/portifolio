@@ -15,6 +15,13 @@
     <link rel="stylesheet" href="public/css/corporate.css?v=5.5">
     <link rel="stylesheet" href="style.css?v=5.5">
     
+    <script>
+        // Critical: Apply sidebar state before rendering to avoid flash
+        if (localStorage.getItem('sidebar-collapsed') === 'true' && window.innerWidth >= 992) {
+            document.documentElement.classList.add('sidebar-collapsed');
+        }
+    </script>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>

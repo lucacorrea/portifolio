@@ -4,20 +4,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeBtn = document.getElementById('sidebarClose');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    const body = document.body;
-    
-    // Load persisted state
-    if (localStorage.getItem('sidebar-collapsed') === 'true' && window.innerWidth >= 992) {
-        body.classList.add('sidebar-collapsed');
-    }
+    const html = document.documentElement;
 
     function toggleSidebar() {
         if (window.innerWidth < 992) {
             sidebar.classList.toggle('active');
             if (overlay) overlay.classList.toggle('active');
         } else {
-            body.classList.toggle('sidebar-collapsed');
-            localStorage.setItem('sidebar-collapsed', body.classList.contains('sidebar-collapsed'));
+            html.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebar-collapsed', html.classList.contains('sidebar-collapsed'));
         }
     }
 

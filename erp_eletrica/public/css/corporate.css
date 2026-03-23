@@ -58,7 +58,7 @@ body {
     height: 100vh;
 }
 
-body.sidebar-collapsed .sidebar {
+.sidebar-collapsed .sidebar {
     left: -260px;
 }
 
@@ -105,7 +105,7 @@ body.sidebar-collapsed .sidebar {
     background-color: #f8fafc !important;
 }
 
-body.sidebar-collapsed .main-wrapper {
+.sidebar-collapsed .main-wrapper {
     margin-left: 0;
 }
 
