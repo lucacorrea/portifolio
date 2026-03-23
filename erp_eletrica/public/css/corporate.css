@@ -50,11 +50,16 @@ body {
 .sidebar {
     width: 260px;
     background: var(--erp-secondary);
-    /* Default, will be overridden by --erp-sidebar-bg if defined */
     border-right: 1px solid #e2e8f0;
-    transition: all 0.3s;
+    transition: all 0.3s ease-in-out;
     z-index: 1040;
-    /* Above Bootstrap sticky-top (1020) and fixed-top (1030) */
+    position: fixed;
+    left: 0;
+    height: 100vh;
+}
+
+body.sidebar-collapsed .sidebar {
+    left: -260px;
 }
 
 .sidebar-header {
@@ -95,17 +100,13 @@ body {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    margin-left: 260px !important;
-    transition: margin-left 0.3s;
+    margin-left: 260px;
+    transition: margin-left 0.3s ease-in-out;
     background-color: #f8fafc !important;
 }
 
-body.sidebar-collapsed .sidebar {
-    left: -260px;
-}
-
 body.sidebar-collapsed .main-wrapper {
-    margin-left: 0 !important;
+    margin-left: 0;
 }
 
 .top-navbar {
@@ -239,6 +240,12 @@ body.sidebar-collapsed .main-wrapper {
     transition: opacity 0.3s;
 }
 
+@media (min-width: 992px) {
+    .sidebar-overlay {
+        display: none !important;
+    }
+}
+
 .sidebar-overlay.active {
     display: block;
     opacity: 1;
@@ -308,17 +315,20 @@ h6 {
     overflow: hidden;
     position: relative;
 }
-
-/* Scrollbar Modernization */
-::-webkit-scrollbar {
-    width: 6px;
+/* Product Preview Hover Zoom */
+.product-zoom-container {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: zoom-in;
 }
 
-::-webkit-scrollbar-track {
-    background: transparent;
+.product-zoom-container:hover img {
+    transform: scale(1.5);
 }
 
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
+.product-zoom-container img {
+    transition: transform 0.5s ease;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
+

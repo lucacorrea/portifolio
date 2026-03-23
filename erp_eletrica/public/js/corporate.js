@@ -7,12 +7,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const body = document.body;
     
     // Load persisted state
-    if (localStorage.getItem('sidebar-collapsed') === 'true' && window.innerWidth > 991) {
+    if (localStorage.getItem('sidebar-collapsed') === 'true' && window.innerWidth >= 992) {
         body.classList.add('sidebar-collapsed');
     }
 
     function toggleSidebar() {
-        if (window.innerWidth <= 991) {
+        if (window.innerWidth < 992) {
             sidebar.classList.toggle('active');
             if (overlay) overlay.classList.toggle('active');
         } else {
@@ -21,13 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    if (toggle) {
-        toggle.addEventListener('click', toggleSidebar);
-    }
+    if (toggle) toggle.addEventListener('click', toggleSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', toggleSidebar);
-    }
 
     if (overlay) {
         overlay.addEventListener('click', () => {
