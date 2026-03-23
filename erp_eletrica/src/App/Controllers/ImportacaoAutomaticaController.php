@@ -22,15 +22,14 @@ class ImportacaoAutomaticaController extends BaseController {
         $stmt->execute([$filialId]);
         $fornecedores = $stmt->fetchAll();
 
-        // Para cada fornecedor, buscar as notas
-        foreach ($fornecedores as &$f) {
-            $stmt = $db->prepare("SELECT * FROM nfe_importadas WHERE filial_id = ? AND fornecedor_cnpj = ? AND status = 'pendente' ORDER BY data_emissao DESC");
-            $stmt->execute([$filialId, $f['fornecedor_cnpj']]);
-            $f['notas'] = $stmt->fetchAll();
-        }
-
+        // Buscar última sincronização geral
+        $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_last_sync_timestamp'");
+        $stmt->execute();
+        $lastSync = $stmt->fetchColumn();
+        
         $this->render('importacao_automatica', [
             'fornecedores' => $fornecedores,
+            'lastSync' => $lastSync,
             'title' => 'Importação Automática SEFAZ',
             'pageTitle' => 'Notas Fiscais Destinadas (Certificado A1)'
         ]);
@@ -63,6 +62,10 @@ class ImportacaoAutomaticaController extends BaseController {
             if ($hasMore) {
                 $message .= " Atenção: Ainda existem mais notas disponíveis. Clique em 'Atualizar' novamente.";
             }
+
+            // Save last sync timestamp
+            $stmt = $db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
+            $stmt->execute(['nfe_last_sync_timestamp', date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]);
 
             echo json_encode([
                 'success' => true, 

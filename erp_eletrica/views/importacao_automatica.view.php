@@ -4,7 +4,12 @@
             <h2 class="h4 mb-0 fw-bold text-primary">
                 <i class="fas fa-cloud-download-alt me-2"></i>Importação Automática SEFAZ
             </h2>
-            <p class="text-muted small mb-0">Notas Fiscais emitidas para o seu CNPJ via Certificado A1</p>
+            <p class="text-muted small mb-0">
+                Notas Fiscais emitidas para o seu CNPJ via Certificado A1 
+                <?php if (!empty($lastSync)): ?>
+                    • <span class="badge bg-light text-muted fw-normal"><i class="fas fa-clock me-1"></i>Última Sincronização: <?= date('d/m/Y H:i', strtotime($lastSync)) ?></span>
+                <?php endif; ?>
+            </p>
         </div>
         <div class="col-auto">
             <?php if (in_array($_SESSION['usuario_nivel'], ['master', 'admin']) && ($_SESSION['is_matriz'] ?? false)): ?>
@@ -41,7 +46,7 @@
         <i class="fas fa-info-circle me-3 fa-2x text-warning"></i>
         <div class="flex-grow-1">
             <h6 class="mb-1 fw-bold text-dark">Como funciona?</h6>
-            <p class="mb-0 small text-muted">O sistema consulta os servidores da SEFAZ Nacional em busca de notas destinadas ao seu CNPJ. 
+            <p class="mb-0 small text-muted">O sistema consulta os servidores da SEFAZ Nacional em busca de notas destinadas ao seu CNPJ nos <strong>últimos 90 dias</strong> (limite do governo). 
             As notas aparecem aqui agrupadas por fornecedor para facilitar a entrada no estoque.</p>
         </div>
     </div>
