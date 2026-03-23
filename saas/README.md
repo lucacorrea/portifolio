@@ -330,15 +330,3 @@ Sistema pensado para ser:
 * Profissional (nível ERP)
 * Fácil manutenção
 
----
-
-## 🚀 PRÓXIMO PASSO
-
-Se quiser evoluir agora:
-
-👉 **Menu lateral estilo ERP (dinâmico)**
-👉 **Dashboard com gráficos reais**
-👉 **Base de emissão de nota (começo do fiscal)**
-
-Só falar:
-**“vamos pro menu profissional”** 🚀
