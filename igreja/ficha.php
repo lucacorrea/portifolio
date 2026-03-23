@@ -117,7 +117,6 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
     .top-logo {
         width: 98px;
         height: 98px;
-        border: 1px solid #8f8f8f;
         overflow: hidden;
         background: #fff;
         flex-shrink: 0;
@@ -125,9 +124,8 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
     }
 
     .top-logo img {
-        width: 80%;
-        height: 80%;
-        object-fit: cover;
+        width: 100%;
+        height: 100%;
         display: block;
     }
 
