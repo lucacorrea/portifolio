@@ -40,6 +40,7 @@ class ImportacaoAutomaticaController extends BaseController {
         try {
             $db = \App\Config\Database::getInstance()->getConnection();
             $filialId = $_SESSION['filial_id'] ?? 1;
+            $forceReset = ($_GET['reset'] ?? '0') === '1';
             
             // Buscar CNPJ da filial
             $stmt = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
@@ -47,16 +48,28 @@ class ImportacaoAutomaticaController extends BaseController {
             $cnpj = $stmt->fetchColumn();
 
             $service = new SefazConsultaService();
-            // O serviço agora cuida do NSU automático e do loop de busca
-            $resultado = $service->consultarNotas($cnpj);
+            
+            // Se reset for 1, passamos 0 como NSU inicial para buscar os últimos 90 dias
+            $ultNSU = $forceReset ? '0' : null;
+            $resultado = $service->consultarNotas($cnpj, $ultNSU);
             
             $count = count($resultado['documentos'] ?? []);
             
-            if ($count > 0) {
-                echo json_encode(['success' => true, 'count' => $count, 'message' => "Sincronização concluída. $count novos registros (resumos ou completos) foram processados."]);
-            } else {
-                echo json_encode(['success' => true, 'count' => 0, 'message' => 'Nenhuma nota nova encontrada na SEFAZ para este período.']);
+            $hasMore = ($resultado['ultNSU'] < $resultado['maxNSU']);
+            $message = $count > 0 
+                ? "Sincronização concluída. $count novos registros foram processados." 
+                : "Nenhuma nota nova encontrada na SEFAZ para este período.";
+
+            if ($hasMore) {
+                $message .= " Atenção: Ainda existem mais notas disponíveis. Clique em 'Atualizar' novamente.";
             }
+
+            echo json_encode([
+                'success' => true, 
+                'count' => $count, 
+                'hasMore' => $hasMore,
+                'message' => $message
+            ]);
         } catch (\Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }

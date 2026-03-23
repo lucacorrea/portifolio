@@ -12,9 +12,27 @@
                     <i class="fas fa-cog me-2"></i>CONFIGURAÇÕES GLOBAIS
                 </a>
             <?php endif; ?>
-            <button class="btn btn-primary fw-bold" onclick="sincronizarSefaz()">
-                <i class="fas fa-sync-alt me-2"></i>ATUALIZAR NOTAS SEFAZ
-            </button>
+            <div class="btn-group">
+                <button class="btn btn-primary fw-bold" onclick="sincronizarSefaz()">
+                    <i class="fas fa-sync-alt me-2"></i>ATUALIZAR NOTAS SEFAZ
+                </button>
+                <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="visually-hidden">Opções</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <li>
+                        <a class="dropdown-item fw-bold py-2" href="#" onclick="sincronizarSefaz(true)">
+                            <i class="fas fa-search-plus me-2 text-primary"></i>BUSCA PROFUNDA (Últimos 90 dias)
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li class="px-3 py-1">
+                        <small class="text-muted d-block" style="max-width: 200px; font-size: 0.7rem;">
+                            <i class="fas fa-info-circle me-1"></i> Use a busca profunda se notar que existem notas faltando. A SEFAZ permite recuperar documentos de até 90 dias atrás.
+                        </small>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -141,14 +159,23 @@
 </div>
 
 <script>
-async function sincronizarSefaz() {
+async function sincronizarSefaz(deep = false) {
+    if (deep && !confirm('A Busca Profunda irá re-escanear as notas dos últimos 90 dias na SEFAZ. Deseja continuar?')) return;
+    
     showLoader();
     try {
-        const response = await fetch('importar_automatico.php?action=sincronizar');
+        const response = await fetch('importar_automatico.php?action=sincronizar' + (deep ? '&reset=1' : ''));
         const result = await response.json();
         
         if (result.success) {
-            alert(result.count > 0 ? `${result.count} novas notas localizadas e salvas!` : (result.message || 'Sincronização concluída sem novas notas.'));
+            if (result.hasMore) {
+                if (confirm(result.message + "\n\nDeseja continuar buscando o restante agora?")) {
+                    sincronizarSefaz(false); // Continua do NSU atual
+                    return;
+                }
+            } else {
+                alert(result.message);
+            }
             location.reload();
         } else {
             alert('Erro: ' + result.error);
