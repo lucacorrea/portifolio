@@ -47,22 +47,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Lightbox Zoom Logic
     window.openLightbox = function(src) {
+        if (!src || src.includes('fa-image') || src.includes('no-image')) return;
+
         let lightbox = document.getElementById('lightboxOverlay');
         if (!lightbox) {
             lightbox = document.createElement('div');
             lightbox.id = 'lightboxOverlay';
             lightbox.className = 'lightbox-overlay';
-            lightbox.innerHTML = '<img class="lightbox-content" id="lightboxImage">';
+            lightbox.innerHTML = `
+                <span class="lightbox-close">&times;</span>
+                <img class="lightbox-content" id="lightboxImage">
+            `;
             document.body.appendChild(lightbox);
             
-            lightbox.addEventListener('click', () => {
-                lightbox.classList.remove('active');
+            lightbox.addEventListener('click', (e) => {
+                if (e.target.id === 'lightboxOverlay' || e.target.classList.contains('lightbox-close')) {
+                    lightbox.classList.remove('active');
+                }
             });
         }
         
         const img = document.getElementById('lightboxImage');
         img.src = src;
-        lightbox.classList.add('active');
+        
+        // Brief delay to ensure display:flex is applied before opacity transition
+        lightbox.style.display = 'flex';
+        setTimeout(() => lightbox.classList.add('active'), 10);
     };
 
     // Attach click listener to zoom containers
@@ -70,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const zoomContainer = e.target.closest('.product-zoom-container');
         if (zoomContainer) {
             const img = zoomContainer.querySelector('img');
-            if (img && img.src && !img.src.includes('fa-image')) {
+            if (img && img.src) {
                 openLightbox(img.src);
             }
         }
