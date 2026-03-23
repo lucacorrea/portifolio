@@ -470,7 +470,7 @@ function renderSearchResults(products) {
 
 function showPreview(p) {
     if (p.imagens) {
-        productPreviewImg.innerHTML = `<img src="public/uploads/produtos/${p.imagens}" style="width:100%; height:100%; object-fit:cover;" class="fade-in">`;
+        productPreviewImg.innerHTML = `<img src="public/uploads/produtos/${p.imagens}" style="width:100%; height:100%; object-fit:contain; cursor:pointer;" class="fade-in" onclick="if(window.openLightbox) window.openLightbox(this.src)">`;
     } else {
         productPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
     }

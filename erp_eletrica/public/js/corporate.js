@@ -75,12 +75,23 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => lightbox.classList.add('active'), 10);
     };
 
-    // Attach click listener to zoom containers
+    // Attach click listener to zoom containers with improved robustness
     document.addEventListener('click', (e) => {
+        // Find the nearest zoom container from the click target
         const zoomContainer = e.target.closest('.product-zoom-container');
         if (zoomContainer) {
+            console.log('Zoom container clicked:', zoomContainer.id || 'anonymous');
+            
+            // Try to find an image within it
             const img = zoomContainer.querySelector('img');
             if (img && img.src) {
+                // Ignore if it's clearly a placeholder or empty
+                if (img.src.includes('fa-image') || img.src.includes('no-image') || img.complete && img.naturalWidth === 0) {
+                    console.log('Ignoring click: placeholder or broken image');
+                    return;
+                }
+                
+                console.log('Opening lightbox for:', img.src);
                 openLightbox(img.src);
             }
         }
