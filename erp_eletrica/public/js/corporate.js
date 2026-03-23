@@ -47,38 +47,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 
-// Lightbox Zoom Logic (Global)
+// CSS-Only Zoom Modal Logic (Global)
 window.openLightbox = function(src) {
     if (!src || src.includes('fa-image') || src.includes('no-image')) return;
 
-    let lightbox = document.getElementById('lightboxOverlay');
-    if (!lightbox) {
-        lightbox = document.createElement('div');
-        lightbox.id = 'lightboxOverlay';
-        lightbox.className = 'lightbox-overlay';
-        lightbox.innerHTML = `
-            <span class="lightbox-close">&times;</span>
-            <img class="lightbox-content" id="lightboxImage">
-        `;
-        document.body.appendChild(lightbox);
-        
-        lightbox.addEventListener('click', (e) => {
-            if (e.target.id === 'lightboxOverlay' || e.target.classList.contains('lightbox-close')) {
-                lightbox.classList.remove('active');
-                setTimeout(() => {
-                    if (!lightbox.classList.contains('active')) {
-                        lightbox.style.display = 'none';
-                    }
-                }, 400);
-            }
-        });
+    const modalImg = document.getElementById('img-zoom-content');
+    if (modalImg) {
+        modalImg.src = src;
+        window.location.hash = 'img-zoom-modal';
     }
-    
-    const img = document.getElementById('lightboxImage');
-    img.src = src;
-    
-    lightbox.style.display = 'flex';
-    setTimeout(() => lightbox.classList.add('active'), 10);
 };
 
 // Attach click listener to zoom containers with improved robustness

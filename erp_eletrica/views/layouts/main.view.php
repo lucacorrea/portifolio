@@ -89,6 +89,14 @@
         </div>
     </div>
 
+    <!-- CSS-Only Zoom Modal (User suggested approach) -->
+    <div id="img-zoom-modal" class="zoom-modal">
+        <a href="#" class="zoom-modal-close">&times;</a>
+        <div class="zoom-modal-content">
+            <img id="img-zoom-content" src="" alt="Zoom">
+        </div>
+    </div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="public/js/corporate.js"></script>
