@@ -173,7 +173,6 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
     }
 
     .photo-box .placeholder {
-        margin-top: 34px;
         font-size: 15px;
         line-height: 1.6;
         color: #666;
