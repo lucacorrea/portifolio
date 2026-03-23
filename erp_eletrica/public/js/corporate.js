@@ -47,6 +47,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 5000);
 
+    // Lightbox Zoom Logic
+    window.openLightbox = function(src) {
+        let lightbox = document.getElementById('lightboxOverlay');
+        if (!lightbox) {
+            lightbox = document.createElement('div');
+            lightbox.id = 'lightboxOverlay';
+            lightbox.className = 'lightbox-overlay';
+            lightbox.innerHTML = '<img class="lightbox-content" id="lightboxImage">';
+            document.body.appendChild(lightbox);
+            
+            lightbox.addEventListener('click', () => {
+                lightbox.classList.remove('active');
+            });
+        }
+        
+        const img = document.getElementById('lightboxImage');
+        img.src = src;
+        lightbox.classList.add('active');
+    };
+
+    // Attach click listener to zoom containers
+    document.addEventListener('click', (e) => {
+        const zoomContainer = e.target.closest('.product-zoom-container');
+        if (zoomContainer) {
+            const img = zoomContainer.querySelector('img');
+            if (img && img.src && !img.src.includes('fa-image')) {
+                openLightbox(img.src);
+            }
+        }
+    });
+
     // Form submission enhancement (Add CSRF and Lock button)
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {

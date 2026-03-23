@@ -466,12 +466,23 @@
                 // Itens table mapping
                 const elItens = document.getElementById('det-itens');
                 if (elItens && data.items) {
-                    elItens.innerHTML = data.items.map(i => `
-                        <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom text-dark">
-                            <div>${parseFloat(i.quantidade || 0)}x ${i.produto_nome || 'Produto desconhecido'}</div>
-                            <div class="fw-bold">${fmtBRL((i.preco_unitario || 0) * (i.quantidade || 0))}</div>
+                    elItens.innerHTML = data.items.map(i => {
+                        const foto = i.foto || 'public/img/no-image.png'; // Assume this path or a fallback
+                        const hasFoto = i.foto && i.foto !== '';
+                        return `
+                        <div class="d-flex align-items-center justify-content-between mb-2 small pb-1 border-bottom text-dark">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light rounded border me-2 d-flex align-items-center justify-content-center ${hasFoto ? 'product-zoom-container' : ''}" style="width: 40px; height: 40px; overflow: hidden; flex-shrink: 0;">
+                                    ${hasFoto ? `<img src="${i.foto}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas fa-image text-muted opacity-25"></i>`}
+                                </div>
+                                <div>
+                                    <div class="fw-bold">${i.produto_nome || 'Produto desconhecido'}</div>
+                                    <div class="extra-small text-muted">${parseFloat(i.quantidade || 0)} un x ${fmtBRL(i.preco_unitario || 0)}</div>
+                                </div>
+                            </div>
+                            <div class="fw-bold text-end">${fmtBRL((i.preco_unitario || 0) * (i.quantidade || 0))}</div>
                         </div>
-                    `).join('') || '<div class="text-muted small">Nenhum item encontrado.</div>';
+                    `}).join('') || '<div class="text-muted small text-center py-3">Nenhum item encontrado.</div>';
                 }
 
                 // Payments history mapping
