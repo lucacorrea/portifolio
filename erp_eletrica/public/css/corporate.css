@@ -382,6 +382,7 @@ h6 {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: zoom-in;
     overflow: hidden;
+    pointer-events: auto !important;
 }
 
 .product-zoom-container:hover img {

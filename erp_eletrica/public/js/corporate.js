@@ -45,76 +45,52 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 5000);
 
-    // Lightbox Zoom Logic
-    window.openLightbox = function(src) {
-        if (!src || src.includes('fa-image') || src.includes('no-image')) return;
+});
 
-        let lightbox = document.getElementById('lightboxOverlay');
-        if (!lightbox) {
-            lightbox = document.createElement('div');
-            lightbox.id = 'lightboxOverlay';
-            lightbox.className = 'lightbox-overlay';
-            lightbox.innerHTML = `
-                <span class="lightbox-close">&times;</span>
-                <img class="lightbox-content" id="lightboxImage">
-            `;
-            document.body.appendChild(lightbox);
-            
-            lightbox.addEventListener('click', (e) => {
-                if (e.target.id === 'lightboxOverlay' || e.target.classList.contains('lightbox-close')) {
-                    lightbox.classList.remove('active');
-                    // Completely remove display:flex after 400ms (matching the transition time)
-                    setTimeout(() => {
-                        if (!lightbox.classList.contains('active')) {
-                            lightbox.style.display = 'none';
-                        }
-                    }, 400);
-                }
-            });
-        }
+// Lightbox Zoom Logic (Global)
+window.openLightbox = function(src) {
+    if (!src || src.includes('fa-image') || src.includes('no-image')) return;
+
+    let lightbox = document.getElementById('lightboxOverlay');
+    if (!lightbox) {
+        lightbox = document.createElement('div');
+        lightbox.id = 'lightboxOverlay';
+        lightbox.className = 'lightbox-overlay';
+        lightbox.innerHTML = `
+            <span class="lightbox-close">&times;</span>
+            <img class="lightbox-content" id="lightboxImage">
+        `;
+        document.body.appendChild(lightbox);
         
-        const img = document.getElementById('lightboxImage');
-        img.src = src;
-        
-        // Brief delay to ensure display:flex is applied before opacity transition
-        lightbox.style.display = 'flex';
-        setTimeout(() => lightbox.classList.add('active'), 10);
-    };
-
-    // Attach click listener to zoom containers with improved robustness
-    document.addEventListener('click', (e) => {
-        // Find the nearest zoom container from the click target
-        const zoomContainer = e.target.closest('.product-zoom-container');
-        if (zoomContainer) {
-            console.log('Zoom container clicked:', zoomContainer.id || 'anonymous');
-            
-            // Try to find an image within it
-            const img = zoomContainer.querySelector('img');
-            if (img && img.src) {
-                // Ignore if it's clearly a placeholder or empty
-                if (img.src.includes('fa-image') || img.src.includes('no-image') || img.complete && img.naturalWidth === 0) {
-                    console.log('Ignoring click: placeholder or broken image');
-                    return;
-                }
-                
-                console.log('Opening lightbox for:', img.src);
-                openLightbox(img.src);
+        lightbox.addEventListener('click', (e) => {
+            if (e.target.id === 'lightboxOverlay' || e.target.classList.contains('lightbox-close')) {
+                lightbox.classList.remove('active');
+                setTimeout(() => {
+                    if (!lightbox.classList.contains('active')) {
+                        lightbox.style.display = 'none';
+                    }
+                }, 400);
             }
-        }
-    });
-
-    // Form submission enhancement (Add CSRF and Lock button)
-    const forms = document.querySelectorAll('form');
-    forms.forEach(form => {
-        form.addEventListener('submit', function() {
-            const btn = form.querySelector('button[type="submit"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando...';
-            }
-            showLoader();
         });
-    });
+    }
+    
+    const img = document.getElementById('lightboxImage');
+    img.src = src;
+    
+    lightbox.style.display = 'flex';
+    setTimeout(() => lightbox.classList.add('active'), 10);
+};
+
+// Attach click listener to zoom containers with improved robustness
+document.addEventListener('click', (e) => {
+    const zoomContainer = e.target.closest('.product-zoom-container');
+    if (zoomContainer) {
+        const img = zoomContainer.querySelector('img');
+        if (img && img.src) {
+            if (img.src.includes('fa-image') || img.src.includes('no-image')) return;
+            openLightbox(img.src);
+        }
+    }
 });
 
 // Global toggle password visibility
