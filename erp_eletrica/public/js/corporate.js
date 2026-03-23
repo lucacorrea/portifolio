@@ -63,6 +63,12 @@ document.addEventListener('DOMContentLoaded', function() {
             lightbox.addEventListener('click', (e) => {
                 if (e.target.id === 'lightboxOverlay' || e.target.classList.contains('lightbox-close')) {
                     lightbox.classList.remove('active');
+                    // Completely remove display:flex after 400ms (matching the transition time)
+                    setTimeout(() => {
+                        if (!lightbox.classList.contains('active')) {
+                            lightbox.style.display = 'none';
+                        }
+                    }, 400);
                 }
             });
         }
