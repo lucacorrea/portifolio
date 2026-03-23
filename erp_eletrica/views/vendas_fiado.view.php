@@ -472,8 +472,8 @@
                         return `
                         <div class="d-flex align-items-center justify-content-between mb-2 small pb-1 border-bottom text-dark">
                             <div class="d-flex align-items-center">
-                                <div class="bg-light rounded border me-2 d-flex align-items-center justify-content-center ${hasFoto ? 'product-zoom-container' : ''}" style="width: 40px; height: 40px; overflow: hidden; flex-shrink: 0;">
-                                    ${hasFoto ? `<img src="${i.foto}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas fa-image text-muted opacity-25"></i>`}
+                                <div class="bg-light rounded border me-2 d-flex align-items-center justify-content-center ${hasFoto ? 'product-zoom-container' : ''}" style="width: 40px; height: 40px; overflow: hidden; flex-shrink: 0;" ${hasFoto ? `onclick="if(window.openLightbox) window.openLightbox('${i.foto}')"` : ''}>
+                                    ${hasFoto ? `<img src="${i.foto}" style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;">` : `<i class="fas fa-image text-muted opacity-25"></i>`}
                                 </div>
                                 <div>
                                     <div class="fw-bold">${i.produto_nome || 'Produto desconhecido'}</div>
