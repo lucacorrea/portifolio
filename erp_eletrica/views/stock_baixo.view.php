@@ -190,16 +190,23 @@ function exportToExcel() {
     <head>
         <meta charset="utf-8">
         <style>
-            table { border-collapse: collapse; font-family: 'Segoe UI', Arial, sans-serif; width: 100%; border: 1px solid #dee2e6; }
-            th { background-color: #1e293b; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #dee2e6; padding: 12px; font-size: 14px; text-transform: uppercase; }
-            td { border: 1px solid #dee2e6; padding: 10px; font-size: 13px; text-align: center; vertical-align: middle; color: #333333; }
-            td.col-left { text-align: left; }
+            @page { margin: 0.5in; mso-page-orientation: portrait; }
+            table { border-collapse: collapse; font-family: 'Segoe UI', Arial, sans-serif; width: 720px; border: 1px solid #dee2e6; table-layout: fixed; }
+            th { background-color: #1e293b; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #dee2e6; padding: 8px 4px; font-size: 12px; text-transform: uppercase; white-space: normal; word-wrap: break-word; }
+            td { border: 1px solid #dee2e6; padding: 6px 4px; font-size: 11px; text-align: center; vertical-align: middle; color: #333333; white-space: normal; word-wrap: break-word; }
+            td.col-left { text-align: left; padding-left: 8px; }
             tr.row-even td { background-color: #f8fafc; }
             tr.row-odd td { background-color: #ffffff; }
             .bg-critico { background-color: #fee2e2; color: #991b1b; font-weight: bold; }
             .bg-baixo { background-color: #fef3c7; color: #92400e; font-weight: bold; }
             .text-primary { color: #2563eb; font-weight: bold; }
             .text-success { color: #16a34a; font-weight: bold; }
+            
+            /* Define column widths to fit A4 paper */
+            .w-codigo { width: 260px; }
+            .w-cat { width: 120px; }
+            .w-num { width: 85px; }
+            .w-sug { width: 85px; }
         </style>
     </head>
     <body>
@@ -221,6 +228,12 @@ function exportToExcel() {
             let classes = [];
             
             if (i > 0 && (j === 0 || j === 1)) classes.push("col-left");
+            
+            // Width classes
+            if (j === 0) classes.push("w-codigo");
+            else if (j === 1) classes.push("w-cat");
+            else if (j === 5) classes.push("w-sug");
+            else classes.push("w-num");
             
             if (i > 0) {
                 if (j === 4) {
