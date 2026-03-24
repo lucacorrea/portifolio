@@ -46,13 +46,24 @@ class CaixaController extends BaseController {
                 exit;
             }
 
-            $cashierModel->create([
+            $caixaId = $cashierModel->create([
                 'filial_id' => $_SESSION['filial_id'],
                 'operador_id' => $_SESSION['usuario_id'],
                 'valor_abertura' => $valorAbertura,
                 'status' => 'aberto',
                 'data_abertura' => date('Y-m-d H:i:s')
             ]);
+
+            if ($valorAbertura > 0) {
+                $movementModel = new CashierMovement();
+                $movementModel->create([
+                    'caixa_id' => $caixaId,
+                    'tipo' => 'entrada',
+                    'valor' => $valorAbertura,
+                    'motivo' => 'Abertura de Caixa',
+                    'operador_id' => $_SESSION['usuario_id']
+                ]);
+            }
 
             $this->logAction('abertura_caixa', 'caixas', null, null, ['valor' => $valorAbertura]);
             header('Location: caixa.php?success=Caixa aberto com sucesso.');
