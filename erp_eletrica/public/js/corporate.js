@@ -56,7 +56,7 @@ window.openLightbox = function(src) {
     
     if (modalEl && modalImg) {
         modalImg.src = src;
-        const bsModal = new bootstrap.Modal(modalEl);
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
         bsModal.show();
     }
 };
