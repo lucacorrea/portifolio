@@ -111,8 +111,11 @@
                     A pré-venda reserva o estoque temporariamente e gera um código para o caixa.
                 </div>
 
-                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-black" style="background-color: var(--erp-primary) !important;" onclick="generatePreSale()">
+                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-black mb-2" style="background-color: var(--erp-primary) !important;" onclick="generatePreSale()">
                     <i class="fas fa-check-circle me-2"></i>CONFIRMAR PRÉ-VENDA (F9)
+                </button>
+                <button class="btn btn-outline-danger w-100 py-2 fw-bold shadow-sm border-0" onclick="if(confirm('Tem certeza que deseja cancelar o orçamento atual e limpar a tela?')) location.reload()">
+                    <i class="fas fa-times me-2"></i>CANCELAR E LIMPAR
                 </button>
             </div>
         </div>
