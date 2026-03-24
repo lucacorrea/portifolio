@@ -189,9 +189,11 @@ function exportToExcel() {
     for (let i = 0; i < rows.length; i++) {
         let row = [], cols = rows[i].querySelectorAll("td, th");
         for (let j = 0; j < cols.length - 1; j++) {
-            row.push('"' + cols[j].innerText.trim() + '"');
+            let text = cols[j].innerText.trim().replace(/\r?\n|\r/g, ' - ');
+            text = text.replace(/"/g, '""');
+            row.push('"' + text + '"');
         }
-        csv.push(row.join(","));
+        csv.push(row.join(";"));
     }
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csv.join("\n");
     let encodedUri = encodeURI(csvContent);
