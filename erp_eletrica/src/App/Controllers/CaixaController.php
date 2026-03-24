@@ -55,6 +55,14 @@ class CaixaController extends BaseController {
             ]);
 
             if ($valorAbertura > 0) {
+                try {
+                    // Fix database column constraint directly if it's an ENUM
+                    $db = \App\Config\Database::getInstance()->getConnection();
+                    $db->exec("ALTER TABLE caixa_movimentacoes MODIFY tipo VARCHAR(50)");
+                    // Also fix any badly inserted row from today that got the default empty enum string
+                    $db->exec("UPDATE caixa_movimentacoes SET tipo = 'entrada' WHERE (tipo = '' OR tipo IS NULL) AND motivo = 'Abertura de Caixa'");
+                } catch (\Exception $e) {}
+
                 $movementModel = new CashierMovement();
                 $movementModel->create([
                     'caixa_id' => $caixaId,
@@ -220,6 +228,13 @@ class CaixaController extends BaseController {
             header('Location: caixa.php?error=Sessão não encontrada.');
             exit;
         }
+
+        try {
+            // Fix database column constraint for existing sessions immediately on viewing details
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $db->exec("ALTER TABLE caixa_movimentacoes MODIFY tipo VARCHAR(50)");
+            $db->exec("UPDATE caixa_movimentacoes SET tipo = 'entrada' WHERE (tipo = '' OR tipo IS NULL) AND motivo = 'Abertura de Caixa'");
+        } catch (\Exception $e) {}
 
         $cashierModel = new Cashier();
         $details = $cashierModel->getSessionDetails($id);
