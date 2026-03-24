@@ -1168,7 +1168,15 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
     const existing = document.getElementById('modalSuccess');
     if (existing) existing.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('modalSuccess'));
+    
+    // Auto-clear customer to ensure UI is reset and add reload on close 
+    clearCustomer();
+    
+    const modalEl = document.getElementById('modalSuccess');
+    const modal = new bootstrap.Modal(modalEl);
+    modalEl.addEventListener('hidden.bs.modal', () => {
+        location.reload();
+    });
     modal.show();
 
     // For non-fiscal: auto-open print window
