@@ -103,7 +103,7 @@
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="public/js/corporate.js"></script>
-    <script src="script.js"></script>
+    <script src="public/js/corporate.js?v=<?= time() ?>"></script>
+    <script src="script.js?v=<?= time() ?>"></script>
 </body>
 </html>
