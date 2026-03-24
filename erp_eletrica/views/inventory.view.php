@@ -225,7 +225,7 @@
                         <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
                         <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label small fw-bold">Unidade de Medida *</label>
                         <select name="unidade" class="form-select shadow-sm" id="edit_unidade" required onchange="updateFormVisibility()">
                             <option value="UN">Unidade (UN)</option>
@@ -243,7 +243,7 @@
                             <option value="ML">Mililitro (ML)</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label small fw-bold">Categoria</label>
                         <select name="categoria" class="form-select shadow-sm" id="edit_categoria">
                             <?php foreach ($categories as $cat): ?>
@@ -251,12 +251,21 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label small fw-bold">Tipo de Material</label>
                         <select name="tipo_produto" class="form-select shadow-sm" id="edit_tipo_produto" onchange="updateFormVisibility()">
                             <option value="simples">Item Simples</option>
                             <option value="composto">Kit / Composto</option>
                             <option value="consumo">Material de Consumo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Fornecedor</label>
+                        <select name="fornecedor_id" class="form-select shadow-sm" id="edit_fornecedor_id">
+                            <option value="">Nenhum</option>
+                            <?php foreach ($suppliers as $sup): ?>
+                                <option value="<?= $sup['id'] ?>"><?= htmlspecialchars($sup['nome_fantasia'] ?: $sup['nome']) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
@@ -266,7 +275,7 @@
                         <input type="number" step="0.01" min="0" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Preço Venda Normal (R$) *</label>
+                        <label class="form-label small fw-bold text-nowrap">Preço Venda Normal (R$) *</label>
                         <input type="number" step="0.01" min="0" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
                     </div>
                     <div class="col-md-3">
@@ -422,6 +431,7 @@ function editProduct(product) {
     document.getElementById('edit_unidade').value = product.unidade;
     document.getElementById('edit_categoria').value = product.categoria;
     document.getElementById('edit_tipo_produto').value = product.tipo_produto || 'simples';
+    document.getElementById('edit_fornecedor_id').value = product.fornecedor_id || '';
     document.getElementById('edit_quantidade').value = product.quantidade || 0;
     
     document.getElementById('edit_peso').value = product.peso || '';

@@ -62,8 +62,8 @@
                                 <button class="btn btn-light border" onclick="editUser(<?= htmlspecialchars(json_encode($u), ENT_QUOTES, 'UTF-8') ?>)" title="Editar Credenciais">
                                     <i class="fas fa-user-edit text-primary"></i>
                                 </button>
-                                <button class="btn btn-light border text-danger" title="Bloquear Acesso">
-                                    <i class="fas fa-ban"></i>
+                                <button class="btn btn-light border <?= $u['ativo'] ? 'text-danger' : 'text-success' ?>" title="<?= $u['ativo'] ? 'Bloquear Acesso' : 'Desbloquear Acesso' ?>" onclick='openStatusModal(<?= json_encode($u, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
+                                    <i class="fas <?= $u['ativo'] ? 'fa-ban' : 'fa-unlock' ?>"></i>
                                 </button>
                             </div>
                         </td>
@@ -184,7 +184,64 @@
     </div>
 </div>
 
+<div class="modal fade" id="modal-status" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Gestão de Acesso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <i class="fas fa-user-shield fs-1 text-primary mb-3"></i>
+                <h6 class="fw-bold mb-2" id="status-user-name">Nome do Usuário</h6>
+                <p class="text-muted small mb-4">Escolha a ação que deseja realizar com este colaborador.</p>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-warning fw-bold py-2" id="btnToggleStatus" onclick="toggleUserStatus()">
+                        <i class="fas fa-ban me-2"></i>BLOQUEAR ACESSO
+                    </button>
+                    <button class="btn btn-outline-danger fw-bold py-2" onclick="deleteUser()">
+                        <i class="fas fa-trash-alt me-2"></i>APAGAR DEFINITIVAMENTE
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+let currentManageUser = null;
+
+function openStatusModal(user) {
+    currentManageUser = user;
+    document.getElementById('status-user-name').innerText = user.nome;
+    const btnToggle = document.getElementById('btnToggleStatus');
+    
+    if (user.ativo == 1) {
+        btnToggle.className = 'btn btn-outline-warning fw-bold py-2';
+        btnToggle.innerHTML = '<i class="fas fa-ban me-2"></i>BLOQUEAR ACESSO';
+    } else {
+        btnToggle.className = 'btn btn-outline-success fw-bold py-2';
+        btnToggle.innerHTML = '<i class="fas fa-unlock me-2"></i>DESBLOQUEAR ACESSO';
+    }
+    
+    new bootstrap.Modal(document.getElementById('modal-status')).show();
+}
+
+function toggleUserStatus() {
+    const newStatus = currentManageUser.ativo == 1 ? 0 : 1;
+    const action = currentManageUser.ativo == 1 ? 'bloquear' : 'desbloquear';
+    if (confirm(`Deseja realmente ${action} o acesso de ${currentManageUser.nome}?`)) {
+        window.location.href = `usuarios.php?action=toggle_status&id=${currentManageUser.id}&status=${newStatus}`;
+    }
+}
+
+function deleteUser() {
+    if (confirm(`ATENÇÃO: Deseja realmente APAGAR o usuário ${currentManageUser.nome} permanentemente? Isso pode afetar históricos de vendas.`)) {
+        window.location.href = `usuarios.php?action=delete&id=${currentManageUser.id}`;
+    }
+}
+
 function toggleAuthFields() {
     const nivel = document.getElementById('edit-user-nivel').value;
     document.getElementById('auth-fields-section').style.display = (nivel === 'admin') ? 'flex' : 'none';

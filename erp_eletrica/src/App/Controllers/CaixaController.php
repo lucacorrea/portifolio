@@ -46,13 +46,32 @@ class CaixaController extends BaseController {
                 exit;
             }
 
-            $cashierModel->create([
+            $caixaId = $cashierModel->create([
                 'filial_id' => $_SESSION['filial_id'],
                 'operador_id' => $_SESSION['usuario_id'],
                 'valor_abertura' => $valorAbertura,
                 'status' => 'aberto',
                 'data_abertura' => date('Y-m-d H:i:s')
             ]);
+
+            if ($valorAbertura > 0) {
+                try {
+                    // Fix database column constraint directly if it's an ENUM
+                    $db = \App\Config\Database::getInstance()->getConnection();
+                    $db->exec("ALTER TABLE caixa_movimentacoes MODIFY tipo VARCHAR(50)");
+                    // Also fix any badly inserted row from today that got the default empty enum string
+                    $db->exec("UPDATE caixa_movimentacoes SET tipo = 'entrada' WHERE (tipo = '' OR tipo IS NULL) AND motivo = 'Abertura de Caixa'");
+                } catch (\Exception $e) {}
+
+                $movementModel = new CashierMovement();
+                $movementModel->create([
+                    'caixa_id' => $caixaId,
+                    'tipo' => 'entrada',
+                    'valor' => $valorAbertura,
+                    'motivo' => 'Abertura de Caixa',
+                    'operador_id' => $_SESSION['usuario_id']
+                ]);
+            }
 
             $this->logAction('abertura_caixa', 'caixas', null, null, ['valor' => $valorAbertura]);
             header('Location: caixa.php?success=Caixa aberto com sucesso.');
@@ -199,6 +218,37 @@ class CaixaController extends BaseController {
             echo json_encode(['success' => false, 'error' => 'Erro interno ao validar: ' . $e->getMessage()]);
             exit;
         }
+    }
+
+    public function detalhes() {
+        AuthService::checkPermission('caixa', 'visualizar');
+
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            header('Location: caixa.php?error=Sessão não encontrada.');
+            exit;
+        }
+
+        try {
+            // Fix database column constraint for existing sessions immediately on viewing details
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $db->exec("ALTER TABLE caixa_movimentacoes MODIFY tipo VARCHAR(50)");
+            $db->exec("UPDATE caixa_movimentacoes SET tipo = 'entrada' WHERE (tipo = '' OR tipo IS NULL) AND motivo = 'Abertura de Caixa'");
+        } catch (\Exception $e) {}
+
+        $cashierModel = new Cashier();
+        $details = $cashierModel->getSessionDetails($id);
+
+        if (!$details) {
+            header('Location: caixa.php?error=Sessão não encontrada.');
+            exit;
+        }
+
+        $this->render('caixa/detalhes', [
+            'details' => $details,
+            'title' => 'Detalhes da Sessão',
+            'pageTitle' => 'Detalhes da Sessão #' . $id
+        ]);
     }
 
     protected function logAction(string $action, string $table = null, int $id = null, $old = null, $new = null) {

@@ -11,6 +11,14 @@ switch ($action) {
         \App\Services\AuthService::checkPermission('usuarios', 'gerenciar');
         $controller->save();
         break;
+    case 'toggle_status':
+        \App\Services\AuthService::checkPermission('usuarios', 'gerenciar');
+        $controller->toggle_status();
+        break;
+    case 'delete':
+        \App\Services\AuthService::checkPermission('usuarios', 'gerenciar');
+        $controller->delete();
+        break;
     default:
         \App\Services\AuthService::checkPermission('usuarios', 'visualizar');
         $controller->index();

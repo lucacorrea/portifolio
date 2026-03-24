@@ -50,11 +50,21 @@ body {
 .sidebar {
     width: 260px;
     background: var(--erp-secondary);
-    /* Default, will be overridden by --erp-sidebar-bg if defined */
     border-right: 1px solid #e2e8f0;
-    transition: all 0.3s;
+    transition: all 0.3s ease-in-out;
     z-index: 1040;
-    /* Above Bootstrap sticky-top (1020) and fixed-top (1030) */
+    position: fixed;
+    left: 0;
+    height: 100vh;
+    transform: translateX(0);
+    visibility: visible;
+    opacity: 1;
+}
+
+.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+    visibility: hidden;
+    opacity: 0;
 }
 
 .sidebar-header {
@@ -95,9 +105,14 @@ body {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    margin-left: 260px !important;
-    transition: margin-left 0.3s;
+    margin-left: 260px;
+    transition: margin-left 0.3s ease-in-out;
     background-color: #f8fafc !important;
+}
+
+.sidebar-collapsed .main-wrapper {
+    margin-left: 0;
+    width: 100%;
 }
 
 .top-navbar {
@@ -231,6 +246,12 @@ body {
     transition: opacity 0.3s;
 }
 
+@media (min-width: 992px) {
+    .sidebar-overlay {
+        display: none !important;
+    }
+}
+
 .sidebar-overlay.active {
     display: block;
     opacity: 1;
@@ -300,17 +321,33 @@ h6 {
     overflow: hidden;
     position: relative;
 }
-
-/* Scrollbar Modernization */
-::-webkit-scrollbar {
-    width: 6px;
+/* Premium Bootstrap Modal Overrides for Zoom */
+.modal-backdrop.show {
+    opacity: 0.85;
+    backdrop-filter: blur(5px);
 }
 
-::-webkit-scrollbar-track {
-    background: transparent;
+.product-zoom-container {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    overflow: hidden;
+    pointer-events: auto !important;
 }
 
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
+.product-zoom-container img {
+    cursor: zoom-in;
 }
+
+.product-zoom-container:hover img {
+    transform: scale(1.3);
+}
+
+.product-zoom-container img {
+    transition: transform 0.5s ease;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: pointer;
+}
+
+

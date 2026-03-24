@@ -182,6 +182,13 @@ class Product extends BaseModel {
         $hasPrecoVenda3   = $this->columnExists('preco_venda_3');
         $hasPrecoAtacado  = $this->columnExists('preco_venda_atacado');
         $hasImagens       = $this->columnExists('imagens');
+        
+        if (!$this->columnExists('fornecedor_id')) {
+            try {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN fornecedor_id INT NULL");
+            } catch (\Exception $e) {}
+        }
+        $hasFornecedor    = true;
 
         if (!empty($data['id'])) {
             // --- UPDATE ---
@@ -206,6 +213,7 @@ class Product extends BaseModel {
             if ($hasPrecoVenda3) { $sets[] = 'preco_venda_3 = ?'; $params[] = ($data['preco_venda_3'] ?? '') === '' ? null : $data['preco_venda_3']; }
             if ($hasPrecoAtacado){ $sets[] = 'preco_venda_atacado = ?'; $params[] = ($data['preco_venda_atacado'] ?? '') === '' ? null : $data['preco_venda_atacado']; }
             if ($hasImagens && isset($data['imagens'])) { $sets[] = 'imagens = ?'; $params[] = $data['imagens']; }
+            if ($hasFornecedor)  { $sets[] = 'fornecedor_id = ?'; $params[] = ($data['fornecedor_id'] ?? '') === '' ? null : $data['fornecedor_id']; }
             if ($this->columnExists('descricao')) { $sets[] = 'descricao = ?'; $params[] = $data['descricao'] ?? null; }
 
             $params[] = $data['id'];
@@ -235,6 +243,7 @@ class Product extends BaseModel {
             if ($hasPrecoVenda3) { $cols[] = 'preco_venda_3'; $params[] = ($data['preco_venda_3'] ?? '') === '' ? null : $data['preco_venda_3']; }
             if ($hasPrecoAtacado){ $cols[] = 'preco_venda_atacado'; $params[] = ($data['preco_venda_atacado'] ?? '') === '' ? null : $data['preco_venda_atacado']; }
             if ($hasImagens)     { $cols[] = 'imagens';       $params[] = $data['imagens'] ?? null; }
+            if ($hasFornecedor)  { $cols[] = 'fornecedor_id'; $params[] = ($data['fornecedor_id'] ?? '') === '' ? null : $data['fornecedor_id']; }
             if ($this->columnExists('descricao')) { $cols[] = 'descricao'; $params[] = $data['descricao'] ?? null; }
 
             $placeholders = implode(', ', array_fill(0, count($cols), '?'));
