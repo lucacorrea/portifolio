@@ -272,7 +272,7 @@
     <!-- Tabela de Movimentações -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
-            <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-exchange-alt me-2"></i>Movimentações (Sangrias / Suprimentos)</h6>
+            <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-exchange-alt me-2"></i>Movimentações da Gaveta</h6>
             <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill"><?= count($movimentacoes) ?></span>
         </div>
         <div class="card-body p-0">
@@ -297,20 +297,20 @@
                         <?php foreach ($movimentacoes as $m): ?>
                         <tr>
                             <td class="ps-4">
-                                <?php if ($m['tipo'] === 'suprimento'): ?>
+                                <?php if (in_array($m['tipo'], ['suprimento', 'entrada'])): ?>
                                     <span class="badge bg-success bg-opacity-10 text-success rounded-pill">
-                                        <i class="fas fa-arrow-down me-1"></i>Suprimento
+                                        <i class="fas fa-arrow-down me-1"></i><?= ucfirst($m['tipo']) ?>
                                     </span>
                                 <?php else: ?>
                                     <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">
-                                        <i class="fas fa-arrow-up me-1"></i>Sangria
+                                        <i class="fas fa-arrow-up me-1"></i><?= ucfirst($m['tipo']) ?>
                                     </span>
                                 <?php endif; ?>
                             </td>
                             <td class="small"><?= htmlspecialchars($m['operador_nome'] ?? '-') ?></td>
                             <td class="small"><?= htmlspecialchars($m['motivo'] ?? '-') ?></td>
-                            <td class="text-end fw-bold <?= $m['tipo'] === 'suprimento' ? 'text-success' : 'text-danger' ?>">
-                                <?= $m['tipo'] === 'suprimento' ? '+' : '-' ?> <?= formatarMoeda($m['valor']) ?>
+                            <td class="text-end fw-bold <?= in_array($m['tipo'], ['suprimento', 'entrada']) ? 'text-success' : 'text-danger' ?>">
+                                <?= in_array($m['tipo'], ['suprimento', 'entrada']) ? '+' : '-' ?> <?= formatarMoeda($m['valor']) ?>
                             </td>
                             <td class="pe-4 text-end small text-muted"><?= date('d/m/Y H:i', strtotime($m['created_at'])) ?></td>
                         </tr>
