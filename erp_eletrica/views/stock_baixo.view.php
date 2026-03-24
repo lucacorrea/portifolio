@@ -182,26 +182,71 @@
 
 <script>
 function exportToExcel() {
-    // Simple table to CSV for now, matching the erp_eletrica style
     let table = document.getElementById("lowStockTable");
     let rows = table.querySelectorAll("tr");
-    let csv = [];
+    
+    let html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <meta charset="utf-8">
+        <style>
+            table { border-collapse: collapse; font-family: 'Segoe UI', Arial, sans-serif; width: 100%; border: 1px solid #dee2e6; }
+            th { background-color: #1e293b; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #dee2e6; padding: 12px; font-size: 14px; text-transform: uppercase; }
+            td { border: 1px solid #dee2e6; padding: 10px; font-size: 13px; text-align: center; vertical-align: middle; color: #333333; }
+            td.col-left { text-align: left; }
+            tr.row-even td { background-color: #f8fafc; }
+            tr.row-odd td { background-color: #ffffff; }
+            .bg-critico { background-color: #fee2e2; color: #991b1b; font-weight: bold; }
+            .bg-baixo { background-color: #fef3c7; color: #92400e; font-weight: bold; }
+            .text-primary { color: #2563eb; font-weight: bold; }
+            .text-success { color: #16a34a; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <h2>Relatório de Alertas de Estoque</h2>
+        <p><strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+        <table>
+    `;
+    
     for (let i = 0; i < rows.length; i++) {
-        let row = [], cols = rows[i].querySelectorAll("td, th");
-        for (let j = 0; j < cols.length - 1; j++) {
+        let cols = rows[i].querySelectorAll("td, th");
+        if (cols.length === 0) continue;
+        
+        let rowClass = i === 0 ? "" : (i % 2 === 0 ? "row-even" : "row-odd");
+        html += `<tr class="${rowClass}">`;
+        
+        for (let j = 0; j < cols.length - 1; j++) { // pular Ações
             let text = cols[j].innerText.trim().replace(/\r?\n|\r/g, ' - ');
-            text = text.replace(/"/g, '""');
-            row.push('"' + text + '"');
+            let cellTag = i === 0 ? "th" : "td";
+            let classes = [];
+            
+            if (i > 0 && (j === 0 || j === 1)) classes.push("col-left");
+            
+            if (i > 0) {
+                if (j === 4) {
+                     if (text.includes("CRÍTICO")) classes.push("bg-critico");
+                     if (text.includes("BAIXO")) classes.push("bg-baixo");
+                     if (text.includes("OK")) classes.push("text-success");
+                }
+                if (j === 5 && text.startsWith("+")) classes.push("text-primary");
+            }
+            
+            let classAttr = classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
+            html += `<${cellTag}${classAttr}>${text}</${cellTag}>`;
         }
-        csv.push(row.join(";"));
+        html += `</tr>`;
     }
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csv.join("\n");
-    let encodedUri = encodeURI(csvContent);
+    
+    html += `</table></body></html>`;
+    
+    let blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+    let url = URL.createObjectURL(blob);
     let link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "estoque_baixo_" + new Date().toISOString().slice(0,10) + ".csv");
+    link.href = url;
+    link.download = "estoque_baixo_" + new Date().toISOString().slice(0,10) + ".xls";
     document.body.appendChild(link);
     link.click();
+    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(link); }, 100);
 }
 
 function editProduct(product) {
