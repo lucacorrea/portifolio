@@ -41,7 +41,7 @@
             <div class="card border-primary border-0 h-100 bg-primary text-black shadow-lg" style="transform: scale(1.02);">
                 <div class="card-body">
                     <div class="text-white-50 small fw-bold text-uppercase mb-2"><i class="fas fa-wallet me-2"></i>Saldo Gaveta</div>
-                    <h3 class="mb-0 fw-bold text-white"><?= formatarMoeda($summary['dinheiro_em_gaveta']) ?></h3>
+                    <h3 class="mb-0 fw-bold text-white"><?= formatarMoeda($caixa['valor_abertura'] + $summary['dinheiro_em_gaveta']) ?></h3>
                     <div class="text-white-50 extra-small mt-2 fw-bold">Abertura: <?= formatarMoeda($caixa['valor_abertura']) ?></div>
                 </div>
             </div>
