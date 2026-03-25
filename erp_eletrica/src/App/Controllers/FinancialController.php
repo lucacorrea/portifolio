@@ -53,7 +53,26 @@ class FinancialController extends BaseController {
             elseif ($cumulative <= 95) $res['class'] = 'B';
             else $res['class'] = 'C';
         }
-        $this->render('financial/abc_curve', ['results' => $results, 'pageTitle' => 'Curva ABC de Vendas']);
+
+        // Pagination
+        $perPage = 15;
+        $page = (int)($_GET['page'] ?? 1);
+        $totalResults = count($results);
+        $totalPages = ceil($totalResults / $perPage);
+        $page = max(1, min($page, $totalPages ?: 1));
+        $offset = ($page - 1) * $perPage;
+
+        $pagedResults = array_slice($results, $offset, $perPage);
+
+        $this->render('financial/abc_curve', [
+            'results' => $pagedResults, 
+            'pageTitle' => 'Curva ABC de Vendas',
+            'pagination' => [
+                'current' => $page,
+                'total_pages' => $totalPages,
+                'total_results' => $totalResults
+            ]
+        ]);
     }
 
     public function delinquency() {
