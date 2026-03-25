@@ -88,13 +88,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <div class="collapse ps-3 <?= $is_bi_report ? 'show' : '' ?>" id="reportsSubmenu">
             <nav class="nav flex-column border-start border-secondary border-opacity-25 ms-2">
-                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'dre' ? 'active text-primary fw-bold' : 'text-muted' ?>" href="financeiro.php?action=dre">
+                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'dre' ? 'active text-warning fw-bold' : 'text-white-50' ?>" href="financeiro.php?action=dre">
                     DRE Mensal
                 </a>
-                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'abcCurve' ? 'active text-primary fw-bold' : 'text-muted' ?>" href="financeiro.php?action=abcCurve">
+                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'abcCurve' ? 'active text-warning fw-bold' : 'text-white-50' ?>" href="financeiro.php?action=abcCurve">
                     Curva ABC Prod.
                 </a>
-                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'delinquency' ? 'active text-primary fw-bold' : 'text-muted' ?>" href="financeiro.php?action=delinquency">
+                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'delinquency' ? 'active text-warning fw-bold' : 'text-white-50' ?>" href="financeiro.php?action=delinquency">
                     Inadimplência
                 </a>
             </nav>
