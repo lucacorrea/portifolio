@@ -31,9 +31,8 @@ class FinancialService extends BaseService {
         // 4. Despesas Operacionais (Contas a Pagar pagas no mês)
         $despesas = $this->db->query("
             SELECT SUM(valor) 
-            FROM financeiro_contas 
-            WHERE tipo = 'despesa' 
-            AND status = 'pago'
+            FROM contas_pagar 
+            WHERE status = 'pago'
             AND MONTH(data_pagamento) = $month 
             AND YEAR(data_pagamento) = $year
         ")->fetchColumn() ?: 0;
