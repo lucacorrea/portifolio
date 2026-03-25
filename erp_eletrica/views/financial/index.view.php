@@ -78,6 +78,25 @@
                     </table>
                 </div>
             </div>
+            <?php if (isset($pagination_receber) && $pagination_receber['pages'] > 1): ?>
+            <div class="card-footer bg-white py-2 border-top border-light">
+                <nav>
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <li class="page-item <?= $pagination_receber['current'] <= 1 ? 'disabled' : '' ?>">
+                            <a class="page-link shadow-none" href="financeiro.php?p_receber=<?= $pagination_receber['current'] - 1 ?>"><i class="fas fa-chevron-left"></i></a>
+                        </li>
+                        <?php for($i=1; $i<=$pagination_receber['pages']; $i++): ?>
+                            <li class="page-item <?= $pagination_receber['current'] == $i ? 'active' : '' ?>">
+                                <a class="page-link shadow-none" href="financeiro.php?p_receber=<?= $i ?>"><?= $i ?></a>
+                            </li>
+                        <?php endfor; ?>
+                        <li class="page-item <?= $pagination_receber['current'] >= $pagination_receber['pages'] ? 'disabled' : '' ?>">
+                            <a class="page-link shadow-none" href="financeiro.php?p_receber=<?= $pagination_receber['current'] + 1 ?>"><i class="fas fa-chevron-right"></i></a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
