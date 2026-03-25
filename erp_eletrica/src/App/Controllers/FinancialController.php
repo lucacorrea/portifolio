@@ -16,14 +16,22 @@ class FinancialController extends BaseController {
         $receivableModel = new AccountReceivable();
         $payableModel = new AccountPayable();
 
+        // Pagination for Receivables
+        $pageReceber = (int)($_GET['p_receber'] ?? 1);
+        $receivables = $receivableModel->paginate(10, $pageReceber, "data_vencimento ASC");
+
+        // Pagination for Payables (Keeping it simple for now, but prepared)
+        $pagables = $payableModel->getRecent(); 
+
         $stats = [
             'areceber' => $receivableModel->getSummary()['total_pendente'],
             'apagar' => $payableModel->getSummary()['total_pendente']
         ];
 
         $this->render('financial/index', [
-            'contas_receber' => $receivableModel->getRecent(),
-            'contas_pagar' => $payableModel->getRecent(),
+            'contas_receber' => $receivables['data'],
+            'pagination_receber' => $receivables,
+            'contas_pagar' => $pagables,
             'stats' => $stats,
             'pageTitle' => 'Painel Financeiro & Fluxo de Caixa'
         ]);
