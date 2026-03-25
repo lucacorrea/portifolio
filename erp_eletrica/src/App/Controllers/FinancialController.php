@@ -77,6 +77,25 @@ class FinancialController extends BaseController {
 
     public function delinquency() {
         $report = $this->service->getDelinquencyReport();
-        $this->render('financial/delinquency', ['report' => $report, 'pageTitle' => 'Relatório de Inadimplência']);
+        
+        // Paging
+        $perPage = 15;
+        $page = (int)($_GET['page'] ?? 1);
+        $totalResults = count($report);
+        $totalPages = ceil($totalResults / $perPage);
+        $page = max(1, min($page, $totalPages ?: 1));
+        $offset = ($page - 1) * $perPage;
+
+        $pagedReport = array_slice($report, $offset, $perPage);
+
+        $this->render('financial/delinquency', [
+            'report' => $pagedReport, 
+            'pageTitle' => 'Relatório de Inadimplência',
+            'pagination' => [
+                'current' => $page,
+                'total_pages' => $totalPages,
+                'total_results' => $totalResults
+            ]
+        ]);
     }
 }

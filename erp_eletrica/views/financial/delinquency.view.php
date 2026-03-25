@@ -49,4 +49,36 @@
             </table>
         </div>
     </div>
+    <?php if ($pagination['total_pages'] > 1): ?>
+    <div class="card-footer bg-white py-3 border-top border-light">
+        <nav aria-label="Page navigation">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link shadow-none" href="financeiro.php?action=delinquency&page=<?= $pagination['current'] - 1 ?>">
+                        <i class="fas fa-chevron-left me-1"></i>Anterior
+                    </a>
+                </li>
+                
+                <?php for($i = 1; $i <= $pagination['total_pages']; $i++): ?>
+                    <?php if ($i == 1 || $i == $pagination['total_pages'] || ($i >= $pagination['current'] - 2 && $i <= $pagination['current'] + 2)): ?>
+                        <li class="page-item <?= $pagination['current'] == $i ? 'active' : '' ?>">
+                            <a class="page-link shadow-none" href="financeiro.php?action=delinquency&page=<?= $i ?>"><?= $i ?></a>
+                        </li>
+                    <?php elseif ($i == $pagination['current'] - 3 || $i == $pagination['current'] + 3): ?>
+                        <li class="page-item disabled"><span class="page-link border-0 text-muted">...</span></li>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <li class="page-item <?= $pagination['current'] >= $pagination['total_pages'] ? 'disabled' : '' ?>">
+                    <a class="page-link shadow-none" href="financeiro.php?action=delinquency&page=<?= $pagination['current'] + 1 ?>">
+                        Próximo<i class="fas fa-chevron-right ms-1"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="text-center mt-2 extra-small text-muted">
+            Mostrando <strong><?= count($report) ?></strong> de <strong><?= $pagination['total_results'] ?></strong> registros
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
