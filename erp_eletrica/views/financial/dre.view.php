@@ -15,8 +15,8 @@
             <table class="table table-borderless align-middle">
                 <tbody>
                     <tr class="border-bottom">
-                        <td class="py-3 fw-bold fs-5">(=) RECEITA BRUTA OPERACIONAL</td>
-                        <td class="py-3 text-end fw-bold fs-5 text-primary"><?= formatarMoeda($dre['receita_bruta']) ?></td>
+                        <td class="py-2 fw-bold">(=) RECEITA BRUTA OPERACIONAL</td>
+                        <td class="py-2 text-end fw-bold text-primary"><?= formatarMoeda($dre['receita_bruta']) ?></td>
                     </tr>
                     <tr>
                         <td class="py-2 ps-4 text-muted">(-) Deduções e Impostos (Simulado 6%)</td>
@@ -33,8 +33,8 @@
                     </tr>
                     
                     <tr class="border-bottom border-top bg-light">
-                        <td class="py-3 fw-bold fs-5">(=) LUCRO BRUTO</td>
-                        <td class="py-3 text-end fw-bold fs-5"><?= formatarMoeda($dre['lucro_bruto']) ?></td>
+                        <td class="py-2 fw-bold">(=) LUCRO BRUTO</td>
+                        <td class="py-2 text-end fw-bold"><?= formatarMoeda($dre['lucro_bruto']) ?></td>
                     </tr>
 
                     <tr>
@@ -43,9 +43,9 @@
                     </tr>
                     
                     <tr class="border-top border-primary border-2 mt-3">
-                        <td class="py-4 fw-bold fs-4">(=) RESULTADO LÍQUIDO DO PERÍODO</td>
+                        <td class="py-3 fw-bold fs-5">(=) RESULTADO LÍQUIDO DO PERÍODO</td>
                         <?php $color = $dre['resultado_liquido'] >= 0 ? 'success' : 'danger'; ?>
-                        <td class="py-4 text-end fw-bold fs-4 text-<?= $color ?>"><?= formatarMoeda($dre['resultado_liquido']) ?></td>
+                        <td class="py-3 text-end fw-bold fs-5 text-<?= $color ?>"><?= formatarMoeda($dre['resultado_liquido']) ?></td>
                     </tr>
                 </tbody>
             </table>
@@ -55,13 +55,13 @@
             <div class="col-md-4">
                 <div class="p-3 rounded bg-primary bg-opacity-10 border border-primary border-opacity-25 text-center">
                     <div class="small fw-bold text-primary text-uppercase mb-1">Margem Líquida</div>
-                    <div class="h3 mb-0 fw-bold"><?= number_format($dre['margem_liquida'], 1) ?>%</div>
+                    <div class="h5 mb-0 fw-bold"><?= number_format($dre['margem_liquida'], 1) ?>%</div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-3 rounded bg-info bg-opacity-10 border border-info border-opacity-25 text-center">
                     <div class="small fw-bold text-info text-uppercase mb-1">Ponto de Equilíbrio</div>
-                    <div class="h3 mb-0 fw-bold">R$ <?= number_format($dre['despesas'] / 0.3, 2, ',', '.') ?></div>
+                    <div class="h5 mb-0 fw-bold">R$ <?= number_format($dre['despesas'] / 0.3, 2, ',', '.') ?></div>
                     <div class="extra-small text-muted">Considerando margem de 30%</div>
                 </div>
             </div>

@@ -51,7 +51,7 @@
 
 <div class="alert alert-info mt-4 border-0 shadow-sm">
     <div class="d-flex">
-        <i class="fas fa-info-circle fs-4 me-3"></i>
+        <i class="fas fa-info-circle h5 me-3"></i>
         <div>
             <h6 class="fw-bold mb-1">O que é a Curva ABC?</h6>
             <p class="mb-0 small">

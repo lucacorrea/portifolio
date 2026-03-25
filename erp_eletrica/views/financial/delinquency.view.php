@@ -40,7 +40,7 @@
                     <?php if(empty($report)): ?>
                     <tr>
                         <td colspan="6" class="text-center py-5 text-muted">
-                            <i class="fas fa-check-double d-block mb-3 fs-3 opacity-25"></i>
+                            <i class="fas fa-check-double d-block mb-3 h4 opacity-25"></i>
                             Parabéns! Nenhuma inadimplência crítica detectada.
                         </td>
                     </tr>
