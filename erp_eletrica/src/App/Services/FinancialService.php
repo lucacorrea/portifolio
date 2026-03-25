@@ -1,7 +1,13 @@
 <?php
 namespace App\Services;
 
+use App\Config\Database;
+
 class FinancialService extends BaseService {
+    public function __construct() {
+        parent::__construct();
+        $this->db = Database::getInstance()->getConnection();
+    }
     public function getDRE($month, $year) {
         // 1. Receita Bruta (Total Vendas)
         $receitaBruta = $this->db->query("
