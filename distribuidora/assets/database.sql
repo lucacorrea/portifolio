@@ -238,3 +238,11 @@ CREATE TABLE IF NOT EXISTS senha_tokens (
   KEY idx_senha_tokens_email (email),
   KEY idx_senha_tokens_expira (expira_em)
 );
+
+CREATE TABLE `fiados_pagamentos` (
+  `id` int(11) NOT NULL,
+  `fiado_id` int(11) NOT NULL,
+  `valor` decimal(10,2) NOT NULL,
+  `metodo` varchar(50) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp()
+)
