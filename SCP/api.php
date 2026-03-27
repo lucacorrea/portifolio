@@ -1,43 +1,54 @@
 <?php
 ob_start();
 session_start();
-// api.php - Backend com SQLite autônomo
+// api.php - Backend com MySQL (Hostinger)
 header('Content-Type: application/json');
 
-$dbFile = __DIR__ . '/dados/scp_database.db';
-$pdo = new PDO("sqlite:$dbFile");
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$host = 'localhost'; 
+$dbname = 'u784961086_procuradoria';
+$username = 'u784961086_procuradoria';
+$password = '@XeFGMa8';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    echo json_encode(['status' => 'erro', 'message' => 'Erro de conexão: ' . $e->getMessage()]);
+    exit;
+}
 
 // Criação automática da tabela se não existir
 $pdo->exec("CREATE TABLE IF NOT EXISTS processos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    numero TEXT,
-    tipo_ato TEXT,
-    natureza TEXT,
-    tipo_manifestacao TEXT,
-    revelia TEXT,
-    data_envio TEXT,
-    data_ciencia TEXT,
-    tipo_contagem TEXT,
-    final_prazo TEXT,
-    prazo_critico TEXT,
-    analisador TEXT,
-    peticionador TEXT,
-    quantidade_dias INTEGER,
-    status TEXT,
-    data_protocolo TEXT,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    numero VARCHAR(255),
+    tipo_ato VARCHAR(255),
+    natureza VARCHAR(255),
+    tipo_manifestacao VARCHAR(255),
+    revelia VARCHAR(50),
+    data_envio VARCHAR(50),
+    data_ciencia VARCHAR(50),
+    tipo_contagem VARCHAR(50),
+    final_prazo VARCHAR(50),
+    prazo_critico VARCHAR(50),
+    analisador VARCHAR(255),
+    peticionador VARCHAR(255),
+    quantidade_dias INT,
+    status VARCHAR(100),
+    data_protocolo VARCHAR(50),
     observacoes TEXT,
     data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
-)");
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Tabela de Usuários
 $pdo->exec("CREATE TABLE IF NOT EXISTS usuarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT,
-    login TEXT UNIQUE,
-    senha TEXT,
-    perfil TEXT DEFAULT 'ANALISADOR'
-)");
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255),
+    login VARCHAR(100) UNIQUE,
+    senha VARCHAR(255),
+    senha_plana VARCHAR(255),
+    perfil VARCHAR(50) DEFAULT 'ANALISADOR'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Inserir usuário padrão se não existir (admin / admin123)
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE login = 'admin'");
@@ -49,68 +60,67 @@ if ($stmt->fetchColumn() == 0) {
 
 // Tabela de Configurações
 $pdo->exec("CREATE TABLE IF NOT EXISTS configuracoes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    chave TEXT UNIQUE,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    chave VARCHAR(100) UNIQUE,
     valor TEXT
-)");
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Tabela de Auditoria
 $pdo->exec("CREATE TABLE IF NOT EXISTS auditoria (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    usuario_id INTEGER,
-    usuario_nome TEXT,
-    acao TEXT,
-    tabela TEXT,
-    registro_id INTEGER,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT,
+    usuario_nome VARCHAR(255),
+    acao VARCHAR(100),
+    tabela VARCHAR(100),
+    registro_id INT,
     dados_anteriores TEXT,
     dados_novos TEXT,
     data_hora DATETIME DEFAULT CURRENT_TIMESTAMP
-)");
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Verificar se a coluna senha_plana existe na tabela usuários
-$cols_u = $pdo->query("PRAGMA table_info(usuarios)")->fetchAll(PDO::FETCH_ASSOC);
+$cols_u = $pdo->query("SHOW COLUMNS FROM usuarios")->fetchAll();
 $hasSenhaPlana = false;
 foreach ($cols_u as $col) {
-    if ($col['name'] === 'senha_plana') {
+    if ($col['Field'] === 'senha_plana') {
         $hasSenhaPlana = true;
         break;
     }
 }
 if (!$hasSenhaPlana) {
-    $pdo->exec("ALTER TABLE usuarios ADD COLUMN senha_plana TEXT");
-    // Inicializar senhas planas para usuários existentes (opcional, aqui vira admin123 para o admin)
+    $pdo->exec("ALTER TABLE usuarios ADD COLUMN senha_plana VARCHAR(255)");
     $pdo->exec("UPDATE usuarios SET senha_plana = 'admin123' WHERE login = 'admin'");
 }
 
 // Verificar se a coluna peticionador existe na tabela processos
-$columns = $pdo->query("PRAGMA table_info(processos)")->fetchAll(PDO::FETCH_ASSOC);
+$columns = $pdo->query("SHOW COLUMNS FROM processos")->fetchAll();
 $hasPeticionador = false;
 foreach ($columns as $col) {
-    if ($col['name'] === 'peticionador') {
+    if ($col['Field'] === 'peticionador') {
         $hasPeticionador = true;
         break;
     }
 }
 if (!$hasPeticionador) {
-    $pdo->exec("ALTER TABLE processos ADD COLUMN peticionador TEXT");
+    $pdo->exec("ALTER TABLE processos ADD COLUMN peticionador VARCHAR(255)");
 }
 
 // Verificar se a coluna quantidade_dias existe
 $hasQtdDias = false;
 foreach ($columns as $col) {
-    if ($col['name'] === 'quantidade_dias') {
+    if ($col['Field'] === 'quantidade_dias') {
         $hasQtdDias = true;
         break;
     }
 }
 if (!$hasQtdDias) {
-    $pdo->exec("ALTER TABLE processos ADD COLUMN quantidade_dias INTEGER");
+    $pdo->exec("ALTER TABLE processos ADD COLUMN quantidade_dias INT");
 }
 
 // Verificar se a coluna observacoes existe
 $hasObs = false;
 foreach ($columns as $col) {
-    if ($col['name'] === 'observacoes') {
+    if ($col['Field'] === 'observacoes') {
         $hasObs = true;
         break;
     }
