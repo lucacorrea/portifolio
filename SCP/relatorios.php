@@ -253,17 +253,24 @@ if (!isset($_SESSION['usuario_id'])) {
                 </div>
             </div>
 
-            <!-- Operational Distribution -->
-            <div class="report-card" style="grid-column: span 6;">
+            <div class="report-card" id="card-mix" style="grid-column: span 6;">
                 <h3><i class="fas fa-project-diagram"></i> Mix de Processos</h3>
                 <div class="metric-list" id="res-tipos">
                     <!-- Dinâmico -->
                 </div>
             </div>
 
-            <div class="report-card" style="grid-column: span 6;">
+            <div class="report-card" id="card-natureza" style="grid-column: span 6;">
                 <h3><i class="fas fa-tags"></i> Natureza das Demandas</h3>
                 <div class="metric-list" id="res-manifestacoes">
+                    <!-- Dinâmico -->
+                </div>
+            </div>
+
+            <!-- Protocolistas Breakdown -->
+            <div class="report-card" id="card-protocolistas" style="grid-column: span 6;">
+                <h3><i class="fas fa-user-check"></i> Rank de Protocolistas</h3>
+                <div class="metric-list" id="res-protocolistas">
                     <!-- Dinâmico -->
                 </div>
             </div>
@@ -396,6 +403,16 @@ if (!isset($_SESSION['usuario_id'])) {
                 tipos[t] = (tipos[t] || 0) + 1;
             });
             renderMetricList('res-manifestacoes', tipos);
+
+            // Rank de Protocolistas
+            const protocolistas = {};
+            filtered.forEach(p => {
+                if (p.status === 'PROTOCOLADO' && p.protocolista) {
+                    const prot = p.protocolista;
+                    protocolistas[prot] = (protocolistas[prot] || 0) + 1;
+                }
+            });
+            renderMetricList('res-protocolistas', protocolistas);
 
             document.getElementById('resultado-relatorio').style.display = 'block';
             window.dadosRelatorio = filtered;
