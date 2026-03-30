@@ -498,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const a = ato.toUpperCase();
         if (a.includes('DECISÃO')) return 'bg-darkblue';
         if (a.includes('DESPACHO')) return 'bg-blue';
-        if (a.includes('DECURSO DE PRAZO')) return 'bg-yellow';
+        if (a.includes('DECURSO DE PRAZO')) return 'bg-orange';
         if (a.includes('CERTIDÃO')) return 'bg-yellow';
         if (a.includes('ATO ORDINATÓRIO')) return 'bg-lightblue';
         if (a.includes('OFÍCIO')) return 'bg-darkblue';
@@ -529,6 +529,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!user) return 'user-default';
         const u = user.toUpperCase();
         if (u.includes('ANANDA')) return 'user-ananda';
+        if (u.includes('UANNA')) return 'user-uanna';
+        if (u.includes('RHANY')) return 'user-rhanny';
+        if (u.includes('RHANNY')) return 'user-rhanny';
         if (u.includes('MARINEZ')) return 'user-marinez';
         if (u.includes('HARRISON')) return 'user-harrison';
         return 'user-default';
