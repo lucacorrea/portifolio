@@ -27,6 +27,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
+        <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
         <?php if ($_SESSION['usuario_perfil'] === 'ADMIN'): ?>
         <a href="usuarios.php" class="nav-link active"><i class="fas fa-users"></i> Usuários</a>

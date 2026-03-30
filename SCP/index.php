@@ -12,7 +12,7 @@ if (!isset($_SESSION['usuario_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCP - Sistema de Controle de Processos (PGM)</title>
-    <link rel="stylesheet" href="assets/css/estilo.css">
+    <link rel="stylesheet" href="assets/css/estilo.css?v=6">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -27,6 +27,7 @@ if (!isset($_SESSION['usuario_id'])) {
         <a href="index.php" class="nav-link active"><i class="fas fa-home"></i> Dashboard</a>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
+        <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
         <?php if ($_SESSION['usuario_perfil'] === 'ADMIN'): ?>
         <a href="usuarios.php" class="nav-link"><i class="fas fa-users"></i> Usuários</a>
@@ -81,6 +82,7 @@ if (!isset($_SESSION['usuario_id'])) {
                 <thead>
                     <tr style="background: rgba(239, 68, 68, 0.1);">
                         <th>Nº PROCESSO</th>
+                        <th>TIPO</th>
                         <th>ATO / NATUREZA</th>
                         <th>PRAZO FINAL</th>
                         <th>DIAS RESTANTES</th>
@@ -96,14 +98,43 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 
     <section class="data-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 style="font-size: 1.25rem;">Lista de Processos</h2>
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <div class="filter-toggle" id="filtro-meus-prazos">
-                    <i class="fas fa-user-check"></i> Meus Prazos
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-size: 1.25rem; margin: 0;">Lista de Processos</h2>
+                <div id="filtro-meus-prazos" class="filter-toggle" title="Mostrar apenas os meus processos" style="padding: 0.45rem 1rem; font-size: 0.85rem; height: fit-content;">
+                    <i class="fas fa-user-check"></i> Meus
                 </div>
-                <input type="text" id="filtro-busca" placeholder="Pequisar nº ou tipo..." style="width: 280px; padding: 0.5rem 1rem; height: 38px;">
-                <a href="cadastro.php" class="btn btn-primary" style="padding: 0.5rem 1rem; height: 38px;"><i class="fas fa-plus"></i> Novo</a>
+            </div>
+            
+            <div class="filter-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
+                <select id="filtro-tipo-processo" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="">Tipo (Todos)</option>
+                    <option value="CIÊNCIA">Ciência</option>
+                    <option value="CUMPRIMENTO">Cumprimento</option>
+                </select>
+
+                <select id="filtro-status" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="">Status (Todos)</option>
+                    <option value="PENDENTE">Pendente</option>
+                    <option value="PROTOCOLADO">Protocolado</option>
+                    <option value="ANALISADO">Analisado</option>
+                </select>
+
+                <div style="display: flex; align-items: center; gap: 0.2rem; background: white; border: 1px solid var(--border); border-radius: 50px; padding: 0 0.5rem; height: 32px;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 4px;">De:</span>
+                    <input type="date" id="filtro-data-inicio" title="Data Inicial" style="width: auto; border: none; padding: 0; font-size: 0.75rem; outline: none; background: transparent; color: var(--text-main); font-weight: 600;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 4px;">Até:</span>
+                    <input type="date" id="filtro-data-fim" title="Data Final" style="width: auto; border: none; padding: 0; font-size: 0.75rem; outline: none; background: transparent; color: var(--text-main); font-weight: 600; margin-right: 4px;">
+                </div>
+
+                <div style="position: relative; flex-grow: 1; min-width: 150px; max-width: 300px;">
+                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+                    <input type="text" id="filtro-busca" placeholder="Pesquisar nº ou tipo..." style="width: 100%; padding: 0.45rem 1rem 0.45rem 32px; border-radius: 50px; border: 1px solid var(--border); font-size: 0.85rem; outline: none;">
+                </div>
+                
+                <a href="cadastro.php" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem; border-radius: 50px; white-space: nowrap; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-plus"></i> Novo
+                </a>
             </div>
         </div>
 
@@ -112,6 +143,7 @@ if (!isset($_SESSION['usuario_id'])) {
                 <thead>
                     <tr>
                         <th>Nº PROCESSO</th>
+                        <th>TIPO</th>
                         <th>ATO / NATUREZA</th>
                         <th>PRAZO FINAL</th>
                         <th>ANALISADOR</th>
@@ -128,6 +160,6 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js"></script>
+<script src="assets/js/script.js?v=9"></script>
 </body>
 </html>

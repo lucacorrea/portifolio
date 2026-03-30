@@ -33,22 +33,40 @@
     --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
-.tag-ato {
-    padding: 2px 10px;
-    border-radius: 6px;
-    font-size: 0.7rem;
+.tag-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.70rem;
     font-weight: 700;
     text-transform: uppercase;
     display: inline-block;
-    background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
-.tag-decisao { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
-.tag-despacho { background: #fdf2f8; color: #be185d; border-color: #f9a8d4; }
-.tag-ciencia { background: #f0fdf4; color: #15803d; border-color: #86efac; }
-.tag-juntada { background: #ecfeff; color: #0e7490; border-color: #67e8f9; }
-.tag-sentenca { background: #eef2ff; color: #3730a3; border-color: #a5b4fc; }
+
+/* Colors - Backgrounds (Ato e Natureza) */
+.bg-darkblue { background-color: #1e3a8a; color: white; border: 1px solid #1e3a8a; }
+.bg-blue { background-color: #2563eb; color: white; border: 1px solid #2563eb; }
+.bg-lightblue { background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+.bg-yellow { background-color: #fef08a; color: #854d0e; border: 1px solid #fde047; }
+.bg-lightyellow { background-color: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+.bg-red { background-color: #ef4444; color: white; border: 1px solid #ef4444; }
+.bg-pink { background-color: #fbcfe8; color: #be185d; border: 1px solid #f9a8d4; }
+.bg-green { background-color: #22c55e; color: white; border: 1px solid #22c55e; }
+.bg-lightgreen { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.bg-purple { background-color: #d8b4fe; color: #581c87; border: 1px solid #c084fc; }
+.bg-magenta { background-color: #d946ef; color: white; border: 1px solid #d946ef; }
+.bg-orange { background-color: #f97316; color: white; border: 1px solid #f97316; }
+
+/* Colors - Users */
+.user-ananda { background-color: #fefce8; color: #854d0e; border: 1px solid #fef08a; }
+.user-uanna { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.user-rhanny { background-color: #fce7f3; color: #9d174d; border: 1px solid #fbcfe8; }
+.user-marinez { background-color: #f3e8ff; color: #7e22ce; }
+.user-harrison { background-color: #ccfbf1; color: #0f766e; }
+.user-default { background-color: #f1f5f9; color: #475569; }
 
 .filter-toggle {
     display: flex;
@@ -296,6 +314,7 @@ body {
     border-radius: var(--radius);
     padding: 1.5rem;
     box-shadow: var(--shadow);
+    min-height: 480px;
 }
 
 table {
@@ -573,3 +592,83 @@ input:focus, select:focus {
 }
 
 
+/* Dropdown Actions */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-dots {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.btn-dots:hover {
+    background: #f1f5f9;
+    color: var(--text-main);
+}
+
+.dropdown-menu {
+    display: none;
+    background-color: white;
+    min-width: 220px;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.dropdown-menu-fixed {
+    animation: fadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+    color: var(--text-main);
+    padding: 10px 16px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.dropdown-item:hover {
+    background-color: #f1f5f9;
+}
+
+.dropdown-item:hover i {
+    color: var(--primary);
+}
+
+.dropdown-item.text-danger:hover {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.dropdown-item.text-danger:hover i {
+    color: #ef4444;
+}

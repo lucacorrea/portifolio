@@ -17,145 +17,124 @@ if (!isset($_SESSION['usuario_id'])) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <style>
+        :root {
+            --corp-navy: #0f172a;
+            --corp-slate: #475569;
+            --corp-emerald: #059669;
+            --corp-bg: #f8fafc;
+        }
         .report-header {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            padding: 2rem;
-            border-radius: 20px;
-            margin-bottom: 2rem;
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--shadow-md);
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            margin-bottom: 2.5rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
         .filter-bar {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 2rem;
             align-items: flex-end;
         }
-        .filter-group {
-            position: relative;
-        }
-        .filter-group i {
-            position: absolute;
-            left: 1rem;
-            top: 2.3rem;
-            color: var(--primary);
-            font-size: 0.9rem;
+        .filter-group label {
+            font-weight: 700;
+            color: var(--corp-navy);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.75rem;
+            display: block;
         }
         .filter-group .form-control {
-            padding-left: 2.8rem;
-            height: 48px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            transition: all 0.3s ease;
-        }
-        .filter-group .form-control:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            border: 1.5px solid #e2e8f0;
+            font-weight: 500;
         }
         .report-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(12, 1fr);
             gap: 2rem;
         }
         .report-card {
             background: white;
             padding: 2rem;
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow-sm);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .report-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-md);
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .report-card h3 {
-            font-size: 1.1rem;
-            color: var(--text-main);
-            margin-bottom: 1.5rem;
+            font-size: 1rem;
+            color: var(--corp-navy);
+            margin-bottom: 2rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            font-weight: 700;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 1rem;
         }
         .report-card h3 i {
             color: var(--primary);
-            background: rgba(37, 99, 235, 0.1);
-            padding: 0.5rem;
-            border-radius: 10px;
-            font-size: 1rem;
-        }
-        .metric-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        .metric-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .metric-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.95rem;
-        }
-        .metric-label { font-weight: 600; color: #475569; }
-        .metric-value { font-weight: 800; color: var(--text-main); }
-        
-        /* Bar Visualization */
-        .progress-container {
-            height: 8px;
-            background: #f1f5f9;
-            border-radius: 10px;
-            overflow: hidden;
-            width: 100%;
-        }
-        .progress-bar {
-            height: 100%;
-            background: var(--primary);
-            border-radius: 10px;
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.1rem;
         }
 
-        /* Stat Cards for Resumo */
-        .stat-group {
+        /* Stat Cards */
+        .stat-main-grid {
+            grid-column: span 12;
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1rem;
         }
-        .stat-mini-card {
-            background: #f8fafc;
-            padding: 1.25rem;
+        .stat-main-card {
+            background: white;
+            padding: 1.5rem;
             border-radius: 16px;
+            border-left: 5px solid var(--primary);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            border: 1px solid #f1f5f9;
+            flex-direction: column;
+            justify-content: space-between;
         }
-        .stat-mini-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
+        .stat-main-card .label { font-size: 0.8rem; font-weight: 700; color: var(--corp-slate); text-transform: uppercase; }
+        .stat-main-card .value { font-size: 2rem; font-weight: 800; color: var(--corp-navy); margin-top: 0.5rem; }
+
+        /* Corporate Table */
+        .corp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
         }
-        .stat-mini-info .label {
-            font-size: 0.85rem;
-            color: #64748b;
-            font-weight: 600;
-            display: block;
-            margin-bottom: 0.25rem;
+        .corp-table th {
+            text-align: left;
+            padding: 1rem;
+            background: #f8fafc;
+            color: var(--corp-slate);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            border-bottom: 2px solid #e2e8f0;
         }
-        .stat-mini-info .value {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--text-main);
+        .corp-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            color: var(--corp-navy);
+            font-weight: 500;
         }
+        .corp-table tr:hover { background: #f8fafc; }
+        .efficiency-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        /* Metric Item Progress */
+        .metric-list { display: flex; flex-direction: column; gap: 1.25rem; }
+        .progress-container { height: 6px; background: #f1f5f9; border-radius: 10px; margin-top: 0.5rem; }
+        .progress-bar { height: 100%; background: var(--primary); border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -169,6 +148,7 @@ if (!isset($_SESSION['usuario_id'])) {
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
+        <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link active"><i class="fas fa-chart-line"></i> Relatórios</a>
         <?php if ($_SESSION['usuario_perfil'] === 'ADMIN'): ?>
         <a href="usuarios.php" class="nav-link"><i class="fas fa-users"></i> Usuários</a>
@@ -223,61 +203,74 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
 
     <div id="resultado-relatorio" style="display: none;">
-        <h2 style="text-align: center; margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 1px; color: var(--primary);">
-            RELATÓRIO MENSAL - <span id="label-periodo"></span>
+        <h2 id="periodo-title" style="margin-bottom: 2.5rem; font-weight: 800; color: var(--corp-navy); border-left: 8px solid var(--primary); padding-left: 1.5rem;">
+            Relatório de Performance <span style="color: var(--primary);">| <span id="label-periodo"></span></span>
         </h2>
 
+        <div class="stat-main-grid">
+            <div class="stat-main-card">
+                <span class="label">Volume Total</span>
+                <span class="value" id="res-total">0</span>
+            </div>
+            <div class="stat-main-card" style="border-left-color: #f59e0b;">
+                <span class="label">Operação Pendente</span>
+                <span class="value" id="res-pendentes">0</span>
+            </div>
+            <div class="stat-main-card" style="border-left-color: #10b981;">
+                <span class="label">Fluxo Protocolado</span>
+                <span class="value" id="res-protocolados">0</span>
+            </div>
+            <div class="stat-main-card" style="border-left-color: #8b5cf6;">
+                <span class="label">Check de Análise</span>
+                <span class="value" id="res-analisados">0</span>
+            </div>
+            <div class="stat-main-card" style="border-left-color: #ef4444;">
+                <span class="label">Prazos Excedidos</span>
+                <span class="value" id="res-vencidos" style="color: #ef4444;">0</span>
+            </div>
+        </div>
+
         <div class="report-grid">
-            <div class="report-card">
-                <h3><i class="fas fa-chart-pie"></i> Resumo Geral</h3>
-                <div class="stat-group">
-                    <div class="stat-mini-card">
-                        <div class="stat-mini-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--primary);">
-                            <i class="fas fa-briefcase"></i>
-                        </div>
-                        <div class="stat-mini-info">
-                            <span class="label">Total Analisado</span>
-                            <span class="value" id="res-total">0</span>
-                        </div>
-                    </div>
-                    <div class="stat-mini-card">
-                        <div class="stat-mini-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="stat-mini-info">
-                            <span class="label">Prazos Cumpridos</span>
-                            <span class="value" id="res-cumpridos">0</span>
-                        </div>
-                    </div>
-                    <div class="stat-mini-card">
-                        <div class="stat-mini-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
-                            <i class="fas fa-exclamation-circle"></i>
-                        </div>
-                        <div class="stat-mini-info">
-                            <span class="label">Vencidos (Perda)</span>
-                            <span class="value" id="res-vencidos">0</span>
-                        </div>
-                    </div>
+            <!-- Productivity Matrix -->
+            <div class="report-card" style="grid-column: span 12;">
+                <h3><i class="fas fa-users-cog"></i> Matriz de Produtividade da Equipe</h3>
+                <div style="overflow-x: auto;">
+                    <table class="corp-table">
+                        <thead>
+                            <tr>
+                                <th>Analisador</th>
+                                <th>Total Atribuído</th>
+                                <th>Protocolados</th>
+                                <th>Analisados</th>
+                                <th>Peticionados</th>
+                                <th>Performance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="res-matrix">
+                            <!-- Dinâmico -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="report-card">
-                <h3><i class="fas fa-list-check"></i> Tipos de Manifestações</h3>
+            <div class="report-card" id="card-mix" style="grid-column: span 6;">
+                <h3><i class="fas fa-project-diagram"></i> Mix de Processos</h3>
+                <div class="metric-list" id="res-tipos">
+                    <!-- Dinâmico -->
+                </div>
+            </div>
+
+            <div class="report-card" id="card-natureza" style="grid-column: span 6;">
+                <h3><i class="fas fa-tags"></i> Natureza das Demandas</h3>
                 <div class="metric-list" id="res-manifestacoes">
                     <!-- Dinâmico -->
                 </div>
             </div>
 
-            <div class="report-card">
-                <h3><i class="fas fa-user-edit"></i> Responsáveis pelas Análises</h3>
-                <div class="metric-list" id="res-analisadores">
-                    <!-- Dinâmico -->
-                </div>
-            </div>
-
-            <div class="report-card">
-                <h3><i class="fas fa-pen-nib"></i> Responsáveis pelo Peticionamento</h3>
-                <div class="metric-list" id="res-peticionadores">
+            <!-- Protocolistas Breakdown -->
+            <div class="report-card" id="card-protocolistas" style="grid-column: span 6;">
+                <h3><i class="fas fa-user-check"></i> Rank de Protocolistas</h3>
+                <div class="metric-list" id="res-protocolistas">
                     <!-- Dinâmico -->
                 </div>
             </div>
@@ -328,14 +321,80 @@ if (!isset($_SESSION['usuario_id'])) {
 
             document.getElementById('label-periodo').textContent = mesNum + '/' + ano;
             document.getElementById('res-total').textContent = filtered.length;
+            document.getElementById('res-pendentes').textContent = filtered.filter(p => p.status === 'PENDENTE').length;
+            document.getElementById('res-protocolados').textContent = filtered.filter(p => p.status === 'PROTOCOLADO').length;
+            document.getElementById('res-analisados').textContent = filtered.filter(p => p.status === 'ANALISADO').length;
 
-            // Prazos
+            // Vencidos
             const vencidos = filtered.filter(p => {
-                if (!p.final_prazo || !p.data_protocolo) return false;
-                return new Date(p.data_protocolo) > new Date(p.final_prazo);
+                if (!p.final_prazo) return false;
+                const prazo = new Date(p.final_prazo);
+                prazo.setHours(0,0,0,0);
+                
+                if (p.status === 'PENDENTE') {
+                     const hoje = new Date();
+                     hoje.setHours(0,0,0,0);
+                     return hoje > prazo;
+                } else {
+                     const actionDateStr = p.data_analise || p.data_protocolo;
+                     if (!actionDateStr) return false;
+                     // Suporta "YYYY-MM-DD" ou "DD/MM/YYYY"
+                     let isoDate = actionDateStr;
+                     if (actionDateStr.includes('/')) {
+                         const parts = actionDateStr.split(' ')[0].split('/');
+                         isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                     }
+                     const actionDate = new Date(isoDate + 'T00:00:00');
+                     return actionDate > prazo;
+                }
             }).length;
             document.getElementById('res-vencidos').textContent = vencidos;
-            document.getElementById('res-cumpridos').textContent = filtered.length - vencidos;
+
+            // Matrix Productivity Calculation
+            const matrixContainer = document.getElementById('res-matrix');
+            matrixContainer.innerHTML = '';
+            
+            const statsPorAnalisador = {};
+            analisadoresUnicos.forEach(a => statsPorAnalisador[a] = { total: 0, protocolados: 0, analisados: 0, peticionados: 0 });
+            
+            filtered.forEach(p => {
+                const a = p.analisador;
+                if (!statsPorAnalisador[a]) statsPorAnalisador[a] = { total: 0, protocolados: 0, analisados: 0, peticionados: 0 };
+                
+                statsPorAnalisador[a].total++;
+                if (p.status === 'PROTOCOLADO') statsPorAnalisador[a].protocolados++;
+                if (p.status === 'ANALISADO') statsPorAnalisador[a].analisados++;
+                if (p.peticionador) statsPorAnalisador[a].peticionados++;
+            });
+
+            Object.entries(statsPorAnalisador)
+                .sort((a,b) => b[1].total - a[1].total)
+                .forEach(([nome, s]) => {
+                    if (s.total === 0) return;
+                    
+                    const eff = Math.round(((s.protocolados + s.analisados) / (s.total || 1)) * 100);
+                    const color = eff > 80 ? '#059669' : (eff > 40 ? '#2563eb' : '#ef4444');
+                    const bg = eff > 80 ? '#dcfce7' : (eff > 40 ? '#dbeafe' : '#fee2e2');
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="font-weight: 700;">${nome}</td>
+                        <td>${s.total}</td>
+                        <td style="color: #059669;">${s.protocolados}</td>
+                        <td style="color: #8b5cf6;">${s.analisados}</td>
+                        <td>${s.peticionados}</td>
+                        <td><span class="efficiency-badge" style="background: ${bg}; color: ${color}">${eff}%</span></td>
+                    `;
+                    matrixContainer.appendChild(tr);
+                });
+
+            // Processos por Tipo
+            const procTipos = {};
+            filtered.forEach(p => {
+                const t = p.tipo_processo || 'CIÊNCIA';
+                procTipos[t] = (procTipos[t] || 0) + 1;
+            });
+            renderMetricList('res-tipos', procTipos);
 
             // Tipos Manifestação
             const tipos = {};
@@ -345,20 +404,15 @@ if (!isset($_SESSION['usuario_id'])) {
             });
             renderMetricList('res-manifestacoes', tipos);
 
-            // Analisadores
-            const ans = {};
+            // Rank de Protocolistas
+            const protocolistas = {};
             filtered.forEach(p => {
-                ans[p.analisador] = (ans[p.analisador] || 0) + 1;
+                if (p.status === 'PROTOCOLADO' && p.protocolista) {
+                    const prot = p.protocolista;
+                    protocolistas[prot] = (protocolistas[prot] || 0) + 1;
+                }
             });
-            renderMetricList('res-analisadores', ans);
-
-            // Peticionadores
-            const pets = {};
-            filtered.forEach(p => {
-                const n = p.peticionador || 'Não informado';
-                pets[n] = (pets[n] || 0) + 1;
-            });
-            renderMetricList('res-peticionadores', pets);
+            renderMetricList('res-protocolistas', protocolistas);
 
             document.getElementById('resultado-relatorio').style.display = 'block';
             window.dadosRelatorio = filtered;

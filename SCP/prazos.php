@@ -12,7 +12,7 @@ if (!isset($_SESSION['usuario_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prazos Urgentes - SCP</title>
-    <link rel="stylesheet" href="assets/css/estilo.css">
+    <link rel="stylesheet" href="assets/css/estilo.css?v=5">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -27,6 +27,7 @@ if (!isset($_SESSION['usuario_id'])) {
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
         <a href="prazos.php" class="nav-link active"><i class="fas fa-clock"></i> Prazos</a>
+        <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
         <?php if ($_SESSION['usuario_perfil'] === 'ADMIN'): ?>
         <a href="usuarios.php" class="nav-link"><i class="fas fa-users"></i> Usuários</a>
@@ -60,7 +61,15 @@ if (!isset($_SESSION['usuario_id'])) {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h2 style="font-size: 1.25rem;">Urgentes</h2>
             <div style="display: flex; gap: 1rem; align-items: center;">
-                <input type="text" id="filtro-urgentes" placeholder="Pesquisar..." style="width: 250px; padding: 0.5rem 1rem; height: 38px;">
+                <select id="filtro-tipo-prazos" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
+                    <option value="">Tipos (Todos)</option>
+                    <option value="CIÊNCIA">Ciência</option>
+                    <option value="CUMPRIMENTO">Cumprimento</option>
+                </select>
+                <div style="position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                    <input type="text" id="filtro-urgentes" placeholder="Pesquisar..." style="width: 250px; padding: 0.5rem 1rem 0.5rem 36px; height: 38px; border-radius: 50px; border: 1px solid var(--border); outline: none;">
+                </div>
             </div>
         </div>
 
@@ -69,6 +78,7 @@ if (!isset($_SESSION['usuario_id'])) {
                 <thead>
                     <tr>
                         <th>Nº PROCESSO</th>
+                        <th>TIPO</th>
                         <th>ATO / NATUREZA</th>
                         <th>PRAZO FINAL</th>
                         <th>DIAS RESTANTES</th>
@@ -85,7 +95,7 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js"></script>
+<script src="assets/js/script.js?v=9"></script>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const listPrazos = document.getElementById('lista-prazos');
@@ -122,7 +132,13 @@ if (!isset($_SESSION['usuario_id'])) {
             if (!listPrazos) return;
             listPrazos.innerHTML = '';
 
+            const selectTipo = document.getElementById('filtro-tipo-prazos');
             let filtrados = dadosUrgentes;
+
+            if (selectTipo && selectTipo.value) {
+                filtrados = filtrados.filter(p => (p.tipo_processo || 'CIÊNCIA') === selectTipo.value);
+            }
+
             if (inputBusca && inputBusca.value) {
                 const query = inputBusca.value.toUpperCase();
                 filtrados = filtrados.filter(p => 
@@ -163,18 +179,41 @@ if (!isset($_SESSION['usuario_id'])) {
                     corPrazo = '#f59e0b';
                 }
 
+                const classAto = window.getColorForAto(p.tipo_ato);
+                const classNat = window.getColorForNatureza(p.natureza);
+                const classUser = window.getColorForUser(p.analisador);
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td style="font-weight: 600;">${p.numero}</td>
+                    <td style="font-weight: 600; color: var(--primary);">${p.tipo_processo || 'CIÊNCIA'}</td>
                     <td>
-                        <div style="font-size: 0.85rem; font-weight: 700;">${p.tipo_ato}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">${p.natureza}</div>
+                        <div class="tag-badge ${classAto}" style="margin-bottom: 4px;">${p.tipo_ato}</div>
+                        <div class="tag-badge ${classNat}" style="margin-top: 2px;">${p.natureza}</div>
                     </td>
                     <td style="font-weight: bold; color: ${corPrazo};">${formatarData(p.final_prazo)}</td>
                     <td style="font-weight: 700; color: ${corPrazo};">${labelPrazo}</td>
-                    <td>${p.analisador}</td>
+                    <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
                     <td>
-                        <button class="btn-acao" onclick="editarProcesso('${encodeURIComponent(JSON.stringify(p))}')" style="color: var(--primary); border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
+                        <div class="dropdown">
+                            <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                ${p.status === 'PENDENTE' ? `
+                                    <button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>
+                                ` : ''}
+                                ${(p.status === 'PENDENTE' || p.status === 'PROTOCOLADO') ? `
+                                    <button class="dropdown-item" onclick="window.marcarAnalisado(${p.id})"><i class="fas fa-eye"></i> Marcar Analisado</button>
+                                ` : ''}
+                                ${(!p.peticionador && (p.status === 'PENDENTE' || p.status === 'PROTOCOLADO')) ? `
+                                    <button class="dropdown-item" onclick="window.peticionarProcesso(${p.id})"><i class="fas fa-file-upload"></i> Peticionar</button>
+                                ` : ''}
+                                <button class="dropdown-item" onclick="window.editarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-edit"></i> Editar</button>
+                                <div style="border-top: 1px solid var(--border); margin: 4px 0;"></div>
+                                <button class="dropdown-item text-danger" onclick="window.excluirProcesso(${p.id})"><i class="fas fa-trash"></i> Excluir</button>
+                            </div>
+                        </div>
                     </td>
                 `;
                 listPrazos.appendChild(tr);
@@ -190,20 +229,40 @@ if (!isset($_SESSION['usuario_id'])) {
             if (totalPaginas <= 1) return;
 
             const btnAnt = document.createElement('button');
+            btnAnt.className = 'page-btn';
             btnAnt.innerHTML = '<i class="fas fa-chevron-left"></i>';
             btnAnt.disabled = paginaAtual === 1;
             btnAnt.onclick = () => { paginaAtual--; renderizarTabela(); };
             pagContainer.appendChild(btnAnt);
 
-            for (let i = 1; i <= totalPaginas; i++) {
-                const btn = document.createElement('button');
-                btn.textContent = i;
-                if (i === paginaAtual) btn.classList.add('active');
-                btn.onclick = () => { paginaAtual = i; renderizarTabela(); };
-                pagContainer.appendChild(btn);
+            let botoes = [];
+            if (totalPaginas <= 7) {
+                for (let i = 1; i <= totalPaginas; i++) botoes.push(i);
+            } else {
+                if (paginaAtual <= 4) botoes = [1, 2, 3, 4, 5, '...', totalPaginas];
+                else if (paginaAtual >= totalPaginas - 3) botoes = [1, '...', totalPaginas - 4, totalPaginas - 3, totalPaginas - 2, totalPaginas - 1, totalPaginas];
+                else botoes = [1, '...', paginaAtual - 1, paginaAtual, paginaAtual + 1, '...', totalPaginas];
             }
 
+            botoes.forEach(item => {
+                if (item === '...') {
+                    const span = document.createElement('span');
+                    span.textContent = '...';
+                    span.style.padding = '0 0.5rem';
+                    span.style.color = 'var(--text-muted)';
+                    span.style.fontWeight = 'bold';
+                    pagContainer.appendChild(span);
+                } else {
+                    const btn = document.createElement('button');
+                    btn.className = `page-btn ${item === paginaAtual ? 'active' : ''}`;
+                    btn.textContent = item;
+                    btn.onclick = () => { paginaAtual = item; renderizarTabela(); };
+                    pagContainer.appendChild(btn);
+                }
+            });
+
             const btnProx = document.createElement('button');
+            btnProx.className = 'page-btn';
             btnProx.innerHTML = '<i class="fas fa-chevron-right"></i>';
             btnProx.disabled = paginaAtual === totalPaginas;
             btnProx.onclick = () => { paginaAtual++; renderizarTabela(); };
@@ -212,6 +271,14 @@ if (!isset($_SESSION['usuario_id'])) {
 
         if (inputBusca) {
             inputBusca.addEventListener('input', () => {
+                paginaAtual = 1;
+                renderizarTabela();
+            });
+        }
+
+        const selectTipoDropdown = document.getElementById('filtro-tipo-prazos');
+        if (selectTipoDropdown) {
+            selectTipoDropdown.addEventListener('change', () => {
                 paginaAtual = 1;
                 renderizarTabela();
             });

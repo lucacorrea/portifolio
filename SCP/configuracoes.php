@@ -62,6 +62,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
+        <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
         <?php if ($_SESSION['usuario_perfil'] === 'ADMIN'): ?>
         <a href="usuarios.php" class="nav-link"><i class="fas fa-users"></i> Usuários</a>
@@ -148,9 +149,16 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
                 </div>
 
                 <form id="form-importar" onsubmit="processarImportacao(event)">
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="tipo-processo-import" style="font-weight: 600; font-size: 0.95rem;">Que tipo de processos há nesta planilha?</label>
+                        <select id="tipo-processo-import" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; background: white; margin-top: 0.5rem; font-size: 1rem;">
+                            <option value="CIÊNCIA">CIÊNCIA</option>
+                            <option value="CUMPRIMENTO">CUMPRIMENTO</option>
+                        </select>
+                    </div>
                     <div class="form-group">
-                        <label for="arquivo-planilha">Arquivo da Planilha</label>
-                        <input type="file" id="arquivo-planilha" accept=".csv, .xlsx, .xls" required style="padding: 1rem; border: 2px dashed var(--border); background: white; width: 100%;">
+                        <label for="arquivo-planilha" style="font-weight: 600; font-size: 0.95rem;">Arquivo da Planilha</label>
+                        <input type="file" id="arquivo-planilha" accept=".csv, .xlsx, .xls" required style="padding: 1rem; border: 2px dashed var(--border); background: white; width: 100%; margin-top: 0.5rem; border-radius: 8px;">
                     </div>
                     <div id="resultado-importacao" style="margin-top: 1rem; display: none;"></div>
                     <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; margin-top: 1rem;" id="btn-importar-planilha">
@@ -206,8 +214,12 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lendo arquivo...';
         resDiv.style.display = 'none';
 
+        const tipoProcessoSelecionado = document.getElementById('tipo-processo-import').value;
+
         try {
             const data = await lerArquivo(file);
+            data.forEach(item => item.tipo_processo = tipoProcessoSelecionado);
+            
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando para o sistema...';
 
             const resp = await fetch('api.php?acao=importar_dados', {
@@ -290,20 +302,28 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
         if (val instanceof Date && !isNaN(val)) {
             return val.toISOString().split('T')[0];
         }
+
+        let namePart = '';
+        let datePart = String(val);
+
+        if (datePart.includes(' - ')) {
+            const split = datePart.split(' - ');
+            datePart = split[0].trim();
+            namePart = ' - ' + split[1].trim();
+        }
         
         // Se for string no formato DD/MM/YYYY
-        if (typeof val === 'string' && val.includes('/')) {
-            const parts = val.trim().split('/');
+        if (datePart.includes('/')) {
+            const parts = datePart.trim().split('/');
             if (parts.length === 3) {
-                // Tenta garantir que o ano tenha 4 dígitos
                 const ano = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-                return `${ano}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                return `${ano}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}${namePart}`;
             }
         }
 
         // Se for string no formato YYYY-MM-DD
-        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
-            return val.split(' ')[0];
+        if (/^\d{4}-\d{2}-\d{2}/.test(datePart)) {
+            return datePart.split(' ')[0] + namePart;
         }
         
         return val;
@@ -382,14 +402,31 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
         btnPrev.onclick = () => { currentPage--; renderizarAuditoria(); };
         container.appendChild(btnPrev);
 
-        // Números das páginas
-        for (let i = 1; i <= totalPages; i++) {
-            const btnPage = document.createElement('button');
-            btnPage.className = `page-btn ${i === currentPage ? 'active' : ''}`;
-            btnPage.textContent = i;
-            btnPage.onclick = () => { currentPage = i; renderizarAuditoria(); };
-            container.appendChild(btnPage);
+        let botoes = [];
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) botoes.push(i);
+        } else {
+            if (currentPage <= 4) botoes = [1, 2, 3, 4, 5, '...', totalPages];
+            else if (currentPage >= totalPages - 3) botoes = [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            else botoes = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
         }
+
+        botoes.forEach(item => {
+            if (item === '...') {
+                const span = document.createElement('span');
+                span.textContent = '...';
+                span.style.padding = '0 0.5rem';
+                span.style.color = 'var(--text-muted)';
+                span.style.fontWeight = 'bold';
+                container.appendChild(span);
+            } else {
+                const btnPage = document.createElement('button');
+                btnPage.className = `page-btn ${item === currentPage ? 'active' : ''}`;
+                btnPage.textContent = item;
+                btnPage.onclick = () => { currentPage = item; renderizarAuditoria(); };
+                container.appendChild(btnPage);
+            }
+        });
 
         // Botão Próximo
         const btnNext = document.createElement('button');

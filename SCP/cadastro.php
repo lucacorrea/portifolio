@@ -27,6 +27,7 @@ if (!isset($_SESSION['usuario_id'])) {
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
         <a href="cadastro.php" class="nav-link active"><i class="fas fa-plus-circle"></i> Novo</a>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
+        <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
         <?php if ($_SESSION['usuario_perfil'] === 'ADMIN'): ?>
         <a href="usuarios.php" class="nav-link"><i class="fas fa-users"></i> Usuários</a>
@@ -75,6 +76,15 @@ if (!isset($_SESSION['usuario_id'])) {
             <div class="form-group">
                 <label for="numero_processo">Nº do Processo</label>
                 <input type="text" id="numero_processo" placeholder="0000000-00.0000.8.04.0000" required>
+            </div>
+
+            <div class="form-group">
+                <label for="tipo_processo">Tipo de Processo</label>
+                <select id="tipo_processo" required>
+                    <option value="">Selecione...</option>
+                    <option value="CIÊNCIA">CIÊNCIA</option>
+                    <option value="CUMPRIMENTO">CUMPRIMENTO</option>
+                </select>
             </div>
 
             <div class="form-group">
@@ -175,19 +185,58 @@ if (!isset($_SESSION['usuario_id'])) {
                     <input type="text" id="tipo_manifestacao" placeholder="Ex: Manifestar a respeito do valor">
                 </div>
 
-                <div class="form-group">
-                    <label for="data_protocolo">Data do Protocolo ou Análise</label>
-                    <input type="date" id="data_protocolo">
+                <!-- Campos Reais (usados para salvar no BD) -->
+                <input type="hidden" id="data_protocolo" value="">
+                <input type="hidden" id="data_analise" value="">
+                <input type="hidden" id="analisador" value="<?php echo $_SESSION['usuario_nome']; ?>">
+                <input type="hidden" id="protocolista" value="">
+
+                <!-- Visualização Dinâmica do Protocolo -->
+                <div id="container-protocolo" style="display: none; grid-column: span 2; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; background: rgba(34, 197, 94, 0.05); padding: 1.5rem; border-radius: var(--radius); border: 1px dashed rgba(34, 197, 94, 0.3);">
+                    <div style="grid-column: span 2; margin-bottom: -0.5rem;">
+                        <h3 style="color: var(--status-protocolado); font-size: 0.95rem; border-bottom: 2px solid var(--status-protocolado); display: inline-block; padding-bottom: 4px;"><i class="fas fa-check-circle"></i> Dados do Protocolo</h3>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Data do Protocolo</label>
+                        <input type="date" id="data_protocolo_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Responsável pelo Protocolo</label>
+                        <input type="text" id="protocolista_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="analisador">Analisador (Responsável pela Análise)</label>
-                    <input type="text" id="analisador" value="<?php echo $_SESSION['usuario_nome']; ?>" readonly style="background: #f1f5f9;">
+                <!-- Visualização Dinâmica da Análise -->
+                <div id="container-analise" style="display: none; grid-column: span 2; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border-radius: var(--radius); border: 1px dashed rgba(59, 130, 246, 0.3);">
+                    <div style="grid-column: span 2; margin-bottom: -0.5rem;">
+                        <h3 style="color: var(--status-analisado); font-size: 0.95rem; border-bottom: 2px solid var(--status-analisado); display: inline-block; padding-bottom: 4px;"><i class="fas fa-eye"></i> Dados da Análise</h3>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Data da Análise</label>
+                        <input type="date" id="data_analise_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Responsável pela Análise</label>
+                        <input type="text" id="analisador_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="peticionador">Responsável pelo Peticionamento</label>
-                    <input type="text" id="peticionador" value="<?php echo $_SESSION['usuario_nome']; ?>" readonly style="background: #f1f5f9;">
+                <input type="hidden" id="peticionador" value="">
+                <input type="hidden" id="data_peticionamento" value="">
+
+                <!-- Visualização Dinâmica do Peticionamento -->
+                <div id="container-peticionamento" style="display: none; grid-column: span 2; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; background: rgba(139, 92, 246, 0.05); padding: 1.5rem; border-radius: var(--radius); border: 1px dashed rgba(139, 92, 246, 0.3);">
+                    <div style="grid-column: span 2; margin-bottom: -0.5rem;">
+                        <h3 style="color: #8b5cf6; font-size: 0.95rem; border-bottom: 2px solid #8b5cf6; display: inline-block; padding-bottom: 4px;"><i class="fas fa-file-upload"></i> Dados do Peticionamento</h3>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Data de Peticionamento</label>
+                        <input type="date" id="data_peticionamento_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Responsável por Peticionar</label>
+                        <input type="text" id="peticionador_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -208,6 +257,6 @@ if (!isset($_SESSION['usuario_id'])) {
     </form>
 </main>
 
-<script src="assets/js/script.js"></script>
+<script src="assets/js/script.js?v=6"></script>
 </body>
 </html>

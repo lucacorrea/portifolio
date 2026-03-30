@@ -22,6 +22,7 @@ try {
 $pdo->exec("CREATE TABLE IF NOT EXISTS processos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     numero VARCHAR(255),
+    tipo_processo VARCHAR(50),
     tipo_ato VARCHAR(255),
     natureza VARCHAR(255),
     tipo_manifestacao VARCHAR(255),
@@ -129,6 +130,34 @@ if (!$hasObs) {
     $pdo->exec("ALTER TABLE processos ADD COLUMN observacoes TEXT");
 }
 
+// Verificar se a coluna tipo_processo existe
+$hasTipoProcesso = false;
+foreach ($columns as $col) {
+    if ($col['Field'] === 'tipo_processo') {
+        $hasTipoProcesso = true;
+        break;
+    }
+}
+if (!$hasTipoProcesso) {
+    $pdo->exec("ALTER TABLE processos ADD COLUMN tipo_processo VARCHAR(50) DEFAULT 'CIÊNCIA'");
+}
+
+// Verificar se a coluna protocolista e data_analise existem
+$hasProtocolista = false;
+$hasDataAnalise = false;
+foreach ($columns as $col) {
+    if ($col['Field'] === 'protocolista') { $hasProtocolista = true; }
+    if ($col['Field'] === 'data_analise') { $hasDataAnalise = true; }
+}
+if (!$hasProtocolista) { $pdo->exec("ALTER TABLE processos ADD COLUMN protocolista VARCHAR(255)"); }
+if (!$hasDataAnalise) { $pdo->exec("ALTER TABLE processos ADD COLUMN data_analise VARCHAR(50)"); }
+$hasDataPeticionamento = false;
+foreach ($columns as $col) {
+    if ($col['Field'] === 'data_peticionamento') { $hasDataPeticionamento = true; break; }
+}
+if (!$hasDataPeticionamento) { $pdo->exec("ALTER TABLE processos ADD COLUMN data_peticionamento VARCHAR(50)"); }
+
+
 
 function registrarAuditoria($pdo, $acao, $tabela, $registro_id, $dados_anteriores = null, $dados_novos = null) {
     $usuario_id = $_SESSION['usuario_id'] ?? 0;
@@ -234,34 +263,34 @@ try {
 
                     // Editar
                     $stmt = $pdo->prepare("UPDATE processos SET 
-                        numero = ?, tipo_ato = ?, natureza = ?, tipo_manifestacao = ?, 
+                        numero = ?, tipo_processo = ?, tipo_ato = ?, natureza = ?, tipo_manifestacao = ?, 
                         revelia = ?, data_envio = ?, data_ciencia = ?, tipo_contagem = ?, 
-                        final_prazo = ?, prazo_critico = ?, analisador = ?, peticionador = ?, 
+                        final_prazo = ?, prazo_critico = ?, analisador = ?, peticionador = ?, protocolista = ?,
                         quantidade_dias = ?, status = ?, 
-                        data_protocolo = ?, observacoes = ? WHERE id = ?");
+                        data_protocolo = ?, data_analise = ?, data_peticionamento = ?, observacoes = ? WHERE id = ?");
                     $stmt->execute([
-                        $p['numero'], $p['tipo_ato'], $p['natureza'], $p['tipo_manifestacao'],
+                        $p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA', $p['tipo_ato'], $p['natureza'], $p['tipo_manifestacao'],
                         $p['revelia'], $p['data_envio'], $p['data_ciencia'], $p['tipo_contagem'],
-                        $p['final_prazo'], $p['prazo_critico'], $p['analisador'], $p['peticionador'],
+                        $p['final_prazo'], $p['prazo_critico'], $p['analisador'], $p['peticionador'] ?? '', $p['protocolista'] ?? '',
                         $p['quantidade_dias'], $p['status'],
-                        $p['data_protocolo'], $p['observacoes'], $p['id']
+                        $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes'], $p['id']
                     ]);
 
                     registrarAuditoria($pdo, 'UPDATE', 'processos', $p['id'], $dados_anteriores, $p);
                 } else {
                     // Novo
                     $stmt = $pdo->prepare("INSERT INTO processos (
-                        numero, tipo_ato, natureza, tipo_manifestacao, 
+                        numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                         revelia, data_envio, data_ciencia, tipo_contagem, 
-                        final_prazo, prazo_critico, analisador, peticionador, 
-                        quantidade_dias, status, data_protocolo, observacoes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        final_prazo, prazo_critico, analisador, peticionador, protocolista,
+                        quantidade_dias, status, data_protocolo, data_analise, data_peticionamento, observacoes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
-                        $p['numero'], $p['tipo_ato'], $p['natureza'], $p['tipo_manifestacao'],
+                        $p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA', $p['tipo_ato'], $p['natureza'], $p['tipo_manifestacao'],
                         $p['revelia'], $p['data_envio'], $p['data_ciencia'], $p['tipo_contagem'],
-                        $p['final_prazo'], $p['prazo_critico'], $p['analisador'], $p['peticionador'],
+                        $p['final_prazo'], $p['prazo_critico'], $p['analisador'], $p['peticionador'] ?? '', $p['protocolista'] ?? '',
                         $p['quantidade_dias'], $p['status'],
-                        $p['data_protocolo'], $p['observacoes']
+                        $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes']
                     ]);
                     $novo_id = $pdo->lastInsertId();
                     registrarAuditoria($pdo, 'INSERT', 'processos', $novo_id, null, $p);
@@ -328,12 +357,21 @@ try {
                         continue;
                     }
 
-                    $stmt = $pdo->prepare("INSERT INTO processos (
-                        numero, tipo_ato, natureza, tipo_manifestacao, 
-                        revelia, data_envio, data_ciencia, tipo_contagem, 
-                        final_prazo, prazo_critico, analisador, status, 
-                        data_protocolo, observacoes, peticionador, quantidade_dias
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $data_protocolo_raw = trim($dados[$mapeamento['data_protocolo'] ?? -1] ?? '');
+                    $protocolista_import = '';
+                    if (strpos($data_protocolo_raw, ' - ') !== false) {
+                        $parts_p = explode(' - ', $data_protocolo_raw);
+                        $data_protocolo_raw = trim($parts_p[0]);
+                        $protocolista_import = trim($parts_p[1]);
+                    }
+
+                    $status_import = $dados[$mapeamento['status'] ?? -1] ?? 'PENDENTE';
+                    $analisador_import = $dados[$mapeamento['analisador'] ?? -1] ?? $_SESSION['usuario_nome'];
+                    
+                    // Se estiver protocolado e não tiver nome no campo, assume o analisador
+                    if (empty($protocolista_import) && ($status_import === 'PROTOCOLADO' || $status_import === 'ANALISADO')) {
+                        $protocolista_import = $analisador_import;
+                    }
 
                     $stmt->execute([
                         $numero,
@@ -346,11 +384,11 @@ try {
                         $dados[$mapeamento['tipo_contagem'] ?? -1] ?? 'ÚTEIS',
                         $formatarData($dados[$mapeamento['final_prazo'] ?? -1] ?? ''),
                         $dados[$mapeamento['prazo_critico'] ?? -1] ?? 'NÃO',
-                        $dados[$mapeamento['analisador'] ?? -1] ?? $_SESSION['usuario_nome'],
-                        $dados[$mapeamento['status'] ?? -1] ?? 'PENDENTE',
-                        $formatarData($dados[$mapeamento['data_protocolo'] ?? -1] ?? ''),
+                        $analisador_import,
+                        $status_import,
+                        $formatarData($data_protocolo_raw),
                         $dados[$mapeamento['observacoes'] ?? -1] ?? '',
-                        $_SESSION['usuario_nome'],
+                        $protocolista_import ?: $analisador_import, // peticionador
                         15
                     ]);
                     $inseridos++;
@@ -407,15 +445,32 @@ try {
                         continue;
                     }
 
+                    // Tratamento Especial para Protocolo (Data - Nome)
+                    $data_protocolo_raw = trim($item['data_protocolo'] ?? '');
+                    $protocolista_import = '';
+                    if (strpos($data_protocolo_raw, ' - ') !== false) {
+                        $parts_p = explode(' - ', $data_protocolo_raw);
+                        $data_protocolo_raw = trim($parts_p[0]);
+                        $protocolista_import = trim($parts_p[1]);
+                    }
+
+                    $status_import = $item['status'] ?? 'PENDENTE';
+                    $analisador_import = $item['analisador'] ?? $_SESSION['usuario_nome'];
+
+                    if (empty($protocolista_import) && ($status_import === 'PROTOCOLADO' || $status_import === 'ANALISADO')) {
+                        $protocolista_import = $analisador_import;
+                    }
+
                     $stmt = $pdo->prepare("INSERT INTO processos (
-                        numero, tipo_ato, natureza, tipo_manifestacao, 
+                        numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                         revelia, data_envio, data_ciencia, tipo_contagem, 
                         final_prazo, prazo_critico, analisador, status, 
-                        data_protocolo, observacoes, peticionador, quantidade_dias
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        data_protocolo, protocolista, observacoes, peticionador, quantidade_dias
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
                     $stmt->execute([
                         $numero,
+                        $item['tipo_processo'] ?? 'CIÊNCIA',
                         $item['tipo_ato'] ?? '',
                         $item['natureza'] ?? '',
                         $item['tipo_manifestacao'] ?? '',
@@ -425,11 +480,12 @@ try {
                         $item['tipo_contagem'] ?? 'ÚTEIS',
                         $item['final_prazo'] ?? '',
                         $item['prazo_critico'] ?? 'NÃO',
-                        $item['analisador'] ?? $_SESSION['usuario_nome'],
-                        $item['status'] ?? 'PENDENTE',
-                        $item['data_protocolo'] ?? '',
+                        $analisador_import,
+                        $status_import,
+                        $data_protocolo_raw,
+                        $protocolista_import,
                         $item['observacoes'] ?? '',
-                        $_SESSION['usuario_nome'],
+                        $protocolista_import ?: $analisador_import,
                         15
                     ]);
                     $inseridos++;
