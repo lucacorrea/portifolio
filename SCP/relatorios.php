@@ -462,7 +462,7 @@ if (!isset($_SESSION['usuario_id'])) {
         btnFiltrar.addEventListener('click', gerarRelatorio);
 
         // ─────────────────────────────────────────────
-        // PDF CORPORATIVO (MONOCROMÁTICO)
+        // PDF CORPORATIVO — SEM PREENCHIMENTOS
         // ─────────────────────────────────────────────
         document.getElementById('btn-pdf').addEventListener('click', () => {
             if (!window.dadosRelatorio || window.dadosRelatorio.length === 0) {
@@ -476,44 +476,43 @@ if (!isset($_SESSION['usuario_id'])) {
             const dataHora = new Date().toLocaleString('pt-BR');
             const filtered = window.dadosRelatorio;
 
-            // Paleta monocromática — apenas preto, cinza e navy
-            const NAVY    = [26, 38, 57];
-            const PRETO   = [25, 25, 25];
-            const CINZA   = [100, 100, 100];
-            const CZ_ALT  = [245, 245, 245];
-            const BRANCO  = [255, 255, 255];
+            const PRETO  = [20, 20, 20];
+            const CINZA  = [110, 110, 110];
+            const BORDA  = [180, 180, 180];
 
             const margem = 14;
             const largura = 210 - margem * 2;
-            let y = 0;
+            let y = margem;
 
-            // ── Cabeçalho institucional ──
-            doc.setFillColor(...NAVY);
-            doc.rect(0, 0, 210, 26, 'F');
-            doc.setTextColor(...BRANCO);
+            // ── Cabeçalho texto puro (sem fundo) ──
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(13);
-            doc.text('PROCURADORIA GERAL DO MUNICÍPIO', 105, 11, { align: 'center' });
+            doc.setTextColor(...PRETO);
+            doc.text('PROCURADORIA GERAL DO MUNICÍPIO', 105, y, { align: 'center' });
+            y += 5.5;
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
-            doc.text('Sistema de Controle de Processos — SCP  |  Relatório Mensal de Produtividade', 105, 19, { align: 'center' });
+            doc.setTextColor(...CINZA);
+            doc.text('Sistema de Controle de Processos — SCP  |  Relatório Mensal de Produtividade', 105, y, { align: 'center' });
+            y += 5;
 
-            y = 34;
+            // Linha dupla abaixo do título
+            doc.setDrawColor(...BORDA);
+            doc.setLineWidth(0.5);
+            doc.line(margem, y, 210 - margem, y);
+            y += 1.5;
+            doc.setLineWidth(0.2);
+            doc.line(margem, y, 210 - margem, y);
+            y += 5;
 
-            // Linha de metadados
+            // Metadados
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
+            doc.setFontSize(8);
             doc.setTextColor(...PRETO);
             doc.text(`Período de Referência: ${mesLabel}`, margem, y);
             doc.setTextColor(...CINZA);
             doc.text(`Emitido em: ${dataHora}`, 210 - margem, y, { align: 'right' });
-
-            // Divisória
-            y += 4;
-            doc.setDrawColor(180, 180, 180);
-            doc.setLineWidth(0.4);
-            doc.line(margem, y, 210 - margem, y);
-            y += 7;
+            y += 9;
 
             // ── Estatísticas ──
             const totalAtribuido    = filtered.length;
@@ -539,47 +538,47 @@ if (!isset($_SESSION['usuario_id'])) {
                 }
             });
 
-            // ── Bloco de indicadores ──
-            const cardW  = largura / 4;
-            const cardH  = 18;
-            const indicadores = [
+            // ── Bloco de indicadores — só borda, sem fundo ──
+            const cardW = largura / 4;
+            const cardH = 17;
+
+            doc.setDrawColor(...BORDA);
+            doc.setLineWidth(0.3);
+            doc.rect(margem, y, largura, cardH, 'S');
+
+            [
                 { label: 'Total Atribuído',   value: totalAtribuido },
                 { label: 'Total Analisado',   value: totalAnalisados },
                 { label: 'Total Protocolado', value: totalProtocolados },
                 { label: 'Total Peticionado', value: totalPeticionados },
-            ];
-
-            doc.setFillColor(...CZ_ALT);
-            doc.rect(margem, y, largura, cardH, 'F');
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.3);
-            doc.rect(margem, y, largura, cardH, 'S');
-
-            indicadores.forEach((ind, i) => {
+            ].forEach((ind, i) => {
                 const cx = margem + i * cardW;
                 if (i > 0) {
-                    doc.setDrawColor(200, 200, 200);
-                    doc.line(cx, y + 2.5, cx, y + cardH - 2.5);
+                    doc.setDrawColor(...BORDA);
+                    doc.line(cx, y + 2, cx, y + cardH - 2);
                 }
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(6.5);
                 doc.setTextColor(...CINZA);
-                doc.text(ind.label.toUpperCase(), cx + cardW / 2, y + 6.5, { align: 'center' });
+                doc.text(ind.label.toUpperCase(), cx + cardW / 2, y + 6, { align: 'center' });
+
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(13);
                 doc.setTextColor(...PRETO);
-                doc.text(String(ind.value), cx + cardW / 2, y + 14.5, { align: 'center' });
+                doc.text(String(ind.value), cx + cardW / 2, y + 13.5, { align: 'center' });
             });
-            y += cardH + 9;
+            y += cardH + 10;
 
             // ══ Seção 1 — Analisadores ══
-            doc.setFillColor(55, 65, 81);
-            doc.rect(margem, y, largura, 7.5, 'F');
-            doc.setTextColor(...BRANCO);
+            doc.setDrawColor(...BORDA);
+            doc.setLineWidth(0.4);
+            doc.line(margem, y, 210 - margem, y);
+            y += 5;
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8);
-            doc.text('1.  PRODUTIVIDADE POR ANALISADOR', margem + 3, y + 5.2);
-            y += 9.5;
+            doc.setFontSize(8.5);
+            doc.setTextColor(...PRETO);
+            doc.text('1.  PRODUTIVIDADE POR ANALISADOR', margem, y);
+            y += 6;
 
             const linhasAnalisador = Object.entries(statsPorAnalisador)
                 .sort((a, b) => b[1].total - a[1].total)
@@ -595,23 +594,24 @@ if (!isset($_SESSION['usuario_id'])) {
                 body: linhasAnalisador,
                 theme: 'plain',
                 headStyles: {
-                    fillColor: NAVY,
-                    textColor: BRANCO,
+                    fillColor: false,
+                    textColor: PRETO,
                     fontStyle: 'bold',
                     fontSize: 7.5,
                     halign: 'center',
                     cellPadding: { top: 3, bottom: 3, left: 2, right: 2 },
-                    lineColor: [120, 120, 120],
-                    lineWidth: 0.3
+                    lineColor: [160, 160, 160],
+                    lineWidth: 0.4
                 },
                 bodyStyles: {
                     fontSize: 8,
                     textColor: PRETO,
+                    fillColor: false,
                     cellPadding: { top: 2.8, bottom: 2.8, left: 2, right: 2 },
                     lineColor: [210, 210, 210],
                     lineWidth: 0.3
                 },
-                alternateRowStyles: { fillColor: CZ_ALT },
+                alternateRowStyles: { fillColor: false },
                 columnStyles: {
                     0: { halign: 'center', cellWidth: 8 },
                     1: { fontStyle: 'bold', cellWidth: 55 },
@@ -626,15 +626,17 @@ if (!isset($_SESSION['usuario_id'])) {
             y = doc.lastAutoTable.finalY + 10;
 
             // ══ Seção 2 — Protocoladores ══
-            if (y > 232) { doc.addPage(); y = 16; }
+            if (y > 234) { doc.addPage(); y = margem; }
 
-            doc.setFillColor(55, 65, 81);
-            doc.rect(margem, y, largura, 7.5, 'F');
-            doc.setTextColor(...BRANCO);
+            doc.setDrawColor(...BORDA);
+            doc.setLineWidth(0.4);
+            doc.line(margem, y, 210 - margem, y);
+            y += 5;
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8);
-            doc.text('2.  PROTOCOLADORES — QUANTIDADE PROTOCOLADA NO PERÍODO', margem + 3, y + 5.2);
-            y += 9.5;
+            doc.setFontSize(8.5);
+            doc.setTextColor(...PRETO);
+            doc.text('2.  PROTOCOLADORES — QUANTIDADE PROTOCOLADA NO PERÍODO', margem, y);
+            y += 6;
 
             const linhasProtocolistas = Object.entries(statsPorProtocolista)
                 .sort((a, b) => b[1] - a[1])
@@ -654,23 +656,24 @@ if (!isset($_SESSION['usuario_id'])) {
                 body: linhasProtocolistas,
                 theme: 'plain',
                 headStyles: {
-                    fillColor: NAVY,
-                    textColor: BRANCO,
+                    fillColor: false,
+                    textColor: PRETO,
                     fontStyle: 'bold',
                     fontSize: 7.5,
                     halign: 'center',
                     cellPadding: { top: 3, bottom: 3, left: 2, right: 2 },
-                    lineColor: [120, 120, 120],
-                    lineWidth: 0.3
+                    lineColor: [160, 160, 160],
+                    lineWidth: 0.4
                 },
                 bodyStyles: {
                     fontSize: 8,
                     textColor: PRETO,
+                    fillColor: false,
                     cellPadding: { top: 2.8, bottom: 2.8, left: 2, right: 2 },
                     lineColor: [210, 210, 210],
                     lineWidth: 0.3
                 },
-                alternateRowStyles: { fillColor: CZ_ALT },
+                alternateRowStyles: { fillColor: false },
                 columnStyles: {
                     0: { halign: 'center', cellWidth: 8 },
                     1: { fontStyle: 'bold', cellWidth: 90 },
@@ -682,20 +685,25 @@ if (!isset($_SESSION['usuario_id'])) {
             });
             y = doc.lastAutoTable.finalY + 10;
 
-            // ══ Resumo executivo ══
-            if (y > 248) { doc.addPage(); y = 16; }
+            // ══ Resumo executivo — só borda, sem fundo ══
+            if (y > 250) { doc.addPage(); y = margem; }
 
-            doc.setFillColor(38, 38, 38);
-            doc.rect(margem, y, largura, 22, 'F');
+            doc.setDrawColor(...BORDA);
+            doc.setLineWidth(0.4);
+            doc.line(margem, y, 210 - margem, y);
+            y += 5;
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(7.5);
-            doc.setTextColor(170, 170, 170);
-            doc.text('RESUMO EXECUTIVO DO MÊS', margem + 4, y + 6);
-            doc.setDrawColor(75, 75, 75);
-            doc.setLineWidth(0.3);
-            doc.line(margem + 4, y + 8, margem + largura - 4, y + 8);
+            doc.setFontSize(8.5);
+            doc.setTextColor(...PRETO);
+            doc.text('RESUMO EXECUTIVO DO MÊS', margem, y);
+            y += 7;
 
+            const resumoH = 17;
             const colW2 = largura / 4;
+            doc.setDrawColor(...BORDA);
+            doc.setLineWidth(0.3);
+            doc.rect(margem, y, largura, resumoH, 'S');
+
             [
                 { l: 'TOTAL ATRIBUÍDO',   v: totalAtribuido },
                 { l: 'TOTAL ANALISADO',   v: totalAnalisados },
@@ -703,21 +711,25 @@ if (!isset($_SESSION['usuario_id'])) {
                 { l: 'TOTAL PETICIONADO', v: totalPeticionados },
             ].forEach((r, i) => {
                 const rx = margem + i * colW2 + colW2 / 2;
+                if (i > 0) {
+                    doc.setDrawColor(...BORDA);
+                    doc.line(margem + i * colW2, y + 2, margem + i * colW2, y + resumoH - 2);
+                }
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(6);
-                doc.setTextColor(140, 140, 140);
-                doc.text(r.l, rx, y + 13.5, { align: 'center' });
+                doc.setTextColor(...CINZA);
+                doc.text(r.l, rx, y + 5.5, { align: 'center' });
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(14);
-                doc.setTextColor(...BRANCO);
-                doc.text(String(r.v), rx, y + 20.5, { align: 'center' });
+                doc.setFontSize(13);
+                doc.setTextColor(...PRETO);
+                doc.text(String(r.v), rx, y + 13.5, { align: 'center' });
             });
 
             // ── Rodapé em todas as páginas ──
             const totalPags = doc.internal.getNumberOfPages();
             for (let pg = 1; pg <= totalPags; pg++) {
                 doc.setPage(pg);
-                doc.setDrawColor(180, 180, 180);
+                doc.setDrawColor(...BORDA);
                 doc.setLineWidth(0.3);
                 doc.line(margem, 290, 210 - margem, 290);
                 doc.setFont('helvetica', 'normal');
