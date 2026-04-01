@@ -16,6 +16,8 @@ if (!isset($_SESSION['usuario_id'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <style>
         :root {
             --corp-navy: #0f172a;
@@ -172,9 +174,14 @@ if (!isset($_SESSION['usuario_id'])) {
             <h1>Relatórios de Produtividade</h1>
             <p>Acompanhamento mensal de processos e manifestações.</p>
         </div>
-        <button id="btn-exportar" class="btn btn-primary" style="background: #10b981;">
-            <i class="fas fa-file-excel"></i> Exportar Excel
-        </button>
+        <div style="display: flex; gap: 0.75rem;">
+            <button id="btn-exportar" class="btn btn-primary" style="background: #10b981;">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button id="btn-pdf" class="btn btn-primary" style="background: #dc2626;">
+                <i class="fas fa-file-pdf"></i> Gerar PDF
+            </button>
+        </div>
     </header>
 
     <div class="report-header">
@@ -453,6 +460,304 @@ if (!isset($_SESSION['usuario_id'])) {
         }
 
         btnFiltrar.addEventListener('click', gerarRelatorio);
+
+        // ─────────────────────────────────────────────
+        // PDF CORPORATIVO
+        // ─────────────────────────────────────────────
+        document.getElementById('btn-pdf').addEventListener('click', () => {
+            if (!window.dadosRelatorio || window.dadosRelatorio.length === 0) {
+                return alert('Gere o relatório primeiro clicando em Filtrar!');
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+            const mesLabel = document.getElementById('label-periodo').textContent;
+            const dataHora = new Date().toLocaleString('pt-BR');
+            const filtered = window.dadosRelatorio;
+
+            // ── Paleta de cores ──
+            const COR_PRIMARIA   = [37, 99, 235];   // #2563EB azul
+            const COR_ESCURA     = [15, 23, 42];    // #0f172a navy
+            const COR_CINZA     = [71, 85, 105];    // #475569 slate
+            const COR_LINHA_PAR  = [241, 245, 249]; // #f1f5f9
+            const COR_BRANCO     = [255, 255, 255];
+            const COR_VERDE      = [5, 150, 105];   // #059669
+            const COR_ROXO       = [139, 92, 246];  // #8b5cf6
+            const COR_AMARELO    = [245, 158, 11];  // #f59e0b
+            const COR_VERMELHO   = [239, 68, 68];   // #ef4444
+
+            const margem = 14;
+            const largura = 210 - margem * 2;
+            let y = margem;
+
+            // ══════════════════════════════════════════
+            //  CABEÇALHO INSTITUCIONAL
+            // ══════════════════════════════════════════
+            // Faixa azul topo
+            doc.setFillColor(...COR_PRIMARIA);
+            doc.rect(0, 0, 210, 22, 'F');
+
+            doc.setTextColor(...COR_BRANCO);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.text('SISTEMA DE CONTROLE DE PROCESSOS', 105, 9, { align: 'center' });
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.text('SCP — Procuradoria Geral do Município', 105, 15.5, { align: 'center' });
+
+            y = 28;
+
+            // Título e período
+            doc.setTextColor(...COR_ESCURA);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text('RELATÓRIO MENSAL DE PRODUTIVIDADE', 105, y, { align: 'center' });
+
+            y += 6;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(...COR_CINZA);
+            doc.text(`Período de Referência: ${mesLabel}   |   Emitido em: ${dataHora}`, 105, y, { align: 'center' });
+
+            // Linha divisória
+            y += 4;
+            doc.setDrawColor(...COR_PRIMARIA);
+            doc.setLineWidth(0.8);
+            doc.line(margem, y, 210 - margem, y);
+            y += 6;
+
+            // ══════════════════════════════════════════
+            //  CALCULAR ESTATÍSTICAS
+            // ══════════════════════════════════════════
+            const totalAtribuido   = filtered.length;
+            const totalAnalisados  = filtered.filter(p => p.status === 'ANALISADO').length;
+            const totalProtocolados = filtered.filter(p => p.status === 'PROTOCOLADO').length;
+            const totalPeticionados = filtered.filter(p => p.peticionador && p.peticionador.trim() !== '').length;
+
+            // Stats por analisador
+            const statsPorAnalisador = {};
+            filtered.forEach(p => {
+                const a = p.analisador || 'Não atribuído';
+                if (!statsPorAnalisador[a]) statsPorAnalisador[a] = { total: 0, analisados: 0, protocolados: 0, peticionados: 0 };
+                statsPorAnalisador[a].total++;
+                if (p.status === 'ANALISADO')    statsPorAnalisador[a].analisados++;
+                if (p.status === 'PROTOCOLADO')  statsPorAnalisador[a].protocolados++;
+                if (p.peticionador && p.peticionador.trim() !== '') statsPorAnalisador[a].peticionados++;
+            });
+
+            // Stats por protocolista
+            const statsPorProtocolista = {};
+            filtered.forEach(p => {
+                if (p.protocolista && p.protocolista.trim() !== '') {
+                    const prot = p.protocolista.trim();
+                    statsPorProtocolista[prot] = (statsPorProtocolista[prot] || 0) + 1;
+                }
+            });
+
+            // ══════════════════════════════════════════
+            //  CARDS DE TOTAIS GERAIS
+            // ══════════════════════════════════════════
+            const cards = [
+                { label: 'Total Atribuído',   value: totalAtribuido,   cor: COR_PRIMARIA },
+                { label: 'Total Analisado',   value: totalAnalisados,  cor: COR_ROXO },
+                { label: 'Total Protocolado', value: totalProtocolados, cor: COR_VERDE },
+                { label: 'Total Peticionado', value: totalPeticionados, cor: COR_AMARELO },
+            ];
+
+            const cardW = largura / 4;
+            const cardH = 16;
+            cards.forEach((card, i) => {
+                const cx = margem + i * cardW;
+                // Fundo card
+                doc.setFillColor(...COR_LINHA_PAR);
+                doc.roundedRect(cx, y, cardW - 2, cardH, 2, 2, 'F');
+                // Borda esquerda colorida
+                doc.setFillColor(...card.cor);
+                doc.rect(cx, y, 2.5, cardH, 'F');
+                // Label
+                doc.setTextColor(...COR_CINZA);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(6.5);
+                doc.text(card.label.toUpperCase(), cx + 5, y + 5.5);
+                // Valor
+                doc.setTextColor(...card.cor);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text(String(card.value), cx + 5, y + 13);
+            });
+            y += cardH + 8;
+
+            // ══════════════════════════════════════════
+            //  SEÇÃO 1 — TABELA DE ANALISADORES
+            // ══════════════════════════════════════════
+            // Título da seção
+            doc.setFillColor(...COR_PRIMARIA);
+            doc.rect(margem, y, largura, 7, 'F');
+            doc.setTextColor(...COR_BRANCO);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text('1.  PRODUTIVIDADE POR ANALISADOR', margem + 3, y + 5);
+            y += 9;
+
+            const linhasAnalisador = Object.entries(statsPorAnalisador)
+                .sort((a, b) => b[1].total - a[1].total)
+                .map(([nome, s], idx) => [
+                    String(idx + 1),
+                    nome,
+                    String(s.total),
+                    String(s.analisados),
+                    String(s.protocolados),
+                    String(s.peticionados)
+                ]);
+
+            doc.autoTable({
+                startY: y,
+                head: [['#', 'Analisador', 'Total Atribuído', 'Total Analisado', 'Total Protocolado', 'Total Peticionado']],
+                body: linhasAnalisador,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: COR_ESCURA,
+                    textColor: COR_BRANCO,
+                    fontStyle: 'bold',
+                    fontSize: 8,
+                    halign: 'center',
+                    cellPadding: 3
+                },
+                bodyStyles: {
+                    fontSize: 8,
+                    textColor: COR_ESCURA,
+                    cellPadding: 2.5
+                },
+                alternateRowStyles: { fillColor: COR_LINHA_PAR },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 8 },
+                    1: { cellWidth: 55 },
+                    2: { halign: 'center' },
+                    3: { halign: 'center', textColor: COR_ROXO },
+                    4: { halign: 'center', textColor: COR_VERDE },
+                    5: { halign: 'center', textColor: [245, 158, 11] }
+                },
+                margin: { left: margem, right: margem },
+                tableWidth: largura
+            });
+
+            y = doc.lastAutoTable.finalY + 8;
+
+            // ══════════════════════════════════════════
+            //  SEÇÃO 2 — TABELA DE PROTOCOLADORES
+            // ══════════════════════════════════════════
+            // Verifica se cabe na página; se não, adiciona nova página
+            if (y > 230) { doc.addPage(); y = margem + 5; }
+
+            doc.setFillColor(...COR_PRIMARIA);
+            doc.rect(margem, y, largura, 7, 'F');
+            doc.setTextColor(...COR_BRANCO);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text('2.  PROTOCOLADORES — QUANTIDADE PROTOCOLADA NO PERÍODO', margem + 3, y + 5);
+            y += 9;
+
+            const linhasProtocolistas = Object.entries(statsPorProtocolista)
+                .sort((a, b) => b[1] - a[1])
+                .map(([nome, qtd], idx) => [
+                    String(idx + 1),
+                    nome,
+                    String(qtd),
+                    ((qtd / (totalProtocolados || 1)) * 100).toFixed(1) + '%'
+                ]);
+
+            if (linhasProtocolistas.length === 0) {
+                linhasProtocolistas.push(['—', 'Nenhum protocolista registrado no período.', '0', '0%']);
+            }
+
+            doc.autoTable({
+                startY: y,
+                head: [['#', 'Protocolador', 'Qtd. Protocolada', '% do Total']],
+                body: linhasProtocolistas,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: COR_ESCURA,
+                    textColor: COR_BRANCO,
+                    fontStyle: 'bold',
+                    fontSize: 8,
+                    halign: 'center',
+                    cellPadding: 3
+                },
+                bodyStyles: {
+                    fontSize: 8,
+                    textColor: COR_ESCURA,
+                    cellPadding: 2.5
+                },
+                alternateRowStyles: { fillColor: COR_LINHA_PAR },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 8 },
+                    1: { cellWidth: 80 },
+                    2: { halign: 'center', textColor: COR_VERDE, fontStyle: 'bold' },
+                    3: { halign: 'center' }
+                },
+                margin: { left: margem, right: margem },
+                tableWidth: largura
+            });
+
+            y = doc.lastAutoTable.finalY + 8;
+
+            // ══════════════════════════════════════════
+            //  RODAPÉ — RESUMO EXECUTIVO
+            // ══════════════════════════════════════════
+            if (y > 240) { doc.addPage(); y = margem + 5; }
+
+            doc.setFillColor(15, 23, 42);
+            doc.rect(margem, y, largura, 24, 'F');
+
+            doc.setTextColor(...COR_BRANCO);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text('RESUMO EXECUTIVO DO MÊS', margem + 4, y + 5.5);
+
+            const cols = 4;
+            const colW = largura / cols;
+            const resumos = [
+                { l: 'TOTAL ATRIBUÍDO',   v: totalAtribuido,    c: COR_PRIMARIA },
+                { l: 'TOTAL ANALISADO',   v: totalAnalisados,   c: COR_ROXO },
+                { l: 'TOTAL PROTOCOLADO', v: totalProtocolados, c: COR_VERDE },
+                { l: 'TOTAL PETICIONADO', v: totalPeticionados, c: COR_AMARELO },
+            ];
+
+            resumos.forEach((r, i) => {
+                const rx = margem + i * colW + colW / 2;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.5);
+                doc.setTextColor(180, 194, 215);
+                doc.text(r.l, rx, y + 12, { align: 'center' });
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(15);
+                doc.setTextColor(r.c[0], r.c[1], r.c[2]);
+                doc.text(String(r.v), rx, y + 21, { align: 'center' });
+            });
+
+            y += 30;
+
+            // Rodapé de assinatura / confidencialidade
+            const totalPags = doc.internal.getNumberOfPages();
+            for (let pg = 1; pg <= totalPags; pg++) {
+                doc.setPage(pg);
+                doc.setDrawColor(200, 210, 220);
+                doc.setLineWidth(0.3);
+                doc.line(margem, 290, 210 - margem, 290);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.5);
+                doc.setTextColor(150, 160, 175);
+                doc.text('Documento gerado automaticamente pelo SCP PGM — Uso interno e confidencial.', margem, 294);
+                doc.text(`Pág. ${pg} / ${totalPags}`, 210 - margem, 294, { align: 'right' });
+            }
+
+            // ── Salvar ──
+            const nomeArq = `Relatorio_SCP_${document.getElementById('filtro-mes').value || 'Geral'}.pdf`;
+            doc.save(nomeArq);
+        });
         
         btnExportar.addEventListener('click', () => {
             if (!window.dadosRelatorio || window.dadosRelatorio.length === 0) {
