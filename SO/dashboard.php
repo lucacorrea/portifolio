@@ -22,6 +22,16 @@ $stmt = $pdo->query("
 $ultimos_oficios = $stmt->fetchAll();
 ?>
 
+<style>
+    .dashboard-nowrap,
+    .dashboard-nowrap th,
+    .dashboard-nowrap td,
+    .dashboard-nowrap span,
+    .dashboard-nowrap a {
+        white-space: nowrap !important;
+    }
+</style>
+
 <div class="dashboard-grid">
     <div class="card">
         <div class="card-body">
@@ -32,6 +42,7 @@ $ultimos_oficios = $stmt->fetchAll();
             <div class="card-number"><?php echo $total_oficios; ?></div>
         </div>
     </div>
+
     <div class="card">
         <div class="card-body">
             <div class="card-action">
@@ -41,6 +52,7 @@ $ultimos_oficios = $stmt->fetchAll();
             <div class="card-number"><?php echo $total_aguardando; ?></div>
         </div>
     </div>
+
     <div class="card">
         <div class="card-body">
             <div class="card-action">
@@ -50,6 +62,7 @@ $ultimos_oficios = $stmt->fetchAll();
             <div class="card-number"><?php echo $total_aprovados; ?></div>
         </div>
     </div>
+
     <div class="card">
         <div class="card-body">
             <div class="card-action">
@@ -74,7 +87,7 @@ $ultimos_oficios = $stmt->fetchAll();
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
@@ -84,35 +97,47 @@ $ultimos_oficios = $stmt->fetchAll();
                     </h3>
                     <a href="oficios_lista.php" class="btn btn-outline btn-sm">Ver Todos</a>
                 </div>
+
                 <div class="table-responsive">
-                    <table class="table-vcenter text-nowrap">
+                    <table class="table-vcenter text-nowrap dashboard-nowrap" style="white-space: nowrap !important;">
                         <thead>
                             <tr>
-                                <th>Número</th>
-                                <th>Secretaria</th>
-                                <th>Status</th>
-                                <th class="w-1"></th>
+                                <th style="white-space: nowrap !important;">Número</th>
+                                <th style="white-space: nowrap !important;">Secretaria</th>
+                                <th style="white-space: nowrap !important;">Status</th>
+                                <th class="w-1" style="white-space: nowrap !important;"></th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach($ultimos_oficios as $oficio): ?>
+                            <?php foreach ($ultimos_oficios as $oficio): ?>
                                 <tr>
-                                    <td style="font-weight: 600; color: var(--primary);"><?php echo $oficio['numero']; ?></td>
-                                    <td><span class="text-muted"><?php echo $oficio['secretaria']; ?></span></td>
-                                    <td>
-                                        <span class="badge badge-<?php echo strtolower($oficio['status'] == 'ENVIADO' ? 'pending' : ($oficio['status'] == 'APROVADO' ? 'approved' : ($oficio['status'] == 'REPROVADO' ? 'rejected' : 'finalized'))); ?>">
+                                    <td style="font-weight: 600; color: var(--primary); white-space: nowrap !important;">
+                                        <?php echo $oficio['numero']; ?>
+                                    </td>
+                                    <td style="white-space: nowrap !important;">
+                                        <span class="text-muted" style="white-space: nowrap !important;">
+                                            <?php echo $oficio['secretaria']; ?>
+                                        </span>
+                                    </td>
+                                    <td style="white-space: nowrap !important;">
+                                        <span class="badge badge-<?php echo strtolower($oficio['status'] == 'ENVIADO' ? 'pending' : ($oficio['status'] == 'APROVADO' ? 'approved' : ($oficio['status'] == 'REPROVADO' ? 'rejected' : 'finalized'))); ?>" style="white-space: nowrap !important;">
                                             <?php echo $oficio['status']; ?>
                                         </span>
                                     </td>
-                                    <td>
-                                        <a href="oficios_visualizar.php?id=<?php echo $oficio['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar">
+                                    <td style="white-space: nowrap !important;">
+                                        <a href="oficios_visualizar.php?id=<?php echo $oficio['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar" style="white-space: nowrap !important;">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                            <?php if(empty($ultimos_oficios)): ?>
-                                <tr><td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted);">Nenhuma solicitação encontrada.</td></tr>
+
+                            <?php if (empty($ultimos_oficios)): ?>
+                                <tr>
+                                    <td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted); white-space: nowrap !important;">
+                                        Nenhuma solicitação encontrada.
+                                    </td>
+                                </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -120,7 +145,6 @@ $ultimos_oficios = $stmt->fetchAll();
             </div>
         </div>
     </div>
-
 </div>
 
 <script>
