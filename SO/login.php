@@ -75,6 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             animation: fadeInDown 0.6s ease-out;
         }
 
+        .logo{
+            width: 120px !important;
+        }
+
         @keyframes fadeInDown {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -142,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-card">
         <div class="login-logo">
-            <img src="assets/img/prefeitura.png" alt="SGAO" width="90">
+            <img src="assets/img/prefeitura.png" class="logo" alt="SGAO" width="90">
             <p>Sistema de Gestão de Ofícios e Aquisições</p>
         </div>
         
