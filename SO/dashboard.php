@@ -25,9 +25,7 @@ $ultimos_oficios = $stmt->fetchAll();
 <style>
     .dashboard-nowrap,
     .dashboard-nowrap th,
-    .dashboard-nowrap td,
-    .dashboard-nowrap span,
-    .dashboard-nowrap a {
+    .dashboard-nowrap td {
         white-space: nowrap !important;
     }
 </style>
