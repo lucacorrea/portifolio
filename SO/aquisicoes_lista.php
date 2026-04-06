@@ -263,18 +263,25 @@ include 'views/layout/header.php';
                             </td>
                             <td style="text-align: right;">
                                 <div class="acoes-wrap">
-                                    <a href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar Detalhes">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-
-                                    <?php if ($aq['status'] === 'AGUARDANDO ENTREGA'): ?>
-                                        <a href="aquisicao_editar.php?id=<?php echo (int)$aq['id']; ?>" class="btn btn-outline btn-sm" style="color: #2fb344; border-color: #2fb344;" title="Lançar Valores (Orçamento)">
-                                            <i class="fas fa-dollar-sign"></i>
-                                        </a>
-                                        <a href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" class="btn btn-outline btn-sm" style="color: var(--status-finalized); border-color: var(--status-finalized);" title="Marcar como Recebido" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
-                                            <i class="fas fa-check-circle"></i>
-                                        </a>
-                                    <?php endif; ?>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline btn-sm" data-dropdown-toggle title="Ações">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
+                                                <i class="fas fa-eye"></i> Visualizar
+                                            </a>
+                                            
+                                            <?php if ($aq['status'] === 'AGUARDANDO ENTREGA'): ?>
+                                                <a class="dropdown-item" href="aquisicao_editar.php?id=<?php echo (int)$aq['id']; ?>" style="color: #2fb344;">
+                                                    <i class="fas fa-dollar-sign"></i> Lançar Valores (Orçamento)
+                                                </a>
+                                                <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized);" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
+                                                    <i class="fas fa-check-circle"></i> Marcar como Recebido
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                         </tr>

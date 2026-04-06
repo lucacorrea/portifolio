@@ -57,6 +57,30 @@
     }
 }
 </style>
+<script>
+document.addEventListener('click', function (event) {
+    const toggle = event.target.closest('[data-dropdown-toggle]');
+    const isDropdownItem = event.target.closest('.dropdown-item');
+    const activeDropdowns = document.querySelectorAll('.dropdown-menu.show');
+    
+    if (toggle) {
+        event.preventDefault();
+        const dropdown = toggle.parentElement.querySelector('.dropdown-menu');
+        
+        // Se clicar no mesmo toggle, fecha ele
+        if (dropdown.classList.contains('show')) {
+            dropdown.classList.remove('show');
+        } else {
+            // Fecha outros abertos e abre este
+            activeDropdowns.forEach(d => d.classList.remove('show'));
+            dropdown.classList.add('show');
+        }
+    } else if (!isDropdownItem) {
+        // Se clicar fora, fecha todos
+        activeDropdowns.forEach(d => d.classList.remove('show'));
+    }
+});
+</script>
 
 </body>
 </html>
