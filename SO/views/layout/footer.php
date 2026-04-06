@@ -67,17 +67,35 @@ document.addEventListener('click', function (event) {
         event.preventDefault();
         const dropdown = toggle.parentElement.querySelector('.dropdown-menu');
         
-        // Se clicar no mesmo toggle, fecha ele
         if (dropdown.classList.contains('show')) {
             dropdown.classList.remove('show');
+            dropdown.classList.remove('dropup');
         } else {
-            // Fecha outros abertos e abre este
-            activeDropdowns.forEach(d => d.classList.remove('show'));
+            // Fecha outros
+            activeDropdowns.forEach(d => {
+                d.classList.remove('show');
+                d.classList.remove('dropup');
+            });
+            
+            // Posicionamento Inteligente
+            const rect = toggle.getBoundingClientRect();
+            const winHeight = window.innerHeight;
+            const spaceBelow = winHeight - rect.bottom;
+            
+            // Se houver menos de 200px embaixo, abre pra cima
+            if (spaceBelow < 250) {
+                dropdown.classList.add('dropup');
+            } else {
+                dropdown.classList.remove('dropup');
+            }
+            
             dropdown.classList.add('show');
         }
     } else if (!isDropdownItem) {
-        // Se clicar fora, fecha todos
-        activeDropdowns.forEach(d => d.classList.remove('show'));
+        activeDropdowns.forEach(d => {
+            d.classList.remove('show');
+            d.classList.remove('dropup');
+        });
     }
 });
 </script>

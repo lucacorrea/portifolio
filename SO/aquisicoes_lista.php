@@ -195,8 +195,22 @@ include 'views/layout/header.php';
         animation: dropdownFadeIn 0.2s ease-out;
     }
 
+    /* Versão Dropup */
+    .dropdown-menu.dropup {
+        top: auto !important;
+        bottom: 100% !important;
+        margin-top: 0 !important;
+        margin-bottom: 0.25rem !important;
+        animation: dropdownFadeUp 0.2s ease-out !important;
+    }
+
     @keyframes dropdownFadeIn {
         from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes dropdownFadeUp {
+        from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
@@ -256,8 +270,9 @@ include 'views/layout/header.php';
 
     /* Fix table clipping */
     .lista-table-wrap {
-        padding-bottom: 120px !important; /* Espaço para o menu da última linha */
-        margin-bottom: -100px !important; /* Mantém o layout compacto */
+        overflow: visible !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
     }
 
     .lista-table td {
