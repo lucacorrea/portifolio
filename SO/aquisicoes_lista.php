@@ -180,7 +180,7 @@ include 'views/layout/header.php';
         right: 0;
         top: 100%;
         z-index: 9999;
-        display: none;
+        display: none !important;
         min-width: 200px;
         padding: 0.5rem 0;
         margin-top: 0.25rem;
@@ -191,7 +191,7 @@ include 'views/layout/header.php';
     }
 
     .dropdown-menu.show {
-        display: block;
+        display: block !important;
         animation: dropdownFadeIn 0.2s ease-out;
     }
 
@@ -214,7 +214,7 @@ include 'views/layout/header.php';
         border: 0;
         background: transparent;
         cursor: pointer;
-        white-space: nowrap;
+        padding-right: 2rem;
     }
 
     .dropdown-item:hover {
@@ -234,7 +234,7 @@ include 'views/layout/header.php';
     }
 
     .btn-three-dots {
-        background: transparent;
+        background: #fff;
         border: 1px solid var(--border-color);
         color: var(--text-muted);
         width: 32px;
@@ -245,6 +245,7 @@ include 'views/layout/header.php';
         justify-content: center;
         transition: all 0.2s;
         padding: 0;
+        cursor: pointer;
     }
 
     .btn-three-dots:hover {
@@ -253,7 +254,12 @@ include 'views/layout/header.php';
         background: var(--primary-light);
     }
 
-    /* Fix table cell alignment */
+    /* Fix table clipping */
+    .lista-table-wrap {
+        padding-bottom: 120px !important; /* Espaço para o menu da última linha */
+        margin-bottom: -100px !important; /* Mantém o layout compacto */
+    }
+
     .lista-table td {
         position: relative;
     }
