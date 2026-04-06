@@ -71,6 +71,7 @@ include 'views/layout/header.php';
         border-radius: 12px;
         margin-bottom: 1.5rem;
         border-left: 5px solid var(--primary);
+        border: 1px solid #000;
     }
 
     .resumo-oficio p {
