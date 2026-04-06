@@ -21,7 +21,7 @@
 
                 <!-- DIREITA -->
                 <div class="footer-right">
-                    Desenvolvido por <strong>Junior Praia, Lucas Correa e Luiz Frota</strong>
+                    Desenvolvido por <strong>Junior Praia, Lucas Correa e Luiz Frota.</strong>
                 </div>
 
             </div>

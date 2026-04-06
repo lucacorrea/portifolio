@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- NOVO RODAPÉ -->
             <p class="dev-footer">
-                Desenvolvido por <strong>Junior Praia, Lucas Correa e Luiz Frota</strong>
+                Desenvolvido por <strong>Junior Praia, Lucas Correa e Luiz Frota.</strong>
             </p>
         </div>
     </div>
