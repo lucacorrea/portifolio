@@ -49,8 +49,8 @@
 
     /* ITEM ATIVO */
     .nav-item.active .nav-link {
+        background: rgba(13, 110, 253, 0.10);
         color: #0d6efd !important;
-        border-bottom: 2px solid #0d6efd;
         font-weight: 700;
     }
 
