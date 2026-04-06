@@ -77,7 +77,6 @@ include 'views/layout/header.php';
 
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">Gerar Aquisição - Solicitação <?php echo $oficio['numero']; ?></h2>
         <a href="oficios_lista.php" class="btn btn-danger btn-sm">Cancelar</a>
     </div>
 
