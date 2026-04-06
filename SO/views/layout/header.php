@@ -13,47 +13,62 @@
 </head>
 
 <style>
-    /* BOTÃO HAMBURGUER */
+    /* HEADER BASE */
+    .navbar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+    }
+
+    /* LOGO CENTRAL */
+    .center-logo {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .center-logo img {
+        height: 45px;
+    }
+
+    /* HAMBURGUER */
     .menu-toggle {
-        display: none;
-        font-size: 22px;
+        font-size: 24px;
         background: none;
         border: none;
         cursor: pointer;
     }
 
-    /* RESPONSIVO */
+    /* MENU DESKTOP */
+    .navbar-menu {
+        margin-top: 10px;
+    }
+
+    .nav-list {
+        display: flex;
+        gap: 15px;
+        list-style: none;
+    }
+
+    /* MOBILE */
     @media (max-width: 768px) {
 
-        .menu-toggle {
-            display: block;
+        .nav-list {
+            flex-direction: column;
         }
 
         .navbar-menu {
             display: none;
-            width: 100%;
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         .navbar-menu.active {
             display: block;
-        }
-
-        .nav-list {
-            flex-direction: column;
-            background: #fff;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-
-        .nav-item {
-            margin: 5px 0;
-        }
-
-        .navbar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
     }
 </style>
@@ -65,15 +80,18 @@
                 <div class="container-xl">
 
                     <div class="navbar-header">
-                        <a href="dashboard.php" class="navbar-brand">
-                            <img src="assets/img/prefeitura.jpg" alt="Prefeitura Municipal" style="height: 50px;">
-                        </a>
 
-                        <!-- BOTÃO HAMBURGUER -->
+                        <!-- HAMBURGUER (ESQUERDA) -->
                         <button class="menu-toggle" onclick="toggleMenu()">
-                            <i class="fas fa-bars"></i>
+                            <i id="menuIcon" class="fas fa-bars"></i>
                         </button>
 
+                        <!-- LOGO CENTRAL -->
+                        <a href="dashboard.php" class="navbar-brand center-logo">
+                            <img src="assets/img/prefeitura.jpg" alt="Prefeitura Municipal">
+                        </a>
+
+                        <!-- USUÁRIO (DIREITA) -->
                         <div class="navbar-user">
                             <div class="user-meta">
                                 <div class="user-name"><?php echo $_SESSION['user_nome'] ?? $_SESSION['secretaria_nome']; ?></div>
@@ -83,6 +101,7 @@
                                 <i class="fas fa-user"></i>
                             </div>
                         </div>
+
                     </div>
 
                     <!-- MENU -->
@@ -91,64 +110,28 @@
 
                             <?php if (isset($_SESSION['user_id'])): ?>
 
-                                <li class="nav-item">
-                                    <a href="dashboard.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : ''; ?>">
-                                        <i class="fas fa-chart-line"></i> Dashboard
-                                    </a>
-                                </li>
-
-                                <li class="nav-item">
-                                    <a href="oficios_novo.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'oficios_novo.php' ? 'active' : ''; ?>">
-                                        <i class="fas fa-plus-circle"></i> Novo Ofício
-                                    </a>
-                                </li>
-
-                                <li class="nav-item">
-                                    <a href="oficios_lista.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'oficios_lista.php' ? 'active' : ''; ?>">
-                                        <i class="fas fa-folder-open"></i> Lista de Ofícios
-                                    </a>
-                                </li>
-
-                                <li class="nav-item">
-                                    <a href="aquisicoes_lista.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'aquisicoes_lista.php' ? 'active' : ''; ?>">
-                                        <i class="fas fa-shopping-bag"></i> Aquisições
-                                    </a>
-                                </li>
+                                <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                                <li class="nav-item"><a href="oficios_novo.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo Ofício</a></li>
+                                <li class="nav-item"><a href="oficios_lista.php" class="nav-link"><i class="fas fa-folder-open"></i> Lista de Ofícios</a></li>
+                                <li class="nav-item"><a href="aquisicoes_lista.php" class="nav-link"><i class="fas fa-shopping-bag"></i> Aquisições</a></li>
 
                                 <?php if ($_SESSION['nivel'] === 'ADMIN' || $_SESSION['nivel'] === 'SUPORTE'): ?>
-                                    <li class="nav-item">
-                                        <a href="relatorios.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'relatorios.php' ? 'active' : ''; ?>">
-                                            <i class="fas fa-file-contract"></i> Relatórios
-                                        </a>
-                                    </li>
+                                    <li class="nav-item"><a href="relatorios.php" class="nav-link"><i class="fas fa-file-contract"></i> Relatórios</a></li>
                                 <?php endif; ?>
 
                                 <?php if ($_SESSION['nivel'] === 'SUPORTE'): ?>
-                                    <li class="nav-item">
-                                        <a href="configuracoes.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'configuracoes.php' ? 'active' : ''; ?>">
-                                            <i class="fas fa-tools"></i> Configurações
-                                        </a>
-                                    </li>
+                                    <li class="nav-item"><a href="configuracoes.php" class="nav-link"><i class="fas fa-tools"></i> Configurações</a></li>
                                 <?php endif; ?>
 
                             <?php else: ?>
 
-                                <li class="nav-item">
-                                    <a href="acompanhamento.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'acompanhamento.php' ? 'active' : ''; ?>">
-                                        <i class="fas fa-tasks"></i> Acompanhamento
-                                    </a>
-                                </li>
-
-                                <li class="nav-item">
-                                    <a href="confirmar_entrega.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'confirmar_entrega.php' ? 'active' : ''; ?>">
-                                        <i class="fas fa-truck-loading"></i> Confirmar Entrega
-                                    </a>
-                                </li>
+                                <li class="nav-item"><a href="acompanhamento.php" class="nav-link"><i class="fas fa-tasks"></i> Acompanhamento</a></li>
+                                <li class="nav-item"><a href="confirmar_entrega.php" class="nav-link"><i class="fas fa-truck-loading"></i> Confirmar Entrega</a></li>
 
                             <?php endif; ?>
 
-                            <li class="nav-item ms-auto">
-                                <a href="logout.php" class="nav-link" style="color: red;">
+                            <li class="nav-item">
+                                <a href="logout.php" class="nav-link" style="color:red;">
                                     <i class="fas fa-sign-out-alt"></i> Sair
                                 </a>
                             </li>
@@ -162,7 +145,18 @@
             <script>
                 function toggleMenu() {
                     const menu = document.getElementById('navbarMenu');
+                    const icon = document.getElementById('menuIcon');
+
                     menu.classList.toggle('active');
+
+                    // TROCA ÍCONE
+                    if (menu.classList.contains('active')) {
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-times');
+                    } else {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
                 }
             </script>
 
