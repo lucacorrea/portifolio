@@ -29,7 +29,7 @@ $ultimos_oficios = $stmt->fetchAll();
     .dashboard-nowrap span,
     .dashboard-nowrap a {
         white-space: nowrap !important;
-        text-align: center;
+        text-align: left !important;
     }
 </style>
 
