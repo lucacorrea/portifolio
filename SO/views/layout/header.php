@@ -17,7 +17,7 @@
         <div class="container-xl">
             <div class="navbar-header">
                 <a href="dashboard.php" class="navbar-brand">
-                    <img src="assets/img/prefeitura.jpg" alt="Prefeitura Municipal" style="height: 60px; width: auto; object-fit: contain; vertical-align: middle;">
+                    <img src="assets/img/prefeitura.jpg" alt="Prefeitura Municipal" style="height: 50px; width: auto; object-fit: contain; vertical-align: middle;">
                 </a>
                 
                 <div class="navbar-user">
