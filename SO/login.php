@@ -180,7 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
         
         <div class="login-footer">
-            <p>Seu acesso é restrito e monitorado.<br>Caso tenha problemas, contate o administrador.</p>
             <p style="margin-top: 1rem; font-weight: 700;">Prefeitura Municipal de Coari &copy; 2026</p>
 
             <!-- NOVO RODAPÉ -->
