@@ -308,7 +308,7 @@ include 'views/layout/header.php';
                                         class="form-control valor-unitario input-valor"
                                         data-qtd="<?php echo htmlspecialchars($item['quantidade']); ?>"
                                         required
-                                        value="0.00"
+                                        placeholder="0.00"
                                         min="0"
                                     >
                                 </td>
