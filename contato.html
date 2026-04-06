@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio-Contato</title>
+
+    <link rel="stylesheet" href="./css/bootstrap.min.css">
+    <link rel="stylesheet" href="./css/aos.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css" />
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body>
+
+    <main class="main-aboutpage">
+
+        <!-- Header -->
+        <header class="header-area">
+            <div class="container">
+                <div class="gx-row d-flex align-items-center justify-content-between">
+
+
+                    <nav class="navbar">
+                        <ul class="menu">
+                            <li><a href="index.html">Home</a></li>
+                            <li><a href="sobre.html">Sobre</a></li>
+                            <li><a href="projetos.html">Projetos</a></li>
+                            <li><a href="servicos.html">Serviços</a></li>
+                            <li class="active"><a href="contato.html">Contato</a></li>
+                        </ul>
+                        <a href="./contato.html" class="theme-btn">Vamos conversar</a>
+                    </nav>
+
+                    <a href="./contato.html" class="theme-btn">Vamos conversar</a>
+
+                    <div class="show-menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Contact -->
+        <section class="contact-area">
+            <div class="container">
+                <div class="gx-row d-flex justify-content-between gap-24">
+                    <div class="contact-infos">
+                        <h3 data-aos="fade-up">Contato Info</h3>
+                        <ul class="contact-details">
+                            <li class="d-flex align-items-center" data-aos="zoom-in">
+                                <div class="icon-box shadow-box">
+                                    <i class="iconoir-mail"></i>
+                                </div>
+                                <div class="right">
+                                    <span>Email</span>
+                                    <h4>lucasscorrea396@gmail.com</h4>
+                                    <h4>&nbsp;</h4>
+                                </div>
+                            </li>
+
+                            <li class="d-flex align-items-center" data-aos="zoom-in">
+                                <div class="icon-box shadow-box">
+                                    <i class="iconoir-phone"></i>
+                                </div>
+                                <div class="right">
+                                    <span>Contato</span>
+                                    <h4>+55 (92) 99151-5710</h4>
+                                    <h4>&nbsp;</h4>
+                                </div>
+                            </li>
+
+                            <li class="d-flex align-items-center" data-aos="zoom-in">
+                                <div class="icon-box shadow-box">
+                                    <i class="iconoir-pin"></i>
+                                </div>
+                                <div class="right">
+                                    <span>Localização</span>
+                                    <h4>Capitão Pessoa, 717 Chagas Aguiar <br>Coari-Am <br></h4>
+                                </div>
+                            </li>
+                        </ul>
+
+                        <h3 data-aos="fade-up">Social Info</h3>
+                        <ul class="social-links d-flex align-center" data-aos="zoom-in">
+                            <li><a class="shadow-box"
+                                    href="https://wa.me/5592991515710?text=Olá!%20Gostaria%20de%20conversar%20sobre%20seus%20serviços."
+                                    target="_blank"><i class="iconoir-whatsapp"></i></a></li>
+                            <li><a class="shadow-box" href="https://instagram.com/lucaa.correaa" target="_blank"><i
+                                        class="iconoir-instagram"></i></a></li>
+                        </ul>
+                    </div>
+
+                    <div data-aos="zoom-in" class="contact-form">
+                        <div class="shadow-box">
+                            <img src="./img/bg1.png" alt="BG" class="bg-img">
+
+                            <h1>Vamos trabalhar <span> juntos.</span></h1>
+                            <form method="POST" action="">
+                                <div class="alert alert-success messenger-box-contact__msg" style="display: none"
+                                    role="alert">
+                                    Sua mensagem foi enviada com sucesso.
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" name="full-name" id="full-name" placeholder="Nome*">
+                                </div>
+                                <div class="input-group">
+                                    <input type="email" name="email" id="email" placeholder="Email *">
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" name="subject" id="subject" placeholder="Seu Assunto *">
+                                </div>
+                                <div class="input-group">
+                                    <textarea name="message" id="message" placeholder="Sua menssagem *"></textarea>
+                                </div>
+                                <div class="input-group">
+                                    <button class="theme-btn submit-btn" name="submit" type="button">Enviar
+                                        Mensagem</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+        <script>
+            document.querySelector('.contact-form form .submit-btn').addEventListener('click', function (e) {
+                e.preventDefault();
+
+                // Coleta e sanitiza os dados do formulário
+                const formData = {
+                    nome: document.getElementById('full-name').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    assunto: document.getElementById('subject').value.trim(),
+                    mensagem: document.getElementById('message').value.trim()
+                };
+
+                // Validação dos campos obrigatórios
+                if (!formData.nome || !formData.email || !formData.assunto || !formData.mensagem) {
+                    alert('Por favor, preencha todos os campos obrigatórios.');
+                    return;
+                }
+
+                // Formata a mensagem para o email
+                const emailBody =
+                    `${formData.mensagem}`;
+
+                // Cria o link mailto
+                const emailTo = 'lucaasscorrea0@gmail.com';
+                const emailSubject = `${formData.assunto}`;
+                const mailtoLink = `&body=${encodeURIComponent(emailBody)}`;
+
+                // Abre o cliente de email padrão
+                window.location.href = mailtoLink;
+
+                // Opcional: Resetar o formulário após envio
+                // document.querySelector('.contact-form form').reset();
+            });
+        </script>
+
+        <!-- Footer -->
+        <footer class="footer-area">
+            <div class="container">
+                <div class="footer-content text-center">
+                    <a href="./index.html" class="logo">
+                        <img src="./img/logo.svg" alt="Logo">
+                    </a>
+                    <ul class="footer-menu">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="sobre.html">Sobre</a></li>
+                        <li><a href="projetos.html">Projetos</a></li>
+                        <li><a href="servicos.html">Serviços</a></li>
+                        <li><a href="contato.html" class="active">Contato</a></li>
+                    </ul>
+                    <p class="copyright">
+                        &copy; Todos direitos resevados <span>Lucas Correa</span>
+                    </p>
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+
+    <script src="./js/jquery-3.6.4.js"></script>
+    <script src="./js/bootstrap.bundle.min.js"></script>
+    <script src="./js/aos.js"></script>
+    <script src="./js/main.js"></script>
+    <script src="./js/ajax-form.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
