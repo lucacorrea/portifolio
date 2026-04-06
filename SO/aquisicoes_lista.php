@@ -77,6 +77,9 @@ include 'views/layout/header.php';
                         <td style="text-align: right;">
                             <a href="aquisicoes_visualizar.php?id=<?php echo $aq['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar Detalhes"><i class="fas fa-eye"></i></a>
                             <?php if($aq['status'] === 'AGUARDANDO ENTREGA'): ?>
+                                <a href="aquisicao_editar.php?id=<?php echo $aq['id']; ?>" class="btn btn-outline btn-sm" style="color: #2fb344; border-color: #2fb344;" title="Lançar Valores (Orçamento)">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </a>
                                 <a href="aquisicao_finalizar.php?id=<?php echo $aq['id']; ?>" class="btn btn-outline btn-sm" style="color: var(--status-finalized); border-color: var(--status-finalized);" title="Marcar como Recebido" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
                                     <i class="fas fa-check-circle"></i>
                                 </a>
