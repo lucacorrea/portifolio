@@ -85,7 +85,7 @@ $ultimos_oficios = $stmt->fetchAll();
                     <a href="oficios_lista.php" class="btn btn-outline btn-sm">Ver Todos</a>
                 </div>
                 <div class="table-responsive">
-                    <table class="table-vcenter">
+                    <table class="table-vcenter text-nowrap">
                         <thead>
                             <tr>
                                 <th>Número</th>
@@ -120,7 +120,7 @@ $ultimos_oficios = $stmt->fetchAll();
             </div>
         </div>
     </div>
-    
+
 </div>
 
 <script>
