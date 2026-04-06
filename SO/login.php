@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .logo{
-            width: 120px !important;
+            width: 170px !important;
         }
 
         @keyframes fadeInDown {
