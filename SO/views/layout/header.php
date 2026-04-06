@@ -52,7 +52,6 @@
         color: #0d6efd !important;
         border-bottom: 2px solid #0d6efd;
         font-weight: 700;
-        border-radius: 3px;
     }
 
     .nav-item.active .nav-link i {
