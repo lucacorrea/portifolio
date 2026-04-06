@@ -13,7 +13,7 @@
 </head>
 
 <style>
-    /* HEADER BASE */
+    /* BASE HEADER */
     .navbar-header {
         display: flex;
         align-items: center;
@@ -21,53 +21,86 @@
         position: relative;
     }
 
-    /* LOGO CENTRAL */
-    .center-logo {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    .center-logo img {
-        height: 45px;
-    }
-
-    /* HAMBURGUER */
-    .menu-toggle {
-        font-size: 24px;
-        background: none;
-        border: none;
-        cursor: pointer;
+    /* LOGO */
+    .navbar-brand img {
+        height: 50px;
     }
 
     /* MENU DESKTOP */
-    .navbar-menu {
-        margin-top: 10px;
-    }
-
     .nav-list {
         display: flex;
         gap: 15px;
         list-style: none;
     }
 
-    /* MOBILE */
+    /* ESCONDER HAMBURGUER NO DESKTOP */
+    .menu-toggle {
+        display: none;
+        font-size: 24px;
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    /* OVERLAY */
+    .menu-overlay {
+        display: none;
+    }
+
+    /* ================= MOBILE ================= */
     @media (max-width: 768px) {
 
+        /* MOSTRA HAMBURGUER */
+        .menu-toggle {
+            display: block;
+            z-index: 1001;
+        }
+
+        /* CENTRALIZA LOGO */
+        .navbar-brand {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* ESCONDE MENU NORMAL */
+        .navbar-menu {
+            position: fixed;
+            top: 0;
+            left: -260px;
+            width: 250px;
+            height: 100%;
+            background: #fff;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            transition: 0.3s;
+            z-index: 1002;
+        }
+
+        /* MENU ABERTO */
+        .navbar-menu.active {
+            left: 0;
+        }
+
+        /* LISTA */
         .nav-list {
             flex-direction: column;
+            gap: 10px;
         }
 
-        .navbar-menu {
+        /* OVERLAY ESCURO */
+        .menu-overlay {
             display: none;
-            background: #fff;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1000;
         }
 
-        .navbar-menu.active {
+        .menu-overlay.active {
             display: block;
         }
     }
@@ -81,17 +114,17 @@
 
                     <div class="navbar-header">
 
-                        <!-- HAMBURGUER (ESQUERDA) -->
+                        <!-- HAMBURGUER (SÓ MOBILE) -->
                         <button class="menu-toggle" onclick="toggleMenu()">
                             <i id="menuIcon" class="fas fa-bars"></i>
                         </button>
 
-                        <!-- LOGO CENTRAL -->
-                        <a href="dashboard.php" class="navbar-brand center-logo">
+                        <!-- LOGO -->
+                        <a href="dashboard.php" class="navbar-brand">
                             <img src="assets/img/prefeitura.jpg" alt="Prefeitura Municipal">
                         </a>
 
-                        <!-- USUÁRIO (DIREITA) -->
+                        <!-- USUÁRIO -->
                         <div class="navbar-user">
                             <div class="user-meta">
                                 <div class="user-name"><?php echo $_SESSION['user_nome'] ?? $_SESSION['secretaria_nome']; ?></div>
@@ -139,17 +172,21 @@
                         </ul>
                     </nav>
 
+                    <!-- OVERLAY -->
+                    <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+
                 </div>
             </header>
 
             <script>
                 function toggleMenu() {
                     const menu = document.getElementById('navbarMenu');
+                    const overlay = document.getElementById('menuOverlay');
                     const icon = document.getElementById('menuIcon');
 
                     menu.classList.toggle('active');
+                    overlay.classList.toggle('active');
 
-                    // TROCA ÍCONE
                     if (menu.classList.contains('active')) {
                         icon.classList.remove('fa-bars');
                         icon.classList.add('fa-times');
@@ -158,6 +195,25 @@
                         icon.classList.add('fa-bars');
                     }
                 }
+
+                /* FECHAR AO CLICAR FORA */
+                document.addEventListener('click', function(event) {
+                    const menu = document.getElementById('navbarMenu');
+                    const button = document.querySelector('.menu-toggle');
+                    const icon = document.getElementById('menuIcon');
+                    const overlay = document.getElementById('menuOverlay');
+
+                    const clicouDentroMenu = menu.contains(event.target);
+                    const clicouNoBotao = button.contains(event.target);
+
+                    if (!clicouDentroMenu && !clicouNoBotao && menu.classList.contains('active')) {
+                        menu.classList.remove('active');
+                        overlay.classList.remove('active');
+
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
             </script>
 
             <main class="page-body">
