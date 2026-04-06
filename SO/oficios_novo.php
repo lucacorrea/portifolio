@@ -235,7 +235,7 @@ include 'views/layout/header.php';
                     <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin: 0;">
                         <i class="fas fa-box" style="margin-right: 8px; color: var(--primary);"></i> Itens da Solicitação
                     </h4>
-                    <button type="button" class="btn btn-outline btn-sm" id="add-product">
+                    <button type="button" class="btn btn-outline btn-sm btn-primary" id="add-product">
                         <i class="fas fa-plus"></i> Adicionar Produto
                     </button>
                 </div>
