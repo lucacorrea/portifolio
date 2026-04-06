@@ -168,6 +168,95 @@ include 'views/layout/header.php';
             justify-content: center;
         }
     }
+
+    /* Dropdown Actions Styles */
+    .dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        z-index: 9999;
+        display: none;
+        min-width: 200px;
+        padding: 0.5rem 0;
+        margin-top: 0.25rem;
+        background-color: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .dropdown-menu.show {
+        display: block;
+        animation: dropdownFadeIn 0.2s ease-out;
+    }
+
+    @keyframes dropdownFadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        color: var(--text-dark) !important;
+        text-decoration: none !important;
+        font-weight: 500;
+        font-size: 0.825rem;
+        transition: all 0.2s;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .dropdown-item:hover {
+        background-color: var(--primary-light);
+        color: var(--primary) !important;
+    }
+
+    .dropdown-item i {
+        width: 16px;
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .dropdown-item:hover i {
+        color: var(--primary);
+    }
+
+    .btn-three-dots {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        padding: 0;
+    }
+
+    .btn-three-dots:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    /* Fix table cell alignment */
+    .lista-table td {
+        position: relative;
+    }
 </style>
 
 <div class="card no-print">
@@ -264,7 +353,7 @@ include 'views/layout/header.php';
                             <td style="text-align: right;">
                                 <div class="acoes-wrap">
                                     <div class="dropdown">
-                                        <button class="btn btn-outline btn-sm" data-dropdown-toggle title="Ações">
+                                        <button class="btn-three-dots" data-dropdown-toggle title="Ações">
                                             <i class="fas fa-ellipsis-v"></i>
                                         </button>
                                         <div class="dropdown-menu">
@@ -273,10 +362,10 @@ include 'views/layout/header.php';
                                             </a>
                                             
                                             <?php if ($aq['status'] === 'AGUARDANDO ENTREGA'): ?>
-                                                <a class="dropdown-item" href="aquisicao_editar.php?id=<?php echo (int)$aq['id']; ?>" style="color: #2fb344;">
+                                                <a class="dropdown-item" href="aquisicao_editar.php?id=<?php echo (int)$aq['id']; ?>" style="color: #2fb344 !important;">
                                                     <i class="fas fa-dollar-sign"></i> Lançar Valores (Orçamento)
                                                 </a>
-                                                <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized);" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
+                                                <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized) !important;" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
                                                     <i class="fas fa-check-circle"></i> Marcar como Recebido
                                                 </a>
                                             <?php endif; ?>
