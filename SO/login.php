@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>SGAO - Sistema de Gestão de Ofícios e Aquisições</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="shortcut icon" href="./assets/img/prefeitura.jpg" type="image/x-icon">
+    <link rel="shortcut icon" href="./assets/img/logo-pmc.png" type="image/x-icon">
     <style>
         body {
             display: flex;
