@@ -132,7 +132,7 @@ include 'views/layout/header.php';
             <div>
                 <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL</h1>
                 <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Fornecimento</h2>
-                <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">[SUA CIDADE] - [UF] | CNPJ: 00.000.000/0001-00</div>
+                <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
             </div>
             <div style="text-align: center;">
                 <img src="assets/img/prefeitura.png" alt="Logo Prefeitura" style="max-height: 80px; max-width: 200px; object-fit: contain;">
