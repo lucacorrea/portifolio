@@ -179,37 +179,20 @@
             </header>
 
             <script>
-                function abrirMenu() {
-                    const menu = document.getElementById('navbarMenu');
-                    const overlay = document.getElementById('menuOverlay');
-                    const icon = document.getElementById('menuIcon');
-
-                    menu.classList.add('active');
-                    overlay.classList.add('active');
-
-                    icon.classList.remove('fa-bars');
-                    icon.classList.add('fa-times');
-                }
-
-                function fecharMenu() {
-                    const menu = document.getElementById('navbarMenu');
-                    const overlay = document.getElementById('menuOverlay');
-                    const icon = document.getElementById('menuIcon');
-
-                    menu.classList.remove('active');
-                    overlay.classList.remove('active');
-
-                    icon.classList.remove('fa-times');
-                    icon.classList.add('fa-bars');
-                }
-
                 function toggleMenu() {
                     const menu = document.getElementById('navbarMenu');
+                    const overlay = document.getElementById('menuOverlay');
+                    const icon = document.getElementById('menuIcon');
+
+                    menu.classList.toggle('active');
+                    overlay.classList.toggle('active');
 
                     if (menu.classList.contains('active')) {
-                        fecharMenu();
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-times');
                     } else {
-                        abrirMenu();
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
                     }
                 }
 
@@ -217,19 +200,18 @@
                 document.addEventListener('click', function(event) {
                     const menu = document.getElementById('navbarMenu');
                     const button = document.querySelector('.menu-toggle');
+                    const icon = document.getElementById('menuIcon');
+                    const overlay = document.getElementById('menuOverlay');
 
                     const clicouDentroMenu = menu.contains(event.target);
                     const clicouNoBotao = button.contains(event.target);
 
                     if (!clicouDentroMenu && !clicouNoBotao && menu.classList.contains('active')) {
-                        fecharMenu();
-                    }
-                });
+                        menu.classList.remove('active');
+                        overlay.classList.remove('active');
 
-                /* OPCIONAL: FECHAR COM ESC */
-                document.addEventListener('keydown', function(event) {
-                    if (event.key === "Escape") {
-                        fecharMenu();
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
                     }
                 });
             </script>
