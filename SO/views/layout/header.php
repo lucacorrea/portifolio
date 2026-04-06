@@ -179,20 +179,37 @@
             </header>
 
             <script>
-                function toggleMenu() {
+                function abrirMenu() {
                     const menu = document.getElementById('navbarMenu');
                     const overlay = document.getElementById('menuOverlay');
                     const icon = document.getElementById('menuIcon');
 
-                    menu.classList.toggle('active');
-                    overlay.classList.toggle('active');
+                    menu.classList.add('active');
+                    overlay.classList.add('active');
+
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                }
+
+                function fecharMenu() {
+                    const menu = document.getElementById('navbarMenu');
+                    const overlay = document.getElementById('menuOverlay');
+                    const icon = document.getElementById('menuIcon');
+
+                    menu.classList.remove('active');
+                    overlay.classList.remove('active');
+
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+
+                function toggleMenu() {
+                    const menu = document.getElementById('navbarMenu');
 
                     if (menu.classList.contains('active')) {
-                        icon.classList.remove('fa-bars');
-                        icon.classList.add('fa-times');
+                        fecharMenu();
                     } else {
-                        icon.classList.remove('fa-times');
-                        icon.classList.add('fa-bars');
+                        abrirMenu();
                     }
                 }
 
@@ -200,18 +217,19 @@
                 document.addEventListener('click', function(event) {
                     const menu = document.getElementById('navbarMenu');
                     const button = document.querySelector('.menu-toggle');
-                    const icon = document.getElementById('menuIcon');
-                    const overlay = document.getElementById('menuOverlay');
 
                     const clicouDentroMenu = menu.contains(event.target);
                     const clicouNoBotao = button.contains(event.target);
 
                     if (!clicouDentroMenu && !clicouNoBotao && menu.classList.contains('active')) {
-                        menu.classList.remove('active');
-                        overlay.classList.remove('active');
+                        fecharMenu();
+                    }
+                });
 
-                        icon.classList.remove('fa-times');
-                        icon.classList.add('fa-bars');
+                /* OPCIONAL: FECHAR COM ESC */
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === "Escape") {
+                        fecharMenu();
                     }
                 });
             </script>
