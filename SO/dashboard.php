@@ -12,7 +12,7 @@ $total_aguardando = $pdo->query("SELECT COUNT(*) FROM oficios WHERE status = 'EN
 $total_aprovados = $pdo->query("SELECT COUNT(*) FROM oficios WHERE status = 'APROVADO'")->fetchColumn();
 $total_finalizados = $pdo->query("SELECT COUNT(*) FROM aquisicoes WHERE status = 'FINALIZADO'")->fetchColumn();
 
-// Últimos Ofícios
+// Últimas Solicitações
 $stmt = $pdo->query("
     SELECT o.*, s.nome as secretaria 
     FROM oficios o 
@@ -28,7 +28,7 @@ $ultimos_oficios = $stmt->fetchAll();
             <div class="card-action">
                 <i class="fas fa-file-alt" style="color: var(--primary);"></i>
             </div>
-            <div class="card-label">Total de Ofícios</div>
+            <div class="card-label">Total de Solicitações</div>
             <div class="card-number"><?php echo $total_oficios; ?></div>
         </div>
     </div>
@@ -46,7 +46,7 @@ $ultimos_oficios = $stmt->fetchAll();
             <div class="card-action">
                 <i class="fas fa-check-circle" style="color: var(--status-approved);"></i>
             </div>
-            <div class="card-label">Ofícios Aprovados</div>
+            <div class="card-label">Solicitações Aprovadas</div>
             <div class="card-number"><?php echo $total_aprovados; ?></div>
         </div>
     </div>
@@ -80,7 +80,7 @@ $ultimos_oficios = $stmt->fetchAll();
             <div class="card-body">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                     <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1rem;">
-                        <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Últimos Ofícios
+                        <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Últimas Solicitações
                     </h3>
                     <a href="oficios_lista.php" class="btn btn-outline btn-sm">Ver Todos</a>
                 </div>
@@ -112,7 +112,7 @@ $ultimos_oficios = $stmt->fetchAll();
                                 </tr>
                             <?php endforeach; ?>
                             <?php if(empty($ultimos_oficios)): ?>
-                                <tr><td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted);">Nenhum ofício encontrado.</td></tr>
+                                <tr><td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted);">Nenhuma solicitação encontrada.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
         data: {
             labels: ['Aguardando', 'Aprovados', 'Finalizados'],
             datasets: [{
-                label: 'Quantidade de Ofícios',
+                label: 'Quantidade de Solicitações',
                 data: [<?php echo $total_aguardando; ?>, <?php echo $total_aprovados; ?>, <?php echo $total_finalizados; ?>],
                 backgroundColor: ['#f1c40f', '#27ae60', '#9b59b6'],
                 borderRadius: 8,

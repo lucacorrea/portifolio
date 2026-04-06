@@ -3,7 +3,7 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
-$page_title = "Lista de Ofícios";
+$page_title = "Lista de Solicitações";
 
 // Filtros simples
 $where = "TRUE";
@@ -58,7 +58,7 @@ include 'views/layout/header.php';
     <div class="card-body">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1rem;">
-                <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Ofícios Recebidos
+                <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Solicitações Recebidas
             </h3>
             <a href="oficios_novo.php" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Novo Cadastro</a>
         </div>
@@ -104,9 +104,9 @@ include 'views/layout/header.php';
                         </td>
                     </tr>
                     <?php endforeach; ?>
-                    <?php if (empty($oficios)): ?>
-                        <tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-muted);">Nenhum ofício encontrado.</td></tr>
-                    <?php endif; ?>
+                        <?php if (empty($oficios)): ?>
+                            <tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-muted);">Nenhuma solicitação encontrada.</td></tr>
+                        <?php endif; ?>
                 </tbody>
             </table>
         </div>

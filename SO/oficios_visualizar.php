@@ -15,21 +15,20 @@ $stmt->execute([$id]);
 $oficio = $stmt->fetch();
 
 if (!$oficio) {
-    die("Ofício não encontrado.");
+    die("Solicitação não encontrada.");
 }
 
 $stmt_items = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ?");
 $stmt_items->execute([$id]);
 $items = $stmt_items->fetchAll();
 
-$page_title = "Visualizar Ofício: " . $oficio['numero'];
+$page_title = "Solicitação: " . $oficio['numero'];
 include 'views/layout/header.php';
 ?>
 
 <div class="no-print" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center;">
     <a href="oficios_lista.php" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar para Lista</a>
     <div style="flex-grow: 1;"></div>
-    <button onclick="window.print()" class="btn btn-primary btn-sm"><i class="fas fa-print"></i> Imprimir Documento (2 Vias)</button>
     
     <?php if ($oficio['status'] == 'ENVIADO' && ($_SESSION['nivel'] == 'ADMIN' || $_SESSION['nivel'] == 'SUPORTE')): ?>
         <a href="analisar_oficio.php?id=<?php echo $oficio['id']; ?>" class="btn btn-outline btn-sm" style="color: var(--status-pending); border-color: var(--status-pending);"><i class="fas fa-gavel"></i> Analisar Solicitação</a>
@@ -51,9 +50,9 @@ include 'views/layout/header.php';
                 <img src="assets/img/prefeitura.png" alt="Logo Prefeitura" style="max-height: 80px; max-width: 200px; object-fit: contain;">
             </div>
             <div style="text-align: right;">
-                <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">Via Administrativa</div>
+                <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">Uso Administrativo</div>
                 <div style="border: 1.5px solid #000; padding: 0.4rem 1rem; display: inline-block; text-align: center;">
-                    <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ofício Nº</div>
+                    <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Solicitação Nº</div>
                     <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;"><?php echo str_replace('OF-', '', $oficio['numero']); ?></div>
                 </div>
                 <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">

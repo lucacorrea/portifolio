@@ -3,7 +3,7 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
-$page_title = "Cadastrar Novo Ofício";
+$page_title = "Cadastrar Nova Solicitação";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $secretaria_id = $_POST['secretaria_id'];
@@ -71,7 +71,7 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1.25rem;">
                 <i class="fas fa-edit" style="margin-right: 10px; color: var(--primary);"></i> Formulário de Solicitação
             </h3>
-            <a href="oficios_lista.php" class="btn btn-outline btn-sm">Cancelar</a>
+            <a href="oficios_lista.php" class="btn btn-outline btn-sm">Voltar</a>
         </div>
 
         <?php if(isset($error)): ?>
@@ -104,7 +104,7 @@ include 'views/layout/header.php';
             <div style="border-top: 1px solid var(--border-color); padding-top: 2rem; margin-bottom: 1.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin: 0;">
-                        <i class="fas fa-box" style="margin-right: 8px; color: var(--primary);"></i> Itens do Ofício
+                        <i class="fas fa-box" style="margin-right: 8px; color: var(--primary);"></i> Itens da Solicitação
                     </h4>
                     <button type="button" class="btn btn-outline btn-sm" id="add-product">
                         <i class="fas fa-plus"></i> Adicionar Produto
@@ -135,7 +135,7 @@ include 'views/layout/header.php';
 
             <div style="margin-top: 3rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; text-align: right;">
                 <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">
-                    <i class="fas fa-save"></i> Salvar e Gerar Ofício
+                    <i class="fas fa-save"></i> Salvar Solicitação
                 </button>
             </div>
         </form>

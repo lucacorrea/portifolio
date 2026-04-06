@@ -25,19 +25,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("UPDATE oficios SET status = ? WHERE id = ?");
     $stmt->execute([$status, $id]);
     
-    log_action($pdo, "ANALISAR_OFICIO", "Ofício {$oficio['numero']} alterado para $status");
+    log_action($pdo, "ANALISAR_SOLICITACAO", "Solicitação {$oficio['numero']} alterada para $status");
     
     if ($status === 'APROVADO') {
-        flash_message('success', "Ofício {$oficio['numero']} APROVADO! Agora você pode gerar a aquisição.");
+        flash_message('success', "Solicitação {$oficio['numero']} APROVADA! Agora você pode gerar a aquisição.");
         header("Location: gerar_aquisicao.php?id=$id");
     } else {
-        flash_message('danger', "Ofício {$oficio['numero']} foi REPROVADO e ARQUIVADO.");
+        flash_message('danger', "Solicitação {$oficio['numero']} foi REPROVADA e ARQUIVADA.");
         header("Location: oficios_lista.php");
     }
     exit();
 }
 
-$page_title = "Analisar Ofício: " . $oficio['numero'];
+$page_title = "Analisar Solicitação: " . $oficio['numero'];
 include 'views/layout/header.php';
 ?>
 
@@ -60,7 +60,7 @@ include 'views/layout/header.php';
         </div>
 
         <div style="display: flex; gap: 15px; margin-top: 30px; justify-content: flex-end;">
-            <button type="submit" name="status" value="REPROVADO" class="btn btn-danger" style="padding: 12px 30px;" onclick="return confirm('Tem certeza que deseja REPROVAR este ofício?')">
+            <button type="submit" name="status" value="REPROVADO" class="btn btn-danger" style="padding: 12px 30px;" onclick="return confirm('Tem certeza que deseja REPROVAR esta solicitação?')">
                 <i class="fas fa-times"></i> REPROVAR E ARQUIVAR
             </button>
             <button type="submit" name="status" value="APROVADO" class="btn btn-success" style="padding: 12px 30px;">

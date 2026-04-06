@@ -144,8 +144,8 @@
                             <?php if (isset($_SESSION['user_id'])): ?>
 
                                 <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                                <li class="nav-item"><a href="oficios_novo.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo Ofício</a></li>
-                                <li class="nav-item"><a href="oficios_lista.php" class="nav-link"><i class="fas fa-folder-open"></i> Lista de Ofícios</a></li>
+                                <li class="nav-item"><a href="oficios_novo.php" class="nav-link"><i class="fas fa-plus-circle"></i> Nova Solicitação</a></li>
+                                <li class="nav-item"><a href="oficios_lista.php" class="nav-link"><i class="fas fa-folder-open"></i> Lista de Solicitações</a></li>
                                 <li class="nav-item"><a href="aquisicoes_lista.php" class="nav-link"><i class="fas fa-shopping-bag"></i> Aquisições</a></li>
 
                                 <?php if ($_SESSION['nivel'] === 'ADMIN' || $_SESSION['nivel'] === 'SUPORTE'): ?>
@@ -155,11 +155,6 @@
                                 <?php if ($_SESSION['nivel'] === 'SUPORTE'): ?>
                                     <li class="nav-item"><a href="configuracoes.php" class="nav-link"><i class="fas fa-tools"></i> Configurações</a></li>
                                 <?php endif; ?>
-
-                            <?php else: ?>
-
-                                <li class="nav-item"><a href="acompanhamento.php" class="nav-link"><i class="fas fa-tasks"></i> Acompanhamento</a></li>
-                                <li class="nav-item"><a href="confirmar_entrega.php" class="nav-link"><i class="fas fa-truck-loading"></i> Confirmar Entrega</a></li>
 
                             <?php endif; ?>
 

@@ -15,14 +15,14 @@ $stmt->execute([$id]);
 $oficio = $stmt->fetch();
 
 if (!$oficio) {
-    die("Ofício não encontrado ou não está aprovado.");
+    die("Solicitação não encontrada ou não está aprovada.");
 }
 
 // Verificar se já existe aquisição
 $stmt_check = $pdo->prepare("SELECT id FROM aquisicoes WHERE oficio_id = ?");
 $stmt_check->execute([$id]);
 if ($stmt_check->fetch()) {
-    flash_message('danger', "Uma aquisição já foi gerada para este ofício!");
+    flash_message('danger', "Uma aquisição já foi gerada para esta solicitação!");
     header("Location: aquisicoes_lista.php");
     exit();
 }
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Atualizar valor total
         $pdo->prepare("UPDATE aquisicoes SET valor_total = ? WHERE id = ?")->execute([$valor_total, $aq_id]);
         
-        log_action($pdo, "GERAR_AQUISICAO", "Aquisição $numero_aq gerada para Ofício {$oficio['numero']}");
+        log_action($pdo, "GERAR_AQUISICAO", "Aquisição $numero_aq gerada para Solicitação {$oficio['numero']}");
         $pdo->commit();
         
         flash_message('success', "Aquisição $numero_aq GERADA com SUCESSO!");
@@ -71,13 +71,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$page_title = "Gerar Aquisição: Ofício " . $oficio['numero'];
+$page_title = "Gerar Aquisição: Solicitação " . $oficio['numero'];
 include 'views/layout/header.php';
 ?>
 
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">Gerar Aquisição - Ofício <?php echo $oficio['numero']; ?></h2>
+        <h2 class="card-title">Gerar Aquisição - Solicitação <?php echo $oficio['numero']; ?></h2>
         <a href="oficios_lista.php" class="btn btn-danger btn-sm">Cancelar</a>
     </div>
 
