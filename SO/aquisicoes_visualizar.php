@@ -198,22 +198,17 @@ include 'views/layout/header.php';
             </tfoot>
         </table>
 
-        <p style="font-size: 0.75rem; color: #555; margin-top: 1.5rem; margin-bottom: 4rem; line-height: 1.5;">
-            No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. 
-            Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.
-        </p>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; text-align: center; margin-top: 4rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; text-align: center; margin-top: 5rem;">
             <div>
                 <div style="border-top: 1.5px solid #000; padding-top: 0.75rem;">
-                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">PREFEITURA MUNICIPAL</div>
-                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Departamento de Almoxarifado</div>
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
+                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Autorização de Saída</div>
                 </div>
             </div>
             <div>
                 <div style="border-top: 1.5px solid #000; padding-top: 0.75rem;">
-                    <div style="color: #888; font-style: italic; margin-bottom: 0.5rem;">_______________________________</div>
-                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase;">Assinatura do Entregador</div>
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Assinatura e Carimbo</div>
                 </div>
             </div>
         </div>
