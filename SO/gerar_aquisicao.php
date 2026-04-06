@@ -56,7 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $valor_total += ($item['quantidade'] * $valor_u);
         }
 
-        // Atualizar valor total
         $pdo->prepare("UPDATE aquisicoes SET valor_total = ? WHERE id = ?")->execute([$valor_total, $aq_id]);
 
         log_action($pdo, "GERAR_AQUISICAO", "Aquisição $numero_aq gerada para Solicitação {$oficio['numero']}");
@@ -65,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash_message('success', "Aquisição $numero_aq GERADA com SUCESSO!");
         header("Location: aquisicoes_visualizar.php?id=$aq_id");
         exit();
+
     } catch (Exception $e) {
         $pdo->rollBack();
         $error = "Erro ao gerar aquisição: " . $e->getMessage();
@@ -157,11 +157,6 @@ include 'views/layout/header.php';
         font-weight: 700;
     }
 
-    .aq-table .money {
-        font-weight: 700;
-        color: var(--primary);
-    }
-
     .aq-table .subtotal {
         font-weight: 700;
         white-space: nowrap;
@@ -182,10 +177,34 @@ include 'views/layout/header.php';
         margin-top: 1.5rem;
         display: flex;
         justify-content: flex-end;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .btn-cancelar-aq {
+        padding: 12px 24px;
+        background: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: #fff !important;
+    }
+
+    .btn-cancelar-aq:hover {
+        background: #bb2d3b !important;
+        border-color: #bb2d3b !important;
+        color: #fff !important;
     }
 
     .btn-finalizar-aq {
         padding: 12px 40px;
+        background: #198754 !important;
+        border-color: #198754 !important;
+        color: #fff !important;
+    }
+
+    .btn-finalizar-aq:hover {
+        background: #157347 !important;
+        border-color: #157347 !important;
+        color: #fff !important;
     }
 
     @media (max-width: 768px) {
@@ -214,12 +233,15 @@ include 'views/layout/header.php';
 
         .aq-actions {
             justify-content: stretch;
+            flex-direction: column;
         }
 
+        .btn-cancelar-aq,
         .btn-finalizar-aq {
             width: 100%;
             padding: 12px 18px;
             justify-content: center;
+            text-align: center;
         }
     }
 </style>
@@ -232,10 +254,6 @@ include 'views/layout/header.php';
                 <i class="fas fa-file-invoice-dollar" style="margin-right: 10px; color: var(--primary);"></i>
                 Gerar Aquisição - Solicitação <?php echo htmlspecialchars($oficio['numero']); ?>
             </h3>
-
-            <a href="oficios_lista.php" class="btn btn-danger btn-sm">
-                <i class="fas fa-times"></i> Cancelar
-            </a>
         </div>
 
         <?php if (isset($error)): ?>
@@ -291,7 +309,8 @@ include 'views/layout/header.php';
                                         data-qtd="<?php echo htmlspecialchars($item['quantidade']); ?>"
                                         required
                                         value="0.00"
-                                        min="0">
+                                        min="0"
+                                    >
                                 </td>
                                 <td class="subtotal">R$ 0,00</td>
                             </tr>
@@ -307,7 +326,11 @@ include 'views/layout/header.php';
             </div>
 
             <div class="aq-actions">
-                <button type="submit" class="btn btn-success btn-finalizar-aq">
+                <a href="oficios_lista.php" class="btn btn-cancelar-aq">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+
+                <button type="submit" class="btn btn-finalizar-aq">
                     <i class="fas fa-file-signature"></i> Finalizar e Gerar Aquisição
                 </button>
             </div>
@@ -316,42 +339,42 @@ include 'views/layout/header.php';
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const inputs = document.querySelectorAll('.valor-unitario');
-        const totalGeral = document.getElementById('total-geral');
+document.addEventListener('DOMContentLoaded', function () {
+    const inputs = document.querySelectorAll('.valor-unitario');
+    const totalGeral = document.getElementById('total-geral');
 
-        function updateTotals() {
-            let grandTotal = 0;
-
-            inputs.forEach(input => {
-                const qtd = parseFloat(input.dataset.qtd) || 0;
-                const val = parseFloat(input.value) || 0;
-                const sub = qtd * val;
-
-                grandTotal += sub;
-
-                const subtotalCell = input.closest('tr').querySelector('.subtotal');
-                if (subtotalCell) {
-                    subtotalCell.textContent = 'R$ ' + sub.toLocaleString('pt-BR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
-                }
-            });
-
-            totalGeral.textContent = 'R$ ' + grandTotal.toLocaleString('pt-BR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
+    function updateTotals() {
+        let grandTotal = 0;
 
         inputs.forEach(input => {
-            input.addEventListener('input', updateTotals);
-            input.addEventListener('change', updateTotals);
+            const qtd = parseFloat(input.dataset.qtd) || 0;
+            const val = parseFloat(input.value) || 0;
+            const sub = qtd * val;
+
+            grandTotal += sub;
+
+            const subtotalCell = input.closest('tr').querySelector('.subtotal');
+            if (subtotalCell) {
+                subtotalCell.textContent = 'R$ ' + sub.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
         });
 
-        updateTotals();
+        totalGeral.textContent = 'R$ ' + grandTotal.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    inputs.forEach(input => {
+        input.addEventListener('input', updateTotals);
+        input.addEventListener('change', updateTotals);
     });
+
+    updateTotals();
+});
 </script>
 
 <?php include 'views/layout/footer.php'; ?>
