@@ -270,9 +270,10 @@ include 'views/layout/header.php';
 
     /* Fix table clipping */
     .lista-table-wrap {
-        overflow: visible !important;
+        overflow-x: auto !important;
         padding-bottom: 0 !important;
         margin-bottom: 0 !important;
+        -webkit-overflow-scrolling: touch;
     }
 
     .lista-table td {
