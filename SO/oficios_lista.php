@@ -14,6 +14,17 @@ if (isset($_GET['busca']) && $_GET['busca'] != '') {
     $where .= " AND (o.numero LIKE '%" . $_GET['busca'] . "%' OR s.nome LIKE '%" . $_GET['busca'] . "%')";
 }
 
+// Configurações de Paginação
+$itens_por_pagina = 6;
+$pagina_atual = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($pagina_atual - 1) * $itens_por_pagina;
+
+// Contagem total para paginação
+$stmt_count = $pdo->query("SELECT COUNT(*) FROM oficios o JOIN secretarias s ON o.secretaria_id = s.id WHERE $where");
+$total_registros = $stmt_count->fetchColumn();
+$total_paginas = ceil($total_registros / $itens_por_pagina);
+
+// Query principal com LIMIT
 $stmt = $pdo->query("
     SELECT o.*, s.nome as secretaria, u.nome as usuario
     FROM oficios o
@@ -21,8 +32,16 @@ $stmt = $pdo->query("
     JOIN usuarios u ON o.usuario_id = u.id
     WHERE $where
     ORDER BY o.criado_em DESC
+    LIMIT $itens_por_pagina OFFSET $offset
 ");
 $oficios = $stmt->fetchAll();
+
+// Função auxiliar para manter parâmetros na URL da paginação
+function get_pagination_url($page) {
+    $params = $_GET;
+    $params['page'] = $page;
+    return '?' . http_build_query($params);
+}
 
 include 'views/layout/header.php';
 ?>
@@ -110,6 +129,34 @@ include 'views/layout/header.php';
                 </tbody>
             </table>
         </div>
+
+        <?php if ($total_paginas > 1): ?>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+                <a href="<?php echo get_pagination_url(1); ?>" class="btn btn-outline btn-sm <?php echo $pagina_atual <= 1 ? 'disabled' : ''; ?>" title="Primeira Página">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+                <a href="<?php echo get_pagination_url($pagina_atual - 1); ?>" class="btn btn-outline btn-sm <?php echo $pagina_atual <= 1 ? 'disabled' : ''; ?>">
+                    <i class="fas fa-angle-left"></i> Anterior
+                </a>
+
+                <?php
+                $start = max(1, $pagina_atual - 2);
+                $end = min($total_paginas, $pagina_atual + 2);
+                for ($i = $start; $i <= $end; $i++):
+                ?>
+                    <a href="<?php echo get_pagination_url($i); ?>" class="btn <?php echo $i === $pagina_atual ? 'btn-primary' : 'btn-outline'; ?> btn-sm" style="min-width: 35px;">
+                        <?php echo $i; ?>
+                    </a>
+                <?php endfor; ?>
+
+                <a href="<?php echo get_pagination_url($pagina_atual + 1); ?>" class="btn btn-outline btn-sm <?php echo $pagina_atual >= $total_paginas ? 'disabled' : ''; ?>">
+                    Próxima <i class="fas fa-angle-right"></i>
+                </a>
+                <a href="<?php echo get_pagination_url($total_paginas); ?>" class="btn btn-outline btn-sm <?php echo $pagina_atual >= $total_paginas ? 'disabled' : ''; ?>" title="Última Página">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 
