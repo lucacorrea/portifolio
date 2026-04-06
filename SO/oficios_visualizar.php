@@ -27,7 +27,7 @@ include 'views/layout/header.php';
 ?>
 
 <div class="no-print" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center;">
-    <a href="oficios_lista.php" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar</a>
+    <a href="acompanhamento.php" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar</a>
     <div style="flex-grow: 1;"></div>
     <button onclick="window.print()" class="btn btn-primary btn-sm"><i class="fas fa-print"></i> Imprimir Documento (2 Vias)</button>
     
