@@ -7,7 +7,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? htmlspecialchars($page_title) . ' | Prefeitura Municipal' : 'SGAO - Sistema de Gestão de Ofícios e Aquisições'; ?></title>
-
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -30,18 +29,13 @@
             list-style: none;
         }
 
-        /* BOTÃO HAMBURGUER */
+        /* DESKTOP */
         .menu-toggle {
             display: none;
             font-size: 24px;
             background: none;
             border: none;
             cursor: pointer;
-        }
-
-        /* BOTÃO FECHAR */
-        .menu-close {
-            display: none;
         }
 
         .menu-overlay {
@@ -82,19 +76,6 @@
             .nav-list {
                 flex-direction: column;
                 gap: 10px;
-                margin-top: 40px;
-            }
-
-            /* BOTÃO X */
-            .menu-close {
-                display: block;
-                position: absolute;
-                top: 15px;
-                right: 15px;
-                font-size: 22px;
-                background: none;
-                border: none;
-                cursor: pointer;
             }
 
             .menu-overlay {
@@ -116,7 +97,6 @@
 
 <body>
     <div class="page-wrapper">
-
         <?php if (isset($_SESSION['user_id']) || isset($_SESSION['secretaria_id'])): ?>
 
             <header class="navbar no-print">
@@ -126,7 +106,7 @@
 
                         <!-- HAMBURGUER -->
                         <button class="menu-toggle" id="menuButton">
-                            <i class="fas fa-bars"></i>
+                            <i id="menuIcon" class="fas fa-bars"></i>
                         </button>
 
                         <!-- LOGO -->
@@ -149,12 +129,6 @@
 
                     <!-- MENU -->
                     <nav class="navbar-menu" id="navbarMenu">
-
-                        <!-- BOTÃO X -->
-                        <button class="menu-close" id="menuClose">
-                            <i class="fas fa-times"></i>
-                        </button>
-
                         <ul class="nav-list">
 
                             <?php if (isset($_SESSION['user_id'])): ?>
@@ -198,24 +172,26 @@
                 const menu = document.getElementById('navbarMenu');
                 const overlay = document.getElementById('menuOverlay');
                 const button = document.getElementById('menuButton');
-                const closeBtn = document.getElementById('menuClose');
+                const icon = document.getElementById('menuIcon');
 
                 function abrirMenu() {
                     menu.classList.add('active');
                     overlay.classList.add('active');
+                    icon.classList.replace('fa-bars', 'fa-times');
                 }
 
                 function fecharMenu() {
                     menu.classList.remove('active');
                     overlay.classList.remove('active');
+                    icon.classList.replace('fa-times', 'fa-bars');
                 }
 
-                button.addEventListener('click', function(e) {
-                    e.stopPropagation();
+                function toggleMenu(e) {
+                    e.stopPropagation(); // evita conflito com clique global
                     menu.classList.contains('active') ? fecharMenu() : abrirMenu();
-                });
+                }
 
-                closeBtn.addEventListener('click', fecharMenu);
+                button.addEventListener('click', toggleMenu);
                 overlay.addEventListener('click', fecharMenu);
 
                 document.addEventListener('click', function(e) {
