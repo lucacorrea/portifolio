@@ -70,7 +70,7 @@ include 'views/layout/header.php';
         padding: 1.25rem;
         border-radius: 12px;
         margin-bottom: 1.5rem;
-        border-left: 5px solid var(--primary);
+        border-left: 5px solid var(--primary) !important;
         border: 1px solid #000;
     }
 
