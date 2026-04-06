@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS oficios (
     justificativa TEXT,
     status ENUM('ENVIADO', 'APROVADO', 'REPROVADO', 'ARQUIVADO') DEFAULT 'ENVIADO',
     usuario_id INT NOT NULL, -- Quem cadastrou
+    arquivo_orcamento VARCHAR(255) DEFAULT NULL, -- Caminho do anexo
     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (secretaria_id) REFERENCES secretarias(id),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
