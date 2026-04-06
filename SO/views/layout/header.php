@@ -230,7 +230,7 @@
                                     </a>
                                 </li>
 
-                                <li class="nav-item <?php echo isActive(['oficios_lista.php', 'oficios_visualizar.php', 'oficios_editar.php']); ?>">
+                                <li class="nav-item <?php echo isActive(['oficios_lista.php', 'analisar_oficio.php', 'oficios_visualizar.php', 'oficios_editar.php']); ?>">
                                     <a href="oficios_lista.php" class="nav-link">
                                         <i class="fas fa-folder-open"></i> Lista de Solicitações
                                     </a>
