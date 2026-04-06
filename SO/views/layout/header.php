@@ -143,7 +143,7 @@
 
                             <?php if (isset($_SESSION['user_id'])): ?>
 
-                                <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                                <li class="nav-item"><a href="dashboard.php" class="nav-link active"><i class="fas fa-chart-line"></i> Dashboard</a></li>
                                 <li class="nav-item"><a href="oficios_novo.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo Ofício</a></li>
                                 <li class="nav-item"><a href="oficios_lista.php" class="nav-link"><i class="fas fa-folder-open"></i> Lista de Ofícios</a></li>
                                 <li class="nav-item"><a href="aquisicoes_lista.php" class="nav-link"><i class="fas fa-shopping-bag"></i> Aquisições</a></li>
