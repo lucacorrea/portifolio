@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-card">
         <div class="login-logo">
-            <img src="assets/img/prefeitura.png" alt="SGAO">
+            <img src="assets/img/prefeitura.png" alt="SGAO" width="60">
             <p>Sistema de Gestão de Ofícios e Aquisições</p>
         </div>
         
