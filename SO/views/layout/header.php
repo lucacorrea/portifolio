@@ -31,6 +31,32 @@
         display: flex;
         gap: 15px;
         list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .nav-item {
+        list-style: none;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    /* ITEM ATIVO */
+    .nav-item.active .nav-link {
+        background: rgba(13, 110, 253, 0.10);
+        color: #0d6efd !important;
+        font-weight: 700;
+        border-radius: 10px;
+    }
+
+    .nav-item.active .nav-link i {
+        color: #0d6efd !important;
     }
 
     /* ESCONDER HAMBURGUER NO DESKTOP */
@@ -44,6 +70,11 @@
 
     /* OVERLAY */
     .menu-overlay {
+        display: none;
+    }
+
+    /* BOTÃO FECHAR INTERNO */
+    .menu-close {
         display: none;
     }
 
@@ -75,6 +106,7 @@
             padding: 20px;
             transition: 0.3s;
             z-index: 1002;
+            overflow-y: auto;
         }
 
         /* MENU ABERTO */
@@ -82,10 +114,36 @@
             left: 0;
         }
 
+        /* BOTÃO X NO TOPO DIREITO */
+        .menu-close {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+
+        .menu-close button {
+            background: transparent;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 6px;
+            line-height: 1;
+        }
+
+        .menu-close button:hover {
+            color: #dc3545;
+        }
+
         /* LISTA */
         .nav-list {
             flex-direction: column;
             gap: 10px;
+        }
+
+        .nav-link {
+            padding: 10px 12px;
+            border-radius: 10px;
         }
 
         /* OVERLAY ESCURO */
@@ -109,13 +167,23 @@
 <body>
     <div class="page-wrapper">
         <?php if (isset($_SESSION['user_id']) || isset($_SESSION['secretaria_id'])): ?>
+            <?php
+            $currentPage = basename($_SERVER['PHP_SELF']);
+
+            function isActive(array $pages): string
+            {
+                global $currentPage;
+                return in_array($currentPage, $pages, true) ? 'active' : '';
+            }
+            ?>
+
             <header class="navbar no-print">
                 <div class="container-xl">
 
                     <div class="navbar-header">
 
                         <!-- HAMBURGUER (SÓ MOBILE) -->
-                        <button class="menu-toggle" onclick="toggleMenu()">
+                        <button class="menu-toggle" type="button" onclick="openMenu()" aria-label="Abrir menu">
                             <i id="menuIcon" class="fas fa-bars"></i>
                         </button>
 
@@ -139,21 +207,56 @@
 
                     <!-- MENU -->
                     <nav class="navbar-menu" id="navbarMenu">
+
+                        <!-- X INTERNO DO MENU -->
+                        <div class="menu-close">
+                            <button type="button" onclick="closeMenu()" aria-label="Fechar menu">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
                         <ul class="nav-list">
 
                             <?php if (isset($_SESSION['user_id'])): ?>
 
-                                <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                                <li class="nav-item"><a href="oficios_novo.php" class="nav-link"><i class="fas fa-plus-circle"></i> Nova Solicitação</a></li>
-                                <li class="nav-item"><a href="oficios_lista.php" class="nav-link"><i class="fas fa-folder-open"></i> Lista de Solicitações</a></li>
-                                <li class="nav-item"><a href="aquisicoes_lista.php" class="nav-link"><i class="fas fa-shopping-bag"></i> Aquisições</a></li>
+                                <li class="nav-item <?php echo isActive(['dashboard.php', 'index.php']); ?>">
+                                    <a href="dashboard.php" class="nav-link">
+                                        <i class="fas fa-chart-line"></i> Dashboard
+                                    </a>
+                                </li>
+
+                                <li class="nav-item <?php echo isActive(['oficios_novo.php']); ?>">
+                                    <a href="oficios_novo.php" class="nav-link">
+                                        <i class="fas fa-plus-circle"></i> Nova Solicitação
+                                    </a>
+                                </li>
+
+                                <li class="nav-item <?php echo isActive(['oficios_lista.php', 'oficios_visualizar.php', 'oficios_editar.php']); ?>">
+                                    <a href="oficios_lista.php" class="nav-link">
+                                        <i class="fas fa-folder-open"></i> Lista de Solicitações
+                                    </a>
+                                </li>
+
+                                <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
+                                    <a href="aquisicoes_lista.php" class="nav-link">
+                                        <i class="fas fa-shopping-bag"></i> Aquisições
+                                    </a>
+                                </li>
 
                                 <?php if ($_SESSION['nivel'] === 'ADMIN' || $_SESSION['nivel'] === 'SUPORTE'): ?>
-                                    <li class="nav-item"><a href="relatorios.php" class="nav-link"><i class="fas fa-file-contract"></i> Relatórios</a></li>
+                                    <li class="nav-item <?php echo isActive(['relatorios.php']); ?>">
+                                        <a href="relatorios.php" class="nav-link">
+                                            <i class="fas fa-file-contract"></i> Relatórios
+                                        </a>
+                                    </li>
                                 <?php endif; ?>
 
                                 <?php if ($_SESSION['nivel'] === 'SUPORTE'): ?>
-                                    <li class="nav-item"><a href="configuracoes.php" class="nav-link"><i class="fas fa-tools"></i> Configurações</a></li>
+                                    <li class="nav-item <?php echo isActive(['configuracoes.php']); ?>">
+                                        <a href="configuracoes.php" class="nav-link">
+                                            <i class="fas fa-tools"></i> Configurações
+                                        </a>
+                                    </li>
                                 <?php endif; ?>
 
                             <?php endif; ?>
@@ -168,26 +271,46 @@
                     </nav>
 
                     <!-- OVERLAY -->
-                    <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+                    <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
 
                 </div>
             </header>
 
             <script>
-                function toggleMenu() {
+                function openMenu() {
                     const menu = document.getElementById('navbarMenu');
                     const overlay = document.getElementById('menuOverlay');
                     const icon = document.getElementById('menuIcon');
 
-                    menu.classList.toggle('active');
-                    overlay.classList.toggle('active');
+                    menu.classList.add('active');
+                    overlay.classList.add('active');
 
-                    if (menu.classList.contains('active')) {
+                    if (icon) {
                         icon.classList.remove('fa-bars');
                         icon.classList.add('fa-times');
-                    } else {
+                    }
+                }
+
+                function closeMenu() {
+                    const menu = document.getElementById('navbarMenu');
+                    const overlay = document.getElementById('menuOverlay');
+                    const icon = document.getElementById('menuIcon');
+
+                    menu.classList.remove('active');
+                    overlay.classList.remove('active');
+
+                    if (icon) {
                         icon.classList.remove('fa-times');
                         icon.classList.add('fa-bars');
+                    }
+                }
+
+                function toggleMenu() {
+                    const menu = document.getElementById('navbarMenu');
+                    if (menu.classList.contains('active')) {
+                        closeMenu();
+                    } else {
+                        openMenu();
                     }
                 }
 
@@ -195,18 +318,23 @@
                 document.addEventListener('click', function(event) {
                     const menu = document.getElementById('navbarMenu');
                     const button = document.querySelector('.menu-toggle');
-                    const icon = document.getElementById('menuIcon');
                     const overlay = document.getElementById('menuOverlay');
+
+                    if (!menu || !button || !overlay) return;
 
                     const clicouDentroMenu = menu.contains(event.target);
                     const clicouNoBotao = button.contains(event.target);
+                    const clicouNoOverlay = overlay.contains(event.target);
 
-                    if (!clicouDentroMenu && !clicouNoBotao && menu.classList.contains('active')) {
-                        menu.classList.remove('active');
-                        overlay.classList.remove('active');
+                    if (!clicouDentroMenu && !clicouNoBotao && !clicouNoOverlay && menu.classList.contains('active')) {
+                        closeMenu();
+                    }
+                });
 
-                        icon.classList.remove('fa-times');
-                        icon.classList.add('fa-bars');
+                /* FECHAR AO REDIMENSIONAR PARA DESKTOP */
+                window.addEventListener('resize', function() {
+                    if (window.innerWidth > 768) {
+                        closeMenu();
                     }
                 });
             </script>
