@@ -182,4 +182,4 @@ document.querySelectorAll('.remove-product').forEach(btn => {
 });
 </script>
 
-<?php include 'views/layout/footer.php'; ?>/footer.php'; ?>
+<?php include 'views/layout/footer.php'; ?>
