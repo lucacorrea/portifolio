@@ -142,8 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-card">
         <div class="login-logo">
-            <i class="fas fa-building"></i>
-            <h1>SGAO</h1>
+            <img src="assets/images/logo.png" alt="SGAO">
             <p>Sistema de Gestão de Ofícios e Aquisições</p>
         </div>
         
