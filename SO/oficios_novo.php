@@ -1,0 +1,160 @@
+<?php
+require_once 'config/database.php';
+require_once 'config/functions.php';
+login_check();
+
+$page_title = "Cadastrar Novo Ofício";
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $secretaria_id = $_POST['secretaria_id'];
+    $justificativa = $_POST['justificativa'];
+    $produtos = $_POST['produtos'] ?? [];
+    
+    if (!empty($produtos)) {
+        try {
+            $pdo->beginTransaction();
+            
+            $numero = generate_oficio_number($pdo);
+            $stmt = $pdo->prepare("INSERT INTO oficios (numero, secretaria_id, justificativa, usuario_id) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$numero, $secretaria_id, $justificativa, $_SESSION['user_id']]);
+            $oficio_id = $pdo->lastInsertId();
+            
+            $stmt_item = $pdo->prepare("INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade) VALUES (?, ?, ?, ?)");
+            foreach ($produtos as $item) {
+                if (!empty($item['nome'])) {
+                    $stmt_item->execute([$oficio_id, $item['nome'], $item['qtd'], $item['unidade'] ?: 'UN']);
+                }
+            }
+            
+            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero criado");
+            $pdo->commit();
+            flash_message('success', "Ofício $numero cadastrado com sucesso!");
+            header("Location: oficios_visualizar.php?id=$oficio_id");
+            exit();
+            
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $error = "Erro ao cadastrar: " . $e->getMessage();
+        }
+    } else {
+        $error = "Adicione pelo menos um produto ao ofício.";
+    }
+}
+
+$secretarias = $pdo->query("SELECT * FROM secretarias ORDER BY nome")->fetchAll();
+
+include 'views/layout/header.php';
+?>
+
+<div class="card">
+    <div class="card-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1.25rem;">
+                <i class="fas fa-edit" style="margin-right: 10px; color: var(--primary);"></i> Formulário de Solicitação
+            </h3>
+            <a href="oficios_lista.php" class="btn btn-outline btn-sm">Cancelar</a>
+        </div>
+
+        <?php if(isset($error)): ?>
+            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php endif; ?>
+
+        <form action="" method="POST" id="oficio-form">
+            <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="form-group">
+                    <label class="form-label">Secretaria Solicitante</label>
+                    <select name="secretaria_id" class="form-control" required>
+                        <option value="">Selecione a Secretaria...</option>
+                        <?php foreach($secretarias as $sec): ?>
+                            <option value="<?php echo $sec['id']; ?>"><?php echo $sec['nome']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Justificativa / Observação</label>
+                    <textarea name="justificativa" class="form-control" placeholder="Finalidade da solicitação..." rows="1"></textarea>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 2rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin: 0;">
+                        <i class="fas fa-box" style="margin-right: 8px; color: var(--primary);"></i> Itens do Ofício
+                    </h4>
+                    <button type="button" class="btn btn-outline btn-sm" id="add-product">
+                        <i class="fas fa-plus"></i> Adicionar Produto
+                    </button>
+                </div>
+                
+                <div id="products-container">
+                    <!-- Itens dinâmicos via JS -->
+                    <div class="product-item" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; margin-bottom: 1rem; align-items: end;">
+                        <div class="form-group" style="margin: 0;">
+                            <label class="form-label">Produto/Serviço</label>
+                            <input type="text" name="produtos[0][nome]" class="form-control" required placeholder="Ex: Resma de Papel A4">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label class="form-label">Qtd</label>
+                            <input type="number" step="0.01" name="produtos[0][qtd]" class="form-control" required placeholder="0.00">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label class="form-label">Unidade</label>
+                            <input type="text" name="produtos[0][unidade]" class="form-control" placeholder="UN" value="UN">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <button type="button" class="btn btn-outline btn-sm remove-product" style="color: var(--status-rejected); border-color: var(--status-rejected); padding: 0.5rem;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 3rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; text-align: right;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">
+                    <i class="fas fa-save"></i> Salvar e Gerar Ofício
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('add-product').addEventListener('click', function() {
+    const container = document.getElementById('products-container');
+    const index = container.getElementsByClassName('product-item').length;
+    const item = document.createElement('div');
+    item.className = 'product-item';
+    item.style = 'display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; margin-bottom: 1rem; align-items: end;';
+    item.innerHTML = `
+        <div class="form-group" style="margin: 0;">
+            <label class="form-label">Produto/Serviço</label>
+            <input type="text" name="produtos[${index}][nome]" class="form-control" required placeholder="Ex: Item extra">
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label class="form-label">Qtd</label>
+            <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control" required placeholder="0.00">
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label class="form-label">Unidade</label>
+            <input type="text" name="produtos[${index}][unidade]" class="form-control" placeholder="UN" value="UN">
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <button type="button" class="btn btn-outline btn-sm remove-product" style="color: var(--status-rejected); border-color: var(--status-rejected); padding: 0.5rem;"><i class="fas fa-trash"></i></button>
+        </div>
+    `;
+    container.appendChild(item);
+    
+    item.querySelector('.remove-product').addEventListener('click', function() {
+        item.remove();
+    });
+});
+
+document.querySelectorAll('.remove-product').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (document.querySelectorAll('.product-item').length > 1) {
+            this.closest('.product-item').remove();
+        }
+    });
+});
+</script>
+
+<?php include 'views/layout/footer.php'; ?>
