@@ -16,8 +16,7 @@
                 
                 <!-- ESQUERDA -->
                 <div class="footer-left">
-                    SGAO &copy; 2026 - Sistema de Gestão de Ofícios e Aquisições
-                </div>
+                    SGAO &copy; <?php echo date('Y'); ?> - Sistema de Gestão de Ofícios e Aquisições        </div>
 
                 <!-- DIREITA -->
                 <div class="footer-right">
