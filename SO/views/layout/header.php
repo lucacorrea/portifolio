@@ -10,102 +10,112 @@
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
 
-    <style>
-        .navbar-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: relative;
-        }
+<style>
+    /* BASE HEADER */
+    .navbar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+    }
 
-        .navbar-brand img {
-            height: 50px;
-        }
+    /* LOGO */
+    .navbar-brand img {
+        height: 50px;
+    }
 
-        .nav-list {
-            display: flex;
-            gap: 15px;
-            list-style: none;
-        }
+    /* MENU DESKTOP */
+    .nav-list {
+        display: flex;
+        gap: 15px;
+        list-style: none;
+    }
 
-        /* DESKTOP */
+    /* ESCONDER HAMBURGUER NO DESKTOP */
+    .menu-toggle {
+        display: none;
+        font-size: 24px;
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    /* OVERLAY */
+    .menu-overlay {
+        display: none;
+    }
+
+    /* ================= MOBILE ================= */
+    @media (max-width: 768px) {
+
+        /* MOSTRA HAMBURGUER */
         .menu-toggle {
-            display: none;
-            font-size: 24px;
-            background: none;
-            border: none;
-            cursor: pointer;
+            display: block;
+            z-index: 1001;
         }
 
+        /* CENTRALIZA LOGO */
+        .navbar-brand {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* ESCONDE MENU NORMAL */
+        .navbar-menu {
+            position: fixed;
+            top: 0;
+            left: -260px;
+            width: 250px;
+            height: 100%;
+            background: #fff;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            transition: 0.3s;
+            z-index: 1002;
+        }
+
+        /* MENU ABERTO */
+        .navbar-menu.active {
+            left: 0;
+        }
+
+        /* LISTA */
+        .nav-list {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* OVERLAY ESCURO */
         .menu-overlay {
             display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1000;
         }
 
-        /* MOBILE */
-        @media (max-width: 768px) {
-
-            .menu-toggle {
-                display: block;
-                z-index: 1003;
-            }
-
-            .navbar-brand {
-                position: absolute;
-                left: 50%;
-                transform: translateX(-50%);
-            }
-
-            .navbar-menu {
-                position: fixed;
-                top: 0;
-                left: -260px;
-                width: 250px;
-                height: 100%;
-                background: #fff;
-                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.2);
-                padding: 20px;
-                transition: 0.3s;
-                z-index: 1002;
-            }
-
-            .navbar-menu.active {
-                left: 0;
-            }
-
-            .nav-list {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .menu-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.4);
-                z-index: 1001;
-            }
-
-            .menu-overlay.active {
-                display: block;
-            }
+        .menu-overlay.active {
+            display: block;
         }
-    </style>
-</head>
+    }
+</style>
 
 <body>
     <div class="page-wrapper">
         <?php if (isset($_SESSION['user_id']) || isset($_SESSION['secretaria_id'])): ?>
-
             <header class="navbar no-print">
                 <div class="container-xl">
 
                     <div class="navbar-header">
 
-                        <!-- HAMBURGUER -->
-                        <button class="menu-toggle" id="menuButton">
+                        <!-- HAMBURGUER (SÓ MOBILE) -->
+                        <button class="menu-toggle" onclick="toggleMenu()">
                             <i id="menuIcon" class="fas fa-bars"></i>
                         </button>
 
@@ -114,7 +124,7 @@
                             <img src="assets/img/prefeitura.jpg" alt="Prefeitura Municipal">
                         </a>
 
-                        <!-- USER -->
+                        <!-- USUÁRIO -->
                         <div class="navbar-user">
                             <div class="user-meta">
                                 <div class="user-name"><?php echo $_SESSION['user_nome'] ?? $_SESSION['secretaria_nome']; ?></div>
@@ -163,45 +173,64 @@
                     </nav>
 
                     <!-- OVERLAY -->
-                    <div class="menu-overlay" id="menuOverlay"></div>
+                    <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
 
                 </div>
             </header>
 
             <script>
-                const menu = document.getElementById('navbarMenu');
-                const overlay = document.getElementById('menuOverlay');
-                const button = document.getElementById('menuButton');
-                const icon = document.getElementById('menuIcon');
-
                 function abrirMenu() {
+                    const menu = document.getElementById('navbarMenu');
+                    const overlay = document.getElementById('menuOverlay');
+                    const icon = document.getElementById('menuIcon');
+
                     menu.classList.add('active');
                     overlay.classList.add('active');
-                    icon.classList.replace('fa-bars', 'fa-times');
+
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
                 }
 
                 function fecharMenu() {
+                    const menu = document.getElementById('navbarMenu');
+                    const overlay = document.getElementById('menuOverlay');
+                    const icon = document.getElementById('menuIcon');
+
                     menu.classList.remove('active');
                     overlay.classList.remove('active');
-                    icon.classList.replace('fa-times', 'fa-bars');
+
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
                 }
 
-                function toggleMenu(e) {
-                    e.stopPropagation(); // evita conflito com clique global
-                    menu.classList.contains('active') ? fecharMenu() : abrirMenu();
+                function toggleMenu() {
+                    const menu = document.getElementById('navbarMenu');
+
+                    if (menu.classList.contains('active')) {
+                        fecharMenu();
+                    } else {
+                        abrirMenu();
+                    }
                 }
 
-                button.addEventListener('click', toggleMenu);
-                overlay.addEventListener('click', fecharMenu);
+                /* FECHAR AO CLICAR FORA */
+                document.addEventListener('click', function(event) {
+                    const menu = document.getElementById('navbarMenu');
+                    const button = document.querySelector('.menu-toggle');
 
-                document.addEventListener('click', function(e) {
-                    if (!menu.contains(e.target) && !button.contains(e.target)) {
+                    const clicouDentroMenu = menu.contains(event.target);
+                    const clicouNoBotao = button.contains(event.target);
+
+                    if (!clicouDentroMenu && !clicouNoBotao && menu.classList.contains('active')) {
                         fecharMenu();
                     }
                 });
 
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === "Escape") fecharMenu();
+                /* OPCIONAL: FECHAR COM ESC */
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === "Escape") {
+                        fecharMenu();
+                    }
                 });
             </script>
 
@@ -210,5 +239,4 @@
                     <div class="page-header no-print">
                         <h2 class="page-title"><?php echo $page_title ?? 'Painel de Controle'; ?></h2>
                     </div>
-
                 <?php endif; ?>
