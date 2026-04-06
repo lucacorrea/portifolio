@@ -22,52 +22,6 @@
             </div>
         </div>
 
-        <style>
-            /* BOTÃO HAMBURGUER */
-            .menu-toggle {
-                display: none;
-                font-size: 22px;
-                background: none;
-                border: none;
-                cursor: pointer;
-            }
-
-            /* RESPONSIVO */
-            @media (max-width: 768px) {
-
-                .menu-toggle {
-                    display: block;
-                }
-
-                .navbar-menu {
-                    display: none;
-                    width: 100%;
-                }
-
-                .navbar-menu.active {
-                    display: block;
-                }
-
-                .nav-list {
-                    flex-direction: column;
-                    background: #fff;
-                    padding: 10px;
-                    border-radius: 8px;
-                    margin-top: 10px;
-                }
-
-                .nav-item {
-                    margin: 5px 0;
-                }
-
-                .navbar-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-            }
-        </style>
-
         <!-- MENU -->
         <nav class="navbar-menu" id="navbarMenu">
             <ul class="nav-list">
