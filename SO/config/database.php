@@ -1,10 +1,10 @@
 <?php
 // config/database.php
 
-$host = '127.0.0.1';
-$db_user = 'root';
-$db_pass = ''; // Senha padrão do XAMPP é vazia
-$dbname = 'sgao';
+$host = 'localhost';
+$db_user = 'u784961086_so';
+$db_pass = 'Y>g39k3ql'; // Senha padrão do XAMPP é vazia
+$dbname = 'u784961086_so';
 $schema_file = __DIR__ . '/../database/schema.sql';
 
 try {
