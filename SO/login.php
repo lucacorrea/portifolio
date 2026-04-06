@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // Tentar login como Secretaria (Código de Acesso) - senha é o próprio código aqui para simplificar
+    // Tentar login como Secretaria
     $stmt = $pdo->prepare("SELECT * FROM secretarias WHERE codigo_acesso = ?");
     $stmt->execute([$login]);
     $sec = $stmt->fetch();
@@ -89,12 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 2.5rem;
         }
 
-        .login-logo i {
-            font-size: 3rem;
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
-
         .login-logo h1 {
             font-size: 1.5rem;
             font-weight: 800;
@@ -141,12 +135,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 0.8125rem;
             line-height: 1.4;
         }
+
+        .dev-footer {
+            margin-top: 1rem;
+            font-size: 0.75rem;
+            color: #999;
+        }
     </style>
 </head>
 <body>
     <div class="login-card">
         <div class="login-logo">
-            <img src="assets/img/prefeitura.jpg" class="logo" alt="SGAO" width="90">
+            <img src="assets/img/prefeitura.jpg" class="logo" alt="SGAO">
             <p>Sistema de Gestão de Ofícios e Aquisições</p>
         </div>
         
@@ -181,6 +181,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="login-footer">
             <p>Seu acesso é restrito e monitorado.<br>Caso tenha problemas, contate o administrador.</p>
             <p style="margin-top: 1rem; font-weight: 700;">Prefeitura Municipal de Coari &copy; 2026</p>
+
+            <!-- NOVO RODAPÉ -->
+            <p class="dev-footer">
+                Desenvolvido por <strong>Junior Praia, Lucas Correa e Luiz Frota</strong>
+            </p>
         </div>
     </div>
 </body>
