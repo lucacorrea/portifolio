@@ -52,7 +52,7 @@
         background: rgba(13, 110, 253, 0.10);
         color: #0d6efd !important;
         font-weight: 700;
-        border-radius: 10px;
+        border-radius: 3px;
     }
 
     .nav-item.active .nav-link i {
