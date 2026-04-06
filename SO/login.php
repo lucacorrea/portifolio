@@ -4,7 +4,7 @@ require_once 'config/functions.php';
 
 $page_title = "Login - SGAO";
 
-if (isset($_SESSION['user_id']) || isset($_SESSION['secretaria_id'])) {
+if (isset($_SESSION['user_id'])) {
     header("Location: dashboard.php");
     exit();
 }
@@ -26,19 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['nivel'] = $user['nivel'];
         log_action($pdo, "LOGIN", "Usuário {$user['usuario']} logado");
         header("Location: dashboard.php");
-        exit();
-    }
-
-    // Tentar login como Secretaria
-    $stmt = $pdo->prepare("SELECT * FROM secretarias WHERE codigo_acesso = ?");
-    $stmt->execute([$login]);
-    $sec = $stmt->fetch();
-
-    if ($sec && $senha === $sec['codigo_acesso']) {
-        $_SESSION['secretaria_id'] = $sec['id'];
-        $_SESSION['secretaria_nome'] = $sec['nome'];
-        log_action($pdo, "LOGIN_SEC", "Secretaria {$sec['nome']} logada");
-        header("Location: acompanhamento.php");
         exit();
     }
 
@@ -159,10 +146,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form action="" method="POST">
             <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label class="form-label">Usuário ou Código da Secretaria</label>
+                <label class="form-label">Usuário Administrativo</label>
                 <div class="form-group-icon">
                     <i class="fas fa-user"></i>
-                    <input type="text" name="login" class="form-control" required placeholder="Digite seu acesso" autofocus>
+                    <input type="text" name="login" class="form-control" required placeholder="Digite seu usuário" autofocus>
                 </div>
             </div>
             

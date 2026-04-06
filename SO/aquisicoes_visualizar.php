@@ -70,8 +70,8 @@ include 'views/layout/header.php';
             <tr>
                 <td style="padding: 6px 10px; border: 1px solid #000; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #f0f0f0;">Para:</td>
                 <td style="padding: 6px 10px; border: 1px solid #000; font-weight: 700;"><?php echo strtoupper($aq['secretaria']); ?></td>
-                <td style="padding: 6px 10px; border: 1px solid #000; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #f0f0f0;">Código de Entrega:</td>
-                <td style="padding: 6px 10px; border: 1px solid #000; font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?php echo $aq['codigo_entrega']; ?></td>
+                <td style="padding: 6px 10px; border: 1px solid #000; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #f0f0f0;">Referência:</td>
+                <td style="padding: 6px 10px; border: 1px solid #000; font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?php echo $aq['oficio_num']; ?></td>
             </tr>
         </table>
 
@@ -117,7 +117,7 @@ include 'views/layout/header.php';
             </div>
             <div>
                 <div style="border-top: 1.5px solid #000; padding-top: 0.75rem;">
-                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBIMENTO SECRETARIA</div>
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
                     <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Assinatura e Carimbo</div>
                 </div>
             </div>
@@ -160,8 +160,8 @@ include 'views/layout/header.php';
             <tr>
                 <td style="padding: 6px 10px; border: 1px solid #000; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #f0f0f0;">Para:</td>
                 <td style="padding: 6px 10px; border: 1px solid #000; font-weight: 700;"><?php echo strtoupper($aq['secretaria']); ?></td>
-                <td style="padding: 6px 10px; border: 1px solid #000; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #f0f0f0;">Código de Entrega:</td>
-                <td style="padding: 6px 10px; border: 1px solid #000; font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?php echo $aq['codigo_entrega']; ?></td>
+                <td style="padding: 6px 10px; border: 1px solid #000; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #f0f0f0;">Referência:</td>
+                <td style="padding: 6px 10px; border: 1px solid #000; font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?php echo $aq['oficio_num']; ?></td>
             </tr>
         </table>
 
@@ -199,8 +199,8 @@ include 'views/layout/header.php';
         </table>
 
         <p style="font-size: 0.75rem; color: #555; margin-top: 1.5rem; margin-bottom: 4rem; line-height: 1.5;">
-            No ato da entrega, solicitar o <strong>Código Único de Entrega</strong> ao responsável da secretaria. 
-            Este código é obrigatório para baixa no sistema e liberação do pagamento.
+            No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. 
+            Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.
         </p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; text-align: center; margin-top: 4rem;">

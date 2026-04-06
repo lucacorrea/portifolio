@@ -7,16 +7,35 @@ $page_title = "Cadastrar Novo Ofício";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $secretaria_id = $_POST['secretaria_id'];
-    $justificativa = $_POST['justificativa'];
+    $justificativa = trim($_POST['justificativa']);
     $produtos = $_POST['produtos'] ?? [];
     
-    if (!empty($produtos)) {
+    // Validação de Justificativa (Obrigatória)
+    if (empty($justificativa)) {
+        $error = "O campo Justificativa é obrigatório.";
+    } elseif (!empty($produtos)) {
         try {
             $pdo->beginTransaction();
             
+            // Tratamento de Upload de Orçamento (Opcional)
+            $arquivo_orcamento = null;
+            if (isset($_FILES['orcamento']) && $_FILES['orcamento']['error'] === UPLOAD_ERR_OK) {
+                $file_tmp = $_FILES['orcamento']['tmp_name'];
+                $file_name = $_FILES['orcamento']['name'];
+                $ext = pathinfo($file_name, PATHINFO_EXTENSION);
+                
+                // Gerar nome único para o arquivo
+                $new_name = "ORC_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
+                $upload_dir = "assets/uploads/orcamentos/";
+                
+                if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
+                    $arquivo_orcamento = $upload_dir . $new_name;
+                }
+            }
+
             $numero = generate_oficio_number($pdo);
-            $stmt = $pdo->prepare("INSERT INTO oficios (numero, secretaria_id, justificativa, usuario_id) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$numero, $secretaria_id, $justificativa, $_SESSION['user_id']]);
+            $stmt = $pdo->prepare("INSERT INTO oficios (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$numero, $secretaria_id, $justificativa, $_SESSION['user_id'], $arquivo_orcamento]);
             $oficio_id = $pdo->lastInsertId();
             
             $stmt_item = $pdo->prepare("INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade) VALUES (?, ?, ?, ?)");
@@ -26,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
-            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero criado");
+            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero criado com anexo: " . ($arquivo_orcamento ? 'SIM' : 'NÃO'));
             $pdo->commit();
             flash_message('success', "Ofício $numero cadastrado com sucesso!");
             header("Location: oficios_visualizar.php?id=$oficio_id");
@@ -59,8 +78,8 @@ include 'views/layout/header.php';
             <div class="alert alert-danger"><?php echo $error; ?></div>
         <?php endif; ?>
 
-        <form action="" method="POST" id="oficio-form">
-            <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <form action="" method="POST" id="oficio-form" enctype="multipart/form-data">
+            <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                 <div class="form-group">
                     <label class="form-label">Secretaria Solicitante</label>
                     <select name="secretaria_id" class="form-control" required>
@@ -71,9 +90,15 @@ include 'views/layout/header.php';
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Justificativa / Observação</label>
-                    <textarea name="justificativa" class="form-control" placeholder="Finalidade da solicitação..." rows="1"></textarea>
+                    <label class="form-label">Arquivo do Orçamento (Opcional)</label>
+                    <input type="file" name="orcamento" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    <small class="text-muted">Formatos aceitos: PDF, JPG, PNG</small>
                 </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label class="form-label">Justificativa / Finalidade <span style="color:red">*</span></label>
+                <textarea name="justificativa" class="form-control" placeholder="Descreva detalhadamente a necessidade da solicitação..." rows="3" required></textarea>
             </div>
 
             <div style="border-top: 1px solid var(--border-color); padding-top: 2rem; margin-bottom: 1.5rem;">
@@ -157,4 +182,4 @@ document.querySelectorAll('.remove-product').forEach(btn => {
 });
 </script>
 
-<?php include 'views/layout/footer.php'; ?>
+<?php include 'views/layout/footer.php'; ?>/footer.php'; ?>

@@ -56,6 +56,11 @@ include 'views/layout/header.php';
                         </td>
                         <td style="text-align: right;">
                             <a href="aquisicoes_visualizar.php?id=<?php echo $aq['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar Detalhes"><i class="fas fa-eye"></i></a>
+                            <?php if($aq['status'] === 'AGUARDANDO ENTREGA'): ?>
+                                <a href="aquisicao_finalizar.php?id=<?php echo $aq['id']; ?>" class="btn btn-outline btn-sm" style="color: var(--status-finalized); border-color: var(--status-finalized);" title="Marcar como Recebido" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
+                                    <i class="fas fa-check-circle"></i>
+                                </a>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>

@@ -27,7 +27,7 @@ include 'views/layout/header.php';
 ?>
 
 <div class="no-print" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center;">
-    <a href="acompanhamento.php" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar</a>
+    <a href="oficios_lista.php" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar para Lista</a>
     <div style="flex-grow: 1;"></div>
     <button onclick="window.print()" class="btn btn-primary btn-sm"><i class="fas fa-print"></i> Imprimir Documento (2 Vias)</button>
     
@@ -100,10 +100,20 @@ include 'views/layout/header.php';
             </table>
         </div>
 
-        <div style="background: #fcfdfe; border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px; margin-bottom: 5rem;">
+        <div style="background: #fcfdfe; border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
             <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 10px;">Justificativa / Observações</label>
             <p style="font-size: 0.9375rem; margin: 0; color: var(--text-dark); line-height: 1.6; text-align: justify;"><?php echo nl2br($oficio['justificativa']); ?></p>
         </div>
+
+        <?php if($oficio['arquivo_orcamento']): ?>
+        <div style="margin-bottom: 5rem;">
+            <a href="<?php echo $oficio['arquivo_orcamento']; ?>" target="_blank" class="btn btn-outline btn-sm" style="color: var(--primary); border-color: var(--primary);">
+                <i class="fas fa-file-pdf"></i> Visualizar Orçamento Anexo
+            </a>
+        </div>
+        <?php else: ?>
+            <div style="margin-bottom: 5rem;"></div>
+        <?php endif; ?>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; text-align: center; margin-top: auto;">
             <div>
@@ -178,7 +188,7 @@ include 'views/layout/header.php';
         <div style="background: #f8f9fa; border: 1px solid var(--border-color); padding: 1.25rem; border-radius: 8px; text-align: center; margin-bottom: 6rem;">
             <p style="margin: 0; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.5;">
                 Confirmo que esta é uma cópia fiel da solicitação registrada no sistema de gestão.<br>
-                O acompanhamento do status pode ser feito através do portal do portal do servidor.
+                O acompanhamento do status pode ser feito diretamente no setor administrativo da Prefeitura.
             </p>
         </div>
 
