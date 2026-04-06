@@ -85,7 +85,7 @@ $ultimos_oficios = $stmt->fetchAll();
                     <a href="oficios_lista.php" class="btn btn-outline btn-sm">Ver Todos</a>
                 </div>
                 <div class="table-responsive">
-                    <table class="table-vcenter text-nowrap">
+                    <table class="table-vcenter">
                         <thead>
                             <tr>
                                 <th>Número</th>
@@ -95,7 +95,7 @@ $ultimos_oficios = $stmt->fetchAll();
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($ultimos_oficios as $oficio): ?>
+                            <?php foreach($ultimos_oficios as $oficio): ?>
                                 <tr>
                                     <td style="font-weight: 600; color: var(--primary);"><?php echo $oficio['numero']; ?></td>
                                     <td><span class="text-muted"><?php echo $oficio['secretaria']; ?></span></td>
@@ -111,10 +111,8 @@ $ultimos_oficios = $stmt->fetchAll();
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                            <?php if (empty($ultimos_oficios)): ?>
-                                <tr>
-                                    <td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted);">Nenhuma solicitação encontrada.</td>
-                                </tr>
+                            <?php if(empty($ultimos_oficios)): ?>
+                                <tr><td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted);">Nenhuma solicitação encontrada.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -122,6 +120,7 @@ $ultimos_oficios = $stmt->fetchAll();
             </div>
         </div>
     </div>
+    
 </div>
 
 <script>
