@@ -43,7 +43,6 @@ include 'views/layout/header.php';
 
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">Análise de Solicitação - <?php echo $oficio['numero']; ?></h2>
         <a href="oficios_visualizar.php?id=<?php echo $id; ?>" class="btn btn-primary btn-sm">Ver Detalhes</a>
     </div>
 
