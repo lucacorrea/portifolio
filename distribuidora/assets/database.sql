@@ -187,6 +187,17 @@ CREATE INDEX idx_fiados_cliente ON fiados (cliente_id);
 CREATE INDEX idx_fiados_status ON fiados (status);
 
 
+CREATE TABLE fiados_pagamentos (
+    id INT NOT NULL AUTO_INCREMENT,
+    fiado_id INT NOT NULL,
+    valor DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    metodo VARCHAR(30) NOT NULL DEFAULT 'DINHEIRO',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_fiado_id (fiado_id)
+);
+
+
 CREATE TABLE IF NOT EXISTS devolucoes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   venda_no INT NULL,
@@ -239,10 +250,3 @@ CREATE TABLE IF NOT EXISTS senha_tokens (
   KEY idx_senha_tokens_expira (expira_em)
 );
 
-CREATE TABLE `fiados_pagamentos` (
-  `id` int(11) NOT NULL,
-  `fiado_id` int(11) NOT NULL,
-  `valor` decimal(10,2) NOT NULL,
-  `metodo` varchar(50) NOT NULL,
-  `created_at` datetime DEFAULT current_timestamp()
-)

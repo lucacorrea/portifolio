@@ -50,7 +50,7 @@ include 'views/layout/header.php';
     .printable-page {
         margin-bottom: 2rem;
         border-radius: 12px;
-        overflow: visible;
+        overflow: hidden;
     }
 
     .printable-page .card-body {
@@ -59,7 +59,7 @@ include 'views/layout/header.php';
 
     .ordem-header {
         display: grid;
-        grid-template-columns: 1fr auto max-content;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
         border-bottom: 2px solid #000;
         padding-bottom: 1.25rem;
@@ -80,9 +80,6 @@ include 'views/layout/header.php';
 
     .ordem-right {
         text-align: right;
-        justify-self: end;
-        padding-right: 0;
-        margin-right: 0;
     }
 
     .ordem-right-box {
@@ -181,8 +178,6 @@ include 'views/layout/header.php';
         .ordem-logo,
         .ordem-header > div:first-child {
             text-align: center;
-            justify-self: center;
-            margin-right: 0;
         }
 
         .ordem-right-box {
@@ -253,7 +248,6 @@ include 'views/layout/header.php';
             page-break-after: always;
             break-after: page;
             border-radius: 0 !important;
-            overflow: visible !important;
         }
 
         .printable-page:last-of-type {
@@ -269,19 +263,12 @@ include 'views/layout/header.php';
             gap: 8px !important;
             margin-bottom: 10px !important;
             padding-bottom: 8px !important;
-            grid-template-columns: 1fr auto max-content !important;
+            grid-template-columns: 1fr auto 1fr !important;
         }
 
         .ordem-logo img {
             max-height: 60px !important;
             max-width: 150px !important;
-        }
-
-        .ordem-right {
-            text-align: right !important;
-            justify-self: end !important;
-            margin-right: 0 !important;
-            padding-right: 0 !important;
         }
 
         .ordem-info-wrap,
@@ -307,25 +294,15 @@ include 'views/layout/header.php';
             font-size: 10px !important;
         }
 
-        /* mantém as assinaturas do jeito que estavam */
         .assinaturas-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 4rem !important;
-            text-align: center !important;
-            margin-top: 5rem !important;
-        }
-
-        .assinatura-linha {
-            border-top: 1.5px solid #000 !important;
-            padding-top: 0.75rem !important;
+            gap: 2.2cm !important;
+            margin-top: 2.6cm !important;
         }
 
         .texto-entrega {
-            margin-top: 1.5rem !important;
-            margin-bottom: 4rem !important;
-            font-size: 0.75rem !important;
-            line-height: 1.5 !important;
+            margin-top: 10px !important;
+            margin-bottom: 28px !important;
+            font-size: 10px !important;
         }
     }
 </style>
