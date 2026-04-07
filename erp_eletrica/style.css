@@ -8,7 +8,7 @@
     --secondary-color: #2b4c7d;      /* Sidebar */
     --bg-main: #f1f5f9;              /* Fundo super leve para conforto */
     --surface: #ffffff;             /* Cards Brancos */
-    --active-menu-font: #cbd5e1;    /* Cinza claro para fonte ativa no azul */
+    --active-menu-font: #ffffff;    /* Fonte Branca no azul */
     --text-primary: #1e293b;        /* Texto quase preto (Slate 900) */
     --text-secondary: #64748b;      /* Texto de apoio (Slate 500) */
     --success: #059669;             /* Verde Corporativo */
@@ -151,7 +151,7 @@ body {
     display: flex;
     align-items: center;
     padding: 14px 25px;
-    color: rgba(255, 255, 255, 0.85);
+    color: #ffffff;
     text-decoration: none;
     transition: var(--transition);
     border-left: 4px solid transparent;
@@ -548,11 +548,11 @@ body {
 /* Ajuste de Contraste do Menu Lateral */
 .sidebar-menu li.active a {
     background: rgba(255, 255, 255, 0.2) !important;
-    color: #cbd5e1 !important; /* Usando o cinza claro da sua paleta para leitura sobre azul */
-    border-left-color: #cbd5e1 !important;
+    color: #ffffff !important; /* Branco puro no item ativo */
+    border-left-color: #ffffff !important;
 }
 .sidebar-menu li.active a i {
-    color: #cbd5e1 !important;
+    color: #ffffff !important;
 }
 
 .badge-warning {
