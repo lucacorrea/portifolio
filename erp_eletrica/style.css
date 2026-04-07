@@ -522,14 +522,12 @@ body {
 }
 
 /* --- Reforço da Paleta Corporativa (Amarelo -> Azul) --- */
-.btn-warning, .btn-primary, .btn-erp-primary {
+.btn-warning, .btn-primary, .btn-erp-primary, .btn-success, .btn-danger {
     background-color: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
     color: #ffffff !important;
 }
-.btn-warning:hover, .btn-primary:hover {
-    background-color: var(--primary-hover) !important;
-    border-color: var(--primary-hover) !important;
+.btn-warning i, .btn-primary i, .btn-erp-primary i, .btn-success i, .btn-danger i {
     color: #ffffff !important;
 }
 .bg-warning, .bg-primary, .bg-erp-primary {
@@ -546,12 +544,17 @@ body {
 }
 
 /* Ajuste de Contraste do Menu Lateral */
-.sidebar-menu li.active a {
+.sidebar-menu li.active a, .sidebar-menu li.active a i {
     background: rgba(255, 255, 255, 0.2) !important;
-    color: #ffffff !important; /* Branco puro no item ativo */
+    color: #ffffff !important;
     border-left-color: #ffffff !important;
 }
-.sidebar-menu li.active a i {
+.sidebar-menu .nav-link i {
+    color: rgba(255, 255, 255, 0.8) !important;
+    width: 20px;
+    text-align: center;
+}
+.sidebar-menu .nav-link:hover i, .sidebar-menu .nav-link.active i {
     color: #ffffff !important;
 }
 
