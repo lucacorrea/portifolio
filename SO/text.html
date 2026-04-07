@@ -20,9 +20,9 @@
         }
 
         .page-wrap {
-            max-width: 1120px;
+            max-width: 1220px;
             margin: 0 auto;
-            padding: 24px;
+            padding: 18px;
         }
 
         .toolbar {
@@ -31,7 +31,7 @@
             align-items: center;
             justify-content: flex-end;
             flex-wrap: wrap;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .btn {
@@ -81,50 +81,61 @@
             background: #fff;
             border: 1px solid #dcdfe4;
             border-radius: 12px;
-            padding: 28px;
-            margin-bottom: 26px;
+            padding: 20px 18px;
+            margin-bottom: 22px;
             overflow: visible;
         }
 
         .doc-header {
             display: grid;
-            grid-template-columns: 220px 1fr 220px;
-            gap: 16px;
-            align-items: center;
+            grid-template-columns: 190px 1fr 245px;
+            gap: 8px;
+            align-items: start;
             border-bottom: 2px solid #000;
-            padding-bottom: 16px;
-            margin-bottom: 18px;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
         }
 
         .doc-logo {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: flex-start;
-            min-height: 78px;
+            min-height: 70px;
+            padding-left: 0;
         }
 
         .logo-box {
-            width: 180px;
-            height: 72px;
+            width: 170px;
+            height: 66px;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
+            align-items: flex-start;
+            justify-content: flex-start;
+            text-align: left;
             font-size: 12px;
             font-weight: 700;
             color: #666;
-            padding: 8px;
+            padding: 0;
+            margin: 0;
+        }
+
+        .logo-box img {
+            width: 150px !important;
+            height: 68px !important;
+            object-fit: contain;
+            object-position: left center;
+            display: block;
         }
 
         .doc-center,
         .ordem-center {
             text-align: center;
+            padding-top: 0;
         }
 
         .doc-title {
             margin: 0;
             font-size: 22px;
-            line-height: 1.2;
+            line-height: 1.15;
             font-weight: 800;
             text-transform: uppercase;
         }
@@ -146,23 +157,32 @@
 
         .doc-right {
             text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: flex-start;
+            padding-right: 0;
+            margin-right: 0;
         }
 
         .doc-way {
             margin-bottom: 6px;
             font-size: 11px;
             font-weight: 800;
-            color: #777;
+            color: #000;
             text-transform: uppercase;
             letter-spacing: 1px;
+            text-align: right;
+            width: 100%;
         }
 
         .doc-right-box {
             display: inline-block;
             border: 1.5px solid #000;
-            padding: 7px 16px;
+            padding: 7px 12px 6px;
             text-align: center;
-            min-width: 145px;
+            min-width: 162px;
+            width: 162px;
         }
 
         .doc-right-label {
@@ -173,7 +193,7 @@
         }
 
         .doc-right-number {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 900;
             line-height: 1.05;
         }
@@ -182,8 +202,11 @@
             margin-top: 8px;
             font-size: 11px;
             font-weight: 700;
-            color: #666;
+            color: #444;
             text-transform: uppercase;
+            text-align: right;
+            width: 100%;
+            white-space: nowrap;
         }
 
         .info-wrap,
@@ -194,7 +217,7 @@
         }
 
         .info-wrap {
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         table {
@@ -206,7 +229,7 @@
         .items-table th,
         .items-table td {
             border: 1px solid #000;
-            padding: 7px 8px;
+            padding: 6px 7px;
             vertical-align: middle;
         }
 
@@ -233,7 +256,7 @@
         }
 
         .section-title {
-            margin: 18px 0 8px;
+            margin: 12px 0 6px;
             font-size: 12px;
             font-weight: 800;
             text-transform: uppercase;
@@ -243,12 +266,12 @@
         .line-placeholder {
             display: inline-block;
             min-width: 100%;
-            height: 16px;
+            height: 14px;
             border-bottom: 1px dotted transparent;
         }
 
         .items-table tbody td {
-            height: 34px;
+            height: 30px;
         }
 
         .items-table tbody tr:last-child td,
@@ -257,12 +280,12 @@
         }
 
         .obs-text {
-            margin-top: 18px;
-            margin-bottom: 34px;
+            margin-top: 14px;
+            margin-bottom: 22px;
             font-size: 12px;
             color: #444;
-            line-height: 1.55;
-            min-height: 48px;
+            line-height: 1.45;
+            min-height: 38px;
         }
 
         .signatures {
@@ -270,7 +293,7 @@
             grid-template-columns: 1fr 1fr;
             gap: 56px;
             text-align: center;
-            margin-top: 56px;
+            margin-top: 46px;
         }
 
         .signature-line {
@@ -297,10 +320,6 @@
             font-weight: 700;
         }
 
-        .word-only {
-            display: none;
-        }
-
         @media (max-width: 900px) {
             .page-wrap {
                 padding: 14px;
@@ -318,6 +337,16 @@
             .doc-logo,
             .doc-right {
                 justify-content: center;
+                align-items: center;
+                text-align: center;
+            }
+
+            .logo-box {
+                justify-content: center;
+            }
+
+            .doc-way,
+            .doc-right-date {
                 text-align: center;
             }
 
@@ -344,7 +373,7 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 6mm;
+                margin: 3mm;
             }
 
             html,
@@ -370,8 +399,8 @@
                 border: none !important;
                 border-radius: 0 !important;
                 box-shadow: none !important;
-                margin: 0 0 6mm 0 !important;
-                padding: 4mm 5mm !important;
+                margin: 0 0 2mm 0 !important;
+                padding: 1.5mm 2.2mm !important;
                 page-break-after: always;
                 break-after: page;
             }
@@ -382,24 +411,51 @@
             }
 
             .doc-header {
-                grid-template-columns: 220px 1fr 220px !important;
-                gap: 10px !important;
-                margin-bottom: 10px !important;
-                padding-bottom: 8px !important;
+                grid-template-columns: 170px 1fr 235px !important;
+                gap: 4px !important;
+                align-items: start !important;
+                margin-bottom: 6px !important;
+                padding-bottom: 6px !important;
+            }
+
+            .doc-logo {
+                justify-content: flex-start !important;
+                align-items: flex-start !important;
             }
 
             .logo-box {
-                width: 165px !important;
-                height: 64px !important;
-                font-size: 11px !important;
+                width: 155px !important;
+                height: 62px !important;
+                justify-content: flex-start !important;
+                align-items: flex-start !important;
+                padding: 0 !important;
+                margin: 0 !important;
             }
 
-            .doc-title {
-                font-size: 19px !important;
+            .logo-box img {
+                width: 150px !important;
+                height: 62px !important;
+                object-fit: contain !important;
+                object-position: left center !important;
+                margin-left: 0 !important;
             }
 
-            .doc-subtitle {
-                font-size: 12px !important;
+            .doc-title,
+            .ordem-center h1 {
+                font-size: 18px !important;
+                line-height: 1.1 !important;
+                margin: 0 !important;
+            }
+
+            .doc-subtitle,
+            .ordem-center h2 {
+                font-size: 11.5px !important;
+                margin: 2px 0 0 !important;
+            }
+
+            .ordem-center div {
+                font-size: 10px !important;
+                margin-top: 4px !important;
             }
 
             .doc-meta-center,
@@ -408,37 +464,92 @@
                 font-size: 10px !important;
             }
 
+            .doc-right {
+                align-items: flex-end !important;
+                text-align: right !important;
+                padding-right: 0 !important;
+                margin-right: 0 !important;
+            }
+
+            .doc-way {
+                width: 100% !important;
+                text-align: right !important;
+                margin-bottom: 4px !important;
+            }
+
+            .doc-right-box {
+                min-width: 160px !important;
+                width: 160px !important;
+                padding: 5px 10px !important;
+            }
+
+            .doc-right-label {
+                font-size: 9px !important;
+            }
+
             .doc-right-number {
-                font-size: 21px !important;
+                font-size: 20px !important;
+            }
+
+            .doc-right-date {
+                margin-top: 5px !important;
+                text-align: right !important;
+                white-space: nowrap !important;
+            }
+
+            .info-wrap {
+                margin-bottom: 8px !important;
             }
 
             .info-table,
             .items-table {
                 min-width: 0 !important;
-                font-size: 11px !important;
+                font-size: 10.5px !important;
+                width: 100% !important;
             }
 
             .info-table td,
             .items-table th,
             .items-table td {
-                padding: 4px 6px !important;
+                padding: 3px 5px !important;
+            }
+
+            .label-cell {
+                font-size: 9.5px !important;
             }
 
             .section-title {
                 font-size: 10px !important;
-                margin: 12px 0 5px !important;
+                margin: 8px 0 4px !important;
+            }
+
+            .items-table tbody td {
+                height: 24px !important;
             }
 
             .signatures {
                 grid-template-columns: 1fr 1fr !important;
-                gap: 56px !important;
-                margin-top: 46px !important;
+                gap: 52px !important;
+                margin-top: 34px !important;
+            }
+
+            .signature-line {
+                padding-top: 8px !important;
+            }
+
+            .signature-title {
+                font-size: 11px !important;
+            }
+
+            .signature-subtitle {
+                font-size: 9px !important;
             }
 
             .obs-text {
-                font-size: 11px !important;
-                margin-top: 14px !important;
-                margin-bottom: 26px !important;
+                font-size: 10px !important;
+                margin-top: 10px !important;
+                margin-bottom: 18px !important;
+                min-height: 28px !important;
             }
         }
     </style>
@@ -458,15 +569,17 @@
                 <div class="doc-header">
                     <div class="doc-logo">
                         <div class="logo-box">
-                            <img src="./assets/img/prefeitura.jpg" alt="" style="width: 120px; height: 60px;">
+                            <img src="./assets/img/prefeitura.jpg" alt="Logo Prefeitura">
                         </div>
                     </div>
 
                     <div class="ordem-center">
-                        <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                        <h1
+                            style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
                             PREFEITURA MUNICIPAL DE COARI
                         </h1>
-                        <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                        <h2
+                            style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
                             Ordem de Aquisição e Suprimentos
                         </h2>
                         <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
@@ -516,16 +629,59 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor Total R$</td>
+                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">
+                                    Valor Total R$</td>
                                 <td style="text-align:right; font-weight:900;">________________</td>
                             </tr>
                         </tfoot>
@@ -553,15 +709,17 @@
                 <div class="doc-header">
                     <div class="doc-logo">
                         <div class="logo-box">
-                            <img src="./assets/img/prefeitura.jpg" alt="" style="width: 120px; height: 60px;">
+                            <img src="./assets/img/prefeitura.jpg" alt="Logo Prefeitura">
                         </div>
                     </div>
 
                     <div class="ordem-center">
-                        <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                        <h1
+                            style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
                             PREFEITURA MUNICIPAL DE COARI
                         </h1>
-                        <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                        <h2
+                            style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
                             Ordem de Aquisição e Suprimentos
                         </h2>
                         <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
@@ -611,16 +769,59 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
-                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td></td>
+                                <td style="text-align:right;"></td>
+                                <td style="text-align:right;"></td>
+                            </tr>
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor Total R$</td>
+                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">
+                                    Valor Total R$</td>
                                 <td style="text-align:right; font-weight:900;">________________</td>
                             </tr>
                         </tfoot>
@@ -635,7 +836,7 @@
                     ____________________________________________________________________________________________
                 </div>
 
-                <div class="signatures" style="margin-top: 44px;">
+                <div class="signatures" style="margin-top: 40px;">
                     <div>
                         <div class="signature-line">
                             <div class="signature-title">RECEBEDOR</div>
@@ -658,7 +859,6 @@
             try {
                 const src = imgElement.getAttribute('src');
                 if (!src) return '';
-
                 const response = await fetch(src);
                 const blob = await response.blob();
 
@@ -668,377 +868,292 @@
                     reader.readAsDataURL(blob);
                 });
             } catch (e) {
-                return imgElement.src || '';
+                return imgElement?.src || '';
             }
         }
 
-        function getDocSectionWordHTML({
-            via = '',
-            titulo = 'ORDEM DE AQUISIÇÃO E SUPRIMENTOS',
-            logoSrc = ''
-        }) {
-            return `
-                <div class="word-document">
-                    <table class="word-header-table">
-                        <tr>
-                            <td class="word-logo-cell">
-                                ${logoSrc ? `<img src="${logoSrc}" class="word-logo" alt="Logo">` : ''}
-                            </td>
-                            <td class="word-center-cell">
-                                <div class="word-title">PREFEITURA MUNICIPAL DE COARI</div>
-                                <div class="word-subtitle">${titulo}</div>
-                                <div class="word-meta">COARI - AM | CNPJ: 00.000.000/0001-00</div>
-                            </td>
-                            <td class="word-right-cell">
-                                <div class="word-via">${via}</div>
-                                <table class="word-num-box">
-                                    <tr>
-                                        <td class="word-num-label">ORDEM Nº</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="word-num-value">________</td>
-                                    </tr>
-                                </table>
-                                <div class="word-date">DATA: ____/____/________ | ____:____</div>
-                            </td>
-                        </tr>
-                    </table>
+        async function prepararConteudoParaWord() {
+            const cloneContainer = document.getElementById('conteudo-word').cloneNode(true);
 
-                    <table class="word-info-table">
-                        <tr>
-                            <td class="word-label" style="width:15%;">FORNECEDOR:</td>
-                            <td style="width:35%;">&nbsp;</td>
-                            <td class="word-label" style="width:30%;">LOCAL E DATA DE EMISSÃO:</td>
-                            <td style="width:20%;">&nbsp;</td>
-                        </tr>
-                        <tr>
-                            <td class="word-label">PARA:</td>
-                            <td>&nbsp;</td>
-                            <td class="word-label">REFERÊNCIA:</td>
-                            <td>&nbsp;</td>
-                        </tr>
-                    </table>
+            const imagens = cloneContainer.querySelectorAll('img');
+            for (const img of imagens) {
+                try {
+                    const originalImg = document.querySelector(`img[src="${img.getAttribute('src')}"]`);
+                    const dataUrl = await imageToDataURL(originalImg || img);
+                    if (dataUrl) {
+                        img.setAttribute('src', dataUrl);
+                    }
+                } catch (e) { }
+            }
 
-                    <div class="word-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</div>
-
-                    <table class="word-items-table">
-                        <thead>
-                            <tr>
-                                <th style="width:50px;">ITEM</th>
-                                <th style="width:60px;">UNID.</th>
-                                <th style="width:70px;">QTD</th>
-                                <th>ESPECIFICAÇÃO COMPLETA</th>
-                                <th style="width:120px;">PREÇO UNITÁRIO</th>
-                                <th style="width:120px;">VALOR TOTAL</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="5" class="word-total-label">VALOR TOTAL R$</td>
-                                <td class="word-total-value">________________</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-
-                    ${via === 'VIA FORNECEDOR' ? `
-                        <div class="word-obs">
-                            <strong>Observações / orientações de entrega:</strong><br><br>
-                            ____________________________________________________________________________________________<br>
-                            ____________________________________________________________________________________________
-                        </div>
-                    ` : ''}
-
-                    <table class="word-sign-table">
-                        <tr>
-                            <td class="word-sign-cell">
-                                <div class="word-sign-line"></div>
-                                <div class="word-sign-title">RECEBEDOR</div>
-                                <div class="word-sign-subtitle">AUTORIZAÇÃO DE SAÍDA</div>
-                            </td>
-                            <td class="word-sign-gap"></td>
-                            <td class="word-sign-cell">
-                                <div class="word-sign-line"></div>
-                                <div class="word-sign-title">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                                <div class="word-sign-subtitle">ASSINATURA E CARIMBO</div>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            `;
+            return cloneContainer.innerHTML;
         }
 
         async function exportarWordMesmoLayout() {
-            const firstLogo = document.querySelector('.logo-box img');
-            let logoData = '';
-
-            if (firstLogo) {
-                logoData = await imageToDataURL(firstLogo);
-            }
+            const conteudo = await prepararConteudoParaWord();
 
             const cssWord = `
                 <style>
+                    * { box-sizing: border-box; }
+
                     @page {
                         size: A4 portrait;
-                        margin: 10mm;
+                        margin: 3mm;
                     }
 
-                    body {
-                        font-family: Arial, Helvetica, sans-serif;
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                        background: #fff;
                         color: #000;
+                        font-family: Arial, Helvetica, sans-serif;
+                    }
+
+                    .page-wrap {
+                        width: 100%;
+                        max-width: 100%;
                         margin: 0;
                         padding: 0;
                     }
 
-                    .word-document {
-                        width: 100%;
-                        page-break-after: always;
-                        margin-bottom: 14px;
+                    .toolbar {
+                        display: none !important;
                     }
 
-                    .word-document:last-child {
+                    .document {
+                        background: #fff;
+                        border: none !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        padding: 1.5mm 2.2mm !important;
+                        margin: 0 0 2mm 0 !important;
+                        overflow: visible;
+                        page-break-after: always;
+                    }
+
+                    .document:last-child {
                         page-break-after: auto;
                     }
 
-                    .word-header-table,
-                    .word-info-table,
-                    .word-items-table,
-                    .word-sign-table,
-                    .word-num-box {
-                        border-collapse: collapse;
+                    .doc-header {
+                        display: grid;
+                        grid-template-columns: 170px 1fr 235px;
+                        gap: 4px;
+                        align-items: start;
+                        border-bottom: 2px solid #000;
+                        padding-bottom: 6px;
+                        margin-bottom: 6px;
+                    }
+
+                    .doc-logo {
+                        display: flex;
+                        align-items: flex-start;
+                        justify-content: flex-start;
+                        min-height: 62px;
+                    }
+
+                    .logo-box {
+                        width: 155px;
+                        height: 62px;
+                        display: flex;
+                        align-items: flex-start;
+                        justify-content: flex-start;
+                        padding: 0;
+                        margin: 0;
+                    }
+
+                    .logo-box img {
+                        width: 150px !important;
+                        height: 62px !important;
+                        object-fit: contain;
+                        object-position: left center;
+                        display: block;
+                    }
+
+                    .ordem-center {
+                        text-align: center;
+                    }
+
+                    .ordem-center h1 {
+                        font-size: 18px !important;
+                        line-height: 1.1 !important;
+                        margin: 0 !important;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                    }
+
+                    .ordem-center h2 {
+                        font-size: 11.5px !important;
+                        margin: 2px 0 0 !important;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        color: #333;
+                    }
+
+                    .ordem-center > div {
+                        font-size: 10px !important;
+                        margin-top: 4px !important;
+                        color: #666 !important;
+                        font-weight: 600 !important;
+                    }
+
+                    .doc-right {
+                        text-align: right;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: flex-end;
+                        justify-content: flex-start;
+                    }
+
+                    .doc-way {
+                        margin-bottom: 4px;
+                        font-size: 10px;
+                        font-weight: 800;
+                        color: #000;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        text-align: right;
                         width: 100%;
                     }
 
-                    .word-header-table {
-                        border-bottom: 2px solid #000;
-                        margin-bottom: 10px;
-                    }
-
-                    .word-header-table td {
-                        vertical-align: middle;
-                    }
-
-                    .word-logo-cell {
-                        width: 190px;
-                        text-align: left;
-                    }
-
-                    .word-center-cell {
+                    .doc-right-box {
+                        display: inline-block;
+                        border: 1.5px solid #000;
+                        padding: 5px 10px;
                         text-align: center;
-                        padding: 0 10px;
+                        min-width: 160px;
+                        width: 160px;
                     }
 
-                    .word-right-cell {
-                        width: 210px;
-                        text-align: right;
-                    }
-
-                    .word-logo {
-                        width: 120px;
-                        height: 60px;
-                        object-fit: contain;
-                    }
-
-                    .word-title {
-                        font-size: 22px;
+                    .doc-right-label {
+                        font-size: 9px;
                         font-weight: 800;
                         text-transform: uppercase;
+                        margin-bottom: 2px;
                     }
 
-                    .word-subtitle {
-                        font-size: 14px;
-                        font-weight: 700;
-                        text-transform: uppercase;
-                        margin-top: 4px;
+                    .doc-right-number {
+                        font-size: 20px;
+                        font-weight: 900;
+                        line-height: 1.05;
                     }
 
-                    .word-meta {
-                        font-size: 12px;
+                    .doc-right-date {
+                        margin-top: 5px;
+                        font-size: 10px;
                         font-weight: 700;
                         color: #444;
-                        margin-top: 6px;
+                        text-transform: uppercase;
+                        text-align: right;
+                        width: 100%;
+                        white-space: nowrap;
                     }
 
-                    .word-via {
-                        font-size: 11px;
-                        font-weight: 800;
-                        text-transform: uppercase;
-                        color: #666;
+                    .info-wrap,
+                    .items-wrap {
+                        width: 100%;
+                    }
+
+                    .info-wrap {
                         margin-bottom: 8px;
-                        letter-spacing: 1px;
                     }
 
-                    .word-num-box {
-                        width: 150px;
-                        margin-left: auto;
-                        border: 1.5px solid #000;
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
                     }
 
-                    .word-num-box td {
-                        text-align: center;
-                        border: none;
-                        padding: 4px 6px;
+                    .info-table,
+                    .items-table {
+                        font-size: 10.5px;
+                        min-width: 0 !important;
                     }
 
-                    .word-num-label {
-                        font-size: 10px;
-                        font-weight: 800;
-                        text-transform: uppercase;
-                    }
-
-                    .word-num-value {
-                        font-size: 22px;
-                        font-weight: 900;
-                    }
-
-                    .word-date {
-                        margin-top: 8px;
-                        font-size: 11px;
-                        font-weight: 700;
-                        color: #555;
-                        text-transform: uppercase;
-                    }
-
-                    .word-info-table {
-                        margin-bottom: 12px;
-                    }
-
-                    .word-info-table td {
+                    .info-table td,
+                    .items-table th,
+                    .items-table td {
                         border: 1px solid #000;
-                        padding: 7px 8px;
-                        font-size: 13px;
+                        padding: 3px 5px;
                         vertical-align: middle;
                     }
 
-                    .word-label {
+                    .label-cell,
+                    .items-table thead tr,
+                    .items-table tfoot tr {
                         background: #f1f1f1;
-                        font-size: 11px !important;
+                    }
+
+                    .label-cell {
+                        font-size: 9.5px;
                         font-weight: 800;
                         text-transform: uppercase;
                         white-space: nowrap;
                     }
 
-                    .word-section-title {
-                        font-size: 12px;
+                    .section-title {
+                        margin: 8px 0 4px;
+                        font-size: 10px;
                         font-weight: 800;
                         text-transform: uppercase;
                         color: #333;
-                        margin: 12px 0 8px;
                     }
 
-                    .word-items-table {
-                        border: 1px solid #000;
+                    .line-placeholder {
+                        display: inline-block;
+                        min-width: 100%;
+                        height: 12px;
                     }
 
-                    .word-items-table th,
-                    .word-items-table td {
-                        border: 1px solid #000;
-                        padding: 7px 8px;
-                        font-size: 13px;
-                        vertical-align: middle;
+                    .items-table tbody td {
+                        height: 24px;
                     }
 
-                    .word-items-table thead th,
-                    .word-items-table tfoot td {
-                        background: #f1f1f1;
+                    .items-table tbody tr:last-child td,
+                    .items-table tfoot td {
+                        border-bottom: 1px solid #000 !important;
                     }
 
-                    .word-items-table th {
-                        font-weight: 800;
-                        text-transform: uppercase;
-                        text-align: center;
-                    }
-
-                    .word-items-table tbody td {
-                        height: 34px;
-                    }
-
-                    .word-items-table tbody td:nth-child(1),
-                    .word-items-table tbody td:nth-child(2),
-                    .word-items-table tbody td:nth-child(3) {
-                        text-align: center;
-                    }
-
-                    .word-items-table tbody td:nth-child(5),
-                    .word-items-table tbody td:nth-child(6),
-                    .word-items-table thead th:nth-child(5),
-                    .word-items-table thead th:nth-child(6) {
-                        text-align: right;
-                    }
-
-                    .word-total-label {
-                        text-align: right;
-                        font-weight: 800;
-                        text-transform: uppercase;
-                    }
-
-                    .word-total-value {
-                        text-align: right;
-                        font-weight: 900;
-                    }
-
-                    .word-obs {
-                        margin-top: 18px;
-                        margin-bottom: 34px;
-                        font-size: 12px;
-                        color: #444;
-                        line-height: 1.55;
-                        min-height: 48px;
-                    }
-
-                    .word-sign-table {
-                        margin-top: 56px;
-                    }
-
-                    .word-sign-cell {
-                        width: 45%;
-                        text-align: center;
-                        vertical-align: top;
-                    }
-
-                    .word-sign-gap {
-                        width: 10%;
-                    }
-
-                    .word-sign-line {
-                        border-top: 1.5px solid #000;
-                        height: 10px;
-                        width: 100%;
-                    }
-
-                    .word-sign-title {
-                        font-size: 14px;
-                        font-weight: 800;
-                    }
-
-                    .word-sign-subtitle {
-                        margin-top: 4px;
+                    .obs-text {
+                        margin-top: 10px;
+                        margin-bottom: 18px;
                         font-size: 10px;
+                        color: #444;
+                        line-height: 1.4;
+                        min-height: 28px;
+                    }
+
+                    .signatures {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 52px;
+                        text-align: center;
+                        margin-top: 34px;
+                    }
+
+                    .signature-line {
+                        border-top: 1.5px solid #000;
+                        padding-top: 8px;
+                        min-height: 36px;
+                    }
+
+                    .signature-title {
+                        font-size: 11px;
+                        font-weight: 800;
+                    }
+
+                    .signature-subtitle {
+                        margin-top: 4px;
+                        font-size: 9px;
                         font-weight: 700;
                         color: #555;
                         text-transform: uppercase;
                     }
-                </style>
-            `;
 
-            const bodyWord = `
-                ${getDocSectionWordHTML({
-                    via: 'VIA ADMINISTRATIVA',
-                    titulo: 'ORDEM DE AQUISIÇÃO E SUPRIMENTOS',
-                    logoSrc: logoData
-                })}
-                ${getDocSectionWordHTML({
-                    via: 'VIA FORNECEDOR',
-                    titulo: 'ORDEM DE AQUISIÇÃO E SUPRIMENTOS',
-                    logoSrc: logoData
-                })}
+                    .muted-fill {
+                        color: #999;
+                        font-weight: 700;
+                    }
+                </style>
             `;
 
             const htmlCompleto = `
@@ -1051,7 +1166,9 @@
                     ${cssWord}
                 </head>
                 <body>
-                    ${bodyWord}
+                    <div class="page-wrap">
+                        ${conteudo}
+                    </div>
                 </body>
                 </html>
             `;
