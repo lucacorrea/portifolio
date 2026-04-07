@@ -168,6 +168,117 @@ include 'views/layout/header.php';
             justify-content: center;
         }
     }
+
+    /* Dropdown Actions Styles */
+    .dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        z-index: 9999;
+        display: none !important;
+        min-width: 200px;
+        padding: 0.5rem 0;
+        margin-top: 0.25rem;
+        background-color: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .dropdown-menu.show {
+        display: block !important;
+        animation: dropdownFadeIn 0.2s ease-out;
+    }
+
+    /* Versão Dropup */
+    .dropdown-menu.dropup {
+        top: auto !important;
+        bottom: 100% !important;
+        margin-top: 0 !important;
+        margin-bottom: 0.25rem !important;
+        animation: dropdownFadeUp 0.2s ease-out !important;
+    }
+
+    @keyframes dropdownFadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes dropdownFadeUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        color: var(--text-dark) !important;
+        text-decoration: none !important;
+        font-weight: 500;
+        font-size: 0.825rem;
+        transition: all 0.2s;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        padding-right: 2rem;
+    }
+
+    .dropdown-item:hover {
+        background-color: var(--primary-light);
+        color: var(--primary) !important;
+    }
+
+    .dropdown-item i {
+        width: 16px;
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .dropdown-item:hover i {
+        color: var(--primary);
+    }
+
+    .btn-three-dots {
+        background: #fff;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    .btn-three-dots:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    /* Fix table clipping */
+    .lista-table-wrap {
+        overflow-x: auto !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .lista-table td {
+        position: relative;
+    }
 </style>
 
 <div class="card no-print">
@@ -263,18 +374,25 @@ include 'views/layout/header.php';
                             </td>
                             <td style="text-align: right;">
                                 <div class="acoes-wrap">
-                                    <a href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar Detalhes">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-
-                                    <?php if ($aq['status'] === 'AGUARDANDO ENTREGA'): ?>
-                                        <a href="aquisicao_editar.php?id=<?php echo (int)$aq['id']; ?>" class="btn btn-outline btn-sm" style="color: #2fb344; border-color: #2fb344;" title="Lançar Valores (Orçamento)">
-                                            <i class="fas fa-dollar-sign"></i>
-                                        </a>
-                                        <a href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" class="btn btn-outline btn-sm" style="color: var(--status-finalized); border-color: var(--status-finalized);" title="Marcar como Recebido" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
-                                            <i class="fas fa-check-circle"></i>
-                                        </a>
-                                    <?php endif; ?>
+                                    <div class="dropdown">
+                                        <button class="btn-three-dots" data-dropdown-toggle title="Ações">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
+                                                <i class="fas fa-eye"></i> Visualizar
+                                            </a>
+                                            
+                                            <?php if ($aq['status'] === 'AGUARDANDO ENTREGA'): ?>
+                                                <a class="dropdown-item" href="aquisicao_editar.php?id=<?php echo (int)$aq['id']; ?>" style="color: #2fb344 !important;">
+                                                    <i class="fas fa-dollar-sign"></i> Lançar Valores (Orçamento)
+                                                </a>
+                                                <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized) !important;" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
+                                                    <i class="fas fa-check-circle"></i> Marcar como Recebido
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
