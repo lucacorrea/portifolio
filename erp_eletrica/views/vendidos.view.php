@@ -307,7 +307,7 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg">
                                 <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="viewDetail(${s.id})"><i class="fas fa-eye me-2 text-primary"></i>Ver Detalhes</a></li>
-                                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="printSale(${s.id}, '${s.tipo_nota}')"><i class="fas fa-print me-2 text-muted"></i>Imprimir Nota</a></li>
+                                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="printSale(${s.id}, '${s.tipo_nota}', '${s.chave_acesso || ''}')"><i class="fas fa-print me-2 text-muted"></i>Imprimir Nota</a></li>
                                 ${s.status === 'concluido' ? `
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="openCancelModal(${s.id}, '${s.tipo_nota}')"><i class="fas fa-times me-2"></i>Cancelar Venda</a></li>
@@ -352,6 +352,22 @@
         }
 
         // --- Interaction Handlers ---
+        // Debounce helper
+        let debounceTimer;
+        function debounceSearch() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                loadSales(1);
+            }, 400);
+        }
+
+        // Automatic filtering on change/input
+        filterForm.querySelectorAll('select, input[type="date"]').forEach(input => {
+            input.addEventListener('change', () => loadSales(1));
+        });
+
+        filterForm.querySelector('input[name="search"]').addEventListener('input', debounceSearch);
+
         filterForm.addEventListener('submit', function(e) {
             e.preventDefault();
             loadSales(1);
@@ -388,14 +404,15 @@
                     </tr>
                 `).join('');
 
-                document.getElementById('det-print-btn').innerHTML = `<button class="btn btn-primary px-4 rounded-pill" onclick="printSale(${s.id}, '${s.tipo_nota}')"><i class="fas fa-print me-2"></i>Imprimir ${s.tipo_nota === 'fiscal' ? 'NFC-e' : 'Recibo'}</button>`;
+                document.getElementById('det-print-btn').innerHTML = `<button class="btn btn-primary px-4 rounded-pill" onclick="printSale(${s.id}, '${s.tipo_nota}', '${s.chave_acesso || ''}')"><i class="fas fa-print me-2"></i>Imprimir ${s.tipo_nota === 'fiscal' ? 'NFC-e' : 'Recibo'}</button>`;
                 
                 new bootstrap.Modal('#modalDetail').show();
             }
         };
 
-        window.printSale = function(id, tipo) {
-            const url = tipo === 'fiscal' ? `danfe_nfce.php?venda_id=${id}` : `recibo_venda.php?id=${id}`;
+        window.printSale = function(id, tipo, chave = '') {
+            let url = tipo === 'fiscal' ? `danfe_nfce.php?venda_id=${id}` : `recibo_venda.php?id=${id}`;
+            if (tipo === 'fiscal' && chave) url += `&chave=${chave}`;
             window.open(url, '_blank');
         };
 

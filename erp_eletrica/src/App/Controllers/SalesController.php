@@ -431,8 +431,8 @@ class SalesController extends BaseController {
 
     public function sold_list() {
         $filterDefaults = [
-            'data_inicio' => date('Y-m-01'),
-            'data_fim' => date('Y-m-d'),
+            'data_inicio' => '',
+            'data_fim' => '',
             'status' => '',
             'tipo_nota' => '',
             'forma_pagamento' => ''
@@ -448,7 +448,7 @@ class SalesController extends BaseController {
     public function sold_search() {
         $filters = $_GET;
         $page = (int)($filters['page'] ?? 1);
-        $perPage = (int)($filters['perPage'] ?? 15);
+        $perPage = (int)($filters['perPage'] ?? 9);
         
         $saleModel = new Sale();
         $sales = $saleModel->getFiltered($filters, $page, $perPage);
