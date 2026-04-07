@@ -286,7 +286,7 @@ class SefazConsultaService extends BaseService {
         foreach ($documentos as $doc) {
             try {
                 $stmt = $this->db->prepare("
-                    INSERT INTO nfe_importadas (filial_id, chave_acesso, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml, status)
+                    INSERT INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
                 ");
                 $stmt->execute([
@@ -299,11 +299,18 @@ class SefazConsultaService extends BaseService {
                     $doc['valor'],
                     $doc['xml']
                 ]);
-                $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $this->db->lastInsertId(), null, $doc['chave']);
-            } catch (Exception $e) {
-                // Provavelmente duplicidade (chave_acesso UNIQUE), ignoramos silenciosamente
+                $lastId = $this->db->lastInsertId();
+                if ($lastId) {
+                    $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $lastId, null, $doc['chave']);
+                }
+            } catch (\Exception $e) {
+                // Se o erro não for de duplicidade (SQLSTATE 23000), logamos para debug
+                if ($e->getCode() != '23000') {
+                    error_log("Erro ao salvar nota cache SEFAZ: " . $e->getMessage());
+                }
                 continue;
             }
         }
     }
+
 }

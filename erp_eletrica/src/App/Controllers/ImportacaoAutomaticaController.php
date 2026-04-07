@@ -22,6 +22,16 @@ class ImportacaoAutomaticaController extends BaseController {
         $stmt->execute([$filialId]);
         $fornecedores = $stmt->fetchAll();
 
+        // Popular as notas individuais para cada fornecedor (Ajuste para a View)
+        foreach ($fornecedores as &$f) {
+            $sqlNotas = "SELECT * FROM nfe_importadas 
+                         WHERE filial_id = ? AND fornecedor_cnpj = ? AND status = 'pendente'
+                         ORDER BY data_emissao DESC";
+            $stmtNotas = $db->prepare($sqlNotas);
+            $stmtNotas->execute([$filialId, $f['fornecedor_cnpj']]);
+            $f['notas'] = $stmtNotas->fetchAll();
+        }
+
         // Buscar última sincronização geral
         $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_last_sync_timestamp'");
         $stmt->execute();
@@ -97,7 +107,7 @@ class ImportacaoAutomaticaController extends BaseController {
             $stmt->execute([$_SESSION['filial_id'] ?? 1]);
             $cnpjFilial = $stmt->fetchColumn();
 
-            $service->manifestarNota($cnpjFilial, $nota['chave_acesso']);
+            $service->manifestarNota($cnpjFilial, $nota['chave_nfe']);
 
             // Após manifestar, precisamos sincronizar novamente para baixar o XML completo (procNFe)
             // A SEFAZ pode demorar alguns segundos, mas geralmente o próximo 'sincronizar' resolve.
@@ -113,17 +123,17 @@ class ImportacaoAutomaticaController extends BaseController {
         if (!$id) exit;
 
         $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT xml FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt = $db->prepare("SELECT xml_conteudo FROM nfe_importadas WHERE id = ? AND filial_id = ?");
         $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
         $nota = $stmt->fetch();
 
-        if (!$nota || empty($nota['xml'])) {
+        if (!$nota || empty($nota['xml_conteudo'])) {
             echo json_encode(['success' => false, 'error' => 'XML não encontrado.']);
             exit;
         }
 
         // Tentar ler o XML
-        $xml = simplexml_load_string($nota['xml']);
+        $xml = simplexml_load_string($nota['xml_conteudo']);
         if ($xml->getName() == 'resNFe') {
              echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo. (Funcionalidade de Manifestação Pendente)']);
              exit;
@@ -228,14 +238,14 @@ class ImportacaoAutomaticaController extends BaseController {
         if (!$id) exit;
 
         $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT xml, chave_acesso FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt = $db->prepare("SELECT xml_conteudo, chave_nfe FROM nfe_importadas WHERE id = ? AND filial_id = ?");
         $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
         $nota = $stmt->fetch();
 
-        if ($nota && !empty($nota['xml'])) {
+        if ($nota && !empty($nota['xml_conteudo'])) {
             header('Content-Type: text/xml');
-            header('Content-Disposition: attachment; filename="NFe_' . $nota['chave_acesso'] . '.xml"');
-            echo $nota['xml'];
+            header('Content-Disposition: attachment; filename="NFe_' . $nota['chave_nfe'] . '.xml"');
+            echo $nota['xml_conteudo'];
         }
         exit;
     }
