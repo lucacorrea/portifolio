@@ -60,4 +60,42 @@ class AccountReceivable extends BaseModel {
         ";
         return $this->query($sql, [$vendaId])->fetchAll();
     }
+
+    public function paginate($perPage = 15, $currentPage = 1, $order = "data_vencimento ASC", $filters = []) {
+        $filialId = $this->getFilialContext();
+        $offset = ($currentPage - 1) * $perPage;
+        
+        $where = "WHERE 1=1";
+        $params = [];
+        
+        if ($filialId) {
+            $where .= " AND cr.filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        // Count total
+        $total = $this->query("SELECT COUNT(*) FROM {$this->table} cr $where", $params)->fetchColumn();
+        $pages = ceil($total / $perPage);
+        
+        // Data with joins
+        $sql = "
+            SELECT cr.*, v.id as venda_id, c.nome as cliente_nome 
+            FROM {$this->table} cr 
+            LEFT JOIN vendas v ON cr.venda_id = v.id 
+            LEFT JOIN clientes c ON v.cliente_id = c.id 
+            $where 
+            ORDER BY $order 
+            LIMIT $perPage OFFSET $offset
+        ";
+        
+        $data = $this->query($sql, $params)->fetchAll();
+        
+        return [
+            'data' => $data,
+            'total' => $total,
+            'pages' => $pages,
+            'current' => $currentPage,
+            'per_page' => $perPage
+        ];
+    }
 }

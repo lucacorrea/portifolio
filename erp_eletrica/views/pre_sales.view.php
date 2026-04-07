@@ -32,7 +32,7 @@
             <!-- Product Preview -->
             <div class="col-md-3">
                 <div class="card border-0 shadow-sm h-100 text-center d-flex flex-column align-items-center justify-content-center p-3">
-                    <div id="pvPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border" style="width: 100px; height: 100px; overflow: hidden;">
+                    <div id="pvPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border product-zoom-container" style="width: 100px; height: 100px; overflow: hidden;">
                         <i class="fas fa-image fs-1 text-muted opacity-25"></i>
                     </div>
                     <div id="pvPreviewName" class="extra-small fw-bold text-uppercase text-muted">Aguardando...</div>
@@ -111,8 +111,11 @@
                     A pré-venda reserva o estoque temporariamente e gera um código para o caixa.
                 </div>
 
-                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-black" style="background-color: var(--erp-primary) !important;" onclick="generatePreSale()">
+                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-white mb-2" style="background-color: var(--erp-primary) !important;" onclick="generatePreSale()">
                     <i class="fas fa-check-circle me-2"></i>CONFIRMAR PRÉ-VENDA (F9)
+                </button>
+                <button class="btn btn-outline-danger w-100 py-2 fw-bold shadow-sm border-0" onclick="if(confirm('Tem certeza que deseja cancelar o orçamento atual e limpar a tela?')) location.reload()">
+                    <i class="fas fa-times me-2"></i>CANCELAR E LIMPAR
                 </button>
             </div>
         </div>
@@ -199,7 +202,7 @@ function renderPVSearchResults(products) {
 
 function showPvPreview(p) {
     if (p.imagens) {
-        pvPreviewImg.innerHTML = `<img src="public/uploads/produtos/${p.imagens}" style="width:100%; height:100%; object-fit:cover;" class="fade-in">`;
+        pvPreviewImg.innerHTML = `<img src="public/uploads/produtos/${p.imagens}" style="width:100%; height:100%; object-fit:contain; cursor:pointer;" class="fade-in" onclick="if(window.openLightbox) window.openLightbox(this.src)">`;
     } else {
         pvPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
     }

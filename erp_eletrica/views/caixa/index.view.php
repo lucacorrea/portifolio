@@ -43,7 +43,7 @@
                 <div class="card-body">
                     <div class="text-white-50 small fw-bold text-uppercase mb-2"><i class="fas fa-wallet me-2"></i>Saldo Gaveta</div>
                     <h3 class="mb-0 fw-bold text-white">
-                        <?= formatarMoeda($summary['dinheiro_em_gaveta']) ?>
+                        <?= formatarMoeda($caixaAberto['valor_abertura'] + $summary['dinheiro_em_gaveta']) ?>
                     </h3>
                     <div class="text-white-50 extra-small mt-2 fw-bold">Esperado Físico</div>
                 </div>
@@ -80,6 +80,15 @@
             </div>
         </div>
         
+        <div class="col">
+            <div class="card border-0 h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-arrow-up text-danger me-2"></i>Sangrias</div>
+                    <h5 class="mb-0 fw-bold text-danger">- <?= formatarMoeda($summary['sangrias']) ?></h5>
+                    <div class="text-muted extra-small mt-2">Retiradas do caixa</div>
+                </div>
+            </div>
+        </div>
     </div>
     <?php endif; ?>
 
@@ -119,7 +128,7 @@
                             <td><?= formatarMoeda($c['valor_abertura']) ?></td>
                             <td><?= $c['valor_fechamento'] ? formatarMoeda($c['valor_fechamento']) : '-' ?></td>
                             <td class="pe-4 text-end">
-                                <button class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></button>
+                                <a href="caixa.php?action=detalhes&id=<?= $c['id'] ?>" class="btn btn-sm btn-outline-primary" title="Ver detalhes"><i class="fas fa-eye"></i></a>
                             </td>
                         </tr>
                         <?php endforeach; ?>

@@ -35,4 +35,25 @@ class UserController extends BaseController {
             $this->redirect('usuarios.php?msg=Usuário salvo com sucesso');
         }
     }
+
+    public function toggle_status() {
+        $id = (int)($_GET['id'] ?? 0);
+        $status = (int)($_GET['status'] ?? 0);
+        if ($id > 0) {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("UPDATE usuarios SET ativo = ? WHERE id = ?");
+            $stmt->execute([$status, $id]);
+            $msg = $status ? 'Usuário desbloqueado com sucesso' : 'Usuário bloqueado com sucesso';
+            $this->redirect('usuarios.php?msg=' . urlencode($msg));
+        }
+    }
+
+    public function delete() {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id > 0) {
+            $userModel = new \App\Models\User();
+            $userModel->delete($id);
+            $this->redirect('usuarios.php?msg=' . urlencode('Usuário apagado com sucesso'));
+        }
+    }
 }

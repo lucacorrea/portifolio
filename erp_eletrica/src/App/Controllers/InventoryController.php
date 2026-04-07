@@ -35,6 +35,9 @@ class InventoryController extends BaseController {
         $allProducts = $productModel->all("nome ASC");
         $movements = $movementModel->getHistory(null, 20);
         $categories = $productModel->getCategories();
+        
+        $supplierModel = new \App\Models\Supplier();
+        $suppliers = $supplierModel->all("nome_fantasia ASC");
 
         $this->render('inventory', [
             'stats' => $stats,
@@ -43,6 +46,7 @@ class InventoryController extends BaseController {
             'pagination' => $pagination,
             'movements' => $movements,
             'categories' => $categories,
+            'suppliers' => $suppliers,
             'filters' => $filters
         ]);
     }

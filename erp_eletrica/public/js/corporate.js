@@ -1,15 +1,22 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Sidebar toggle for mobile
+    // Sidebar toggle for and desktop/mobile persistence
     const toggle = document.getElementById('sidebarToggle');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    
-    if (toggle && sidebar) {
-        toggle.addEventListener('click', () => {
+    const html = document.documentElement;
+
+    function toggleSidebar() {
+        if (window.innerWidth < 992) {
             sidebar.classList.toggle('active');
             if (overlay) overlay.classList.toggle('active');
-        });
+        } else {
+            html.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebar-collapsed', html.classList.contains('sidebar-collapsed'));
+        }
     }
+
+    if (toggle) toggle.addEventListener('click', toggleSidebar);
+
 
     if (overlay) {
         overlay.addEventListener('click', () => {
@@ -38,18 +45,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 5000);
 
-    // Form submission enhancement (Add CSRF and Lock button)
-    const forms = document.querySelectorAll('form');
-    forms.forEach(form => {
-        form.addEventListener('submit', function() {
-            const btn = form.querySelector('button[type="submit"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando...';
-            }
-            showLoader();
-        });
-    });
+});
+
+// Robust Zoom Modal (Bootstrap-based)
+window.openLightbox = function(src) {
+    if (!src || src.includes('fa-image') || src.includes('no-image')) return;
+
+    const modalEl = document.getElementById('erp-image-zoom-modal');
+    const modalImg = document.getElementById('erp-zoom-image-content');
+    
+    if (modalEl && modalImg) {
+        modalImg.src = src;
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+};
+
+// Attach click listener to zoom containers with improved robustness
+document.addEventListener('click', (e) => {
+    const zoomContainer = e.target.closest('.product-zoom-container');
+    if (zoomContainer) {
+        const img = zoomContainer.querySelector('img');
+        if (img && img.src) {
+            if (img.src.includes('fa-image') || img.src.includes('no-image')) return;
+            openLightbox(img.src);
+        }
+    }
 });
 
 // Global toggle password visibility

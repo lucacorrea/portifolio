@@ -1,7 +1,13 @@
 <?php
 namespace App\Services;
 
+use App\Config\Database;
+
 class FinancialService extends BaseService {
+    public function __construct() {
+        parent::__construct();
+        $this->db = Database::getInstance()->getConnection();
+    }
     public function getDRE($month, $year) {
         // 1. Receita Bruta (Total Vendas)
         $receitaBruta = $this->db->query("
@@ -25,9 +31,8 @@ class FinancialService extends BaseService {
         // 4. Despesas Operacionais (Contas a Pagar pagas no mês)
         $despesas = $this->db->query("
             SELECT SUM(valor) 
-            FROM financeiro_contas 
-            WHERE tipo = 'despesa' 
-            AND status = 'pago'
+            FROM contas_pagar 
+            WHERE status = 'pago'
             AND MONTH(data_pagamento) = $month 
             AND YEAR(data_pagamento) = $year
         ")->fetchColumn() ?: 0;

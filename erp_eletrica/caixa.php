@@ -15,6 +15,8 @@ if ($action === 'abrir') {
     $controller->registrarMovimentacao();
 } elseif ($action === 'validate_code') {
     $controller->validate_code();
+} elseif ($action === 'detalhes') {
+    $controller->detalhes();
 } else {
     $controller->index();
 }

@@ -36,10 +36,9 @@
                     </div>
                 </div>
             </div>
-            <!-- Product Preview Pane -->
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100 text-center d-flex flex-column align-items-center justify-content-center p-3">
-                    <div id="productPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border" style="width: 120px; height: 120px; overflow: hidden;">
+                    <div id="productPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border product-zoom-container" style="width: 120px; height: 120px; overflow: hidden;">
                         <i class="fas fa-image fs-1 text-muted opacity-25"></i>
                     </div>
                     <div id="productPreviewName" class="small fw-bold text-uppercase text-muted">Aguardando...</div>
@@ -81,8 +80,8 @@
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
         <div class="card border-0 glass-card h-100 d-flex flex-column" style="border: 1px solid var(--primary-color) !important;">
-            <div class="card-header bg-erp-primary text-white py-3 border-0">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Checkout SaaS</h5>
+            <div class="card-header bg-erp-primary py-3 border-0">
+                <h5 class="mb-0 fw-bold text-white"><i class="fas fa-cash-register me-2 text-white"></i>Checkout SaaS</h5>
             </div>
             <div class="card-body flex-grow-1">
                 <div class="mb-4">
@@ -471,7 +470,7 @@ function renderSearchResults(products) {
 
 function showPreview(p) {
     if (p.imagens) {
-        productPreviewImg.innerHTML = `<img src="public/uploads/produtos/${p.imagens}" style="width:100%; height:100%; object-fit:cover;" class="fade-in">`;
+        productPreviewImg.innerHTML = `<img src="public/uploads/produtos/${p.imagens}" style="width:100%; height:100%; object-fit:contain; cursor:pointer;" class="fade-in" onclick="if(window.openLightbox) window.openLightbox(this.src)">`;
     } else {
         productPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
     }
@@ -1169,7 +1168,15 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
     const existing = document.getElementById('modalSuccess');
     if (existing) existing.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('modalSuccess'));
+    
+    // Auto-clear customer to ensure UI is reset and add reload on close 
+    clearCustomer();
+    
+    const modalEl = document.getElementById('modalSuccess');
+    const modal = new bootstrap.Modal(modalEl);
+    modalEl.addEventListener('hidden.bs.modal', () => {
+        location.reload();
+    });
     modal.show();
 
     // For non-fiscal: auto-open print window

@@ -117,7 +117,6 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
     .top-logo {
         width: 98px;
         height: 98px;
-        border: 1px solid #8f8f8f;
         overflow: hidden;
         background: #fff;
         flex-shrink: 0;
@@ -127,7 +126,6 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
     .top-logo img {
         width: 100%;
         height: 100%;
-        object-fit: cover;
         display: block;
     }
 
@@ -166,7 +164,6 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
     }
 
     .photo-box {
-        border: 1px solid #8f8f8f;
         
         display: flex;
         align-items: flex-start;
@@ -176,7 +173,6 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
     }
 
     .photo-box .placeholder {
-        margin-top: 34px;
         font-size: 15px;
         line-height: 1.6;
         color: #666;
@@ -189,7 +185,7 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
         height: 126px;
         object-fit: cover;
         background: #fafafa;
-        margin-top: 4px;
+        margin-top: -35px;
     }
 
     .right-content {
@@ -465,7 +461,7 @@ $logoIgreja = 'assets/img/LOGO.jpeg';
                 </div>
 
                 <div class="right-content">
-                    <div class="form-title">INTEGRAÇÃO À MEMBRESIA</div>
+                    <div class="form-title">INTEGRAÇÃO À MEMBRASIA</div>
 
                     <div class="choice-row">
                         <div class="choice-item">( <?= marcado($ingresso, 'MUDANCA') ?> ) MUDANÇA</div>

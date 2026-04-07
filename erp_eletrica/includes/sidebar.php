@@ -3,7 +3,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header d-flex align-items-center justify-content-center p-3">
-        <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 90%; height: auto; max-height: 55px; filter: drop-shadow(0 0 5px rgba(255,193,7,0.2));">
+        <img src="logo_sistema_erp_eletrica.png?v=<?= time() ?>" alt="Centro do Eletricista" style="max-width: 90%; height: auto; max-height: 55px; filter: drop-shadow(0 0 5px rgba(255,193,7,0.2));">
     </div>
     
     <nav class="nav flex-column sidebar-menu">
@@ -24,6 +24,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
         </a>
+        <a href="vendidos.php" class="nav-link <?= $current_page == 'vendidos.php' ? 'active' : '' ?>">
+            <i class="fas fa-receipt"></i> <span>Histórico de Vendas</span>
+        </a>
         <a href="fiado.php" class="nav-link <?= $current_page == 'fiado.php' ? 'active' : '' ?>">
             <i class="fas fa-hand-holding-dollar"></i> <span>Gestão de Fiados</span>
         </a>
@@ -39,6 +42,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
         
         <a href="estoque.php" class="nav-link <?= $current_page == 'estoque.php' ? 'active' : '' ?>">
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
+        </a>
+        
+        <a href="transferencias.php" class="nav-link <?= $current_page == 'transferencias.php' ? 'active' : '' ?>">
+            <i class="fas fa-truck-fast"></i> <span>Transferências (B2B)</span>
         </a>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
@@ -73,26 +80,29 @@ $current_page = basename($_SERVER['PHP_SELF']);
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Financeiro</div>
         
-        <a href="financeiro.php" class="nav-link <?= $current_page == 'financeiro.php' ? 'active' : '' ?>">
+        <a href="financeiro.php" class="nav-link <?= ($current_page == 'financeiro.php' && !isset($_GET['action'])) ? 'active' : '' ?>">
             <i class="fas fa-wallet"></i> <span>Fluxo de Caixa</span>
         </a>
 
         <!-- Financial Reports Submenu -->
-        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#reportsSubmenu">
-            <i class="fa-solid fa-chart-pie"></i>
-            <span>Relatórios BI</span>
+        <?php 
+            $is_bi_report = $current_page == 'financeiro.php' && in_array($_GET['action'] ?? '', ['dre', 'abcCurve', 'delinquency']);
+        ?>
+        <a class="nav-link <?= $is_bi_report ? '' : 'collapsed' ?>" href="#" data-bs-toggle="collapse" data-bs-target="#reportsSubmenu" aria-expanded="<?= $is_bi_report ? 'true' : 'false' ?>">
+            <i class="fa-solid fa-chart-pie text-warning"></i>
+            <span class="<?= $is_bi_report ? 'fw-bold text-white' : '' ?>">Relatórios BI</span>
             <i class="fas fa-chevron-down ms-auto small opacity-50"></i>
         </a>
-        <div class="collapse ps-3" id="reportsSubmenu">
-            <nav class="nav flex-column">
-                <a class="nav-link extra-small py-1" href="financeiro.php?action=dre">
-                    <i class="fas fa-circle-notch me-1 extra-small"></i> DRE Mensal
+        <div class="collapse ps-3 <?= $is_bi_report ? 'show' : '' ?>" id="reportsSubmenu">
+            <nav class="nav flex-column border-start border-secondary border-opacity-25 ms-2">
+                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'dre' ? 'active text-warning fw-bold' : 'text-white-50' ?>" href="financeiro.php?action=dre">
+                    DRE Mensal
                 </a>
-                <a class="nav-link extra-small py-1" href="financeiro.php?action=abcCurve">
-                    <i class="fas fa-circle-notch me-1 extra-small"></i> Curva ABC Prod.
+                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'abcCurve' ? 'active text-warning fw-bold' : 'text-white-50' ?>" href="financeiro.php?action=abcCurve">
+                    Curva ABC Prod.
                 </a>
-                <a class="nav-link extra-small py-1" href="financeiro.php?action=delinquency">
-                    <i class="fas fa-circle-notch me-1 extra-small"></i> Inadimplência
+                <a class="nav-link extra-small py-2 <?= ($_GET['action'] ?? '') == 'delinquency' ? 'active text-warning fw-bold' : 'text-white-50' ?>" href="financeiro.php?action=delinquency">
+                    Inadimplência
                 </a>
             </nav>
         </div>

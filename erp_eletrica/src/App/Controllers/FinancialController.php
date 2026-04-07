@@ -16,14 +16,22 @@ class FinancialController extends BaseController {
         $receivableModel = new AccountReceivable();
         $payableModel = new AccountPayable();
 
+        // Pagination for Receivables
+        $pageReceber = (int)($_GET['p_receber'] ?? 1);
+        $receivables = $receivableModel->paginate(10, $pageReceber, "data_vencimento ASC");
+
+        // Pagination for Payables (Keeping it simple for now, but prepared)
+        $pagables = $payableModel->getRecent(); 
+
         $stats = [
             'areceber' => $receivableModel->getSummary()['total_pendente'],
             'apagar' => $payableModel->getSummary()['total_pendente']
         ];
 
         $this->render('financial/index', [
-            'contas_receber' => $receivableModel->getRecent(),
-            'contas_pagar' => $payableModel->getRecent(),
+            'contas_receber' => $receivables['data'],
+            'pagination_receber' => $receivables,
+            'contas_pagar' => $pagables,
             'stats' => $stats,
             'pageTitle' => 'Painel Financeiro & Fluxo de Caixa'
         ]);
@@ -53,11 +61,49 @@ class FinancialController extends BaseController {
             elseif ($cumulative <= 95) $res['class'] = 'B';
             else $res['class'] = 'C';
         }
-        $this->render('financial/abc_curve', ['results' => $results, 'pageTitle' => 'Curva ABC de Vendas']);
+
+        // Pagination
+        $perPage = 15;
+        $page = (int)($_GET['page'] ?? 1);
+        $totalResults = count($results);
+        $totalPages = ceil($totalResults / $perPage);
+        $page = max(1, min($page, $totalPages ?: 1));
+        $offset = ($page - 1) * $perPage;
+
+        $pagedResults = array_slice($results, $offset, $perPage);
+
+        $this->render('financial/abc_curve', [
+            'results' => $pagedResults, 
+            'pageTitle' => 'Curva ABC de Vendas',
+            'pagination' => [
+                'current' => $page,
+                'total_pages' => $totalPages,
+                'total_results' => $totalResults
+            ]
+        ]);
     }
 
     public function delinquency() {
         $report = $this->service->getDelinquencyReport();
-        $this->render('financial/delinquency', ['report' => $report, 'pageTitle' => 'Relatório de Inadimplência']);
+        
+        // Paging
+        $perPage = 15;
+        $page = (int)($_GET['page'] ?? 1);
+        $totalResults = count($report);
+        $totalPages = ceil($totalResults / $perPage);
+        $page = max(1, min($page, $totalPages ?: 1));
+        $offset = ($page - 1) * $perPage;
+
+        $pagedReport = array_slice($report, $offset, $perPage);
+
+        $this->render('financial/delinquency', [
+            'report' => $pagedReport, 
+            'pageTitle' => 'Relatório de Inadimplência',
+            'pagination' => [
+                'current' => $page,
+                'total_pages' => $totalPages,
+                'total_results' => $totalResults
+            ]
+        ]);
     }
 }

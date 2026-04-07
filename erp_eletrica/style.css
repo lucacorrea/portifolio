@@ -2,17 +2,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
 
 :root {
-    /* Prime Industrial Palette */
-    --primary-color: #FFC107;
-    --primary-hover: #FFB300;
-    --secondary-color: #000000;
-    --bg-main: #f8fafc;
-    --surface: #ffffff;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --success: #10b981;
-    --danger: #ef4444;
-    --warning: #FFC107;
+    /* Design System Refinado */
+    --primary-color: #2b4c7d;       /* Azul Navy Selecionado */
+    --primary-hover: #1e3a62;
+    --secondary-color: #2b4c7d;      /* Sidebar */
+    --bg-main: #94a3b8;              /* O Cinza Marcado na imagem */
+    --surface: #ffffff;             /* Cards Brancos */
+    --active-menu-font: #ffffff;    /* Fonte Branca no azul */
+    --text-primary: #1e293b;        /* Texto quase preto (Slate 900) */
+    --text-secondary: #64748b;      /* Texto de apoio (Slate 500) */
+    --success: #059669;             /* Verde Corporativo */
+    --danger: #dc2626;              /* Vermelho Corporativo */
+    --warning: #2b4c7d;
     --border: #e2e8f0;
 
     /* Corporate Aliases */
@@ -24,13 +25,13 @@
     --sidebar-collapsed: 80px;
     --header-height: 70px;
 
-    /* UX Tokens */
+    /* UX Tokens Suaves */
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 16px;
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -69,7 +70,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
 }
 
 /* Custom Scrollbar for Sidebar */
@@ -81,14 +82,14 @@ body {
 
 .sidebar::-webkit-scrollbar-track,
 .sidebar-menu::-webkit-scrollbar-track {
-    background: #000000 !important;
+    background: #1e3a62 !important; /* Azul escuro em vez de preto */
 }
 
 .sidebar::-webkit-scrollbar-thumb,
 .sidebar-menu::-webkit-scrollbar-thumb {
-    background: #666666 !important;
+    background: #475569 !important; /* Cinza slate para a barra */
     border-radius: 4px !important;
-    border: 1px solid #000000 !important;
+    border: 1px solid #1e3a62 !important;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover,
@@ -105,14 +106,14 @@ body {
     display: flex;
     align-items: center;
     padding: 0 25px;
-    background: #000000;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--secondary-color);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     white-space: nowrap;
 }
 
 .sidebar-header i {
     font-size: 1.8rem;
-    color: #FFC107;
+    color: white;
     min-width: 32px;
 }
 
@@ -150,7 +151,7 @@ body {
     display: flex;
     align-items: center;
     padding: 14px 25px;
-    color: rgba(255, 255, 255, 0.65);
+    color: #ffffff;
     text-decoration: none;
     transition: var(--transition);
     border-left: 4px solid transparent;
@@ -175,9 +176,9 @@ body {
 
 .sidebar-menu li:hover a,
 .sidebar-menu li.active a {
-    background: rgba(255, 255, 255, 0.1);
-    color: #FFC107;
-    border-left-color: #FFC107;
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--active-menu-font);
+    border-left-color: var(--active-menu-font);
 }
 
 /* Sidebar Section Titles Visibility */
@@ -189,7 +190,7 @@ body {
 }
 
 .sidebar-menu li.active a i {
-    color: #FFC107;
+    color: var(--active-menu-font);
 }
 
 /* Main Content Wrapper */
@@ -289,18 +290,19 @@ body {
 
 .stat-card {
     background: var(--surface);
-    padding: 25px;
+    padding: 20px;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
     display: flex;
     justify-content: space-between;
     align-items: center;
     border: 1px solid var(--border);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s ease;
+    min-height: 100px;
 }
 
 .stat-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-lg);
 }
 
@@ -314,10 +316,11 @@ body {
 
 .stat-value {
     font-family: 'Roboto Mono', monospace;
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
-    color: var(--secondary-color);
-    margin-top: 5px;
+    color: var(--text-primary);
+    margin-top: 2px;
+    white-space: nowrap;
 }
 
 .stat-icon {
@@ -331,23 +334,23 @@ body {
 }
 
 .stat-card.primary .stat-icon {
-    background: rgba(0, 86, 179, 0.1);
+    background: rgba(43, 76, 125, 0.1);
     color: var(--primary-color);
 }
 
 .stat-card.success .stat-icon {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(5, 150, 105, 0.1);
     color: var(--success);
 }
 
 .stat-card.danger .stat-icon {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(220, 38, 38, 0.1);
     color: var(--danger);
 }
 
 .stat-card.secondary .stat-icon {
-    background: rgba(74, 85, 104, 0.1);
-    color: var(--secondary-color);
+    background: rgba(100, 116, 139, 0.1);
+    color: var(--text-secondary);
 }
 
 /* Technical Tables */
@@ -518,7 +521,98 @@ body {
     color: var(--danger);
 }
 
+/* --- Reforço da Paleta Corporativa (Amarelo -> Azul) --- */
+.btn-warning, .btn-primary, .btn-erp-primary, .btn-success, .btn-danger {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+.btn-warning i, .btn-primary i, .btn-erp-primary i, .btn-success i, .btn-danger i {
+    color: #ffffff !important;
+}
+.bg-erp-primary {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+.text-erp-primary {
+    color: var(--primary-color) !important;
+}
+
+/* Forçar cores sólidas especificamente em Cards inteiros e Card-Headers */
+.card.bg-primary {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+.card.bg-secondary {
+    background-color: #475569 !important; /* Slate */
+    color: #ffffff !important;
+}
+.card-header.bg-erp-primary {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+
+.alert-warning {
+    background-color: rgba(43, 76, 125, 0.1) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+}
+
+/* Ajuste de Contraste do Menu Lateral */
+.sidebar-menu li.active a, .sidebar-menu li.active a i {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+    border-left-color: #ffffff !important;
+}
+.sidebar-menu .nav-link i {
+    color: rgba(255, 255, 255, 0.8) !important;
+    width: 20px;
+    text-align: center;
+}
+.sidebar-menu .nav-link:hover i, .sidebar-menu .nav-link.active i {
+    color: #ffffff !important;
+}
+
 .badge-warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--warning);
+    background: rgba(43, 76, 125, 0.15);
+    color: var(--primary-color);
+}
+
+/* --- Eye Comfort: Soft Surfaces --- */
+:root {
+    --erp-soft-bg: #f8fafc; /* Agora sutilmente mais claro que o fundo #f1f5f9 */
+}
+
+.card, .bg-white {
+    background-color: var(--erp-soft-bg) !important;
+}
+
+.table {
+    --bs-table-bg: var(--erp-soft-bg) !important;
+}
+
+.modal-content, .accordion-item, .accordion-button {
+    background-color: var(--erp-soft-bg) !important;
+}
+
+/* --- Fix for Internal Nav/Tabs Visibility --- */
+.nav-tabs .nav-link, .nav-pills .nav-link {
+    color: var(--text-primary) !important;
+    font-weight: 500;
+}
+.nav-tabs .nav-link.active, .nav-pills .nav-link.active {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+.nav-tabs .nav-link.active i, .nav-pills .nav-link.active i {
+    color: #ffffff !important;
+}
+.nav-tabs .nav-link:hover:not(.active), .nav-pills .nav-link:hover:not(.active) {
+    color: var(--primary-color) !important;
+    background-color: rgba(43, 76, 125, 0.05);
+}
+
+/* Fix text and icons inside selected radio buttons (Payment Methods, etc) */
+.btn-check:checked + .btn, .btn-check:checked + .btn i {
+    color: #ffffff !important;
 }

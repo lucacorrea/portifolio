@@ -12,8 +12,15 @@
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="public/css/corporate.css?v=5.5">
-    <link rel="stylesheet" href="style.css?v=5.5">
+    <link rel="stylesheet" href="public/css/corporate.css?v=10.4">
+    <link rel="stylesheet" href="style.css?v=10.4">
+    
+    <script>
+        // Critical: Apply sidebar state before rendering to avoid flash
+        if (localStorage.getItem('sidebar-collapsed') === 'true' && window.innerWidth >= 992) {
+            document.documentElement.classList.add('sidebar-collapsed');
+        }
+    </script>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -26,7 +33,7 @@
             <!-- Top Navbar -->
             <nav class="top-navbar px-4 border-0 mb-4 sticky-top">
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-light me-3 d-lg-none" id="sidebarToggle">
+                    <button class="btn btn-light me-3" id="sidebarToggle">
                         <i class="fas fa-bars"></i>
                     </button>
                     <div class="page-title-context">
@@ -82,9 +89,21 @@
         </div>
     </div>
 
+    <!-- Standard Bootstrap Zoom Modal (Guaranteed Compatibility) -->
+    <div class="modal fade" id="erp-image-zoom-modal" tabindex="-1" aria-hidden="true" style="z-index: 10001;">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content bg-transparent border-0 shadow-none">
+                <div class="modal-body p-0 text-center position-relative">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close" style="z-index: 10002;"></button>
+                    <img id="erp-zoom-image-content" src="" class="img-fluid rounded shadow-lg" style="max-height: 90vh; object-fit: contain;">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="public/js/corporate.js"></script>
-    <script src="script.js"></script>
+    <script src="public/js/corporate.js?v=<?= time() ?>"></script>
+    <script src="script.js?v=<?= time() ?>"></script>
 </body>
 </html>

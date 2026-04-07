@@ -1,15 +1,17 @@
 :root {
-    /* Primary Color Standardization (Blue Theme) */
-    --erp-primary: #FFC107;
-    --erp-primary-hover: #FFB300;
-    --erp-secondary: #000000;
-    --erp-success: #10b981;
-    --erp-danger: #ef4444;
-    --erp-warning: #FFC107;
+    /* Padronização Corporativa Refinada */
+    --erp-primary: #2b4c7d;
+    --erp-primary-hover: #1e3a62;
+    --erp-secondary: #2b4c7d;
+    --erp-success: #059669;
+    --erp-danger: #dc2626;
+    --erp-warning: #2b4c7d;
     --erp-dark: #1e293b;
-    --erp-light: #f8fafc;
-    --erp-glass: rgba(255, 255, 255, 0.7);
+    --erp-slate: #f1f5f9; /* Fundo Névoa */
+    --erp-light: #cbd5e1;
+    --erp-active-font: #ffffff;
     --erp-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --erp-surface: #f8fafc; /* Cards Ultra-Light */
 
     /* Technical Tokens (Sync with style.css) */
     --primary-color: var(--erp-primary);
@@ -31,14 +33,33 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #FFC107;
-    --bs-primary-rgb: 255, 193, 7;
-    --bs-link-color: #FFC107;
-    --bs-link-hover-color: #FFB300;
+    --bs-primary: #2b4c7d;
+    --bs-primary-rgb: 43, 76, 125;
+    --bs-link-color: #2b4c7d;
+    --bs-link-hover-color: #1e3a62;
 }
 
 body {
     overflow-x: hidden;
+}
+
+/* Custom Scrollbar for Corporate UI */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e3a62;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+    border: 1px solid #1e3a62;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
 }
 
 .erp-wrapper {
@@ -50,11 +71,21 @@ body {
 .sidebar {
     width: 260px;
     background: var(--erp-secondary);
-    /* Default, will be overridden by --erp-sidebar-bg if defined */
     border-right: 1px solid #e2e8f0;
-    transition: all 0.3s;
+    transition: all 0.3s ease-in-out;
     z-index: 1040;
-    /* Above Bootstrap sticky-top (1020) and fixed-top (1030) */
+    position: fixed;
+    left: 0;
+    height: 100vh;
+    transform: translateX(0);
+    visibility: visible;
+    opacity: 1;
+}
+
+.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+    visibility: hidden;
+    opacity: 0;
 }
 
 .sidebar-header {
@@ -62,9 +93,9 @@ body {
     border-bottom: 1px solid #f1f5f9;
 }
 
-.nav-link {
+.sidebar .nav-link {
     padding: 0.8rem 1.5rem;
-    color: #64748b;
+    color: #ffffff;
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -72,10 +103,10 @@ body {
     transition: all 0.2s;
 }
 
-.nav-link:hover,
-.nav-link.active {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--erp-primary);
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: var(--erp-active-font) !important;
 }
 
 .nav-link i {
@@ -95,14 +126,19 @@ body {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    margin-left: 260px !important;
-    transition: margin-left 0.3s;
-    background-color: #f8fafc !important;
+    margin-left: 260px;
+    transition: margin-left 0.3s ease-in-out;
+    background-color: var(--erp-light) !important;
+}
+
+.sidebar-collapsed .main-wrapper {
+    margin-left: 0;
+    width: 100%;
 }
 
 .top-navbar {
     height: 70px;
-    background: #ffffff !important;
+    background: var(--erp-surface) !important;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
@@ -117,23 +153,16 @@ body {
 
 /* Enhanced Cards */
 .card {
-    background-color: #ffffff !important;
+    background-color: var(--erp-surface);
     border-radius: 0.75rem;
-    border: 1px solid #e2e8f0 !important;
-    box-shadow: var(--erp-card-shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.card * {
-    color: #1e293b !important;
-}
-
-.card .stat-value, .card .text-primary, .card i, .card .btn {
-    color: inherit !important;
+    border: 1px solid #eef2f6 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.3s ease;
+    color: var(--text-primary);
 }
 
 .card-header {
-    background-color: #fafbfc !important;
+    background-color: #fafbfc;
     border-bottom: 1px solid #e2e8f0 !important;
 }
 
@@ -231,6 +260,12 @@ body {
     transition: opacity 0.3s;
 }
 
+@media (min-width: 992px) {
+    .sidebar-overlay {
+        display: none !important;
+    }
+}
+
 .sidebar-overlay.active {
     display: block;
     opacity: 1;
@@ -300,17 +335,33 @@ h6 {
     overflow: hidden;
     position: relative;
 }
-
-/* Scrollbar Modernization */
-::-webkit-scrollbar {
-    width: 6px;
+/* Premium Bootstrap Modal Overrides for Zoom */
+.modal-backdrop.show {
+    opacity: 0.85;
+    backdrop-filter: blur(5px);
 }
 
-::-webkit-scrollbar-track {
-    background: transparent;
+.product-zoom-container {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    overflow: hidden;
+    pointer-events: auto !important;
 }
 
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
+.product-zoom-container img {
+    cursor: zoom-in;
 }
+
+.product-zoom-container:hover img {
+    transform: scale(1.3);
+}
+
+.product-zoom-container img {
+    transition: transform 0.5s ease;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: pointer;
+}
+
+
