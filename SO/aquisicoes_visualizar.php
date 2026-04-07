@@ -270,7 +270,7 @@ include 'views/layout/header.php';
 
         .printable-page {
             display: block !important;
-            width: 100% !important;
+            width: 110% !important;
             max-width: 100% !important;
             margin: 0 0 4mm 0 !important;
             padding: 0 !important;
