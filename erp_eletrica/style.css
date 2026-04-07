@@ -82,14 +82,14 @@ body {
 
 .sidebar::-webkit-scrollbar-track,
 .sidebar-menu::-webkit-scrollbar-track {
-    background: #000000 !important;
+    background: #1e3a62 !important; /* Azul escuro em vez de preto */
 }
 
 .sidebar::-webkit-scrollbar-thumb,
 .sidebar-menu::-webkit-scrollbar-thumb {
-    background: #666666 !important;
+    background: #475569 !important; /* Cinza slate para a barra */
     border-radius: 4px !important;
-    border: 1px solid #000000 !important;
+    border: 1px solid #1e3a62 !important;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover,
@@ -151,7 +151,7 @@ body {
     display: flex;
     align-items: center;
     padding: 14px 25px;
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(255, 255, 255, 0.85);
     text-decoration: none;
     transition: var(--transition);
     border-left: 4px solid transparent;
@@ -290,14 +290,15 @@ body {
 
 .stat-card {
     background: var(--surface);
-    padding: 25px;
+    padding: 20px;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
     display: flex;
     justify-content: space-between;
     align-items: center;
     border: 1px solid var(--border);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s ease;
+    min-height: 100px;
 }
 
 .stat-card:hover {
@@ -315,10 +316,11 @@ body {
 
 .stat-value {
     font-family: 'Roboto Mono', monospace;
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
-    color: var(--secondary-color);
-    margin-top: 5px;
+    color: var(--text-primary);
+    margin-top: 2px;
+    white-space: nowrap;
 }
 
 .stat-icon {
@@ -332,23 +334,23 @@ body {
 }
 
 .stat-card.primary .stat-icon {
-    background: rgba(0, 86, 179, 0.1);
+    background: rgba(43, 76, 125, 0.1);
     color: var(--primary-color);
 }
 
 .stat-card.success .stat-icon {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(5, 150, 105, 0.1);
     color: var(--success);
 }
 
 .stat-card.danger .stat-icon {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(220, 38, 38, 0.1);
     color: var(--danger);
 }
 
 .stat-card.secondary .stat-icon {
-    background: rgba(74, 85, 104, 0.1);
-    color: var(--secondary-color);
+    background: rgba(100, 116, 139, 0.1);
+    color: var(--text-secondary);
 }
 
 /* Technical Tables */
