@@ -298,7 +298,7 @@ include 'views/layout/header.php';
             margin-bottom: 10px !important;
             padding-bottom: 8px !important;
             grid-template-columns: 1fr auto 1fr !important;
-            margin-left: -50px !important;
+            margin-left: -120px !important;
         }
 
         .ordem-logo img {
