@@ -302,7 +302,7 @@ include 'views/layout/header.php';
         }
 
         .ordem-logo{
-            margin-left: -50px !important;
+            margin-left: -120px !important;
         }
 
         .ordem-logo img {
@@ -398,6 +398,7 @@ include 'views/layout/header.php';
         <div class="card-body">
 
             <div class="ordem-header">
+
                 <div class="ordem-logo">
                     <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
                 </div>
