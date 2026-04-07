@@ -596,3 +596,8 @@ body {
     color: var(--primary-color) !important;
     background-color: rgba(43, 76, 125, 0.05);
 }
+
+/* Fix text and icons inside selected radio buttons (Payment Methods, etc) */
+.btn-check:checked + .btn, .btn-check:checked + .btn i {
+    color: #ffffff !important;
+}
