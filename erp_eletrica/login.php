@@ -84,10 +84,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="public/css/corporate.css?v=4.9">
     <style>
         :root {
-            --login-bg: #f8fafc;
+            --login-bg: #cbd5e1;
             --card-bg: #ffffff;
-            --accent-gold: #FFC107;
-            --accent-hover: #FFB300;
+            --accent-gold: #2b4c7d;
+            --accent-hover: #1e3a62;
             --input-bg: #ffffff;
             --border-color: #e2e8f0;
         }
@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: 3.5rem;
             color: var(--accent-gold);
             margin-bottom: 15px;
-            filter: drop-shadow(0 0 10px rgba(197, 160, 40, 0.3));
+            filter: drop-shadow(0 0 10px rgba(43, 76, 125, 0.3));
         }
 
         .login-header h1 {
@@ -193,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             width: 100%;
             padding: 15px;
             background: var(--accent-gold);
-            color: #000;
+            color: #fff;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
@@ -209,8 +209,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         .btn-login:hover {
-            background: #0a0a0a !important;
-            border: 2px solid #FFC107 !important;
+            background: #1e3a62 !important;
+            border: 2px solid #2b4c7d !important;
             transform: translateY(-1px);
             color: #fff !important;
         }

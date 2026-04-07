@@ -589,7 +589,7 @@
     .fw-bold-600 { font-weight: 600; }
     .extra-small { font-size: 0.7rem; }
     .uppercase { text-transform: uppercase; }
-    .pagination .page-item.active .page-link { background-color: var(--erp-primary); border-color: var(--erp-primary); color: #000; }
+    .pagination .page-item.active .page-link { background-color: var(--erp-primary); border-color: var(--erp-primary); color: #fff; }
     .pagination .page-link { color: var(--text-secondary); }
-    .list-group-item-action:hover { background-color: var(--erp-primary); color: #000; }
+    .list-group-item-action:hover { background-color: var(--erp-primary); color: #fff; }
 </style>
