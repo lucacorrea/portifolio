@@ -201,7 +201,7 @@ include 'views/layout/header.php';
         .ordem-header>div:first-child {
             text-align: center;
             justify-self: center;
-            margin-right: 20px;
+            margin-right: 0;
         }
 
         .ordem-right-box {
@@ -298,6 +298,7 @@ include 'views/layout/header.php';
             margin-bottom: 10px !important;
             padding-bottom: 8px !important;
             grid-template-columns: 1fr auto 1fr !important;
+            margin-right: 30px;
         }
 
         .ordem-logo img {
