@@ -153,7 +153,7 @@ body {
 
 /* Enhanced Cards */
 .card {
-    background-color: var(--erp-surface) !important;
+    background-color: var(--erp-surface);
     border-radius: 0.75rem;
     border: 1px solid #eef2f6 !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.02);
@@ -162,7 +162,7 @@ body {
 }
 
 .card-header {
-    background-color: #fafbfc !important;
+    background-color: #fafbfc;
     border-bottom: 1px solid #e2e8f0 !important;
 }
 

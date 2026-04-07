@@ -530,12 +530,12 @@ body {
 .btn-warning i, .btn-primary i, .btn-erp-primary i, .btn-success i, .btn-danger i {
     color: #ffffff !important;
 }
-.bg-warning, .bg-primary, .bg-erp-primary {
-    background-color: var(--primary-color);
-    color: #ffffff;
+.bg-erp-primary {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
 }
-.text-warning, .text-primary, .text-erp-primary {
-    color: var(--primary-color);
+.text-erp-primary {
+    color: var(--primary-color) !important;
 }
 .alert-warning {
     background-color: rgba(43, 76, 125, 0.1) !important;
