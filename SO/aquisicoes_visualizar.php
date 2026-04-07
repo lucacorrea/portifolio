@@ -50,7 +50,10 @@ include 'views/layout/header.php';
     .printable-page {
         margin-bottom: 2rem;
         border-radius: 12px;
-        overflow: hidden;
+        overflow: visible; /* corrigido para não cortar borda inferior */
+        border: 1px solid #dfe3e8; /* garante a borda do card */
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
 
     .printable-page .card-body {
@@ -106,6 +109,10 @@ include 'views/layout/header.php';
         -webkit-overflow-scrolling: touch;
     }
 
+    .ordem-info-wrap {
+        margin-bottom: 1.35rem; /* afastou mais do título abaixo */
+    }
+
     .ordem-info-table {
         margin-bottom: 0;
         font-size: 0.8125rem;
@@ -113,6 +120,7 @@ include 'views/layout/header.php';
 
     .ordem-items-table {
         font-size: 0.8125rem;
+        border: 1px solid #000; /* reforça a borda completa */
     }
 
     .ordem-info-table td,
@@ -128,12 +136,17 @@ include 'views/layout/header.php';
         background: #f0f0f0;
     }
 
+    .ordem-items-table tbody tr:last-child td,
+    .ordem-items-table tfoot td {
+        border-bottom: 1px solid #000 !important; /* garante borda inferior visível */
+    }
+
     .ordem-section-title {
         font-size: 0.75rem;
         font-weight: 800;
         color: #333;
         text-transform: uppercase;
-        margin: 1.5rem 0 0.5rem;
+        margin: 1.85rem 0 0.5rem; /* desce mais o título */
     }
 
     .assinaturas-grid {
@@ -200,6 +213,14 @@ include 'views/layout/header.php';
         .ordem-items-table {
             min-width: 760px;
         }
+
+        .ordem-info-wrap {
+            margin-bottom: 1.2rem;
+        }
+
+        .ordem-section-title {
+            margin-top: 1.55rem;
+        }
     }
 
     @media print {
@@ -248,12 +269,13 @@ include 'views/layout/header.php';
             max-width: 100% !important;
             margin: 0 0 4mm 0 !important;
             padding: 0 !important;
-            border: 0 !important;
+            border: 1px solid #000 !important; /* borda completa na impressão */
             box-shadow: none !important;
             background: #fff !important;
             page-break-after: always;
             break-after: page;
             border-radius: 0 !important;
+            overflow: visible !important;
         }
 
         .printable-page:last-of-type {
@@ -290,6 +312,10 @@ include 'views/layout/header.php';
             overflow: visible !important;
         }
 
+        .ordem-info-wrap {
+            margin-bottom: 12px !important; /* mais espaço antes do título */
+        }
+
         .ordem-info-table,
         .ordem-items-table {
             width: 100% !important;
@@ -297,14 +323,24 @@ include 'views/layout/header.php';
             font-size: 10px !important;
         }
 
+        .ordem-items-table {
+            border: 1px solid #000 !important;
+        }
+
         .ordem-info-table td,
         .ordem-items-table th,
         .ordem-items-table td {
             padding: 4px 6px !important;
+            border: 1px solid #000 !important;
+        }
+
+        .ordem-items-table tbody tr:last-child td,
+        .ordem-items-table tfoot td {
+            border-bottom: 1px solid #000 !important;
         }
 
         .ordem-section-title {
-            margin: 10px 0 4px !important;
+            margin: 14px 0 4px !important;
             font-size: 10px !important;
         }
 
