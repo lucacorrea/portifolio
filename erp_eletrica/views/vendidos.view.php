@@ -182,8 +182,8 @@
                     <label class="form-label fw-bold">Motivo do Cancelamento</label>
                     <textarea id="cancel-motivo" class="form-control" rows="3" placeholder="Obrigatório descrever o motivo..."></textarea>
                 </div>
-                <div id="fiscal-alert" class="alert alert-warning small d-none">
-                    <i class="fas fa-info-circle"></i> <b>Nota Fiscal:</b> Para vendas fiscais, você precisará cancelar a NFC-e manualmente no portal da SEFAZ.
+                <div id="fiscal-alert" class="alert alert-info small d-none">
+                    <i class="fas fa-file-invoice-dollar"></i> <b>NFC-e Fiscal:</b> Esta venda será cancelada automaticamente na SEFAZ. O motivo deve ter pelo menos 15 caracteres.
                 </div>
             </div>
             <div class="modal-footer bg-light border-0">
@@ -417,37 +417,51 @@
         };
 
         let currentCancelId = null;
+        let currentCancelTipo = null;
         window.openCancelModal = function(id, tipo) {
             currentCancelId = id;
+            currentCancelTipo = tipo;
             document.getElementById('cancel-id-label').textContent = id;
             document.getElementById('cancel-motivo').value = '';
-            const alert = document.getElementById('fiscal-alert');
-            if (tipo === 'fiscal') alert.classList.remove('d-none');
-            else alert.classList.add('d-none');
+            const alertEl = document.getElementById('fiscal-alert');
+            const motiveInput = document.getElementById('cancel-motivo');
+            
+            if (tipo === 'fiscal') {
+                alertEl.classList.remove('d-none');
+                motiveInput.placeholder = "Descreva o motivo (mínimo 15 caracteres)...";
+            } else {
+                alertEl.classList.add('d-none');
+                motiveInput.placeholder = "Obrigatório descrever o motivo...";
+            }
             new bootstrap.Modal('#modalCancel').show();
         };
 
         document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
             const motivo = document.getElementById('cancel-motivo').value.trim();
-            if (!motivo) {
+            
+            if (currentCancelTipo === 'fiscal' && motivo.length < 15) {
+                alert('Para cancelamento fiscal, o motivo deve ter no mínimo 15 caracteres.');
+                return;
+            } else if (motivo.length < 5) {
                 alert('Por favor, descreva o motivo do cancelamento.');
                 return;
             }
 
             this.disabled = true;
+            const originalText = this.innerHTML;
             this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processando...';
 
             try {
                 const res = await fetch('vendidos.php?action=cancel_sale', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id: currentCancelId, motivo })
+                    body: JSON.stringify({ id: currentCancelId, motivo, tipo: currentCancelTipo })
                 });
                 const data = await res.json();
                 if (data.success) {
                     bootstrap.Modal.getInstance('#modalCancel').hide();
+                    alert(currentCancelTipo === 'fiscal' ? 'Venda e NFC-e canceladas com sucesso!' : 'Venda cancelada com sucesso!');
                     loadSales(currentPage);
-                    alert('Venda cancelada com sucesso!');
                 } else {
                     alert('Erro: ' + data.error);
                 }
@@ -455,7 +469,7 @@
                 alert('Erro de conexão ao cancelar venda.');
             } finally {
                 this.disabled = false;
-                this.textContent = 'Confirmar Cancelamento';
+                this.innerHTML = originalText;
             }
         });
 
