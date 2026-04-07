@@ -569,6 +569,9 @@ body {
     background-color: var(--primary-color) !important;
     color: #ffffff !important;
 }
+.nav-tabs .nav-link.active i, .nav-pills .nav-link.active i {
+    color: #ffffff !important;
+}
 .nav-tabs .nav-link:hover:not(.active), .nav-pills .nav-link:hover:not(.active) {
     color: var(--primary-color) !important;
     background-color: rgba(43, 76, 125, 0.05);
