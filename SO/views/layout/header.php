@@ -225,7 +225,7 @@
                                     </a>
                                 </li>
 
-                                 <?php if (($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
+                                 <?php if (strtoupper($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
                                     <li class="nav-item <?php echo isActive(['oficios_novo.php']); ?>">
                                         <a href="oficios_novo.php" class="nav-link">
                                             <i class="fas fa-plus-circle"></i> Nova Solicitação
@@ -245,7 +245,7 @@
                                     </a>
                                 </li>
 
-                                <?php if (in_array($_SESSION['nivel'] ?? '', ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
+                                <?php if (in_array(strtoupper($_SESSION['nivel'] ?? ''), ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
                                     <li class="nav-item <?php echo isActive(['relatorios.php']); ?>">
                                         <a href="relatorios.php" class="nav-link">
                                             <i class="fas fa-file-contract"></i> Relatórios
@@ -253,7 +253,7 @@
                                     </li>
                                 <?php endif; ?>
 
-                                <?php if (($_SESSION['nivel'] ?? '') === 'SUPORTE'): ?>
+                                <?php if (strtoupper($_SESSION['nivel'] ?? '') === 'SUPORTE'): ?>
                                     <li class="nav-item <?php echo isActive(['usuarios.php']); ?>">
                                         <a href="usuarios.php" class="nav-link">
                                             <i class="fas fa-users-cog"></i> Gerenciar Usuários

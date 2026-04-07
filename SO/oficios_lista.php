@@ -196,7 +196,7 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1rem; margin: 0;">
                 <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Solicitações Recebidas
             </h3>
-            <?php if (($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
+            <?php if (strtoupper($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
                 <a href="oficios_novo.php" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus"></i> Novo Cadastro
                 </a>
@@ -241,13 +241,16 @@ include 'views/layout/header.php';
                                         <i class="fas fa-eye"></i>
                                     </a>
 
-                                    <?php if ($o['status'] == 'ENVIADO' && (($_SESSION['nivel'] ?? '') == 'ADMIN' || ($_SESSION['nivel'] ?? '') == 'SUPORTE')): ?>
+                                    <?php 
+                                        $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
+                                        if ($o['status'] == 'ENVIADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): 
+                                    ?>
                                         <a href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Analisar">
                                             <i class="fas fa-gavel"></i> Analisar
                                         </a>
                                     <?php endif; ?>
-
-                                    <?php if ($o['status'] == 'APROVADO' && (($_SESSION['nivel'] ?? '') == 'ADMIN' || ($_SESSION['nivel'] ?? '') == 'SUPORTE')): ?>
+ 
+                                    <?php if ($o['status'] == 'APROVADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
                                         <a href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Gerar Aquisição">
                                             <i class="fas fa-shopping-cart"></i> Gerar
                                         </a>

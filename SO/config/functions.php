@@ -13,14 +13,15 @@ function login_check() {
 }
 
 function admin_check() {
-    if (($_SESSION['nivel'] ?? '') !== 'ADMIN' && ($_SESSION['nivel'] ?? '') !== 'SUPORTE') {
+    $nivel = strtoupper($_SESSION['nivel'] ?? '');
+    if ($nivel !== 'ADMIN' && $nivel !== 'SUPORTE') {
         header("Location: dashboard.php?error=access_denied");
         exit();
     }
 }
 
 function view_check() {
-    $nivel = $_SESSION['nivel'] ?? '';
+    $nivel = strtoupper($_SESSION['nivel'] ?? '');
     if ($nivel !== 'ADMIN' && $nivel !== 'SUPORTE' && $nivel !== 'SECRETARIO') {
         header("Location: dashboard.php?error=access_denied");
         exit();
@@ -28,7 +29,8 @@ function view_check() {
 }
 
 function suporte_check() {
-    if (($_SESSION['nivel'] ?? '') !== 'SUPORTE') {
+    $nivel = strtoupper($_SESSION['nivel'] ?? '');
+    if ($nivel !== 'SUPORTE') {
         header("Location: dashboard.php?error=access_denied");
         exit();
     }
