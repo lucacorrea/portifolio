@@ -537,6 +537,21 @@ body {
 .text-erp-primary {
     color: var(--primary-color) !important;
 }
+
+/* Forçar cores sólidas especificamente em Cards inteiros e Card-Headers */
+.card.bg-primary {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+.card.bg-secondary {
+    background-color: #475569 !important; /* Slate */
+    color: #ffffff !important;
+}
+.card-header.bg-erp-primary {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+
 .alert-warning {
     background-color: rgba(43, 76, 125, 0.1) !important;
     border-color: var(--primary-color) !important;
