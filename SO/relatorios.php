@@ -2,7 +2,7 @@
 require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
-admin_check();
+view_check();
 
 $page_title = "Relatórios Inteligentes";
 

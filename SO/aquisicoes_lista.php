@@ -383,7 +383,7 @@ include 'views/layout/header.php';
                                                 <i class="fas fa-eye"></i> Visualizar
                                             </a>
                                             
-                                            <?php if ($aq['status'] === 'AGUARDANDO ENTREGA'): ?>
+                                            <?php if ($aq['status'] === 'AGUARDANDO ENTREGA' && (($_SESSION['nivel'] ?? '') === 'ADMIN' || ($_SESSION['nivel'] ?? '') === 'SUPORTE')): ?>
                                                 <a class="dropdown-item" href="aquisicao_editar.php?id=<?php echo (int)$aq['id']; ?>" style="color: #2fb344 !important;">
                                                     <i class="fas fa-dollar-sign"></i> Lançar Valores (Orçamento)
                                                 </a>
