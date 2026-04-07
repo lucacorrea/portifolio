@@ -15,6 +15,26 @@ $msg = $_GET['msg'] ?? '';
 $erro = $_GET['erro'] ?? '';
 
 // =======================================================
+// AUTO-HEALING (Garante que se a tabela existir de versões anteriores, ela terá as colunas novas)
+// =======================================================
+try {
+    $pdo->query("SELECT data_envio FROM transferencias_estoque LIMIT 1");
+} catch (Exception $e) {
+    if (strpos($e->getMessage(), 'Unknown column') !== false || strpos($e->getMessage(), '42S22') !== false) {
+        try {
+            $pdo->exec("ALTER TABLE transferencias_estoque 
+                        ADD COLUMN data_aprovacao TIMESTAMP NULL, 
+                        ADD COLUMN data_envio TIMESTAMP NULL, 
+                        ADD COLUMN data_recebimento TIMESTAMP NULL");
+        } catch(Exception $ex) {}
+    } elseif (strpos($e->getMessage(), 'doesn\'t exist') !== false || strpos($e->getMessage(), '42S02') !== false) {
+        // Tabela realmente não existe, encerramos gentilmente com aviso de erro em tela
+        header("Location: index.php?msg=" . urlencode("AVISO: A tabela de transferências não existe. Execute a migração 032 no Servidor."));
+        exit;
+    }
+}
+
+// =======================================================
 // AÇÕES POST - LÓGICA DE TRANSFERÊNCIA DE ATIVOS
 // =======================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
