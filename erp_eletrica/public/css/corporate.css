@@ -10,6 +10,7 @@
     --erp-light: #94a3b8;
     --erp-active-font: #ffffff;
     --erp-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --erp-surface: #f1f5f9; /* Tom de fundo dos cards mais suave */
 
     /* Technical Tokens (Sync with style.css) */
     --primary-color: var(--erp-primary);
@@ -136,7 +137,7 @@ body {
 
 .top-navbar {
     height: 70px;
-    background: #ffffff !important;
+    background: var(--erp-surface) !important;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
@@ -151,7 +152,7 @@ body {
 
 /* Enhanced Cards */
 .card {
-    background-color: #ffffff !important;
+    background-color: var(--erp-surface) !important;
     border-radius: 0.75rem;
     border: 1px solid #eef2f6 !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.02);

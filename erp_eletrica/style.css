@@ -560,6 +560,23 @@ body {
     color: var(--primary-color);
 }
 
+/* --- Eye Comfort: Soft Surfaces --- */
+:root {
+    --erp-soft-bg: #f1f5f9;
+}
+
+.card, .bg-white {
+    background-color: var(--erp-soft-bg) !important;
+}
+
+.table {
+    --bs-table-bg: var(--erp-soft-bg) !important;
+}
+
+.modal-content, .accordion-item, .accordion-button {
+    background-color: var(--erp-soft-bg) !important;
+}
+
 /* --- Fix for Internal Nav/Tabs Visibility --- */
 .nav-tabs .nav-link, .nav-pills .nav-link {
     color: var(--text-primary) !important;
