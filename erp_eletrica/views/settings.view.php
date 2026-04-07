@@ -63,7 +63,7 @@
                             <p class="extra-small text-white-50 mb-4">Emita notas em todas as filiais com uma única assinatura. Configure o CSC global abaixo.</p>
                             
                             <?php if (!empty($sefaz['certificado_path'])): ?>
-                                <div class="alert bg-warning text-white border-0 small d-flex align-items-center mb-4 py-2">
+                                <div class="alert bg-primary text-white border-0 small d-flex align-items-center mb-4 py-2">
                                     <i class="fas fa-check-circle me-3 fa-lg"></i>
                                     <div class="overflow-hidden">
                                         <strong class="d-block small">Certificado Ativo</strong>
