@@ -44,6 +44,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
         </a>
         
+        <a href="transferencias.php" class="nav-link <?= $current_page == 'transferencias.php' ? 'active' : '' ?>">
+            <i class="fas fa-truck-fast"></i> <span>Transferências (B2B)</span>
+        </a>
+        
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
         <a href="estoque_baixo.php" class="nav-link <?= $current_page == 'estoque_baixo.php' ? 'active' : '' ?>">
             <i class="fas fa-triangle-exclamation"></i> <span>Estoque Baixo</span>
