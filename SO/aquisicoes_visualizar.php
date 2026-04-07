@@ -80,6 +80,10 @@ include 'views/layout/header.php';
 
     .ordem-right {
         text-align: right;
+        justify-self: end;
+        width: 100%;
+        padding-right: 0;
+        margin-right: -10px;
     }
 
     .ordem-right-box {
@@ -178,6 +182,8 @@ include 'views/layout/header.php';
         .ordem-logo,
         .ordem-header > div:first-child {
             text-align: center;
+            justify-self: center;
+            margin-right: 0;
         }
 
         .ordem-right-box {
@@ -271,6 +277,14 @@ include 'views/layout/header.php';
             max-width: 150px !important;
         }
 
+        .ordem-right {
+            text-align: right !important;
+            justify-self: end !important;
+            width: 100% !important;
+            margin-right: -14px !important;
+            padding-right: 0 !important;
+        }
+
         .ordem-info-wrap,
         .ordem-items-wrap {
             overflow: visible !important;
@@ -294,15 +308,25 @@ include 'views/layout/header.php';
             font-size: 10px !important;
         }
 
+        /* mantém as assinaturas do jeito que estavam */
         .assinaturas-grid {
-            gap: 2.2cm !important;
-            margin-top: 2.6cm !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 4rem !important;
+            text-align: center !important;
+            margin-top: 5rem !important;
+        }
+
+        .assinatura-linha {
+            border-top: 1.5px solid #000 !important;
+            padding-top: 0.75rem !important;
         }
 
         .texto-entrega {
-            margin-top: 10px !important;
-            margin-bottom: 28px !important;
-            font-size: 10px !important;
+            margin-top: 1.5rem !important;
+            margin-bottom: 4rem !important;
+            font-size: 0.75rem !important;
+            line-height: 1.5 !important;
         }
     }
 </style>
