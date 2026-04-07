@@ -352,6 +352,22 @@
         }
 
         // --- Interaction Handlers ---
+        // Debounce helper
+        let debounceTimer;
+        function debounceSearch() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                loadSales(1);
+            }, 400);
+        }
+
+        // Automatic filtering on change/input
+        filterForm.querySelectorAll('select, input[type="date"]').forEach(input => {
+            input.addEventListener('change', () => loadSales(1));
+        });
+
+        filterForm.querySelector('input[name="search"]').addEventListener('input', debounceSearch);
+
         filterForm.addEventListener('submit', function(e) {
             e.preventDefault();
             loadSales(1);
