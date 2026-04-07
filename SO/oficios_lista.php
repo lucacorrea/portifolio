@@ -196,9 +196,11 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1rem; margin: 0;">
                 <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Solicitações Recebidas
             </h3>
-            <a href="oficios_novo.php" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> Novo Cadastro
-            </a>
+            <?php if (($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
+                <a href="oficios_novo.php" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Novo Cadastro
+                </a>
+            <?php endif; ?>
         </div>
 
         <?php display_flash(); ?>

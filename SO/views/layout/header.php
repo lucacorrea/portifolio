@@ -225,11 +225,13 @@
                                     </a>
                                 </li>
 
-                                <li class="nav-item <?php echo isActive(['oficios_novo.php']); ?>">
-                                    <a href="oficios_novo.php" class="nav-link">
-                                        <i class="fas fa-plus-circle"></i> Nova Solicitação
-                                    </a>
-                                </li>
+                                 <?php if (($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
+                                    <li class="nav-item <?php echo isActive(['oficios_novo.php']); ?>">
+                                        <a href="oficios_novo.php" class="nav-link">
+                                            <i class="fas fa-plus-circle"></i> Nova Solicitação
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
                                 <li class="nav-item <?php echo isActive(['oficios_lista.php', 'analisar_oficio.php', 'gerar_aquisicao.php', 'oficios_visualizar.php', 'oficios_editar.php']); ?>">
                                     <a href="oficios_lista.php" class="nav-link">
@@ -243,7 +245,7 @@
                                     </a>
                                 </li>
 
-                                <?php if ($_SESSION['nivel'] === 'ADMIN' || $_SESSION['nivel'] === 'SUPORTE'): ?>
+                                <?php if (in_array($_SESSION['nivel'] ?? '', ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
                                     <li class="nav-item <?php echo isActive(['relatorios.php']); ?>">
                                         <a href="relatorios.php" class="nav-link">
                                             <i class="fas fa-file-contract"></i> Relatórios
@@ -251,7 +253,12 @@
                                     </li>
                                 <?php endif; ?>
 
-                                <?php if ($_SESSION['nivel'] === 'SUPORTE'): ?>
+                                <?php if (($_SESSION['nivel'] ?? '') === 'SUPORTE'): ?>
+                                    <li class="nav-item <?php echo isActive(['usuarios.php']); ?>">
+                                        <a href="usuarios.php" class="nav-link">
+                                            <i class="fas fa-users-cog"></i> Gerenciar Usuários
+                                        </a>
+                                    </li>
                                     <li class="nav-item <?php echo isActive(['configuracoes.php']); ?>">
                                         <a href="configuracoes.php" class="nav-link">
                                             <i class="fas fa-tools"></i> Configurações
