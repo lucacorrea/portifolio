@@ -13,38 +13,21 @@ class SefazConsultaService extends BaseService {
         'RJ'=>'33', 'RN'=>'24', 'RO'=>'11', 'RR'=>'14', 'RS'=>'43', 'SC'=>'42', 'SE'=>'28', 'SP'=>'35', 'TO'=>'17'
     ];
 
-    public function __construct($filialId = null) {
+    public function __construct() {
         parent::__construct();
         $this->db = \App\Config\Database::getInstance()->getConnection();
-        $this->loadConfig($filialId ?: ($_SESSION['filial_id'] ?? null));
+        $this->loadConfig();
     }
 
-    private function loadConfig($filialId = null) {
-        // 1. Tentar carregar certificado específico da Filial
-        if ($filialId) {
-            $stmt = $this->db->prepare("SELECT certificado_pfx, certificado_senha, ambiente FROM filiais WHERE id = ?");
-            $stmt->execute([$filialId]);
-            $branch = $stmt->fetch();
-            
-            if ($branch && !empty($branch['certificado_pfx'])) {
-                $this->config = [
-                    'ambiente' => ($branch['ambiente'] == 1) ? 'producao' : 'homologacao',
-                    'certificado_path' => $branch['certificado_pfx'],
-                    'certificado_senha_raw' => $branch['certificado_senha']
-                ];
-                return;
-            }
-        }
-
-        // 2. Fallback para Configuração Global
+    private function loadConfig() {
+        // Unificação Centralizada: Sempre usa a configuração Global da Matriz
         $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
-        $configGlobal = $stmt->fetch();
+        $this->config = $stmt->fetch();
         
-        if (!$configGlobal) throw new Exception("Configuração SEFAZ Global não encontrada.");
-        if (empty($configGlobal['certificado_path'])) throw new Exception("Certificado A1 não configurado (Global ou Filial).");
+        if (!$this->config) throw new Exception("Configuração SEFAZ Global não encontrada.");
+        if (empty($this->config['certificado_path'])) throw new Exception("Certificado A1 (Global) não configurado.");
         
-        $this->config = $configGlobal;
-        // Garantimos que a senha bruta esteja disponível no padrão esperado pelo serviço
+        // Garantimos que a senha bruta esteja disponível
         $this->config['certificado_senha_raw'] = $this->config['certificado_senha'] ?? '';
     }
 

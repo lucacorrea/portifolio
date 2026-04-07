@@ -29,7 +29,7 @@ try {
             $_SESSION['filial_id'] = $branch['id'];
             $_SESSION['usuario_id'] = 0; // System/Cron
 
-            $service = new \App\Services\SefazConsultaService($branch['id']);
+            $service = new \App\Services\SefazConsultaService();
             $resultado = $service->consultarNotas($branch['cnpj']);
 
             $count = count($resultado['documentos'] ?? []);

@@ -244,30 +244,6 @@
                         <div class="extra-small text-muted mt-1">Prox. número será este + 1.</div>
                     </div>
 
-                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Credenciais e Certificado Digital</h6></div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">CSC ID</label>
-                        <input type="text" name="csc_id" id="branch_csc_id" class="form-control shadow-sm" placeholder="000001">
-                        <div class="extra-small text-muted mt-1">Obrigatório p/ geração QR Code.</div>
-                    </div>
-                    <div class="col-md-8">
-                        <label class="form-label small fw-bold">CSC Token</label>
-                        <input type="text" name="csc_token" id="branch_csc_token" class="form-control shadow-sm" placeholder="A074385C-E888-485A-99A9-...">
-                    </div>
-                    <div class="col-md-6 mt-3">
-                        <label class="form-label small fw-bold">Certificado Digital (A1 .pfx)</label>
-                        <input type="file" name="certificado" class="form-control shadow-sm">
-                        <div id="cert_info" class="extra-small text-success mt-1 fw-bold"></div>
-                    </div>
-                    <div class="col-md-6 mt-3">
-                        <label class="form-label small fw-bold">Senha do Certificado</label>
-                        <div class="input-group input-group-sm">
-                            <input type="password" name="certificado_senha" id="branch_cert_senha" class="form-control shadow-sm" placeholder="Deixe em branco para manter">
-                            <button class="btn btn-outline-secondary border-start-0 shadow-sm" type="button" onclick="togglePasswordVisibility(this)">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
             <div class="modal-footer border-0">
@@ -308,10 +284,6 @@ function newBranch() {
     document.getElementById('branch_uf').value = '';
     document.getElementById('branch_codigo_uf').value = '';
     document.getElementById('branch_cep').value = '';
-    document.getElementById('branch_csc_id').value = '';
-    document.getElementById('branch_csc_token').value = '';
-    document.getElementById('branch_cert_senha').value = '';
-    document.getElementById('cert_info').innerText = 'Novo certificado (.pfx) será carregado';
     modal.show();
 }
 
@@ -344,21 +316,6 @@ function editBranch(branch) {
     document.getElementById('branch_uf').value = branch.uf || '';
     document.getElementById('branch_codigo_uf').value = branch.codigo_uf || '';
     document.getElementById('branch_cep').value = branch.cep || '';
-    document.getElementById('branch_csc_id').value = branch.csc_id || '';
-    document.getElementById('branch_csc_token').value = branch.csc_token || '';
-    document.getElementById('branch_cert_senha').value = branch.certificado_senha || '';
-    
-    const globalCert = '<?= $globalCert ?? '' ?>';
-    if (branch.certificado_pfx) {
-        document.getElementById('cert_info').className = 'extra-small text-success mt-1 fw-bold';
-        document.getElementById('cert_info').innerText = 'Certificado específico: ' + branch.certificado_pfx;
-    } else if (globalCert) {
-        document.getElementById('cert_info').className = 'extra-small text-info mt-1 fw-bold';
-        document.getElementById('cert_info').innerText = 'Utilizando Certificado Global: ' + globalCert;
-    } else {
-        document.getElementById('cert_info').className = 'extra-small text-warning mt-1 fw-bold';
-        document.getElementById('cert_info').innerText = 'Nenhum certificado carregado (Global ou Específico)';
-    }
     
     modal.show();
 }

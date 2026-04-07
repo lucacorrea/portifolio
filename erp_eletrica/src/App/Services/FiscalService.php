@@ -23,24 +23,27 @@ class FiscalService extends BaseService {
         $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
         $global = $stmt->fetch();
 
-        // The requirement is that Global Certificate applies to all branches.
-        // We prioritize Global if available.
+        // Unificação: Prioriza Configuração Global da Matriz
         if ($global && !empty($global['certificado_path'])) {
             return [
                 'cnpj' => $branch['cnpj'],
                 'certificado_pfx' => $global['certificado_path'],
-                'certificado_senha' => $global['certificado_senha'], // Plaintext
+                'certificado_senha' => $global['certificado_senha'],
                 'ambiente' => $global['ambiente'] == 'producao' ? 1 : 2,
+                'csc_id' => $global['csc_id'] ?: ($branch['csc_id'] ?? ''),
+                'csc_token' => $global['csc'] ?: ($branch['csc_token'] ?? ''),
                 'nome' => $branch['nome']
             ];
         }
 
-        // Fallback to legacy branch-specific config if global not set
+        // Fallback para campos da filial (legado/específico)
         return [
             'cnpj' => $branch['cnpj'],
             'certificado_pfx' => $branch['certificado_pfx'] ?? null,
             'certificado_senha' => $branch['certificado_senha'] ?? '',
             'ambiente' => $branch['ambiente'] ?? 2,
+            'csc_id' => $branch['csc_id'] ?? '',
+            'csc_token' => $branch['csc_token'] ?? '',
             'nome' => $branch['nome']
         ];
     }
@@ -210,8 +213,8 @@ class FiscalService extends BaseService {
             'versao'      => '4.00',
             'urlChave'    => '',
             'urlQRCode'   => '',
-            'CSC'         => $branch['csc_token'] ?? '',
-            'CSCid'       => str_pad($branch['csc_id'] ?? '', 6, '0', STR_PAD_LEFT),
+            'CSC'         => $fiscal['csc_token'] ?? '',
+            'CSCid'       => str_pad($fiscal['csc_id'] ?? '', 6, '0', STR_PAD_LEFT),
             'proxyConf'   => ['proxyIp' => '', 'proxyPort' => '', 'proxyUser' => '', 'proxyPass' => ''],
         ];
         $configJson = json_encode($configArray, JSON_UNESCAPED_UNICODE);
