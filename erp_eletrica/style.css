@@ -562,7 +562,7 @@ body {
 
 /* --- Eye Comfort: Soft Surfaces --- */
 :root {
-    --erp-soft-bg: #f8fafc;
+    --erp-soft-bg: #f8fafc; /* Agora sutilmente mais claro que o fundo #f1f5f9 */
 }
 
 .card, .bg-white {
