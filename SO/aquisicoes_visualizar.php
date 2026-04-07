@@ -201,7 +201,7 @@ include 'views/layout/header.php';
         .ordem-header>div:first-child {
             text-align: center;
             justify-self: center;
-            margin-right: 0;
+            margin-right: 20px;
         }
 
         .ordem-right-box {
