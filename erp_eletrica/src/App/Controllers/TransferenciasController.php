@@ -11,8 +11,9 @@ class TransferenciasController extends BaseController {
         $db = \App\Config\Database::getInstance()->getConnection();
         $this->pdo = $db;
         $this->filialLogada = $_SESSION['filial_id'] ?? 1;
-        $usuarioNivel = $_SESSION['usuario_nivel'] ?? '';
-        $this->isMatriz = ($this->filialLogada == 1 && in_array($usuarioNivel, ['admin', 'master', 'gerente']));
+        // Usa is_matriz da sessão (definido pelo AuthService no login via campo `principal` da filial)
+        // Fallback para checagem manual caso sessão antiga não tenha a chave
+        $this->isMatriz = $_SESSION['is_matriz'] ?? ($this->filialLogada == 1 && in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'master', 'gerente']));
         $this->ensureTables();
     }
 
