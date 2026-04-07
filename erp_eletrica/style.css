@@ -559,3 +559,17 @@ body {
     background: rgba(43, 76, 125, 0.15);
     color: var(--primary-color);
 }
+
+/* --- Fix for Internal Nav/Tabs Visibility --- */
+.nav-tabs .nav-link, .nav-pills .nav-link {
+    color: var(--text-primary) !important;
+    font-weight: 500;
+}
+.nav-tabs .nav-link.active, .nav-pills .nav-link.active {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+.nav-tabs .nav-link:hover:not(.active), .nav-pills .nav-link:hover:not(.active) {
+    color: var(--primary-color) !important;
+    background-color: rgba(43, 76, 125, 0.05);
+}
