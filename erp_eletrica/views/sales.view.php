@@ -80,8 +80,8 @@
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
         <div class="card border-0 glass-card h-100 d-flex flex-column" style="border: 1px solid var(--primary-color) !important;">
-            <div class="card-header bg-erp-primary text-white py-3 border-0">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i>Checkout SaaS</h5>
+            <div class="card-header bg-erp-primary py-3 border-0">
+                <h5 class="mb-0 fw-bold text-white"><i class="fas fa-cash-register me-2 text-white"></i>Checkout SaaS</h5>
             </div>
             <div class="card-body flex-grow-1">
                 <div class="mb-4">

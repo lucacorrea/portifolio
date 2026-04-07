@@ -334,11 +334,44 @@
             }
 
             let html = '<nav><ul class="pagination pagination-sm mb-0 justify-content-center">';
-            for (let i = 1; i <= data.totalPages; i++) {
+            
+            // Botão Anterior
+            html += `<li class="page-item ${data.page === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadSales(${data.page - 1}); return false;"><i class="fas fa-chevron-left small"></i></a>
+            </li>`;
+
+            const maxVisible = 5;
+            let start = Math.max(1, data.page - 2);
+            let end = Math.min(data.totalPages, start + maxVisible - 1);
+
+            if (end - start < maxVisible - 1) {
+                start = Math.max(1, end - maxVisible + 1);
+            }
+
+            // Primeira página + ...
+            if (start > 1) {
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSales(1); return false;">1</a></li>`;
+                if (start > 2) html += '<li class="page-item disabled"><span class="page-link border-0">...</span></li>';
+            }
+
+            // Páginas numéricas
+            for (let i = start; i <= end; i++) {
                 html += `<li class="page-item ${i === data.page ? 'active' : ''}">
-                    <a class="page-link" href="#" onclick="loadSales(${i}); return false;">${i}</a>
+                    <a class="page-link fw-bold" href="#" onclick="loadSales(${i}); return false;">${i}</a>
                 </li>`;
             }
+
+            // ... + Última página
+            if (end < data.totalPages) {
+                if (end < data.totalPages - 1) html += '<li class="page-item disabled"><span class="page-link border-0">...</span></li>';
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSales(${data.totalPages}); return false;">${data.totalPages}</a></li>`;
+            }
+
+            // Botão Próximo
+            html += `<li class="page-item ${data.page === data.totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadSales(${data.page + 1}); return false;"><i class="fas fa-chevron-right small"></i></a>
+            </li>`;
+
             html += '</ul></nav>';
             paginationArea.innerHTML = html;
         }
@@ -421,19 +454,31 @@
         window.openCancelModal = function(id, tipo) {
             currentCancelId = id;
             currentCancelTipo = tipo;
-            document.getElementById('cancel-id-label').textContent = id;
-            document.getElementById('cancel-motivo').value = '';
+            
+            const labelEl = document.getElementById('cancel-id-label');
             const alertEl = document.getElementById('fiscal-alert');
             const motiveInput = document.getElementById('cancel-motivo');
             
-            if (tipo === 'fiscal') {
-                alertEl.classList.remove('d-none');
-                motiveInput.placeholder = "Descreva o motivo (mínimo 15 caracteres)...";
-            } else {
-                alertEl.classList.add('d-none');
-                motiveInput.placeholder = "Obrigatório descrever o motivo...";
+            if (labelEl) labelEl.textContent = id;
+            if (motiveInput) {
+                motiveInput.value = '';
+                motiveInput.placeholder = (tipo === 'fiscal') 
+                    ? "Descreva o motivo (mínimo 15 caracteres)..." 
+                    : "Obrigatório descrever o motivo...";
             }
-            new bootstrap.Modal('#modalCancel').show();
+            
+            if (alertEl) {
+                if (tipo === 'fiscal') alertEl.classList.remove('d-none');
+                else alertEl.classList.add('d-none');
+            }
+            
+            const modalEl = document.getElementById('modalCancel');
+            if (modalEl) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            } else {
+                console.error("Modal #modalCancel não encontrado no DOM");
+                alert("Erro: Modal de cancelamento não encontrado.");
+            }
         };
 
         document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
@@ -459,7 +504,8 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    bootstrap.Modal.getInstance('#modalCancel').hide();
+                    const modalEl = document.getElementById('modalCancel');
+                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
                     alert(currentCancelTipo === 'fiscal' ? 'Venda e NFC-e canceladas com sucesso!' : 'Venda cancelada com sucesso!');
                     loadSales(currentPage);
                 } else {
@@ -576,7 +622,24 @@
     .fw-bold-600 { font-weight: 600; }
     .extra-small { font-size: 0.7rem; }
     .uppercase { text-transform: uppercase; }
-    .pagination .page-item.active .page-link { background-color: var(--erp-primary); border-color: var(--erp-primary); color: #000; }
-    .pagination .page-link { color: var(--text-secondary); }
-    .list-group-item-action:hover { background-color: var(--erp-primary); color: #000; }
+    .pagination .page-link { 
+        color: var(--text-primary); 
+        border: 1px solid #e2e8f0; 
+        margin: 0 2px; 
+        border-radius: 6px !important;
+        transition: all 0.2s ease;
+        padding: 0.4rem 0.75rem;
+    }
+    .pagination .page-item.active .page-link { 
+        background-color: var(--erp-primary); 
+        border-color: var(--erp-primary); 
+        color: #fff !important;
+        box-shadow: 0 2px 4px rgba(43, 76, 125, 0.3);
+    }
+    .pagination .page-link:hover:not(.active) {
+        background-color: #f1f5f9;
+        color: var(--erp-primary);
+        border-color: var(--erp-primary);
+    }
+    .list-group-item-action:hover { background-color: var(--erp-primary); color: #fff; }
 </style>

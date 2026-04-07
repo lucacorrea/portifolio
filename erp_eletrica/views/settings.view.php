@@ -63,7 +63,7 @@
                             <p class="extra-small text-white-50 mb-4">Emita notas em todas as filiais com uma única assinatura. Configure o CSC global abaixo.</p>
                             
                             <?php if (!empty($sefaz['certificado_path'])): ?>
-                                <div class="alert bg-warning text-dark border-0 small d-flex align-items-center mb-4 py-2">
+                                <div class="alert bg-primary text-white border-0 small d-flex align-items-center mb-4 py-2">
                                     <i class="fas fa-check-circle me-3 fa-lg"></i>
                                     <div class="overflow-hidden">
                                         <strong class="d-block small">Certificado Ativo</strong>
@@ -101,7 +101,7 @@
                                 </select>
                             </div>
 
-                            <button type="submit" class="btn btn-warning w-100 fw-bold py-2 mt-auto shadow">
+                            <button type="submit" class="btn btn-warning text-white w-100 fw-bold py-2 mt-auto shadow">
                                 <i class="fas fa-save me-2"></i>Salvar Tudo
                             </button>
                         </div>
@@ -159,7 +159,7 @@
         <div class="modal-content border-0 shadow-lg">
             <form action="configuracoes.php?action=saveFilial" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="id" id="f_id">
-                <div class="modal-header bg-dark text-white py-3 border-0">
+                <div class="modal-header bg-primary text-white py-3 border-0">
                     <h6 class="modal-title fw-bold" id="modalTitle"><i class="fas fa-store me-2"></i>Dados da Unidade</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -592,8 +592,8 @@ function atualizarCodigoUF() {
 
 /* Custom Overrides for Tabs */
 .nav-pills .nav-link.active {
-    background-color: #ffc107 !important;
-    color: #000 !important;
+    background-color: var(--primary-color) !important;
+    color: #fff !important;
 }
 .nav-pills .nav-link {
     color: #6c757d;

@@ -26,7 +26,9 @@ $stmt_items->execute([$id]);
 $items = $stmt_items->fetchAll();
 
 $page_title = "Aquisição: " . $aq['numero_aq'];
+
 include 'views/layout/header.php';
+
 ?>
 
 <style>
@@ -70,7 +72,8 @@ include 'views/layout/header.php';
     }
 
     .ordem-logo {
-        text-align: center;
+        text-align: left;
+
     }
 
     .ordem-logo img {
@@ -78,6 +81,10 @@ include 'views/layout/header.php';
         max-width: 200px;
         object-fit: contain;
         width: 100%;
+    }
+
+    .ordem-center{
+        text-align: center;
     }
 
     .ordem-right {
@@ -298,9 +305,13 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr auto 1fr !important;
         }
 
+        .ordem-logo{
+            margin-left: -70px !important;
+        }
+
         .ordem-logo img {
-            max-height: 60px !important;
-            max-width: 150px !important;
+            max-height: 70px !important;
+            max-width: 180px !important;
         }
 
         .ordem-right {
@@ -391,14 +402,15 @@ include 'views/layout/header.php';
         <div class="card-body">
 
             <div class="ordem-header">
-                <div>
-                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL</h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Aquisição e Suprimentos</h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
-                </div>
 
                 <div class="ordem-logo">
                     <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
+                </div>
+
+                <div class="ordem-center">
+                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL DE COARI</h1>
+                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Aquisição e Suprimentos</h2>
+                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
                 </div>
 
                 <div class="ordem-right">
@@ -489,14 +501,15 @@ include 'views/layout/header.php';
         <div class="card-body">
 
             <div class="ordem-header">
-                <div>
-                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL</h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Fornecimento</h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
-                </div>
-
+                
                 <div class="ordem-logo">
                     <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
+                </div>
+
+                <div class="ordem-center">
+                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL DE COARI</h1>
+                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Fornecimento</h2>
+                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
                 </div>
 
                 <div class="ordem-right">
