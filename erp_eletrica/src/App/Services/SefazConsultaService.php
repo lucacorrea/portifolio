@@ -19,17 +19,35 @@ class SefazConsultaService extends BaseService {
         $this->loadConfig($filialId ?: ($_SESSION['filial_id'] ?? null));
     }
 
-    private function loadConfig() {
-        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
-        $this->config = $stmt->fetch();
-        if (!$this->config) throw new Exception("Configuração SEFAZ Global não encontrada.");
-        if (empty($this->config['certificado_path'])) throw new Exception("Certificado A1 não configurado.");
-        
-        // Ensure password is raw
-        if (!empty($this->config['certificado_senha'])) {
-             $this->config['certificado_senha_raw'] = $this->config['certificado_senha'];
+    private function loadConfig($filialId = null) {
+        // 1. Tentar carregar certificado específico da Filial
+        if ($filialId) {
+            $stmt = $this->db->prepare("SELECT certificado_pfx, certificado_senha, ambiente FROM filiais WHERE id = ?");
+            $stmt->execute([$filialId]);
+            $branch = $stmt->fetch();
+            
+            if ($branch && !empty($branch['certificado_pfx'])) {
+                $this->config = [
+                    'ambiente' => ($branch['ambiente'] == 1) ? 'producao' : 'homologacao',
+                    'certificado_path' => $branch['certificado_pfx'],
+                    'certificado_senha_raw' => $branch['certificado_senha']
+                ];
+                return;
+            }
         }
+
+        // 2. Fallback para Configuração Global
+        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
+        $configGlobal = $stmt->fetch();
+        
+        if (!$configGlobal) throw new Exception("Configuração SEFAZ Global não encontrada.");
+        if (empty($configGlobal['certificado_path'])) throw new Exception("Certificado A1 não configurado (Global ou Filial).");
+        
+        $this->config = $configGlobal;
+        // Garantimos que a senha bruta esteja disponível no padrão esperado pelo serviço
+        $this->config['certificado_senha_raw'] = $this->config['certificado_senha'] ?? '';
     }
+
 
     /**
      * Realiza a manifestação do destinatário (Ciência da Operação)

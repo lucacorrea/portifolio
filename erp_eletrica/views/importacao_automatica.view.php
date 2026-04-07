@@ -322,4 +322,24 @@ document.getElementById('btnImportarTudo').onclick = async () => {
         hideLoader();
     }
 };
+// Sincronização Automática ao Carregar a Página
+document.addEventListener('DOMContentLoaded', () => {
+    const lastSyncStr = '<?= $lastSync ?? "" ?>';
+    if (!lastSyncStr) {
+        console.log('Nenhuma sincronização anterior encontrada. Iniciando primeira busca...');
+        sincronizarSefaz();
+        return;
+    }
+
+    const lastSync = new Date(lastSyncStr.replace(' ', 'T'));
+    const now = new Date();
+    const diffMinutes = Math.floor((now - lastSync) / 1000 / 60);
+
+    // Se a última sincronização foi há mais de 15 minutos, atualiza em background
+    if (diffMinutes >= 15) {
+        console.log(`Última sincronização há ${diffMinutes} minutos. Atualizando em background...`);
+        sincronizarSefaz();
+    }
+});
 </script>
+

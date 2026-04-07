@@ -12,9 +12,6 @@ echo "[" . date('Y-m-d H:i:s') . "] Starting SEFAZ background sync...\n";
 
 try {
     $db = \App\Config\Database::getInstance()->getConnection();
-    $service = new \App\Services\SefazConsultaService();
-
-    // Get all active branches with CNPJ
     $stmt = $db->query("SELECT id, nome, cnpj FROM filiais WHERE cnpj IS NOT NULL AND cnpj != ''");
     $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -28,11 +25,13 @@ try {
             echo "Processing Branch: {$branch['nome']} ({$branch['cnpj']})...\n";
             
             // Note: We need a session filial_id because many services/models rely on it.
-            // In CLI, we mock it.
+            // In CLI, we mock it and pass it to the constructor.
             $_SESSION['filial_id'] = $branch['id'];
             $_SESSION['usuario_id'] = 0; // System/Cron
 
+            $service = new \App\Services\SefazConsultaService($branch['id']);
             $resultado = $service->consultarNotas($branch['cnpj']);
+
             $count = count($resultado['documentos'] ?? []);
             
             echo " - Success: $count new documents found.\n";
@@ -47,6 +46,7 @@ try {
             echo " - Error in Branch {$branch['id']}: " . $be->getMessage() . "\n";
         }
     }
+
 
     // Save global last sync timestamp
     $stmt = $db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
