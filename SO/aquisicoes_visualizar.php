@@ -272,7 +272,7 @@ include 'views/layout/header.php';
             max-width: 100% !important;
             margin: 0 0 4mm 0 !important;
             padding: 0 !important;
-            border: 1px solid #000 !important;
+
             /* borda completa na impressão */
             box-shadow: none !important;
             background: #fff !important;
