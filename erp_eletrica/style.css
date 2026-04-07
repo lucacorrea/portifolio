@@ -2,17 +2,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
 
 :root {
-    /* Prime Industrial Palette */
-    --primary-color: #FFC107;
-    --primary-hover: #FFB300;
-    --secondary-color: #000000;
-    --bg-main: #f8fafc;
+    /* Nova Paleta Corporativa */
+    --primary-color: #2b4c7d;       /* Azul Selecionado */
+    --primary-hover: #1e3a62;
+    --secondary-color: #2b4c7d;      /* Azul no Menu */
+    --bg-main: #cbd5e1;              /* Cinza no Fundo */
     --surface: #ffffff;
+    --active-menu-font: #475569;      /* Cinza para Fontes Selecionadas */
     --text-primary: #1e293b;
     --text-secondary: #64748b;
     --success: #10b981;
     --danger: #ef4444;
-    --warning: #FFC107;
+    --warning: #2b4c7d;
     --border: #e2e8f0;
 
     /* Corporate Aliases */
@@ -105,14 +106,14 @@ body {
     display: flex;
     align-items: center;
     padding: 0 25px;
-    background: #000000;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--secondary-color);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     white-space: nowrap;
 }
 
 .sidebar-header i {
     font-size: 1.8rem;
-    color: #FFC107;
+    color: white;
     min-width: 32px;
 }
 
@@ -175,9 +176,9 @@ body {
 
 .sidebar-menu li:hover a,
 .sidebar-menu li.active a {
-    background: rgba(255, 255, 255, 0.1);
-    color: #FFC107;
-    border-left-color: #FFC107;
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--active-menu-font);
+    border-left-color: var(--active-menu-font);
 }
 
 /* Sidebar Section Titles Visibility */
@@ -189,7 +190,7 @@ body {
 }
 
 .sidebar-menu li.active a i {
-    color: #FFC107;
+    color: var(--active-menu-font);
 }
 
 /* Main Content Wrapper */
