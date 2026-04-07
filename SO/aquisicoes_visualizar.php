@@ -301,6 +301,10 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr auto 1fr !important;
         }
 
+        .ordem-logo{
+            margin-left: -50px !important;
+        }
+
         .ordem-logo img {
             max-height: 60px !important;
             max-width: 150px !important;
