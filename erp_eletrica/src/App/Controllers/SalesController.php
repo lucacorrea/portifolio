@@ -520,6 +520,61 @@ class SalesController extends BaseController {
             if (!$sale) throw new \Exception("Venda não encontrada.");
             if ($sale['status'] === 'cancelado') throw new \Exception("Esta venda já está cancelada.");
 
+            // --- NOVO: Lógica de Cancelamento Fiscal (SEFAZ) ---
+            $isFiscal = ($data['tipo'] ?? '') === 'fiscal';
+            if ($isFiscal) {
+                // Prepara ambiente para carregar as bibliotecas de NF-e
+                $nfceDir = dirname(__DIR__, 3) . '/nfce';
+                if (file_exists($nfceDir . '/vendor/autoload.php')) {
+                    require_once $nfceDir . '/vendor/autoload.php';
+                }
+                
+                // Define venda_id globalmente para que o config.php da NF-e carregue a filial correta
+                $_REQUEST['venda_id'] = $id;
+                require_once $nfceDir . '/config.php';
+                $configNFe = require $nfceDir . '/nfce_config.php';
+                
+                // Carrega certificado
+                $pfx = file_get_contents(PFX_PATH);
+                $cert = \NFePHP\Common\Certificate::readPfx($pfx, PFX_PASSWORD);
+                
+                $tools = new \NFePHP\NFe\Tools(json_encode($configNFe), $cert);
+                $tools->model('65');
+
+                // Busca protocolo da emissão original
+                $stP = $db->prepare("SELECT protocolo, chave FROM nfce_emitidas WHERE venda_id = ? ORDER BY id DESC LIMIT 1");
+                $stP->execute([$id]);
+                $nfceEmitida = $stP->fetch(\PDO::FETCH_ASSOC);
+
+                if (!$nfceEmitida) {
+                    throw new \Exception("Dados fiscais (protocolo/chave) não encontrados para cancelar na SEFAZ.");
+                }
+
+                $chave = $nfceEmitida['chave'];
+                $protocolo = $nfceEmitida['protocolo'];
+                $xJust = $motivo ?: 'Cancelamento de venda por solicitacao do cliente';
+                if (strlen($xJust) < 15) $xJust = str_pad($xJust, 15, '.');
+
+                // Envia evento de cancelamento para a SEFAZ
+                $response = $tools->sefazCancela($chave, $xJust, $protocolo);
+                $std = new \NFePHP\NFe\Common\Standardize();
+                $res = $std->toStd($response);
+                
+                $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
+                
+                // 135: Evento registrado e vinculado a NF-e, 136: Evento registrado mas não vinculado, 155: Cancelamento homologado fora de prazo
+                $approved = in_array($cStat, ['135', '136', '155']);
+                
+                if (!$approved) {
+                    $errorMsg = $res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ';
+                    throw new \Exception("SEFAZ Rejeitou o cancelamento: " . $errorMsg);
+                }
+
+                // Atualiza status da NFC-e na nossa tabela
+                $stN = $db->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado (Evento 135)' WHERE venda_id = ?");
+                $stN->execute([$id]);
+            }
+
             // 1. Reverter Estoque
             foreach ($sale['itens'] as $item) {
                 $productModel->updateStock($item['produto_id'], $item['quantidade'], 'entrada');
@@ -544,10 +599,13 @@ class SalesController extends BaseController {
 
             // 3. Atualizar Status
             $saleModel->updateStatus($id, 'cancelado');
+            if ($isFiscal) {
+                $db->prepare("UPDATE vendas SET tipo_nota = 'fiscal_cancelada' WHERE id = ?")->execute([$id]);
+            }
 
             // 4. Auditoria
             $audit = new \App\Services\AuditLogService();
-            $audit->record('Cancelamento de venda', 'vendas', $id, null, $motivo);
+            $audit->record('Cancelamento de venda', 'vendas', $id, null, $motivo . ($isFiscal ? " (Cancelado na SEFAZ)" : ""));
 
             $db->commit();
             echo json_encode(['success' => true]);
