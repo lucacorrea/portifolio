@@ -8,7 +8,7 @@
     --erp-warning: #2b4c7d;
     --erp-dark: #1e293b;
     --erp-light: #f8fafc;
-    --erp-active-font: #cbd5e1;
+    --erp-active-font: #ffffff;
     --erp-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 
     /* Technical Tokens (Sync with style.css) */
@@ -93,7 +93,7 @@ body {
 
 .nav-link {
     padding: 0.8rem 1.5rem;
-    color: #64748b;
+    color: #ffffff;
     font-weight: 500;
     display: flex;
     align-items: center;
