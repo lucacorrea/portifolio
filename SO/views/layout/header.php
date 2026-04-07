@@ -236,7 +236,7 @@
                                     </a>
                                 </li>
 
-                                <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
+                                <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicao_editar.php?', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
                                     <a href="aquisicoes_lista.php" class="nav-link">
                                         <i class="fas fa-shopping-bag"></i> Aquisições
                                     </a>
