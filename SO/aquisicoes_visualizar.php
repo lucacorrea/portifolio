@@ -302,7 +302,7 @@ include 'views/layout/header.php';
         }
 
         .ordem-logo{
-            margin-left: -120px !important;
+            margin-left: -90px !important;
         }
 
         .ordem-logo img {
