@@ -13,10 +13,10 @@ class SefazConsultaService extends BaseService {
         'RJ'=>'33', 'RN'=>'24', 'RO'=>'11', 'RR'=>'14', 'RS'=>'43', 'SC'=>'42', 'SE'=>'28', 'SP'=>'35', 'TO'=>'17'
     ];
 
-    public function __construct() {
+    public function __construct($filialId = null) {
         parent::__construct();
         $this->db = \App\Config\Database::getInstance()->getConnection();
-        $this->loadConfig();
+        $this->loadConfig($filialId ?: ($_SESSION['filial_id'] ?? null));
     }
 
     private function loadConfig() {
