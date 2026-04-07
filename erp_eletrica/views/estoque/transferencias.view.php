@@ -8,8 +8,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logística B2B - <?php echo APP_NAME; ?></title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="public/css/corporate.css">
+    <link rel="stylesheet" href="style.css?v=10.3">
+    <link rel="stylesheet" href="public/css/corporate.css?v=10.3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -28,22 +28,24 @@
         .transfer-body { padding: 20px; }
     </style>
 </head>
-<body class="bg-light">
-    <div class="container-fluid">
+<body class="bg-light" style="background-color: var(--bg-color) !important;">
+    <div class="container">
         <?php include 'includes/sidebar.php'; ?>
         
         <div class="main-content">
-            <header class="top-bar bg-white shadow-sm px-4 py-3 d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <button class="toggle-sidebar btn btn-link text-dark p-0 me-3"><i class="fas fa-bars fs-5"></i></button>
+            <header class="top-bar">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button class="toggle-sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
                     <div>
-                        <h2 class="m-0 fs-4 fw-bold text-dark">Central de Logística B2B</h2>
-                        <small class="text-muted">Operação: <?php echo $isMatriz ? "Matriz (Centro de Distribuição)" : "Filial - Suprimentos"; ?></small>
+                        <h1 class="page-title" style="margin: 0; font-size: 1.5rem;">Central de Logística B2B</h1>
+                        <small style="color: var(--text-muted); font-size: 0.85rem;">Operação: <?php echo $isMatriz ? "Matriz (Centro de Distribuição)" : "Filial - Suprimentos"; ?></small>
                     </div>
                 </div>
             </header>
             
-            <main class="p-4 fade-in">
+            <main class="dash-content fade-in" style="padding: 20px;">
                 <?php if ($msg): ?>
                     <div class="alert alert-success border-0 shadow-sm mb-4"><i class="fas fa-check-circle me-2"></i> <?php echo htmlspecialchars($msg); ?></div>
                 <?php endif; ?>
