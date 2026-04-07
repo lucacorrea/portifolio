@@ -20,9 +20,9 @@
         }
 
         .page-wrap {
-            max-width: 1220px;
+            max-width: 1320px;
             margin: 0 auto;
-            padding: 18px;
+            padding: 14px;
         }
 
         .toolbar {
@@ -81,78 +81,86 @@
             background: #fff;
             border: 1px solid #dcdfe4;
             border-radius: 12px;
-            padding: 20px 18px;
+            padding: 18px 14px;
             margin-bottom: 22px;
             overflow: visible;
         }
 
         .doc-header {
             display: grid;
-            grid-template-columns: 190px 1fr 245px;
-            gap: 8px;
+            grid-template-columns: 175px 1fr 220px;
+            gap: 6px;
             align-items: start;
             border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            width: 100%;
         }
 
         .doc-logo {
             display: flex;
             align-items: flex-start;
             justify-content: flex-start;
-            min-height: 70px;
+            min-height: 62px;
             padding-left: 0;
         }
 
         .logo-box {
-            width: 170px;
-            height: 66px;
+            width: 160px;
+            height: 62px;
             display: flex;
             align-items: flex-start;
             justify-content: flex-start;
             text-align: left;
-            font-size: 12px;
-            font-weight: 700;
-            color: #666;
             padding: 0;
             margin: 0;
         }
 
         .logo-box img {
-            width: 150px !important;
-            height: 68px !important;
+            width: 145px !important;
+            height: 62px !important;
             object-fit: contain;
             object-position: left center;
             display: block;
         }
 
-        .doc-center,
         .ordem-center {
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
             padding-top: 0;
         }
 
-        .doc-title {
-            margin: 0;
-            font-size: 22px;
-            line-height: 1.15;
+        .ordem-center h1 {
+            font-size: 1.02rem;
             font-weight: 800;
+            margin: 0;
+            color: #000;
             text-transform: uppercase;
+            line-height: 1.06;
+            text-align: center;
+            max-width: 100%;
         }
 
-        .doc-subtitle {
+        .ordem-center h2 {
+            font-size: 0.74rem;
+            font-weight: 700;
             margin: 4px 0 0;
-            font-size: 14px;
-            font-weight: 700;
-            text-transform: uppercase;
             color: #333;
+            text-transform: uppercase;
+            line-height: 1.1;
+            text-align: center;
         }
 
-        .doc-meta-center {
+        .ordem-center .meta-center {
+            font-size: 0.66rem;
             margin-top: 4px;
-            font-size: 12px;
-            font-weight: 700;
             color: #666;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.1;
         }
 
         .doc-right {
@@ -166,8 +174,8 @@
         }
 
         .doc-way {
-            margin-bottom: 6px;
-            font-size: 11px;
+            margin-bottom: 5px;
+            font-size: 10px;
             font-weight: 800;
             color: #000;
             text-transform: uppercase;
@@ -179,28 +187,28 @@
         .doc-right-box {
             display: inline-block;
             border: 1.5px solid #000;
-            padding: 7px 12px 6px;
+            padding: 6px 10px 5px;
             text-align: center;
-            min-width: 162px;
-            width: 162px;
+            min-width: 150px;
+            width: 150px;
         }
 
         .doc-right-label {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 800;
             text-transform: uppercase;
             margin-bottom: 2px;
         }
 
         .doc-right-number {
-            font-size: 22px;
+            font-size: 19px;
             font-weight: 900;
             line-height: 1.05;
         }
 
         .doc-right-date {
-            margin-top: 8px;
-            font-size: 11px;
+            margin-top: 6px;
+            font-size: 10px;
             font-weight: 700;
             color: #444;
             text-transform: uppercase;
@@ -217,7 +225,7 @@
         }
 
         .info-wrap {
-            margin-bottom: 14px;
+            margin-bottom: 10px;
         }
 
         table {
@@ -229,16 +237,16 @@
         .items-table th,
         .items-table td {
             border: 1px solid #000;
-            padding: 6px 7px;
+            padding: 5px 6px;
             vertical-align: middle;
         }
 
         .info-table {
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .items-table {
-            font-size: 13px;
+            font-size: 12px;
             border: 1px solid #000;
         }
 
@@ -249,15 +257,15 @@
         }
 
         .label-cell {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 800;
             text-transform: uppercase;
             white-space: nowrap;
         }
 
         .section-title {
-            margin: 12px 0 6px;
-            font-size: 12px;
+            margin: 8px 0 5px;
+            font-size: 11px;
             font-weight: 800;
             text-transform: uppercase;
             color: #333;
@@ -266,12 +274,12 @@
         .line-placeholder {
             display: inline-block;
             min-width: 100%;
-            height: 14px;
+            height: 12px;
             border-bottom: 1px dotted transparent;
         }
 
         .items-table tbody td {
-            height: 30px;
+            height: 24px;
         }
 
         .items-table tbody tr:last-child td,
@@ -280,36 +288,36 @@
         }
 
         .obs-text {
-            margin-top: 14px;
-            margin-bottom: 22px;
-            font-size: 12px;
+            margin-top: 10px;
+            margin-bottom: 16px;
+            font-size: 11px;
             color: #444;
-            line-height: 1.45;
-            min-height: 38px;
+            line-height: 1.4;
+            min-height: 30px;
         }
 
         .signatures {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 56px;
+            gap: 52px;
             text-align: center;
-            margin-top: 46px;
+            margin-top: 30px;
         }
 
         .signature-line {
             border-top: 1.5px solid #000;
-            padding-top: 10px;
-            min-height: 42px;
+            padding-top: 8px;
+            min-height: 38px;
         }
 
         .signature-title {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 800;
         }
 
         .signature-subtitle {
-            margin-top: 4px;
-            font-size: 10px;
+            margin-top: 3px;
+            font-size: 9px;
             font-weight: 700;
             color: #555;
             text-transform: uppercase;
@@ -322,11 +330,11 @@
 
         @media (max-width: 900px) {
             .page-wrap {
-                padding: 14px;
+                padding: 12px;
             }
 
             .document {
-                padding: 16px;
+                padding: 14px;
             }
 
             .doc-header {
@@ -356,8 +364,8 @@
 
             .signatures {
                 grid-template-columns: 1fr;
-                gap: 28px;
-                margin-top: 36px;
+                gap: 24px;
+                margin-top: 28px;
             }
 
             .info-table,
@@ -373,7 +381,7 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 3mm;
+                margin: 2mm;
             }
 
             html,
@@ -399,8 +407,8 @@
                 border: none !important;
                 border-radius: 0 !important;
                 box-shadow: none !important;
-                margin: 0 0 2mm 0 !important;
-                padding: 1.5mm 2.2mm !important;
+                margin: 0 0 1mm 0 !important;
+                padding: 1mm 1.6mm !important;
                 page-break-after: always;
                 break-after: page;
             }
@@ -411,11 +419,12 @@
             }
 
             .doc-header {
-                grid-template-columns: 170px 1fr 235px !important;
+                grid-template-columns: 165px 1fr 210px !important;
                 gap: 4px !important;
                 align-items: start !important;
                 margin-bottom: 6px !important;
                 padding-bottom: 6px !important;
+                width: 100% !important;
             }
 
             .doc-logo {
@@ -424,8 +433,8 @@
             }
 
             .logo-box {
-                width: 155px !important;
-                height: 62px !important;
+                width: 150px !important;
+                height: 58px !important;
                 justify-content: flex-start !important;
                 align-items: flex-start !important;
                 padding: 0 !important;
@@ -433,35 +442,39 @@
             }
 
             .logo-box img {
-                width: 150px !important;
-                height: 62px !important;
+                width: 142px !important;
+                height: 58px !important;
                 object-fit: contain !important;
                 object-position: left center !important;
                 margin-left: 0 !important;
             }
 
-            .doc-title,
+            .ordem-center {
+                text-align: center !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+            }
+
             .ordem-center h1 {
-                font-size: 18px !important;
-                line-height: 1.1 !important;
+                font-size: 16px !important;
+                line-height: 1.02 !important;
                 margin: 0 !important;
+                text-align: center !important;
+                white-space: nowrap !important;
             }
 
-            .doc-subtitle,
             .ordem-center h2 {
-                font-size: 11.5px !important;
-                margin: 2px 0 0 !important;
+                font-size: 10.5px !important;
+                margin: 4px 0 0 !important;
+                text-align: center !important;
+                white-space: nowrap !important;
             }
 
-            .ordem-center div {
-                font-size: 10px !important;
+            .ordem-center .meta-center {
+                font-size: 9px !important;
                 margin-top: 4px !important;
-            }
-
-            .doc-meta-center,
-            .doc-right-date,
-            .doc-way {
-                font-size: 10px !important;
+                text-align: center !important;
+                white-space: nowrap !important;
             }
 
             .doc-right {
@@ -475,81 +488,83 @@
                 width: 100% !important;
                 text-align: right !important;
                 margin-bottom: 4px !important;
+                font-size: 9.5px !important;
             }
 
             .doc-right-box {
-                min-width: 160px !important;
-                width: 160px !important;
-                padding: 5px 10px !important;
+                min-width: 145px !important;
+                width: 145px !important;
+                padding: 5px 8px !important;
             }
 
             .doc-right-label {
-                font-size: 9px !important;
+                font-size: 8.5px !important;
             }
 
             .doc-right-number {
-                font-size: 20px !important;
+                font-size: 18px !important;
             }
 
             .doc-right-date {
                 margin-top: 5px !important;
                 text-align: right !important;
                 white-space: nowrap !important;
+                font-size: 9px !important;
             }
 
             .info-wrap {
-                margin-bottom: 8px !important;
+                margin-bottom: 7px !important;
             }
 
             .info-table,
             .items-table {
                 min-width: 0 !important;
-                font-size: 10.5px !important;
+                font-size: 10px !important;
                 width: 100% !important;
             }
 
             .info-table td,
             .items-table th,
             .items-table td {
-                padding: 3px 5px !important;
+                padding: 3px 4px !important;
             }
 
             .label-cell {
-                font-size: 9.5px !important;
+                font-size: 8.8px !important;
             }
 
             .section-title {
-                font-size: 10px !important;
-                margin: 8px 0 4px !important;
+                font-size: 9.8px !important;
+                margin: 7px 0 4px !important;
             }
 
             .items-table tbody td {
-                height: 24px !important;
+                height: 23px !important;
             }
 
             .signatures {
                 grid-template-columns: 1fr 1fr !important;
-                gap: 52px !important;
-                margin-top: 34px !important;
+                gap: 50px !important;
+                margin-top: 28px !important;
             }
 
             .signature-line {
-                padding-top: 8px !important;
+                padding-top: 7px !important;
             }
 
             .signature-title {
-                font-size: 11px !important;
+                font-size: 10.5px !important;
             }
 
             .signature-subtitle {
-                font-size: 9px !important;
+                font-size: 8.5px !important;
             }
 
             .obs-text {
-                font-size: 10px !important;
-                margin-top: 10px !important;
-                margin-bottom: 18px !important;
-                min-height: 28px !important;
+                font-size: 9.5px !important;
+                margin-top: 8px !important;
+                margin-bottom: 14px !important;
+                min-height: 24px !important;
             }
         }
     </style>
@@ -574,17 +589,9 @@
                     </div>
 
                     <div class="ordem-center">
-                        <h1
-                            style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                            PREFEITURA MUNICIPAL DE COARI
-                        </h1>
-                        <h2
-                            style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                            Ordem de Aquisição e Suprimentos
-                        </h2>
-                        <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                            COARI - AM | CNPJ: 00.000.000/0001-00
-                        </div>
+                        <h1>PREFEITURA MUNICIPAL DE COARI</h1>
+                        <h2>ORDEM DE AQUISIÇÃO E SUPRIMENTOS</h2>
+                        <div class="meta-center">COARI - AM | CNPJ: 00.000.000/0001-00</div>
                     </div>
 
                     <div class="doc-right">
@@ -602,8 +609,8 @@
                         <tr>
                             <td class="label-cell" style="width: 15%;">Fornecedor:</td>
                             <td><span class="line-placeholder"></span></td>
-                            <td class="label-cell" style="width: 26%;">Local e Data de Emissão:</td>
-                            <td style="width: 20%;"><span class="line-placeholder"></span></td>
+                            <td class="label-cell" style="width: 27%;">Local e Data de Emissão:</td>
+                            <td style="width: 19%;"><span class="line-placeholder"></span></td>
                         </tr>
                         <tr>
                             <td class="label-cell">Para:</td>
@@ -620,68 +627,25 @@
                     <table class="items-table">
                         <thead>
                             <tr>
-                                <th style="text-align:center; width: 50px;">Item</th>
-                                <th style="text-align:center; width: 60px;">Unid.</th>
-                                <th style="text-align:center; width: 70px;">Qtd</th>
+                                <th style="text-align:center; width: 52px;">Item</th>
+                                <th style="text-align:center; width: 62px;">Unid.</th>
+                                <th style="text-align:center; width: 72px;">Qtd</th>
                                 <th style="text-align:left;">Especificação Completa</th>
-                                <th style="text-align:right; width: 120px;">Preço Unitário</th>
-                                <th style="text-align:right; width: 120px;">Valor Total</th>
+                                <th style="text-align:right; width: 125px;">Preço Unitário</th>
+                                <th style="text-align:right; width: 125px;">Valor Total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">
-                                    Valor Total R$</td>
+                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor Total R$</td>
                                 <td style="text-align:right; font-weight:900;">________________</td>
                             </tr>
                         </tfoot>
@@ -714,17 +678,9 @@
                     </div>
 
                     <div class="ordem-center">
-                        <h1
-                            style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                            PREFEITURA MUNICIPAL DE COARI
-                        </h1>
-                        <h2
-                            style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                            Ordem de Aquisição e Suprimentos
-                        </h2>
-                        <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                            COARI - AM | CNPJ: 00.000.000/0001-00
-                        </div>
+                        <h1>PREFEITURA MUNICIPAL DE COARI</h1>
+                        <h2>ORDEM DE AQUISIÇÃO E SUPRIMENTOS</h2>
+                        <div class="meta-center">COARI - AM | CNPJ: 00.000.000/0001-00</div>
                     </div>
 
                     <div class="doc-right">
@@ -742,8 +698,8 @@
                         <tr>
                             <td class="label-cell" style="width: 15%;">Fornecedor:</td>
                             <td><span class="line-placeholder"></span></td>
-                            <td class="label-cell" style="width: 26%;">Local e Data de Emissão:</td>
-                            <td style="width: 20%;"><span class="line-placeholder"></span></td>
+                            <td class="label-cell" style="width: 27%;">Local e Data de Emissão:</td>
+                            <td style="width: 19%;"><span class="line-placeholder"></span></td>
                         </tr>
                         <tr>
                             <td class="label-cell">Para:</td>
@@ -760,68 +716,25 @@
                     <table class="items-table">
                         <thead>
                             <tr>
-                                <th style="text-align:center; width: 50px;">Item</th>
-                                <th style="text-align:center; width: 60px;">Unid.</th>
-                                <th style="text-align:center; width: 70px;">Qtd</th>
+                                <th style="text-align:center; width: 52px;">Item</th>
+                                <th style="text-align:center; width: 62px;">Unid.</th>
+                                <th style="text-align:center; width: 72px;">Qtd</th>
                                 <th style="text-align:left;">Especificação Completa</th>
-                                <th style="text-align:right; width: 120px;">Preço Unitário</th>
-                                <th style="text-align:right; width: 120px;">Valor Total</th>
+                                <th style="text-align:right; width: 125px;">Preço Unitário</th>
+                                <th style="text-align:right; width: 125px;">Valor Total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td style="text-align:center;"></td>
-                                <td></td>
-                                <td style="text-align:right;"></td>
-                                <td style="text-align:right;"></td>
-                            </tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">
-                                    Valor Total R$</td>
+                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor Total R$</td>
                                 <td style="text-align:right; font-weight:900;">________________</td>
                             </tr>
                         </tfoot>
@@ -836,7 +749,7 @@
                     ____________________________________________________________________________________________
                 </div>
 
-                <div class="signatures" style="margin-top: 40px;">
+                <div class="signatures" style="margin-top: 28px;">
                     <div>
                         <div class="signature-line">
                             <div class="signature-title">RECEBEDOR</div>
@@ -883,7 +796,7 @@
                     if (dataUrl) {
                         img.setAttribute('src', dataUrl);
                     }
-                } catch (e) { }
+                } catch (e) {}
             }
 
             return cloneContainer.innerHTML;
@@ -898,7 +811,7 @@
 
                     @page {
                         size: A4 portrait;
-                        margin: 3mm;
+                        margin: 2mm;
                     }
 
                     html, body {
@@ -925,8 +838,8 @@
                         border: none !important;
                         border-radius: 0 !important;
                         box-shadow: none !important;
-                        padding: 1.5mm 2.2mm !important;
-                        margin: 0 0 2mm 0 !important;
+                        padding: 1mm 1.6mm !important;
+                        margin: 0 0 1mm 0 !important;
                         overflow: visible;
                         page-break-after: always;
                     }
@@ -937,24 +850,25 @@
 
                     .doc-header {
                         display: grid;
-                        grid-template-columns: 170px 1fr 235px;
+                        grid-template-columns: 165px 1fr 210px;
                         gap: 4px;
                         align-items: start;
                         border-bottom: 2px solid #000;
                         padding-bottom: 6px;
                         margin-bottom: 6px;
+                        width: 100%;
                     }
 
                     .doc-logo {
                         display: flex;
                         align-items: flex-start;
                         justify-content: flex-start;
-                        min-height: 62px;
+                        min-height: 58px;
                     }
 
                     .logo-box {
-                        width: 155px;
-                        height: 62px;
+                        width: 150px;
+                        height: 58px;
                         display: flex;
                         align-items: flex-start;
                         justify-content: flex-start;
@@ -963,8 +877,8 @@
                     }
 
                     .logo-box img {
-                        width: 150px !important;
-                        height: 62px !important;
+                        width: 142px !important;
+                        height: 58px !important;
                         object-fit: contain;
                         object-position: left center;
                         display: block;
@@ -972,29 +886,39 @@
 
                     .ordem-center {
                         text-align: center;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: flex-start;
                     }
 
                     .ordem-center h1 {
-                        font-size: 18px !important;
-                        line-height: 1.1 !important;
+                        font-size: 16px !important;
+                        line-height: 1.02 !important;
                         margin: 0 !important;
                         font-weight: 800;
                         text-transform: uppercase;
+                        text-align: center !important;
+                        white-space: nowrap !important;
                     }
 
                     .ordem-center h2 {
-                        font-size: 11.5px !important;
-                        margin: 2px 0 0 !important;
+                        font-size: 10.5px !important;
+                        margin: 4px 0 0 !important;
                         font-weight: 700;
                         text-transform: uppercase;
                         color: #333;
+                        text-align: center !important;
+                        white-space: nowrap !important;
                     }
 
-                    .ordem-center > div {
-                        font-size: 10px !important;
+                    .ordem-center .meta-center {
+                        font-size: 9px !important;
                         margin-top: 4px !important;
                         color: #666 !important;
                         font-weight: 600 !important;
+                        text-align: center !important;
+                        white-space: nowrap !important;
                     }
 
                     .doc-right {
@@ -1007,7 +931,7 @@
 
                     .doc-way {
                         margin-bottom: 4px;
-                        font-size: 10px;
+                        font-size: 9.5px;
                         font-weight: 800;
                         color: #000;
                         text-transform: uppercase;
@@ -1019,28 +943,28 @@
                     .doc-right-box {
                         display: inline-block;
                         border: 1.5px solid #000;
-                        padding: 5px 10px;
+                        padding: 5px 8px;
                         text-align: center;
-                        min-width: 160px;
-                        width: 160px;
+                        min-width: 145px;
+                        width: 145px;
                     }
 
                     .doc-right-label {
-                        font-size: 9px;
+                        font-size: 8.5px;
                         font-weight: 800;
                         text-transform: uppercase;
                         margin-bottom: 2px;
                     }
 
                     .doc-right-number {
-                        font-size: 20px;
+                        font-size: 18px;
                         font-weight: 900;
                         line-height: 1.05;
                     }
 
                     .doc-right-date {
                         margin-top: 5px;
-                        font-size: 10px;
+                        font-size: 9px;
                         font-weight: 700;
                         color: #444;
                         text-transform: uppercase;
@@ -1055,7 +979,7 @@
                     }
 
                     .info-wrap {
-                        margin-bottom: 8px;
+                        margin-bottom: 7px;
                     }
 
                     table {
@@ -1065,7 +989,7 @@
 
                     .info-table,
                     .items-table {
-                        font-size: 10.5px;
+                        font-size: 10px;
                         min-width: 0 !important;
                     }
 
@@ -1073,7 +997,7 @@
                     .items-table th,
                     .items-table td {
                         border: 1px solid #000;
-                        padding: 3px 5px;
+                        padding: 3px 4px;
                         vertical-align: middle;
                     }
 
@@ -1084,15 +1008,15 @@
                     }
 
                     .label-cell {
-                        font-size: 9.5px;
+                        font-size: 8.8px;
                         font-weight: 800;
                         text-transform: uppercase;
                         white-space: nowrap;
                     }
 
                     .section-title {
-                        margin: 8px 0 4px;
-                        font-size: 10px;
+                        margin: 7px 0 4px;
+                        font-size: 9.8px;
                         font-weight: 800;
                         text-transform: uppercase;
                         color: #333;
@@ -1105,7 +1029,7 @@
                     }
 
                     .items-table tbody td {
-                        height: 24px;
+                        height: 23px;
                     }
 
                     .items-table tbody tr:last-child td,
@@ -1114,36 +1038,36 @@
                     }
 
                     .obs-text {
-                        margin-top: 10px;
-                        margin-bottom: 18px;
-                        font-size: 10px;
+                        margin-top: 8px;
+                        margin-bottom: 14px;
+                        font-size: 9.5px;
                         color: #444;
-                        line-height: 1.4;
-                        min-height: 28px;
+                        line-height: 1.35;
+                        min-height: 24px;
                     }
 
                     .signatures {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
-                        gap: 52px;
+                        gap: 50px;
                         text-align: center;
-                        margin-top: 34px;
+                        margin-top: 28px;
                     }
 
                     .signature-line {
                         border-top: 1.5px solid #000;
-                        padding-top: 8px;
-                        min-height: 36px;
+                        padding-top: 7px;
+                        min-height: 34px;
                     }
 
                     .signature-title {
-                        font-size: 11px;
+                        font-size: 10.5px;
                         font-weight: 800;
                     }
 
                     .signature-subtitle {
-                        margin-top: 4px;
-                        font-size: 9px;
+                        margin-top: 3px;
+                        font-size: 8.5px;
                         font-weight: 700;
                         color: #555;
                         text-transform: uppercase;
@@ -1173,7 +1097,7 @@
                 </html>
             `;
 
-            const blob = new Blob(['\ufeff', htmlCompleto], {
+            const blob = new Blob(['\\ufeff', htmlCompleto], {
                 type: 'application/msword'
             });
 
@@ -1189,5 +1113,4 @@
     </script>
 
 </body>
-
 </html>
