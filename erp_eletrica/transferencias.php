@@ -15,22 +15,50 @@ $msg = $_GET['msg'] ?? '';
 $erro = $_GET['erro'] ?? '';
 
 // =======================================================
-// AUTO-HEALING (Garante que se a tabela existir de versões anteriores, ela terá as colunas novas)
+// AUTO-INSTALADOR (Garante que tudo funcionará em qualquer servidor)
 // =======================================================
 try {
-    $pdo->query("SELECT data_envio FROM transferencias_estoque LIMIT 1");
+    $pdo->query("SELECT data_solicitacao FROM erp_transferencias LIMIT 1");
 } catch (Exception $e) {
-    if (strpos($e->getMessage(), 'Unknown column') !== false || strpos($e->getMessage(), '42S22') !== false) {
-        try {
-            $pdo->exec("ALTER TABLE transferencias_estoque 
-                        ADD COLUMN data_aprovacao TIMESTAMP NULL, 
-                        ADD COLUMN data_envio TIMESTAMP NULL, 
-                        ADD COLUMN data_recebimento TIMESTAMP NULL");
-        } catch(Exception $ex) {}
-    } elseif (strpos($e->getMessage(), 'doesn\'t exist') !== false || strpos($e->getMessage(), '42S02') !== false) {
-        // Tabela realmente não existe, encerramos gentilmente com aviso de erro em tela
-        header("Location: index.php?msg=" . urlencode("AVISO: A tabela de transferências não existe. Execute a migração 032 no Servidor."));
-        exit;
+    if (strpos($e->getMessage(), 'doesn\'t exist') !== false || strpos($e->getMessage(), '42S02') !== false) {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS erp_transferencias (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                codigo_transferencia VARCHAR(20) NOT NULL UNIQUE,
+                tipo VARCHAR(50) NOT NULL DEFAULT 'transferencia',
+                origem_filial_id INT NOT NULL,
+                destino_filial_id INT NOT NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'pendente',
+                valor_total_custo DECIMAL(10,2) DEFAULT 0,
+                observacoes TEXT,
+                usuario_id INT NOT NULL,
+                data_solicitacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                data_aprovacao TIMESTAMP NULL,
+                data_envio TIMESTAMP NULL,
+                data_recebimento TIMESTAMP NULL
+            );
+            CREATE TABLE IF NOT EXISTS erp_transferencias_itens (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                transferencia_id INT NOT NULL,
+                produto_id INT NOT NULL,
+                quantidade_solicitada DECIMAL(10,3) NOT NULL,
+                quantidade_enviada DECIMAL(10,3) DEFAULT 0,
+                quantidade_recebida DECIMAL(10,3) DEFAULT 0,
+                valor_custo_unitario DECIMAL(10,2) DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS estoque_filiais (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                produto_id INT NOT NULL,
+                filial_id INT NOT NULL,
+                quantidade DECIMAL(10,3) DEFAULT 0,
+                estoque_minimo DECIMAL(10,3) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_produto_filial (produto_id, filial_id)
+            );
+            INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+            SELECT id, 1, quantidade, estoque_minimo FROM produtos;
+        ");
     }
 }
 
@@ -58,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Cria o Malote "Transferência de Estoque"
             $codigoTransf = 'REQ-' . date('YmdHis') . '-' . rand(100, 999);
-            $stmt = $pdo->prepare("INSERT INTO transferencias_estoque (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO erp_transferencias (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $codigoTransf,
                 'solicitacao',
@@ -71,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $transf_id = $pdo->lastInsertId();
             
-            $stmtItem = $pdo->prepare("INSERT INTO transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, valor_custo_unitario) VALUES (?, ?, ?, ?)");
+            $stmtItem = $pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, valor_custo_unitario) VALUES (?, ?, ?, ?)");
             
             foreach ($itensValidos as $item) {
                 // Recuperar o custo unitário atual para auditoria
@@ -116,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
             
             $codigoTransf = 'ENV-' . date('YmdHis') . '-' . rand(100, 999);
-            $stmt = $pdo->prepare("INSERT INTO transferencias_estoque (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt = $pdo->prepare("INSERT INTO erp_transferencias (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
             $stmt->execute([
                 $codigoTransf,
                 'transferencia',
@@ -129,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $transf_id = $pdo->lastInsertId();
             
-            $stmtItem = $pdo->prepare("INSERT INTO transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
+            $stmtItem = $pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
             $stmtDecrement = $pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = 1");
             // Se as filiais ainda operarem em estoque global, descontamos do global temporariamente caso a migração do estoque_filiais ainda não tenha rodado
             $stmtGlobalDec = $pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
@@ -174,10 +202,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
             
             // Atualiza status do malote
-            $stmt = $pdo->prepare("UPDATE transferencias_estoque SET status = 'em_transito', data_envio = NOW(), data_aprovacao = NOW() WHERE id = ? AND origem_filial_id = 1");
+            $stmt = $pdo->prepare("UPDATE erp_transferencias SET status = 'em_transito', data_envio = NOW(), data_aprovacao = NOW() WHERE id = ? AND origem_filial_id = 1");
             $stmt->execute([$transf_id]);
             
-            $stmtItem = $pdo->prepare("UPDATE transferencias_itens SET quantidade_enviada = ? WHERE transferencia_id = ? AND produto_id = ?");
+            $stmtItem = $pdo->prepare("UPDATE erp_transferencias_itens SET quantidade_enviada = ? WHERE transferencia_id = ? AND produto_id = ?");
             $stmtDecrement = $pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = 1");
             $stmtGlobalDec = $pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
 
@@ -211,15 +239,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
             
             // Garantir que a transferência seja desta filial
-            $check = $pdo->prepare("SELECT * FROM transferencias_estoque WHERE id = ? AND destino_filial_id = ? AND status = 'em_transito'");
+            $check = $pdo->prepare("SELECT * FROM erp_transferencias WHERE id = ? AND destino_filial_id = ? AND status = 'em_transito'");
             $check->execute([$transf_id, $filial_logada]);
             if (!$check->fetch()) throw new Exception("Requisição inválida.");
 
-            $stmt = $pdo->prepare("UPDATE transferencias_estoque SET status = 'concluida', data_recebimento = NOW() WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE erp_transferencias SET status = 'concluida', data_recebimento = NOW() WHERE id = ?");
             $stmt->execute([$transf_id]);
             
             // Puxa os itens enviados
-            $itens = $pdo->prepare("SELECT produto_id, quantidade_enviada FROM transferencias_itens WHERE transferencia_id = ?");
+            $itens = $pdo->prepare("SELECT produto_id, quantidade_enviada FROM erp_transferencias_itens WHERE transferencia_id = ?");
             $itens->execute([$transf_id]);
             
             $stmtIncrement = $pdo->prepare("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantidade = quantidade + ?");
@@ -228,7 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $qtd = $item['quantidade_enviada'];
                 if ($qtd > 0) {
                     // Update transferencias_itens
-                    $upd = $pdo->prepare("UPDATE transferencias_itens SET quantidade_recebida = ? WHERE transferencia_id = ? AND produto_id = ?");
+                    $upd = $pdo->prepare("UPDATE erp_transferencias_itens SET quantidade_recebida = ? WHERE transferencia_id = ? AND produto_id = ?");
                     $upd->execute([$qtd, $transf_id, $item['produto_id']]);
 
                     // Adiciona Fisicamente ao Estoque da FILIAL
@@ -269,15 +297,15 @@ $filiais = $pdo->query("SELECT * FROM filiais WHERE principal = 0 ORDER BY nome"
 
 // Listagem de Transferências de Acordo com a Filial
 if ($isMatriz) {
-    $recebidas = $pdo->query("SELECT t.*, f.nome as nome_filial FROM transferencias_estoque t JOIN filiais f ON t.destino_filial_id = f.id WHERE t.tipo = 'solicitacao' AND t.status = 'pendente' ORDER BY t.data_solicitacao DESC")->fetchAll();
+    $recebidas = $pdo->query("SELECT t.*, f.nome as nome_filial FROM erp_transferencias t JOIN filiais f ON t.destino_filial_id = f.id WHERE t.tipo = 'solicitacao' AND t.status = 'pendente' ORDER BY t.data_solicitacao DESC")->fetchAll();
     
-    $historico_envios = $pdo->query("SELECT t.*, f.nome as nome_filial FROM transferencias_estoque t JOIN filiais f ON t.destino_filial_id = f.id WHERE t.origem_filial_id = 1 AND t.status IN ('em_transito', 'concluida') ORDER BY t.data_envio DESC LIMIT 50")->fetchAll();
+    $historico_envios = $pdo->query("SELECT t.*, f.nome as nome_filial FROM erp_transferencias t JOIN filiais f ON t.destino_filial_id = f.id WHERE t.origem_filial_id = 1 AND t.status IN ('em_transito', 'concluida') ORDER BY t.data_envio DESC LIMIT 50")->fetchAll();
 } else {
-    $em_transito = $pdo->prepare("SELECT t.*, f.nome as nome_filial FROM transferencias_estoque t JOIN filiais f ON t.origem_filial_id = f.id WHERE t.destino_filial_id = ? AND t.status = 'em_transito' ORDER BY t.data_envio DESC");
+    $em_transito = $pdo->prepare("SELECT t.*, f.nome as nome_filial FROM erp_transferencias t JOIN filiais f ON t.origem_filial_id = f.id WHERE t.destino_filial_id = ? AND t.status = 'em_transito' ORDER BY t.data_envio DESC");
     $em_transito->execute([$filial_logada]);
     $em_transito = $em_transito->fetchAll();
     
-    $historico = $pdo->prepare("SELECT t.*, f.nome as nome_filial FROM transferencias_estoque t JOIN filiais f ON t.origem_filial_id = f.id WHERE t.destino_filial_id = ? ORDER BY t.data_solicitacao DESC LIMIT 50");
+    $historico = $pdo->prepare("SELECT t.*, f.nome as nome_filial FROM erp_transferencias t JOIN filiais f ON t.origem_filial_id = f.id WHERE t.destino_filial_id = ? ORDER BY t.data_solicitacao DESC LIMIT 50");
     $historico->execute([$filial_logada]);
     $historico = $historico->fetchAll();
 }
