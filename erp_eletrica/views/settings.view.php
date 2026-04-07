@@ -159,7 +159,7 @@
         <div class="modal-content border-0 shadow-lg">
             <form action="configuracoes.php?action=saveFilial" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="id" id="f_id">
-                <div class="modal-header bg-dark text-white py-3 border-0">
+                <div class="modal-header bg-primary text-white py-3 border-0">
                     <h6 class="modal-title fw-bold" id="modalTitle"><i class="fas fa-store me-2"></i>Dados da Unidade</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -592,8 +592,8 @@ function atualizarCodigoUF() {
 
 /* Custom Overrides for Tabs */
 .nav-pills .nav-link.active {
-    background-color: #ffc107 !important;
-    color: #000 !important;
+    background-color: var(--primary-color) !important;
+    color: #fff !important;
 }
 .nav-pills .nav-link {
     color: #6c757d;
