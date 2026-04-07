@@ -102,7 +102,9 @@ class Sale extends BaseModel {
     public function findById($id) {
         $nameField = $this->columnExists('nome_cliente_avulso') ? 'v.nome_cliente_avulso' : 'NULL';
         $sale = $this->query("
-            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome 
+            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome,
+                   (SELECT status FROM notas_fiscais WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as nf_status,
+                   (SELECT chave_acesso FROM notas_fiscais WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as chave_acesso
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
             LEFT JOIN usuarios u ON v.usuario_id = u.id 
@@ -172,7 +174,8 @@ class Sale extends BaseModel {
         $nameField = $this->columnExists('nome_cliente_avulso') ? 'v.nome_cliente_avulso' : 'NULL';
 
         return $this->query("
-            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome 
+            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome,
+                   (SELECT chave_acesso FROM notas_fiscais WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as chave_acesso
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
             LEFT JOIN usuarios u ON v.usuario_id = u.id 

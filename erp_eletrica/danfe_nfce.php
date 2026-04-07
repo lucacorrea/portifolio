@@ -18,9 +18,14 @@ $chaveReq = preg_replace('/\D+/', '', (string)($_GET['chave'] ?? ''));
 $xmlRaw = null;
 $nfRecord = null;
 try {
-    if ($vendaId > 0 || strlen($chaveReq) === 44) {
-        $where = $vendaId > 0 ? "venda_id = ?" : "chave_acesso = ?";
-        $param = $vendaId > 0 ? $vendaId : $chaveReq;
+    if (strlen($chaveReq) === 44 || $vendaId > 0) {
+        if (strlen($chaveReq) === 44) {
+            $where = "chave_acesso = ?";
+            $param = $chaveReq;
+        } else {
+            $where = "venda_id = ?";
+            $param = $vendaId;
+        }
         $st = $db->prepare("SELECT * FROM notas_fiscais WHERE $where ORDER BY id DESC LIMIT 1");
         $st->execute([$param]);
         $nfRecord = $st->fetch(PDO::FETCH_ASSOC);
