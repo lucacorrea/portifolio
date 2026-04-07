@@ -1,14 +1,14 @@
 :root {
-    /* Nova Padronização Corporativa */
+    /* Padronização Corporativa Refinada */
     --erp-primary: #2b4c7d;
     --erp-primary-hover: #1e3a62;
     --erp-secondary: #2b4c7d;
-    --erp-success: #10b981;
-    --erp-danger: #ef4444;
+    --erp-success: #059669;
+    --erp-danger: #dc2626;
     --erp-warning: #2b4c7d;
     --erp-dark: #1e293b;
-    --erp-light: #cbd5e1;
-    --erp-active-font: #475569;
+    --erp-light: #f8fafc;
+    --erp-active-font: #cbd5e1;
     --erp-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 
     /* Technical Tokens (Sync with style.css) */
@@ -134,9 +134,9 @@ body {
 .card {
     background-color: #ffffff !important;
     border-radius: 0.75rem;
-    border: 1px solid #e2e8f0 !important;
-    box-shadow: var(--erp-card-shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #eef2f6 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.3s ease;
 }
 
 .card * {
