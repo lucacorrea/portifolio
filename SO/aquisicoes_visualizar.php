@@ -53,7 +53,6 @@ include 'views/layout/header.php';
         margin-bottom: 2rem;
         border-radius: 12px;
         overflow: visible;
-        /* corrigido para não cortar borda inferior */
         background: #fff;
     }
 
@@ -63,12 +62,18 @@ include 'views/layout/header.php';
 
     .ordem-header {
         display: grid;
-        grid-template-columns: 1fr auto 1fr;
+        grid-template-columns: 1.25fr auto 1fr;
         align-items: center;
         border-bottom: 2px solid #000;
         padding-bottom: 1.25rem;
         margin-bottom: 2rem;
-        gap: 1rem;
+        gap: 1.25rem;
+    }
+
+    .ordem-header-info {
+        text-align: center;
+        justify-self: center;
+        width: 100%;
     }
 
     .ordem-logo {
@@ -101,6 +106,7 @@ include 'views/layout/header.php';
     .ordem-items-table {
         width: 100%;
         border-collapse: collapse;
+        table-layout: fixed;
     }
 
     .ordem-info-wrap,
@@ -111,8 +117,7 @@ include 'views/layout/header.php';
     }
 
     .ordem-info-wrap {
-        margin-bottom: 1.35rem;
-        /* afastou mais do título abaixo */
+        margin-bottom: 1.45rem;
     }
 
     .ordem-info-table {
@@ -123,7 +128,6 @@ include 'views/layout/header.php';
     .ordem-items-table {
         font-size: 0.8125rem;
         border: 1px solid #000;
-        /* reforça a borda completa */
     }
 
     .ordem-info-table td,
@@ -131,6 +135,7 @@ include 'views/layout/header.php';
     .ordem-items-table td {
         border: 1px solid #000;
         padding: 6px 8px;
+        vertical-align: middle;
     }
 
     .ordem-items-table thead tr,
@@ -142,7 +147,6 @@ include 'views/layout/header.php';
     .ordem-items-table tbody tr:last-child td,
     .ordem-items-table tfoot td {
         border-bottom: 1px solid #000 !important;
-        /* garante borda inferior visível */
     }
 
     .ordem-section-title {
@@ -150,8 +154,7 @@ include 'views/layout/header.php';
         font-weight: 800;
         color: #333;
         text-transform: uppercase;
-        margin: 1.85rem 0 0.5rem;
-        /* desce mais o título */
+        margin: 1.95rem 0 0.5rem;
     }
 
     .assinaturas-grid {
@@ -198,7 +201,7 @@ include 'views/layout/header.php';
 
         .ordem-right,
         .ordem-logo,
-        .ordem-header>div:first-child {
+        .ordem-header-info {
             text-align: center;
             justify-self: center;
             margin-right: 0;
@@ -274,8 +277,6 @@ include 'views/layout/header.php';
             max-width: 100% !important;
             margin: 0 0 4mm 0 !important;
             padding: 0 !important;
-
-            /* borda completa na impressão */
             box-shadow: none !important;
             background: #fff !important;
             page-break-after: always;
@@ -297,8 +298,13 @@ include 'views/layout/header.php';
             gap: 8px !important;
             margin-bottom: 10px !important;
             padding-bottom: 8px !important;
-            grid-template-columns: 1fr auto 1fr !important;
-            margin-left: -50px !important;
+            grid-template-columns: 1.25fr auto 1fr !important;
+        }
+
+        .ordem-header-info {
+            text-align: center !important;
+            justify-self: center !important;
+            width: 100% !important;
         }
 
         .ordem-logo img {
@@ -321,7 +327,6 @@ include 'views/layout/header.php';
 
         .ordem-info-wrap {
             margin-bottom: 12px !important;
-            /* mais espaço antes do título */
         }
 
         .ordem-info-table,
@@ -352,7 +357,6 @@ include 'views/layout/header.php';
             font-size: 10px !important;
         }
 
-        /* mantém as assinaturas do jeito que estavam */
         .assinaturas-grid {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
@@ -394,9 +398,9 @@ include 'views/layout/header.php';
         <div class="card-body">
 
             <div class="ordem-header">
-                <div>
+                <div class="ordem-header-info">
                     <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL</h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Aquisição e Suprimentos</h2>
+                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">ORDEM DE AQUISIÇÃO E SUPRIMENTOS</h2>
                     <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
                 </div>
 
@@ -419,9 +423,9 @@ include 'views/layout/header.php';
             <div class="ordem-info-wrap">
                 <table class="ordem-info-table">
                     <tr>
-                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                        <td style="font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
-                        <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
+                        <td class="ordem-info-label" style="width: 16%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
+                        <td style="width: 35%; font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
+                        <td class="ordem-info-label" style="width: 29%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
                         <td style="width: 20%; font-weight: 700;"><?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
                     </tr>
                     <tr>
@@ -439,10 +443,10 @@ include 'views/layout/header.php';
                 <table class="ordem-items-table">
                     <thead>
                         <tr>
-                            <th style="text-align: center; width: 40px;">Item</th>
+                            <th style="text-align: center; width: 42px;">Item</th>
                             <th style="text-align: center; width: 50px;">Unid.</th>
                             <th style="text-align: center; width: 60px;">Qtd</th>
-                            <th style="text-align: left;">Especificação Completa</th>
+                            <th style="text-align: left; width: auto;">Especificação Completa</th>
                             <th style="text-align: right; width: 110px;">Preço Unitário</th>
                             <th style="text-align: right; width: 110px;">Valor Total</th>
                         </tr>
@@ -492,9 +496,9 @@ include 'views/layout/header.php';
         <div class="card-body">
 
             <div class="ordem-header">
-                <div>
+                <div class="ordem-header-info">
                     <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL</h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Fornecimento</h2>
+                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">ORDEM DE FORNECIMENTO</h2>
                     <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
                 </div>
 
@@ -517,9 +521,9 @@ include 'views/layout/header.php';
             <div class="ordem-info-wrap">
                 <table class="ordem-info-table">
                     <tr>
-                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                        <td style="font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
-                        <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
+                        <td class="ordem-info-label" style="width: 16%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
+                        <td style="width: 35%; font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
+                        <td class="ordem-info-label" style="width: 29%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
                         <td style="width: 20%; font-weight: 700;"><?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
                     </tr>
                     <tr>
@@ -537,10 +541,10 @@ include 'views/layout/header.php';
                 <table class="ordem-items-table">
                     <thead>
                         <tr>
-                            <th style="text-align: center; width: 40px;">Item</th>
+                            <th style="text-align: center; width: 42px;">Item</th>
                             <th style="text-align: center; width: 50px;">Unid.</th>
                             <th style="text-align: center; width: 60px;">Qtd</th>
-                            <th style="text-align: left;">Especificação Completa</th>
+                            <th style="text-align: left; width: auto;">Especificação Completa</th>
                             <th style="text-align: right; width: 110px;">Preço Unitário</th>
                             <th style="text-align: right; width: 110px;">Valor Total</th>
                         </tr>
