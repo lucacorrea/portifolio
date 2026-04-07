@@ -26,7 +26,9 @@ $stmt_items->execute([$id]);
 $items = $stmt_items->fetchAll();
 
 $page_title = "Aquisição: " . $aq['numero_aq'];
+
 include 'views/layout/header.php';
+
 ?>
 
 <style>
@@ -296,6 +298,7 @@ include 'views/layout/header.php';
             margin-bottom: 10px !important;
             padding-bottom: 8px !important;
             grid-template-columns: 1fr auto 1fr !important;
+            margin-right: 30px !important;
         }
 
         .ordem-logo img {
