@@ -519,7 +519,41 @@ body {
     color: var(--danger);
 }
 
+/* --- Reforço da Paleta Corporativa (Amarelo -> Azul) --- */
+.btn-warning, .btn-primary, .btn-erp-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+.btn-warning:hover, .btn-primary:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+    color: #ffffff !important;
+}
+.bg-warning, .bg-primary, .bg-erp-primary {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+.text-warning, .text-primary, .text-erp-primary {
+    color: var(--primary-color) !important;
+}
+.alert-warning {
+    background-color: rgba(43, 76, 125, 0.1) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+}
+
+/* Ajuste de Contraste do Menu Lateral */
+.sidebar-menu li.active a {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: #cbd5e1 !important; /* Usando o cinza claro da sua paleta para leitura sobre azul */
+    border-left-color: #cbd5e1 !important;
+}
+.sidebar-menu li.active a i {
+    color: #cbd5e1 !important;
+}
+
 .badge-warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--warning);
+    background: rgba(43, 76, 125, 0.15);
+    color: var(--primary-color);
 }
