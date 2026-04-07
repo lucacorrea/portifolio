@@ -52,10 +52,9 @@ include 'views/layout/header.php';
     .printable-page {
         margin-bottom: 2rem;
         border-radius: 12px;
-        overflow: visible; /* corrigido para não cortar borda inferior */
-        border: 1px solid #dfe3e8; /* garante a borda do card */
+        overflow: visible;
+        /* corrigido para não cortar borda inferior */
         background: #fff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
 
     .printable-page .card-body {
@@ -112,7 +111,8 @@ include 'views/layout/header.php';
     }
 
     .ordem-info-wrap {
-        margin-bottom: 1.35rem; /* afastou mais do título abaixo */
+        margin-bottom: 1.35rem;
+        /* afastou mais do título abaixo */
     }
 
     .ordem-info-table {
@@ -122,7 +122,8 @@ include 'views/layout/header.php';
 
     .ordem-items-table {
         font-size: 0.8125rem;
-        border: 1px solid #000; /* reforça a borda completa */
+        border: 1px solid #000;
+        /* reforça a borda completa */
     }
 
     .ordem-info-table td,
@@ -140,7 +141,8 @@ include 'views/layout/header.php';
 
     .ordem-items-table tbody tr:last-child td,
     .ordem-items-table tfoot td {
-        border-bottom: 1px solid #000 !important; /* garante borda inferior visível */
+        border-bottom: 1px solid #000 !important;
+        /* garante borda inferior visível */
     }
 
     .ordem-section-title {
@@ -148,7 +150,8 @@ include 'views/layout/header.php';
         font-weight: 800;
         color: #333;
         text-transform: uppercase;
-        margin: 1.85rem 0 0.5rem; /* desce mais o título */
+        margin: 1.85rem 0 0.5rem;
+        /* desce mais o título */
     }
 
     .assinaturas-grid {
@@ -195,7 +198,7 @@ include 'views/layout/header.php';
 
         .ordem-right,
         .ordem-logo,
-        .ordem-header > div:first-child {
+        .ordem-header>div:first-child {
             text-align: center;
             justify-self: center;
             margin-right: 0;
@@ -271,7 +274,8 @@ include 'views/layout/header.php';
             max-width: 100% !important;
             margin: 0 0 4mm 0 !important;
             padding: 0 !important;
-            border: 1px solid #000 !important; /* borda completa na impressão */
+
+            /* borda completa na impressão */
             box-shadow: none !important;
             background: #fff !important;
             page-break-after: always;
@@ -315,7 +319,8 @@ include 'views/layout/header.php';
         }
 
         .ordem-info-wrap {
-            margin-bottom: 12px !important; /* mais espaço antes do título */
+            margin-bottom: 12px !important;
+            /* mais espaço antes do título */
         }
 
         .ordem-info-table,
@@ -442,7 +447,8 @@ include 'views/layout/header.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $i = 1; foreach ($items as $item): ?>
+                        <?php $i = 1;
+                        foreach ($items as $item): ?>
                             <tr>
                                 <td style="text-align: center; font-weight: 700; color: #333;"><?php echo str_pad($i++, 2, '0', STR_PAD_LEFT); ?></td>
                                 <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
@@ -539,7 +545,8 @@ include 'views/layout/header.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $j = 1; foreach ($items as $item): ?>
+                        <?php $j = 1;
+                        foreach ($items as $item): ?>
                             <tr>
                                 <td style="text-align: center; font-weight: 700; color: #333;"><?php echo str_pad($j++, 2, '0', STR_PAD_LEFT); ?></td>
                                 <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
@@ -567,14 +574,14 @@ include 'views/layout/header.php';
             <div class="assinaturas-grid" style="margin-top: 4rem;">
                 <div>
                     <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">PREFEITURA MUNICIPAL</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Departamento de Almoxarifado</div>
+                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
+                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Autorização de Saída</div>
                     </div>
                 </div>
                 <div>
                     <div class="assinatura-linha">
-                        <div style="color: #888; font-style: italic; margin-bottom: 0.5rem;">_______________________________</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase;">Assinatura do Entregador</div>
+                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Assinatura e Carimbo</div>
                     </div>
                 </div>
             </div>

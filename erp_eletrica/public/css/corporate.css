@@ -1,14 +1,14 @@
 :root {
-    /* Primary Color Standardization (Blue Theme) */
-    --erp-primary: #FFC107;
-    --erp-primary-hover: #FFB300;
-    --erp-secondary: #000000;
-    --erp-success: #10b981;
-    --erp-danger: #ef4444;
-    --erp-warning: #FFC107;
+    /* Padronização Corporativa Refinada */
+    --erp-primary: #2b4c7d;
+    --erp-primary-hover: #1e3a62;
+    --erp-secondary: #2b4c7d;
+    --erp-success: #059669;
+    --erp-danger: #dc2626;
+    --erp-warning: #2b4c7d;
     --erp-dark: #1e293b;
     --erp-light: #f8fafc;
-    --erp-glass: rgba(255, 255, 255, 0.7);
+    --erp-active-font: #cbd5e1;
     --erp-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 
     /* Technical Tokens (Sync with style.css) */
@@ -31,10 +31,10 @@
     --header-height: 70px;
 
     /* Bootstrap 5 Official Variables Overrides */
-    --bs-primary: #FFC107;
-    --bs-primary-rgb: 255, 193, 7;
-    --bs-link-color: #FFC107;
-    --bs-link-hover-color: #FFB300;
+    --bs-primary: #2b4c7d;
+    --bs-primary-rgb: 43, 76, 125;
+    --bs-link-color: #2b4c7d;
+    --bs-link-hover-color: #1e3a62;
 }
 
 body {
@@ -84,8 +84,8 @@ body {
 
 .nav-link:hover,
 .nav-link.active {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--erp-primary);
+    background-color: rgba(255, 255, 255, 0.2);
+    color: var(--erp-active-font) !important;
 }
 
 .nav-link i {
@@ -107,7 +107,7 @@ body {
     min-width: 0;
     margin-left: 260px;
     transition: margin-left 0.3s ease-in-out;
-    background-color: #f8fafc !important;
+    background-color: var(--erp-light) !important;
 }
 
 .sidebar-collapsed .main-wrapper {
@@ -134,9 +134,9 @@ body {
 .card {
     background-color: #ffffff !important;
     border-radius: 0.75rem;
-    border: 1px solid #e2e8f0 !important;
-    box-shadow: var(--erp-card-shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #eef2f6 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.3s ease;
 }
 
 .card * {

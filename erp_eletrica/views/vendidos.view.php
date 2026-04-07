@@ -421,19 +421,31 @@
         window.openCancelModal = function(id, tipo) {
             currentCancelId = id;
             currentCancelTipo = tipo;
-            document.getElementById('cancel-id-label').textContent = id;
-            document.getElementById('cancel-motivo').value = '';
+            
+            const labelEl = document.getElementById('cancel-id-label');
             const alertEl = document.getElementById('fiscal-alert');
             const motiveInput = document.getElementById('cancel-motivo');
             
-            if (tipo === 'fiscal') {
-                alertEl.classList.remove('d-none');
-                motiveInput.placeholder = "Descreva o motivo (mínimo 15 caracteres)...";
-            } else {
-                alertEl.classList.add('d-none');
-                motiveInput.placeholder = "Obrigatório descrever o motivo...";
+            if (labelEl) labelEl.textContent = id;
+            if (motiveInput) {
+                motiveInput.value = '';
+                motiveInput.placeholder = (tipo === 'fiscal') 
+                    ? "Descreva o motivo (mínimo 15 caracteres)..." 
+                    : "Obrigatório descrever o motivo...";
             }
-            new bootstrap.Modal('#modalCancel').show();
+            
+            if (alertEl) {
+                if (tipo === 'fiscal') alertEl.classList.remove('d-none');
+                else alertEl.classList.add('d-none');
+            }
+            
+            const modalEl = document.getElementById('modalCancel');
+            if (modalEl) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            } else {
+                console.error("Modal #modalCancel não encontrado no DOM");
+                alert("Erro: Modal de cancelamento não encontrado.");
+            }
         };
 
         document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
@@ -459,7 +471,8 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    bootstrap.Modal.getInstance('#modalCancel').hide();
+                    const modalEl = document.getElementById('modalCancel');
+                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
                     alert(currentCancelTipo === 'fiscal' ? 'Venda e NFC-e canceladas com sucesso!' : 'Venda cancelada com sucesso!');
                     loadSales(currentPage);
                 } else {
@@ -576,7 +589,7 @@
     .fw-bold-600 { font-weight: 600; }
     .extra-small { font-size: 0.7rem; }
     .uppercase { text-transform: uppercase; }
-    .pagination .page-item.active .page-link { background-color: var(--erp-primary); border-color: var(--erp-primary); color: #000; }
+    .pagination .page-item.active .page-link { background-color: var(--erp-primary); border-color: var(--erp-primary); color: #fff; }
     .pagination .page-link { color: var(--text-secondary); }
-    .list-group-item-action:hover { background-color: var(--erp-primary); color: #000; }
+    .list-group-item-action:hover { background-color: var(--erp-primary); color: #fff; }
 </style>
