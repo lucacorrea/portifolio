@@ -452,7 +452,8 @@ include 'views/layout/header.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $i = 1; foreach ($items as $item): ?>
+                        <?php $i = 1;
+                        foreach ($items as $item): ?>
                             <tr>
                                 <td style="text-align: center; font-weight: 700; color: #333;"><?php echo str_pad($i++, 2, '0', STR_PAD_LEFT); ?></td>
                                 <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
@@ -498,7 +499,7 @@ include 'views/layout/header.php';
                 <div class="ordem-header-info">
                     <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL</h1>
                     <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">ORDEM DE FORNECIMENTO</h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
+                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 04.262.432/0001-21</div>
                 </div>
 
                 <div class="ordem-logo">
@@ -549,7 +550,8 @@ include 'views/layout/header.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $j = 1; foreach ($items as $item): ?>
+                        <?php $j = 1;
+                        foreach ($items as $item): ?>
                             <tr>
                                 <td style="text-align: center; font-weight: 700; color: #333;"><?php echo str_pad($j++, 2, '0', STR_PAD_LEFT); ?></td>
                                 <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
