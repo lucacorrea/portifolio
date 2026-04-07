@@ -72,7 +72,8 @@ include 'views/layout/header.php';
     }
 
     .ordem-logo {
-        text-align: center;
+        text-align: left;
+
     }
 
     .ordem-logo img {
