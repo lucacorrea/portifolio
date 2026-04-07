@@ -73,7 +73,6 @@ include 'views/layout/header.php';
 
     .ordem-logo {
         text-align: left;
-        margin-left: -50px !important;
 
     }
 
