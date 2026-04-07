@@ -24,6 +24,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
         </a>
+        <a href="vendidos.php" class="nav-link <?= $current_page == 'vendidos.php' ? 'active' : '' ?>">
+            <i class="fas fa-receipt"></i> <span>Histórico de Vendas</span>
+        </a>
         <a href="fiado.php" class="nav-link <?= $current_page == 'fiado.php' ? 'active' : '' ?>">
             <i class="fas fa-hand-holding-dollar"></i> <span>Gestão de Fiados</span>
         </a>
