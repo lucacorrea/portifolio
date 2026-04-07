@@ -15,6 +15,17 @@
     .transfer-card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 15px; border: 1px solid #e2e8f0; overflow: hidden; }
     .transfer-header { background: #f1f5f9; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
     .transfer-body { padding: 20px; }
+
+    /* Paginação da tabela de produtos */
+    .b2b-search-bar { position: relative; }
+    .b2b-search-bar .fas { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; }
+    .b2b-search-bar input { padding-left: 36px; }
+    .b2b-pagination { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .b2b-pagination .page-btn { border: 1px solid #e2e8f0; background: white; color: #475569; border-radius: 6px; padding: 4px 10px; font-size: .8rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .b2b-pagination .page-btn:hover { background: #f1f5f9; }
+    .b2b-pagination .page-btn.active { background: var(--primary-color, #0d6efd); color: white; border-color: var(--primary-color, #0d6efd); }
+    .b2b-pagination .page-btn:disabled { opacity: .4; cursor: default; }
+    .b2b-no-results { text-align: center; color: #94a3b8; padding: 30px 0; }
 </style>
 
 <?php if (isset($_GET['erro']) && $_GET['erro']): ?>
@@ -165,7 +176,21 @@
                         </div>
                     </div>
 
-                    <table class="table table-hover align-middle border">
+                    <!-- Barra de busca Matriz -->
+                    <div class="row g-2 align-items-center mb-3">
+                        <div class="col-md-6">
+                            <div class="b2b-search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchTransf" class="form-control form-control-sm" placeholder="Buscar produto por nome ou SKU..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
+                            <small class="text-muted" id="paginfoTransf"></small>
+                            <div class="b2b-pagination" id="paginationTransf"></div>
+                        </div>
+                    </div>
+
+                    <table class="table table-hover align-middle border" id="tableTransf">
                         <thead class="table-light">
                             <tr>
                                 <th style="width:40px">Sel.</th>
@@ -174,9 +199,9 @@
                                 <th style="width:130px">Qtd para Enviar</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="tbodyTransf">
                             <?php foreach ($produtosMatriz as $pm): ?>
-                            <tr>
+                            <tr class="prod-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
                                     <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
@@ -195,6 +220,7 @@
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <p class="b2b-no-results d-none" id="noResultsTransf"><i class="fas fa-search me-2"></i>Nenhum produto encontrado.</p>
 
                     <div class="b2b-cart-summary">
                         <h6 class="m-0 fw-bold"><i class="fas fa-box-open text-primary me-2"></i>Itens no Caminhão: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
@@ -253,7 +279,21 @@
                         <i class="fas fa-info-circle me-2"></i><strong>Catálogo da Matriz:</strong> Selecione os produtos e informe a quantidade desejada.
                     </div>
 
-                    <table class="table table-hover align-middle border">
+                    <!-- Barra de busca Filial -->
+                    <div class="row g-2 align-items-center mb-3">
+                        <div class="col-md-6">
+                            <div class="b2b-search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchReq" class="form-control form-control-sm" placeholder="Buscar produto por nome ou SKU..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
+                            <small class="text-muted" id="paginfoReq"></small>
+                            <div class="b2b-pagination" id="paginationReq"></div>
+                        </div>
+                    </div>
+
+                    <table class="table table-hover align-middle border" id="tableReq">
                         <thead class="table-light">
                             <tr>
                                 <th style="width:40px">Sel.</th>
@@ -261,9 +301,9 @@
                                 <th style="width:130px">Qtd Desejada</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="tbodyReq">
                             <?php foreach ($produtosMatriz as $pm): ?>
-                            <tr>
+                            <tr class="prod-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
                                     <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
@@ -281,6 +321,7 @@
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <p class="b2b-no-results d-none" id="noResultsReq"><i class="fas fa-search me-2"></i>Nenhum produto encontrado.</p>
 
                     <div class="b2b-cart-summary">
                         <h6 class="m-0 fw-bold"><i class="fas fa-shopping-cart text-primary me-2"></i>Itens no Carrinho: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
@@ -377,37 +418,128 @@
 </div><!-- /.card -->
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector('#formReq, #formTransf');
+/**
+ * Inicializa busca + paginação para uma tabela de produtos B2B.
+ * @param {string} tbodyId     - ID do <tbody>
+ * @param {string} searchId    - ID do <input> de busca
+ * @param {string} paginationId - ID do container de paginação
+ * @param {string} paginfoId   - ID do <small> com info de página
+ * @param {string} noResultsId - ID do parágrafo de sem resultados
+ * @param {number} pageSize    - Linhas por página
+ */
+function initB2BTable(tbodyId, searchId, paginationId, paginfoId, noResultsId, pageSize = 6) {
+    const tbody      = document.getElementById(tbodyId);
+    const searchEl   = document.getElementById(searchId);
+    const pagination = document.getElementById(paginationId);
+    const paginfo    = document.getElementById(paginfoId);
+    const noResults  = document.getElementById(noResultsId);
+
+    if (!tbody || !searchEl) return;
+
+    let currentPage  = 1;
+    let filteredRows = [];
+
+    const allRows = () => Array.from(tbody.querySelectorAll('tr.prod-row'));
+
+    function applyFilter() {
+        const q = searchEl.value.trim().toLowerCase();
+        filteredRows = allRows().filter(tr => {
+            const match = !q || tr.dataset.search.includes(q);
+            tr.style.display = 'none'; // oculta tudo antes de paginar
+            return match;
+        });
+        currentPage = 1;
+        render();
+    }
+
+    function render() {
+        const total = filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const start = (currentPage - 1) * pageSize;
+        const end   = start + pageSize;
+
+        allRows().forEach(tr => tr.style.display = 'none');
+        filteredRows.slice(start, end).forEach(tr => tr.style.display = '');
+
+        // Info
+        const showing = Math.min(end, total);
+        paginfo.textContent = total === 0 ? '' : `${start + 1}–${showing} de ${total}`;
+
+        // Sem resultados
+        noResults.classList.toggle('d-none', total > 0);
+        tbody.closest('table').classList.toggle('d-none', total === 0);
+
+        // Botões de página
+        pagination.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        const addBtn = (label, page, disabled = false) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'page-btn' + (page === currentPage ? ' active' : '');
+            btn.textContent = label;
+            btn.disabled = disabled;
+            btn.addEventListener('click', () => { currentPage = page; render(); });
+            pagination.appendChild(btn);
+        };
+
+        addBtn('‹', currentPage - 1, currentPage === 1);
+        for (let p = 1; p <= totalPages; p++) addBtn(p, p);
+        addBtn('›', currentPage + 1, currentPage === totalPages);
+    }
+
+    searchEl.addEventListener('input', applyFilter);
+    applyFilter(); // inicializa
+}
+
+// Lógica do carrinho (compartilhada)
+function initCart(formId) {
+    const form = document.getElementById(formId);
     if (!form) return;
 
     const checkboxes = form.querySelectorAll('.chkItem');
-    const qtyInputs  = form.querySelectorAll('.qty-input');
     const countLabel = document.getElementById('cartCount');
     const submitBtn  = document.getElementById('btnSubmitReq') || document.getElementById('btnSubmitTransf');
 
+    const getQtyInput = (chk) => chk.closest('tr').querySelector('.qty-input');
+
     const updateCart = () => {
         let cnt = 0;
-        checkboxes.forEach((chk, idx) => {
+        checkboxes.forEach(chk => {
+            const qty = getQtyInput(chk);
             if (chk.checked) {
                 cnt++;
-                qtyInputs[idx].removeAttribute('disabled');
-                if (!qtyInputs[idx].value || qtyInputs[idx].value == 0) qtyInputs[idx].value = 1;
+                qty.removeAttribute('disabled');
+                if (!qty.value || parseFloat(qty.value) === 0) qty.value = 1;
             } else {
-                qtyInputs[idx].setAttribute('disabled', 'true');
-                qtyInputs[idx].value = '';
+                qty.setAttribute('disabled', 'true');
+                qty.value = '';
             }
         });
-        countLabel.innerText = cnt;
-        submitBtn.disabled = cnt === 0;
+        if (countLabel) countLabel.innerText = cnt;
+        if (submitBtn)  submitBtn.disabled = cnt === 0;
     };
 
     checkboxes.forEach(chk => chk.addEventListener('change', updateCart));
-    qtyInputs.forEach(input => input.addEventListener('input', () => {
-        if (parseFloat(input.value) > 0) {
-            const chk = input.closest('tr').querySelector('.chkItem');
-            if (chk && !chk.checked) { chk.checked = true; updateCart(); }
-        }
-    }));
+    form.querySelectorAll('.qty-input').forEach(input => {
+        input.addEventListener('input', () => {
+            if (parseFloat(input.value) > 0) {
+                const chk = input.closest('tr').querySelector('.chkItem');
+                if (chk && !chk.checked) { chk.checked = true; updateCart(); }
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Tabela da Matriz (Novo Despacho)
+    initB2BTable('tbodyTransf', 'searchTransf', 'paginationTransf', 'paginfoTransf', 'noResultsTransf', 6);
+    initCart('formTransf');
+
+    // Tabela da Filial (Nova Solicitação)
+    initB2BTable('tbodyReq', 'searchReq', 'paginationReq', 'paginfoReq', 'noResultsReq', 6);
+    initCart('formReq');
 });
 </script>
