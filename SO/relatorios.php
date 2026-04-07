@@ -311,13 +311,6 @@ include 'views/layout/header.php';
         flex-wrap: wrap;
     }
 
-    .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(280px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-
     .details-row {
         display: none;
         background: #f8fafc;
@@ -360,10 +353,25 @@ include 'views/layout/header.php';
         font-size: 0.8rem;
     }
 
-    @media (max-width: 992px) {
-        .summary-grid {
-            grid-template-columns: 1fr;
-        }
+    .chart-card-body {
+        padding: 1.25rem;
+    }
+
+    .chart-wrap {
+        position: relative;
+        width: 100%;
+        height: 280px;
+        max-height: 280px;
+    }
+
+    .total-card-body {
+        padding: 2rem 1.5rem;
+    }
+
+    .total-card-number {
+        font-size: 2.3rem !important;
+        line-height: 1.1 !important;
+        word-break: break-word;
     }
 
     @media (max-width: 768px) {
@@ -374,6 +382,19 @@ include 'views/layout/header.php';
         .report-actions .btn {
             flex: 1 1 100%;
             justify-content: center;
+        }
+
+        .chart-wrap {
+            height: 240px;
+            max-height: 240px;
+        }
+
+        .total-card-body {
+            padding: 1.5rem 1rem;
+        }
+
+        .total-card-number {
+            font-size: 1.8rem !important;
         }
     }
 
@@ -455,29 +476,39 @@ include 'views/layout/header.php';
     </div>
 </div>
 
-<div class="summary-grid">
-    <div class="card" style="height: 100%;">
-        <div class="card-body" style="height: 100%; display: flex; flex-direction: column;">
-            <h3 class="card-title" style="margin-bottom: 1.5rem; font-weight: 700; font-size: 1rem;">
-                <i class="fas fa-chart-pie" style="margin-right: 8px; color: var(--primary);"></i> Gastos por Secretaria
-            </h3>
-            <div style="flex-grow: 1; min-height: 300px; position: relative;">
-                <canvas id="chartSecretaria"></canvas>
+<div class="row">
+    <div class="col-12" style="margin-bottom: 1.25rem;">
+        <div class="card">
+            <div class="card-body chart-card-body">
+                <h3 class="card-title" style="margin-bottom: 1rem; font-weight: 700; font-size: 1rem;">
+                    <i class="fas fa-chart-pie" style="margin-right: 8px; color: var(--primary);"></i> Gastos por Secretaria
+                </h3>
+                <div class="chart-wrap">
+                    <canvas id="chartSecretaria"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="card" style="height: 100%;">
-        <div class="card-body" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 3rem;">
-            <h3 class="card-label" style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">TOTAL GERAL DE TODAS AS SECRETARIAS</h3>
-            <div class="card-number" style="font-size: 3rem; color: var(--primary); margin: 0; line-height: 1;">
-                <?php echo format_money($total_geral); ?>
-            </div>
-            <div style="margin-top: 1rem; color: var(--text-muted); font-size: 0.95rem;">
-                Quantidade total acumulada: <strong><?php echo number_format($total_qtd_geral, 2, ',', '.'); ?></strong>
-            </div>
-            <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.875rem;">
-                <p><i class="fas fa-info-circle"></i> Valores calculados com base nos itens das aquisições filtradas.</p>
+    <div class="col-12" style="margin-bottom: 1.5rem;">
+        <div class="card">
+            <div class="card-body total-card-body" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                <h3 class="card-label" style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                    TOTAL GERAL DE TODAS AS SECRETARIAS
+                </h3>
+
+                <div class="card-number total-card-number" style="color: var(--primary); margin: 0;">
+                    <?php echo format_money($total_geral); ?>
+                </div>
+
+                <div style="margin-top: 0.85rem; color: var(--text-muted); font-size: 0.95rem;">
+                    Quantidade total acumulada:
+                    <strong><?php echo number_format($total_qtd_geral, 2, ',', '.'); ?></strong>
+                </div>
+
+                <div style="margin-top: 1.25rem; color: var(--text-muted); font-size: 0.875rem;">
+                    <p style="margin: 0;"><i class="fas fa-info-circle"></i> Valores calculados com base nos itens das aquisições filtradas.</p>
+                </div>
             </div>
         </div>
     </div>
