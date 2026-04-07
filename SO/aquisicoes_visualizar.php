@@ -310,8 +310,8 @@ include 'views/layout/header.php';
         }
 
         .ordem-logo img {
-            max-height: 60px !important;
-            max-width: 150px !important;
+            max-height: 70px !important;
+            max-width: 180px !important;
         }
 
         .ordem-right {
