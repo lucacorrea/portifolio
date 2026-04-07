@@ -333,7 +333,7 @@ include 'views/layout/header.php';
                 </div>
 
                 <div class="ordem-logo">
-                    <img src="assets/img/prefeitura.png" alt="Logo Prefeitura">
+                    <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
                 </div>
 
                 <div class="ordem-right">
@@ -430,7 +430,7 @@ include 'views/layout/header.php';
                 </div>
 
                 <div class="ordem-logo">
-                    <img src="assets/img/prefeitura.png" alt="Logo Prefeitura">
+                    <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
                 </div>
 
                 <div class="ordem-right">
