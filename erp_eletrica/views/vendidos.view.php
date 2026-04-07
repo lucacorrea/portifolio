@@ -411,7 +411,7 @@
         };
 
         window.printSale = function(id, tipo, chave = '') {
-            let url = tipo === 'fiscal' ? `danfe_nfce.php?venda_id=${id}` : `recibo_venda.php?id=${id}`;
+            let url = tipo === 'fiscal' ? `nfce/danfe_nfce.php?venda_id=${id}` : `recibo_venda.php?id=${id}`;
             if (tipo === 'fiscal' && chave) url += `&chave=${chave}`;
             window.open(url, '_blank');
         };
