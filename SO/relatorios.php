@@ -181,42 +181,43 @@ if ($export === 'excel') {
     header('Expires: 0');
 
     echo "\xEF\xBB\xBF";
-    ?>
+?>
     <html>
+
     <head>
         <meta charset="UTF-8">
         <style>
-            body{
+            body {
                 font-family: Arial, sans-serif;
                 font-size: 12px;
                 color: #1f2937;
                 margin: 18px;
             }
 
-            table{
+            table {
                 border-collapse: collapse;
                 width: 100%;
                 table-layout: fixed;
             }
 
-            .sheet{
+            .sheet {
                 width: 100%;
                 max-width: 1100px;
             }
 
             .sheet td,
-            .sheet th{
+            .sheet th {
                 border: 1px solid #7c8aa5;
                 padding: 7px 8px;
                 vertical-align: middle;
                 word-wrap: break-word;
             }
 
-            .sheet .no-border{
+            .sheet .no-border {
                 border: none !important;
             }
 
-            .title-main{
+            .title-main {
                 background: #dbeafe;
                 color: #0f172a;
                 font-size: 18px;
@@ -226,12 +227,12 @@ if ($export === 'excel') {
                 padding: 12px;
             }
 
-            .sub-info{
+            .sub-info {
                 background: #f8fafc;
                 font-size: 11px;
             }
 
-            .section-title{
+            .section-title {
                 background: #1d4ed8;
                 color: #fff;
                 font-weight: bold;
@@ -240,49 +241,49 @@ if ($export === 'excel') {
                 text-align: center;
             }
 
-            .thead{
+            .thead {
                 background: #e5e7eb;
                 font-weight: bold;
                 text-align: center;
             }
 
-            .summary-label{
+            .summary-label {
                 background: #f8fafc;
                 font-weight: bold;
                 text-align: center;
             }
 
-            .summary-value{
+            .summary-value {
                 text-align: center;
                 font-weight: bold;
                 font-size: 14px;
                 background: #ffffff;
             }
 
-            .left{
+            .left {
                 text-align: left;
             }
 
-            .center{
+            .center {
                 text-align: center;
             }
 
-            .right{
+            .right {
                 text-align: right;
             }
 
-            .secretaria-head{
+            .secretaria-head {
                 background: #dbeafe;
                 font-weight: bold;
                 color: #0f172a;
             }
 
-            .total-row{
+            .total-row {
                 background: #eef2ff;
                 font-weight: bold;
             }
 
-            .spacer td{
+            .spacer td {
                 border: none !important;
                 height: 8px;
                 padding: 0;
@@ -290,6 +291,7 @@ if ($export === 'excel') {
             }
         </style>
     </head>
+
     <body>
         <table class="sheet">
             <colgroup>
@@ -318,7 +320,9 @@ if ($export === 'excel') {
                 <td colspan="2" class="sub-info left"><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
             </tr>
 
-            <tr class="spacer"><td colspan="4"></td></tr>
+            <tr class="spacer">
+                <td colspan="4"></td>
+            </tr>
 
             <tr>
                 <td colspan="2" class="summary-label">TOTAL GERAL FINANCEIRO</td>
@@ -329,7 +333,9 @@ if ($export === 'excel') {
                 <td colspan="2" class="summary-value"><?php echo number_format($total_qtd_geral, 2, ',', '.'); ?></td>
             </tr>
 
-            <tr class="spacer"><td colspan="4"></td></tr>
+            <tr class="spacer">
+                <td colspan="4"></td>
+            </tr>
 
             <tr>
                 <td colspan="4" class="section-title">RESUMO POR SECRETARIA</td>
@@ -362,7 +368,9 @@ if ($export === 'excel') {
                 </tr>
             <?php endif; ?>
 
-            <tr class="spacer"><td colspan="4"></td></tr>
+            <tr class="spacer">
+                <td colspan="4"></td>
+            </tr>
             <tr>
                 <td colspan="4" class="section-title">DETALHES DOS PRODUTOS POR SECRETARIA</td>
             </tr>
@@ -398,13 +406,16 @@ if ($export === 'excel') {
                         </tr>
                     <?php endif; ?>
 
-                    <tr class="spacer"><td colspan="4"></td></tr>
+                    <tr class="spacer">
+                        <td colspan="4"></td>
+                    </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
         </table>
     </body>
+
     </html>
-    <?php
+<?php
     exit;
 }
 
@@ -420,9 +431,9 @@ include 'views/layout/header.php';
         background: #fff;
     }
 
-    .relatorio-wrapper .card + .card,
-    .relatorio-wrapper .row + .card,
-    .relatorio-wrapper .card + .row {
+    .relatorio-wrapper .card+.card,
+    .relatorio-wrapper .row+.card,
+    .relatorio-wrapper .card+.row {
         margin-top: 1.25rem;
     }
 
@@ -553,6 +564,18 @@ include 'views/layout/header.php';
         color: #fff;
     }
 
+    .btn-danger-soft {
+        background: #fff1f2;
+        border-color: #fecdd3;
+        color: #be123c;
+    }
+
+    .btn-danger-soft:hover {
+        background: #ffe4e6;
+        border-color: #fda4af;
+        color: #9f1239;
+    }
+
     .summary-card {
         height: 100%;
         position: relative;
@@ -661,7 +684,7 @@ include 'views/layout/header.php';
         background: #fff;
     }
 
-    .modern-table tbody tr:hover > td {
+    .modern-table tbody tr:hover>td {
         background: #fcfdff;
     }
 
@@ -695,54 +718,6 @@ include 'views/layout/header.php';
         white-space: nowrap;
     }
 
-    .details-row {
-        display: none;
-        background: #f8fbff;
-    }
-
-    .details-row.open {
-        display: table-row;
-    }
-
-    .details-box {
-        padding: 1rem;
-        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-    }
-
-    .details-title {
-        font-weight: 800;
-        font-size: .95rem;
-        color: #0f172a;
-        margin-bottom: .9rem;
-    }
-
-    .details-inner-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        overflow: hidden;
-        border: 1px solid #dbe7f5;
-        border-radius: 12px;
-    }
-
-    .details-inner-table th {
-        background: #eaf2fd;
-        color: #1e3a8a;
-        font-weight: 800;
-        padding: .85rem;
-        border-bottom: 1px solid #dbe7f5;
-    }
-
-    .details-inner-table td {
-        padding: .85rem;
-        border-bottom: 1px solid #edf2f7;
-        background: #fff;
-    }
-
-    .details-inner-table tr:last-child td {
-        border-bottom: none;
-    }
-
     .total-row-main td {
         background: #f8fafc !important;
         font-weight: 800;
@@ -755,6 +730,185 @@ include 'views/layout/header.php';
         color: #64748b !important;
     }
 
+    /* =========================
+       MODAL DETALHES
+    ========================= */
+    .details-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1060;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .details-modal.open {
+        display: flex;
+    }
+
+    .details-modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.62);
+        backdrop-filter: blur(2px);
+    }
+
+    .details-modal-dialog {
+        position: relative;
+        z-index: 2;
+        width: min(1100px, 100%);
+        max-height: calc(100vh - 2rem);
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 24px 60px rgba(2, 6, 23, 0.28);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: modalFadeIn .18s ease;
+    }
+
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(8px) scale(.985);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .details-modal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.15rem 1.25rem;
+        border-bottom: 1px solid #e9edf5;
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    }
+
+    .details-modal-title-wrap {
+        min-width: 0;
+    }
+
+    .details-modal-title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.3;
+    }
+
+    .details-modal-subtitle {
+        margin: .25rem 0 0;
+        font-size: .88rem;
+        color: #64748b;
+    }
+
+    .details-modal-close {
+        min-width: 42px;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        border: 1px solid #dbe2ea;
+        background: #fff;
+        color: #334155;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: .2s ease;
+        flex-shrink: 0;
+    }
+
+    .details-modal-close:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+    }
+
+    .details-modal-body {
+        padding: 1.1rem 1.25rem 1.25rem;
+        overflow: auto;
+    }
+
+    .details-modal-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .details-mini-card {
+        border: 1px solid #e9edf5;
+        border-radius: 14px;
+        padding: 1rem;
+        background: #fff;
+    }
+
+    .details-mini-label {
+        margin: 0 0 .35rem;
+        font-size: .78rem;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .35px;
+    }
+
+    .details-mini-value {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0f172a;
+        word-break: break-word;
+    }
+
+    .details-inner-table-wrap {
+        border: 1px solid #dbe7f5;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .details-inner-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .details-inner-table th {
+        background: #eaf2fd;
+        color: #1e3a8a;
+        font-weight: 800;
+        padding: .9rem .85rem;
+        border-bottom: 1px solid #dbe7f5;
+        font-size: .86rem;
+    }
+
+    .details-inner-table td {
+        padding: .88rem .85rem;
+        border-bottom: 1px solid #edf2f7;
+        background: #fff;
+        color: #0f172a;
+        font-size: .92rem;
+        vertical-align: middle;
+    }
+
+    .details-inner-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .details-inner-table tbody tr:hover td {
+        background: #fcfdff;
+    }
+
+    .body-modal-open {
+        overflow: hidden !important;
+    }
+
     @media (max-width: 992px) {
         .summary-number {
             font-size: 1.6rem;
@@ -763,9 +917,14 @@ include 'views/layout/header.php';
         .chart-wrap {
             height: 280px;
         }
+
+        .details-modal-dialog {
+            width: min(1000px, 100%);
+        }
     }
 
     @media (max-width: 768px) {
+
         .filter-actions,
         .report-actions,
         .table-header-box {
@@ -782,26 +941,94 @@ include 'views/layout/header.php';
         }
 
         .modern-table thead th,
-        .modern-table tbody td,
+        .modern-table tbody td {
+            padding: .75rem .7rem;
+            font-size: .86rem;
+        }
+
+        .details-modal {
+            padding: .65rem;
+        }
+
+        .details-modal-dialog {
+            width: 100%;
+            max-height: calc(100vh - 1.3rem);
+            border-radius: 16px;
+        }
+
+        .details-modal-header {
+            padding: 1rem;
+        }
+
+        .details-modal-title {
+            font-size: .98rem;
+        }
+
+        .details-modal-subtitle {
+            font-size: .84rem;
+        }
+
+        .details-modal-body {
+            padding: 1rem;
+        }
+
+        .details-modal-summary {
+            grid-template-columns: 1fr;
+            gap: .75rem;
+        }
+
+        .details-inner-table {
+            min-width: 620px;
+        }
+
         .details-inner-table th,
         .details-inner-table td {
             padding: .75rem .7rem;
-            font-size: .86rem;
+            font-size: .85rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .details-modal {
+            padding: .45rem;
+        }
+
+        .details-modal-dialog {
+            max-height: calc(100vh - .9rem);
+            border-radius: 14px;
+        }
+
+        .details-modal-header,
+        .details-modal-body {
+            padding: .85rem;
+        }
+
+        .details-modal-close {
+            min-width: 38px;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+        }
+
+        .details-mini-card {
+            padding: .85rem;
+        }
+
+        .details-mini-value {
+            font-size: 1rem;
         }
     }
 
     @media print {
+
         .no-print,
         .btn,
         button,
         .report-actions,
         .filter-actions,
-        .details-toggle {
+        .details-open-modal,
+        .details-modal {
             display: none !important;
-        }
-
-        .details-row {
-            display: table-row !important;
         }
 
         .relatorio-wrapper .card {
@@ -952,8 +1179,7 @@ include 'views/layout/header.php';
                 <div class="report-actions no-print">
                     <a
                         href="?<?php echo h(http_build_query(array_merge($_GET, ['export' => 'excel']))); ?>"
-                        class="btn btn-success-custom btn-sm"
-                    >
+                        class="btn btn-success-custom btn-sm">
                         <i class="fas fa-file-excel"></i> Exportar Excel
                     </a>
                 </div>
@@ -986,52 +1212,10 @@ include 'views/layout/header.php';
                                     <td class="no-print td-center">
                                         <button
                                             type="button"
-                                            class="btn btn-primary btn-sm details-toggle"
-                                            data-target="details-<?php echo $sid; ?>"
-                                        >
+                                            class="btn btn-primary btn-sm details-open-modal"
+                                            data-modal="modal-secretaria-<?php echo $sid; ?>">
                                             <i class="fas fa-search"></i> Detalhes
                                         </button>
-                                    </td>
-                                </tr>
-
-                                <tr id="details-<?php echo $sid; ?>" class="details-row">
-                                    <td colspan="4">
-                                        <div class="details-box">
-                                            <div class="details-title">
-                                                Produtos da secretaria: <?php echo h($row['secretaria_nome']); ?>
-                                            </div>
-
-                                            <div class="table-responsive">
-                                                <table class="details-inner-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Produto</th>
-                                                            <th>Fornecedor</th>
-                                                            <th class="td-right">Qtd</th>
-                                                            <th class="td-right">Valor Total</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php if (!empty($detalhes_por_secretaria[$sid])): ?>
-                                                            <?php foreach ($detalhes_por_secretaria[$sid] as $det): ?>
-                                                                <tr>
-                                                                    <td style="font-weight: 700;"><?php echo h($det['produto']); ?></td>
-                                                                    <td><?php echo h($det['fornecedor']); ?></td>
-                                                                    <td class="td-right"><?php echo number_format((float)$det['total_qtd'], 2, ',', '.'); ?></td>
-                                                                    <td class="td-right" style="font-weight: 700;"><?php echo format_money($det['total_valor']); ?></td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
-                                                        <?php else: ?>
-                                                            <tr>
-                                                                <td colspan="4" class="empty-state">
-                                                                    Nenhum produto encontrado para esta secretaria.
-                                                                </td>
-                                                            </tr>
-                                                        <?php endif; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -1055,89 +1239,199 @@ include 'views/layout/header.php';
         </div>
     </div>
 
+    <?php if (!empty($relatorio_secretarias)): ?>
+        <?php foreach ($relatorio_secretarias as $row): ?>
+            <?php $sid = (int)$row['secretaria_id']; ?>
+            <div
+                class="details-modal"
+                id="modal-secretaria-<?php echo $sid; ?>"
+                aria-hidden="true"
+                role="dialog"
+                aria-modal="true">
+                <div class="details-modal-backdrop" data-close-modal></div>
+
+                <div class="details-modal-dialog">
+                    <div class="details-modal-header">
+                        <div class="details-modal-title-wrap">
+                            <h4 class="details-modal-title">
+                                Produtos da secretaria: <?php echo h($row['secretaria_nome']); ?>
+                            </h4>
+                            <p class="details-modal-subtitle">
+                                Visualize abaixo os produtos, fornecedores, quantidades e valores totais desta secretaria.
+                            </p>
+                        </div>
+
+                        <button type="button" class="details-modal-close" data-close-modal aria-label="Fechar modal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="details-modal-body">
+                        <div class="details-modal-summary">
+                            <div class="details-mini-card">
+                                <p class="details-mini-label">Quantidade total</p>
+                                <p class="details-mini-value"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></p>
+                            </div>
+                            <div class="details-mini-card">
+                                <p class="details-mini-label">Valor total</p>
+                                <p class="details-mini-value"><?php echo format_money($row['total_valor']); ?></p>
+                            </div>
+                        </div>
+
+                        <div class="details-inner-table-wrap table-responsive">
+                            <table class="details-inner-table">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Fornecedor</th>
+                                        <th class="td-right">Qtd</th>
+                                        <th class="td-right">Valor Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($detalhes_por_secretaria[$sid])): ?>
+                                        <?php foreach ($detalhes_por_secretaria[$sid] as $det): ?>
+                                            <tr>
+                                                <td style="font-weight: 700;"><?php echo h($det['produto']); ?></td>
+                                                <td><?php echo h($det['fornecedor']); ?></td>
+                                                <td class="td-right"><?php echo number_format((float)$det['total_qtd'], 2, ',', '.'); ?></td>
+                                                <td class="td-right" style="font-weight: 700;"><?php echo format_money($det['total_valor']); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="4" class="empty-state">
+                                                Nenhum produto encontrado para esta secretaria.
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; margin-top: 1rem;" class="no-print">
+                            <button type="button" class="btn btn-danger-soft btn-sm" data-close-modal>
+                                <i class="fas fa-times"></i> Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const chartElement = document.getElementById('chartSecretaria');
+    document.addEventListener('DOMContentLoaded', function() {
+        const chartElement = document.getElementById('chartSecretaria');
 
-    if (chartElement) {
-        const labels = <?php echo json_encode(array_column($relatorio_secretarias, 'secretaria_nome'), JSON_UNESCAPED_UNICODE); ?>;
-        const values = <?php echo json_encode(array_map('floatval', array_column($relatorio_secretarias, 'total_valor'))); ?>;
+        if (chartElement) {
+            const labels = <?php echo json_encode(array_column($relatorio_secretarias, 'secretaria_nome'), JSON_UNESCAPED_UNICODE); ?>;
+            const values = <?php echo json_encode(array_map('floatval', array_column($relatorio_secretarias, 'total_valor'))); ?>;
 
-        if (labels.length > 0) {
-            const ctx = chartElement.getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: [
-                            '#206bc4',
-                            '#2fb344',
-                            '#f59e0b',
-                            '#d63939',
-                            '#6f42c1',
-                            '#0ea5e9',
-                            '#14b8a6',
-                            '#f97316',
-                            '#64748b',
-                            '#8b5cf6'
-                        ],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '58%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                padding: 16,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = Number(context.raw || 0);
-                                    return label + ': ' + new Intl.NumberFormat('pt-BR', {
-                                        style: 'currency',
-                                        currency: 'BRL'
-                                    }).format(value);
+            if (labels.length > 0) {
+                const ctx = chartElement.getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: [
+                                '#206bc4',
+                                '#2fb344',
+                                '#f59e0b',
+                                '#d63939',
+                                '#6f42c1',
+                                '#0ea5e9',
+                                '#14b8a6',
+                                '#f97316',
+                                '#64748b',
+                                '#8b5cf6'
+                            ],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '58%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 16,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = Number(context.raw || 0);
+                                        return label + ': ' + new Intl.NumberFormat('pt-BR', {
+                                            style: 'currency',
+                                            currency: 'BRL'
+                                        }).format(value);
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
         }
-    }
 
-    document.querySelectorAll('.details-toggle').forEach(function(button) {
-        button.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
-            const row = document.getElementById(targetId);
+        const body = document.body;
+        const modalButtons = document.querySelectorAll('.details-open-modal');
+        const modals = document.querySelectorAll('.details-modal');
 
-            if (!row) return;
+        function openModal(modal) {
+            if (!modal) return;
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            body.classList.add('body-modal-open');
+        }
 
-            row.classList.toggle('open');
+        function closeModal(modal) {
+            if (!modal) return;
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
 
-            if (row.classList.contains('open')) {
-                this.innerHTML = '<i class="fas fa-times"></i> Fechar';
-            } else {
-                this.innerHTML = '<i class="fas fa-search"></i> Detalhes';
+            const hasOpenModal = document.querySelector('.details-modal.open');
+            if (!hasOpenModal) {
+                body.classList.remove('body-modal-open');
+            }
+        }
+
+        modalButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const modalId = this.getAttribute('data-modal');
+                const modal = document.getElementById(modalId);
+                openModal(modal);
+            });
+        });
+
+        modals.forEach(function(modal) {
+            modal.querySelectorAll('[data-close-modal]').forEach(function(closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    closeModal(modal);
+                });
+            });
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.details-modal.open').forEach(function(modal) {
+                    closeModal(modal);
+                });
             }
         });
     });
-});
 </script>
 
 <?php include 'views/layout/footer.php'; ?>
