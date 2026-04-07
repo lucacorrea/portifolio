@@ -50,7 +50,7 @@ include 'views/layout/header.php';
     .printable-page {
         margin-bottom: 2rem;
         border-radius: 12px;
-        overflow: hidden;
+        overflow: visible;
     }
 
     .printable-page .card-body {
@@ -59,7 +59,7 @@ include 'views/layout/header.php';
 
     .ordem-header {
         display: grid;
-        grid-template-columns: 1fr auto 1fr;
+        grid-template-columns: 1fr auto max-content;
         align-items: center;
         border-bottom: 2px solid #000;
         padding-bottom: 1.25rem;
@@ -81,9 +81,8 @@ include 'views/layout/header.php';
     .ordem-right {
         text-align: right;
         justify-self: end;
-        width: 100%;
         padding-right: 0;
-        margin-right: -10px;
+        margin-right: 0;
     }
 
     .ordem-right-box {
@@ -254,6 +253,7 @@ include 'views/layout/header.php';
             page-break-after: always;
             break-after: page;
             border-radius: 0 !important;
+            overflow: visible !important;
         }
 
         .printable-page:last-of-type {
@@ -269,7 +269,7 @@ include 'views/layout/header.php';
             gap: 8px !important;
             margin-bottom: 10px !important;
             padding-bottom: 8px !important;
-            grid-template-columns: 1fr auto 1fr !important;
+            grid-template-columns: 1fr auto max-content !important;
         }
 
         .ordem-logo img {
@@ -280,8 +280,7 @@ include 'views/layout/header.php';
         .ordem-right {
             text-align: right !important;
             justify-self: end !important;
-            width: 100% !important;
-            margin-right: -14px !important;
+            margin-right: 0 !important;
             padding-right: 0 !important;
         }
 
