@@ -65,6 +65,18 @@
             border-color: #0b5ed7;
         }
 
+        .btn-word {
+            background: #198754;
+            border-color: #198754;
+            color: #fff;
+        }
+
+        .btn-word:hover {
+            background: #157347;
+            border-color: #157347;
+            color: #fff;
+        }
+
         .document {
             background: #fff;
             border: 1px solid #dcdfe4;
@@ -434,8 +446,6 @@
                 gap: 1rem;
             }
 
-
-
             .ordem-center {
                 text-align: center;
             }
@@ -455,290 +465,405 @@
 
     <div class="page-wrap">
         <div class="toolbar">
+            <button class="btn btn-word" onclick="exportarWord()">Imprimir em Word</button>
             <button class="btn btn-primary" onclick="window.print()">Imprimir / Salvar em PDF</button>
         </div>
 
-        <!-- VIA ADMINISTRATIVA -->
-        <section class="document">
-            <div class="doc-header">
-                <div class="doc-logo">
-                    <div class="logo-box">
-                        <img src="./assets/img/prefeitura.jpg" alt="" style="width: 120px; height: 60px;">
+        <div id="conteudo-word">
+            <!-- VIA ADMINISTRATIVA -->
+            <section class="document">
+                <div class="doc-header">
+                    <div class="doc-logo">
+                        <div class="logo-box">
+                            <img src="./assets/img/prefeitura.jpg" alt="" style="width: 120px; height: 60px;">
+                        </div>
+                    </div>
+
+                    <div class="ordem-center">
+                        <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                            PREFEITURA MUNICIPAL DE COARI
+                        </h1>
+                        <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                            Ordem de Aquisição e Suprimentos
+                        </h2>
+                        <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
+                            COARI - AM | CNPJ: 00.000.000/0001-00
+                        </div>
+                    </div>
+
+                    <div class="doc-right">
+                        <div class="doc-way">Via Administrativa</div>
+                        <div class="doc-right-box">
+                            <div class="doc-right-label">Ordem Nº</div>
+                            <div class="doc-right-number">________</div>
+                        </div>
+                        <div class="doc-right-date">DATA: ____/____/________ | ____:____</div>
                     </div>
                 </div>
 
-                <div class="ordem-center">
-                    <h1
-                        style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                        PREFEITURA MUNICIPAL DE COARI</h1>
-                    <h2
-                        style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                        Ordem de Aquisição e Suprimentos</h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ:
-                        00.000.000/0001-00</div>
+                <div class="info-wrap">
+                    <table class="info-table">
+                        <tr>
+                            <td class="label-cell" style="width: 15%;">Fornecedor:</td>
+                            <td><span class="line-placeholder"></span></td>
+                            <td class="label-cell" style="width: 26%;">Local e Data de Emissão:</td>
+                            <td style="width: 20%;"><span class="line-placeholder"></span></td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Para:</td>
+                            <td><span class="line-placeholder"></span></td>
+                            <td class="label-cell">Referência:</td>
+                            <td><span class="line-placeholder"></span></td>
+                        </tr>
+                    </table>
                 </div>
 
-                <div class="doc-right">
-                    <div class="doc-way">Via Administrativa</div>
-                    <div class="doc-right-box">
-                        <div class="doc-right-label">Ordem Nº</div>
-                        <div class="doc-right-number">________</div>
+                <h3 class="section-title">Autorização de Fornecimento - AF</h3>
+
+                <div class="items-wrap">
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align:center; width: 50px;">Item</th>
+                                <th style="text-align:center; width: 60px;">Unid.</th>
+                                <th style="text-align:center; width: 70px;">Qtd</th>
+                                <th style="text-align:left;">Especificação Completa</th>
+                                <th style="text-align:right; width: 120px;">Preço Unitário</th>
+                                <th style="text-align:right; width: 120px;">Valor Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor Total R$</td>
+                                <td style="text-align:right; font-weight:900;">________________</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="signatures">
+                    <div>
+                        <div class="signature-line">
+                            <div class="signature-title">RECEBEDOR</div>
+                            <div class="signature-subtitle">Autorização de Saída</div>
+                        </div>
                     </div>
-                    <div class="doc-right-date">DATA: ____/____/________ | ____:____</div>
-                </div>
-            </div>
-
-            <div class="info-wrap">
-                <table class="info-table">
-                    <tr>
-                        <td class="label-cell" style="width: 15%;">Fornecedor:</td>
-                        <td><span class="line-placeholder"></span></td>
-                        <td class="label-cell" style="width: 26%;">Local e Data de Emissão:</td>
-                        <td style="width: 20%;"><span class="line-placeholder"></span></td>
-                    </tr>
-                    <tr>
-                        <td class="label-cell">Para:</td>
-                        <td><span class="line-placeholder"></span></td>
-                        <td class="label-cell">Referência:</td>
-                        <td><span class="line-placeholder"></span></td>
-                    </tr>
-                </table>
-            </div>
-
-            <h3 class="section-title">Autorização de Fornecimento - AF</h3>
-
-            <div class="items-wrap">
-                <table class="items-table">
-                    <thead>
-                        <tr>
-                            <th style="text-align:center; width: 50px;">Item</th>
-                            <th style="text-align:center; width: 60px;">Unid.</th>
-                            <th style="text-align:center; width: 70px;">Qtd</th>
-                            <th style="text-align:left;">Especificação Completa</th>
-                            <th style="text-align:right; width: 120px;">Preço Unitário</th>
-                            <th style="text-align:right; width: 120px;">Valor Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor
-                                Total R$</td>
-                            <td style="text-align:right; font-weight:900;">________________</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            <div class="signatures">
-                <div>
-                    <div class="signature-line">
-                        <div class="signature-title">RECEBEDOR</div>
-                        <div class="signature-subtitle">Autorização de Saída</div>
+                    <div>
+                        <div class="signature-line">
+                            <div class="signature-title">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                            <div class="signature-subtitle">Assinatura e Carimbo</div>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <div class="signature-line">
-                        <div class="signature-title">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                        <div class="signature-subtitle">Assinatura e Carimbo</div>
-                    </div>
-                </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- VIA FORNECEDOR -->
-        <section class="document">
-            <div class="doc-header">
-                <div class="doc-logo">
-                    <div class="logo-box">
-                        <img src="./assets/img/prefeitura.jpg" alt="" style="width: 120px; height: 60px;">
+            <!-- VIA FORNECEDOR -->
+            <section class="document">
+                <div class="doc-header">
+                    <div class="doc-logo">
+                        <div class="logo-box">
+                            <img src="./assets/img/prefeitura.jpg" alt="" style="width: 120px; height: 60px;">
+                        </div>
+                    </div>
+
+                    <div class="ordem-center">
+                        <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                            PREFEITURA MUNICIPAL DE COARI
+                        </h1>
+                        <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                            Ordem de Aquisição e Suprimentos
+                        </h2>
+                        <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
+                            COARI - AM | CNPJ: 00.000.000/0001-00
+                        </div>
+                    </div>
+
+                    <div class="doc-right">
+                        <div class="doc-way">Via Fornecedor</div>
+                        <div class="doc-right-box">
+                            <div class="doc-right-label">Ordem Nº</div>
+                            <div class="doc-right-number">________</div>
+                        </div>
+                        <div class="doc-right-date">DATA: ____/____/________ | ____:____</div>
                     </div>
                 </div>
 
-                <div class="ordem-center">
-                    <h1
-                        style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                        PREFEITURA MUNICIPAL DE COARI</h1>
-                    <h2
-                        style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                        Ordem de Aquisição e Suprimentos</h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ:
-                        00.000.000/0001-00</div>
+                <div class="info-wrap">
+                    <table class="info-table">
+                        <tr>
+                            <td class="label-cell" style="width: 15%;">Fornecedor:</td>
+                            <td><span class="line-placeholder"></span></td>
+                            <td class="label-cell" style="width: 26%;">Local e Data de Emissão:</td>
+                            <td style="width: 20%;"><span class="line-placeholder"></span></td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Para:</td>
+                            <td><span class="line-placeholder"></span></td>
+                            <td class="label-cell">Referência:</td>
+                            <td><span class="line-placeholder"></span></td>
+                        </tr>
+                    </table>
                 </div>
-                <div class="doc-right">
-                    <div class="doc-way">Via Fornecedor</div>
-                    <div class="doc-right-box">
-                        <div class="doc-right-label">Ordem Nº</div>
-                        <div class="doc-right-number">________</div>
+
+                <h3 class="section-title">Autorização de Fornecimento - AF</h3>
+
+                <div class="items-wrap">
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align:center; width: 50px;">Item</th>
+                                <th style="text-align:center; width: 60px;">Unid.</th>
+                                <th style="text-align:center; width: 70px;">Qtd</th>
+                                <th style="text-align:left;">Especificação Completa</th>
+                                <th style="text-align:right; width: 120px;">Preço Unitário</th>
+                                <th style="text-align:right; width: 120px;">Valor Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                            <tr><td style="text-align:center;"></td><td style="text-align:center;"></td><td style="text-align:center;"></td><td></td><td style="text-align:right;"></td><td style="text-align:right;"></td></tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor Total R$</td>
+                                <td style="text-align:right; font-weight:900;">________________</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="obs-text">
+                    <span class="muted-fill">Observações / orientações de entrega:</span>
+                    <br><br>
+                    ____________________________________________________________________________________________
+                    <br>
+                    ____________________________________________________________________________________________
+                </div>
+
+                <div class="signatures" style="margin-top: 44px;">
+                    <div>
+                        <div class="signature-line">
+                            <div class="signature-title">RECEBEDOR</div>
+                            <div class="signature-subtitle">Autorização de Saída</div>
+                        </div>
                     </div>
-                    <div class="doc-right-date">DATA: ____/____/________ | ____:____</div>
-                </div>
-            </div>
-
-            <div class="info-wrap">
-                <table class="info-table">
-                    <tr>
-                        <td class="label-cell" style="width: 15%;">Fornecedor:</td>
-                        <td><span class="line-placeholder"></span></td>
-                        <td class="label-cell" style="width: 26%;">Local e Data de Emissão:</td>
-                        <td style="width: 20%;"><span class="line-placeholder"></span></td>
-                    </tr>
-                    <tr>
-                        <td class="label-cell">Para:</td>
-                        <td><span class="line-placeholder"></span></td>
-                        <td class="label-cell">Referência:</td>
-                        <td><span class="line-placeholder"></span></td>
-                    </tr>
-                </table>
-            </div>
-
-            <h3 class="section-title">Autorização de Fornecimento - AF</h3>
-
-            <div class="items-wrap">
-                <table class="items-table">
-                    <thead>
-                        <tr>
-                            <th style="text-align:center; width: 50px;">Item</th>
-                            <th style="text-align:center; width: 60px;">Unid.</th>
-                            <th style="text-align:center; width: 70px;">Qtd</th>
-                            <th style="text-align:left;">Especificação Completa</th>
-                            <th style="text-align:right; width: 120px;">Preço Unitário</th>
-                            <th style="text-align:right; width: 120px;">Valor Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td style="text-align:center;"></td>
-                            <td></td>
-                            <td style="text-align:right;"></td>
-                            <td style="text-align:right;"></td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor
-                                Total R$</td>
-                            <td style="text-align:right; font-weight:900;">________________</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            <div class="obs-text">
-                <span class="muted-fill">Observações / orientações de entrega:</span>
-                <br><br>
-                ____________________________________________________________________________________________
-                <br>
-                ____________________________________________________________________________________________
-            </div>
-
-            <div class="signatures" style="margin-top: 44px;">
-                <div>
-                    <div class="signature-line">
-                        <div class="signature-title">RECEBEDOR</div>
-                        <div class="signature-subtitle">Autorização de Saída</div>
+                    <div>
+                        <div class="signature-line">
+                            <div class="signature-title">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                            <div class="signature-subtitle">Assinatura e Carimbo</div>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <div class="signature-line">
-                        <div class="signature-title">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                        <div class="signature-subtitle">Assinatura e Carimbo</div>
-                    </div>
-                </div>
-            </div>
-        </section>
+            </section>
+        </div>
     </div>
+
+    <script>
+        function exportarWord() {
+            const conteudo = document.getElementById('conteudo-word').innerHTML;
+
+            const css = `
+                <style>
+                    body {
+                        font-family: Arial, Helvetica, sans-serif;
+                        color: #000;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .document {
+                        background: #fff;
+                        border: 1px solid #dcdfe4;
+                        border-radius: 12px;
+                        padding: 28px;
+                        margin-bottom: 26px;
+                        overflow: visible;
+                        page-break-after: always;
+                    }
+                    .document:last-child {
+                        page-break-after: auto;
+                    }
+                    .doc-header {
+                        display: grid;
+                        grid-template-columns: 220px 1fr 220px;
+                        gap: 16px;
+                        align-items: center;
+                        border-bottom: 2px solid #000;
+                        padding-bottom: 16px;
+                        margin-bottom: 18px;
+                    }
+                    .doc-logo {
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-start;
+                        min-height: 78px;
+                    }
+                    .logo-box {
+                        width: 180px;
+                        height: 72px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        text-align: center;
+                        font-size: 12px;
+                        font-weight: 700;
+                        color: #666;
+                        padding: 8px;
+                    }
+                    .doc-right {
+                        text-align: right;
+                    }
+                    .doc-way {
+                        margin-bottom: 6px;
+                        font-size: 11px;
+                        font-weight: 800;
+                        color: #777;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                    }
+                    .doc-right-box {
+                        display: inline-block;
+                        border: 1.5px solid #000;
+                        padding: 7px 16px;
+                        text-align: center;
+                        min-width: 145px;
+                    }
+                    .doc-right-label {
+                        font-size: 10px;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                        margin-bottom: 2px;
+                    }
+                    .doc-right-number {
+                        font-size: 24px;
+                        font-weight: 900;
+                        line-height: 1.05;
+                    }
+                    .doc-right-date {
+                        margin-top: 8px;
+                        font-size: 11px;
+                        font-weight: 700;
+                        color: #666;
+                        text-transform: uppercase;
+                    }
+                    .ordem-center,
+                    .doc-center {
+                        text-align: center;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+                    .info-table td,
+                    .items-table th,
+                    .items-table td {
+                        border: 1px solid #000;
+                        padding: 7px 8px;
+                        vertical-align: middle;
+                    }
+                    .info-table {
+                        font-size: 13px;
+                    }
+                    .items-table {
+                        font-size: 13px;
+                        border: 1px solid #000;
+                    }
+                    .label-cell,
+                    .items-table thead tr,
+                    .items-table tfoot tr {
+                        background: #f1f1f1;
+                    }
+                    .label-cell {
+                        font-size: 11px;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                        white-space: nowrap;
+                    }
+                    .section-title {
+                        margin: 18px 0 8px;
+                        font-size: 12px;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                        color: #333;
+                    }
+                    .obs-text {
+                        margin-top: 18px;
+                        margin-bottom: 34px;
+                        font-size: 12px;
+                        color: #444;
+                        line-height: 1.55;
+                        min-height: 48px;
+                    }
+                    .signatures {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 56px;
+                        text-align: center;
+                        margin-top: 56px;
+                    }
+                    .signature-line {
+                        border-top: 1.5px solid #000;
+                        padding-top: 10px;
+                        min-height: 42px;
+                    }
+                    .signature-title {
+                        font-size: 14px;
+                        font-weight: 800;
+                    }
+                    .signature-subtitle {
+                        margin-top: 4px;
+                        font-size: 10px;
+                        font-weight: 700;
+                        color: #555;
+                        text-transform: uppercase;
+                    }
+                    img {
+                        max-width: 120px;
+                        height: 60px;
+                    }
+                </style>
+            `;
+
+            const htmlCompleto = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office"
+                      xmlns:w="urn:schemas-microsoft-com:office:word"
+                      xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8">
+                    <title>Ordem de Aquisição</title>
+                    ${css}
+                </head>
+                <body>
+                    ${conteudo}
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff', htmlCompleto], {
+                type: 'application/msword'
+            });
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'ordem_aquisicao_modelo.doc';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    </script>
 
 </body>
 
