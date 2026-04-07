@@ -124,7 +124,7 @@ class Sale extends BaseModel {
         return $this->query("UPDATE {$this->table} SET status = ? WHERE id = ?", [$status, $id]);
     }
 
-    public function getFiltered($filters = [], $page = 1, $perPage = 15) {
+    public function getFiltered($filters = [], $page = 1, $perPage = 9) {
         $offset = ($page - 1) * $perPage;
         $filialId = $this->getFilialContext();
         

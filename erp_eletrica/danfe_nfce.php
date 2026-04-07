@@ -7,7 +7,7 @@ if (empty($_SESSION['usuario_id'])) { http_response_code(403); exit('Acesso nega
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: private, max-age=60');
 
-require_once __DIR__ . '/src/autoload.php';
+require_once __DIR__ . '/autoloader.php';
 
 $db = \App\Config\Database::getInstance()->getConnection();
 
@@ -25,7 +25,7 @@ try {
         $st->execute([$param]);
         $nfRecord = $st->fetch(PDO::FETCH_ASSOC);
         if ($nfRecord && !empty($nfRecord['xml_path'])) {
-            $fullPath = dirname(__DIR__) . '/storage/' . ltrim($nfRecord['xml_path'], '/');
+            $fullPath = __DIR__ . '/storage/' . ltrim($nfRecord['xml_path'], '/');
             if (is_file($fullPath)) {
                 $xmlRaw = file_get_contents($fullPath);
             }
