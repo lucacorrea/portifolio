@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modelo - Ordem de Aquisição e Fornecimento</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #f5f7fb;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #000;
+    }
+
+    .page-wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      border: 1px solid #cfd4dc;
+      background: #fff;
+      color: #111;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+    }
+
+    .btn:hover {
+      background: #f2f2f2;
+    }
+
+    .btn-primary {
+      background: #0d6efd;
+      border-color: #0d6efd;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0b5ed7;
+      border-color: #0b5ed7;
+    }
+
+    .document {
+      background: #fff;
+      border: 1px solid #dcdfe4;
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 26px;
+      overflow: visible;
+    }
+
+    .doc-header {
+      display: grid;
+      grid-template-columns: 220px 1fr 220px;
+      gap: 16px;
+      align-items: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 16px;
+      margin-bottom: 18px;
+    }
+
+    .doc-logo {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 78px;
+    }
+
+    .logo-box {
+      width: 180px;
+      height: 72px;
+      border: 1.5px dashed #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #666;
+      padding: 8px;
+    }
+
+    .doc-center {
+      text-align: center;
+    }
+
+    .doc-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .doc-subtitle {
+      margin: 4px 0 0;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #333;
+    }
+
+    .doc-meta-center {
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #666;
+    }
+
+    .doc-right {
+      text-align: right;
+    }
+
+    .doc-way {
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .doc-right-box {
+      display: inline-block;
+      border: 1.5px solid #000;
+      padding: 7px 16px;
+      text-align: center;
+      min-width: 145px;
+    }
+
+    .doc-right-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .doc-right-number {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1.05;
+    }
+
+    .doc-right-date {
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #666;
+      text-transform: uppercase;
+    }
+
+    .info-wrap,
+    .items-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .info-wrap {
+      margin-bottom: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .info-table td,
+    .items-table th,
+    .items-table td {
+      border: 1px solid #000;
+      padding: 7px 8px;
+      vertical-align: middle;
+    }
+
+    .info-table {
+      font-size: 13px;
+    }
+
+    .items-table {
+      font-size: 13px;
+      border: 1px solid #000;
+    }
+
+    .label-cell,
+    .items-table thead tr,
+    .items-table tfoot tr {
+      background: #f1f1f1;
+    }
+
+    .label-cell {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .section-title {
+      margin: 18px 0 8px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #333;
+    }
+
+    .line-placeholder {
+      display: inline-block;
+      min-width: 100%;
+      height: 16px;
+      border-bottom: 1px dotted transparent;
+    }
+
+    .items-table tbody td {
+      height: 34px;
+    }
+
+    .items-table tbody tr:last-child td,
+    .items-table tfoot td {
+      border-bottom: 1px solid #000 !important;
+    }
+
+    .obs-text {
+      margin-top: 18px;
+      margin-bottom: 34px;
+      font-size: 12px;
+      color: #444;
+      line-height: 1.55;
+      min-height: 48px;
+    }
+
+    .signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 56px;
+      text-align: center;
+      margin-top: 56px;
+    }
+
+    .signature-line {
+      border-top: 1.5px solid #000;
+      padding-top: 10px;
+      min-height: 42px;
+    }
+
+    .signature-title {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .signature-subtitle {
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #555;
+      text-transform: uppercase;
+    }
+
+    .muted-fill {
+      color: #999;
+      font-weight: 700;
+    }
+
+    @media (max-width: 900px) {
+      .page-wrap {
+        padding: 14px;
+      }
+
+      .document {
+        padding: 16px;
+      }
+
+      .doc-header {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .doc-logo,
+      .doc-right {
+        justify-content: center;
+        text-align: center;
+      }
+
+      .doc-right-box {
+        min-width: 160px;
+      }
+
+      .signatures {
+        grid-template-columns: 1fr;
+        gap: 28px;
+        margin-top: 36px;
+      }
+
+      .info-table,
+      .items-table {
+        min-width: 760px;
+      }
+
+      .toolbar .btn {
+        width: 100%;
+      }
+    }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 6mm;
+      }
+
+      html, body {
+        background: #fff !important;
+        width: 100%;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .toolbar {
+        display: none !important;
+      }
+
+      .page-wrap {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .document {
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        margin: 0 0 6mm 0 !important;
+        padding: 4mm 5mm !important;
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .document:last-of-type {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .doc-header {
+        grid-template-columns: 220px 1fr 220px !important;
+        gap: 10px !important;
+        margin-bottom: 10px !important;
+        padding-bottom: 8px !important;
+      }
+
+      .logo-box {
+        width: 165px !important;
+        height: 64px !important;
+        font-size: 11px !important;
+      }
+
+      .doc-title {
+        font-size: 19px !important;
+      }
+
+      .doc-subtitle {
+        font-size: 12px !important;
+      }
+
+      .doc-meta-center,
+      .doc-right-date,
+      .doc-way {
+        font-size: 10px !important;
+      }
+
+      .doc-right-number {
+        font-size: 21px !important;
+      }
+
+      .info-table,
+      .items-table {
+        min-width: 0 !important;
+        font-size: 11px !important;
+      }
+
+      .info-table td,
+      .items-table th,
+      .items-table td {
+        padding: 4px 6px !important;
+      }
+
+      .section-title {
+        font-size: 10px !important;
+        margin: 12px 0 5px !important;
+      }
+
+      .signatures {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 56px !important;
+        margin-top: 46px !important;
+      }
+
+      .obs-text {
+        font-size: 11px !important;
+        margin-top: 14px !important;
+        margin-bottom: 26px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-wrap">
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="window.print()">Imprimir / Salvar em PDF</button>
+    </div>
+
+    <!-- VIA ADMINISTRATIVA -->
+    <section class="document">
+      <div class="doc-header">
+        <div class="doc-logo">
+          <div class="logo-box">
+            LOGO / BRASÃO
+          </div>
+        </div>
+
+        <div class="doc-center">
+          <h1 class="doc-title">PREFEITURA MUNICIPAL</h1>
+          <h2 class="doc-subtitle">ORDEM DE AQUISIÇÃO E SUPRIMENTOS</h2>
+          <div class="doc-meta-center">CIDADE - UF | CNPJ: ____________________</div>
+        </div>
+
+        <div class="doc-right">
+          <div class="doc-way">Via Administrativa</div>
+          <div class="doc-right-box">
+            <div class="doc-right-label">Ordem Nº</div>
+            <div class="doc-right-number">________</div>
+          </div>
+          <div class="doc-right-date">DATA: ____/____/________ | ____:____</div>
+        </div>
+      </div>
+
+      <div class="info-wrap">
+        <table class="info-table">
+          <tr>
+            <td class="label-cell" style="width: 15%;">Fornecedor:</td>
+            <td><span class="line-placeholder"></span></td>
+            <td class="label-cell" style="width: 26%;">Local e Data de Emissão:</td>
+            <td style="width: 20%;"><span class="line-placeholder"></span></td>
+          </tr>
+          <tr>
+            <td class="label-cell">Para:</td>
+            <td><span class="line-placeholder"></span></td>
+            <td class="label-cell">Referência:</td>
+            <td><span class="line-placeholder"></span></td>
+          </tr>
+        </table>
+      </div>
+
+      <h3 class="section-title">Autorização de Fornecimento - AF</h3>
+
+      <div class="items-wrap">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="text-align:center; width: 50px;">Item</th>
+              <th style="text-align:center; width: 60px;">Unid.</th>
+              <th style="text-align:center; width: 70px;">Qtd</th>
+              <th style="text-align:left;">Especificação Completa</th>
+              <th style="text-align:right; width: 120px;">Preço Unitário</th>
+              <th style="text-align:right; width: 120px;">Valor Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor Total R$</td>
+              <td style="text-align:right; font-weight:900;">________________</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="signatures">
+        <div>
+          <div class="signature-line">
+            <div class="signature-title">RECEBEDOR</div>
+            <div class="signature-subtitle">Autorização de Saída</div>
+          </div>
+        </div>
+        <div>
+          <div class="signature-line">
+            <div class="signature-title">CONFIRMAÇÃO DE RECEBIMENTO</div>
+            <div class="signature-subtitle">Assinatura e Carimbo</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIA FORNECEDOR -->
+    <section class="document">
+      <div class="doc-header">
+        <div class="doc-logo">
+          <div class="logo-box">
+            LOGO / BRASÃO
+          </div>
+        </div>
+
+        <div class="doc-center">
+          <h1 class="doc-title">PREFEITURA MUNICIPAL</h1>
+          <h2 class="doc-subtitle">ORDEM DE FORNECIMENTO</h2>
+          <div class="doc-meta-center">CIDADE - UF | CNPJ: ____________________</div>
+        </div>
+
+        <div class="doc-right">
+          <div class="doc-way">Via Fornecedor</div>
+          <div class="doc-right-box">
+            <div class="doc-right-label">Ordem Nº</div>
+            <div class="doc-right-number">________</div>
+          </div>
+          <div class="doc-right-date">DATA: ____/____/________ | ____:____</div>
+        </div>
+      </div>
+
+      <div class="info-wrap">
+        <table class="info-table">
+          <tr>
+            <td class="label-cell" style="width: 15%;">Fornecedor:</td>
+            <td><span class="line-placeholder"></span></td>
+            <td class="label-cell" style="width: 26%;">Local e Data de Emissão:</td>
+            <td style="width: 20%;"><span class="line-placeholder"></span></td>
+          </tr>
+          <tr>
+            <td class="label-cell">Para:</td>
+            <td><span class="line-placeholder"></span></td>
+            <td class="label-cell">Referência:</td>
+            <td><span class="line-placeholder"></span></td>
+          </tr>
+        </table>
+      </div>
+
+      <h3 class="section-title">Autorização de Fornecimento - AF</h3>
+
+      <div class="items-wrap">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="text-align:center; width: 50px;">Item</th>
+              <th style="text-align:center; width: 60px;">Unid.</th>
+              <th style="text-align:center; width: 70px;">Qtd</th>
+              <th style="text-align:left;">Especificação Completa</th>
+              <th style="text-align:right; width: 120px;">Preço Unitário</th>
+              <th style="text-align:right; width: 120px;">Valor Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+            <tr>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td style="text-align:center;"></td>
+              <td></td>
+              <td style="text-align:right;"></td>
+              <td style="text-align:right;"></td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" style="text-align:right; font-weight:800; text-transform:uppercase;">Valor Total R$</td>
+              <td style="text-align:right; font-weight:900;">________________</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="obs-text">
+        <span class="muted-fill">Observações / orientações de entrega:</span>
+        <br><br>
+        ____________________________________________________________________________________________
+        <br>
+        ____________________________________________________________________________________________
+      </div>
+
+      <div class="signatures" style="margin-top: 44px;">
+        <div>
+          <div class="signature-line">
+            <div class="signature-title">RECEBEDOR</div>
+            <div class="signature-subtitle">Autorização de Saída</div>
+          </div>
+        </div>
+        <div>
+          <div class="signature-line">
+            <div class="signature-title">CONFIRMAÇÃO DE RECEBIMENTO</div>
+            <div class="signature-subtitle">Assinatura e Carimbo</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</body>
+</html>
