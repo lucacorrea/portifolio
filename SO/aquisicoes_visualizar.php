@@ -26,7 +26,9 @@ $stmt_items->execute([$id]);
 $items = $stmt_items->fetchAll();
 
 $page_title = "Aquisição: " . $aq['numero_aq'];
+
 include 'views/layout/header.php';
+
 ?>
 
 <style>
