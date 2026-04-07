@@ -116,7 +116,8 @@
             padding: 8px;
         }
 
-        .doc-center {
+        .doc-center,
+        .ordem-center {
             text-align: center;
         }
 
@@ -296,6 +297,10 @@
             font-weight: 700;
         }
 
+        .word-only {
+            display: none;
+        }
+
         @media (max-width: 900px) {
             .page-wrap {
                 padding: 14px;
@@ -435,28 +440,6 @@
                 margin-top: 14px !important;
                 margin-bottom: 26px !important;
             }
-
-            .ordem-header {
-                display: grid;
-                grid-template-columns: 1fr auto 1fr;
-                align-items: center;
-                border-bottom: 2px solid #000;
-                padding-bottom: 1.25rem;
-                margin-bottom: 2rem;
-                gap: 1rem;
-            }
-
-            .ordem-center {
-                text-align: center;
-            }
-
-            .ordem-right {
-                text-align: right;
-                justify-self: end;
-                width: 100%;
-                padding-right: 0;
-                margin-right: -10px;
-            }
         }
     </style>
 </head>
@@ -465,7 +448,7 @@
 
     <div class="page-wrap">
         <div class="toolbar">
-            <button class="btn btn-word" onclick="exportarWord()">Imprimir em Word</button>
+            <button class="btn btn-word" onclick="exportarWordMesmoLayout()">Imprimir em Word</button>
             <button class="btn btn-primary" onclick="window.print()">Imprimir / Salvar em PDF</button>
         </div>
 
@@ -671,133 +654,337 @@
     </div>
 
     <script>
-        function exportarWord() {
-            const conteudo = document.getElementById('conteudo-word').innerHTML;
+        async function imageToDataURL(imgElement) {
+            try {
+                const src = imgElement.getAttribute('src');
+                if (!src) return '';
 
-            const css = `
+                const response = await fetch(src);
+                const blob = await response.blob();
+
+                return await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) {
+                return imgElement.src || '';
+            }
+        }
+
+        function getDocSectionWordHTML({
+            via = '',
+            titulo = 'ORDEM DE AQUISIÇÃO E SUPRIMENTOS',
+            logoSrc = ''
+        }) {
+            return `
+                <div class="word-document">
+                    <table class="word-header-table">
+                        <tr>
+                            <td class="word-logo-cell">
+                                ${logoSrc ? `<img src="${logoSrc}" class="word-logo" alt="Logo">` : ''}
+                            </td>
+                            <td class="word-center-cell">
+                                <div class="word-title">PREFEITURA MUNICIPAL DE COARI</div>
+                                <div class="word-subtitle">${titulo}</div>
+                                <div class="word-meta">COARI - AM | CNPJ: 00.000.000/0001-00</div>
+                            </td>
+                            <td class="word-right-cell">
+                                <div class="word-via">${via}</div>
+                                <table class="word-num-box">
+                                    <tr>
+                                        <td class="word-num-label">ORDEM Nº</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="word-num-value">________</td>
+                                    </tr>
+                                </table>
+                                <div class="word-date">DATA: ____/____/________ | ____:____</div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="word-info-table">
+                        <tr>
+                            <td class="word-label" style="width:15%;">FORNECEDOR:</td>
+                            <td style="width:35%;">&nbsp;</td>
+                            <td class="word-label" style="width:30%;">LOCAL E DATA DE EMISSÃO:</td>
+                            <td style="width:20%;">&nbsp;</td>
+                        </tr>
+                        <tr>
+                            <td class="word-label">PARA:</td>
+                            <td>&nbsp;</td>
+                            <td class="word-label">REFERÊNCIA:</td>
+                            <td>&nbsp;</td>
+                        </tr>
+                    </table>
+
+                    <div class="word-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</div>
+
+                    <table class="word-items-table">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">ITEM</th>
+                                <th style="width:60px;">UNID.</th>
+                                <th style="width:70px;">QTD</th>
+                                <th>ESPECIFICAÇÃO COMPLETA</th>
+                                <th style="width:120px;">PREÇO UNITÁRIO</th>
+                                <th style="width:120px;">VALOR TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5" class="word-total-label">VALOR TOTAL R$</td>
+                                <td class="word-total-value">________________</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    ${via === 'VIA FORNECEDOR' ? `
+                        <div class="word-obs">
+                            <strong>Observações / orientações de entrega:</strong><br><br>
+                            ____________________________________________________________________________________________<br>
+                            ____________________________________________________________________________________________
+                        </div>
+                    ` : ''}
+
+                    <table class="word-sign-table">
+                        <tr>
+                            <td class="word-sign-cell">
+                                <div class="word-sign-line"></div>
+                                <div class="word-sign-title">RECEBEDOR</div>
+                                <div class="word-sign-subtitle">AUTORIZAÇÃO DE SAÍDA</div>
+                            </td>
+                            <td class="word-sign-gap"></td>
+                            <td class="word-sign-cell">
+                                <div class="word-sign-line"></div>
+                                <div class="word-sign-title">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                                <div class="word-sign-subtitle">ASSINATURA E CARIMBO</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function exportarWordMesmoLayout() {
+            const firstLogo = document.querySelector('.logo-box img');
+            let logoData = '';
+
+            if (firstLogo) {
+                logoData = await imageToDataURL(firstLogo);
+            }
+
+            const cssWord = `
                 <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 10mm;
+                    }
+
                     body {
                         font-family: Arial, Helvetica, sans-serif;
                         color: #000;
                         margin: 0;
                         padding: 0;
                     }
-                    .document {
-                        background: #fff;
-                        border: 1px solid #dcdfe4;
-                        border-radius: 12px;
-                        padding: 28px;
-                        margin-bottom: 26px;
-                        overflow: visible;
+
+                    .word-document {
+                        width: 100%;
                         page-break-after: always;
+                        margin-bottom: 14px;
                     }
-                    .document:last-child {
+
+                    .word-document:last-child {
                         page-break-after: auto;
                     }
-                    .doc-header {
-                        display: grid;
-                        grid-template-columns: 220px 1fr 220px;
-                        gap: 16px;
-                        align-items: center;
+
+                    .word-header-table,
+                    .word-info-table,
+                    .word-items-table,
+                    .word-sign-table,
+                    .word-num-box {
+                        border-collapse: collapse;
+                        width: 100%;
+                    }
+
+                    .word-header-table {
                         border-bottom: 2px solid #000;
-                        padding-bottom: 16px;
-                        margin-bottom: 18px;
+                        margin-bottom: 10px;
                     }
-                    .doc-logo {
-                        display: flex;
-                        align-items: center;
-                        justify-content: flex-start;
-                        min-height: 78px;
+
+                    .word-header-table td {
+                        vertical-align: middle;
                     }
-                    .logo-box {
-                        width: 180px;
-                        height: 72px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
+
+                    .word-logo-cell {
+                        width: 190px;
+                        text-align: left;
+                    }
+
+                    .word-center-cell {
                         text-align: center;
-                        font-size: 12px;
-                        font-weight: 700;
-                        color: #666;
-                        padding: 8px;
+                        padding: 0 10px;
                     }
-                    .doc-right {
+
+                    .word-right-cell {
+                        width: 210px;
                         text-align: right;
                     }
-                    .doc-way {
-                        margin-bottom: 6px;
+
+                    .word-logo {
+                        width: 120px;
+                        height: 60px;
+                        object-fit: contain;
+                    }
+
+                    .word-title {
+                        font-size: 22px;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                    }
+
+                    .word-subtitle {
+                        font-size: 14px;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        margin-top: 4px;
+                    }
+
+                    .word-meta {
+                        font-size: 12px;
+                        font-weight: 700;
+                        color: #444;
+                        margin-top: 6px;
+                    }
+
+                    .word-via {
                         font-size: 11px;
                         font-weight: 800;
-                        color: #777;
                         text-transform: uppercase;
+                        color: #666;
+                        margin-bottom: 8px;
                         letter-spacing: 1px;
                     }
-                    .doc-right-box {
-                        display: inline-block;
+
+                    .word-num-box {
+                        width: 150px;
+                        margin-left: auto;
                         border: 1.5px solid #000;
-                        padding: 7px 16px;
-                        text-align: center;
-                        min-width: 145px;
                     }
-                    .doc-right-label {
+
+                    .word-num-box td {
+                        text-align: center;
+                        border: none;
+                        padding: 4px 6px;
+                    }
+
+                    .word-num-label {
                         font-size: 10px;
                         font-weight: 800;
                         text-transform: uppercase;
-                        margin-bottom: 2px;
                     }
-                    .doc-right-number {
-                        font-size: 24px;
+
+                    .word-num-value {
+                        font-size: 22px;
                         font-weight: 900;
-                        line-height: 1.05;
                     }
-                    .doc-right-date {
+
+                    .word-date {
                         margin-top: 8px;
                         font-size: 11px;
                         font-weight: 700;
-                        color: #666;
+                        color: #555;
                         text-transform: uppercase;
                     }
-                    .ordem-center,
-                    .doc-center {
-                        text-align: center;
+
+                    .word-info-table {
+                        margin-bottom: 12px;
                     }
-                    table {
-                        width: 100%;
-                        border-collapse: collapse;
-                    }
-                    .info-table td,
-                    .items-table th,
-                    .items-table td {
+
+                    .word-info-table td {
                         border: 1px solid #000;
                         padding: 7px 8px;
+                        font-size: 13px;
                         vertical-align: middle;
                     }
-                    .info-table {
-                        font-size: 13px;
-                    }
-                    .items-table {
-                        font-size: 13px;
-                        border: 1px solid #000;
-                    }
-                    .label-cell,
-                    .items-table thead tr,
-                    .items-table tfoot tr {
+
+                    .word-label {
                         background: #f1f1f1;
-                    }
-                    .label-cell {
-                        font-size: 11px;
+                        font-size: 11px !important;
                         font-weight: 800;
                         text-transform: uppercase;
                         white-space: nowrap;
                     }
-                    .section-title {
-                        margin: 18px 0 8px;
+
+                    .word-section-title {
                         font-size: 12px;
                         font-weight: 800;
                         text-transform: uppercase;
                         color: #333;
+                        margin: 12px 0 8px;
                     }
-                    .obs-text {
+
+                    .word-items-table {
+                        border: 1px solid #000;
+                    }
+
+                    .word-items-table th,
+                    .word-items-table td {
+                        border: 1px solid #000;
+                        padding: 7px 8px;
+                        font-size: 13px;
+                        vertical-align: middle;
+                    }
+
+                    .word-items-table thead th,
+                    .word-items-table tfoot td {
+                        background: #f1f1f1;
+                    }
+
+                    .word-items-table th {
+                        font-weight: 800;
+                        text-transform: uppercase;
+                        text-align: center;
+                    }
+
+                    .word-items-table tbody td {
+                        height: 34px;
+                    }
+
+                    .word-items-table tbody td:nth-child(1),
+                    .word-items-table tbody td:nth-child(2),
+                    .word-items-table tbody td:nth-child(3) {
+                        text-align: center;
+                    }
+
+                    .word-items-table tbody td:nth-child(5),
+                    .word-items-table tbody td:nth-child(6),
+                    .word-items-table thead th:nth-child(5),
+                    .word-items-table thead th:nth-child(6) {
+                        text-align: right;
+                    }
+
+                    .word-total-label {
+                        text-align: right;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                    }
+
+                    .word-total-value {
+                        text-align: right;
+                        font-weight: 900;
+                    }
+
+                    .word-obs {
                         margin-top: 18px;
                         margin-bottom: 34px;
                         font-size: 12px;
@@ -805,34 +992,53 @@
                         line-height: 1.55;
                         min-height: 48px;
                     }
-                    .signatures {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 56px;
-                        text-align: center;
+
+                    .word-sign-table {
                         margin-top: 56px;
                     }
-                    .signature-line {
-                        border-top: 1.5px solid #000;
-                        padding-top: 10px;
-                        min-height: 42px;
+
+                    .word-sign-cell {
+                        width: 45%;
+                        text-align: center;
+                        vertical-align: top;
                     }
-                    .signature-title {
+
+                    .word-sign-gap {
+                        width: 10%;
+                    }
+
+                    .word-sign-line {
+                        border-top: 1.5px solid #000;
+                        height: 10px;
+                        width: 100%;
+                    }
+
+                    .word-sign-title {
                         font-size: 14px;
                         font-weight: 800;
                     }
-                    .signature-subtitle {
+
+                    .word-sign-subtitle {
                         margin-top: 4px;
                         font-size: 10px;
                         font-weight: 700;
                         color: #555;
                         text-transform: uppercase;
                     }
-                    img {
-                        max-width: 120px;
-                        height: 60px;
-                    }
                 </style>
+            `;
+
+            const bodyWord = `
+                ${getDocSectionWordHTML({
+                    via: 'VIA ADMINISTRATIVA',
+                    titulo: 'ORDEM DE AQUISIÇÃO E SUPRIMENTOS',
+                    logoSrc: logoData
+                })}
+                ${getDocSectionWordHTML({
+                    via: 'VIA FORNECEDOR',
+                    titulo: 'ORDEM DE AQUISIÇÃO E SUPRIMENTOS',
+                    logoSrc: logoData
+                })}
             `;
 
             const htmlCompleto = `
@@ -842,10 +1048,10 @@
                 <head>
                     <meta charset="utf-8">
                     <title>Ordem de Aquisição</title>
-                    ${css}
+                    ${cssWord}
                 </head>
                 <body>
-                    ${conteudo}
+                    ${bodyWord}
                 </body>
                 </html>
             `;
@@ -857,7 +1063,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'ordem_aquisicao_modelo.doc';
+            link.download = 'ordem_aquisicao_mesmo_layout.doc';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
