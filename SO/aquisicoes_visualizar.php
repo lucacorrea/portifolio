@@ -303,6 +303,7 @@ include 'views/layout/header.php';
         .ordem-logo img {
             max-height: 60px !important;
             max-width: 150px !important;
+            margin-left: -120px !important;
         }
 
         .ordem-right {
