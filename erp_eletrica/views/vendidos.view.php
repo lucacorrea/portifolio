@@ -433,7 +433,8 @@
                 alertEl.classList.add('d-none');
                 motiveInput.placeholder = "Obrigatório descrever o motivo...";
             }
-            new bootstrap.Modal('#modalCancel').show();
+            const modalEl = document.getElementById('modalCancel');
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
         };
 
         document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
@@ -459,7 +460,8 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    bootstrap.Modal.getInstance('#modalCancel').hide();
+                    const modalEl = document.getElementById('modalCancel');
+                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
                     alert(currentCancelTipo === 'fiscal' ? 'Venda e NFC-e canceladas com sucesso!' : 'Venda cancelada com sucesso!');
                     loadSales(currentPage);
                 } else {
