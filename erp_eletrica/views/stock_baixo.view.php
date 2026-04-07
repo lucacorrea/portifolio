@@ -85,7 +85,7 @@
                         <th class="text-center">Quantidade</th>
                         <th class="text-center">Mínimo</th>
                         <th class="text-center">Status</th>
-                        <th class="text-center text-primary bg-primary bg-opacity-10">Sugerido Compra</th>
+                        <th class="text-center text-primary border-start border-end" style="background-color: rgba(43, 76, 125, 0.03);">Sugerido Compra</th>
                         <th class="text-end pe-4">Ações</th>
                     </tr>
                 </thead>
@@ -131,7 +131,7 @@
                         <td class="text-center">
                             <span class="badge bg-<?= $statusClass ?> text-uppercase" style="font-size: 0.65rem; padding: 0.4em 0.8em;"><?= $statusText ?></span>
                         </td>
-                        <td class="text-center bg-primary bg-opacity-10">
+                        <td class="text-center border-start border-end">
                             <?php if ($sugerido > 0): ?>
                                 <span class="fw-bold text-primary">+ <?= number_format($sugerido, 0, ',', '.') ?></span>
                             <?php else: ?>
