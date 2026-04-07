@@ -13,6 +13,9 @@ switch ($action) {
     case 'get_sale':
     case 'list_admins':
     case 'check_client_completeness':
+    case 'sold_list':
+    case 'sold_search':
+    case 'get_sale_detail':
         \App\Services\AuthService::checkPermission('vendas', 'visualizar');
         $controller->$action();
         break;
@@ -20,6 +23,7 @@ switch ($action) {
     case 'authorize_discount':
     case 'update_client_quick':
     case 'issue_nfce':
+    case 'exchange_item':
         \App\Services\AuthService::checkPermission('vendas', 'criar');
         $controller->$action();
         break;
