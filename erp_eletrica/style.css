@@ -531,11 +531,11 @@ body {
     color: #ffffff !important;
 }
 .bg-warning, .bg-primary, .bg-erp-primary {
-    background-color: var(--primary-color) !important;
-    color: #ffffff !important;
+    background-color: var(--primary-color);
+    color: #ffffff;
 }
 .text-warning, .text-primary, .text-erp-primary {
-    color: var(--primary-color) !important;
+    color: var(--primary-color);
 }
 .alert-warning {
     background-color: rgba(43, 76, 125, 0.1) !important;
