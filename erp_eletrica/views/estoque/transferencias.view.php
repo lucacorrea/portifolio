@@ -123,7 +123,7 @@
                                                         </thead>
                                                         <tbody>
                                                             <?php 
-                                                            $itensReq = $pdo->prepare("SELECT ti.*, p.nome, p.codigo, COALESCE((SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = 1), p.quantidade) as disp_matriz FROM transferencias_itens ti JOIN produtos p ON ti.produto_id = p.id WHERE ti.transferencia_id = ?");
+                                                            $itensReq = $pdo->prepare("SELECT ti.*, p.nome, p.codigo, COALESCE((SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = 1), p.quantidade) as disp_matriz FROM erp_transferencias_itens ti JOIN produtos p ON ti.produto_id = p.id WHERE ti.transferencia_id = ?");
                                                             $itensReq->execute([$req['id']]);
                                                             foreach($itensReq->fetchAll() as $itemReq):
                                                             ?>
@@ -311,7 +311,7 @@
                                                 <p>Estes itens foram despachados pela matriz e estão em rota. Assim que a caixa chegar na loja, confira as quantidades e confirme o recebimento para dar entrada no seu estoque físico.</p>
                                                 <ul class="list-group mb-3">
                                                     <?php 
-                                                    $itensEnv = $pdo->prepare("SELECT ti.*, p.nome FROM transferencias_itens ti JOIN produtos p ON ti.produto_id = p.id WHERE ti.transferencia_id = ?");
+                                                    $itensEnv = $pdo->prepare("SELECT ti.*, p.nome FROM erp_transferencias_itens ti JOIN produtos p ON ti.produto_id = p.id WHERE ti.transferencia_id = ?");
                                                     $itensEnv->execute([$et['id']]);
                                                     foreach($itensEnv->fetchAll() as $ie):
                                                         if($ie['quantidade_enviada'] > 0):
