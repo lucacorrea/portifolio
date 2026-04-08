@@ -19,33 +19,112 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 1rem;
         position: relative;
     }
 
     /* LOGO */
+    .navbar-brand {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
     .navbar-brand img {
         height: 50px;
+        width: auto;
+        display: block;
+    }
+
+    /* USUÁRIO */
+    .navbar-user {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        flex-shrink: 0;
+        margin-left: 1rem;
+    }
+
+    .user-meta {
+        text-align: right;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .user-name {
+        font-weight: 800;
+    }
+
+    .user-role {
+        font-weight: 700;
+        opacity: .85;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eef2f7;
+    }
+
+    /* MENU WRAP DESKTOP */
+    .navbar-menu {
+        margin-top: 14px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    .navbar-menu::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .navbar-menu::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 999px;
+    }
+
+    .navbar-menu::-webkit-scrollbar-track {
+        background: transparent;
     }
 
     /* MENU DESKTOP */
     .nav-list {
         display: flex;
-        gap: 15px;
+        align-items: stretch;
+        gap: 12px;
         list-style: none;
         margin: 0;
         padding: 0;
+        flex-wrap: nowrap;
+        min-width: max-content;
     }
 
     .nav-item {
         list-style: none;
+        flex: 0 0 auto;
     }
 
     .nav-link {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 10px;
         text-decoration: none;
         transition: .2s ease;
+        white-space: nowrap;
+        word-break: keep-all;
+        padding: 12px 16px;
+        border-radius: 12px;
+        min-height: 48px;
+    }
+
+    .nav-link i {
+        flex-shrink: 0;
     }
 
     /* ITEM ATIVO */
@@ -78,6 +157,27 @@
         display: none;
     }
 
+    /* ================= TABLET / DESKTOP MENOR ================= */
+    @media (min-width: 769px) and (max-width: 1200px) {
+        .nav-list {
+            gap: 10px;
+        }
+
+        .nav-link {
+            padding: 11px 13px;
+            font-size: 14px;
+        }
+
+        .navbar-user {
+            margin-left: .5rem;
+        }
+
+        .user-name,
+        .user-role {
+            font-size: 14px;
+        }
+    }
+
     /* ================= MOBILE ================= */
     @media (max-width: 768px) {
 
@@ -85,6 +185,7 @@
         .menu-toggle {
             display: block;
             z-index: 1001;
+            flex-shrink: 0;
         }
 
         /* CENTRALIZA LOGO */
@@ -94,7 +195,21 @@
             transform: translateX(-50%);
         }
 
-        /* ESCONDE MENU NORMAL */
+        .navbar-brand img {
+            height: 44px;
+        }
+
+        /* USUÁRIO */
+        .navbar-user {
+            margin-left: 0;
+            gap: .55rem;
+        }
+
+        .user-meta {
+            display: none;
+        }
+
+        /* MENU MOBILE */
         .navbar-menu {
             position: fixed;
             top: 0;
@@ -107,6 +222,8 @@
             transition: 0.3s;
             z-index: 1002;
             overflow-y: auto;
+            overflow-x: hidden;
+            margin-top: 0;
         }
 
         /* MENU ABERTO */
@@ -139,11 +256,19 @@
         .nav-list {
             flex-direction: column;
             gap: 10px;
+            min-width: 100%;
+        }
+
+        .nav-item {
+            width: 100%;
         }
 
         .nav-link {
+            display: flex;
+            width: 100%;
             padding: 10px 12px;
             border-radius: 10px;
+            white-space: normal;
         }
 
         /* OVERLAY ESCURO */
@@ -326,7 +451,6 @@
                     }
                 }
 
-                /* FECHAR AO CLICAR FORA */
                 document.addEventListener('click', function(event) {
                     const menu = document.getElementById('navbarMenu');
                     const button = document.querySelector('.menu-toggle');
@@ -343,7 +467,6 @@
                     }
                 });
 
-                /* FECHAR AO REDIMENSIONAR PARA DESKTOP */
                 window.addEventListener('resize', function() {
                     if (window.innerWidth > 768) {
                         closeMenu();
