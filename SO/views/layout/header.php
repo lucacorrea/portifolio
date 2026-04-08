@@ -376,7 +376,7 @@
                                 <?php endif; ?>
 
                                 <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
-                                    <li class="nav-item <?php echo isActive(['relatorios.php']); ?>">
+                                    <li class="nav-item <?php echo isActive(['relatorios.php', 'relatorios_oficios_secretaria.php', 'relatorios_oficio_detalhes.php']); ?>">
                                         <a href="relatorios.php" class="nav-link">
                                             <i class="fas fa-file-contract"></i> Relatórios
                                         </a>
