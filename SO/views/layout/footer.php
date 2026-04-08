@@ -63,41 +63,74 @@ document.addEventListener('click', function (event) {
     const isDropdownItem = event.target.closest('.dropdown-item');
     const activeDropdowns = document.querySelectorAll('.dropdown-menu.show');
     
+    function closeDropdown(d) {
+        d.classList.remove('show');
+        d.classList.remove('dropup');
+        d.style.position = '';
+        d.style.top = '';
+        d.style.left = '';
+        d.style.right = '';
+        d.style.bottom = '';
+    }
+
     if (toggle) {
         event.preventDefault();
         const dropdown = toggle.parentElement.querySelector('.dropdown-menu');
         
         if (dropdown.classList.contains('show')) {
-            dropdown.classList.remove('show');
-            dropdown.classList.remove('dropup');
+            closeDropdown(dropdown);
         } else {
             // Fecha outros
-            activeDropdowns.forEach(d => {
-                d.classList.remove('show');
-                d.classList.remove('dropup');
-            });
+            activeDropdowns.forEach(closeDropdown);
             
-            // Posicionamento Inteligente
+            // Exibe invisivelmente para obter dimensões
+            dropdown.style.display = 'block';
+            dropdown.style.visibility = 'hidden';
+            const dropRect = dropdown.getBoundingClientRect();
+            dropdown.style.display = '';
+            dropdown.style.visibility = '';
+
+            // Posicionamento Inteligente fixo
             const rect = toggle.getBoundingClientRect();
             const winHeight = window.innerHeight;
             const spaceBelow = winHeight - rect.bottom;
             
-            // Se houver menos de 200px embaixo, abre pra cima
-            if (spaceBelow < 250) {
+            dropdown.style.position = 'fixed';
+            dropdown.style.right = 'auto';
+            dropdown.style.bottom = 'auto';
+            
+            // Se houver menos espaco que a altura do dropdown + margem, abre pra cima
+            if (spaceBelow < dropRect.height + 20) {
                 dropdown.classList.add('dropup');
+                dropdown.style.top = (rect.top - dropRect.height - 5) + 'px';
             } else {
                 dropdown.classList.remove('dropup');
+                dropdown.style.top = (rect.bottom + 5) + 'px';
             }
+            
+            // Alinha pela direita do botao
+            dropdown.style.left = (rect.right - dropRect.width) + 'px';
             
             dropdown.classList.add('show');
         }
     } else if (!isDropdownItem) {
-        activeDropdowns.forEach(d => {
-            d.classList.remove('show');
-            d.classList.remove('dropup');
-        });
+        activeDropdowns.forEach(closeDropdown);
     }
 });
+
+// Fecha ao rolar a página ou wrap da tabela
+window.addEventListener('scroll', function() {
+    const openMenu = document.querySelector('.dropdown-menu.show');
+    if (openMenu) {
+        openMenu.classList.remove('show');
+        openMenu.classList.remove('dropup');
+        openMenu.style.position = '';
+        openMenu.style.top = '';
+        openMenu.style.left = '';
+        openMenu.style.right = '';
+        openMenu.style.bottom = '';
+    }
+}, true);
 </script>
 
 </body>
