@@ -242,7 +242,7 @@
                                     </li>
                                 <?php endif; ?>
 
-                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO', 'SEFAZ'])): ?>
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
                                     <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicao_editar.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
                                         <a href="aquisicoes_lista.php" class="nav-link">
                                             <i class="fas fa-shopping-bag"></i> Aquisições
