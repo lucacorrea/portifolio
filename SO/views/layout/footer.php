@@ -131,6 +131,61 @@ window.addEventListener('scroll', function() {
         openMenu.style.bottom = '';
     }
 }, true);
+// Filtro Inteligente (Auto-submit sem recarregar a tela desnecessariamente perdendo foco)
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForms = document.querySelectorAll('form.filtros-grid');
+    filterForms.forEach(form => {
+        // Esconder o botão "Filtrar" para um visual mais limpo, usando apenas a lógica automática
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) {
+            btnSubmit.style.display = 'none';
+        }
+
+        let typingTimer;
+        const doneTypingInterval = 800; // Tempo após parar de digitar (ms)
+
+        form.querySelectorAll('input, select').forEach(element => {
+            if (element.tagName === 'SELECT') {
+                element.addEventListener('change', () => {
+                    sessionStorage.setItem('lastFocusedFilter', element.name);
+                    form.submit();
+                });
+            } else if (element.tagName === 'INPUT' && (element.type === 'text' || element.type === 'search')) {
+                element.addEventListener('input', function() {
+                    clearTimeout(typingTimer);
+                    typingTimer = setTimeout(() => {
+                        sessionStorage.setItem('lastFocusedFilter', element.name);
+                        form.submit();
+                    }, doneTypingInterval);
+                });
+                
+                element.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        clearTimeout(typingTimer);
+                        sessionStorage.setItem('lastFocusedFilter', element.name);
+                        // form will naturally submit on Enter
+                    }
+                });
+            }
+        });
+        
+        // Restaurar estado e foco do cursor após o reload da página
+        const lastFocused = sessionStorage.getItem('lastFocusedFilter');
+        if (lastFocused) {
+            const elementToFocus = form.querySelector(`[name="${lastFocused}"]`);
+            if (elementToFocus) {
+                elementToFocus.focus();
+                // Se for campo de terxo, colocar cursor no final do valor inserido
+                if (elementToFocus.tagName === 'INPUT') {
+                    const val = elementToFocus.value;
+                    elementToFocus.value = '';
+                    elementToFocus.value = val;
+                }
+            }
+            sessionStorage.removeItem('lastFocusedFilter');
+        }
+    });
+});
 </script>
 
 </body>
