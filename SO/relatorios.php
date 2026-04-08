@@ -186,6 +186,37 @@ foreach ($detalhes_produtos as $item) {
 }
 
 /* =========================
+   JUSTIFICATIVAS POR SECRETARIA
+========================= */
+$sql_justificativas = "
+    SELECT DISTINCT
+        s.id AS secretaria_id,
+        o.id AS oficio_id,
+        o.numero AS oficio_numero,
+        o.justificativa,
+        a.criado_em
+    FROM itens_aquisicao ia
+    INNER JOIN aquisicoes a ON ia.aquisicao_id = a.id
+    INNER JOIN oficios o ON a.oficio_id = o.id
+    INNER JOIN secretarias s ON o.secretaria_id = s.id
+    WHERE $where
+    ORDER BY s.nome ASC, a.criado_em DESC, o.numero DESC
+";
+
+$stmt_justificativas = $pdo->prepare($sql_justificativas);
+$stmt_justificativas->execute($params);
+$justificativas_rows = $stmt_justificativas->fetchAll(PDO::FETCH_ASSOC);
+
+$justificativas_por_secretaria = [];
+foreach ($justificativas_rows as $item) {
+    $sid = (int)$item['secretaria_id'];
+    if (!isset($justificativas_por_secretaria[$sid])) {
+        $justificativas_por_secretaria[$sid] = [];
+    }
+    $justificativas_por_secretaria[$sid][] = $item;
+}
+
+/* =========================
    TOTAIS
 ========================= */
 $total_geral = 0;
@@ -948,6 +979,69 @@ include 'views/layout/header.php';
         word-break: break-word;
     }
 
+    .details-section-title {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        margin: 0 0 .75rem;
+        font-size: .96rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .details-just-wrap {
+        margin-bottom: 1rem;
+    }
+
+    .details-just-list {
+        display: grid;
+        gap: .8rem;
+    }
+
+    .details-just-card {
+        border: 1px solid #e5edf8;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+        padding: .95rem 1rem;
+    }
+
+    .details-just-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        flex-wrap: wrap;
+        margin-bottom: .45rem;
+    }
+
+    .details-just-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: .32rem .65rem;
+        border-radius: 999px;
+        background: rgba(32, 107, 196, 0.10);
+        color: #206bc4;
+        font-weight: 800;
+        font-size: .78rem;
+        white-space: nowrap;
+    }
+
+    .details-just-date {
+        font-size: .8rem;
+        color: #64748b;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .details-just-text {
+        color: #334155;
+        line-height: 1.55;
+        font-size: .92rem;
+        white-space: normal;
+        word-break: break-word;
+    }
+
     .details-inner-table-wrap {
         border: 1px solid #dbe7f5;
         border-radius: 14px;
@@ -1063,6 +1157,11 @@ include 'views/layout/header.php';
         .details-modal-summary {
             grid-template-columns: 1fr;
             gap: .75rem;
+        }
+
+        .details-just-top {
+            align-items: flex-start;
+            flex-direction: column;
         }
 
         .details-inner-table {
@@ -1374,7 +1473,7 @@ include 'views/layout/header.php';
                                 Produtos da secretaria: <?php echo h($row['secretaria_nome']); ?>
                             </h4>
                             <p class="details-modal-subtitle">
-                                Visualize abaixo os produtos, fornecedores, quantidades e valores totais desta secretaria.
+                                Visualize abaixo os produtos, fornecedores, quantidades, justificativas e valores totais desta secretaria.
                             </p>
                         </div>
 
@@ -1393,6 +1492,38 @@ include 'views/layout/header.php';
                                 <p class="details-mini-label">Valor total</p>
                                 <p class="details-mini-value"><?php echo format_money($row['total_valor']); ?></p>
                             </div>
+                        </div>
+
+                        <div class="details-just-wrap">
+                            <h5 class="details-section-title">
+                                <i class="fas fa-align-left"></i> Justificativas dos Ofícios
+                            </h5>
+
+                            <?php if (!empty($justificativas_por_secretaria[$sid])): ?>
+                                <div class="details-just-list">
+                                    <?php foreach ($justificativas_por_secretaria[$sid] as $just): ?>
+                                        <div class="details-just-card">
+                                            <div class="details-just-top">
+                                                <span class="details-just-badge">
+                                                    <?php echo h($just['oficio_numero']); ?>
+                                                </span>
+                                                <span class="details-just-date">
+                                                    <?php echo !empty($just['criado_em']) ? date('d/m/Y H:i', strtotime($just['criado_em'])) : ''; ?>
+                                                </span>
+                                            </div>
+                                            <div class="details-just-text">
+                                                <?php echo nl2br(h($just['justificativa'] !== null && $just['justificativa'] !== '' ? $just['justificativa'] : 'Sem justificativa informada.')); ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="details-just-card">
+                                    <div class="details-just-text">
+                                        Nenhuma justificativa encontrada para esta secretaria.
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="details-inner-table-wrap">
