@@ -362,7 +362,7 @@ if (isset($pdo)) {
                                 </li>
 
                                 <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'FUNCIONARIO', 'CASA_CIVIL'])): ?>
-                                    <li class="nav-item <?php echo isActive(['oficios_novo.php', 'oficios_visualizar.php']); ?>">
+                                    <li class="nav-item <?php echo isActive(['oficios_novo.php']); ?>">
                                         <a href="oficios_novo.php" class="nav-link">
                                             <i class="fas fa-plus-circle"></i> Nova Solicitação
                                         </a>
