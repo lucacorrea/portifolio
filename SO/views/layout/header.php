@@ -119,7 +119,6 @@
         white-space: nowrap;
         word-break: keep-all;
         padding: 12px 16px;
-        border-radius: 12px;
         min-height: 48px;
     }
 
