@@ -23,6 +23,64 @@ if (!function_exists('format_money')) {
     }
 }
 
+if (!function_exists('secretaria_sigla')) {
+    function secretaria_sigla(string $nome): string
+    {
+        $nomeUp = mb_strtoupper(trim($nome), 'UTF-8');
+
+        $map = [
+            'SECRETARIA MUNICIPAL DE EDUCAÇÃO' => 'SEMED',
+            'SECRETARIA MUNICIPAL DE SAÚDE' => 'SEMSA',
+            'SECRETARIA MUNICIPAL DE ASSISTÊNCIA SOCIAL' => 'SEMAS',
+            'SECRETARIA MUNICIPAL DE OBRAS E LIMPEZA PÚBLICA' => 'SEMOB/SEMLIP',
+            'SECRETARIA MUNICIPAL DE OBRAS' => 'SEMOB',
+            'SECRETARIA MUNICIPAL DE LIMPEZA PÚBLICA' => 'SEMLIP',
+            'SECRETARIA MUNICIPAL DE ADMINISTRAÇÃO' => 'SEMAD',
+            'SECRETARIA MUNICIPAL DE FINANÇAS' => 'SEMF',
+            'SECRETARIA MUNICIPAL DE INFRAESTRUTURA' => 'SEMINF',
+            'SECRETARIA MUNICIPAL DE PRODUÇÃO RURAL' => 'SEMPROR',
+            'SECRETARIA MUNICIPAL DE CULTURA' => 'SEMCULT',
+            'SECRETARIA MUNICIPAL DE MEIO AMBIENTE' => 'SEMMA',
+            'SECRETARIA MUNICIPAL DE TURISMO' => 'SEMTUR',
+            'SECRETARIA MUNICIPAL DE ESPORTE' => 'SEMESP',
+            'SECRETARIA MUNICIPAL DE ESPORTES' => 'SEMESP',
+            'SECRETARIA MUNICIPAL DE HABITAÇÃO' => 'SEMHAB',
+            'SECRETARIA MUNICIPAL DE PLANEJAMENTO' => 'SEMPLA',
+            'SECRETARIA MUNICIPAL DE SEGURANÇA' => 'SEMSEG',
+            'SECRETARIA MUNICIPAL DE TRANSPORTE' => 'SEMTRAN',
+            'SECRETARIA MUNICIPAL DE TRÂNSITO' => 'SEMTRAN',
+        ];
+
+        foreach ($map as $trecho => $sigla) {
+            if (mb_strpos($nomeUp, $trecho) !== false) {
+                return $sigla;
+            }
+        }
+
+        if (preg_match('/^\s*([A-Z]{3,}(?:\/[A-Z]{3,})?)\s*-/u', $nomeUp, $m)) {
+            return trim($m[1]);
+        }
+
+        if (preg_match('/\b(SE[A-Z]{2,}(?:\/SE[A-Z]{2,})?)\b/u', $nomeUp, $m)) {
+            return trim($m[1]);
+        }
+
+        $partes = preg_split('/\s+/', preg_replace('/[^\p{L}\s\/-]+/u', '', $nomeUp));
+        $ignorar = ['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'A', 'O', 'AS', 'OS', 'MUNICIPAL', 'SECRETARIA'];
+
+        $sigla = '';
+        foreach ($partes as $parte) {
+            $parte = trim($parte);
+            if ($parte === '' || in_array($parte, $ignorar, true)) {
+                continue;
+            }
+            $sigla .= mb_substr($parte, 0, 1, 'UTF-8');
+        }
+
+        return $sigla !== '' ? $sigla : $nomeUp;
+    }
+}
+
 /* =========================
    FILTROS
 ========================= */
@@ -137,6 +195,19 @@ $total_qtd_geral = 0;
 foreach ($relatorio_secretarias as $row) {
     $total_geral += (float)$row['total_valor'];
     $total_qtd_geral += (float)$row['total_qtd'];
+}
+
+/* =========================
+   DADOS DO GRÁFICO
+========================= */
+$chart_labels = [];
+$chart_labels_full = [];
+$chart_values = [];
+
+foreach ($relatorio_secretarias as $row) {
+    $chart_labels[] = secretaria_sigla((string)$row['secretaria_nome']);
+    $chart_labels_full[] = (string)$row['secretaria_nome'];
+    $chart_values[] = (float)$row['total_valor'];
 }
 
 /* =========================
@@ -747,9 +818,6 @@ include 'views/layout/header.php';
         color: #64748b !important;
     }
 
-    /* =========================
-       MODAL DETALHES
-    ========================= */
     .details-modal {
         position: fixed;
         inset: 0;
@@ -1380,8 +1448,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const chartElement = document.getElementById('chartSecretaria');
 
     if (chartElement) {
-        const labels = <?php echo json_encode(array_column($relatorio_secretarias, 'secretaria_nome'), JSON_UNESCAPED_UNICODE); ?>;
-        const values = <?php echo json_encode(array_map('floatval', array_column($relatorio_secretarias, 'total_valor'))); ?>;
+        const labels = <?php echo json_encode($chart_labels, JSON_UNESCAPED_UNICODE); ?>;
+        const fullLabels = <?php echo json_encode($chart_labels_full, JSON_UNESCAPED_UNICODE); ?>;
+        const values = <?php echo json_encode($chart_values); ?>;
 
         if (labels.length > 0) {
             const ctx = chartElement.getContext('2d');
@@ -1423,10 +1492,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         },
                         tooltip: {
                             callbacks: {
+                                title: function(context) {
+                                    const index = context[0]?.dataIndex ?? 0;
+                                    return fullLabels[index] || labels[index] || '';
+                                },
                                 label: function(context) {
-                                    const label = context.label || '';
+                                    const index = context.dataIndex ?? 0;
+                                    const sigla = labels[index] || '';
                                     const value = Number(context.raw || 0);
-                                    return label + ': ' + new Intl.NumberFormat('pt-BR', {
+                                    return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
                                         style: 'currency',
                                         currency: 'BRL'
                                     }).format(value);
