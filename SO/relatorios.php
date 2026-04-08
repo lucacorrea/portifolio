@@ -121,34 +121,6 @@ if ($periodo_fim !== '') {
 
 $where = implode(' AND ', $whereParts);
 
-/* filtros específicos dos ofícios/itens_oficio */
-$wherePartsOficios = [];
-$paramsOficios = [];
-
-$wherePartsOficios[] = "1=1";
-
-if ($sec_id !== '') {
-    $wherePartsOficios[] = "o.secretaria_id = :sec_id";
-    $paramsOficios[':sec_id'] = (int)$sec_id;
-}
-
-if ($produto !== '') {
-    $wherePartsOficios[] = "io.produto LIKE :produto";
-    $paramsOficios[':produto'] = '%' . $produto . '%';
-}
-
-if ($periodo_inicio !== '') {
-    $wherePartsOficios[] = "o.criado_em >= :inicio";
-    $paramsOficios[':inicio'] = $periodo_inicio . ' 00:00:00';
-}
-
-if ($periodo_fim !== '') {
-    $wherePartsOficios[] = "o.criado_em <= :fim";
-    $paramsOficios[':fim'] = $periodo_fim . ' 23:59:59';
-}
-
-$where_oficios = implode(' AND ', $wherePartsOficios);
-
 /* =========================
    LISTAS DOS FILTROS
 ========================= */
@@ -157,7 +129,6 @@ $fornecedores = $pdo->query("SELECT * FROM fornecedores ORDER BY nome")->fetchAl
 
 /* =========================
    RELATÓRIO PRINCIPAL
-   TOTAL POR SECRETARIA
 ========================= */
 $sql_secretarias = "
     SELECT
@@ -177,97 +148,6 @@ $sql_secretarias = "
 $stmt_secretarias = $pdo->prepare($sql_secretarias);
 $stmt_secretarias->execute($params);
 $relatorio_secretarias = $stmt_secretarias->fetchAll(PDO::FETCH_ASSOC);
-
-/* =========================
-   DETALHES FINANCEIROS
-   PRODUTOS ADQUIRIDOS POR SECRETARIA
-========================= */
-$sql_detalhes = "
-    SELECT
-        s.id AS secretaria_id,
-        s.nome AS secretaria_nome,
-        ia.produto,
-        f.nome AS fornecedor,
-        COALESCE(SUM(ia.quantidade), 0) AS total_qtd,
-        COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS total_valor
-    FROM itens_aquisicao ia
-    INNER JOIN aquisicoes a ON ia.aquisicao_id = a.id
-    INNER JOIN oficios o ON a.oficio_id = o.id
-    INNER JOIN secretarias s ON o.secretaria_id = s.id
-    INNER JOIN fornecedores f ON a.fornecedor_id = f.id
-    WHERE $where
-    GROUP BY s.id, s.nome, ia.produto, f.nome
-    ORDER BY s.nome ASC, total_valor DESC, ia.produto ASC
-";
-
-$stmt_detalhes = $pdo->prepare($sql_detalhes);
-$stmt_detalhes->execute($params);
-$detalhes_produtos = $stmt_detalhes->fetchAll(PDO::FETCH_ASSOC);
-
-$detalhes_por_secretaria = [];
-foreach ($detalhes_produtos as $item) {
-    $sid = (int)$item['secretaria_id'];
-    if (!isset($detalhes_por_secretaria[$sid])) {
-        $detalhes_por_secretaria[$sid] = [];
-    }
-    $detalhes_por_secretaria[$sid][] = $item;
-}
-
-/* =========================
-   OFÍCIOS + ITENS DO OFÍCIO
-========================= */
-$sql_oficios_itens = "
-    SELECT
-        s.id AS secretaria_id,
-        s.nome AS secretaria_nome,
-        o.id AS oficio_id,
-        o.numero AS oficio_numero,
-        o.justificativa,
-        o.status,
-        o.criado_em,
-        io.id AS item_oficio_id,
-        io.produto,
-        io.quantidade,
-        io.unidade
-    FROM oficios o
-    INNER JOIN secretarias s ON s.id = o.secretaria_id
-    LEFT JOIN itens_oficio io ON io.oficio_id = o.id
-    WHERE $where_oficios
-    ORDER BY s.nome ASC, o.criado_em DESC, o.numero DESC, io.id ASC
-";
-
-$stmt_oficios_itens = $pdo->prepare($sql_oficios_itens);
-$stmt_oficios_itens->execute($paramsOficios);
-$rows_oficios_itens = $stmt_oficios_itens->fetchAll(PDO::FETCH_ASSOC);
-
-$oficios_por_secretaria = [];
-foreach ($rows_oficios_itens as $row) {
-    $sid = (int)$row['secretaria_id'];
-    $oid = (int)$row['oficio_id'];
-
-    if (!isset($oficios_por_secretaria[$sid])) {
-        $oficios_por_secretaria[$sid] = [];
-    }
-
-    if (!isset($oficios_por_secretaria[$sid][$oid])) {
-        $oficios_por_secretaria[$sid][$oid] = [
-            'oficio_id'      => $oid,
-            'oficio_numero'  => $row['oficio_numero'],
-            'justificativa'  => $row['justificativa'],
-            'status'         => $row['status'],
-            'criado_em'      => $row['criado_em'],
-            'itens'          => [],
-        ];
-    }
-
-    if (!empty($row['item_oficio_id'])) {
-        $oficios_por_secretaria[$sid][$oid]['itens'][] = [
-            'produto'    => $row['produto'],
-            'quantidade' => $row['quantidade'],
-            'unidade'    => $row['unidade'],
-        ];
-    }
-}
 
 /* =========================
    TOTAIS
@@ -334,34 +214,39 @@ if ($export === 'excel') {
     header('Expires: 0');
 
     echo "\xEF\xBB\xBF";
-    ?>
+?>
     <html>
+
     <head>
         <meta charset="UTF-8">
         <style>
-            body{
+            body {
                 font-family: Arial, sans-serif;
                 font-size: 12px;
                 color: #1f2937;
                 margin: 18px;
             }
-            table{
+
+            table {
                 border-collapse: collapse;
                 width: 100%;
                 table-layout: fixed;
             }
-            .sheet{
+
+            .sheet {
                 width: 100%;
                 max-width: 1100px;
             }
+
             .sheet td,
-            .sheet th{
+            .sheet th {
                 border: 1px solid #7c8aa5;
                 padding: 7px 8px;
                 vertical-align: middle;
                 word-wrap: break-word;
             }
-            .title-main{
+
+            .title-main {
                 background: #dbeafe;
                 color: #0f172a;
                 font-size: 18px;
@@ -370,11 +255,13 @@ if ($export === 'excel') {
                 border: 1px solid #7c8aa5;
                 padding: 12px;
             }
-            .sub-info{
+
+            .sub-info {
                 background: #f8fafc;
                 font-size: 11px;
             }
-            .section-title{
+
+            .section-title {
                 background: #1d4ed8;
                 color: #fff;
                 font-weight: bold;
@@ -382,35 +269,44 @@ if ($export === 'excel') {
                 letter-spacing: .3px;
                 text-align: center;
             }
-            .thead{
+
+            .thead {
                 background: #e5e7eb;
                 font-weight: bold;
                 text-align: center;
             }
-            .summary-label{
+
+            .summary-label {
                 background: #f8fafc;
                 font-weight: bold;
                 text-align: center;
             }
-            .summary-value{
+
+            .summary-value {
                 text-align: center;
                 font-weight: bold;
                 font-size: 14px;
                 background: #ffffff;
             }
-            .left{ text-align: left; }
-            .center{ text-align: center; }
-            .right{ text-align: right; }
-            .secretaria-head{
-                background: #dbeafe;
-                font-weight: bold;
-                color: #0f172a;
+
+            .left {
+                text-align: left;
             }
-            .total-row{
+
+            .center {
+                text-align: center;
+            }
+
+            .right {
+                text-align: right;
+            }
+
+            .total-row {
                 background: #eef2ff;
                 font-weight: bold;
             }
-            .spacer td{
+
+            .spacer td {
                 border: none !important;
                 height: 8px;
                 padding: 0;
@@ -418,6 +314,7 @@ if ($export === 'excel') {
             }
         </style>
     </head>
+
     <body>
         <table class="sheet">
             <colgroup>
@@ -430,12 +327,11 @@ if ($export === 'excel') {
             <tr>
                 <td colspan="4" class="title-main">RELATÓRIO DE AQUISIÇÕES POR SECRETARIA</td>
             </tr>
-
             <tr>
                 <td colspan="4" class="sub-info left"><strong>Gerado em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
             </tr>
             <tr>
-                <td colspan="4" class="sub-info left"><strong>Detalhes:</strong> Totais por secretaria e ofícios com itens vinculados</td>
+                <td colspan="4" class="sub-info left"><strong>Detalhes:</strong> Totais por secretaria</td>
             </tr>
             <tr>
                 <td colspan="2" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
@@ -446,7 +342,9 @@ if ($export === 'excel') {
                 <td colspan="2" class="sub-info left"><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
             </tr>
 
-            <tr class="spacer"><td colspan="4"></td></tr>
+            <tr class="spacer">
+                <td colspan="4"></td>
+            </tr>
 
             <tr>
                 <td colspan="2" class="summary-label">TOTAL GERAL FINANCEIRO</td>
@@ -457,14 +355,16 @@ if ($export === 'excel') {
                 <td colspan="2" class="summary-value"><?php echo number_format($total_qtd_geral, 2, ',', '.'); ?></td>
             </tr>
 
-            <tr class="spacer"><td colspan="4"></td></tr>
+            <tr class="spacer">
+                <td colspan="4"></td>
+            </tr>
 
             <tr>
                 <td colspan="4" class="section-title">RESUMO POR SECRETARIA</td>
             </tr>
             <tr class="thead">
                 <th>Secretaria</th>
-                <th>Fornecedor / Observação</th>
+                <th>Observação</th>
                 <th>Qtd Total</th>
                 <th>Valor Total</th>
             </tr>
@@ -491,8 +391,9 @@ if ($export === 'excel') {
             <?php endif; ?>
         </table>
     </body>
+
     </html>
-    <?php
+<?php
     exit;
 }
 
@@ -508,9 +409,9 @@ include 'views/layout/header.php';
         background: #fff;
     }
 
-    .relatorio-wrapper .card + .card,
-    .relatorio-wrapper .row + .card,
-    .relatorio-wrapper .card + .row {
+    .relatorio-wrapper .card+.card,
+    .relatorio-wrapper .row+.card,
+    .relatorio-wrapper .card+.row {
         margin-top: 1.25rem;
     }
 
@@ -639,18 +540,6 @@ include 'views/layout/header.php';
         background: #157347;
         border-color: #146c43;
         color: #fff;
-    }
-
-    .btn-danger-soft {
-        background: #fff1f2;
-        border-color: #fecdd3;
-        color: #be123c;
-    }
-
-    .btn-danger-soft:hover {
-        background: #ffe4e6;
-        border-color: #fda4af;
-        color: #9f1239;
     }
 
     .summary-card {
@@ -785,7 +674,7 @@ include 'views/layout/header.php';
         white-space: nowrap;
     }
 
-    .modern-table tbody tr:hover > td {
+    .modern-table tbody tr:hover>td {
         background: #fcfdff;
     }
 
@@ -823,24 +712,6 @@ include 'views/layout/header.php';
         white-space: nowrap;
     }
 
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: .34rem .68rem;
-        border-radius: 999px;
-        font-size: .75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: .2px;
-        white-space: nowrap;
-    }
-
-    .status-enviado { background: #dbeafe; color: #1d4ed8; }
-    .status-aprovado { background: #dcfce7; color: #15803d; }
-    .status-reprovado { background: #fee2e2; color: #b91c1c; }
-    .status-arquivado { background: #e5e7eb; color: #4b5563; }
-
     .total-row-main td {
         background: #f8fafc !important;
         font-weight: 800;
@@ -853,268 +724,6 @@ include 'views/layout/header.php';
         color: #64748b !important;
     }
 
-    .details-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 1060;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .details-modal.open {
-        display: flex;
-    }
-
-    .details-modal-backdrop {
-        position: absolute;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.62);
-        backdrop-filter: blur(2px);
-    }
-
-    .details-modal-dialog {
-        position: relative;
-        z-index: 2;
-        width: min(1100px, 100%);
-        max-height: calc(100vh - 2rem);
-        background: #fff;
-        border-radius: 18px;
-        box-shadow: 0 24px 60px rgba(2, 6, 23, 0.28);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        animation: modalFadeIn .18s ease;
-    }
-
-    @keyframes modalFadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(8px) scale(.985);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
-    .details-modal-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-        padding: 1.15rem 1.25rem;
-        border-bottom: 1px solid #e9edf5;
-        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-    }
-
-    .details-modal-title-wrap {
-        min-width: 0;
-    }
-
-    .details-modal-title {
-        margin: 0;
-        font-size: 1.05rem;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1.3;
-    }
-
-    .details-modal-subtitle {
-        margin: .25rem 0 0;
-        font-size: .88rem;
-        color: #64748b;
-    }
-
-    .details-modal-close {
-        min-width: 42px;
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        border: 1px solid #dbe2ea;
-        background: #fff;
-        color: #334155;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: .2s ease;
-        flex-shrink: 0;
-    }
-
-    .details-modal-close:hover {
-        background: #f8fafc;
-        color: #0f172a;
-        border-color: #cbd5e1;
-    }
-
-    .details-modal-body {
-        padding: 1.1rem 1.25rem 1.25rem;
-        overflow: auto;
-    }
-
-    .details-modal-summary {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .details-mini-card {
-        border: 1px solid #e9edf5;
-        border-radius: 14px;
-        padding: 1rem;
-        background: #fff;
-    }
-
-    .details-mini-label {
-        margin: 0 0 .35rem;
-        font-size: .78rem;
-        font-weight: 800;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: .35px;
-    }
-
-    .details-mini-value {
-        margin: 0;
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: #0f172a;
-        word-break: break-word;
-    }
-
-    .details-section-title {
-        display: flex;
-        align-items: center;
-        gap: .55rem;
-        margin: 0 0 .75rem;
-        font-size: .96rem;
-        font-weight: 800;
-        color: #0f172a;
-    }
-
-    .details-oficio-list {
-        display: grid;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .details-oficio-card {
-        border: 1px solid #e5edf8;
-        border-radius: 16px;
-        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-        padding: 1rem;
-    }
-
-    .details-oficio-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: .75rem;
-        flex-wrap: wrap;
-        margin-bottom: .8rem;
-    }
-
-    .details-oficio-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: .55rem;
-        align-items: center;
-    }
-
-    .details-oficio-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: .32rem .65rem;
-        border-radius: 999px;
-        background: rgba(32, 107, 196, 0.10);
-        color: #206bc4;
-        font-weight: 800;
-        font-size: .78rem;
-        white-space: nowrap;
-    }
-
-    .details-oficio-date {
-        font-size: .8rem;
-        color: #64748b;
-        font-weight: 700;
-        white-space: nowrap;
-    }
-
-    .details-just-box {
-        margin-bottom: .95rem;
-        border: 1px solid #e8eef7;
-        border-radius: 14px;
-        background: #fff;
-        padding: .9rem;
-    }
-
-    .details-just-title {
-        margin: 0 0 .35rem;
-        color: #334155;
-        font-size: .8rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: .35px;
-    }
-
-    .details-just-text {
-        color: #334155;
-        line-height: 1.55;
-        font-size: .92rem;
-        white-space: normal;
-        word-break: break-word;
-    }
-
-    .details-inner-table-wrap {
-        border: 1px solid #dbe7f5;
-        border-radius: 14px;
-        overflow: hidden;
-        background: #fff;
-    }
-
-    .details-inner-table {
-        width: 100%;
-        min-width: 760px;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-    .details-inner-table th {
-        background: #eaf2fd;
-        color: #1e3a8a;
-        font-weight: 800;
-        padding: .9rem .85rem;
-        border-bottom: 1px solid #dbe7f5;
-        font-size: .86rem;
-        white-space: nowrap;
-    }
-
-    .details-inner-table td {
-        padding: .88rem .85rem;
-        border-bottom: 1px solid #edf2f7;
-        background: #fff;
-        color: #0f172a;
-        font-size: .92rem;
-        vertical-align: middle;
-        white-space: nowrap;
-    }
-
-    .details-inner-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .details-inner-table tbody tr:hover td {
-        background: #fcfdff;
-    }
-
-    .body-modal-open {
-        overflow: hidden !important;
-    }
-
     @media (max-width: 992px) {
         .summary-number {
             font-size: 1.6rem;
@@ -1123,13 +732,10 @@ include 'views/layout/header.php';
         .chart-wrap {
             height: 280px;
         }
-
-        .details-modal-dialog {
-            width: min(1000px, 100%);
-        }
     }
 
     @media (max-width: 768px) {
+
         .filter-actions,
         .report-actions,
         .table-header-box {
@@ -1154,101 +760,21 @@ include 'views/layout/header.php';
             padding: .75rem .7rem;
             font-size: .86rem;
         }
-
-        .details-modal {
-            padding: .65rem;
-        }
-
-        .details-modal-dialog {
-            width: 100%;
-            max-height: calc(100vh - 1.3rem);
-            border-radius: 16px;
-        }
-
-        .details-modal-header {
-            padding: 1rem;
-        }
-
-        .details-modal-title {
-            font-size: .98rem;
-        }
-
-        .details-modal-subtitle {
-            font-size: .84rem;
-        }
-
-        .details-modal-body {
-            padding: 1rem;
-        }
-
-        .details-modal-summary {
-            grid-template-columns: 1fr;
-            gap: .75rem;
-        }
-
-        .details-oficio-top {
-            align-items: flex-start;
-            flex-direction: column;
-        }
-
-        .details-inner-table {
-            min-width: 720px;
-        }
-
-        .details-inner-table th,
-        .details-inner-table td {
-            padding: .75rem .7rem;
-            font-size: .85rem;
-        }
     }
 
     @media (max-width: 480px) {
-        .details-modal {
-            padding: .45rem;
-        }
-
-        .details-modal-dialog {
-            max-height: calc(100vh - .9rem);
-            border-radius: 14px;
-        }
-
-        .details-modal-header,
-        .details-modal-body {
-            padding: .85rem;
-        }
-
-        .details-modal-close {
-            min-width: 38px;
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-        }
-
-        .details-mini-card {
-            padding: .85rem;
-        }
-
-        .details-mini-value {
-            font-size: 1rem;
-        }
-
         .modern-table {
-            min-width: 680px;
-        }
-
-        .details-inner-table {
             min-width: 680px;
         }
     }
 
     @media print {
+
         .no-print,
         .btn,
         button,
         .report-actions,
-        .filter-actions,
-        .details-open-modal,
-        .details-modal {
+        .filter-actions {
             display: none !important;
         }
 
@@ -1261,16 +787,13 @@ include 'views/layout/header.php';
             overflow: visible !important;
         }
 
-        .modern-table,
-        .details-inner-table {
+        .modern-table {
             min-width: 0 !important;
             width: 100% !important;
         }
 
         .modern-table th,
-        .modern-table td,
-        .details-inner-table th,
-        .details-inner-table td {
+        .modern-table td {
             white-space: normal !important;
         }
     }
@@ -1410,15 +933,14 @@ include 'views/layout/header.php';
                     </div>
                     <div>
                         <h3>Detalhamento por Secretaria</h3>
-                        <p>Veja os totais consolidados e abra os ofícios com seus itens vinculados.</p>
+                        <p>Clique em detalhes para listar todos os ofícios da secretaria.</p>
                     </div>
                 </div>
 
                 <div class="report-actions no-print">
                     <a
                         href="?<?php echo h(http_build_query(array_merge($_GET, ['export' => 'excel']))); ?>"
-                        class="btn btn-success-custom btn-sm"
-                    >
+                        class="btn btn-success-custom btn-sm">
                         <i class="fas fa-file-excel"></i> Exportar Excel
                     </a>
                 </div>
@@ -1438,25 +960,26 @@ include 'views/layout/header.php';
                         <tbody>
                             <?php if (!empty($relatorio_secretarias)): ?>
                                 <?php foreach ($relatorio_secretarias as $row): ?>
-                                    <?php $sid = (int)$row['secretaria_id']; ?>
                                     <tr>
-                                        <td class="td-secretaria text-nowrap">
-                                            <?php echo h($row['secretaria_nome']); ?>
-                                        </td>
-                                        <td class="td-right text-nowrap">
-                                            <?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?>
-                                        </td>
+                                        <td class="td-secretaria text-nowrap"><?php echo h($row['secretaria_nome']); ?></td>
+                                        <td class="td-right text-nowrap"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></td>
                                         <td class="td-right text-nowrap">
                                             <span class="badge-total"><?php echo format_money($row['total_valor']); ?></span>
                                         </td>
                                         <td class="no-print td-center text-nowrap">
-                                            <button
-                                                type="button"
-                                                class="btn btn-primary btn-sm details-open-modal"
-                                                data-modal="modal-secretaria-<?php echo $sid; ?>"
-                                            >
+                                            <a
+                                                class="btn btn-primary btn-sm"
+                                                href="relatorios_oficios_secretaria.php?<?php
+                                                                                        echo h(http_build_query([
+                                                                                            'sec_id' => $row['secretaria_id'],
+                                                                                            'forn_id' => $forn_id,
+                                                                                            'produto' => $produto,
+                                                                                            'inicio' => $periodo_inicio,
+                                                                                            'fim' => $periodo_fim,
+                                                                                        ]));
+                                                                                        ?>">
                                                 <i class="fas fa-search"></i> Detalhes
-                                            </button>
+                                            </a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -1481,285 +1004,78 @@ include 'views/layout/header.php';
         </div>
     </div>
 
-    <?php if (!empty($relatorio_secretarias)): ?>
-        <?php foreach ($relatorio_secretarias as $row): ?>
-            <?php $sid = (int)$row['secretaria_id']; ?>
-            <div
-                class="details-modal"
-                id="modal-secretaria-<?php echo $sid; ?>"
-                aria-hidden="true"
-                role="dialog"
-                aria-modal="true"
-            >
-                <div class="details-modal-backdrop" data-close-modal></div>
-
-                <div class="details-modal-dialog">
-                    <div class="details-modal-header">
-                        <div class="details-modal-title-wrap">
-                            <h4 class="details-modal-title">
-                                Ofícios e itens da secretaria: <?php echo h($row['secretaria_nome']); ?>
-                            </h4>
-                            <p class="details-modal-subtitle">
-                                Aqui ficam os ofícios com justificativa, status e os itens vinculados em <strong>itens_oficio</strong>.
-                            </p>
-                        </div>
-
-                        <button type="button" class="details-modal-close" data-close-modal aria-label="Fechar modal">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-
-                    <div class="details-modal-body">
-                        <div class="details-modal-summary">
-                            <div class="details-mini-card">
-                                <p class="details-mini-label">Quantidade total adquirida</p>
-                                <p class="details-mini-value"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></p>
-                            </div>
-                            <div class="details-mini-card">
-                                <p class="details-mini-label">Valor total adquirido</p>
-                                <p class="details-mini-value"><?php echo format_money($row['total_valor']); ?></p>
-                            </div>
-                        </div>
-
-                        <h5 class="details-section-title">
-                            <i class="fas fa-file-alt"></i> Ofícios vinculados e seus itens
-                        </h5>
-
-                        <?php if (!empty($oficios_por_secretaria[$sid])): ?>
-                            <div class="details-oficio-list">
-                                <?php foreach ($oficios_por_secretaria[$sid] as $oficio): ?>
-                                    <?php
-                                        $status = strtoupper((string)($oficio['status'] ?? ''));
-                                        $statusClass = 'status-enviado';
-
-                                        if ($status === 'APROVADO') {
-                                            $statusClass = 'status-aprovado';
-                                        } elseif ($status === 'REPROVADO') {
-                                            $statusClass = 'status-reprovado';
-                                        } elseif ($status === 'ARQUIVADO') {
-                                            $statusClass = 'status-arquivado';
-                                        }
-                                    ?>
-                                    <div class="details-oficio-card">
-                                        <div class="details-oficio-top">
-                                            <div class="details-oficio-meta">
-                                                <span class="details-oficio-badge"><?php echo h($oficio['oficio_numero']); ?></span>
-                                                <span class="status-badge <?php echo $statusClass; ?>"><?php echo h($status ?: 'ENVIADO'); ?></span>
-                                            </div>
-
-                                            <span class="details-oficio-date">
-                                                <?php echo !empty($oficio['criado_em']) ? date('d/m/Y H:i', strtotime($oficio['criado_em'])) : ''; ?>
-                                            </span>
-                                        </div>
-
-                                        <div class="details-just-box">
-                                            <p class="details-just-title">Justificativa</p>
-                                            <div class="details-just-text">
-                                                <?php echo nl2br(h($oficio['justificativa'] !== null && $oficio['justificativa'] !== '' ? $oficio['justificativa'] : 'Sem justificativa informada.')); ?>
-                                            </div>
-                                        </div>
-
-                                        <div class="details-inner-table-wrap">
-                                            <div class="table-scroll-x">
-                                                <table class="details-inner-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-nowrap">Produto</th>
-                                                            <th class="td-right text-nowrap">Quantidade</th>
-                                                            <th class="text-nowrap">Unidade</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php if (!empty($oficio['itens'])): ?>
-                                                            <?php foreach ($oficio['itens'] as $item): ?>
-                                                                <tr>
-                                                                    <td class="text-nowrap" style="font-weight:700;"><?php echo h($item['produto']); ?></td>
-                                                                    <td class="td-right text-nowrap"><?php echo number_format((float)$item['quantidade'], 2, ',', '.'); ?></td>
-                                                                    <td class="text-nowrap"><?php echo h($item['unidade'] ?: 'UN'); ?></td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
-                                                        <?php else: ?>
-                                                            <tr>
-                                                                <td colspan="3" class="empty-state">
-                                                                    Nenhum item encontrado neste ofício.
-                                                                </td>
-                                                            </tr>
-                                                        <?php endif; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php else: ?>
-                            <div class="details-oficio-card">
-                                <div class="details-just-text">
-                                    Nenhum ofício com itens vinculados foi encontrado para esta secretaria.
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
-                        <?php if (!empty($detalhes_por_secretaria[$sid])): ?>
-                            <h5 class="details-section-title" style="margin-top:1rem;">
-                                <i class="fas fa-chart-bar"></i> Resumo financeiro dos produtos adquiridos
-                            </h5>
-
-                            <div class="details-inner-table-wrap">
-                                <div class="table-scroll-x">
-                                    <table class="details-inner-table">
-                                        <thead>
-                                            <tr>
-                                                <th class="text-nowrap">Produto</th>
-                                                <th class="text-nowrap">Fornecedor</th>
-                                                <th class="td-right text-nowrap">Qtd</th>
-                                                <th class="td-right text-nowrap">Valor Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($detalhes_por_secretaria[$sid] as $det): ?>
-                                                <tr>
-                                                    <td class="text-nowrap" style="font-weight:700;"><?php echo h($det['produto']); ?></td>
-                                                    <td class="text-nowrap"><?php echo h($det['fornecedor']); ?></td>
-                                                    <td class="td-right text-nowrap"><?php echo number_format((float)$det['total_qtd'], 2, ',', '.'); ?></td>
-                                                    <td class="td-right text-nowrap" style="font-weight:700;"><?php echo format_money($det['total_valor']); ?></td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
-                        <div style="display:flex; justify-content:flex-end; margin-top: 1rem;" class="no-print">
-                            <button type="button" class="btn btn-danger-soft btn-sm" data-close-modal>
-                                <i class="fas fa-times"></i> Fechar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
-
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const chartElement = document.getElementById('chartSecretaria');
+    document.addEventListener('DOMContentLoaded', function() {
+        const chartElement = document.getElementById('chartSecretaria');
 
-    if (chartElement) {
-        const labels = <?php echo json_encode($chart_labels, JSON_UNESCAPED_UNICODE); ?>;
-        const fullLabels = <?php echo json_encode($chart_labels_full, JSON_UNESCAPED_UNICODE); ?>;
-        const values = <?php echo json_encode($chart_values); ?>;
+        if (chartElement) {
+            const labels = <?php echo json_encode($chart_labels, JSON_UNESCAPED_UNICODE); ?>;
+            const fullLabels = <?php echo json_encode($chart_labels_full, JSON_UNESCAPED_UNICODE); ?>;
+            const values = <?php echo json_encode($chart_values); ?>;
 
-        if (labels.length > 0) {
-            const ctx = chartElement.getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: [
-                            '#206bc4',
-                            '#2fb344',
-                            '#f59e0b',
-                            '#d63939',
-                            '#6f42c1',
-                            '#0ea5e9',
-                            '#14b8a6',
-                            '#f97316',
-                            '#64748b',
-                            '#8b5cf6'
-                        ],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '58%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                padding: 16,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: function(context) {
-                                    const index = context[0]?.dataIndex ?? 0;
-                                    return fullLabels[index] || labels[index] || '';
-                                },
-                                label: function(context) {
-                                    const index = context.dataIndex ?? 0;
-                                    const sigla = labels[index] || '';
-                                    const value = Number(context.raw || 0);
-                                    return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
-                                        style: 'currency',
-                                        currency: 'BRL'
-                                    }).format(value);
+            if (labels.length > 0) {
+                const ctx = chartElement.getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: [
+                                '#206bc4',
+                                '#2fb344',
+                                '#f59e0b',
+                                '#d63939',
+                                '#6f42c1',
+                                '#0ea5e9',
+                                '#14b8a6',
+                                '#f97316',
+                                '#64748b',
+                                '#8b5cf6'
+                            ],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '58%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 16,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(context) {
+                                        const index = context[0]?.dataIndex ?? 0;
+                                        return fullLabels[index] || labels[index] || '';
+                                    },
+                                    label: function(context) {
+                                        const index = context.dataIndex ?? 0;
+                                        const sigla = labels[index] || '';
+                                        const value = Number(context.raw || 0);
+                                        return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
+                                            style: 'currency',
+                                            currency: 'BRL'
+                                        }).format(value);
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
-        }
-    }
-
-    const body = document.body;
-    const modalButtons = document.querySelectorAll('.details-open-modal');
-    const modals = document.querySelectorAll('.details-modal');
-
-    function openModal(modal) {
-        if (!modal) return;
-        modal.classList.add('open');
-        modal.setAttribute('aria-hidden', 'false');
-        body.classList.add('body-modal-open');
-    }
-
-    function closeModal(modal) {
-        if (!modal) return;
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-
-        const hasOpenModal = document.querySelector('.details-modal.open');
-        if (!hasOpenModal) {
-            body.classList.remove('body-modal-open');
-        }
-    }
-
-    modalButtons.forEach(function(button) {
-        button.addEventListener('click', function() {
-            const modalId = this.getAttribute('data-modal');
-            const modal = document.getElementById(modalId);
-            openModal(modal);
-        });
-    });
-
-    modals.forEach(function(modal) {
-        modal.querySelectorAll('[data-close-modal]').forEach(function(closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                closeModal(modal);
-            });
-        });
-    });
-
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            document.querySelectorAll('.details-modal.open').forEach(function(modal) {
-                closeModal(modal);
-            });
+                });
+            }
         }
     });
-});
 </script>
 
 <?php include 'views/layout/footer.php'; ?>
