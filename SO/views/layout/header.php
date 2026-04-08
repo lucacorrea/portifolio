@@ -1,5 +1,15 @@
 <?php include_once __DIR__ . '/../../config/database.php'; ?>
-<?php include_once __DIR__ . '/../../config/functions.php'; ?>
+<?php 
+include_once __DIR__ . '/../../config/functions.php'; 
+
+$badge_pendentes = 0;
+if (isset($pdo)) {
+    try {
+        $stmt_badge = $pdo->query("SELECT COUNT(*) FROM oficios WHERE status = 'PENDENTE_ITENS'");
+        $badge_pendentes = (int)$stmt_badge->fetchColumn();
+    } catch (\Exception $e) {}
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -363,6 +373,11 @@
                                     <li class="nav-item <?php echo isActive(['oficios_lista.php', 'analisar_oficio.php', 'gerar_aquisicao.php', 'oficios_visualizar.php', 'oficios_editar.php', 'oficios_lista_sefaz.php', 'atribuir_itens.php']); ?>">
                                         <a href="<?php echo $nivel === 'SEFAZ' ? 'oficios_lista_sefaz.php' : 'oficios_lista.php'; ?>" class="nav-link">
                                             <i class="fas fa-folder-open"></i> Lista de Solicitações
+                                            <?php if ($badge_pendentes > 0): ?>
+                                                <span class="badge" style="background:#dc3545; color:#fff; font-size:0.7rem; padding: 2px 6px; border-radius:10px; margin-left:4px; vertical-align: middle;">
+                                                    <?php echo $badge_pendentes; ?>
+                                                </span>
+                                            <?php endif; ?>
                                         </a>
                                     </li>
                                 <?php endif; ?>
