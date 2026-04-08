@@ -218,7 +218,7 @@
                         <ul class="nav-list">
 
                             <?php if (isset($_SESSION['user_id'])): ?>
-                                <?php $nivel = strtoupper($_SESSION['nivel'] ?? ''); ?>
+                                <?php $nivel = strtoupper(trim($_SESSION['nivel'] ?? '')); ?>
 
                                 <li class="nav-item <?php echo isActive(['dashboard.php', 'index.php']); ?>">
                                     <a href="dashboard.php" class="nav-link">

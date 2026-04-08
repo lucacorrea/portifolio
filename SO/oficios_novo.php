@@ -3,8 +3,7 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
-$nivel_user = strtoupper($_SESSION['nivel'] ?? '');
-$isCasaCivil = ($nivel_user === 'CASA_CIVIL');
+$nivel_user = strtoupper(trim($_SESSION['nivel'] ?? ''));
 
 $page_title = "Cadastrar Nova Solicitação";
 
@@ -13,15 +12,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $justificativa = trim($_POST['justificativa']);
     $valor_orcamento = !empty($_POST['valor_orcamento']) ? str_replace(',', '.', $_POST['valor_orcamento']) : null;
     $numero_manual = $_POST['numero_oficio'] ?? null;
-    $produtos = $_POST['produtos'] ?? [];
 
-    // Validação de Justificativa (Obrigatória)
+    // Validação de Campos Obrigatórios
     if (empty($justificativa)) {
         $error = "O campo Justificativa é obrigatório.";
-    } elseif ($isCasaCivil && empty($numero_manual)) {
+    } elseif (empty($numero_manual)) {
         $error = "O número do ofício é obrigatório.";
-    } elseif (!$isCasaCivil && empty($produtos)) {
-        $error = "Adicione pelo menos um produto ao ofício.";
+    } elseif (empty($secretaria_id)) {
+        $error = "Selecione a secretaria solicitante.";
     } else {
         try {
             $pdo->beginTransaction();
@@ -46,38 +44,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // Define o número do ofício
-            if ($isCasaCivil) {
-                $numero = $numero_manual;
-                // Verificar se já existe
-                $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ?");
-                $stmt_check->execute([$numero]);
-                if ($stmt_check->fetch()) {
-                    throw new Exception("O número de ofício '$numero' já está cadastrado.");
-                }
-                $status = 'PENDENTE_ITENS';
-            } else {
-                $numero = generate_oficio_number($pdo);
-                $status = 'ENVIADO';
+            // Verificar se o número do ofício já existe
+            $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ?");
+            $stmt_check->execute([$numero_manual]);
+            if ($stmt_check->fetch()) {
+                throw new Exception("O número de ofício '$numero_manual' já está cadastrado.");
             }
+
+            // Toda nova solicitação agora entra como PENDENTE_ITENS
+            $status = 'PENDENTE_ITENS';
 
             $stmt = $pdo->prepare("INSERT INTO oficios (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento, valor_orcamento, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$numero, $secretaria_id, $justificativa, $_SESSION['user_id'], $arquivo_orcamento, $valor_orcamento, $status]);
+            $stmt->execute([$numero_manual, $secretaria_id, $justificativa, $_SESSION['user_id'], $arquivo_orcamento, $valor_orcamento, $status]);
             $oficio_id = $pdo->lastInsertId();
 
-            // Só insere produtos se não for Casa Civil
-            if (!$isCasaCivil) {
-                $stmt_item = $pdo->prepare("INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade) VALUES (?, ?, ?, ?)");
-                foreach ($produtos as $item) {
-                    if (!empty($item['nome'])) {
-                        $stmt_item->execute([$oficio_id, $item['nome'], $item['qtd'], $item['unidade'] ?: 'UN']);
-                    }
-                }
-            }
-
-            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero criado por " . $nivel_user);
+            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero_manual cadastrado aguardando itens.");
             $pdo->commit();
-            flash_message('success', "Solicitação $numero cadastrada com sucesso!");
+            
+            flash_message('success', "Solicitação $numero_manual cadastrada com sucesso! Agora a SEFAZ deverá atribuir os itens.");
             header("Location: oficios_visualizar.php?id=$oficio_id");
             exit();
         } catch (Exception $e) {
@@ -110,39 +94,8 @@ include 'views/layout/header.php';
         margin-bottom: 1.5rem;
     }
 
-    .itens-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .product-item {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr auto;
-        gap: 1rem;
-        margin-bottom: 1rem;
-        align-items: end;
-    }
-
-    .remove-product-btn {
-        color: var(--status-rejected);
-        border-color: var(--status-rejected);
-        padding: 0.5rem;
-        min-width: 44px;
-        height: 42px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    #add-product{
-        padding: 0.5rem 1rem;
-    }
-
     .solicitacao-actions {
-        margin-top: 3rem;
+        margin-top: 2rem;
         border-top: 1px solid var(--border-color);
         padding-top: 1.5rem;
         text-align: right;
@@ -154,7 +107,6 @@ include 'views/layout/header.php';
 
     @media (max-width: 768px) {
         .solicitacao-top-grid { grid-template-columns: 1fr; }
-        .product-item { grid-template-columns: 1fr; }
     }
 </style>
 
@@ -162,7 +114,7 @@ include 'views/layout/header.php';
     <div class="card-body">
         <div class="solicitacao-header">
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1.25rem; margin: 0;">
-                <i class="fas fa-edit" style="margin-right: 10px; color: var(--primary);"></i> Formulário de Solicitação
+                <i class="fas fa-edit" style="margin-right: 10px; color: var(--primary);"></i> Formulário de Solicitação (Casa Civil)
             </h3>
             <a href="oficios_lista.php" class="btn btn-outline btn-sm">Voltar</a>
         </div>
@@ -173,12 +125,12 @@ include 'views/layout/header.php';
 
         <form action="" method="POST" id="oficio-form" enctype="multipart/form-data">
             <div class="solicitacao-top-grid">
-                <?php if ($isCasaCivil): ?>
-                    <div class="form-group">
-                        <label class="form-label">Número do Ofício <span style="color:red">*</span></label>
-                        <input type="text" name="numero_oficio" class="form-control" required placeholder="Ex: OF-2026-001">
-                    </div>
-                <?php endif; ?>
+                
+                <div class="form-group">
+                    <label class="form-label">Número do Ofício <span style="color:red">*</span></label>
+                    <input type="text" name="numero_oficio" class="form-control" required placeholder="Ex: OF-2026-01">
+                    <small class="text-muted">Informe o número do processo físico ou ofício.</small>
+                </div>
 
                 <div class="form-group">
                     <label class="form-label">Secretaria Solicitante <span style="color:red">*</span></label>
@@ -203,43 +155,15 @@ include 'views/layout/header.php';
 
             <div class="form-group" style="margin-bottom: 2rem;">
                 <label class="form-label">Justificativa / Finalidade <span style="color:red">*</span></label>
-                <textarea name="justificativa" class="form-control" placeholder="Descreva detalhadamente a necessidade da solicitação..." rows="3" required></textarea>
+                <textarea name="justificativa" class="form-control" placeholder="Descreva detalhadamente a necessidade da solicitação..." rows="4" required></textarea>
             </div>
 
-            <?php if (!$isCasaCivil): ?>
-            <div style="border-top: 1px solid var(--border-color); padding-top: 2rem; margin-bottom: 1.5rem;">
-                <div class="itens-header">
-                    <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin: 0;">
-                        <i class="fas fa-box" style="margin-right: 8px; color: var(--primary);"></i> Itens da Solicitação
-                    </h4>
-                    <button type="button" class="btn btn-outline btn-sm" id="add-product">
-                        <i class="fas fa-plus"></i> Adicionar Produto
-                    </button>
-                </div>
-
-                <div id="products-container">
-                    <div class="product-item">
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Produto/Serviço</label>
-                            <input type="text" name="produtos[0][nome]" class="form-control" required placeholder="Ex: Resma de Papel A4">
-                        </div>
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Qtd</label>
-                            <input type="number" step="0.01" name="produtos[0][qtd]" class="form-control" required placeholder="0.00">
-                        </div>
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Unidade</label>
-                            <input type="text" name="produtos[0][unidade]" class="form-control" placeholder="UN" value="UN">
-                        </div>
-                        <div class="form-group remove-product-wrap" style="margin: 0;">
-                            <button type="button" class="btn btn-outline btn-sm remove-product remove-product-btn">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
+            <div class="alert alert-info" style="display: flex; align-items: center; gap: 1rem;">
+                <i class="fas fa-info-circle" style="font-size: 1.5rem;"></i>
+                <div>
+                    <strong>Nota:</strong> Este formulário é destinado ao registro inicial. Os itens específicos de produtos serão atribuídos pela <strong>SEFAZ</strong> após a criação deste registro.
                 </div>
             </div>
-            <?php endif; ?>
 
             <div class="solicitacao-actions">
                 <button type="submit" class="btn btn-primary btn-salvar-solicitacao">
@@ -249,44 +173,5 @@ include 'views/layout/header.php';
         </form>
     </div>
 </div>
-
-<?php if (!$isCasaCivil): ?>
-<script>
-    document.getElementById('add-product').addEventListener('click', function() {
-        const container = document.getElementById('products-container');
-        const index = container.getElementsByClassName('product-item').length;
-        const item = document.createElement('div');
-        item.className = 'product-item';
-        item.innerHTML = `
-        <div class="form-group" style="margin: 0;">
-            <label class="form-label">Produto/Serviço</label>
-            <input type="text" name="produtos[${index}][nome]" class="form-control" required placeholder="Ex: Item extra">
-        </div>
-        <div class="form-group" style="margin: 0;">
-            <label class="form-label">Qtd</label>
-            <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control" required placeholder="0.00">
-        </div>
-        <div class="form-group" style="margin: 0;">
-            <label class="form-label">Unidade</label>
-            <input type="text" name="produtos[${index}][unidade]" class="form-control" placeholder="UN" value="UN">
-        </div>
-        <div class="form-group remove-product-wrap" style="margin: 0;">
-            <button type="button" class="btn btn-outline btn-sm remove-product remove-product-btn">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `;
-        container.appendChild(item);
-        item.querySelector('.remove-product').addEventListener('click', function() {
-            if (document.querySelectorAll('.product-item').length > 1) { item.remove(); }
-        });
-    });
-    document.querySelectorAll('.remove-product').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (document.querySelectorAll('.product-item').length > 1) { this.closest('.product-item').remove(); }
-        });
-    });
-</script>
-<?php endif; ?>
 
 <?php include 'views/layout/footer.php'; ?>
