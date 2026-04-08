@@ -135,12 +135,6 @@ window.addEventListener('scroll', function() {
 document.addEventListener('DOMContentLoaded', function() {
     const filterForms = document.querySelectorAll('form.filtros-grid');
     filterForms.forEach(form => {
-        // Esconder o botão "Filtrar" para um visual mais limpo, usando apenas a lógica automática
-        const btnSubmit = form.querySelector('button[type="submit"]');
-        if (btnSubmit) {
-            btnSubmit.style.display = 'none';
-        }
-
         let typingTimer;
         const doneTypingInterval = 800; // Tempo após parar de digitar (ms)
 
