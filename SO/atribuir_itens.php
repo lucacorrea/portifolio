@@ -30,6 +30,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
+        $orcamento_esperado = (float)($oficio['valor_orcamento'] ?? 0);
+        $total_calculado = 0;
+
+        foreach ($produtos as $p) {
+            if (!empty($p['nome'])) {
+                $val = (float)str_replace(',', '.', $p['valor']);
+                $qtd = (float)$p['qtd'];
+                $total_calculado += ($val * $qtd);
+            }
+        }
+
+        if ($orcamento_esperado > 0 && abs($total_calculado - $orcamento_esperado) > 0.02) {
+            throw new Exception("O valor total dos itens deve ser exatamente igual ao orçamento previsto de R$ " . number_format($orcamento_esperado, 2, ',', '.'));
+        }
+
         // Limpar itens antigos se estiver reatribuindo
         $pdo->prepare("DELETE FROM itens_oficio WHERE oficio_id = ?")->execute([$id]);
 
@@ -181,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
         totalDisplay.textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
         
         if (orcamentoPrevisto > 0) {
-            if (total > orcamentoPrevisto) {
+            if (Math.abs(total - orcamentoPrevisto) > 0.02) {
                 totalDisplay.classList.add('diff-warning');
                 totalDisplay.classList.remove('diff-ok');
             } else {
@@ -239,6 +254,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     calculateTotal();
+
+    document.getElementById('items-form').addEventListener('submit', function(e) {
+        if (orcamentoPrevisto > 0) {
+            let total = 0;
+            document.querySelectorAll('.item-row').forEach(row => {
+                const qtd = parseFloat(row.querySelector('.item-qtd').value) || 0;
+                const valStr = row.querySelector('.item-valor').value.replace(',', '.');
+                const val = parseFloat(valStr) || 0;
+                total += (qtd * val);
+            });
+            
+            if (Math.abs(total - orcamentoPrevisto) > 0.02) {
+                e.preventDefault();
+                alert("Bloqueado: O valor total atual dos itens não corresponde ao Valor do Orçamento Previsto!\\nPor favor, faça a correção das quantidades ou valores.");
+            }
+        }
+    });
+
 });
 </script>
 
