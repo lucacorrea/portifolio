@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             log_action($pdo, "CRIAR_OFICIO", "Ofício $numero_manual cadastrado aguardando itens.");
             $pdo->commit();
             
-            flash_message('success', "Solicitação $numero_manual cadastrada com sucesso! Agora a SEFAZ deverá atribuir os itens.");
+            flash_message('success', "Solicitação $numero_manual cadastrada com sucesso! Agora a SEMFAZ deverá atribuir os itens.");
             header("Location: oficios_visualizar.php?id=$oficio_id");
             exit();
         } catch (Exception $e) {
@@ -161,7 +161,7 @@ include 'views/layout/header.php';
             <div class="alert alert-info" style="display: flex; align-items: center; gap: 1rem;">
                 <i class="fas fa-info-circle" style="font-size: 1.5rem;"></i>
                 <div>
-                    <strong>Nota:</strong> Este formulário é destinado ao registro inicial. Os itens específicos de produtos serão atribuídos pela <strong>SEFAZ</strong> após a criação deste registro.
+                    <strong>Nota:</strong> Este formulário é destinado ao registro inicial. Os itens específicos de produtos serão atribuídos pela <strong>SEMFAZ</strong> após a criação deste registro.
                 </div>
             </div>
 
