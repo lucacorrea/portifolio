@@ -121,6 +121,34 @@ if ($periodo_fim !== '') {
 
 $where = implode(' AND ', $whereParts);
 
+/* filtros específicos dos ofícios/itens_oficio */
+$wherePartsOficios = [];
+$paramsOficios = [];
+
+$wherePartsOficios[] = "1=1";
+
+if ($sec_id !== '') {
+    $wherePartsOficios[] = "o.secretaria_id = :sec_id";
+    $paramsOficios[':sec_id'] = (int)$sec_id;
+}
+
+if ($produto !== '') {
+    $wherePartsOficios[] = "io.produto LIKE :produto";
+    $paramsOficios[':produto'] = '%' . $produto . '%';
+}
+
+if ($periodo_inicio !== '') {
+    $wherePartsOficios[] = "o.criado_em >= :inicio";
+    $paramsOficios[':inicio'] = $periodo_inicio . ' 00:00:00';
+}
+
+if ($periodo_fim !== '') {
+    $wherePartsOficios[] = "o.criado_em <= :fim";
+    $paramsOficios[':fim'] = $periodo_fim . ' 23:59:59';
+}
+
+$where_oficios = implode(' AND ', $wherePartsOficios);
+
 /* =========================
    LISTAS DOS FILTROS
 ========================= */
@@ -151,8 +179,8 @@ $stmt_secretarias->execute($params);
 $relatorio_secretarias = $stmt_secretarias->fetchAll(PDO::FETCH_ASSOC);
 
 /* =========================
-   DETALHES DOS PRODUTOS
-   POR SECRETARIA
+   DETALHES FINANCEIROS
+   PRODUTOS ADQUIRIDOS POR SECRETARIA
 ========================= */
 $sql_detalhes = "
     SELECT
@@ -186,34 +214,59 @@ foreach ($detalhes_produtos as $item) {
 }
 
 /* =========================
-   JUSTIFICATIVAS POR SECRETARIA
+   OFÍCIOS + ITENS DO OFÍCIO
 ========================= */
-$sql_justificativas = "
-    SELECT DISTINCT
+$sql_oficios_itens = "
+    SELECT
         s.id AS secretaria_id,
+        s.nome AS secretaria_nome,
         o.id AS oficio_id,
         o.numero AS oficio_numero,
         o.justificativa,
-        a.criado_em
-    FROM itens_aquisicao ia
-    INNER JOIN aquisicoes a ON ia.aquisicao_id = a.id
-    INNER JOIN oficios o ON a.oficio_id = o.id
-    INNER JOIN secretarias s ON o.secretaria_id = s.id
-    WHERE $where
-    ORDER BY s.nome ASC, a.criado_em DESC, o.numero DESC
+        o.status,
+        o.criado_em,
+        io.id AS item_oficio_id,
+        io.produto,
+        io.quantidade,
+        io.unidade
+    FROM oficios o
+    INNER JOIN secretarias s ON s.id = o.secretaria_id
+    LEFT JOIN itens_oficio io ON io.oficio_id = o.id
+    WHERE $where_oficios
+    ORDER BY s.nome ASC, o.criado_em DESC, o.numero DESC, io.id ASC
 ";
 
-$stmt_justificativas = $pdo->prepare($sql_justificativas);
-$stmt_justificativas->execute($params);
-$justificativas_rows = $stmt_justificativas->fetchAll(PDO::FETCH_ASSOC);
+$stmt_oficios_itens = $pdo->prepare($sql_oficios_itens);
+$stmt_oficios_itens->execute($paramsOficios);
+$rows_oficios_itens = $stmt_oficios_itens->fetchAll(PDO::FETCH_ASSOC);
 
-$justificativas_por_secretaria = [];
-foreach ($justificativas_rows as $item) {
-    $sid = (int)$item['secretaria_id'];
-    if (!isset($justificativas_por_secretaria[$sid])) {
-        $justificativas_por_secretaria[$sid] = [];
+$oficios_por_secretaria = [];
+foreach ($rows_oficios_itens as $row) {
+    $sid = (int)$row['secretaria_id'];
+    $oid = (int)$row['oficio_id'];
+
+    if (!isset($oficios_por_secretaria[$sid])) {
+        $oficios_por_secretaria[$sid] = [];
     }
-    $justificativas_por_secretaria[$sid][] = $item;
+
+    if (!isset($oficios_por_secretaria[$sid][$oid])) {
+        $oficios_por_secretaria[$sid][$oid] = [
+            'oficio_id'      => $oid,
+            'oficio_numero'  => $row['oficio_numero'],
+            'justificativa'  => $row['justificativa'],
+            'status'         => $row['status'],
+            'criado_em'      => $row['criado_em'],
+            'itens'          => [],
+        ];
+    }
+
+    if (!empty($row['item_oficio_id'])) {
+        $oficios_por_secretaria[$sid][$oid]['itens'][] = [
+            'produto'    => $row['produto'],
+            'quantidade' => $row['quantidade'],
+            'unidade'    => $row['unidade'],
+        ];
+    }
 }
 
 /* =========================
@@ -292,18 +345,15 @@ if ($export === 'excel') {
                 color: #1f2937;
                 margin: 18px;
             }
-
             table{
                 border-collapse: collapse;
                 width: 100%;
                 table-layout: fixed;
             }
-
             .sheet{
                 width: 100%;
                 max-width: 1100px;
             }
-
             .sheet td,
             .sheet th{
                 border: 1px solid #7c8aa5;
@@ -311,11 +361,6 @@ if ($export === 'excel') {
                 vertical-align: middle;
                 word-wrap: break-word;
             }
-
-            .sheet .no-border{
-                border: none !important;
-            }
-
             .title-main{
                 background: #dbeafe;
                 color: #0f172a;
@@ -325,12 +370,10 @@ if ($export === 'excel') {
                 border: 1px solid #7c8aa5;
                 padding: 12px;
             }
-
             .sub-info{
                 background: #f8fafc;
                 font-size: 11px;
             }
-
             .section-title{
                 background: #1d4ed8;
                 color: #fff;
@@ -339,49 +382,34 @@ if ($export === 'excel') {
                 letter-spacing: .3px;
                 text-align: center;
             }
-
             .thead{
                 background: #e5e7eb;
                 font-weight: bold;
                 text-align: center;
             }
-
             .summary-label{
                 background: #f8fafc;
                 font-weight: bold;
                 text-align: center;
             }
-
             .summary-value{
                 text-align: center;
                 font-weight: bold;
                 font-size: 14px;
                 background: #ffffff;
             }
-
-            .left{
-                text-align: left;
-            }
-
-            .center{
-                text-align: center;
-            }
-
-            .right{
-                text-align: right;
-            }
-
+            .left{ text-align: left; }
+            .center{ text-align: center; }
+            .right{ text-align: right; }
             .secretaria-head{
                 background: #dbeafe;
                 font-weight: bold;
                 color: #0f172a;
             }
-
             .total-row{
                 background: #eef2ff;
                 font-weight: bold;
             }
-
             .spacer td{
                 border: none !important;
                 height: 8px;
@@ -407,7 +435,7 @@ if ($export === 'excel') {
                 <td colspan="4" class="sub-info left"><strong>Gerado em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
             </tr>
             <tr>
-                <td colspan="4" class="sub-info left"><strong>Detalhes:</strong> Totais por secretaria e detalhamento de produtos por secretaria</td>
+                <td colspan="4" class="sub-info left"><strong>Detalhes:</strong> Totais por secretaria e ofícios com itens vinculados</td>
             </tr>
             <tr>
                 <td colspan="2" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
@@ -460,46 +488,6 @@ if ($export === 'excel') {
                 <tr>
                     <td colspan="4" class="center">Nenhum dado encontrado para os filtros selecionados.</td>
                 </tr>
-            <?php endif; ?>
-
-            <tr class="spacer"><td colspan="4"></td></tr>
-            <tr>
-                <td colspan="4" class="section-title">DETALHES DOS PRODUTOS POR SECRETARIA</td>
-            </tr>
-
-            <?php if (!empty($relatorio_secretarias)): ?>
-                <?php foreach ($relatorio_secretarias as $sec): ?>
-                    <?php $sid = (int)$sec['secretaria_id']; ?>
-
-                    <tr>
-                        <td colspan="4" class="secretaria-head">
-                            Secretaria: <?php echo h($sec['secretaria_nome']); ?> | Total: <?php echo format_money($sec['total_valor']); ?>
-                        </td>
-                    </tr>
-                    <tr class="thead">
-                        <th>Produto</th>
-                        <th>Fornecedor</th>
-                        <th>Qtd</th>
-                        <th>Valor Total</th>
-                    </tr>
-
-                    <?php if (!empty($detalhes_por_secretaria[$sid])): ?>
-                        <?php foreach ($detalhes_por_secretaria[$sid] as $det): ?>
-                            <tr>
-                                <td class="left"><?php echo h($det['produto']); ?></td>
-                                <td class="left"><?php echo h($det['fornecedor']); ?></td>
-                                <td class="center"><?php echo number_format((float)$det['total_qtd'], 2, ',', '.'); ?></td>
-                                <td class="right"><?php echo format_money($det['total_valor']); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="4" class="center">Sem detalhes para esta secretaria.</td>
-                        </tr>
-                    <?php endif; ?>
-
-                    <tr class="spacer"><td colspan="4"></td></tr>
-                <?php endforeach; ?>
             <?php endif; ?>
         </table>
     </body>
@@ -835,6 +823,24 @@ include 'views/layout/header.php';
         white-space: nowrap;
     }
 
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: .34rem .68rem;
+        border-radius: 999px;
+        font-size: .75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .2px;
+        white-space: nowrap;
+    }
+
+    .status-enviado { background: #dbeafe; color: #1d4ed8; }
+    .status-aprovado { background: #dcfce7; color: #15803d; }
+    .status-reprovado { background: #fee2e2; color: #b91c1c; }
+    .status-arquivado { background: #e5e7eb; color: #4b5563; }
+
     .total-row-main td {
         background: #f8fafc !important;
         font-weight: 800;
@@ -989,32 +995,36 @@ include 'views/layout/header.php';
         color: #0f172a;
     }
 
-    .details-just-wrap {
+    .details-oficio-list {
+        display: grid;
+        gap: 1rem;
         margin-bottom: 1rem;
     }
 
-    .details-just-list {
-        display: grid;
-        gap: .8rem;
-    }
-
-    .details-just-card {
+    .details-oficio-card {
         border: 1px solid #e5edf8;
-        border-radius: 14px;
+        border-radius: 16px;
         background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-        padding: .95rem 1rem;
+        padding: 1rem;
     }
 
-    .details-just-top {
+    .details-oficio-top {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         gap: .75rem;
         flex-wrap: wrap;
-        margin-bottom: .45rem;
+        margin-bottom: .8rem;
     }
 
-    .details-just-badge {
+    .details-oficio-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .55rem;
+        align-items: center;
+    }
+
+    .details-oficio-badge {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1027,11 +1037,28 @@ include 'views/layout/header.php';
         white-space: nowrap;
     }
 
-    .details-just-date {
+    .details-oficio-date {
         font-size: .8rem;
         color: #64748b;
         font-weight: 700;
         white-space: nowrap;
+    }
+
+    .details-just-box {
+        margin-bottom: .95rem;
+        border: 1px solid #e8eef7;
+        border-radius: 14px;
+        background: #fff;
+        padding: .9rem;
+    }
+
+    .details-just-title {
+        margin: 0 0 .35rem;
+        color: #334155;
+        font-size: .8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .35px;
     }
 
     .details-just-text {
@@ -1159,7 +1186,7 @@ include 'views/layout/header.php';
             gap: .75rem;
         }
 
-        .details-just-top {
+        .details-oficio-top {
             align-items: flex-start;
             flex-direction: column;
         }
@@ -1383,7 +1410,7 @@ include 'views/layout/header.php';
                     </div>
                     <div>
                         <h3>Detalhamento por Secretaria</h3>
-                        <p>Veja os totais consolidados e abra os itens detalhados de cada secretaria.</p>
+                        <p>Veja os totais consolidados e abra os ofícios com seus itens vinculados.</p>
                     </div>
                 </div>
 
@@ -1470,10 +1497,10 @@ include 'views/layout/header.php';
                     <div class="details-modal-header">
                         <div class="details-modal-title-wrap">
                             <h4 class="details-modal-title">
-                                Produtos da secretaria: <?php echo h($row['secretaria_nome']); ?>
+                                Ofícios e itens da secretaria: <?php echo h($row['secretaria_nome']); ?>
                             </h4>
                             <p class="details-modal-subtitle">
-                                Visualize abaixo os produtos, fornecedores, quantidades, justificativas e valores totais desta secretaria.
+                                Aqui ficam os ofícios com justificativa, status e os itens vinculados em <strong>itens_oficio</strong>.
                             </p>
                         </div>
 
@@ -1485,79 +1512,124 @@ include 'views/layout/header.php';
                     <div class="details-modal-body">
                         <div class="details-modal-summary">
                             <div class="details-mini-card">
-                                <p class="details-mini-label">Quantidade total</p>
+                                <p class="details-mini-label">Quantidade total adquirida</p>
                                 <p class="details-mini-value"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></p>
                             </div>
                             <div class="details-mini-card">
-                                <p class="details-mini-label">Valor total</p>
+                                <p class="details-mini-label">Valor total adquirido</p>
                                 <p class="details-mini-value"><?php echo format_money($row['total_valor']); ?></p>
                             </div>
                         </div>
 
-                        <div class="details-just-wrap">
-                            <h5 class="details-section-title">
-                                <i class="fas fa-align-left"></i> Justificativas dos Ofícios
-                            </h5>
+                        <h5 class="details-section-title">
+                            <i class="fas fa-file-alt"></i> Ofícios vinculados e seus itens
+                        </h5>
 
-                            <?php if (!empty($justificativas_por_secretaria[$sid])): ?>
-                                <div class="details-just-list">
-                                    <?php foreach ($justificativas_por_secretaria[$sid] as $just): ?>
-                                        <div class="details-just-card">
-                                            <div class="details-just-top">
-                                                <span class="details-just-badge">
-                                                    <?php echo h($just['oficio_numero']); ?>
-                                                </span>
-                                                <span class="details-just-date">
-                                                    <?php echo !empty($just['criado_em']) ? date('d/m/Y H:i', strtotime($just['criado_em'])) : ''; ?>
-                                                </span>
+                        <?php if (!empty($oficios_por_secretaria[$sid])): ?>
+                            <div class="details-oficio-list">
+                                <?php foreach ($oficios_por_secretaria[$sid] as $oficio): ?>
+                                    <?php
+                                        $status = strtoupper((string)($oficio['status'] ?? ''));
+                                        $statusClass = 'status-enviado';
+
+                                        if ($status === 'APROVADO') {
+                                            $statusClass = 'status-aprovado';
+                                        } elseif ($status === 'REPROVADO') {
+                                            $statusClass = 'status-reprovado';
+                                        } elseif ($status === 'ARQUIVADO') {
+                                            $statusClass = 'status-arquivado';
+                                        }
+                                    ?>
+                                    <div class="details-oficio-card">
+                                        <div class="details-oficio-top">
+                                            <div class="details-oficio-meta">
+                                                <span class="details-oficio-badge"><?php echo h($oficio['oficio_numero']); ?></span>
+                                                <span class="status-badge <?php echo $statusClass; ?>"><?php echo h($status ?: 'ENVIADO'); ?></span>
                                             </div>
+
+                                            <span class="details-oficio-date">
+                                                <?php echo !empty($oficio['criado_em']) ? date('d/m/Y H:i', strtotime($oficio['criado_em'])) : ''; ?>
+                                            </span>
+                                        </div>
+
+                                        <div class="details-just-box">
+                                            <p class="details-just-title">Justificativa</p>
                                             <div class="details-just-text">
-                                                <?php echo nl2br(h($just['justificativa'] !== null && $just['justificativa'] !== '' ? $just['justificativa'] : 'Sem justificativa informada.')); ?>
+                                                <?php echo nl2br(h($oficio['justificativa'] !== null && $oficio['justificativa'] !== '' ? $oficio['justificativa'] : 'Sem justificativa informada.')); ?>
                                             </div>
                                         </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php else: ?>
-                                <div class="details-just-card">
-                                    <div class="details-just-text">
-                                        Nenhuma justificativa encontrada para esta secretaria.
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-                        </div>
 
-                        <div class="details-inner-table-wrap">
-                            <div class="table-scroll-x">
-                                <table class="details-inner-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="text-nowrap">Produto</th>
-                                            <th class="text-nowrap">Fornecedor</th>
-                                            <th class="td-right text-nowrap">Qtd</th>
-                                            <th class="td-right text-nowrap">Valor Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (!empty($detalhes_por_secretaria[$sid])): ?>
+                                        <div class="details-inner-table-wrap">
+                                            <div class="table-scroll-x">
+                                                <table class="details-inner-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="text-nowrap">Produto</th>
+                                                            <th class="td-right text-nowrap">Quantidade</th>
+                                                            <th class="text-nowrap">Unidade</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php if (!empty($oficio['itens'])): ?>
+                                                            <?php foreach ($oficio['itens'] as $item): ?>
+                                                                <tr>
+                                                                    <td class="text-nowrap" style="font-weight:700;"><?php echo h($item['produto']); ?></td>
+                                                                    <td class="td-right text-nowrap"><?php echo number_format((float)$item['quantidade'], 2, ',', '.'); ?></td>
+                                                                    <td class="text-nowrap"><?php echo h($item['unidade'] ?: 'UN'); ?></td>
+                                                                </tr>
+                                                            <?php endforeach; ?>
+                                                        <?php else: ?>
+                                                            <tr>
+                                                                <td colspan="3" class="empty-state">
+                                                                    Nenhum item encontrado neste ofício.
+                                                                </td>
+                                                            </tr>
+                                                        <?php endif; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="details-oficio-card">
+                                <div class="details-just-text">
+                                    Nenhum ofício com itens vinculados foi encontrado para esta secretaria.
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($detalhes_por_secretaria[$sid])): ?>
+                            <h5 class="details-section-title" style="margin-top:1rem;">
+                                <i class="fas fa-chart-bar"></i> Resumo financeiro dos produtos adquiridos
+                            </h5>
+
+                            <div class="details-inner-table-wrap">
+                                <div class="table-scroll-x">
+                                    <table class="details-inner-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-nowrap">Produto</th>
+                                                <th class="text-nowrap">Fornecedor</th>
+                                                <th class="td-right text-nowrap">Qtd</th>
+                                                <th class="td-right text-nowrap">Valor Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
                                             <?php foreach ($detalhes_por_secretaria[$sid] as $det): ?>
                                                 <tr>
-                                                    <td class="text-nowrap" style="font-weight: 700;"><?php echo h($det['produto']); ?></td>
+                                                    <td class="text-nowrap" style="font-weight:700;"><?php echo h($det['produto']); ?></td>
                                                     <td class="text-nowrap"><?php echo h($det['fornecedor']); ?></td>
                                                     <td class="td-right text-nowrap"><?php echo number_format((float)$det['total_qtd'], 2, ',', '.'); ?></td>
-                                                    <td class="td-right text-nowrap" style="font-weight: 700;"><?php echo format_money($det['total_valor']); ?></td>
+                                                    <td class="td-right text-nowrap" style="font-weight:700;"><?php echo format_money($det['total_valor']); ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
-                                        <?php else: ?>
-                                            <tr>
-                                                <td colspan="4" class="empty-state">
-                                                    Nenhum produto encontrado para esta secretaria.
-                                                </td>
-                                            </tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
+                        <?php endif; ?>
 
                         <div style="display:flex; justify-content:flex-end; margin-top: 1rem;" class="no-print">
                             <button type="button" class="btn btn-danger-soft btn-sm" data-close-modal>
