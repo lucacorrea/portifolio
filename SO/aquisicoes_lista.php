@@ -387,9 +387,6 @@ include 'views/layout/header.php';
                                                 $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
                                                 if ($aq['status'] === 'AGUARDANDO ENTREGA' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')): 
                                             ?>
-                                                <a class="dropdown-item" href="aquisicao_editar.php?id=<?php echo (int)$aq['id']; ?>" style="color: #2fb344 !important;">
-                                                    <i class="fas fa-dollar-sign"></i> Lançar Valores (Orçamento)
-                                                </a>
                                                 <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized) !important;" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
                                                     <i class="fas fa-check-circle"></i> Marcar como Recebido
                                                 </a>
