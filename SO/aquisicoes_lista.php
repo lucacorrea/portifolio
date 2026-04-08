@@ -326,7 +326,7 @@ include 'views/layout/header.php';
             </div>
 
             <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <a href="aquisicoes_lista.php" class="btn btn-outline btn-limpar" style="width: 42px; padding: 0; display: flex; justify-content: center; align-items: center;" title="Limpar Filtros">
+                <a href="aquisicoes_lista.php" class="btn" style="width: 42px; height: 40px; padding: 0; display: flex; justify-content: center; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; color: #64748b; background: white;" title="Limpar Filtros">
                     <i class="fas fa-eraser" style="margin: 0;"></i>
                 </a>
             </div>
