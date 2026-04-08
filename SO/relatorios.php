@@ -44,7 +44,7 @@ if (!function_exists('secretaria_sigla')) {
             'SECRETARIA MUNICIPAL DE TURISMO' => 'SEMTUR',
             'SECRETARIA MUNICIPAL DE ESPORTE' => 'SEMESP',
             'SECRETARIA MUNICIPAL DE ESPORTES' => 'SEMESP',
-            'SECRETARIA MUNICIPAL DE HABITAÇÃO' => 'SMTH',
+            'SECRETARIA MUNICIPAL DE TERRAS E HABITAÇÃO' => 'SMTH',
             'SECRETARIA MUNICIPAL DE PLANEJAMENTO' => 'SEMPLA',
             'SECRETARIA MUNICIPAL DE SEGURANÇA' => 'SEMSEG',
         ];
