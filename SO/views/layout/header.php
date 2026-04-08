@@ -218,6 +218,7 @@
                         <ul class="nav-list">
 
                             <?php if (isset($_SESSION['user_id'])): ?>
+                                <?php $nivel = strtoupper($_SESSION['nivel'] ?? ''); ?>
 
                                 <li class="nav-item <?php echo isActive(['dashboard.php', 'index.php']); ?>">
                                     <a href="dashboard.php" class="nav-link">
@@ -225,7 +226,7 @@
                                     </a>
                                 </li>
 
-                                 <?php if (strtoupper($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'FUNCIONARIO', 'CASA_CIVIL'])): ?>
                                     <li class="nav-item <?php echo isActive(['oficios_novo.php']); ?>">
                                         <a href="oficios_novo.php" class="nav-link">
                                             <i class="fas fa-plus-circle"></i> Nova Solicitação
@@ -233,19 +234,23 @@
                                     </li>
                                 <?php endif; ?>
 
-                                <li class="nav-item <?php echo isActive(['oficios_lista.php', 'analisar_oficio.php', 'gerar_aquisicao.php', 'oficios_visualizar.php', 'oficios_editar.php']); ?>">
-                                    <a href="oficios_lista.php" class="nav-link">
-                                        <i class="fas fa-folder-open"></i> Lista de Solicitações
-                                    </a>
-                                </li>
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO', 'SEFAZ'])): ?>
+                                    <li class="nav-item <?php echo isActive(['oficios_lista.php', 'analisar_oficio.php', 'gerar_aquisicao.php', 'oficios_visualizar.php', 'oficios_editar.php', 'oficios_lista_sefaz.php', 'atribuir_itens.php']); ?>">
+                                        <a href="<?php echo $nivel === 'SEFAZ' ? 'oficios_lista_sefaz.php' : 'oficios_lista.php'; ?>" class="nav-link">
+                                            <i class="fas fa-folder-open"></i> Lista de Solicitações
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
-                                <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicao_editar.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
-                                    <a href="aquisicoes_lista.php" class="nav-link">
-                                        <i class="fas fa-shopping-bag"></i> Aquisições
-                                    </a>
-                                </li>
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO', 'SEFAZ'])): ?>
+                                    <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicao_editar.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
+                                        <a href="aquisicoes_lista.php" class="nav-link">
+                                            <i class="fas fa-shopping-bag"></i> Aquisições
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
-                                <?php if (in_array(strtoupper($_SESSION['nivel'] ?? ''), ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
                                     <li class="nav-item <?php echo isActive(['relatorios.php']); ?>">
                                         <a href="relatorios.php" class="nav-link">
                                             <i class="fas fa-file-contract"></i> Relatórios
@@ -253,7 +258,7 @@
                                     </li>
                                 <?php endif; ?>
 
-                                <?php if (strtoupper($_SESSION['nivel'] ?? '') === 'SUPORTE'): ?>
+                                <?php if ($nivel === 'SUPORTE'): ?>
                                     <li class="nav-item <?php echo isActive(['usuarios.php']); ?>">
                                         <a href="usuarios.php" class="nav-link">
                                             <i class="fas fa-users-cog"></i> Gerenciar Usuários

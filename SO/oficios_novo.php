@@ -3,17 +3,26 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
+$nivel_user = strtoupper($_SESSION['nivel'] ?? '');
+$isCasaCivil = ($nivel_user === 'CASA_CIVIL');
+
 $page_title = "Cadastrar Nova Solicitação";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $secretaria_id = $_POST['secretaria_id'];
     $justificativa = trim($_POST['justificativa']);
+    $valor_orcamento = !empty($_POST['valor_orcamento']) ? str_replace(',', '.', $_POST['valor_orcamento']) : null;
+    $numero_manual = $_POST['numero_oficio'] ?? null;
     $produtos = $_POST['produtos'] ?? [];
 
     // Validação de Justificativa (Obrigatória)
     if (empty($justificativa)) {
         $error = "O campo Justificativa é obrigatório.";
-    } elseif (!empty($produtos)) {
+    } elseif ($isCasaCivil && empty($numero_manual)) {
+        $error = "O número do ofício é obrigatório.";
+    } elseif (!$isCasaCivil && empty($produtos)) {
+        $error = "Adicione pelo menos um produto ao ofício.";
+    } else {
         try {
             $pdo->beginTransaction();
 
@@ -28,34 +37,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_name = "ORC_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
                 $upload_dir = "assets/uploads/orcamentos/";
 
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+
                 if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
                     $arquivo_orcamento = $upload_dir . $new_name;
                 }
             }
 
-            $numero = generate_oficio_number($pdo);
-            $stmt = $pdo->prepare("INSERT INTO oficios (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$numero, $secretaria_id, $justificativa, $_SESSION['user_id'], $arquivo_orcamento]);
+            // Define o número do ofício
+            if ($isCasaCivil) {
+                $numero = $numero_manual;
+                // Verificar se já existe
+                $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ?");
+                $stmt_check->execute([$numero]);
+                if ($stmt_check->fetch()) {
+                    throw new Exception("O número de ofício '$numero' já está cadastrado.");
+                }
+                $status = 'PENDENTE_ITENS';
+            } else {
+                $numero = generate_oficio_number($pdo);
+                $status = 'ENVIADO';
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO oficios (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento, valor_orcamento, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$numero, $secretaria_id, $justificativa, $_SESSION['user_id'], $arquivo_orcamento, $valor_orcamento, $status]);
             $oficio_id = $pdo->lastInsertId();
 
-            $stmt_item = $pdo->prepare("INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade) VALUES (?, ?, ?, ?)");
-            foreach ($produtos as $item) {
-                if (!empty($item['nome'])) {
-                    $stmt_item->execute([$oficio_id, $item['nome'], $item['qtd'], $item['unidade'] ?: 'UN']);
+            // Só insere produtos se não for Casa Civil
+            if (!$isCasaCivil) {
+                $stmt_item = $pdo->prepare("INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade) VALUES (?, ?, ?, ?)");
+                foreach ($produtos as $item) {
+                    if (!empty($item['nome'])) {
+                        $stmt_item->execute([$oficio_id, $item['nome'], $item['qtd'], $item['unidade'] ?: 'UN']);
+                    }
                 }
             }
 
-            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero criado com anexo: " . ($arquivo_orcamento ? 'SIM' : 'NÃO'));
+            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero criado por " . $nivel_user);
             $pdo->commit();
-            flash_message('success', "Ofício $numero cadastrado com sucesso!");
+            flash_message('success', "Solicitação $numero cadastrada com sucesso!");
             header("Location: oficios_visualizar.php?id=$oficio_id");
             exit();
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             $error = "Erro ao cadastrar: " . $e->getMessage();
         }
-    } else {
-        $error = "Adicione pelo menos um produto ao ofício.";
     }
 }
 
@@ -123,77 +153,8 @@ include 'views/layout/header.php';
     }
 
     @media (max-width: 768px) {
-        .solicitacao-header {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .solicitacao-header h3 {
-            margin-bottom: 0;
-            font-size: 1.1rem !important;
-        }
-
-        .solicitacao-header .btn {
-            width: 100%;
-            text-align: center;
-        }
-
-        .solicitacao-top-grid {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
-        .itens-header {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .itens-header h4 {
-            width: 100%;
-        }
-
-        .itens-header .btn {
-            width: 100%;
-            text-align: center;
-        }
-
-        .product-item {
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-            padding: 0.9rem;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            background: #fff;
-        }
-
-        .product-item .form-group {
-            width: 100%;
-        }
-
-        .remove-product-wrap {
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .remove-product-btn {
-            width: 100%;
-            height: 42px;
-        }
-
-        .solicitacao-actions {
-            text-align: stretch;
-        }
-
-        .btn-salvar-solicitacao {
-            width: 100%;
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        textarea.form-control {
-            min-height: 110px;
-        }
+        .solicitacao-top-grid { grid-template-columns: 1fr; }
+        .product-item { grid-template-columns: 1fr; }
     }
 </style>
 
@@ -212,8 +173,15 @@ include 'views/layout/header.php';
 
         <form action="" method="POST" id="oficio-form" enctype="multipart/form-data">
             <div class="solicitacao-top-grid">
+                <?php if ($isCasaCivil): ?>
+                    <div class="form-group">
+                        <label class="form-label">Número do Ofício <span style="color:red">*</span></label>
+                        <input type="text" name="numero_oficio" class="form-control" required placeholder="Ex: OF-2026-001">
+                    </div>
+                <?php endif; ?>
+
                 <div class="form-group">
-                    <label class="form-label">Secretaria Solicitante</label>
+                    <label class="form-label">Secretaria Solicitante <span style="color:red">*</span></label>
                     <select name="secretaria_id" class="form-control" required>
                         <option value="">Selecione a Secretaria...</option>
                         <?php foreach ($secretarias as $sec): ?>
@@ -223,9 +191,13 @@ include 'views/layout/header.php';
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label">Valor do Orçamento (Opcional)</label>
+                    <input type="text" name="valor_orcamento" class="form-control" placeholder="0,00" onkeyup="this.value = this.value.replace(/[^\d,]/g, '')">
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Arquivo do Orçamento (Opcional)</label>
                     <input type="file" name="orcamento" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
-                    <small class="text-muted">Formatos aceitos: PDF, JPG, PNG</small>
                 </div>
             </div>
 
@@ -234,6 +206,7 @@ include 'views/layout/header.php';
                 <textarea name="justificativa" class="form-control" placeholder="Descreva detalhadamente a necessidade da solicitação..." rows="3" required></textarea>
             </div>
 
+            <?php if (!$isCasaCivil): ?>
             <div style="border-top: 1px solid var(--border-color); padding-top: 2rem; margin-bottom: 1.5rem;">
                 <div class="itens-header">
                     <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin: 0;">
@@ -250,17 +223,14 @@ include 'views/layout/header.php';
                             <label class="form-label">Produto/Serviço</label>
                             <input type="text" name="produtos[0][nome]" class="form-control" required placeholder="Ex: Resma de Papel A4">
                         </div>
-
                         <div class="form-group" style="margin: 0;">
                             <label class="form-label">Qtd</label>
                             <input type="number" step="0.01" name="produtos[0][qtd]" class="form-control" required placeholder="0.00">
                         </div>
-
                         <div class="form-group" style="margin: 0;">
                             <label class="form-label">Unidade</label>
                             <input type="text" name="produtos[0][unidade]" class="form-control" placeholder="UN" value="UN">
                         </div>
-
                         <div class="form-group remove-product-wrap" style="margin: 0;">
                             <button type="button" class="btn btn-outline btn-sm remove-product remove-product-btn">
                                 <i class="fas fa-trash"></i>
@@ -269,6 +239,7 @@ include 'views/layout/header.php';
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <div class="solicitacao-actions">
                 <button type="submit" class="btn btn-primary btn-salvar-solicitacao">
@@ -279,6 +250,7 @@ include 'views/layout/header.php';
     </div>
 </div>
 
+<?php if (!$isCasaCivil): ?>
 <script>
     document.getElementById('add-product').addEventListener('click', function() {
         const container = document.getElementById('products-container');
@@ -290,17 +262,14 @@ include 'views/layout/header.php';
             <label class="form-label">Produto/Serviço</label>
             <input type="text" name="produtos[${index}][nome]" class="form-control" required placeholder="Ex: Item extra">
         </div>
-
         <div class="form-group" style="margin: 0;">
             <label class="form-label">Qtd</label>
             <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control" required placeholder="0.00">
         </div>
-
         <div class="form-group" style="margin: 0;">
             <label class="form-label">Unidade</label>
             <input type="text" name="produtos[${index}][unidade]" class="form-control" placeholder="UN" value="UN">
         </div>
-
         <div class="form-group remove-product-wrap" style="margin: 0;">
             <button type="button" class="btn btn-outline btn-sm remove-product remove-product-btn">
                 <i class="fas fa-trash"></i>
@@ -308,21 +277,16 @@ include 'views/layout/header.php';
         </div>
     `;
         container.appendChild(item);
-
         item.querySelector('.remove-product').addEventListener('click', function() {
-            if (document.querySelectorAll('.product-item').length > 1) {
-                item.remove();
-            }
+            if (document.querySelectorAll('.product-item').length > 1) { item.remove(); }
         });
     });
-
     document.querySelectorAll('.remove-product').forEach(btn => {
         btn.addEventListener('click', function() {
-            if (document.querySelectorAll('.product-item').length > 1) {
-                this.closest('.product-item').remove();
-            }
+            if (document.querySelectorAll('.product-item').length > 1) { this.closest('.product-item').remove(); }
         });
     });
 </script>
+<?php endif; ?>
 
 <?php include 'views/layout/footer.php'; ?>

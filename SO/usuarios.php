@@ -73,6 +73,8 @@ include 'views/layout/header.php';
                     <label class="form-label">Nível de Acesso</label>
                     <select name="nivel" class="form-control" required>
                         <option value="SECRETARIO">SECRETARIO (Apenas Consulta)</option>
+                        <option value="CASA_CIVIL">CASA CIVIL (Cadastro de Solicitação)</option>
+                        <option value="SEFAZ">SEFAZ (Atribuição de Itens)</option>
                         <option value="FUNCIONARIO">FUNCIONARIO</option>
                         <option value="ADMIN">ADMIN</option>
                         <option value="SUPORTE">SUPORTE TÉCNICO</option>
@@ -112,7 +114,9 @@ include 'views/layout/header.php';
                                     <?php 
                                         $badge_class = 'badge-outline';
                                         if($u['nivel'] == 'SUPORTE') $badge_class = 'badge-primary';
-                                        if($u['nivel'] == 'SECRETARIO') $badge_class = 'badge-secondary';
+                                        if($u['nivel'] == 'ADMIN') $badge_class = 'badge-secondary';
+                                        if($u['nivel'] == 'CASA_CIVIL') $badge_class = 'badge-pending';
+                                        if($u['nivel'] == 'SEFAZ') $badge_class = 'badge-approved';
                                     ?>
                                     <span class="badge <?php echo $badge_class; ?>" style="font-size: 0.7rem;">
                                         <?php echo $u['nivel']; ?>
