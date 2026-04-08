@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $secretaria_id = $_POST['secretaria_id'];
     $justificativa = trim($_POST['justificativa']);
     $valor_orcamento = !empty($_POST['valor_orcamento']) ? str_replace(',', '.', $_POST['valor_orcamento']) : null;
-    $numero_manual = $_POST['numero_oficio'] ?? null;
+    $numero_manual = isset($_POST['numero_oficio']) ? mb_strtoupper(trim($_POST['numero_oficio']), 'UTF-8') : null;
 
     // Validação de Campos Obrigatórios
     if (empty($justificativa)) {
@@ -128,7 +128,7 @@ include 'views/layout/header.php';
                 
                 <div class="form-group">
                     <label class="form-label">Número do Ofício <span style="color:red">*</span></label>
-                    <input type="text" name="numero_oficio" class="form-control" required placeholder="Ex: OF-2026-01">
+                    <input type="text" name="numero_oficio" class="form-control" required placeholder="Ex: OF-2026-01" oninput="this.value = this.value.toUpperCase()">
                     <small class="text-muted">Informe o número do processo físico ou ofício.</small>
                 </div>
 

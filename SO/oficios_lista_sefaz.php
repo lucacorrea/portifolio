@@ -52,12 +52,12 @@ include 'views/layout/header.php';
 <div class="card no-print" style="margin-bottom: 2rem;">
     <div class="card-body">
         <h4 class="card-title"><i class="fas fa-filter"></i> Filtragem Avançada</h4>
-        <form action="" method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
-            <div class="form-group">
+        <form action="" method="GET" class="filtros-grid" style="display: grid; grid-template-columns: 1fr 2fr 1fr 1fr 42px; gap: 1rem; align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Número do Processo</label>
                 <input type="text" name="busca" class="form-control" placeholder="Número..." value="<?php echo htmlspecialchars($_GET['busca'] ?? ''); ?>">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Secretaria</label>
                 <select name="secretaria" class="form-control">
                     <option value="">Todas</option>
@@ -68,17 +68,18 @@ include 'views/layout/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Data Início</label>
                 <input type="date" name="data_inicio" class="form-control" value="<?php echo htmlspecialchars($_GET['data_inicio'] ?? ''); ?>">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Data Fim</label>
                 <input type="date" name="data_fim" class="form-control" value="<?php echo htmlspecialchars($_GET['data_fim'] ?? ''); ?>">
             </div>
-            <div class="form-group" style="display: flex; gap: 0.5rem;">
-                <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="fas fa-search"></i> Filtrar</button>
-                <a href="oficios_lista_sefaz.php" class="btn btn-outline"><i class="fas fa-eraser"></i></a>
+            <div class="form-group filtros-acoes" style="margin-bottom: 0;">
+                <a href="oficios_lista_sefaz.php" class="btn" style="width: 42px; height: 40px; padding: 0; display: flex; justify-content: center; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; color: #64748b; background: white;" title="Limpar Filtros">
+                    <i class="fas fa-eraser" style="margin: 0;"></i>
+                </a>
             </div>
         </form>
     </div>
