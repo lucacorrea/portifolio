@@ -23,6 +23,12 @@ if (isset($_GET['busca']) && trim($_GET['busca']) !== '') {
     )";
 }
 
+if (isset($_GET['secretaria_id']) && $_GET['secretaria_id'] != '') {
+    $where .= " AND o.secretaria_id = " . (int)$_GET['secretaria_id'];
+}
+
+$secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll();
+
 // Configurações de Paginação
 $itens_por_pagina = 6;
 $pagina_atual = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -75,7 +81,7 @@ include 'views/layout/header.php';
         display: grid;
         grid-row-gap: 1rem;
         grid-column-gap: 1.5rem;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: 1fr 1fr 1fr 42px;
         align-items: end;
     }
 
@@ -307,15 +313,21 @@ include 'views/layout/header.php';
                 </select>
             </div>
 
-            <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    <i class="fas fa-search"></i> Filtrar
-                </button>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Secretaria</label>
+                <select name="secretaria_id" class="form-control">
+                    <option value="">Todas as Secretarias</option>
+                    <?php foreach ($secretarias_list as $sec): ?>
+                        <option value="<?php echo $sec['id']; ?>" <?php echo ($_GET['secretaria_id'] ?? '') == $sec['id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($sec['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
 
             <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <a href="aquisicoes_lista.php" class="btn btn-outline btn-limpar">
-                    <i class="fas fa-eraser"></i> Limpar
+                <a href="aquisicoes_lista.php" class="btn btn-outline btn-limpar" style="width: 42px; padding: 0; display: flex; justify-content: center; align-items: center;" title="Limpar Filtros">
+                    <i class="fas fa-eraser" style="margin: 0;"></i>
                 </a>
             </div>
         </form>
