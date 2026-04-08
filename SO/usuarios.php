@@ -39,9 +39,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_find->execute([$id]);
             $u_name = $stmt_find->fetchColumn();
 
-            $pdo->prepare("DELETE FROM usuarios WHERE id = ?")->execute([$id]);
-            log_action($pdo, "EXCLUSAO_USUARIO", "Usuário $u_name removido");
-            flash_message('success', "Usuário removido!");
+            try {
+                $pdo->prepare("DELETE FROM usuarios WHERE id = ?")->execute([$id]);
+                log_action($pdo, "EXCLUSAO_USUARIO", "Usuário $u_name removido");
+                flash_message('success', "Usuário removido com sucesso!");
+            } catch (PDOException $e) {
+                if ($e->getCode() == 23000) {
+                    flash_message('danger', "Erro: Não é possível excluir o usuário <strong>$u_name</strong> pois ele possui histórico de ações ou registros vinculados no sistema. Caso precise, modifique sua senha ou o rebaixe de nível para bloquear o acesso.");
+                } else {
+                    flash_message('danger', "Erro interno ao tentar excluir: " . $e->getMessage());
+                }
+            }
         } else {
             flash_message('danger', "Você não pode excluir seu próprio usuário!");
         }
