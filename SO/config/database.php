@@ -27,6 +27,8 @@ try {
         $pdo->exec($sql);
     }
 
+    // 5. Auto-migração: Adicionar colunas/tabelas se não existirem
+    try {
         // Tabela oficio_anexos (Novo para múltiplos anexos)
         $query = $pdo->query("SHOW TABLES LIKE 'oficio_anexos'");
         if (!$query->fetch()) {
@@ -55,7 +57,7 @@ try {
             }
         }
     } catch (PDOException $e) {
-        // Ignora erros se a tabela ainda não existir (o item 4 cuidará disso)
+        // Ignora erros se houver falhas menores na migração
     }
 
     if (session_status() === PHP_SESSION_NONE) {
