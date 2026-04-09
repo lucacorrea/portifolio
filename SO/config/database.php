@@ -27,18 +27,32 @@ try {
         $pdo->exec($sql);
     }
 
-    // 5. Auto-migração: Adicionar colunas se não existirem
-    try {
-        // Coluna arquivo_orcamento
-        $query = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'arquivo_orcamento'");
+        // Tabela oficio_anexos (Novo para múltiplos anexos)
+        $query = $pdo->query("SHOW TABLES LIKE 'oficio_anexos'");
         if (!$query->fetch()) {
-            $pdo->exec("ALTER TABLE oficios ADD COLUMN arquivo_orcamento VARCHAR(255) DEFAULT NULL AFTER usuario_id");
-        }
+            $pdo->exec("CREATE TABLE oficio_anexos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                oficio_id INT NOT NULL,
+                caminho VARCHAR(255) NOT NULL,
+                tipo ENUM('ORCAMENTO', 'OFICIO') NOT NULL,
+                nome_original VARCHAR(255),
+                criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (oficio_id) REFERENCES oficios(id) ON DELETE CASCADE
+            )");
 
-        // Coluna arquivo_oficio (Novo)
-        $query = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'arquivo_oficio'");
-        if (!$query->fetch()) {
-            $pdo->exec("ALTER TABLE oficios ADD COLUMN arquivo_oficio VARCHAR(255) DEFAULT NULL AFTER arquivo_orcamento");
+            // Migrar dados existentes (apenas na criação da tabela)
+            $stmt = $pdo->query("SELECT id, arquivo_orcamento, arquivo_oficio FROM oficios WHERE arquivo_orcamento IS NOT NULL OR arquivo_oficio IS NOT NULL");
+            $oficios = $stmt->fetchAll();
+            foreach ($oficios as $o) {
+                if (!empty($o['arquivo_orcamento'])) {
+                    $pdo->prepare("INSERT INTO oficio_anexos (oficio_id, caminho, tipo) VALUES (?, ?, 'ORCAMENTO')")
+                        ->execute([$o['id'], $o['arquivo_orcamento']]);
+                }
+                if (!empty($o['arquivo_oficio'])) {
+                    $pdo->prepare("INSERT INTO oficio_anexos (oficio_id, caminho, tipo) VALUES (?, ?, 'OFICIO')")
+                        ->execute([$o['id'], $o['arquivo_oficio']]);
+                }
+            }
         }
     } catch (PDOException $e) {
         // Ignora erros se a tabela ainda não existir (o item 4 cuidará disso)
