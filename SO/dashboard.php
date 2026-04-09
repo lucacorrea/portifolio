@@ -3,7 +3,7 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
-// 🔥 SE FOR REQUISIÇÃO AJAX → RETORNA JSON
+// 🔥 AJAX
 if(isset($_GET['ajax'])) {
 
     $total_oficios = $pdo->query("SELECT COUNT(*) FROM oficios")->fetchColumn();
@@ -40,7 +40,7 @@ $total_pendente = $pdo->query("SELECT COUNT(*) FROM oficios WHERE status = 'PEND
 $total_aguardando = $pdo->query("SELECT COUNT(*) FROM oficios WHERE status = 'ENVIADO'")->fetchColumn();
 $total_aprovados = $pdo->query("SELECT COUNT(*) FROM oficios WHERE status = 'APROVADO'")->fetchColumn();
 
-// Últimas Solicitações
+// Últimos
 $stmt = $pdo->query("
     SELECT o.*, s.nome as secretaria 
     FROM oficios o 
@@ -99,8 +99,8 @@ $ultimos_oficios = $stmt->fetchAll();
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
-                <h3 style="margin-bottom: 1.5rem; color: var(--text-dark); font-weight: 700; font-size: 1rem;">
-                    <i class="fas fa-chart-pie" style="margin-right: 10px; color: var(--primary);"></i> Fluxo Operacional
+                <h3 style="margin-bottom: 1.5rem;">
+                    <i class="fas fa-chart-pie"></i> Fluxo Operacional
                 </h3>
                 <div style="height: 300px;">
                     <canvas id="statusChart"></canvas>
@@ -112,10 +112,9 @@ $ultimos_oficios = $stmt->fetchAll();
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1rem;">
-                        <i class="fas fa-list-ul"></i> Últimas Solicitações
-                    </h3>
+                <div style="display: flex; justify-content: space-between;">
+                    <h3><i class="fas fa-list-ul"></i> Últimas Solicitações</h3>
+
                     <?php 
                         $list_url = ($nivel === 'SEFAZ') ? 'oficios_lista_sefaz.php' : 'oficios_lista.php';
                     ?>
@@ -134,16 +133,30 @@ $ultimos_oficios = $stmt->fetchAll();
                         </thead>
                         <tbody id="tabela_oficios">
                             <?php foreach ($ultimos_oficios as $oficio): ?>
-                            <tr>
-                                <td><?php echo $oficio['numero']; ?></td>
-                                <td><?php echo $oficio['secretaria']; ?></td>
-                                <td><?php echo $oficio['status']; ?></td>
-                                <td>
-                                    <a href="oficios_visualizar.php?id=<?php echo $oficio['id']; ?>" class="btn btn-outline btn-sm">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td style="font-weight:600;color:var(--primary);">
+                                        <?php echo $oficio['numero']; ?>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted"><?php echo $oficio['secretaria']; ?></span>
+                                    </td>
+                                    <td>
+                                        <?php 
+                                            $b_class = 'badge-pending';
+                                            if($oficio['status'] == 'ENVIADO') $b_class = 'badge-primary';
+                                            if($oficio['status'] == 'APROVADO') $b_class = 'badge-approved';
+                                            if($oficio['status'] == 'REPROVADO') $b_class = 'badge-rejected';
+                                        ?>
+                                        <span class="badge <?php echo $b_class; ?>">
+                                            <?php echo $oficio['status']; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="oficios_visualizar.php?id=<?php echo $oficio['id']; ?>" class="btn btn-outline btn-sm">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -171,22 +184,29 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
-            },
+            plugins: { legend: { position: 'bottom' } },
             cutout: '70%'
         }
     });
+
+    function getBadge(status){
+        if(status === 'ENVIADO') return 'badge-primary';
+        if(status === 'APROVADO') return 'badge-approved';
+        if(status === 'REPROVADO') return 'badge-rejected';
+        return 'badge-pending';
+    }
 
     async function atualizar() {
         const res = await fetch('?ajax=1');
         const data = await res.json();
 
+        // KPIs
         document.getElementById('total_oficios').innerText = data.total_oficios;
         document.getElementById('total_pendente').innerText = data.total_pendente;
         document.getElementById('total_aguardando').innerText = data.total_aguardando;
         document.getElementById('total_aprovados').innerText = data.total_aprovados;
 
+        // gráfico
         chart.data.datasets[0].data = [
             data.total_pendente,
             data.total_aguardando,
@@ -194,13 +214,18 @@ document.addEventListener('DOMContentLoaded', function() {
         ];
         chart.update();
 
+        // tabela COM CORES
         let html = '';
         data.ultimos.forEach(o => {
             html += `
                 <tr>
-                    <td>${o.numero}</td>
-                    <td>${o.secretaria}</td>
-                    <td>${o.status}</td>
+                    <td style="font-weight:600;color:var(--primary);">${o.numero}</td>
+                    <td><span class="text-muted">${o.secretaria}</span></td>
+                    <td>
+                        <span class="badge ${getBadge(o.status)}">
+                            ${o.status}
+                        </span>
+                    </td>
                     <td>
                         <a href="oficios_visualizar.php?id=${o.id}" class="btn btn-outline btn-sm">
                             <i class="fas fa-eye"></i>
@@ -213,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('tabela_oficios').innerHTML = html;
     }
 
-    setInterval(atualizar, 5000); // atualiza a cada 5s
+    setInterval(atualizar, 5000);
 });
 </script>
 
