@@ -86,25 +86,24 @@ $diferencaTotal = $totalInformado - $totalSistema;
     <table class="table">
         <thead>
             <tr>
-                <th style="width: 40%;">FORMA PAGTO</th>
-                <th class="text-right" style="width: 20%;">SIST.</th>
-                <th class="text-right" style="width: 20%;">INF.</th>
-                <th class="text-right" style="width: 20%;">DIF.</th>
+                <th style="width: 100%;" colspan="3">FORMA PAGTO / DETALHES (SIST | INF | DIF)</th>
             </tr>
         </thead>
         <tbody>
             <?php if ($resumoDeth): ?>
                 <?php foreach ($resumoDeth as $metodo => $vals): ?>
                 <tr>
-                    <td class="fs-small"><?= $metodo ?></td>
-                    <td class="text-right fs-small"><?= number_format($vals['calculado'], 2, ',', '.') ?></td>
-                    <td class="text-right fs-small"><?= number_format($vals['informado'], 2, ',', '.') ?></td>
-                    <td class="text-right fs-small fw-bold"><?= number_format($vals['diferenca'], 2, ',', '.') ?></td>
+                    <td colspan="3" class="fw-bold fs-small" style="padding-top: 5px;"><?= $metodo ?></td>
+                </tr>
+                <tr>
+                    <td class="fs-small" style="width: 33%;">R$ <?= number_format($vals['calculado'], 2, ',', '.') ?></td>
+                    <td class="fs-small text-center" style="width: 34%;">R$ <?= number_format($vals['informado'], 2, ',', '.') ?></td>
+                    <td class="fs-small text-right fw-bold" style="width: 33%;">R$ <?= number_format($vals['diferenca'], 2, ',', '.') ?></td>
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="4" class="text-center"><em>Resumo detalhado não disponível</em></td>
+                    <td colspan="3" class="text-center"><em>Resumo detalhado não disponível</em></td>
                 </tr>
             <?php endif; ?>
         </tbody>
@@ -114,8 +113,13 @@ $diferencaTotal = $totalInformado - $totalSistema;
 
     <div class="flex fw-bold">
         <span>TOTAIS:</span>
-        <span class="text-right">R$ <?= number_format($summary['total_vendas'], 2, ',', '.') ?></span>
+        <div style="display: flex; gap: 10px;">
+            <span class="fs-small">R$ <?= number_format($summary['total_vendas'], 2, ',', '.') ?></span>
+            <span class="fs-small">R$ <?= number_format($totalInformado - $caixa['valor_abertura'] - ($summary['suprimento'] ?? 0) + ($summary['sangria'] ?? 0), 2, ',', '.') ?></span>
+            <span class="fs-small">R$ <?= number_format($diferencaTotal, 2, ',', '.') ?></span>
+        </div>
     </div>
+
 
     <div class="hr"></div>
 

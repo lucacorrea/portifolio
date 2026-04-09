@@ -6,11 +6,27 @@
         </div>
     <?php endif; ?>
     <?php if (isset($_GET['success'])): ?>
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i><?= htmlspecialchars($_GET['success']) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="this.parentElement.remove()"></button>
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-lg mb-4 d-flex align-items-center justify-content-between" role="alert" style="border-left: 5px solid #198754 !important;">
+            <div>
+                <i class="fas fa-check-circle me-2 fs-5"></i>
+                <span class="fw-bold"><?= htmlspecialchars($_GET['success']) ?></span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <?php if (isset($_GET['print_id'])): ?>
+                    <a href="caixa_imprimir.php?id=<?= (int)$_GET['print_id'] ?>" target="_blank" class="btn btn-dark btn-sm fw-bold px-3">
+                        <i class="fas fa-print me-2"></i>Imprimir Resumo Agora
+                    </a>
+                    <script>
+                        window.addEventListener('load', function() {
+                            window.open('caixa_imprimir.php?id=<?= (int)$_GET['print_id'] ?>', '_blank');
+                        });
+                    </script>
+                <?php endif; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="position: static; padding: 0.5rem;"></button>
+            </div>
         </div>
     <?php endif; ?>
+
 
     <div class="row mb-4 align-items-center">
         <div class="col">
