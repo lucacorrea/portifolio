@@ -39,17 +39,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $file_tmp  = $_FILES['orcamento']['tmp_name'];
                 $file_name = $_FILES['orcamento']['name'];
                 $ext       = pathinfo($file_name, PATHINFO_EXTENSION);
-
-                // Gerar nome único para o arquivo
                 $new_name   = "ORC_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
                 $upload_dir = "assets/uploads/orcamentos/";
-
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0777, true);
-                }
-
+                if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
                 if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
                     $arquivo_orcamento = $upload_dir . $new_name;
+                }
+            }
+
+            // Tratamento de Upload de Ofício de Solicitação (Opcional)
+            $arquivo_oficio = null;
+            if (isset($_FILES['arquivo_oficio']) && $_FILES['arquivo_oficio']['error'] === UPLOAD_ERR_OK) {
+                $file_tmp  = $_FILES['arquivo_oficio']['tmp_name'];
+                $file_name = $_FILES['arquivo_oficio']['name'];
+                $ext       = pathinfo($file_name, PATHINFO_EXTENSION);
+                $new_name   = "OFI_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
+                $upload_dir = "assets/uploads/oficios/";
+                if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+                if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
+                    $arquivo_oficio = $upload_dir . $new_name;
                 }
             }
 
@@ -65,9 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("
                 INSERT INTO oficios 
-                    (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento, valor_orcamento, status, criado_em) 
+                    (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento, arquivo_oficio, valor_orcamento, status, criado_em) 
                 VALUES 
-                    (?, ?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $numero_manual,
@@ -75,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $justificativa,
                 $_SESSION['user_id'],
                 $arquivo_orcamento,
+                $arquivo_oficio,
                 $valor_orcamento,
                 $status,
                 $criado_em_device
@@ -227,6 +236,11 @@ include 'views/layout/header.php';
                 <div class="form-group">
                     <label class="form-label">Arquivo do Orçamento (Opcional)</label>
                     <input type="file" name="orcamento" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Ofício de Solicitação (Opcional)</label>
+                    <input type="file" name="arquivo_oficio" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
                 </div>
             </div>
 

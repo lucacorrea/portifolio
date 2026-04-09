@@ -144,13 +144,24 @@ include 'views/layout/header.php';
         </div>
 
         <?php if($oficio['arquivo_orcamento']): ?>
-        <div style="display: flex; align-items: center; gap: 15px; padding: 1rem; background: var(--bg-body); border: 1px dashed var(--primary); border-radius: 8px;">
+        <div style="display: flex; align-items: center; gap: 15px; padding: 1rem; background: var(--bg-body); border: 1px dashed var(--primary); border-radius: 8px; margin-bottom: 1rem;">
             <div style="font-size: 1.5rem; color: var(--primary);"><i class="fas fa-file-invoice"></i></div>
             <div style="flex-grow: 1;">
                 <div style="font-weight: 700; font-size: 0.875rem; color: var(--text-dark);">Orçamento / Cotação Anexo</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">Clique no botão ao lado para visualizar o documento</div>
             </div>
             <a href="<?php echo $oficio['arquivo_orcamento']; ?>" target="_blank" class="btn btn-outline btn-sm" style="color: var(--primary); border-color: var(--primary);"><i class="fas fa-eye"></i> Ver Documento</a>
+        </div>
+        <?php endif; ?>
+
+        <?php if($oficio['arquivo_oficio']): ?>
+        <div style="display: flex; align-items: center; gap: 15px; padding: 1rem; background: var(--bg-body); border: 1px dashed var(--secondary); border-radius: 8px;">
+            <div style="font-size: 1.5rem; color: var(--secondary);"><i class="fas fa-file-alt"></i></div>
+            <div style="flex-grow: 1;">
+                <div style="font-weight: 700; font-size: 0.875rem; color: var(--text-dark);">Ofício de Solicitação Anexo</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Clique no botão ao lado para visualizar o documento</div>
+            </div>
+            <a href="<?php echo $oficio['arquivo_oficio']; ?>" target="_blank" class="btn btn-outline btn-sm" style="color: var(--secondary); border-color: var(--secondary);"><i class="fas fa-eye"></i> Ver Documento</a>
         </div>
         <?php endif; ?>
     </div>

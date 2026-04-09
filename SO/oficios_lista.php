@@ -261,6 +261,10 @@ include 'views/layout/header.php';
                                         </a>
                                     <?php endif; ?>
  
+                                    <a href="oficios_anexar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Anexar Ofício de Solicitação" style="color: var(--secondary); border-color: var(--secondary);">
+                                        <i class="fas fa-paperclip"></i>
+                                    </a>
+
                                     <?php if ($o['status'] == 'APROVADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
                                         <a href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Gerar Aquisição">
                                             <i class="fas fa-shopping-cart"></i> Gerar

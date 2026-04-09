@@ -312,6 +312,14 @@ include 'views/layout/header.php';
                                     <td class="text-nowrap" style="text-align: right;">
                                         <div class="acoes-nowrap">
                                             <a
+                                                href="oficios_anexar.php?id=<?php echo $o['id']; ?>"
+                                                class="btn btn-outline btn-sm"
+                                                title="Anexar Ofício"
+                                                style="color: var(--secondary); border-color: var(--secondary);">
+                                                <i class="fas fa-paperclip"></i>
+                                            </a>
+
+                                            <a
                                                 href="oficios_visualizar.php?id=<?php echo $o['id']; ?>"
                                                 class="btn btn-outline btn-sm"
                                                 title="Ver Detalhes">

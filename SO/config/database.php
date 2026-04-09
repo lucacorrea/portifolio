@@ -27,11 +27,18 @@ try {
         $pdo->exec($sql);
     }
 
-    // 5. Auto-migração: Adicionar coluna arquivo_orcamento se não existir
+    // 5. Auto-migração: Adicionar colunas se não existirem
     try {
+        // Coluna arquivo_orcamento
         $query = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'arquivo_orcamento'");
         if (!$query->fetch()) {
             $pdo->exec("ALTER TABLE oficios ADD COLUMN arquivo_orcamento VARCHAR(255) DEFAULT NULL AFTER usuario_id");
+        }
+
+        // Coluna arquivo_oficio (Novo)
+        $query = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'arquivo_oficio'");
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE oficios ADD COLUMN arquivo_oficio VARCHAR(255) DEFAULT NULL AFTER arquivo_orcamento");
         }
     } catch (PDOException $e) {
         // Ignora erros se a tabela ainda não existir (o item 4 cuidará disso)
