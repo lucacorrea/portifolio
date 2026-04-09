@@ -205,10 +205,11 @@ class CaixaController extends BaseController {
             }
 
             $this->logAction('fechamento_caixa', 'caixas', $caixaId);
-            header('Location: caixa.php?success=Caixa fechado com sucesso.');
+            header('Location: caixa.php?success=Caixa fechado com sucesso.&print_id=' . $caixaId);
             exit;
         }
     }
+
 
 
     public function validate_code() {

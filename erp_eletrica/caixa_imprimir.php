@@ -38,24 +38,25 @@ $diferencaTotal = $totalInformado - $totalSistema;
     <style>
         @page { size: 80mm auto; margin: 0; }
         body { 
-            font-family: 'Courier New', Courier, monospace; 
-            width: 80mm; 
-            margin: 0; 
-            padding: 5mm; 
-            font-size: 12px; 
-            line-height: 1.2;
+            font-family: Arial, sans-serif; 
+            width: 72mm; 
+            margin: 0 auto; 
+            padding: 5mm 0; 
+            font-size: 11px; 
+            line-height: 1.4;
             color: #000;
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .fw-bold { font-weight: bold; }
-        .hr { border-top: 1px dashed #000; margin: 5px 0; }
+        .hr { border-top: 1px solid #000; margin: 4px 0; }
         .mb-1 { margin-bottom: 2px; }
-        .mb-2 { margin-bottom: 5px; }
-        .flex { display: flex; justify-content: space-between; }
+        .flex { display: flex; justify-content: space-between; align-items: baseline; }
         .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { text-align: left; padding: 2px 0; }
+        .table td { padding: 1px 0; vertical-align: top; }
         .fs-small { font-size: 10px; }
+        .fs-large { font-size: 13px; }
+        .col-3 { display: inline-block; width: 32%; }
         @media print {
             .no-print { display: none; }
         }
@@ -66,88 +67,78 @@ $diferencaTotal = $totalInformado - $totalSistema;
         <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">IMPRIMIR AGORA</button>
     </div>
 
-    <div class="text-center">
-        <div class="fw-bold" style="font-size: 14px;"><?= strtoupper(APP_NAME) ?></div>
-        <div class="fs-small">Emissão: <?= date('d/m/Y H:i:s') ?></div>
-        <div class="fs-small">@arcasistema</div>
+    <div class="flex fs-small">
+        <span>Emissão: <?= date('d/m/Y') ?></span>
+        <span>@arcasistema</span>
+    </div>
+
+    <div class="fw-bold fs-large mb-1"><?= strtoupper(APP_NAME) ?></div>
+    
+    <div class="fw-bold mb-1">CAIXA: <?= $id ?> &nbsp; OPERADOR: <?= strtoupper(htmlspecialchars($caixa['operador_nome'] ?? 'ADM')) ?></div>
+    
+    <div class="mb-1 fw-bold">Data abertura: <?= date('d/m/Y H:i:s', strtotime($caixa['data_abertura'])) ?></div>
+    <?php if ($isFechado): ?>
+        <div class="mb-1 fw-bold">Data fechamento: <?= date('d/m/Y H:i:s', strtotime($caixa['data_fechamento'])) ?></div>
+    <?php endif; ?>
+
+    <div class="hr" style="border-top: 2px solid #000;"></div>
+
+    <div class="fw-bold">RESUMO VENDAS</div>
+    <div class="flex fw-bold">
+        <span>FORMA PAGTO</span>
+        <span>VALOR-R$</span>
     </div>
 
     <div class="hr"></div>
 
-    <div class="fw-bold mb-1">RESUMO DE VENDAS (FIM DO TURNO)</div>
-    <div class="mb-1">CAIXA: <?= $id ?> OPERADOR: <?= strtoupper(htmlspecialchars($caixa['operador_nome'] ?? 'ADM')) ?></div>
-    <div class="mb-1">Data abertura: <?= date('d/m/Y H:i:s', strtotime($caixa['data_abertura'])) ?></div>
-    <?php if ($isFechado): ?>
-        <div class="mb-1">Data fechamento: <?= date('d/m/Y H:i:s', strtotime($caixa['data_fechamento'])) ?></div>
+    <?php if ($resumoDeth): ?>
+        <?php foreach ($resumoDeth as $metodo => $vals): ?>
+        <div class="fw-bold fs-small mt-1"><?= $metodo ?></div>
+        <div class="flex fw-bold" style="padding-left: 20mm;">
+            <span style="width: 33%; text-align: right;">R$<?= number_format($vals['calculado'], 2, ',', '.') ?></span>
+            <span style="width: 33%; text-align: right;">R$<?= number_format($vals['informado'], 2, ',', '.') ?></span>
+            <span style="width: 33%; text-align: right;">R$<?= number_format($vals['diferenca'], 2, ',', '.') ?></span>
+        </div>
+        <?php endforeach; ?>
     <?php endif; ?>
-
-    <div class="hr"></div>
-
-    <table class="table">
-        <thead>
-            <tr>
-                <th style="width: 40%;">FORMA PAGTO</th>
-                <th class="text-right" style="width: 20%;">SIST.</th>
-                <th class="text-right" style="width: 20%;">INF.</th>
-                <th class="text-right" style="width: 20%;">DIF.</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if ($resumoDeth): ?>
-                <?php foreach ($resumoDeth as $metodo => $vals): ?>
-                <tr>
-                    <td class="fs-small"><?= $metodo ?></td>
-                    <td class="text-right fs-small"><?= number_format($vals['calculado'], 2, ',', '.') ?></td>
-                    <td class="text-right fs-small"><?= number_format($vals['informado'], 2, ',', '.') ?></td>
-                    <td class="text-right fs-small fw-bold"><?= number_format($vals['diferenca'], 2, ',', '.') ?></td>
-                </tr>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="4" class="text-center"><em>Resumo detalhado não disponível</em></td>
-                </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
 
     <div class="hr"></div>
 
     <div class="flex fw-bold">
         <span>TOTAIS:</span>
-        <span class="text-right">R$ <?= number_format($summary['total_vendas'], 2, ',', '.') ?></span>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; width: 70%;">
+            <span style="width: 33%; text-align: right;">R$<?= number_format($summary['total_vendas'], 2, ',', '.') ?></span>
+            <span style="width: 33%; text-align: right;">R$<?= number_format($totalInformado - $caixa['valor_abertura'] - ($summary['suprimento'] ?? 0) + ($summary['sangria'] ?? 0), 2, ',', '.') ?></span>
+            <span style="width: 33%; text-align: right;">R$<?= number_format($diferencaTotal, 2, ',', '.') ?></span>
+        </div>
     </div>
 
     <div class="hr"></div>
-
-    <div class="fw-bold mb-1">RESUMO FINANCEIRO</div>
+    <div class="fw-bold mb-1">TOTAIS</div>
+    
     <div class="flex">
-        <span>DINHEIRO (VENDAS):</span>
-        <span>R$ <?= number_format($summary['breakdown']['DINHEIRO'] ?? 0, 2, ',', '.') ?></span>
+        <span class="fw-bold">DINHEIRO</span>
+        <span class="fw-bold">R$<?= number_format($summary['breakdown']['DINHEIRO'] ?? 0, 2, ',', '.') ?></span>
     </div>
     <div class="flex">
-        <span>SUPRIMENTO (+):</span>
-        <span>R$ <?= number_format($summary['suprimento'] ?? 0, 2, ',', '.') ?></span>
+        <span class="fw-bold">SUPRIMENTO</span>
+        <span class="fw-bold">R$<?= number_format($summary['suprimento'] ?? 0, 2, ',', '.') ?></span>
     </div>
     <div class="flex">
-        <span>SANGRIA (-):</span>
-        <span>R$ <?= number_format($summary['sangria'] ?? 0, 2, ',', '.') ?></span>
+        <span class="fw-bold">SANGRIA</span>
+        <span class="fw-bold">R$<?= number_format($summary['sangria'] ?? 0, 2, ',', '.') ?></span>
     </div>
-    <div class="flex fw-bold">
-        <span>SALDO (GAVETA):</span>
-        <span>R$ <?= number_format($caixa['valor_abertura'] + ($summary['saldo'] ?? 0), 2, ',', '.') ?></span>
-    </div>
-
-    <div class="hr"></div>
-
     <div class="flex">
-        <span>RECEBIMENTOS:</span>
-        <span>R$ <?= number_format($summary['recebimentos'] ?? 0, 2, ',', '.') ?></span>
+        <span class="fw-bold">SALDO</span>
+        <span class="fw-bold">R$<?= number_format($caixa['valor_abertura'] + $summary['saldo'], 2, ',', '.') ?></span>
     </div>
 
     <div class="hr"></div>
-    <div class="text-center fs-small" style="margin-top: 10px;">
-        Arca Sistema - Gestão Inteligente
-    </div>
+    <div class="fw-bold">RECEBIMENTOS</div>
+    <div class="hr"></div>
+
+    <div class="fs-small" style="margin-top: 10px;">Arca Sistema</div>
+
 
     <script>
         window.onload = function() {
