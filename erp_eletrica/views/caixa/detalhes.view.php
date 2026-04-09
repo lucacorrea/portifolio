@@ -108,46 +108,87 @@
     <!-- Fechamento (se fechado) -->
     <?php if ($isFechado): ?>
     <?php
-        $totalSistema = $caixa['valor_abertura'] + $summary['dinheiro_em_gaveta'];
+        $totalSistema = $caixa['valor_abertura'] + ($summary['saldo'] ?? 0);
         $diferenca = ($caixa['valor_fechamento'] ?? 0) - $totalSistema;
+        $resumoDeth = !empty($caixa['resumo_fechamento']) ? json_decode($caixa['resumo_fechamento'], true) : null;
     ?>
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-dark py-3">
-            <h6 class="mb-0 fw-bold text-white"><i class="fas fa-lock me-2"></i>Informações de Fechamento</h6>
-        </div>
-        <div class="card-body">
-            <div class="row g-4">
-                <div class="col-md-3 text-center">
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Valor Sistema</div>
-                    <h5 class="fw-bold"><?= formatarMoeda($totalSistema) ?></h5>
-                </div>
-                <div class="col-md-3 text-center">
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Valor Informado</div>
-                    <h5 class="fw-bold"><?= formatarMoeda($caixa['valor_fechamento'] ?? 0) ?></h5>
-                </div>
-                <div class="col-md-3 text-center">
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Diferença</div>
-                    <h5 class="fw-bold <?= $diferenca == 0 ? 'text-success' : ($diferenca > 0 ? 'text-primary' : 'text-danger') ?>">
-                        <?= $diferenca >= 0 ? '+' : '' ?><?= formatarMoeda($diferenca) ?>
-                    </h5>
-                </div>
-                <div class="col-md-3 text-center">
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Situação</div>
-                    <?php if ($diferenca == 0): ?>
-                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2"><i class="fas fa-check-circle me-1"></i>Conferido</span>
-                    <?php elseif ($diferenca > 0): ?>
-                        <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2"><i class="fas fa-plus-circle me-1"></i>Sobra</span>
-                    <?php else: ?>
-                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-2"><i class="fas fa-exclamation-triangle me-1"></i>Falta</span>
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-dark py-3 d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0 fw-bold text-white"><i class="fas fa-list-check me-2"></i>Conferência de Fechamento</h6>
+                    <?php if ($resumoDeth): ?>
+                        <span class="badge bg-white bg-opacity-10 text-white border border-white border-opacity-25 rounded-pill">Detalhada</span>
                     <?php endif; ?>
                 </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Forma de Pagamento</th>
+                                    <th class="text-center">Sistema</th>
+                                    <th class="text-center">Informado</th>
+                                    <th class="pe-4 text-end">Diferença</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($resumoDeth): ?>
+                                    <?php foreach ($resumoDeth as $metodo => $vals): ?>
+                                    <tr>
+                                        <td class="ps-4 fw-bold text-secondary"><?= $metodo ?></td>
+                                        <td class="text-center text-muted"><?= formatarMoeda($vals['calculado']) ?></td>
+                                        <td class="text-center fw-bold"><?= formatarMoeda($vals['informado']) ?></td>
+                                        <td class="pe-4 text-end fw-bold <?= $vals['diferenca'] == 0 ? 'text-muted' : ($vals['diferenca'] > 0 ? 'text-success' : 'text-danger') ?>">
+                                            <?= $vals['diferenca'] >= 0 && $vals['diferenca'] != 0 ? '+' : '' ?><?= formatarMoeda($vals['diferenca']) ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td class="ps-4 fw-bold text-secondary">GERAL</td>
+                                        <td class="text-center text-muted"><?= formatarMoeda($totalSistema - $caixa['valor_abertura']) ?></td>
+                                        <td class="text-center fw-bold"><?= formatarMoeda($caixa['valor_fechamento'] - $caixa['valor_abertura']) ?></td>
+                                        <td class="pe-4 text-end fw-bold <?= $diferenca == 0 ? 'text-muted' : ($diferenca > 0 ? 'text-success' : 'text-danger') ?>">
+                                            <?= $diferenca >= 0 && $diferenca != 0 ? '+' : '' ?><?= formatarMoeda($diferenca) ?>
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                            <tfoot class="bg-light fw-bold">
+                                <tr>
+                                    <td class="ps-4">TOTAIS (VENDAS + SINAL):</td>
+                                    <td class="text-center"><?= formatarMoeda(($summary['total_vendas'] ?? 0)) ?></td>
+                                    <td class="text-center"><?= formatarMoeda($caixa['valor_fechamento'] - $caixa['valor_abertura'] - ($summary['suprimento'] ?? 0) + ($summary['sangria'] ?? 0)) ?></td>
+                                    <td class="pe-4 text-end"><?= formatarMoeda($diferenca) ?></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <?php if (!empty($caixa['observacao'])): ?>
-            <div class="mt-3 p-3 bg-light rounded">
-                <div class="text-muted small fw-bold mb-1"><i class="fas fa-comment me-1"></i>Observação:</div>
-                <p class="mb-0 small"><?= htmlspecialchars($caixa['observacao']) ?></p>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-dark py-3">
+                    <h6 class="mb-0 fw-bold text-white"><i class="fas fa-info-circle me-2"></i>Status Final</h6>
+                </div>
+                <div class="card-body">
+                    <div class="p-3 rounded mb-3 text-center <?= $diferenca == 0 ? 'bg-success bg-opacity-10 text-success' : ($diferenca > 0 ? 'bg-primary bg-opacity-10 text-primary' : 'bg-danger bg-opacity-10 text-danger') ?>">
+                        <div class="small fw-bold text-uppercase mb-1">Diferença Total</div>
+                        <h3 class="fw-bold mb-1"><?= $diferenca >= 0 ? '+' : '' ?><?= formatarMoeda($diferenca) ?></h3>
+                        <div class="extra-small fw-bold">
+                            <?php if ($diferenca == 0): ?> CONFERIDO <?php elseif ($diferenca > 0): ?> SOBRA <?php else: ?> FALTA <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="small text-muted mb-2"><i class="fas fa-comment me-1"></i>Observações do Operador:</div>
+                    <div class="p-2 border rounded bg-light min-vh-10" style="min-height: 80px;">
+                        <p class="mb-0 extra-small"><?= !empty($caixa['observacao']) ? htmlspecialchars($caixa['observacao']) : '<em>Nenhuma observação registrada.</em>' ?></p>
+                    </div>
+                </div>
             </div>
-            <?php endif; ?>
         </div>
     </div>
     <?php endif; ?>
