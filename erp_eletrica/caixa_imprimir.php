@@ -91,16 +91,42 @@ $diferencaTotal = $totalInformado - $totalSistema;
 
     <div class="hr"></div>
 
-    <?php if ($resumoDeth): ?>
-        <?php foreach ($resumoDeth as $metodo => $vals): ?>
-        <div class="fw-bold fs-small mt-1"><?= $metodo ?></div>
-        <div class="flex fw-bold" style="padding-left: 20mm;">
-            <span style="width: 33%; text-align: right;">R$<?= number_format($vals['calculado'], 2, ',', '.') ?></span>
-            <span style="width: 33%; text-align: right;">R$<?= number_format($vals['informado'], 2, ',', '.') ?></span>
-            <span style="width: 33%; text-align: right;">R$<?= number_format($vals['diferenca'], 2, ',', '.') ?></span>
-        </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
+    <!-- We will build the breakdown to guarantee all methods are shown -->
+    <?php 
+    $metodosObrigatorios = ['A PRAZO', 'CARTAO', 'DINHEIRO', 'PIX'];
+    $breakdownParaMostrar = [];
+    
+    foreach ($metodosObrigatorios as $metodo) {
+        if ($resumoDeth && isset($resumoDeth[$metodo])) {
+            $breakdownParaMostrar[$metodo] = $resumoDeth[$metodo];
+        } else {
+            $calc = $summary['breakdown'][$metodo] ?? 0;
+            // Se o caixa tá fechado mas não tem no resumo_fechamento, informamos o mesmo valor ou 0? 
+            // Se não tem no resumo, foi fechado antes, ou o informado foi 0.
+            // Para manter igual ao "zerado", deixamos informado = 0.
+            $inf = 0; 
+            if (!$isFechado) {
+                // Se estiver aberto ainda mostrando uma parcial, mostramos informado = calculado
+                $inf = $calc;
+            }
+            $breakdownParaMostrar[$metodo] = [
+                'calculado' => $calc,
+                'informado' => $inf,
+                'diferenca' => $inf - $calc
+            ];
+        }
+    }
+    ?>
+
+    <?php foreach ($breakdownParaMostrar as $metodo => $vals): ?>
+    <div class="fw-bold fs-small mt-1"><?= $metodo ?></div>
+    <div class="flex fw-bold" style="padding-left: 20mm;">
+        <span style="width: 33%; text-align: right;">R$<?= number_format($vals['calculado'], 2, ',', '.') ?></span>
+        <span style="width: 33%; text-align: right;">R$<?= number_format($vals['informado'], 2, ',', '.') ?></span>
+        <span style="width: 33%; text-align: right;">R$<?= number_format($vals['diferenca'], 2, ',', '.') ?></span>
+    </div>
+    <?php endforeach; ?>
+
 
     <div class="hr"></div>
 
