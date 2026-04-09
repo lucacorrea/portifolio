@@ -67,9 +67,7 @@ class Cashier extends BaseModel {
         // Mapeamento e Normalização para os nomes solicitados pelo usuário
         $mapped = [
             'A PRAZO' => (float)($vendasPorForma['FIADO'] ?? 0) + (float)($vendasPorForma['A PRAZO'] ?? 0),
-            'BONIFICADO' => (float)($vendasPorForma['BONIFICADO'] ?? 0),
-            'CARTAO CREDITO' => (float)($vendasPorForma['CARTAO_CREDITO'] ?? 0) + (float)($vendasPorForma['CARTÃO CRÉDITO'] ?? 0),
-            'CARTAO DEBITO' => (float)($vendasPorForma['CARTAO_DEBITO'] ?? 0) + (float)($vendasPorForma['CARTÃO DÉBITO'] ?? 0),
+            'CARTAO' => (float)($vendasPorForma['CARTAO_CREDITO'] ?? 0) + (float)($vendasPorForma['CARTÃO CRÉDITO'] ?? 0) + (float)($vendasPorForma['CARTAO_DEBITO'] ?? 0) + (float)($vendasPorForma['CARTÃO DÉBITO'] ?? 0) + (float)($vendasPorForma['CARTAO'] ?? 0),
             'DINHEIRO' => (float)($vendasPorForma['DINHEIRO'] ?? 0) + (float)($pagosPorForma['DINHEIRO'] ?? 0),
             'PIX' => (float)($vendasPorForma['PIX'] ?? 0) + (float)($pagosPorForma['PIX'] ?? 0)
         ];
@@ -97,11 +95,12 @@ class Cashier extends BaseModel {
         return [
             'vendas_dinheiro' => $detailed['breakdown']['DINHEIRO'],
             'vendas_pix' => $detailed['breakdown']['PIX'],
-            'vendas_cartao' => $detailed['breakdown']['CARTAO CREDITO'] + $detailed['breakdown']['CARTAO DEBITO'],
+            'vendas_cartao' => $detailed['breakdown']['CARTAO'],
             'vendas_boleto' => 0,
             'vendas_fiado' => $detailed['breakdown']['A PRAZO'],
             'entradas_fiado_dinheiro' => 0,
             'suprimentos' => $detailed['suprimento'],
+
             'sangrias' => $detailed['sangria'],
             'dinheiro_em_gaveta' => $detailed['saldo'] - $valorAbertura,
             'total_bruto' => $detailed['total_vendas']
