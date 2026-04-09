@@ -116,7 +116,7 @@ $ultimos_oficios = $stmt->fetchAll();
                     <h3><i class="fas fa-list-ul"></i> Últimas Solicitações</h3>
 
                     <?php 
-                        $list_url = ($nivel === 'SEFAZ') ? 'oficios_lista_sefaz.php' : 'oficios_lista.php';
+                        $list_url = ($nivel === 'SEMFAZ') ? 'oficios_lista_sefaz.php' : 'oficios_lista.php';
                     ?>
                     <a href="<?php echo $list_url; ?>" class="btn btn-outline btn-sm">Ver Todas</a>
                 </div>
