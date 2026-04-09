@@ -19,17 +19,21 @@ class CaixaController extends BaseController {
         $caixaAberto = $cashierModel->getOpenForFilial($filialId);
         
         $summary = null;
+        $detailedSummary = null;
         if ($caixaAberto) {
             $summary = $cashierModel->getSummary($caixaAberto['id']);
+            $detailedSummary = $cashierModel->getDetailedSummary($caixaAberto['id']);
         }
 
         $this->render('caixa/index', [
             'caixas' => $caixas,
             'caixaAberto' => $caixaAberto,
             'summary' => $summary,
+            'detailedSummary' => $detailedSummary,
             'title' => 'Controle de Caixa',
             'pageTitle' => 'Gestão de Caixa'
         ]);
+
     }
 
     public function abrir() {
@@ -102,7 +106,7 @@ class CaixaController extends BaseController {
                 } 
                 // 2. Try Admin Password (any admin of the branch)
                 else if ($authPassword) {
-                    $admins = $userService->findAdmins($_SESSION['filial_id']);
+                    $admins = $userService->findAdmins();
                     foreach ($admins as $adm) {
                         if (password_verify($authPassword, $adm['senha'])) {
                             $authorized = true;
@@ -152,6 +156,7 @@ class CaixaController extends BaseController {
             $caixaId = $_POST['caixa_id'];
             $valorInformado = $_POST['valor_fechamento'] ?? 0;
             $justificativa = $_POST['justificativa'] ?? '';
+            $breakdownInformed = $_POST['breakdown'] ?? [];
 
             $cashierModel = new Cashier();
             $caixa = $cashierModel->find($caixaId);
@@ -161,23 +166,41 @@ class CaixaController extends BaseController {
                 exit;
             }
 
-            $summary = $cashierModel->getSummary($caixaId);
-            $totalSistema = $caixa['valor_abertura'] + $summary['dinheiro_em_gaveta'];
-            $diferenca = $valorInformado - $totalSistema;
+            $detailed = $cashierModel->getDetailedSummary($caixaId);
+            $resumoFinal = [];
+            $totalInformado = 0;
+
+            foreach ($detailed['breakdown'] as $metodo => $calculado) {
+                $informado = (float)($breakdownInformed[$metodo] ?? 0);
+                $diferenca = $informado - $calculado;
+                $resumoFinal[$metodo] = [
+                    'calculado' => $calculado,
+                    'informado' => $informado,
+                    'diferenca' => $diferenca
+                ];
+                $totalInformado += $informado;
+            }
+
+            // Total informado deve bater com o que foi digitado no "Valor Físico" ou ser usado o acumulado
+            // Se o usuário mandou o breakdown, confiamos nele para a soma total também
+            $totalSistema = $caixa['valor_abertura'] + $detailed['saldo']; // Saldo inclui suprimento/sangria
+            $diferencaTotal = $totalInformado - $totalSistema;
 
             $cashierModel->update($caixaId, [
-                'valor_fechamento' => $valorInformado,
+                'valor_fechamento' => $totalInformado,
                 'status' => 'fechado',
                 'data_fechamento' => date('Y-m-d H:i:s'),
-                'observacao' => $justificativa
+                'observacao' => $justificativa,
+                'resumo_fechamento' => json_encode($resumoFinal)
             ]);
 
-            if ($diferenca != 0) {
+            if ($diferencaTotal != 0) {
                 $this->logAction('divergencia_caixa', 'caixas', $caixaId, null, [
                     'sistema' => $totalSistema,
-                    'informado' => $valorInformado,
-                    'diferenca' => $diferenca,
-                    'justificativa' => $justificativa
+                    'informado' => $totalInformado,
+                    'diferenca' => $diferencaTotal,
+                    'justificativa' => $justificativa,
+                    'detalhes' => $resumoFinal
                 ]);
             }
 
@@ -186,6 +209,7 @@ class CaixaController extends BaseController {
             exit;
         }
     }
+
 
     public function validate_code() {
         header('Content-Type: application/json');
@@ -251,7 +275,7 @@ class CaixaController extends BaseController {
         ]);
     }
 
-    protected function logAction(string $action, string $table = null, int $id = null, $old = null, $new = null) {
+    protected function logAction(string $action, ?string $table = null, ?int $id = null, $old = null, $new = null) {
         $audit = new \App\Services\AuditLogService();
         $audit->record($action, $table, $id, $old, $new);
     }
