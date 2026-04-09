@@ -29,7 +29,7 @@ include 'views/layout/header.php';
 <div class="no-print" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center;">
     <?php 
         $nivel = strtoupper($_SESSION['nivel'] ?? '');
-        $back_url = ($nivel === 'SEFAZ') ? 'oficios_lista_sefaz.php' : 'oficios_lista.php';
+        $back_url = ($nivel === 'SEMFAZ') ? 'oficios_lista_sefaz.php' : 'oficios_lista.php';
     ?>
     <a href="<?php echo $back_url; ?>" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar para Lista</a>
     <div style="flex-grow: 1;"></div>
@@ -135,7 +135,7 @@ include 'views/layout/header.php';
             </div>
         </div>
         <?php else: ?>
-            <div class="alert alert-info">Aguardando atribuição de itens pela SEFAZ.</div>
+            <div class="alert alert-info">Aguardando atribuição de itens pela SEMFAZ.</div>
         <?php endif; ?>
 
         <div style="background: #f8f9fa; border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
