@@ -47,7 +47,7 @@ $ultimos_oficios = $stmt->fetchAll();
     <div class="card">
         <div class="card-body">
             <div class="card-icon"><i class="fas fa-clipboard-list" style="color: var(--secondary);"></i></div>
-            <div class="card-label">Aguardando Itens (SEFAZ)</div>
+            <div class="card-label">Aguardando Itens (SEMFAZ)</div>
             <div class="card-number"><?php echo $total_pendente; ?></div>
         </div>
     </div>
