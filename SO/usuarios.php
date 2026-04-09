@@ -45,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 flash_message('success', "Usuário removido com sucesso!");
             } catch (PDOException $e) {
                 if ($e->getCode() == 23000) {
-                    flash_message('danger', "Erro: Não é possível excluir o usuário <strong>$u_name</strong> pois ele possui histórico de ações ou registros vinculados no sistema. Caso precise, modifique sua senha ou o rebaixe de nível para bloquear o acesso.");
+                    flash_message('danger', "Erro: Não é possível excluir o usuário <strong>$u_name</strong> pois ele possui histórico.");
                 } else {
-                    flash_message('danger', "Erro interno ao tentar excluir: " . $e->getMessage());
+                    flash_message('danger', "Erro interno: " . $e->getMessage());
                 }
             }
         } else {
@@ -62,89 +62,112 @@ include 'views/layout/header.php';
 ?>
 
 <div class="row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    
     <!-- Novo Usuário -->
     <div class="card">
         <div class="card-body">
             <h3 class="card-title" style="margin-bottom: 1.5rem; font-weight: 700; font-size: 1rem;">
                 <i class="fas fa-user-plus" style="margin-right: 8px; color: var(--primary);"></i> Cadastrar Novo Usuário
             </h3>
+
             <form action="" method="POST" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label">Nome Completo</label>
+                    <label>Nome Completo</label>
                     <input type="text" name="nome" class="form-control" placeholder="Ex: João da Silva" required>
                 </div>
+
                 <div class="form-group">
-                    <label class="form-label">Login (Usuário)</label>
-                    <input type="text" name="usuario" class="form-control" placeholder="Ex: joao.silva" required>
+                    <label>Login</label>
+                    <input type="text" name="usuario" class="form-control" required>
                 </div>
+
                 <div class="form-group">
-                    <label class="form-label">Nível de Acesso</label>
+                    <label>Nível</label>
                     <select name="nivel" class="form-control" required>
-                        <option value="SECRETARIO">SECRETARIO (Apenas Consulta)</option>
-                        <option value="CASA_CIVIL">CASA CIVIL (Cadastro de Solicitação)</option>
-                        <option value="SEFAZ">SEFAZ (Atribuição de Itens)</option>
+                        <option value="SECRETARIO">SECRETARIO</option>
+                        <option value="CASA_CIVIL">CASA CIVIL</option>
+                        <option value="SEFAZ">SEFAZ</option>
                         <option value="FUNCIONARIO">FUNCIONARIO</option>
                         <option value="ADMIN">ADMIN</option>
-                        <option value="SUPORTE">SUPORTE TÉCNICO</option>
+                        <option value="SUPORTE">SUPORTE</option>
                     </select>
                 </div>
-                <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label">Senha Inicial</label>
-                    <input type="password" name="senha" class="form-control" placeholder="Digite a senha" required>
+
+                <div style="grid-column: span 2;">
+                    <label>Senha</label>
+                    <input type="password" name="senha" class="form-control" required>
                 </div>
+
                 <div style="grid-column: span 2; text-align: right;">
-                    <button type="submit" name="add_user" class="btn btn-primary"><i class="fas fa-check"></i> Criar Usuário</button>
+                    <button type="submit" name="add_user" class="btn btn-primary">
+                        Criar Usuário
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Lista de Usuários -->
+    <!-- Lista -->
     <div class="card">
         <div class="card-body">
-            <h3 class="card-title" style="margin-bottom: 1.5rem; font-weight: 700; font-size: 1rem;">
-                <i class="fas fa-users" style="margin-right: 8px; color: var(--primary);"></i> Usuários Ativos
-            </h3>
-            
+            <h3 style="margin-bottom: 1.5rem;">Usuários</h3>
+
             <?php display_flash(); ?>
 
             <div class="table-responsive" style="max-height: 450px;">
-                <table class="table-vcenter">
-                    <thead><tr><th>Nome / Login</th><th>Nível</th><th style="text-align: right;">Ações</th></tr></thead>
+                <table class="table-vcenter" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Nome / Login</th>
+                            <th>Nível</th>
+                            <th style="width: 80px; text-align:center;">Ações</th>
+                        </tr>
+                    </thead>
+
                     <tbody>
                         <?php foreach($usuarios as $u): ?>
-                            <tr>
-                                <td>
-                                    <div style="font-weight: 600; color: var(--text-dark);"><?php echo htmlspecialchars($u['nome']); ?></div>
-                                    <div style="font-size: 0.75rem; color: var(--text-muted);">@<?php echo htmlspecialchars($u['usuario']); ?></div>
-                                </td>
-                                <td>
-                                    <?php 
-                                        $badge_class = 'badge-outline';
-                                        if($u['nivel'] == 'SUPORTE') $badge_class = 'badge-primary';
-                                        if($u['nivel'] == 'ADMIN') $badge_class = 'badge-secondary';
-                                        if($u['nivel'] == 'CASA_CIVIL') $badge_class = 'badge-pending';
-                                        if($u['nivel'] == 'SEFAZ') $badge_class = 'badge-approved';
-                                    ?>
-                                    <span class="badge <?php echo $badge_class; ?>" style="font-size: 0.7rem;">
-                                        <?php echo $u['nivel']; ?>
-                                    </span>
-                                </td>
-                                <td style="text-align: right;">
+                        <tr>
+                            <td>
+                                <strong><?php echo htmlspecialchars($u['nome']); ?></strong><br>
+                                <small>@<?php echo htmlspecialchars($u['usuario']); ?></small>
+                            </td>
+
+                            <td><?php echo $u['nivel']; ?></td>
+
+                            <!-- 🔥 AQUI FOI AJUSTADO -->
+                            <td style="text-align:center;">
+                                <div style="display:flex; justify-content:center; align-items:center;">
+                                    
                                     <?php if($u['id'] != $_SESSION['user_id']): ?>
-                                        <form action="" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir este usuário?')">
+                                        <form method="POST" onsubmit="return confirm('Tem certeza?')">
                                             <input type="hidden" name="user_id" value="<?php echo $u['id']; ?>">
-                                            <button type="submit" name="del_user" class="btn btn-outline btn-sm" style="color: #dc3545; border-color: #dc354533; width: 32px; height: 32px; padding: 0;">
+                                            
+                                            <button type="submit" name="del_user"
+                                                style="
+                                                    display:flex;
+                                                    align-items:center;
+                                                    justify-content:center;
+                                                    width:32px;
+                                                    height:32px;
+                                                    border-radius:6px;
+                                                    border:1px solid #dc354533;
+                                                    color:#dc3545;
+                                                    background:transparent;
+                                                    cursor:pointer;
+                                                ">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
                                     <?php else: ?>
-                                        <span class="badge" style="background: #f1f5f9; color: #64748b; padding: 0.4rem 0.8rem;">Você</span>
+                                        <span style="font-size: 0.75rem;">Você</span>
                                     <?php endif; ?>
-                                </td>
-                            </tr>
+
+                                </div>
+                            </td>
+                        </tr>
                         <?php endforeach; ?>
                     </tbody>
+
                 </table>
             </div>
         </div>
