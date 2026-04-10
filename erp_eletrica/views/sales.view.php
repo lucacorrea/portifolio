@@ -32,6 +32,9 @@
                              <button class="btn btn-outline-primary fw-bold" onclick="loadPendingPreSales()">
                                 <i class="fas fa-file-import me-2"></i>Importar Pré-Venda (F8)
                             </button>
+                            <button class="btn btn-outline-info fw-bold" onclick="saveCurrentSaleAsPreSale()" id="btnPauseSale">
+                                <i class="fas fa-pause-circle me-2"></i>Pausar Venda (F7)
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -389,6 +392,7 @@
 <script>
 let cart = [];
 let currentPvId = null;
+let currentPvCode = null;
 let activeManageId = null;
 let selectedCustomerId = null;
 let selectedCustomerName = null;
@@ -768,6 +772,7 @@ async function importPreSale(code) {
         }));
         
         currentPvId = pv.id;
+        currentPvCode = pv.codigo;
         
         // Auto-select customer if present in pre-sale
         if (pv.cliente_id) {
@@ -799,6 +804,62 @@ async function importPreSale(code) {
         if (modalInstance) modalInstance.hide();
         
         pdvSearch.focus();
+    }
+}
+
+async function saveCurrentSaleAsPreSale() {
+    if (cart.length === 0) {
+        alert("O carrinho está vazio.");
+        return;
+    }
+
+    const btn = document.getElementById('btnPauseSale');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+
+    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const total = subtotal * (1 - (discountPercent / 100));
+
+    const data = {
+        id: currentPvId,
+        codigo: currentPvCode,
+        cliente_id: selectedCustomerId,
+        nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
+        cpf_cliente: selectedCustomerCPF,
+        valor_total: total,
+        items: cart
+    };
+
+    try {
+        const res = await fetch('pre_vendas.php?action=save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            alert(`Venda guardada com sucesso!\nCódigo: ${result.codigo}`);
+            
+            // Clear current sale
+            cart = [];
+            currentPvId = null;
+            currentPvCode = null;
+            clearCustomer();
+            document.getElementById('discountPercent').value = 0;
+            renderCart();
+            pdvSearch.focus();
+        } else {
+            alert("Erro ao guardar venda: " + result.error);
+        }
+    } catch (err) {
+        alert("Erro de conexão ao guardar venda.");
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
 }
 
@@ -1218,6 +1279,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F8') {
         e.preventDefault();
         loadPendingPreSales();
+    }
+    if (e.key === 'F7') {
+        e.preventDefault();
+        saveCurrentSaleAsPreSale();
     }
     if (e.key === 'Escape') {
         searchResults.classList.add('d-none');
