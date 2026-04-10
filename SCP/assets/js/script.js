@@ -805,15 +805,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         body.innerHTML = `
             <div class="modal-header-status header-status-${statusClass}">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <i class="fas fa-file-alt fa-2x"></i>
-                    <div>
-                        <h2 style="margin: 0; font-size: 1.25rem;">Processo nº ${p.numero}</h2>
-                        <span style="font-weight: 600; opacity: 0.9;">${statusLimpo}</span>
-                    </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fas fa-file-invoice"></i>
+                    <h2 style="margin: 0; font-size: 1.1rem; letter-spacing: 0.5px;">PROCESSO: ${p.numero}</h2>
                 </div>
-                <button class="btn-quick" onclick="window.fecharModalDetalhes()" style="background: rgba(255,255,255,0.2); border: none; color: white;">
-                    <i class="fas fa-times"></i>
+                <button class="btn-quick" onclick="window.fecharModalDetalhes()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; width: 28px; height: 28px;">
+                    <i class="fas fa-times" style="font-size: 0.8rem;"></i>
                 </button>
             </div>
 
