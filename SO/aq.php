@@ -8,401 +8,357 @@ declare(strict_types=1);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ordem de Aquisição Manual</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+    .print-topbar {
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
 
-        body {
-            margin: 0;
-            padding: 24px;
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f5f7fb;
-            color: #222;
-        }
+    .print-topbar .spacer {
+        flex-grow: 1;
+    }
 
-        .container {
-            max-width: 1250px;
-            margin: 0 auto;
-        }
+    .print-doc {
+        max-width: 1120px;
+        margin: 0 auto;
+    }
 
-        .topbar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+    .printable-page {
+        margin-bottom: 2rem;
+        border-radius: 12px;
+        overflow: visible;
+        /* corrigido para não cortar borda inferior */
+        background: #fff;
+    }
 
-        .btn {
-            border: none;
-            border-radius: 10px;
-            padding: 12px 16px;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-        }
+    .printable-page .card-body {
+        padding: 2rem;
+    }
 
-        .btn-primary {
-            background: #1d4ed8;
-            color: #fff;
-        }
+    .ordem-header {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 1.25rem;
+        margin-bottom: 2rem;
+        gap: 1rem;
+    }
 
-        .btn-success {
-            background: #15803d;
-            color: #fff;
-        }
+    .ordem-logo {
+        text-align: left;
 
-        .btn-danger {
-            background: #b91c1c;
-            color: #fff;
-        }
+    }
 
-        .btn-secondary {
-            background: #374151;
-            color: #fff;
-        }
+    .ordem-logo img {
+        max-height: 80px;
+        max-width: 200px;
+        object-fit: contain;
+        width: 100%;
+    }
 
-        .form-card,
-        .printable-page {
-            background: #fff;
-            border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.07);
-            border: 1px solid #e5e7eb;
-        }
+    .ordem-center{
+        text-align: center;
+    }
 
-        .form-card {
-            padding: 20px;
-            margin-bottom: 24px;
-        }
+    .ordem-right {
+        text-align: right;
+        justify-self: end;
+        width: 100%;
+        padding-right: 0;
+        margin-right: -10px;
+    }
 
-        .form-title {
-            margin: 0 0 18px;
-            font-size: 22px;
-            font-weight: 800;
-            color: #111827;
-        }
+    .ordem-right-box {
+        border: 1.5px solid #000;
+        padding: 0.4rem 1rem;
+        display: inline-block;
+        text-align: center;
+    }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-        }
+    .ordem-info-table,
+    .ordem-items-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
 
-        .field {
-            display: flex;
+    .ordem-info-wrap,
+    .ordem-items-wrap {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .ordem-info-wrap {
+        margin-bottom: 1.35rem;
+        /* afastou mais do título abaixo */
+    }
+
+    .ordem-info-table {
+        margin-bottom: 0;
+        font-size: 0.8125rem;
+    }
+
+    .ordem-items-table {
+        font-size: 0.8125rem;
+        border: 1px solid #000;
+        /* reforça a borda completa */
+    }
+
+    .ordem-info-table td,
+    .ordem-items-table th,
+    .ordem-items-table td {
+        border: 1px solid #000;
+        padding: 6px 8px;
+    }
+
+    .ordem-items-table thead tr,
+    .ordem-items-table tfoot tr,
+    .ordem-info-label {
+        background: #f0f0f0;
+    }
+
+    .ordem-items-table tbody tr:last-child td,
+    .ordem-items-table tfoot td {
+        border-bottom: 1px solid #000 !important;
+        /* garante borda inferior visível */
+    }
+
+    .ordem-section-title {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #333;
+        text-transform: uppercase;
+        margin: 1.85rem 0 0.5rem;
+        /* desce mais o título */
+    }
+
+    .assinaturas-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        text-align: center;
+        margin-top: 5rem;
+    }
+
+    .assinatura-linha {
+        border-top: 1.5px solid #000;
+        padding-top: 0.75rem;
+    }
+
+    .texto-entrega {
+        font-size: 0.75rem;
+        color: #555;
+        margin-top: 1.5rem;
+        margin-bottom: 4rem;
+        line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+        .print-topbar {
             flex-direction: column;
-            gap: 6px;
+            align-items: stretch;
         }
 
-        .field label {
-            font-size: 13px;
-            font-weight: 700;
-            color: #374151;
-        }
-
-        .field input,
-        .field textarea,
-        .field select {
+        .print-topbar .btn {
             width: 100%;
-            padding: 11px 12px;
-            border-radius: 10px;
-            border: 1px solid #cbd5e1;
-            font-size: 14px;
-            outline: none;
-        }
-
-        .field textarea {
-            min-height: 90px;
-            resize: vertical;
-        }
-
-        .span-2 { grid-column: span 2; }
-        .span-3 { grid-column: span 3; }
-        .span-4 { grid-column: span 4; }
-
-        .items-box {
-            margin-top: 18px;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 18px;
-        }
-
-        .items-title {
-            margin: 0 0 14px;
-            font-size: 18px;
-            font-weight: 800;
-        }
-
-        .item-row {
-            display: grid;
-            grid-template-columns: 80px 100px 1fr 140px 140px 70px;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: end;
-        }
-
-        .print-doc {
-            max-width: 1120px;
-            margin: 0 auto;
-        }
-
-        .printable-page {
-            margin-bottom: 2rem;
-            overflow: visible;
-            background: #fff;
+            justify-content: center;
+            text-align: center;
         }
 
         .printable-page .card-body {
-            padding: 2rem;
+            padding: 1rem;
         }
 
         .ordem-header {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 1.25rem;
-            margin-bottom: 2rem;
-            gap: 1rem;
-        }
-
-        .ordem-logo {
-            text-align: left;
-        }
-
-        .ordem-logo-box {
-            width: 180px;
-            height: 78px;
-            border: 1.5px solid #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 14px;
-            text-align: center;
-            padding: 8px;
-        }
-
-        .ordem-center {
+            grid-template-columns: 1fr;
             text-align: center;
         }
 
-        .ordem-right {
-            text-align: right;
-            justify-self: end;
-            width: 100%;
-            margin-right: -10px;
+        .ordem-right,
+        .ordem-logo,
+        .ordem-header>div:first-child {
+            text-align: center;
+            justify-self: center;
+            margin-right: 0;
         }
 
         .ordem-right-box {
-            border: 1.5px solid #000;
-            padding: 0.4rem 1rem;
             display: inline-block;
-            text-align: center;
+        }
+
+        .assinaturas-grid {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 3rem;
         }
 
         .ordem-info-table,
         .ordem-items-table {
+            min-width: 760px;
+        }
+
+        .ordem-info-wrap {
+            margin-bottom: 1.2rem;
+        }
+
+        .ordem-section-title {
+            margin-top: 1.55rem;
+        }
+    }
+
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 6mm 6mm 7mm 6mm;
+        }
+
+        html,
+        body {
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
             width: 100%;
-            border-collapse: collapse;
+        }
+
+        body * {
+            visibility: hidden;
+        }
+
+        .printable-page,
+        .printable-page * {
+            visibility: visible;
+        }
+
+        .no-print,
+        header,
+        footer,
+        .navbar,
+        .page-header {
+            display: none !important;
+        }
+
+        .page-body,
+        .container-xl,
+        .print-doc {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .printable-page {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 0 4mm 0 !important;
+            padding: 0 !important;
+
+            /* borda completa na impressão */
+            box-shadow: none !important;
+            background: #fff !important;
+            page-break-after: always;
+            break-after: page;
+            border-radius: 0 !important;
+            overflow: visible !important;
+        }
+
+        .printable-page:last-of-type {
+            page-break-after: auto;
+            break-after: auto;
+        }
+
+        .printable-page .card-body {
+            padding: 4mm 5mm !important;
+        }
+
+        .ordem-header {
+            gap: 8px !important;
+            margin-bottom: 10px !important;
+            padding-bottom: 8px !important;
+            grid-template-columns: 1fr auto 1fr !important;
+        }
+
+        .ordem-logo{
+            margin-left: -70px !important;
+        }
+
+        .ordem-logo img {
+            max-height: 70px !important;
+            max-width: 180px !important;
+        }
+
+        .ordem-right {
+            text-align: right !important;
+            justify-self: end !important;
+            width: 100% !important;
+            margin-right: -14px !important;
+            padding-right: 0 !important;
         }
 
         .ordem-info-wrap,
         .ordem-items-wrap {
-            width: 100%;
-            overflow-x: auto;
+            overflow: visible !important;
         }
 
         .ordem-info-wrap {
-            margin-bottom: 1.35rem;
+            margin-bottom: 12px !important;
+            /* mais espaço antes do título */
         }
 
-        .ordem-info-table {
-            font-size: 0.8125rem;
+        .ordem-info-table,
+        .ordem-items-table {
+            width: 100% !important;
+            min-width: 0 !important;
+            font-size: 10px !important;
         }
 
         .ordem-items-table {
-            font-size: 0.8125rem;
-            border: 1px solid #000;
+            border: 1px solid #000 !important;
         }
 
         .ordem-info-table td,
         .ordem-items-table th,
         .ordem-items-table td {
-            border: 1px solid #000;
-            padding: 6px 8px;
-            vertical-align: top;
+            padding: 4px 6px !important;
+            border: 1px solid #000 !important;
         }
 
-        .ordem-items-table thead tr,
-        .ordem-items-table tfoot tr,
-        .ordem-info-label {
-            background: #f0f0f0;
+        .ordem-items-table tbody tr:last-child td,
+        .ordem-items-table tfoot td {
+            border-bottom: 1px solid #000 !important;
         }
 
         .ordem-section-title {
-            font-size: 0.75rem;
-            font-weight: 800;
-            color: #333;
-            text-transform: uppercase;
-            margin: 1.85rem 0 0.5rem;
+            margin: 14px 0 4px !important;
+            font-size: 10px !important;
         }
 
+        /* mantém as assinaturas do jeito que estavam */
         .assinaturas-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4rem;
-            text-align: center;
-            margin-top: 5rem;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 4rem !important;
+            text-align: center !important;
+            margin-top: 5rem !important;
         }
 
         .assinatura-linha {
-            border-top: 1.5px solid #000;
-            padding-top: 0.75rem;
+            border-top: 1.5px solid #000 !important;
+            padding-top: 0.75rem !important;
         }
 
         .texto-entrega {
-            font-size: 0.75rem;
-            color: #555;
-            margin-top: 1.5rem;
-            margin-bottom: 4rem;
-            line-height: 1.5;
+            margin-top: 1.5rem !important;
+            margin-bottom: 4rem !important;
+            font-size: 0.75rem !important;
+            line-height: 1.5 !important;
         }
+    }
+</style>
 
-        .muted {
-            color: #666;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .empty-note {
-            text-align: center;
-            color: #666;
-            font-weight: 700;
-            padding: 12px;
-        }
-
-        @media (max-width: 992px) {
-            .grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .span-2,
-            .span-3,
-            .span-4 {
-                grid-column: span 2;
-            }
-
-            .item-row {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 14px;
-            }
-
-            .grid {
-                grid-template-columns: 1fr;
-            }
-
-            .span-2,
-            .span-3,
-            .span-4 {
-                grid-column: span 1;
-            }
-
-            .ordem-header {
-                grid-template-columns: 1fr;
-                text-align: center;
-            }
-
-            .ordem-right,
-            .ordem-logo {
-                text-align: center;
-                justify-self: center;
-                margin-right: 0;
-            }
-
-            .assinaturas-grid {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-            }
-
-            .ordem-info-table,
-            .ordem-items-table {
-                min-width: 760px;
-            }
-        }
-
-        @media print {
-            @page {
-                size: A4 portrait;
-                margin: 6mm 6mm 7mm 6mm;
-            }
-
-            body {
-                background: #fff !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-            body * {
-                visibility: hidden;
-            }
-
-            .print-doc,
-            .print-doc * {
-                visibility: visible;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-
-            .printable-page {
-                box-shadow: none !important;
-                border: none !important;
-                margin: 0 0 4mm 0 !important;
-                page-break-after: always;
-                break-after: page;
-                border-radius: 0 !important;
-            }
-
-            .printable-page:last-of-type {
-                page-break-after: auto;
-                break-after: auto;
-            }
-
-            .printable-page .card-body {
-                padding: 4mm 5mm !important;
-            }
-
-            .ordem-info-table,
-            .ordem-items-table {
-                min-width: 0 !important;
-                width: 100% !important;
-                font-size: 10px !important;
-            }
-
-            .ordem-info-table td,
-            .ordem-items-table th,
-            .ordem-items-table td {
-                padding: 4px 6px !important;
-                border: 1px solid #000 !important;
-            }
-
-            .assinaturas-grid {
-                grid-template-columns: 1fr 1fr !important;
-            }
-        }
-    </style>
 </head>
 <body>
 <div class="container">
