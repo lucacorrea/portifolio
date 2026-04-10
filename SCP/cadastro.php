@@ -84,6 +84,8 @@ if (!isset($_SESSION['usuario_id'])) {
                     <option value="">Selecione...</option>
                     <option value="CIÊNCIA">CIÊNCIA</option>
                     <option value="CUMPRIMENTO">CUMPRIMENTO</option>
+                    <option value="RECURSO - CIÊNCIA">RECURSO - CIÊNCIA</option>
+                    <option value="RECURSO - CUMPRIMENTO">RECURSO - CUMPRIMENTO</option>
                 </select>
             </div>
 
