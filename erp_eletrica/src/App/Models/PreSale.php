@@ -83,4 +83,25 @@ class PreSale extends BaseModel {
     public function markAsFinalized($id) {
         return $this->query("UPDATE {$this->table} SET status = 'finalizado' WHERE id = ?", [$id]);
     }
+
+    public function update($id, $data) {
+        // Update main record
+        $this->query(
+            "UPDATE {$this->table} SET cliente_id = ?, valor_total = ?, updated_at = NOW() WHERE id = ?",
+            [$data['cliente_id'] ?? null, $data['valor_total'], $id]
+        );
+
+        // Delete old items
+        $this->query("DELETE FROM pre_venda_itens WHERE pre_venda_id = ?", [$id]);
+
+        // Insert new items
+        foreach ($data['items'] as $item) {
+            $this->query(
+                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)",
+                [$id, $item['id'], $item['qty'], $item['price']]
+            );
+        }
+
+        return true;
+    }
 }

@@ -49,7 +49,8 @@ if (!function_exists('secretaria_sigla')) {
             'SECRETARIA MUNICIPAL DE DESENVOLVIMENTO RURAL E ECONÔMICO' => 'SMDRE',
             'SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E DEFESA SOCIAL' => 'SMSPDS',
             'SECRETARIA MUNICIPAL DE ESPORTE' => 'SEMESP',
-            'SECRETÁRIO MUNICIPAL DE RELAÇÕES INSTITUCIONAIS' => 'SMRI'
+            'SECRETÁRIO MUNICIPAL DE RELAÇÕES INSTITUCIONAIS' => 'SMRI',
+            'COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'CREC',
         ];
 
         foreach ($map as $trecho => $sigla) {
@@ -1065,6 +1066,12 @@ include 'views/layout/header.php';
                                     label: function(context) {
                                         const index = context.dataIndex ?? 0;
                                         const sigla = labels[index] || '';
+
+
+
+
+
+                                        
                                         const value = Number(context.raw || 0);
                                         return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
                                             style: 'currency',

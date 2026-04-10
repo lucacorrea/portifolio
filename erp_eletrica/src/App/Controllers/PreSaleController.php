@@ -74,8 +74,13 @@ class PreSaleController extends BaseController {
             }
 
             try {
-                $result = $model->create($data);
-                echo json_encode(['success' => true, 'id' => $result['id'], 'codigo' => $result['codigo']]);
+                if (!empty($data['id'])) {
+                    $model->update($data['id'], $data);
+                    echo json_encode(['success' => true, 'id' => $data['id'], 'codigo' => $data['codigo'] ?? 'PV-EDITED']);
+                } else {
+                    $result = $model->create($data);
+                    echo json_encode(['success' => true, 'id' => $result['id'], 'codigo' => $result['codigo']]);
+                }
             } catch (\Exception $e) {
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }

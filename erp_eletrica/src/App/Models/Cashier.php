@@ -14,25 +14,21 @@ class Cashier extends BaseModel {
         return $stmt->fetch();
     }
 
-    public function getSummary($caixaId) {
+    public function getDetailedSummary($caixaId) {
         $stmtOp = $this->db->prepare("SELECT operador_id, data_abertura, data_fechamento, filial_id FROM caixas WHERE id = ?");
         $stmtOp->execute([$caixaId]);
         $caixa = $stmtOp->fetch();
 
         $dataAbertura = $caixa['data_abertura'] ?? date('Y-m-d H:i:s');
-        $dataFechamento = $caixa['data_fechamento']; // Será NULL se aberto
+        $dataFechamento = $caixa['data_fechamento'] ?? date('Y-m-d H:i:s');
         $filialId = $caixa['filial_id'] ?? 0;
 
-        $whereTime = "AND data_venda >= ?";
-        $paramsTime = [$filialId, $dataAbertura];
-        if ($dataFechamento) {
-            $whereTime .= " AND data_venda <= ?";
-            $paramsTime[] = $dataFechamento;
-        }
+        $whereTime = "AND data_venda >= ? AND data_venda <= ?";
+        $paramsTime = [$filialId, $dataAbertura, $dataFechamento];
 
-        // 1. Vendas diretas (incluindo Fiado valor bruto)
+        // 1. Vendas diretas por forma de pagamento exata
         $sqlVendas = "
-            SELECT LOWER(forma_pagamento), COALESCE(SUM(valor_total), 0) as total
+            SELECT UPPER(forma_pagamento), COALESCE(SUM(valor_total), 0) as total
             FROM vendas 
             WHERE filial_id = ? $whereTime AND status = 'concluido'
             GROUP BY forma_pagamento
@@ -41,16 +37,12 @@ class Cashier extends BaseModel {
         $stmtVendas->execute($paramsTime);
         $vendasPorForma = $stmtVendas->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-        // 2. Pagamentos de Fiados (Recebimentos de hoje, de qualquer venda)
-        $whereTimePagos = "AND fp.created_at >= ?";
-        $paramsTimePagos = [$filialId, $dataAbertura];
-        if ($dataFechamento) {
-            $whereTimePagos .= " AND fp.created_at <= ?";
-            $paramsTimePagos[] = $dataFechamento;
-        }
+        // 2. Pagamentos de Fiados (Recebimentos)
+        $whereTimePagos = "AND fp.created_at >= ? AND fp.created_at <= ?";
+        $paramsTimePagos = [$filialId, $dataAbertura, $dataFechamento];
 
         $sqlPagos = "
-            SELECT LOWER(fp.metodo), COALESCE(SUM(fp.valor), 0) as total
+            SELECT UPPER(fp.metodo), COALESCE(SUM(fp.valor), 0) as total
             FROM fiados_pagamentos fp
             JOIN contas_receber cr ON fp.fiado_id = cr.id
             WHERE cr.filial_id = ? $whereTimePagos
@@ -60,16 +52,7 @@ class Cashier extends BaseModel {
         $stmtPagos->execute($paramsTimePagos);
         $pagosPorForma = $stmtPagos->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-        // 3. Movimentações (sangria/suprimento/entradas manuais)
-        $vTrasFiado = "
-            SELECT COALESCE(SUM(valor), 0) 
-            FROM caixa_movimentacoes 
-            WHERE caixa_id = ? AND tipo = 'entrada' AND (LOWER(motivo) LIKE '%fiado%' OR LOWER(motivo) LIKE '%recebimento%')
-        ";
-        $stmtEntradaFiado = $this->db->prepare($vTrasFiado);
-        $stmtEntradaFiado->execute([$caixaId]);
-        $entradasExtrasDinheiro = (float)$stmtEntradaFiado->fetchColumn();
-
+        // 3. Movimentações
         $sqlMov = "
             SELECT 
                 COALESCE(SUM(CASE WHEN tipo = 'suprimento' THEN valor ELSE 0 END), 0) as suprimentos,
@@ -80,48 +63,50 @@ class Cashier extends BaseModel {
         $stmtMov = $this->db->prepare($sqlMov);
         $stmtMov->execute([$caixaId]);
         $movs = $stmtMov->fetch();
-        
-        // --- CÁLCULOS FINAIS ---
-        $vendasDinheiroDireto = (float)($vendasPorForma['dinheiro'] ?? 0);
-        $vendasPixDireto = (float)($vendasPorForma['pix'] ?? 0);
-        $vendasCartaoDireto = (float)($vendasPorForma['cartao_credito'] ?? 0) + (float)($vendasPorForma['cartao_debito'] ?? 0) + (float)($vendasPorForma['cartao'] ?? 0);
-        $vendasBoletoDireto = (float)($vendasPorForma['boleto'] ?? 0);
-        $vendasFiadoBruto = (float)($vendasPorForma['fiado'] ?? 0);
-        
-        // Pagamentos Recebidos hoje (AVS)
-        $pagosDinheiro = (float)($pagosPorForma['dinheiro'] ?? 0);
-        $pagosPix = (float)($pagosPorForma['pix'] ?? 0);
-        $pagosCartao = (float)($pagosPorForma['cartao'] ?? 0);
-        $pagosBoleto = (float)($pagosPorForma['boleto'] ?? 0);
-        
-        // Físico = Vendas Diretas em Dinheiro + Pagamentos em Dinheiro (ou via movimentos 'fiado')
-        // Usamos o maior valor entre pagosDinheiro e entradasExtrasDinheiro para evitar duplicidade 
-        // mas garantir que se um falhar o outro pegue (já que ambos registram a mesma entrada física).
-        $totalDinheiroEntrou = $vendasDinheiroDireto + max($pagosDinheiro, $entradasExtrasDinheiro);
-        
-        $totalPix = $vendasPixDireto + $pagosPix;
-        $totalCartao = $vendasCartaoDireto + $pagosCartao;
-        $totalBoleto = $vendasBoletoDireto + $pagosBoleto;
-        
-        // Saldo Gaveta
-        $dinheiroEmGaveta = $totalDinheiroEntrou + $movs['suprimentos'] - $movs['sangrias'];
 
-        // Total Bruto (Soma de tudo que entrou fisicamente ou digitalmente na sessão)
-        $totalEntradasSessao = $totalDinheiroEntrou + $totalPix + $totalCartao + $totalBoleto;
+        // Mapeamento e Normalização para os nomes solicitados pelo usuário
+        $mapped = [
+            'A PRAZO' => (float)($vendasPorForma['FIADO'] ?? 0) + (float)($vendasPorForma['A PRAZO'] ?? 0),
+            'CARTAO' => (float)($vendasPorForma['CARTAO_CREDITO'] ?? 0) + (float)($vendasPorForma['CARTÃO CRÉDITO'] ?? 0) + (float)($vendasPorForma['CARTAO_DEBITO'] ?? 0) + (float)($vendasPorForma['CARTÃO DÉBITO'] ?? 0) + (float)($vendasPorForma['CARTAO'] ?? 0),
+            'DINHEIRO' => (float)($vendasPorForma['DINHEIRO'] ?? 0) + (float)($pagosPorForma['DINHEIRO'] ?? 0),
+            'PIX' => (float)($vendasPorForma['PIX'] ?? 0) + (float)($pagosPorForma['PIX'] ?? 0)
+        ];
+
+        // Totais e Saldo
+        $totalVendido = array_sum($mapped);
+        $saldoGaveta = $mapped['DINHEIRO'] + $movs['suprimentos'] - $movs['sangrias'];
 
         return [
-            'vendas_dinheiro' => $totalDinheiroEntrou,
-            'vendas_pix' => $totalPix,
-            'vendas_cartao' => $totalCartao,
-            'vendas_boleto' => $totalBoleto,
-            'vendas_fiado' => 0, // Card removido
-            'entradas_fiado_dinheiro' => 0, // Já incluído em vendas_dinheiro
-            'suprimentos' => $movs['suprimentos'],
-            'sangrias' => $movs['sangrias'],
-            'dinheiro_em_gaveta' => $dinheiroEmGaveta,
-            'total_bruto' => $totalEntradasSessao
+            'breakdown' => $mapped,
+            'suprimento' => (float)$movs['suprimentos'],
+            'sangria' => (float)$movs['sangrias'],
+            'saldo' => $saldoGaveta,
+            'total_vendas' => $totalVendido,
+            'recebimentos' => array_sum($pagosPorForma)
         ];
     }
+
+
+    public function getSummary($caixaId) {
+        $detailed = $this->getDetailedSummary($caixaId);
+        $caixa = $this->find($caixaId);
+        $valorAbertura = (float)($caixa['valor_abertura'] ?? 0);
+        
+        return [
+            'vendas_dinheiro' => $detailed['breakdown']['DINHEIRO'],
+            'vendas_pix' => $detailed['breakdown']['PIX'],
+            'vendas_cartao' => $detailed['breakdown']['CARTAO'],
+            'vendas_boleto' => 0,
+            'vendas_fiado' => $detailed['breakdown']['A PRAZO'],
+            'entradas_fiado_dinheiro' => 0,
+            'suprimentos' => $detailed['suprimento'],
+
+            'sangrias' => $detailed['sangria'],
+            'dinheiro_em_gaveta' => $detailed['saldo'] - $valorAbertura,
+            'total_bruto' => $detailed['total_vendas']
+        ];
+    }
+
 
     public function getSessionDetails($caixaId) {
         // 1. Dados do caixa + operador
@@ -140,8 +125,9 @@ class Cashier extends BaseModel {
         $dataFechamento = $caixa['data_fechamento'];
         $filialId = $caixa['filial_id'];
 
-        // 2. Summary (reutiliza método existente)
-        $summary = $this->getSummary($caixaId);
+        // 2. Summary (reutiliza método detalhado agora)
+        $summary = $this->getDetailedSummary($caixaId);
+
 
         // 3. Vendas do período
         $whereTime = "AND v.data_venda >= ?";

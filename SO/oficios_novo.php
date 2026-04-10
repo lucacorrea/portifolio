@@ -33,24 +33,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Data/hora do dispositivo inválida.");
             }
 
-            // Tratamento de Upload de Orçamento (Opcional)
-            $arquivo_orcamento = null;
-            if (isset($_FILES['orcamento']) && $_FILES['orcamento']['error'] === UPLOAD_ERR_OK) {
-                $file_tmp  = $_FILES['orcamento']['tmp_name'];
-                $file_name = $_FILES['orcamento']['name'];
-                $ext       = pathinfo($file_name, PATHINFO_EXTENSION);
+            // Função auxiliar para upload múltiplo
+            function handleMultipleUploads($filesKey, $targetDir, $prefix, $tipo, $oficio_id, $pdo) {
+                if (!isset($_FILES[$filesKey]) || empty($_FILES[$filesKey]['name'][0])) return null;
 
-                // Gerar nome único para o arquivo
-                $new_name   = "ORC_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
-                $upload_dir = "assets/uploads/orcamentos/";
+                $first_file_path = null;
+                $files = $_FILES[$filesKey];
+                
+                if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
 
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0777, true);
+                for ($i = 0; $i < count($files['name']); $i++) {
+                    if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                        $file_tmp  = $files['tmp_name'][$i];
+                        $file_name = $files['name'][$i];
+                        $ext       = pathinfo($file_name, PATHINFO_EXTENSION);
+                        $new_name   = $prefix . "_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
+                        
+                        if (move_uploaded_file($file_tmp, $targetDir . $new_name)) {
+                            $caminho = $targetDir . $new_name;
+                            if ($i === 0) $first_file_path = $caminho;
+
+                            // Inserir na nova tabela de anexos
+                            $stmt_anexo = $pdo->prepare("INSERT INTO oficio_anexos (oficio_id, caminho, tipo, nome_original) VALUES (?, ?, ?, ?)");
+                            $stmt_anexo->execute([$oficio_id, $caminho, $tipo, $file_name]);
+                        }
+                    }
                 }
-
-                if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
-                    $arquivo_orcamento = $upload_dir . $new_name;
-                }
+                return $first_file_path;
             }
 
             // Verificar se o número do ofício já existe
@@ -65,9 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("
                 INSERT INTO oficios 
-                    (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento, valor_orcamento, status, criado_em) 
+                    (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento, arquivo_oficio, valor_orcamento, status, criado_em) 
                 VALUES 
-                    (?, ?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $numero_manual,
@@ -75,12 +84,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $justificativa,
                 $_SESSION['user_id'],
                 $arquivo_orcamento,
+                $arquivo_oficio,
                 $valor_orcamento,
                 $status,
                 $criado_em_device
             ]);
 
             $oficio_id = $pdo->lastInsertId();
+
+            // Processar múltiplos uploads agora que temos o oficio_id
+            $arquivo_orcamento = handleMultipleUploads('orcamento', "assets/uploads/orcamentos/", "ORC", "ORCAMENTO", $oficio_id, $pdo);
+            $arquivo_oficio    = handleMultipleUploads('arquivo_oficio', "assets/uploads/oficios/", "OFI", "OFICIO", $oficio_id, $pdo);
+
+            // Opcional: Atualizar a tabela principal com o primeiro arquivo para retrocompatibilidade
+            if ($arquivo_orcamento || $arquivo_oficio) {
+                $stmt_upd = $pdo->prepare("UPDATE oficios SET arquivo_orcamento = ?, arquivo_oficio = ? WHERE id = ?");
+                $stmt_upd->execute([$arquivo_orcamento, $arquivo_oficio, $oficio_id]);
+            }
 
             log_action($pdo, "CRIAR_OFICIO", "Ofício $numero_manual cadastrado aguardando itens.");
             $pdo->commit();
@@ -226,7 +246,14 @@ include 'views/layout/header.php';
 
                 <div class="form-group">
                     <label class="form-label">Arquivo do Orçamento (Opcional)</label>
-                    <input type="file" name="orcamento" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    <input type="file" name="orcamento[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" multiple>
+                    <small class="text-muted">Você pode selecionar múltiplos arquivos.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Ofício de Solicitação (Opcional)</label>
+                    <input type="file" name="arquivo_oficio[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" multiple>
+                    <small class="text-muted">Você pode selecionar múltiplos arquivos.</small>
                 </div>
             </div>
 

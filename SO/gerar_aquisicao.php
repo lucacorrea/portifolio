@@ -22,9 +22,10 @@ if (!$oficio) {
 // Verificar se já existe aquisição
 $stmt_check = $pdo->prepare("SELECT id FROM aquisicoes WHERE oficio_id = ?");
 $stmt_check->execute([$id]);
-if ($stmt_check->fetch()) {
-    flash_message('danger', "Uma aquisição já foi gerada para esta solicitação!");
-    header("Location: aquisicoes_lista.php");
+$existing_aq = $stmt_check->fetch();
+if ($existing_aq) {
+    flash_message('info', "Esta solicitação já possui uma aquisição gerada! Você foi redirecionado para a impressão.");
+    header("Location: aquisicoes_visualizar.php?id=" . $existing_aq['id']);
     exit();
 }
 
