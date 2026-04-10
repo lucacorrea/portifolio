@@ -530,7 +530,7 @@ include 'views/layout/header.php';
                         <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
                         <td style="font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
                         <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                        <td style="width: 20%; font-weight: 700;"><?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
+                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
                     </tr>
                     <tr>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
