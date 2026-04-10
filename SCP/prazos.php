@@ -165,26 +165,6 @@ if (!isset($_SESSION['usuario_id'])) {
             <h2 id="section-title" style="font-size: 1.25rem;">Urgentes</h2>
             
             <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                <!-- Filtros Mensais (ocultos por padrão) -->
-                <div id="contener-filtro-mensal" class="filter-group-mensal">
-                    <select id="filtro-mes" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
-                        <option value="0">Janeiro</option>
-                        <option value="1">Fevereiro</option>
-                        <option value="2">Março</option>
-                        <option value="3">Abril</option>
-                        <option value="4">Maio</option>
-                        <option value="5">Junho</option>
-                        <option value="6">Julho</option>
-                        <option value="7">Agosto</option>
-                        <option value="8">Setembro</option>
-                        <option value="9">Outubro</option>
-                        <option value="10">Novembro</option>
-                        <option value="11">Dezembro</option>
-                    </select>
-                    <select id="filtro-ano" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
-                        <!-- JS preenche -->
-                    </select>
-                </div>
                 <select id="filtro-tipo-prazos" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
                     <option value="">Tipos (Todos)</option>
                     <option value="CIÊNCIA">Ciência</option>
@@ -229,8 +209,6 @@ if (!isset($_SESSION['usuario_id'])) {
     document.addEventListener('DOMContentLoaded', async () => {
         const listPrazos = document.getElementById('lista-prazos');
         const inputBusca = document.getElementById('filtro-urgentes');
-        const selectMes = document.getElementById('filtro-mes');
-        const selectAno = document.getElementById('filtro-ano');
         
         let dadosOriginais = [];
         let dadosFiltrados = [];
@@ -238,40 +216,28 @@ if (!isset($_SESSION['usuario_id'])) {
         let paginaAtual = 1;
         const itensPorPagina = 10;
 
-        // Inicializar Filtros de Data
+        // Estado do Cronograma Mensal
         const hoje_global = new Date();
-        if (selectMes) selectMes.value = hoje_global.getMonth();
-        
-        if (selectAno) {
-            const anoAtual = hoje_global.getFullYear();
-            for (let i = anoAtual - 1; i <= anoAtual + 2; i++) {
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.textContent = i;
-                if (i === anoAtual) opt.selected = true;
-                selectAno.appendChild(opt);
-            }
-        }
+        let selectedMonth = hoje_global.getMonth();
+        let selectedYear = hoje_global.getFullYear();
+
 
         window.switchTab = (tab) => {
             activeTab = tab;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
             
-            const filtroMensal = document.getElementById('contener-filtro-mensal');
             const gridMeses = document.getElementById('month-grid');
             const titulo = document.getElementById('prazos-titulo');
             const desc = document.getElementById('prazos-descricao');
             const sectionTitle = document.getElementById('section-title');
 
             if (tab === 'urgentes') {
-                filtroMensal.style.display = 'none';
                 gridMeses.style.display = 'none';
                 titulo.textContent = 'Prazos Urgentes';
                 desc.textContent = 'Processos com prazo vencido ou a vencer em até 72 horas.';
                 sectionTitle.textContent = 'Urgentes';
             } else {
-                filtroMensal.style.display = 'flex';
                 gridMeses.style.display = 'grid';
                 titulo.textContent = 'Cronograma Mensal';
                 desc.textContent = 'Visualize todos os prazos previstos para o mês selecionado.';
@@ -307,13 +273,10 @@ if (!isset($_SESSION['usuario_id'])) {
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
             } else {
-                const mesSel = parseInt(selectMes.value);
-                const anoSel = parseInt(selectAno.value);
-                
                 dadosFiltrados = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
                     const d = new Date(p.final_prazo);
-                    return d.getMonth() === mesSel && d.getFullYear() === anoSel;
+                    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
                 renderizarGridMeses();
@@ -339,13 +302,13 @@ if (!isset($_SESSION['usuario_id'])) {
                 const count = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
                     const d = new Date(p.final_prazo);
-                    return d.getMonth() === index && d.getFullYear() === anoSel;
+                    return d.getMonth() === index && d.getFullYear() === selectedYear;
                 }).length;
 
                 const card = document.createElement('div');
-                card.className = `month-card ${index === mesSel ? 'active' : ''}`;
+                card.className = `month-card ${index === selectedMonth ? 'active' : ''}`;
                 card.onclick = () => {
-                    selectMes.value = index;
+                    selectedMonth = index;
                     paginaAtual = 1;
                     processarDados();
                 };
@@ -532,9 +495,6 @@ if (!isset($_SESSION['usuario_id'])) {
                 renderizarTabela();
             });
         }
-
-        if (selectMes) selectMes.addEventListener('change', () => { paginaAtual = 1; processarDados(); });
-        if (selectAno) selectAno.addEventListener('change', () => { paginaAtual = 1; processarDados(); });
 
         carregarPrazos();
     });
