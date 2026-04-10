@@ -12,13 +12,10 @@ if (!isset($_SESSION['usuario_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCP - Sistema de Controle de Processos (PGM)</title>
-    <link rel="stylesheet" href="assets/css/estilo.css?v=45">
+    <link rel="stylesheet" href="assets/css/estilo.css?v=61">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .tabs-container {
-            /* Styles handled inline mostly, generic class for reference */
-        }
         .tab-btn {
             padding: 0.5rem 1rem;
             border-radius: 8px;
@@ -89,11 +86,11 @@ if (!isset($_SESSION['usuario_id'])) {
             <div class="value" id="total-processos">0</div>
         </div>
         <div class="stat-card">
-            <div class="label">Pendentes</div>
+            <div class="label">Pendentes / Início</div>
             <div class="value" id="total-pendentes" style="color: var(--status-pendente)">0</div>
         </div>
         <div class="stat-card">
-            <div class="label">Protocolados</div>
+            <div class="label">Protocolados / Finais</div>
             <div class="value" id="total-protocolados" style="color: var(--status-protocolado)">0</div>
         </div>
         <div class="stat-card">
@@ -121,13 +118,93 @@ if (!isset($_SESSION['usuario_id'])) {
                     </tr>
                 </thead>
                 <tbody id="lista-prioridade">
-            <div id="detalhes-conteudo">
+                    <!-- Preenchido via JS -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="data-section">
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-size: 1.25rem; margin: 0;">Lista de Processos</h2>
+            </div>
+            
+            <div class="tabs-container" id="analisador-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
                 <!-- Preenchido via JS -->
             </div>
+            
+            <div class="filter-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
+                <select id="filtro-tipo-processo" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="">Tipo (Todos)</option>
+                    <option value="CIÊNCIA">Ciência</option>
+                    <option value="CUMPRIMENTO">Cumprimento</option>
+                    <option value="RECURSO - CIÊNCIA">Recurso - Ciência</option>
+                    <option value="RECURSO - CUMPRIMENTO">Recurso - Cumprimento</option>
+                </select>
+
+                <select id="filtro-status" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="">Status (Todos)</option>
+                    <option value="PENDENTE">Pendente</option>
+                    <option value="SENDO AVALIADO">Sendo Avaliado</option>
+                    <option value="EM ELABORAÇÃO">Em Elaboração</option>
+                    <option value="PROTOCOLADO">Protocolado</option>
+                    <option value="ANALISADO">Analisado</option>
+                    <option value="PROCESSO FINALIZADO">Processo Finalizado</option>
+                </select>
+
+                <div style="display: flex; align-items: center; gap: 0.2rem; background: white; border: 1px solid var(--border); border-radius: 50px; padding: 0 0.5rem; height: 32px;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 4px;">De:</span>
+                    <input type="date" id="filtro-data-inicio" title="Data Inicial" style="width: auto; border: none; padding: 0; font-size: 0.75rem; outline: none; background: transparent; color: var(--text-main); font-weight: 600;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 4px;">Até:</span>
+                    <input type="date" id="filtro-data-fim" title="Data Final" style="width: auto; border: none; padding: 0; font-size: 0.75rem; outline: none; background: transparent; color: var(--text-main); font-weight: 600; margin-right: 4px;">
+                </div>
+
+                <div style="position: relative; flex-grow: 1; min-width: 150px; max-width: 300px;">
+                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+                    <input type="text" id="filtro-busca" placeholder="Pesquisar nº ou tipo..." style="width: 100%; padding: 0.45rem 1rem 0.45rem 32px; border-radius: 50px; border: 1px solid var(--border); font-size: 0.85rem; outline: none;">
+                </div>
+                
+                <?php if ($_SESSION['usuario_perfil'] !== 'ACESSORES'): ?>
+                <a href="cadastro.php" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem; border-radius: 50px; white-space: nowrap; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-plus"></i> Novo
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table id="tabela-processos">
+                <thead>
+                    <tr>
+                        <th>Nº PROCESSO</th>
+                        <th>TIPO</th>
+                        <th>ATO / NATUREZA</th>
+                        <th>PRAZO FINAL</th>
+                        <th>ANALISADOR</th>
+                        <th>STATUS</th>
+                        <th>AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-processos">
+                    <!-- Preenchido via JS -->
+                </tbody>
+            </table>
+        </div>
+        <div id="paginacao-processos" class="pagination" style="margin-top: 1.5rem;"></div>
+    </section>
+</main>
+
+<!-- Modal de Detalhes do Processo -->
+<div id="modal-detalhes" class="modal-overlay">
+    <div class="modal-content">
+        <div id="detalhes-conteudo">
+            <!-- Preenchido via JS -->
         </div>
     </div>
+</div>
 
-    <script>
+<script>
     window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
 </script>
 <script src="assets/js/script.js?v=61"></script>
