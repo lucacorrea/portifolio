@@ -1,5 +1,9 @@
 <?php
 declare(strict_types=1);
+
+date_default_timezone_set('America/Sao_Paulo');
+$dataAtualIso = date('Y-m-d');
+$dataAtualBr  = date('d / m / Y');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -155,293 +159,98 @@ declare(strict_types=1);
             padding: 2rem;
         }
 
-       .ordem-header {
-        display: grid;
-        grid-template-columns: 1fr auto 1fr;
-        align-items: center;
-        border-bottom: 2px solid #000;
-        padding-bottom: 1.25rem;
-        margin-bottom: 2rem;
-        gap: 1rem;
-    }
-
-    .ordem-logo {
-        text-align: left;
-
-    }
-
-    .ordem-logo img {
-        max-height: 80px;
-        max-width: 200px;
-        object-fit: contain;
-        width: 100%;
-    }
-
-    .ordem-center{
-        text-align: center;
-    }
-
-    .ordem-right {
-        text-align: right;
-        justify-self: end;
-        width: 100%;
-        padding-right: 0;
-        margin-right: -10px;
-    }
-
-    .ordem-right-box {
-        border: 1.5px solid #000;
-        padding: 0.4rem 1rem;
-        display: inline-block;
-        text-align: center;
-    }
-
-    .ordem-info-table,
-    .ordem-items-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .ordem-info-wrap,
-    .ordem-items-wrap {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .ordem-info-wrap {
-        margin-bottom: 1.35rem;
-        /* afastou mais do título abaixo */
-    }
-
-    .ordem-info-table {
-        margin-bottom: 0;
-        font-size: 0.8125rem;
-    }
-
-    .ordem-items-table {
-        font-size: 0.8125rem;
-        border: 1px solid #000;
-        /* reforça a borda completa */
-    }
-
-    .ordem-info-table td,
-    .ordem-items-table th,
-    .ordem-items-table td {
-        border: 1px solid #000;
-        padding: 6px 8px;
-    }
-
-    .ordem-items-table thead tr,
-    .ordem-items-table tfoot tr,
-    .ordem-info-label {
-        background: #f0f0f0;
-    }
-
-    .ordem-items-table tbody tr:last-child td,
-    .ordem-items-table tfoot td {
-        border-bottom: 1px solid #000 !important;
-        /* garante borda inferior visível */
-    }
-
-    .ordem-section-title {
-        font-size: 0.75rem;
-        font-weight: 800;
-        color: #333;
-        text-transform: uppercase;
-        margin: 1.85rem 0 0.5rem;
-        /* desce mais o título */
-    }
-
-    .assinaturas-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4rem;
-        text-align: center;
-        margin-top: 5rem;
-    }
-
-    .assinatura-linha {
-        border-top: 1.5px solid #000;
-        padding-top: 0.75rem;
-    }
-
-    .texto-entrega {
-        font-size: 0.75rem;
-        color: #555;
-        margin-top: 1.5rem;
-        margin-bottom: 4rem;
-        line-height: 1.5;
-    }
-
-    @media (max-width: 768px) {
-        .print-topbar {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .print-topbar .btn {
-            width: 100%;
-            justify-content: center;
-            text-align: center;
-        }
-
-        .printable-page .card-body {
-            padding: 1rem;
-        }
-
         .ordem-header {
-            grid-template-columns: 1fr;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 1.25rem;
+            margin-bottom: 2rem;
+            gap: 1rem;
+        }
+
+        .ordem-logo {
+            text-align: left;
+        }
+
+        .ordem-logo img {
+            max-height: 80px;
+            max-width: 200px;
+            object-fit: contain;
+            width: 100%;
+        }
+
+        .ordem-logo-box {
+            width: 180px;
+            height: 78px;
+            border: 1.5px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            text-align: center;
+            padding: 8px;
+        }
+
+        .ordem-center {
             text-align: center;
         }
 
-        .ordem-right,
-        .ordem-logo,
-        .ordem-header>div:first-child {
-            text-align: center;
-            justify-self: center;
-            margin-right: 0;
+        .ordem-right {
+            text-align: right;
+            justify-self: end;
+            width: 100%;
+            padding-right: 0;
+            margin-right: -10px;
         }
 
         .ordem-right-box {
+            border: 1.5px solid #000;
+            padding: 0.4rem 1rem;
             display: inline-block;
-        }
-
-        .assinaturas-grid {
-            grid-template-columns: 1fr;
-            gap: 2rem;
-            margin-top: 3rem;
+            text-align: center;
         }
 
         .ordem-info-table,
         .ordem-items-table {
-            min-width: 760px;
-        }
-
-        .ordem-info-wrap {
-            margin-bottom: 1.2rem;
-        }
-
-        .ordem-section-title {
-            margin-top: 1.55rem;
-        }
-    }
-
-    @media print {
-        @page {
-            size: A4 portrait;
-            margin: 6mm 6mm 7mm 6mm;
-        }
-
-        html,
-        body {
-            background: #fff !important;
-            margin: 0 !important;
-            padding: 0 !important;
             width: 100%;
-        }
-
-        body * {
-            visibility: hidden;
-        }
-
-        .printable-page,
-        .printable-page * {
-            visibility: visible;
-        }
-
-        .no-print,
-        header,
-        footer,
-        .navbar,
-        .page-header {
-            display: none !important;
-        }
-
-        .page-body,
-        .container-xl,
-        .print-doc {
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        .printable-page {
-            display: block !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 0 4mm 0 !important;
-            padding: 0 !important;
-
-            /* borda completa na impressão */
-            box-shadow: none !important;
-            background: #fff !important;
-            page-break-after: always;
-            break-after: page;
-            border-radius: 0 !important;
-            overflow: visible !important;
-        }
-
-        .printable-page:last-of-type {
-            page-break-after: auto;
-            break-after: auto;
-        }
-
-        .printable-page .card-body {
-            padding: 4mm 5mm !important;
-        }
-
-        .ordem-header {
-            gap: 8px !important;
-            margin-bottom: 10px !important;
-            padding-bottom: 8px !important;
-            grid-template-columns: 1fr auto 1fr !important;
-        }
-
-        .ordem-logo{
-            margin-left: -70px !important;
-        }
-
-        .ordem-logo img {
-            max-height: 70px !important;
-            max-width: 180px !important;
-        }
-
-        .ordem-right {
-            text-align: right !important;
-            justify-self: end !important;
-            width: 100% !important;
-            margin-right: -14px !important;
-            padding-right: 0 !important;
+            border-collapse: collapse;
         }
 
         .ordem-info-wrap,
         .ordem-items-wrap {
-            overflow: visible !important;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .ordem-info-wrap {
-            margin-bottom: 12px !important;
-            /* mais espaço antes do título */
+            margin-bottom: 1.35rem;
         }
 
-        .ordem-info-table,
-        .ordem-items-table {
-            width: 100% !important;
-            min-width: 0 !important;
-            font-size: 10px !important;
+        .ordem-info-table {
+            margin-bottom: 0;
+            font-size: 0.8125rem;
         }
 
         .ordem-items-table {
-            border: 1px solid #000 !important;
+            font-size: 0.8125rem;
+            border: 1px solid #000;
         }
 
         .ordem-info-table td,
         .ordem-items-table th,
         .ordem-items-table td {
-            padding: 4px 6px !important;
-            border: 1px solid #000 !important;
+            border: 1px solid #000;
+            padding: 6px 8px;
+            vertical-align: top;
+        }
+
+        .ordem-items-table thead tr,
+        .ordem-items-table tfoot tr,
+        .ordem-info-label {
+            background: #f0f0f0;
         }
 
         .ordem-items-table tbody tr:last-child td,
@@ -450,31 +259,277 @@ declare(strict_types=1);
         }
 
         .ordem-section-title {
-            margin: 14px 0 4px !important;
-            font-size: 10px !important;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #333;
+            text-transform: uppercase;
+            margin: 1.85rem 0 0.5rem;
         }
 
-        /* mantém as assinaturas do jeito que estavam */
         .assinaturas-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 4rem !important;
-            text-align: center !important;
-            margin-top: 5rem !important;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            text-align: center;
+            margin-top: 5rem;
         }
 
         .assinatura-linha {
-            border-top: 1.5px solid #000 !important;
-            padding-top: 0.75rem !important;
+            border-top: 1.5px solid #000;
+            padding-top: 0.75rem;
         }
 
         .texto-entrega {
-            margin-top: 1.5rem !important;
-            margin-bottom: 4rem !important;
-            font-size: 0.75rem !important;
-            line-height: 1.5 !important;
+            font-size: 0.75rem;
+            color: #555;
+            margin-top: 1.5rem;
+            margin-bottom: 4rem;
+            line-height: 1.5;
         }
-    }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .empty-note {
+            text-align: center;
+            color: #666;
+            font-weight: 700;
+            padding: 12px;
+        }
+
+        @media (max-width: 992px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .span-2,
+            .span-3,
+            .span-4 {
+                grid-column: span 2;
+            }
+
+            .item-row {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 14px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .span-2,
+            .span-3,
+            .span-4 {
+                grid-column: span 1;
+            }
+
+            .print-topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .print-topbar .btn,
+            .topbar .btn {
+                width: 100%;
+                justify-content: center;
+                text-align: center;
+            }
+
+            .printable-page .card-body {
+                padding: 1rem;
+            }
+
+            .ordem-header {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .ordem-right,
+            .ordem-logo,
+            .ordem-header > div:first-child {
+                text-align: center;
+                justify-self: center;
+                margin-right: 0;
+            }
+
+            .ordem-right-box {
+                display: inline-block;
+            }
+
+            .assinaturas-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                margin-top: 3rem;
+            }
+
+            .ordem-info-table,
+            .ordem-items-table {
+                min-width: 760px;
+            }
+
+            .ordem-info-wrap {
+                margin-bottom: 1.2rem;
+            }
+
+            .ordem-section-title {
+                margin-top: 1.55rem;
+            }
+        }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 6mm 6mm 7mm 6mm;
+            }
+
+            html,
+            body {
+                background: #fff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100%;
+            }
+
+            body * {
+                visibility: hidden;
+            }
+
+            .printable-page,
+            .printable-page * {
+                visibility: visible;
+            }
+
+            .no-print,
+            header,
+            footer,
+            .navbar,
+            .page-header {
+                display: none !important;
+            }
+
+            .page-body,
+            .container-xl,
+            .print-doc {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .printable-page {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 0 4mm 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                background: #fff !important;
+                page-break-after: always;
+                break-after: page;
+                border-radius: 0 !important;
+                overflow: visible !important;
+            }
+
+            .printable-page:last-of-type {
+                page-break-after: auto;
+                break-after: auto;
+            }
+
+            .printable-page .card-body {
+                padding: 4mm 5mm !important;
+            }
+
+            .ordem-header {
+                gap: 8px !important;
+                margin-bottom: 10px !important;
+                padding-bottom: 8px !important;
+                grid-template-columns: 1fr auto 1fr !important;
+            }
+
+            .ordem-logo {
+                margin-left: -70px !important;
+            }
+
+            .ordem-logo img {
+                max-height: 70px !important;
+                max-width: 180px !important;
+            }
+
+            .ordem-right {
+                text-align: right !important;
+                justify-self: end !important;
+                width: 100% !important;
+                margin-right: -14px !important;
+                padding-right: 0 !important;
+            }
+
+            .ordem-info-wrap,
+            .ordem-items-wrap {
+                overflow: visible !important;
+            }
+
+            .ordem-info-wrap {
+                margin-bottom: 12px !important;
+            }
+
+            .ordem-info-table,
+            .ordem-items-table {
+                width: 100% !important;
+                min-width: 0 !important;
+                font-size: 10px !important;
+            }
+
+            .ordem-items-table {
+                border: 1px solid #000 !important;
+            }
+
+            .ordem-info-table td,
+            .ordem-items-table th,
+            .ordem-items-table td {
+                padding: 4px 6px !important;
+                border: 1px solid #000 !important;
+            }
+
+            .ordem-items-table tbody tr:last-child td,
+            .ordem-items-table tfoot td {
+                border-bottom: 1px solid #000 !important;
+            }
+
+            .ordem-section-title {
+                margin: 14px 0 4px !important;
+                font-size: 10px !important;
+            }
+
+            .assinaturas-grid {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 4rem !important;
+                text-align: center !important;
+                margin-top: 5rem !important;
+            }
+
+            .assinatura-linha {
+                border-top: 1.5px solid #000 !important;
+                padding-top: 0.75rem !important;
+            }
+
+            .texto-entrega {
+                margin-top: 1.5rem !important;
+                margin-bottom: 4rem !important;
+                font-size: 0.75rem !important;
+                line-height: 1.5 !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -493,16 +548,6 @@ declare(strict_types=1);
             <div class="field">
                 <label>Número da ordem</label>
                 <input type="text" id="numero_aq" placeholder="Ex: AQ-001/2026" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field">
-                <label>Data</label>
-                <input type="date" id="data_emissao" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field">
-                <label>Hora</label>
-                <input type="time" id="hora_emissao" oninput="atualizarPreview()">
             </div>
 
             <div class="field">
@@ -535,21 +580,6 @@ declare(strict_types=1);
                 <input type="text" id="sec_responsavel" placeholder="Nome do responsável" oninput="atualizarPreview()">
             </div>
 
-            <div class="field span-2">
-                <label>Prefeitura / Órgão</label>
-                <input type="text" id="orgao_nome" value="PREFEITURA MUNICIPAL DE COARI" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field">
-                <label>Cidade / UF</label>
-                <input type="text" id="cidade_uf" value="COARI - AM" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field">
-                <label>CNPJ do órgão</label>
-                <input type="text" id="orgao_cnpj" value="00.000.000/0001-00" oninput="atualizarPreview()">
-            </div>
-
             <div class="field span-4">
                 <label>Texto da observação da via do fornecedor</label>
                 <textarea id="texto_entrega" oninput="atualizarPreview()">No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.</textarea>
@@ -573,13 +603,13 @@ declare(strict_types=1);
 
                     <div class="ordem-center">
                         <h1 id="pv_orgao_nome_1" style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                            PREFEITURA MUNICIPAL
+                            PREFEITURA MUNICIPAL DE COARI
                         </h1>
                         <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                            Ordem de Aquisição e Suprimentos
+                            ORDEM DE AQUISIÇÃO E SUPRIMENTOS
                         </h2>
                         <div id="pv_orgao_meta_1" style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                            CIDADE - UF | CNPJ: 00.000.000/0001-00
+                            COARI - AM | CNPJ: 04.262.432/0001-21
                         </div>
                     </div>
 
@@ -592,7 +622,7 @@ declare(strict_types=1);
                             <div id="pv_numero_1" style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">000</div>
                         </div>
                         <div id="pv_datahora_1" style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                            DATA: --/--/---- | --:--
+                            DATA: <?php echo $dataAtualBr; ?>
                         </div>
                         <div style="margin-top:8px; font-size:0.72rem; line-height:1.4;">
                             <strong>CNPJ Fornecedor:</strong> <span id="pv_cnpj_fornecedor_1">-</span><br>
@@ -607,7 +637,7 @@ declare(strict_types=1);
                             <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
                             <td id="pv_fornecedor_1" style="font-weight: 700;">-</td>
                             <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                            <td id="pv_data_1" style="width: 20%; font-weight: 700;">--/--/----</td>
+                            <td id="pv_data_1" style="width: 20%; font-weight: 700;"><?php echo $dataAtualBr; ?></td>
                         </tr>
                         <tr>
                             <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
@@ -684,13 +714,13 @@ declare(strict_types=1);
 
                     <div class="ordem-center">
                         <h1 id="pv_orgao_nome_2" style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                            PREFEITURA MUNICIPAL
+                            PREFEITURA MUNICIPAL DE COARI
                         </h1>
                         <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                            Ordem de Fornecimento
+                            ORDEM DE AQUISIÇÃO E SUPRIMENTOS
                         </h2>
                         <div id="pv_orgao_meta_2" style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                            CIDADE - UF | CNPJ: 00.000.000/0001-00
+                            COARI - AM | CNPJ: 04.262.432/0001-21
                         </div>
                     </div>
 
@@ -703,7 +733,7 @@ declare(strict_types=1);
                             <div id="pv_numero_2" style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">000</div>
                         </div>
                         <div id="pv_datahora_2" style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                            DATA: --/--/---- | --:--
+                            DATA: <?php echo $dataAtualBr; ?>
                         </div>
                     </div>
                 </div>
@@ -714,7 +744,7 @@ declare(strict_types=1);
                             <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
                             <td id="pv_fornecedor_2" style="font-weight: 700;">-</td>
                             <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                            <td id="pv_data_2" style="width: 20%; font-weight: 700;">--/--/----</td>
+                            <td id="pv_data_2" style="width: 20%; font-weight: 700;"><?php echo $dataAtualBr; ?></td>
                         </tr>
                         <tr>
                             <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
@@ -757,6 +787,8 @@ declare(strict_types=1);
 
                 <p id="pv_texto_entrega" class="texto-entrega">
                     No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável.
+                    Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada
+                    no setor administrativo/financeiro.
                 </p>
 
                 <div class="assinaturas-grid" style="margin-top: 4rem;">
@@ -784,6 +816,8 @@ declare(strict_types=1);
 </div>
 
 <script>
+    const DATA_ATUAL_BR = <?php echo json_encode($dataAtualBr); ?>;
+
     let contadorItens = 0;
 
     function moedaBR(valor) {
@@ -791,13 +825,6 @@ declare(strict_types=1);
             style: 'currency',
             currency: 'BRL'
         });
-    }
-
-    function formatarDataBR(dataIso) {
-        if (!dataIso) return '--/--/----';
-        const partes = dataIso.split('-');
-        if (partes.length !== 3) return '--/--/----';
-        return `${partes[2]}/${partes[1]}/${partes[0]}`;
     }
 
     function maiusculo(texto) {
@@ -916,34 +943,24 @@ declare(strict_types=1);
     function atualizarPreview() {
         const numeroAq = valor('numero_aq') || '000';
         const numeroCurto = numeroAq.replace('AQ-', '').replace('aq-', '');
-        const dataEmissao = formatarDataBR(valor('data_emissao'));
-        const horaEmissao = valor('hora_emissao') || '--:--';
         const fornecedor = maiusculo(valor('fornecedor'));
         const secretaria = maiusculo(valor('secretaria'));
         const oficio = valor('oficio_num') || '-';
         const responsavel = maiusculo(valor('sec_responsavel'));
-        const orgao = maiusculo(valor('orgao_nome'));
-        const cidadeUf = valor('cidade_uf') || 'CIDADE - UF';
-        const orgaoCnpj = valor('orgao_cnpj') || '00.000.000/0001-00';
         const fornecedorCnpj = valor('fornecedor_cnpj') || '-';
         const fornecedorContato = valor('fornecedor_contato') || '-';
         const textoEntrega = valor('texto_entrega') || '-';
-
-        document.getElementById('pv_orgao_nome_1').textContent = orgao;
-        document.getElementById('pv_orgao_nome_2').textContent = orgao;
-
-        document.getElementById('pv_orgao_meta_1').textContent = `${cidadeUf} | CNPJ: ${orgaoCnpj}`;
-        document.getElementById('pv_orgao_meta_2').textContent = `${cidadeUf} | CNPJ: ${orgaoCnpj}`;
 
         document.getElementById('pv_numero_1').textContent = numeroCurto;
         document.getElementById('pv_numero_2').textContent = numeroCurto;
 
         document.getElementById('pv_numero_full_1').textContent = numeroAq;
-        document.getElementById('pv_datahora_1').textContent = `DATA: ${dataEmissao} | ${horaEmissao}`;
-        document.getElementById('pv_datahora_2').textContent = `DATA: ${dataEmissao} | ${horaEmissao}`;
 
-        document.getElementById('pv_data_1').textContent = dataEmissao;
-        document.getElementById('pv_data_2').textContent = dataEmissao;
+        document.getElementById('pv_datahora_1').textContent = `DATA: ${DATA_ATUAL_BR}`;
+        document.getElementById('pv_datahora_2').textContent = `DATA: ${DATA_ATUAL_BR}`;
+
+        document.getElementById('pv_data_1').textContent = DATA_ATUAL_BR;
+        document.getElementById('pv_data_2').textContent = DATA_ATUAL_BR;
 
         document.getElementById('pv_fornecedor_1').textContent = fornecedor;
         document.getElementById('pv_fornecedor_2').textContent = fornecedor;
@@ -971,9 +988,6 @@ declare(strict_types=1);
             el.value = '';
         });
 
-        document.getElementById('orgao_nome').value = 'PREFEITURA MUNICIPAL DE COARI';
-        document.getElementById('cidade_uf').value = 'COARI - AM';
-        document.getElementById('orgao_cnpj').value = '00.000.000/0001-00';
         document.getElementById('texto_entrega').value = 'No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.';
 
         document.getElementById('itens-formulario').innerHTML = '';
