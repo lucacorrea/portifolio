@@ -154,6 +154,8 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
                         <select id="tipo-processo-import" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; background: white; margin-top: 0.5rem; font-size: 1rem;">
                             <option value="CIÊNCIA">CIÊNCIA</option>
                             <option value="CUMPRIMENTO">CUMPRIMENTO</option>
+                            <option value="RECURSO - CIÊNCIA">RECURSO - CIÊNCIA</option>
+                            <option value="RECURSO - CUMPRIMENTO">RECURSO - CUMPRIMENTO</option>
                         </select>
                     </div>
                     <div class="form-group">
