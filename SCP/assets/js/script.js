@@ -224,8 +224,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!listTable) return;
         
-        // Inicializar abas de analisadores
-        renderizarAbasAnalisadores();
+        // Inicializar abas de analisadores (com fallback em caso de erro nos dados)
+        try {
+            renderizarAbasAnalisadores();
+        } catch(e) {
+            console.error('Erro ao renderizar abas:', e);
+        }
         
         // Atualizar Stats (com base em TODOS os dados)
         const totalProc = document.getElementById('total-processos');
@@ -343,7 +347,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabsContainer = document.getElementById('analisador-tabs');
         if (!tabsContainer) return;
 
-        const analisadores = [...new Set(dadosOriginais.map(p => p.analisador || 'N/A'))].filter(a => a !== 'N/A').map(a => a.toUpperCase()).sort();
+        const analisadores = [...new Set(dadosOriginais.map(p => p.analisador || 'N/A'))]
+            .filter(a => a !== 'N/A')
+            .map(a => String(a).toUpperCase())
+            .sort();
         
         // Determinar aba padrão (usuário logado ou "TODOS") caso ainda não tenha aba ativa
         if (!analisadorAtivo) {
@@ -413,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (analisadorAtivo && analisadorAtivo !== 'TODOS') {
-            filtrados = filtrados.filter(p => (p.analisador || 'N/A').toUpperCase() === analisadorAtivo);
+            filtrados = filtrados.filter(p => String(p.analisador || 'N/A').toUpperCase() === analisadorAtivo);
         }
 
         // Paginação
