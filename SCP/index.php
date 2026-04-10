@@ -140,23 +140,6 @@ if (!isset($_SESSION['usuario_id'])) {
             <div class="filter-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
                 <select id="filtro-tipo-processo" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
                     <option value="">Tipo (Todos)</option>
-                    <option value="CIÊNCIA">Ciência</option>
-                    <option value="CUMPRIMENTO">Cumprimento</option>
-                    <option value="RECURSO - CIÊNCIA">Recurso - Ciência</option>
-                    <option value="RECURSO - CUMPRIMENTO">Recurso - Cumprimento</option>
-                </select>
-
-                <select id="filtro-status" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
-                    <option value="">Status (Todos)</option>
-                    <option value="PENDENTE">Pendente</option>
-                    <option value="PROTOCOLADO">Protocolado</option>
-                    <option value="ANALISADO">Analisado</option>
-                </select>
-
-                <div style="display: flex; align-items: center; gap: 0.2rem; background: white; border: 1px solid var(--border); border-radius: 50px; padding: 0 0.5rem; height: 32px;">
-                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 4px;">De:</span>
-                    <input type="date" id="filtro-data-inicio" title="Data Inicial" style="width: auto; border: none; padding: 0; font-size: 0.75rem; outline: none; background: transparent; color: var(--text-main); font-weight: 600;">
-                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 4px;">Até:</span>
                     <input type="date" id="filtro-data-fim" title="Data Final" style="width: auto; border: none; padding: 0; font-size: 0.75rem; outline: none; background: transparent; color: var(--text-main); font-weight: 600; margin-right: 4px;">
                 </div>
 
