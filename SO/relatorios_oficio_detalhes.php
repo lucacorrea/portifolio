@@ -35,15 +35,22 @@ $sqlOficio = "
         s.nome AS secretaria_nome,
         u.nome AS usuario_nome,
         COALESCE(f.nome, '-') AS fornecedor,
-        COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS valor_total_aquisicao
+
+        -- valor correto
+        (
+            SELECT COALESCE(SUM(ia2.quantidade * ia2.valor_unitario), 0)
+            FROM aquisicoes a2
+            LEFT JOIN itens_aquisicao ia2 ON ia2.aquisicao_id = a2.id
+            WHERE a2.oficio_id = o.id
+        ) AS valor_total_aquisicao
+
     FROM oficios o
     INNER JOIN secretarias s ON s.id = o.secretaria_id
     LEFT JOIN usuarios u ON u.id = o.usuario_id
     LEFT JOIN aquisicoes a ON a.oficio_id = o.id
     LEFT JOIN fornecedores f ON f.id = a.fornecedor_id
-    LEFT JOIN itens_aquisicao ia ON ia.aquisicao_id = a.id
+
     WHERE o.id = ?
-    GROUP BY o.id, o.numero, o.justificativa, o.status, o.criado_em, s.nome, u.nome, f.nome
     LIMIT 1
 ";
 
@@ -440,7 +447,7 @@ include 'views/layout/header.php';
 
             <div class="info-card">
                 <p class="info-label">Quantidade Total</p>
-                <p class="info-value"><?php echo number_format($totalQuantidade, 2, ',', '.'); ?></p>
+                <p class="info-value"><?php echo number_format((int)$totalQuantidade, 0, ',', '.'); ?></p>
             </div>
 
             <div class="info-card">
@@ -469,7 +476,7 @@ include 'views/layout/header.php';
                             <?php foreach ($itens as $item): ?>
                                 <tr>
                                     <td class="produto-name text-nowrap"><?php echo h($item['produto']); ?></td>
-                                    <td class="text-right text-nowrap"><?php echo number_format((float)$item['quantidade'], 2, ',', '.'); ?></td>
+                                    <td class="text-right text-nowrap"><?php echo number_format((int)$item['quantidade'], 0, ',', '.'); ?></td>
                                     <td class="text-nowrap"><?php echo h($item['unidade'] ?: 'UN'); ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -485,7 +492,8 @@ include 'views/layout/header.php';
                         <tfoot>
                             <tr class="tfoot-row">
                                 <td>TOTAL</td>
-                                <td class="text-right"><?php echo number_format($totalQuantidade, 2, ',', '.'); ?></td>
+                                <td class="text-right"><?php echo number_format((int)$totalQuantidade, 0, ',', '.'); ?>
+                                </td>
                                 <td>-</td>
                             </tr>
                         </tfoot>
