@@ -225,7 +225,7 @@ if (!isset($_SESSION['usuario_id'])) {
 <script>
     window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
 </script>
-<script src="assets/js/script.js?v=61"></script>
+<script src="assets/js/script.js?v=62"></script>
 <script>
     let todosProcessos = [];
     
