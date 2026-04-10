@@ -369,7 +369,7 @@ include 'views/layout/header.php';
                                 <tr>
                                     <td class="oficio-number text-nowrap"><?php echo h($of['numero']); ?></td>
                                     <td class="text-nowrap"><?php echo h($of['fornecedor']); ?></td>
-                                    <td class="text-right text-nowrap"><?php echo number_format((float)$of['quantidade_total'], 2, ',', '.'); ?></td>
+                                    <td class="text-right text-nowrap"><?php echo number_format((int)$of['quantidade_total'], 0, ',', '.'); ?></td>
                                     <td class="text-right text-nowrap">
                                         <span class="badge-money"><?php echo format_money($of['valor_total']); ?></span>
                                     </td>
