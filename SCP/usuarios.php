@@ -299,6 +299,9 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
         }
     });
 </script>
-<script src="assets/js/script.js"></script>
+<script>
+    window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
+</script>
+<script src="assets/js/script.js?v=61"></script>
 </body>
 </html>
