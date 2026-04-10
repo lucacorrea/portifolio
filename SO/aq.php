@@ -183,7 +183,7 @@ $dataAtualBr  = date('d / m / Y');
         .ordem-logo-box {
             width: 180px;
             height: 78px;
-            border: 1.5px solid #000;
+           
             display: flex;
             align-items: center;
             justify-content: center;
@@ -598,7 +598,7 @@ $dataAtualBr  = date('d / m / Y');
             <div class="card-body">
                 <div class="ordem-header">
                     <div class="ordem-logo">
-                        <div class="ordem-logo-box">LOGO / BRASÃO</div>
+                        <div class="ordem-logo-box"><img src="./assets/img/prefeitura.jpg" alt="LOGO / BRASÃO"></div>
                     </div>
 
                     <div class="ordem-center">
@@ -709,7 +709,7 @@ $dataAtualBr  = date('d / m / Y');
             <div class="card-body">
                 <div class="ordem-header">
                     <div class="ordem-logo">
-                        <div class="ordem-logo-box">LOGO / BRASÃO</div>
+                        <div class="ordem-logo-box"><img src="./assets/img/prefeitura.jpg" alt=""></div>
                     </div>
 
                     <div class="ordem-center">
