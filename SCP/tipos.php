@@ -156,7 +156,7 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
 </main>
 
-<script src="assets/js/script.js?v=9"></script>
+<script src="assets/js/script.js?v=10"></script>
 <script>
     let todosProcessos = [];
     
@@ -188,7 +188,16 @@ if (!isset($_SESSION['usuario_id'])) {
 
     async function carregarProcessosTipos() {
         const resp = await fetch('api.php?acao=listar');
-        todosProcessos = await resp.json();
+        let dados = await resp.json();
+
+        // Ordenação inteligente: Data de Ciência decrescente
+        dados.sort((a, b) => {
+            if (!a.data_ciencia) return 1;
+            if (!b.data_ciencia) return -1;
+            return new Date(b.data_ciencia) - new Date(a.data_ciencia);
+        });
+
+        todosProcessos = dados;
         
         renderTabelaTipos('CIÊNCIA', 'lista-ciencia', 'filtro-ciencia', 'paginacao-ciencia', stateCiencia);
         renderTabelaTipos('CUMPRIMENTO', 'lista-cumprimento', 'filtro-cumprimento', 'paginacao-cumprimento', stateCumprimento);
@@ -238,7 +247,17 @@ if (!isset($_SESSION['usuario_id'])) {
                     ${window.formatarData(p.final_prazo)}
                 </td>
                 <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
-                <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
+                <td>
+                    <span class="badge badge-${p.status.toLowerCase().trim()}">${p.status.trim()}</span>
+                    ${p.status.toUpperCase().trim() === 'PROTOCOLADO' ? `
+                        <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
+                            ${(p.data_protocolo || p.protocolista || p.peticionador) ? `
+                                <i class="fas fa-calendar-check" style="color: var(--status-protocolado);"></i> ${window.formatarData(p.data_protocolo)}<br>
+                                <i class="fas fa-user-edit" style="color: var(--status-protocolado);"></i> ${p.protocolista || p.peticionador || 'N/A'}
+                            ` : `<i class="fas fa-info-circle"></i> Sem registro de detalhes`}
+                        </div>
+                    ` : ''}
+                </td>
                 <td>
                     <div class="dropdown">
                         <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
