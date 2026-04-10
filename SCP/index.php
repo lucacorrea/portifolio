@@ -202,6 +202,9 @@ if (!isset($_SESSION['usuario_id'])) {
         </div>
     </div>
 
-    <script src="assets/js/script.js?v=50"></script>
+    <script>
+    window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
+</script>
+<script src="assets/js/script.js?v=61"></script>
 </body>
 </html>
