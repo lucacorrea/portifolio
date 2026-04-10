@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 date_default_timezone_set('America/Sao_Paulo');
@@ -7,6 +8,7 @@ $dataAtualBr  = date('d / m / Y');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -70,7 +72,7 @@ $dataAtualBr  = date('d / m / Y');
         .printable-page {
             background: #fff;
             border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.07);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
             border: 1px solid #e5e7eb;
         }
 
@@ -120,9 +122,17 @@ $dataAtualBr  = date('d / m / Y');
             resize: vertical;
         }
 
-        .span-2 { grid-column: span 2; }
-        .span-3 { grid-column: span 3; }
-        .span-4 { grid-column: span 4; }
+        .span-2 {
+            grid-column: span 2;
+        }
+
+        .span-3 {
+            grid-column: span 3;
+        }
+
+        .span-4 {
+            grid-column: span 4;
+        }
 
         .items-box {
             margin-top: 18px;
@@ -183,7 +193,7 @@ $dataAtualBr  = date('d / m / Y');
         .ordem-logo-box {
             width: 180px;
             height: 78px;
-           
+
             display: flex;
             align-items: center;
             justify-content: center;
@@ -356,7 +366,7 @@ $dataAtualBr  = date('d / m / Y');
 
             .ordem-right,
             .ordem-logo,
-            .ordem-header > div:first-child {
+            .ordem-header>div:first-child {
                 text-align: center;
                 justify-self: center;
                 margin-right: 0;
@@ -532,321 +542,330 @@ $dataAtualBr  = date('d / m / Y');
         }
     </style>
 </head>
+
 <body>
-<div class="container">
+    <div class="container">
 
-    <div class="topbar no-print">
-        <button class="btn btn-primary" onclick="adicionarItem()">+ Adicionar item</button>
-        <button class="btn btn-success" onclick="window.print()">Imprimir / Salvar em PDF</button>
-        <button class="btn btn-secondary" onclick="limparFormulario()">Limpar tudo</button>
-    </div>
-
-    <div class="form-card no-print">
-        <h2 class="form-title">Preencher Ordem de Aquisição</h2>
-
-        <div class="grid">
-            <div class="field">
-                <label>Número da ordem</label>
-                <input type="text" id="numero_aq" placeholder="Ex: AQ-001/2026" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field">
-                <label>Referência / Ofício</label>
-                <input type="text" id="oficio_num" placeholder="Ex: OF-023/2026" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field span-2">
-                <label>Fornecedor</label>
-                <input type="text" id="fornecedor" placeholder="Nome do fornecedor" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field">
-                <label>CNPJ do fornecedor</label>
-                <input type="text" id="fornecedor_cnpj" placeholder="00.000.000/0001-00" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field">
-                <label>Contato do fornecedor</label>
-                <input type="text" id="fornecedor_contato" placeholder="Telefone / responsável" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field span-2">
-                <label>Secretaria / Destino</label>
-                <input type="text" id="secretaria" placeholder="Ex: Secretaria Municipal de Saúde" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field span-2">
-                <label>Responsável</label>
-                <input type="text" id="sec_responsavel" placeholder="Nome do responsável" oninput="atualizarPreview()">
-            </div>
-
-            <div class="field span-4">
-                <label>Texto da observação da via do fornecedor</label>
-                <textarea id="texto_entrega" oninput="atualizarPreview()">No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.</textarea>
-            </div>
-        </div>
-
-        <div class="items-box">
-
-            <h3 class="items-title">Itens da aquisição</h3>
+        <div class="topbar no-print">
             <button class="btn btn-primary" onclick="adicionarItem()">+ Adicionar item</button>
-            <div id="itens-formulario"></div>
+            <button class="btn btn-success" onclick="window.print()">Imprimir / Salvar em PDF</button>
+            <button class="btn btn-secondary" onclick="limparFormulario()">Limpar tudo</button>
         </div>
-    </div>
 
-    <div class="print-doc">
+        <div class="form-card no-print">
+            <h2 class="form-title">Preencher Ordem de Aquisição</h2>
 
-        <div class="printable-page">
-            <div class="card-body">
-                <div class="ordem-header">
-                    <div class="ordem-logo">
-                        <div class="ordem-logo-box"><img src="./assets/img/prefeitura.jpg" alt="LOGO / BRASÃO"></div>
-                    </div>
-
-                    <div class="ordem-center">
-                        <h1 id="pv_orgao_nome_1" style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                            PREFEITURA MUNICIPAL DE COARI
-                        </h1>
-                        <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                            ORDEM DE AQUISIÇÃO E SUPRIMENTOS
-                        </h2>
-                        <div id="pv_orgao_meta_1" style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                            COARI - AM | CNPJ: 04.262.432/0001-21
-                        </div>
-                    </div>
-
-                    <div class="ordem-right">
-                        <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
-                            Via Administrativa
-                        </div>
-                        <div class="ordem-right-box">
-                            <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
-                            <div id="pv_numero_1" style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">000</div>
-                        </div>
-                        <div id="pv_datahora_1" style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                            DATA: <?php echo $dataAtualBr; ?>
-                        </div>
-                        <div style="margin-top:8px; font-size:0.72rem; line-height:1.4;">
-                            <strong>CNPJ Fornecedor:</strong> <span id="pv_cnpj_fornecedor_1">-</span><br>
-                            <strong>Contato:</strong> <span id="pv_contato_fornecedor_1">-</span>
-                        </div>
-                    </div>
+            <div class="grid">
+                <div class="field">
+                    <label>Número da ordem</label>
+                    <input type="text" id="numero_aq" placeholder="Ex: AQ-001/2026" oninput="atualizarPreview()">
                 </div>
 
-                <div class="ordem-info-wrap">
-                    <table class="ordem-info-table">
-                        <tr>
-                            <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                            <td id="pv_fornecedor_1" style="font-weight: 700;">-</td>
-                            <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                            <td id="pv_data_1" style="width: 20%; font-weight: 700;"><?php echo $dataAtualBr; ?></td>
-                        </tr>
-                        <tr>
-                            <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
-                            <td id="pv_secretaria_1" style="font-weight: 700;">-</td>
-                            <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
-                            <td id="pv_oficio_1" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
-                        </tr>
-                        <tr>
-                            <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Responsável:</td>
-                            <td id="pv_responsavel_1" style="font-weight: 700;">-</td>
-                            <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Número da Aquisição:</td>
-                            <td id="pv_numero_full_1" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
-                        </tr>
-                    </table>
+                <div class="field">
+                    <label>Referência / Ofício</label>
+                    <input type="text" id="oficio_num" placeholder="Ex: OF-023/2026" oninput="atualizarPreview()">
                 </div>
 
-                <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
-
-                <div class="ordem-items-wrap">
-                    <table class="ordem-items-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align: center; width: 40px;">Item</th>
-                                <th style="text-align: center; width: 50px;">Unid.</th>
-                                <th style="text-align: center; width: 60px;">Qtd</th>
-                                <th style="text-align: left;">Especificação Completa</th>
-                                <th style="text-align: right; width: 110px;">Preço Unitário</th>
-                                <th style="text-align: right; width: 110px;">Valor Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="preview_itens_1">
-                            <tr><td colspan="6" class="empty-note">Nenhum item adicionado.</td></tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="5" style="text-align: right; font-weight: 800; font-size: 0.875rem; text-transform: uppercase;">
-                                    Valor Total R$
-                                </td>
-                                <td id="preview_total_1" style="text-align: right; font-weight: 900; font-size: 0.9375rem;">
-                                    R$ 0,00
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                <div class="field span-2">
+                    <label>Fornecedor</label>
+                    <input type="text" id="fornecedor" placeholder="Nome do fornecedor" oninput="atualizarPreview()">
                 </div>
 
-                <div class="assinaturas-grid">
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Autorização de Saída
+                <div class="field">
+                    <label>CNPJ do fornecedor</label>
+                    <input type="text" id="fornecedor_cnpj" placeholder="00.000.000/0001-00" oninput="atualizarPreview()">
+                </div>
+
+                <div class="field">
+                    <label>Contato do fornecedor</label>
+                    <input type="text" id="fornecedor_contato" placeholder="Telefone / responsável" oninput="atualizarPreview()">
+                </div>
+
+                <div class="field span-2">
+                    <label>Secretaria / Destino</label>
+                    <input type="text" id="secretaria" placeholder="Ex: Secretaria Municipal de Saúde" oninput="atualizarPreview()">
+                </div>
+
+                <div class="field span-2">
+                    <label>Responsável</label>
+                    <input type="text" id="sec_responsavel" placeholder="Nome do responsável" oninput="atualizarPreview()">
+                </div>
+
+                <div class="field span-4">
+                    <label>Texto da observação da via do fornecedor</label>
+                    <textarea id="texto_entrega" oninput="atualizarPreview()">No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.</textarea>
+                </div>
+            </div>
+
+            <div class="items-box">
+
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <h3 class="items-title" style="margin:0;">Itens da aquisição</h3>
+                    <button class="btn btn-primary" onclick="adicionarItem()">+ Adicionar item</button>
+                </div>
+
+                <div id="itens-formulario"></div>
+
+            </div>
+        </div>
+
+        <div class="print-doc">
+
+            <div class="printable-page">
+                <div class="card-body">
+                    <div class="ordem-header">
+                        <div class="ordem-logo">
+                            <div class="ordem-logo-box"><img src="./assets/img/prefeitura.jpg" alt="LOGO / BRASÃO"></div>
+                        </div>
+
+                        <div class="ordem-center">
+                            <h1 id="pv_orgao_nome_1" style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                                PREFEITURA MUNICIPAL DE COARI
+                            </h1>
+                            <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                                ORDEM DE AQUISIÇÃO E SUPRIMENTOS
+                            </h2>
+                            <div id="pv_orgao_meta_1" style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
+                                COARI - AM | CNPJ: 04.262.432/0001-21
+                            </div>
+                        </div>
+
+                        <div class="ordem-right">
+                            <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
+                                Via Administrativa
+                            </div>
+                            <div class="ordem-right-box">
+                                <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
+                                <div id="pv_numero_1" style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">000</div>
+                            </div>
+                            <div id="pv_datahora_1" style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
+                                DATA: <?php echo $dataAtualBr; ?>
+                            </div>
+                            <div style="margin-top:8px; font-size:0.72rem; line-height:1.4;">
+                                <strong>CNPJ Fornecedor:</strong> <span id="pv_cnpj_fornecedor_1">-</span><br>
+                                <strong>Contato:</strong> <span id="pv_contato_fornecedor_1">-</span>
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Assinatura e Carimbo
+
+                    <div class="ordem-info-wrap">
+                        <table class="ordem-info-table">
+                            <tr>
+                                <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
+                                <td id="pv_fornecedor_1" style="font-weight: 700;">-</td>
+                                <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
+                                <td id="pv_data_1" style="width: 20%; font-weight: 700;"><?php echo $dataAtualBr; ?></td>
+                            </tr>
+                            <tr>
+                                <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+                                <td id="pv_secretaria_1" style="font-weight: 700;">-</td>
+                                <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
+                                <td id="pv_oficio_1" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
+                            </tr>
+                            <tr>
+                                <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Responsável:</td>
+                                <td id="pv_responsavel_1" style="font-weight: 700;">-</td>
+                                <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Número da Aquisição:</td>
+                                <td id="pv_numero_full_1" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
+
+                    <div class="ordem-items-wrap">
+                        <table class="ordem-items-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center; width: 40px;">Item</th>
+                                    <th style="text-align: center; width: 50px;">Unid.</th>
+                                    <th style="text-align: center; width: 60px;">Qtd</th>
+                                    <th style="text-align: left;">Especificação Completa</th>
+                                    <th style="text-align: right; width: 110px;">Preço Unitário</th>
+                                    <th style="text-align: right; width: 110px;">Valor Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview_itens_1">
+                                <tr>
+                                    <td colspan="6" class="empty-note">Nenhum item adicionado.</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5" style="text-align: right; font-weight: 800; font-size: 0.875rem; text-transform: uppercase;">
+                                        Valor Total R$
+                                    </td>
+                                    <td id="preview_total_1" style="text-align: right; font-weight: 900; font-size: 0.9375rem;">
+                                        R$ 0,00
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="assinaturas-grid">
+                        <div>
+                            <div class="assinatura-linha">
+                                <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
+                                <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                    Autorização de Saída
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="assinatura-linha">
+                                <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                                <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                    Assinatura e Carimbo
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="printable-page">
-            <div class="card-body">
-                <div class="ordem-header">
-                    <div class="ordem-logo">
-                        <div class="ordem-logo-box"><img src="./assets/img/prefeitura.jpg" alt=""></div>
-                    </div>
-
-                    <div class="ordem-center">
-                        <h1 id="pv_orgao_nome_2" style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                            PREFEITURA MUNICIPAL DE COARI
-                        </h1>
-                        <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                            ORDEM DE AQUISIÇÃO E SUPRIMENTOS
-                        </h2>
-                        <div id="pv_orgao_meta_2" style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                            COARI - AM | CNPJ: 04.262.432/0001-21
+            <div class="printable-page">
+                <div class="card-body">
+                    <div class="ordem-header">
+                        <div class="ordem-logo">
+                            <div class="ordem-logo-box"><img src="./assets/img/prefeitura.jpg" alt=""></div>
                         </div>
-                    </div>
 
-                    <div class="ordem-right">
-                        <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
-                            Via Fornecedor
+                        <div class="ordem-center">
+                            <h1 id="pv_orgao_nome_2" style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                                PREFEITURA MUNICIPAL DE COARI
+                            </h1>
+                            <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                                ORDEM DE AQUISIÇÃO E SUPRIMENTOS
+                            </h2>
+                            <div id="pv_orgao_meta_2" style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
+                                COARI - AM | CNPJ: 04.262.432/0001-21
+                            </div>
                         </div>
-                        <div class="ordem-right-box">
-                            <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
-                            <div id="pv_numero_2" style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">000</div>
-                        </div>
-                        <div id="pv_datahora_2" style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                            DATA: <?php echo $dataAtualBr; ?>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="ordem-info-wrap">
-                    <table class="ordem-info-table">
-                        <tr>
-                            <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                            <td id="pv_fornecedor_2" style="font-weight: 700;">-</td>
-                            <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                            <td id="pv_data_2" style="width: 20%; font-weight: 700;"><?php echo $dataAtualBr; ?></td>
-                        </tr>
-                        <tr>
-                            <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
-                            <td id="pv_secretaria_2" style="font-weight: 700;">-</td>
-                            <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
-                            <td id="pv_oficio_2" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
-                        </tr>
-                    </table>
-                </div>
-
-                <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
-
-                <div class="ordem-items-wrap">
-                    <table class="ordem-items-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align: center; width: 40px;">Item</th>
-                                <th style="text-align: center; width: 50px;">Unid.</th>
-                                <th style="text-align: center; width: 60px;">Qtd</th>
-                                <th style="text-align: left;">Especificação Completa</th>
-                                <th style="text-align: right; width: 110px;">Preço Unitário</th>
-                                <th style="text-align: right; width: 110px;">Valor Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="preview_itens_2">
-                            <tr><td colspan="6" class="empty-note">Nenhum item adicionado.</td></tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="5" style="text-align: right; font-weight: 800; font-size: 0.875rem; text-transform: uppercase;">
-                                    Valor Total R$
-                                </td>
-                                <td id="preview_total_2" style="text-align: right; font-weight: 900; font-size: 0.9375rem;">
-                                    R$ 0,00
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                <p id="pv_texto_entrega" class="texto-entrega">
-                    No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável.
-                    Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada
-                    no setor administrativo/financeiro.
-                </p>
-
-                <div class="assinaturas-grid" style="margin-top: 4rem;">
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Autorização de Saída
+                        <div class="ordem-right">
+                            <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
+                                Via Fornecedor
+                            </div>
+                            <div class="ordem-right-box">
+                                <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
+                                <div id="pv_numero_2" style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">000</div>
+                            </div>
+                            <div id="pv_datahora_2" style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
+                                DATA: <?php echo $dataAtualBr; ?>
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Assinatura e Carimbo
+
+                    <div class="ordem-info-wrap">
+                        <table class="ordem-info-table">
+                            <tr>
+                                <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
+                                <td id="pv_fornecedor_2" style="font-weight: 700;">-</td>
+                                <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
+                                <td id="pv_data_2" style="width: 20%; font-weight: 700;"><?php echo $dataAtualBr; ?></td>
+                            </tr>
+                            <tr>
+                                <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+                                <td id="pv_secretaria_2" style="font-weight: 700;">-</td>
+                                <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
+                                <td id="pv_oficio_2" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
+
+                    <div class="ordem-items-wrap">
+                        <table class="ordem-items-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center; width: 40px;">Item</th>
+                                    <th style="text-align: center; width: 50px;">Unid.</th>
+                                    <th style="text-align: center; width: 60px;">Qtd</th>
+                                    <th style="text-align: left;">Especificação Completa</th>
+                                    <th style="text-align: right; width: 110px;">Preço Unitário</th>
+                                    <th style="text-align: right; width: 110px;">Valor Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview_itens_2">
+                                <tr>
+                                    <td colspan="6" class="empty-note">Nenhum item adicionado.</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5" style="text-align: right; font-weight: 800; font-size: 0.875rem; text-transform: uppercase;">
+                                        Valor Total R$
+                                    </td>
+                                    <td id="preview_total_2" style="text-align: right; font-weight: 900; font-size: 0.9375rem;">
+                                        R$ 0,00
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <p id="pv_texto_entrega" class="texto-entrega">
+                        No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável.
+                        Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada
+                        no setor administrativo/financeiro.
+                    </p>
+
+                    <div class="assinaturas-grid" style="margin-top: 4rem;">
+                        <div>
+                            <div class="assinatura-linha">
+                                <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
+                                <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                    Autorização de Saída
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="assinatura-linha">
+                                <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                                <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                    Assinatura e Carimbo
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
-
     </div>
-</div>
 
-<script>
-    const DATA_ATUAL_BR = <?php echo json_encode($dataAtualBr); ?>;
+    <script>
+        const DATA_ATUAL_BR = <?php echo json_encode($dataAtualBr); ?>;
 
-    let contadorItens = 0;
+        let contadorItens = 0;
 
-    function moedaBR(valor) {
-        return Number(valor || 0).toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        });
-    }
+        function moedaBR(valor) {
+            return Number(valor || 0).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            });
+        }
 
-    function maiusculo(texto) {
-        return (texto || '-').toUpperCase();
-    }
+        function maiusculo(texto) {
+            return (texto || '-').toUpperCase();
+        }
 
-    function valor(id) {
-        const el = document.getElementById(id);
-        return el ? el.value.trim() : '';
-    }
+        function valor(id) {
+            const el = document.getElementById(id);
+            return el ? el.value.trim() : '';
+        }
 
-    function adicionarItem(item = {}) {
-        contadorItens++;
+        function adicionarItem(item = {}) {
+            contadorItens++;
 
-        const container = document.getElementById('itens-formulario');
-        const row = document.createElement('div');
-        row.className = 'item-row';
-        row.dataset.item = contadorItens;
+            const container = document.getElementById('itens-formulario');
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.dataset.item = contadorItens;
 
-        row.innerHTML = `
+            row.innerHTML = `
             <div class="field">
                 <label>Unid.</label>
                 <input type="text" value="${item.unidade || 'UN'}" oninput="atualizarPreview()">
@@ -872,61 +891,61 @@ $dataAtualBr  = date('d / m / Y');
             </div>
         `;
 
-        container.appendChild(row);
-        atualizarPreview();
-    }
-
-    function removerItem(botao) {
-        const row = botao.closest('.item-row');
-        row.remove();
-        atualizarPreview();
-    }
-
-    function coletarItens() {
-        const rows = document.querySelectorAll('.item-row');
-        const itens = [];
-
-        rows.forEach((row) => {
-            const inputs = row.querySelectorAll('input');
-            const unidade = (inputs[0].value || 'UN').trim();
-            const quantidade = parseFloat(inputs[1].value || 0);
-            const produto = (inputs[2].value || '').trim();
-            const valorUnitario = parseFloat(inputs[3].value || 0);
-            const total = quantidade * valorUnitario;
-
-            inputs[4].value = moedaBR(total);
-
-            if (produto !== '' || quantidade > 0 || valorUnitario > 0) {
-                itens.push({
-                    unidade,
-                    quantidade,
-                    produto,
-                    valorUnitario,
-                    total
-                });
-            }
-        });
-
-        return itens;
-    }
-
-    function renderItensPreview(tbodyId, totalId) {
-        const tbody = document.getElementById(tbodyId);
-        const totalEl = document.getElementById(totalId);
-        const itens = coletarItens();
-
-        if (!itens.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="empty-note">Nenhum item adicionado.</td></tr>`;
-            totalEl.textContent = 'R$ 0,00';
-            return;
+            container.appendChild(row);
+            atualizarPreview();
         }
 
-        let html = '';
-        let soma = 0;
+        function removerItem(botao) {
+            const row = botao.closest('.item-row');
+            row.remove();
+            atualizarPreview();
+        }
 
-        itens.forEach((item, index) => {
-            soma += item.total;
-            html += `
+        function coletarItens() {
+            const rows = document.querySelectorAll('.item-row');
+            const itens = [];
+
+            rows.forEach((row) => {
+                const inputs = row.querySelectorAll('input');
+                const unidade = (inputs[0].value || 'UN').trim();
+                const quantidade = parseFloat(inputs[1].value || 0);
+                const produto = (inputs[2].value || '').trim();
+                const valorUnitario = parseFloat(inputs[3].value || 0);
+                const total = quantidade * valorUnitario;
+
+                inputs[4].value = moedaBR(total);
+
+                if (produto !== '' || quantidade > 0 || valorUnitario > 0) {
+                    itens.push({
+                        unidade,
+                        quantidade,
+                        produto,
+                        valorUnitario,
+                        total
+                    });
+                }
+            });
+
+            return itens;
+        }
+
+        function renderItensPreview(tbodyId, totalId) {
+            const tbody = document.getElementById(tbodyId);
+            const totalEl = document.getElementById(totalId);
+            const itens = coletarItens();
+
+            if (!itens.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-note">Nenhum item adicionado.</td></tr>`;
+                totalEl.textContent = 'R$ 0,00';
+                return;
+            }
+
+            let html = '';
+            let soma = 0;
+
+            itens.forEach((item, index) => {
+                soma += item.total;
+                html += `
                 <tr>
                     <td class="text-center" style="font-weight:700;">${String(index + 1).padStart(2, '0')}</td>
                     <td class="text-center" style="font-weight:600;">${item.unidade || 'UN'}</td>
@@ -936,70 +955,71 @@ $dataAtualBr  = date('d / m / Y');
                     <td class="text-right" style="font-weight:700;">${moedaBR(item.total)}</td>
                 </tr>
             `;
-        });
+            });
 
-        tbody.innerHTML = html;
-        totalEl.textContent = moedaBR(soma);
-    }
+            tbody.innerHTML = html;
+            totalEl.textContent = moedaBR(soma);
+        }
 
-    function atualizarPreview() {
-        const numeroAq = valor('numero_aq') || '000';
-        const numeroCurto = numeroAq.replace('AQ-', '').replace('aq-', '');
-        const fornecedor = maiusculo(valor('fornecedor'));
-        const secretaria = maiusculo(valor('secretaria'));
-        const oficio = valor('oficio_num') || '-';
-        const responsavel = maiusculo(valor('sec_responsavel'));
-        const fornecedorCnpj = valor('fornecedor_cnpj') || '-';
-        const fornecedorContato = valor('fornecedor_contato') || '-';
-        const textoEntrega = valor('texto_entrega') || '-';
+        function atualizarPreview() {
+            const numeroAq = valor('numero_aq') || '000';
+            const numeroCurto = numeroAq.replace('AQ-', '').replace('aq-', '');
+            const fornecedor = maiusculo(valor('fornecedor'));
+            const secretaria = maiusculo(valor('secretaria'));
+            const oficio = valor('oficio_num') || '-';
+            const responsavel = maiusculo(valor('sec_responsavel'));
+            const fornecedorCnpj = valor('fornecedor_cnpj') || '-';
+            const fornecedorContato = valor('fornecedor_contato') || '-';
+            const textoEntrega = valor('texto_entrega') || '-';
 
-        document.getElementById('pv_numero_1').textContent = numeroCurto;
-        document.getElementById('pv_numero_2').textContent = numeroCurto;
+            document.getElementById('pv_numero_1').textContent = numeroCurto;
+            document.getElementById('pv_numero_2').textContent = numeroCurto;
 
-        document.getElementById('pv_numero_full_1').textContent = numeroAq;
+            document.getElementById('pv_numero_full_1').textContent = numeroAq;
 
-        document.getElementById('pv_datahora_1').textContent = `DATA: ${DATA_ATUAL_BR}`;
-        document.getElementById('pv_datahora_2').textContent = `DATA: ${DATA_ATUAL_BR}`;
+            document.getElementById('pv_datahora_1').textContent = `DATA: ${DATA_ATUAL_BR}`;
+            document.getElementById('pv_datahora_2').textContent = `DATA: ${DATA_ATUAL_BR}`;
 
-        document.getElementById('pv_data_1').textContent = DATA_ATUAL_BR;
-        document.getElementById('pv_data_2').textContent = DATA_ATUAL_BR;
+            document.getElementById('pv_data_1').textContent = DATA_ATUAL_BR;
+            document.getElementById('pv_data_2').textContent = DATA_ATUAL_BR;
 
-        document.getElementById('pv_fornecedor_1').textContent = fornecedor;
-        document.getElementById('pv_fornecedor_2').textContent = fornecedor;
+            document.getElementById('pv_fornecedor_1').textContent = fornecedor;
+            document.getElementById('pv_fornecedor_2').textContent = fornecedor;
 
-        document.getElementById('pv_secretaria_1').textContent = secretaria;
-        document.getElementById('pv_secretaria_2').textContent = secretaria;
+            document.getElementById('pv_secretaria_1').textContent = secretaria;
+            document.getElementById('pv_secretaria_2').textContent = secretaria;
 
-        document.getElementById('pv_oficio_1').textContent = oficio;
-        document.getElementById('pv_oficio_2').textContent = oficio;
+            document.getElementById('pv_oficio_1').textContent = oficio;
+            document.getElementById('pv_oficio_2').textContent = oficio;
 
-        document.getElementById('pv_responsavel_1').textContent = responsavel;
+            document.getElementById('pv_responsavel_1').textContent = responsavel;
 
-        document.getElementById('pv_cnpj_fornecedor_1').textContent = fornecedorCnpj;
-        document.getElementById('pv_contato_fornecedor_1').textContent = fornecedorContato;
+            document.getElementById('pv_cnpj_fornecedor_1').textContent = fornecedorCnpj;
+            document.getElementById('pv_contato_fornecedor_1').textContent = fornecedorContato;
 
-        document.getElementById('pv_texto_entrega').textContent = textoEntrega;
+            document.getElementById('pv_texto_entrega').textContent = textoEntrega;
 
-        renderItensPreview('preview_itens_1', 'preview_total_1');
-        renderItensPreview('preview_itens_2', 'preview_total_2');
-    }
+            renderItensPreview('preview_itens_1', 'preview_total_1');
+            renderItensPreview('preview_itens_2', 'preview_total_2');
+        }
 
-    function limparFormulario() {
-        document.querySelectorAll('input, textarea').forEach((el) => {
-            if (el.type === 'button' || el.type === 'submit' || el.readOnly) return;
-            el.value = '';
-        });
+        function limparFormulario() {
+            document.querySelectorAll('input, textarea').forEach((el) => {
+                if (el.type === 'button' || el.type === 'submit' || el.readOnly) return;
+                el.value = '';
+            });
 
-        document.getElementById('texto_entrega').value = 'No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.';
+            document.getElementById('texto_entrega').value = 'No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.';
 
-        document.getElementById('itens-formulario').innerHTML = '';
-        contadorItens = 0;
+            document.getElementById('itens-formulario').innerHTML = '';
+            contadorItens = 0;
+            adicionarItem();
+            atualizarPreview();
+        }
+
         adicionarItem();
         atualizarPreview();
-    }
-
-    adicionarItem();
-    atualizarPreview();
-</script>
+    </script>
 </body>
+
 </html>
