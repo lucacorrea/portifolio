@@ -140,6 +140,8 @@ if (!isset($_SESSION['usuario_id'])) {
                     <option value="">Tipo (Todos)</option>
                     <option value="CIÊNCIA">Ciência</option>
                     <option value="CUMPRIMENTO">Cumprimento</option>
+                    <option value="RECURSO - CIÊNCIA">Recurso - Ciência</option>
+                    <option value="RECURSO - CUMPRIMENTO">Recurso - Cumprimento</option>
                 </select>
 
                 <select id="filtro-status" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">

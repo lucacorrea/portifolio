@@ -172,6 +172,8 @@ if (!isset($_SESSION['usuario_id'])) {
                     <option value="">Tipos (Todos)</option>
                     <option value="CIÊNCIA">Ciência</option>
                     <option value="CUMPRIMENTO">Cumprimento</option>
+                    <option value="RECURSO - CIÊNCIA">Recurso - Ciência</option>
+                    <option value="RECURSO - CUMPRIMENTO">Recurso - Cumprimento</option>
                 </select>
                 <div style="position: relative;">
                     <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
