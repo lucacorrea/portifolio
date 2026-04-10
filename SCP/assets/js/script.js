@@ -4,50 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const nomeAnalisadorExibicao = document.getElementById('nome-analisador');
     const toggleMeusPrazos = document.getElementById('filtro-meus-prazos');
     let filtroUsuarioAtivo = false;
-    let abaAnalisadorAtiva = 'TODOS';
-
-    function renderizarAbasAnalisadores() {
-        const container = document.getElementById('tabs-analisadores');
-        if (!container) return;
-        container.innerHTML = '';
-
-        // Coletar analisadores únicos com processos
-        const analisadores = [...new Set(
-            dadosOriginais
-                .map(p => (p.analisador || '').trim())
-                .filter(a => a)
-        )].sort();
-
-        if (analisadores.length === 0) return;
-
-        // Aba "Todos"
-        const totalGeral = dadosOriginais.length;
-        const btnTodos = document.createElement('button');
-        btnTodos.className = 'tab-btn-analisador active';
-        btnTodos.dataset.analisador = 'TODOS';
-        btnTodos.innerHTML = `<i class="fas fa-users"></i> Todos <span class="tab-count">${totalGeral}</span>`;
-        btnTodos.onclick = () => { abaAnalisadorAtiva = 'TODOS'; atualizarAbaAtiva(btnTodos); renderizarTabela(); };
-        container.appendChild(btnTodos);
-
-        // Uma aba por analisador
-        analisadores.forEach(nome => {
-            const count = dadosOriginais.filter(p => (p.analisador || '').trim() === nome).length;
-            const btn = document.createElement('button');
-            btn.className = 'tab-btn-analisador';
-            btn.dataset.analisador = nome;
-            btn.innerHTML = `<i class="fas fa-user"></i> ${nome} <span class="tab-count">${count}</span>`;
-            btn.onclick = () => { abaAnalisadorAtiva = nome; atualizarAbaAtiva(btn); renderizarTabela(); };
-            container.appendChild(btn);
-        });
-    }
-
-    function atualizarAbaAtiva(btnClicado) {
-        const container = document.getElementById('tabs-analisadores');
-        if (!container) return;
-        container.querySelectorAll('.tab-btn-analisador').forEach(b => b.classList.remove('active'));
-        btnClicado.classList.add('active');
-        paginaAtual = 1;
-    }
     let dadosOriginais = [];
     let paginaAtual = 1;
     const itensPorPagina = 10;
@@ -287,7 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const hoje_str = new Date().toISOString().split('T')[0];
         if (totalHoje) totalHoje.textContent = dadosOriginais.filter(p => p.final_prazo === hoje_str).length;
  
-        renderizarAbasAnalisadores();
         renderizarPrioridade();
         renderizarTabela();
     }
@@ -415,11 +370,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filtroUsuarioAtivo) {
             const meuNome = (nomeAnalisadorExibicao.textContent || '').trim().toLowerCase();
             filtrados = filtrados.filter(p => (p.analisador || '').trim().toLowerCase() === meuNome);
-        }
-
-        // Filtro por aba de analisador
-        if (abaAnalisadorAtiva && abaAnalisadorAtiva !== 'TODOS') {
-            filtrados = filtrados.filter(p => (p.analisador || '').trim() === abaAnalisadorAtiva);
         }
 
         // Paginação

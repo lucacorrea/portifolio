@@ -98,9 +98,6 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 
     <section class="data-section">
-        <div id="tabs-analisadores" class="tabs-analisadores">
-            <!-- Gerado via JS -->
-        </div>
         <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="font-size: 1.25rem; margin: 0;">Lista de Processos</h2>
@@ -163,6 +160,6 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=11"></script>
+<script src="assets/js/script.js?v=10"></script>
 </body>
 </html>

@@ -106,63 +106,6 @@
 .btn-quick.protocolar { color: #10b981; border-color: #10b9811a; }
 .btn-quick.protocolar:hover { background: #10b9811a; }
 
-/* ===================== */
-/* Abas de Analisadores  */
-/* ===================== */
-.tabs-analisadores {
-    display: flex;
-    gap: 0.5rem;
-    overflow-x: auto;
-    padding: 0.25rem 0.1rem 0.5rem;
-    margin-bottom: 1.25rem;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-.tabs-analisadores::-webkit-scrollbar { display: none; }
-
-.tab-btn-analisador {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 50px;
-    border: 1.5px solid var(--border);
-    background: white;
-    color: var(--text-muted);
-    font-weight: 600;
-    font-size: 0.82rem;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    letter-spacing: 0.02em;
-}
-.tab-btn-analisador:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    background: rgba(37, 99, 235, 0.04);
-    transform: translateY(-1px);
-}
-.tab-btn-analisador.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
-    transform: translateY(-1px);
-}
-.tab-btn-analisador .tab-count {
-    background: rgba(0,0,0,0.12);
-    border-radius: 20px;
-    padding: 1px 7px;
-    font-size: 0.72rem;
-    font-weight: 800;
-    min-width: 20px;
-    text-align: center;
-    transition: background 0.25s;
-}
-.tab-btn-analisador.active .tab-count {
-    background: rgba(255,255,255,0.25);
-}
-
 * {
     margin: 0;
     padding: 0;
