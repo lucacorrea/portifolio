@@ -25,7 +25,9 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
     <nav class="nav-links">
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
+        <?php if ($_SESSION['usuario_perfil'] !== 'ACESSORES'): ?>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
+        <?php endif; ?>
         <a href="prazos.php" class="nav-link active"><i class="fas fa-clock"></i> Prazos</a>
         <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>

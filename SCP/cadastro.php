@@ -1,8 +1,8 @@
 <?php
 ob_start();
 session_start();
-if (!isset($_SESSION['usuario_id'])) {
-    header('Location: login.php');
+if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORES') {
+    header('Location: index.php');
     exit;
 }
 ?>
