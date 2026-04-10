@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const listTable = document.getElementById('lista-processos');
     const formProcesso = document.getElementById('form-processo');
     const nomeAnalisadorExibicao = document.getElementById('nome-analisador');
-    let analisadorAtivo = null;
+    let analisadorAtivo = 'TODOS';
     let dadosOriginais = [];
     let paginaAtual = 1;
     const itensPorPagina = 10;
@@ -355,14 +355,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .map(a => String(a).toUpperCase())
             .sort();
         
-        // Determinar aba padrão (usuário logado ou "TODOS") caso ainda não tenha aba ativa
-        if (!analisadorAtivo) {
-            const meuNome = (nomeAnalisadorExibicao && nomeAnalisadorExibicao.textContent ? nomeAnalisadorExibicao.textContent.trim().toUpperCase() : '');
-            if (meuNome && analisadores.includes(meuNome)) {
-                analisadorAtivo = meuNome;
-            } else {
-                analisadorAtivo = 'TODOS';
-            }
+        // Determinar aba padrão caso ainda não tenha aba ativa
+        if (!analisadorAtivo || analisadorAtivo === 'null') {
+            analisadorAtivo = 'TODOS';
         }
 
         tabsContainer.innerHTML = '';
@@ -443,23 +438,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const classNat = window.getColorForNatureza(p.natureza);
             const classUser = window.getColorForUser(p.analisador);
 
+            const statusLimpo = (p.status || 'PENDENTE').toUpperCase().trim();
+            const statusClass = statusLimpo.toLowerCase();
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="font-weight: 600;">${p.numero}</td>
+                <td style="font-weight: 600;">${p.numero || '---'}</td>
                 <td style="font-weight: 600; color: #475569;">${p.tipo_processo || 'CIÊNCIA'}</td>
                 <td>
-                    <div class="tag-badge ${classAto}" style="margin-bottom: 4px;">${p.tipo_ato}</div>
+                    <div class="tag-badge ${classAto}" style="margin-bottom: 4px;">${p.tipo_ato || '---'}</div>
                     <br>
-                    <div class="tag-badge ${classNat}" style="margin-top: 2px;">${p.natureza}</div>
+                    <div class="tag-badge ${classNat}" style="margin-top: 2px;">${p.natureza || '---'}</div>
                 </td>
                 <td style="color: ${p.prazo_critico === 'SIM' ? 'red' : 'inherit'}; font-weight: bold;">
                     ${formatarData(p.final_prazo)}
                     ${p.prazo_critico === 'SIM' ? ' <i class="fas fa-exclamation-triangle"></i>' : ''}
                 </td>
-                <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
+                <td><span class="tag-badge ${classUser}">${p.analisador || 'N/A'}</span></td>
                 <td>
-                    <span class="badge badge-${p.status.toLowerCase().trim()}">${p.status.trim()}</span>
-                    ${p.status.toUpperCase().trim() === 'PROTOCOLADO' ? `
+                    <span class="badge badge-${statusClass}">${statusLimpo}</span>
+                    ${statusLimpo === 'PROTOCOLADO' ? `
                         <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
                             ${(p.data_protocolo || p.protocolista || p.peticionador) ? `
                                 <i class="fas fa-calendar-check" style="color: var(--status-protocolado);"></i> ${formatarData(p.data_protocolo)}<br>
