@@ -647,12 +647,7 @@ $dataAtualBr  = date('d / m / Y');
                                 <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
                                 <td id="pv_oficio_1" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
                             </tr>
-                            <tr>
-                                <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Responsável:</td>
-                                <td id="pv_responsavel_1" style="font-weight: 700;">-</td>
-                                <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Número da Aquisição:</td>
-                                <td id="pv_numero_full_1" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
-                            </tr>
+                      
                         </table>
                     </div>
 
