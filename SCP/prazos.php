@@ -192,6 +192,7 @@ if (!isset($_SESSION['usuario_id'])) {
                         <th>PRAZO FINAL</th>
                         <th>DIAS RESTANTES</th>
                         <th>ANALISADOR</th>
+                        <th>STATUS</th>
                         <th>AÇÕES</th>
                     </tr>
                 </thead>
@@ -352,7 +353,7 @@ if (!isset($_SESSION['usuario_id'])) {
             const paginados = filtrados.slice(inicio, fim);
 
             if (paginados.length === 0) {
-                listPrazos.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;">Nenhum prazo encontrado nesta categoria.</td></tr>';
+                listPrazos.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;">Nenhum prazo encontrado nesta categoria.</td></tr>';
                 renderizarPaginacao(0);
                 return;
             }
@@ -410,6 +411,15 @@ if (!isset($_SESSION['usuario_id'])) {
                     </td>
                     <td style="font-weight: 700; color: ${corPrazo};">${labelPrazo}</td>
                     <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
+                    <td>
+                        <span class="badge badge-${p.status.toLowerCase()}">${p.status}</span>
+                        ${p.status === 'PROTOCOLADO' ? `
+                            <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
+                                <i class="fas fa-calendar-check" style="color: var(--status-protocolado);"></i> ${formatarData(p.data_protocolo)}<br>
+                                <i class="fas fa-user-edit" style="color: var(--status-protocolado);"></i> ${p.protocolista || p.peticionador || 'N/A'}
+                            </div>
+                        ` : ''}
+                    </td>
                     <td>
                         <div class="dropdown">
                             <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">

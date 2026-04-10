@@ -217,7 +217,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function carregarProcessos() {
         const resp = await fetch('api.php?acao=listar');
-        dadosOriginais = await resp.json();
+        let dados = await resp.json();
+        
+        // Ordenação padrão: por Data de Ciência decrescente (mais recentes primeiro)
+        dados.sort((a, b) => {
+            if (!a.data_ciencia) return 1;
+            if (!b.data_ciencia) return -1;
+            return new Date(b.data_ciencia) - new Date(a.data_ciencia);
+        });
+
+        dadosOriginais = dados;
         
         if (!listTable) return;
         
@@ -391,7 +400,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${p.prazo_critico === 'SIM' ? ' <i class="fas fa-exclamation-triangle"></i>' : ''}
                 </td>
                 <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
-                <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
+                <td>
+                    <span class="badge badge-${p.status.toLowerCase()}">${p.status}</span>
+                    ${p.status === 'PROTOCOLADO' ? `
+                        <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
+                            <i class="fas fa-calendar-check" style="color: var(--status-protocolado);"></i> ${formatarData(p.data_protocolo)}<br>
+                            <i class="fas fa-user-edit" style="color: var(--status-protocolado);"></i> ${p.protocolista || p.peticionador || 'N/A'}
+                        </div>
+                    ` : ''}
+                </td>
                 <td>
                 <td>
                     <div class="dropdown">
