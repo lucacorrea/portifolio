@@ -12,8 +12,11 @@
     
     /* Cores de Status baseadas no print */
     --status-pendente: #ef4444;
+    --status-sendo-avaliado: #eab308;
+    --status-em-elaboracao: #f97316;
     --status-protocolado: #22c55e;
     --status-analisado: #3b82f6;
+    --status-finalizado: #1e293b;
     
     /* Cores de Tipos de Ato */
     --ato-despacho: #ec4899;
