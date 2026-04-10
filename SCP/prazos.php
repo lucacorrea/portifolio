@@ -540,15 +540,8 @@ if (!isset($_SESSION['usuario_id'])) {
     <!-- Modal de Detalhes -->
     <div id="modal-detalhes" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Detalhes do Processo</h2>
-                <button class="btn-quick" onclick="window.fecharModalDetalhes()"><i class="fas fa-times"></i></button>
-            </div>
             <div id="detalhes-conteudo">
                 <!-- Preenchido via JS -->
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="window.fecharModalDetalhes()">Fechar</button>
             </div>
         </div>
     </div>

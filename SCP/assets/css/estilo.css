@@ -710,71 +710,78 @@ input:focus, select:focus {
 }
 
 .details-grid {
-    display: table;
-    width: 100%;
-    border-collapse: collapse;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #f8fafc; /* fundo leve pra destacar as caixas */
 }
 
 .detail-section-title {
-    display: block;
-    width: 100%;
-    background: #f8fafc;
-    padding: 0.75rem 1.5rem;
-    font-size: 0.7rem;
-    font-weight: 800;
-    color: #475569;
+    grid-column: span 2;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #334155;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 1px solid #e1e8f0;
-    border-top: 1px solid #e1e8f0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #cbd5e1;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.detail-section-title:first-child {
+    margin-top: 0;
 }
 
 .detail-item {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 1rem;
     display: flex;
-    width: 100%;
-    border-bottom: 1px solid #f1f5f9;
+    flex-direction: column;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .detail-item.full-width {
-    flex-direction: column;
-    padding: 1rem 1.5rem;
+    grid-column: span 2;
 }
 
 .detail-label {
-    width: 35%;
-    min-width: 150px;
-    padding: 0.75rem 1.5rem;
-    background: #fcfdfe;
-    border-right: 1px solid #f1f5f9;
-    display: flex;
-    align-items: center;
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 700;
     color: #64748b;
-    margin-bottom: 0;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.detail-label i {
+    margin-right: 6px;
+    color: #94a3b8;
+    font-size: 0.8rem;
 }
 
 .detail-value {
-    flex: 1;
-    padding: 0.75rem 1.5rem;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    color: #1e293b;
-    display: flex;
-    align-items: center;
+    color: #0f172a;
 }
 
 .observation-box {
-    background: #fdfdfd;
+    background: #f8fafc;
     padding: 1rem;
     border-radius: 4px;
-    border: 1px solid #e2e8f0;
-    min-height: 100px;
-    font-size: 0.85rem;
-    line-height: 1.6;
-    color: #475569;
+    border: 1px dashed #cbd5e1;
+    min-height: 80px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #334155;
     margin-top: 0.5rem;
-    width: 100%;
 }
 
 .detail-pills {
