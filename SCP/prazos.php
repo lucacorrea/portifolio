@@ -164,8 +164,7 @@ if (!isset($_SESSION['usuario_id'])) {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
             <h2 id="section-title" style="font-size: 1.25rem;">Urgentes</h2>
             
-            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-            
+        
                 <select id="filtro-tipo-prazos" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
                     <option value="">Tipos (Todos)</option>
                     <option value="CIÊNCIA">Ciência</option>
