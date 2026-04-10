@@ -189,6 +189,6 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=11"></script>
+<script src="assets/js/script.js?v=12"></script>
 </body>
 </html>
