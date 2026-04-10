@@ -70,9 +70,12 @@
     justify-content: space-between;
     align-items: center;
 }
-.header-status-pendente, .header-status-em-elaboração { background: #dc2626; } 
+.header-status-pendente { background: #dc2626; } 
+.header-status-sendo-avaliado { background: #eab308; }
+.header-status-em-elaboração { background: #f97316; }
 .header-status-protocolado { background: #16a34a; }
 .header-status-analisado { background: #2563eb; }
+.header-status-processo-finalizado { background: #1e293b; }
 
 .detail-section-title {
     grid-column: span 2;
@@ -387,8 +390,11 @@ td:last-child {
 }
 
 .badge-pendente { background: #fee2e2; color: #ef4444; }
+.badge-sendo-avaliado { background: #fef9c3; color: #854d0e; }
+.badge-em-elaboração { background: #ffedd5; color: #ea580c; }
 .badge-protocolado { background: #dcfce7; color: #22c55e; }
 .badge-analisado { background: #dbeafe; color: #3b82f6; }
+.badge-processo-finalizado { background: #334155; color: white; }
 
 /* Buttons */
 .btn {
