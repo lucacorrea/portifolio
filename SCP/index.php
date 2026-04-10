@@ -99,11 +99,15 @@ if (!isset($_SESSION['usuario_id'])) {
 
     <section class="data-section">
         <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h2 style="font-size: 1.25rem; margin: 0;">Lista de Processos</h2>
                 <div id="filtro-meus-prazos" class="filter-toggle" title="Mostrar apenas os meus processos" style="padding: 0.45rem 1rem; font-size: 0.85rem; height: fit-content;">
                     <i class="fas fa-user-check"></i> Meus
                 </div>
+            </div>
+
+            <div id="analisador-tabs" class="tabs-analisadores">
+                <!-- Gerado via JS -->
             </div>
             
             <div class="filter-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
