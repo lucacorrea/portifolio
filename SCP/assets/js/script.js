@@ -266,13 +266,13 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizarTabela();
     }
 
-    function renderDropdownActions(p) {
+    window.renderDropdownActions = function(p) {
         const perfil = window.userPerfil || 'ANALISADOR';
         let actionsHtml = `<button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-eye"></i> Visualizar</button>`;
 
         if (p.status === 'PENDENTE') {
             if (perfil === 'ACESSORES') {
-                actionsHtml += `<button class="dropdown-item" onclick="window.marcarSendoAvaliado(${p.id})"><i class="fas fa-search"></i> Sendo Avaliado</button>`;
+                actionsHtml += `<button class="dropdown-item" onclick="window.marcarSendoAvaliado(${p.id})"><i class="fas fa-search"></i> Marcar como Avaliado</button>`;
                 actionsHtml += `<button class="dropdown-item" onclick="window.marcarEmElaboracao(${p.id})"><i class="fas fa-pencil-alt"></i> Em Elaboração</button>`;
                 actionsHtml += `<button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>`;
             } else {

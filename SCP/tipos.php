@@ -347,18 +347,7 @@ if (!isset($_SESSION['usuario_id'])) {
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="dropdown-menu">
-                            ${p.status === 'PENDENTE' ? `
-                                <button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>
-                            ` : ''}
-                            ${(p.status === 'PENDENTE' || p.status === 'PROTOCOLADO') ? `
-                                <button class="dropdown-item" onclick="window.marcarAnalisado(${p.id})"><i class="fas fa-eye"></i> Marcar Analisado</button>
-                            ` : ''}
-                            ${(!p.peticionador && (p.status === 'PENDENTE' || p.status === 'PROTOCOLADO')) ? `
-                                <button class="dropdown-item" onclick="window.peticionarProcesso(${p.id})"><i class="fas fa-file-upload"></i> Peticionar</button>
-                            ` : ''}
-                            <button class="dropdown-item" onclick="window.editarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-edit"></i> Editar</button>
-                            <div style="border-top: 1px solid var(--border); margin: 4px 0;"></div>
-                            <button class="dropdown-item text-danger" onclick="window.excluirProcesso(${p.id})"><i class="fas fa-trash"></i> Excluir</button>
+                            ${window.renderDropdownActions(p)}
                         </div>
                     </div>
                 </td>
