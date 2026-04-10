@@ -153,13 +153,13 @@ if (!isset($_SESSION['usuario_id'])) {
             </div>
 
                 <div class="form-group">
-                    <label for="quantidade_dias">Quantidade de Dias do Prazo</label>
-                    <input type="number" id="quantidade_dias" value="15" min="1" required>
+                    <label for="final_prazo">Data Final do Prazo</label>
+                    <input type="date" id="final_prazo" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="final_prazo">Final do Prazo (Calculado)</label>
-                    <input type="date" id="final_prazo" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700; color: var(--primary);">
+                    <label for="quantidade_dias">Qtd. Dias (Calculado)</label>
+                    <input type="number" id="quantidade_dias" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700; color: var(--primary);">
                 </div>
             </div>
             
@@ -262,6 +262,6 @@ if (!isset($_SESSION['usuario_id'])) {
     </form>
 </main>
 
-<script src="assets/js/script.js?v=50"></script>
+<script src="assets/js/script.js?v=60"></script>
 </body>
 </html>
