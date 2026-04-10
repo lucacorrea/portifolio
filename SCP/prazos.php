@@ -298,16 +298,20 @@ if (!isset($_SESSION['usuario_id'])) {
             
             const selectTipo = document.getElementById('filtro-tipo-prazos');
             const tipoSel = selectTipo ? selectTipo.value : '';
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
 
             meses.forEach((nome, index) => {
                 const count = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
                     const d = new Date(p.final_prazo);
+                    d.setHours(0,0,0,0);
                     
                     const matchData = d.getMonth() === index && d.getFullYear() === selectedYear;
                     const matchTipo = !tipoSel || (p.tipo_processo || 'CIÊNCIA') === tipoSel;
+                    const naoVencido = d >= hoje;
                     
-                    return matchData && matchTipo;
+                    return matchData && matchTipo && naoVencido;
                 }).length;
 
                 const card = document.createElement('div');
