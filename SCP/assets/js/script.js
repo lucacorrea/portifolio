@@ -2,8 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const listTable = document.getElementById('lista-processos');
     const formProcesso = document.getElementById('form-processo');
     const nomeAnalisadorExibicao = document.getElementById('nome-analisador');
-    const toggleMeusPrazos = document.getElementById('filtro-meus-prazos');
-    let filtroUsuarioAtivo = false;
+    let analisadorAtivo = 'TODOS';
     let dadosOriginais = [];
     let paginaAtual = 1;
     const itensPorPagina = 10;
@@ -27,13 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (toggleMeusPrazos) {
-        toggleMeusPrazos.addEventListener('click', () => {
-            filtroUsuarioAtivo = !filtroUsuarioAtivo;
-            toggleMeusPrazos.classList.toggle('active');
-            carregarProcessos();
-        });
-    }
+    // Tabs de analisadores renderizados dinamicamente
+
     
     // Carregar dados se estiver na index
     if (listTable) {
@@ -230,6 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!listTable) return;
         
+        // Inicializar abas de analisadores (com fallback em caso de erro nos dados)
+        try {
+            renderizarAbasAnalisadores();
+        } catch(e) {
+            console.error('Erro ao renderizar abas:', e);
+        }
+        
         // Atualizar Stats (com base em TODOS os dados)
         const totalProc = document.getElementById('total-processos');
         const totalPend = document.getElementById('total-pendentes');
@@ -257,12 +258,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const criticos = dadosOriginais.filter(p => {
             if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
-            if (!p.final_prazo) return true;
+            if (!p.final_prazo) return false; // Sem prazo não é prioridade urgente de prazo
             
-            const dataPrazo = new Date(p.final_prazo);
-            dataPrazo.setHours(0,0,0,0);
-            return dataPrazo >= hoje;
-        });
+            const pData = new Date(p.final_prazo + 'T12:00:00');
+            const diffTime = pData - hoje;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Vencidos (diffDays < 0) não entram aqui.
+            return diffDays >= 0;
+        })
+        .sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo))
+        .slice(0, 5);
 
         if (criticos.length === 0) {
             sectionUrgente.style.display = 'none';
@@ -272,14 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sectionUrgente.style.display = 'block';
         listPrioridade.innerHTML = '';
 
-        criticos.sort((a, b) => {
-            if (!a.final_prazo) return 1;
-            if (!b.final_prazo) return -1;
-            return new Date(a.final_prazo) - new Date(b.final_prazo);
-        });
-        const top5 = criticos.slice(0, 5);
-
-        top5.forEach(p => {
+        criticos.forEach(p => {
             const dataPrazo = new Date(p.final_prazo);
             const diffTime = dataPrazo - hoje;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -306,7 +305,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td style="font-weight: 800; color: ${corPrazo}; font-size: 1rem;">${labelPrazo}</td>
                 <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
                 <td>
-                <td>
                     <div class="dropdown">
                         <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
                             <i class="fas fa-ellipsis-v"></i>
@@ -329,6 +327,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             `;
             listPrioridade.appendChild(tr);
+        });
+    }
+
+    window.switchAnalisadorTab = function(analisador) {
+        analisadorAtivo = analisador;
+        paginaAtual = 1;
+        
+        document.querySelectorAll('#analisador-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById('tab-analisador-' + encodeURIComponent(analisador));
+        if (activeBtn) activeBtn.classList.add('active');
+        
+        renderizarTabela();
+    };
+
+    function renderizarAbasAnalisadores() {
+        const tabsContainer = document.getElementById('analisador-tabs');
+        if (!tabsContainer) return;
+
+        const analisadores = [...new Set(dadosOriginais.map(p => p.analisador || 'N/A'))]
+            .filter(a => a !== 'N/A')
+            .map(a => String(a).toUpperCase())
+            .sort();
+        
+        // Determinar aba padrão caso ainda não tenha aba ativa
+        if (!analisadorAtivo || analisadorAtivo === 'null') {
+            analisadorAtivo = 'TODOS';
+        }
+
+        tabsContainer.innerHTML = '';
+        
+        // Aba Todos
+        const btnTodos = document.createElement('button');
+        btnTodos.className = 'tab-btn' + (analisadorAtivo === 'TODOS' ? ' active' : '');
+        btnTodos.id = 'tab-analisador-TODOS';
+        btnTodos.innerHTML = '<i class="fas fa-users"></i> Todos';
+        btnTodos.onclick = () => window.switchAnalisadorTab('TODOS');
+        tabsContainer.appendChild(btnTodos);
+
+        // Abas Individuais
+        analisadores.forEach(nome => {
+            const btn = document.createElement('button');
+            btn.className = 'tab-btn' + (analisadorAtivo === nome ? ' active' : '');
+            btn.id = 'tab-analisador-' + encodeURIComponent(nome);
+            btn.innerHTML = `<i class="fas fa-user-circle"></i> ${nome}`;
+            btn.onclick = () => window.switchAnalisadorTab(nome);
+            tabsContainer.appendChild(btn);
         });
     }
 
@@ -368,9 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
 
-        if (filtroUsuarioAtivo) {
-            const meuNome = (nomeAnalisadorExibicao.textContent || '').trim().toLowerCase();
-            filtrados = filtrados.filter(p => (p.analisador || '').trim().toLowerCase() === meuNome);
+        if (analisadorAtivo && analisadorAtivo !== 'TODOS') {
+            filtrados = filtrados.filter(p => String(p.analisador || 'N/A').toUpperCase() === analisadorAtivo);
         }
 
         // Paginação
@@ -390,23 +433,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const classNat = window.getColorForNatureza(p.natureza);
             const classUser = window.getColorForUser(p.analisador);
 
+            const statusLimpo = (p.status || 'PENDENTE').toUpperCase().trim();
+            const statusClass = statusLimpo.toLowerCase();
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="font-weight: 600;">${p.numero}</td>
+                <td style="font-weight: 600;">${p.numero || '---'}</td>
                 <td style="font-weight: 600; color: #475569;">${p.tipo_processo || 'CIÊNCIA'}</td>
                 <td>
-                    <div class="tag-badge ${classAto}" style="margin-bottom: 4px;">${p.tipo_ato}</div>
+                    <div class="tag-badge ${classAto}" style="margin-bottom: 4px;">${p.tipo_ato || '---'}</div>
                     <br>
-                    <div class="tag-badge ${classNat}" style="margin-top: 2px;">${p.natureza}</div>
+                    <div class="tag-badge ${classNat}" style="margin-top: 2px;">${p.natureza || '---'}</div>
                 </td>
                 <td style="color: ${p.prazo_critico === 'SIM' ? 'red' : 'inherit'}; font-weight: bold;">
                     ${formatarData(p.final_prazo)}
                     ${p.prazo_critico === 'SIM' ? ' <i class="fas fa-exclamation-triangle"></i>' : ''}
                 </td>
-                <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
+                <td><span class="tag-badge ${classUser}">${p.analisador || 'N/A'}</span></td>
                 <td>
-                    <span class="badge badge-${p.status.toLowerCase().trim()}">${p.status.trim()}</span>
-                    ${p.status.toUpperCase().trim() === 'PROTOCOLADO' ? `
+                    <span class="badge badge-${statusClass}">${statusLimpo}</span>
+                    ${statusLimpo === 'PROTOCOLADO' ? `
                         <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
                             ${(p.data_protocolo || p.protocolista || p.peticionador) ? `
                                 <i class="fas fa-calendar-check" style="color: var(--status-protocolado);"></i> ${formatarData(p.data_protocolo)}<br>
@@ -415,7 +461,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     ` : ''}
                 </td>
-                <td>
                 <td>
                     <div class="dropdown">
                         <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">

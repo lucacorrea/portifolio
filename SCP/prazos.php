@@ -62,6 +62,9 @@ if (!isset($_SESSION['usuario_id'])) {
             <button class="tab-btn active" onclick="switchTab('urgentes')" id="tab-urgentes">
                 <i class="fas fa-exclamation-triangle"></i> Urgentes
             </button>
+            <button class="tab-btn" onclick="switchTab('vencidos')" id="tab-vencidos">
+                <i class="fas fa-calendar-times"></i> Vencidos
+            </button>
             <button class="tab-btn" onclick="switchTab('mensal')" id="tab-mensal">
                 <i class="fas fa-calendar-alt"></i> Cronograma Mensal
             </button>
@@ -236,13 +239,18 @@ if (!isset($_SESSION['usuario_id'])) {
             if (tab === 'urgentes') {
                 gridMeses.style.display = 'none';
                 titulo.textContent = 'Prazos Urgentes';
-                desc.textContent = 'Processos com prazo vencido ou a vencer em até 72 horas.';
+                desc.textContent = 'Processos que vencem em até 7 dias.';
                 sectionTitle.textContent = 'Urgentes';
+            } else if (tab === 'vencidos') {
+                gridMeses.style.display = 'none';
+                titulo.textContent = 'Prazos Vencidos';
+                desc.textContent = 'Processos cujas datas finais já expiraram e não foram protocolados.';
+                sectionTitle.textContent = 'Atenção: Vencidos';
             } else {
                 gridMeses.style.display = 'grid';
                 titulo.textContent = 'Cronograma Mensal';
-                desc.textContent = 'Visualize todos os prazos previstos para o mês selecionado.';
-                sectionTitle.textContent = 'Todos os Prazos do Mês';
+                desc.textContent = 'Visualize os prazos previstos para o mês selecionado (não vencidos).';
+                sectionTitle.textContent = 'Prazos Disponíveis no Mês';
             }
             
             paginaAtual = 1;
@@ -256,28 +264,38 @@ if (!isset($_SESSION['usuario_id'])) {
         }
 
         function processarDados() {
-            const hoje = new Date();
-            hoje.setHours(0,0,0,0);
+            const agora = new Date();
+            const hojeStr = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
 
             if (activeTab === 'urgentes') {
                 dadosFiltrados = dadosOriginais.filter(p => {
                     if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
                     if (!p.final_prazo) return false;
                     
-                    const dataPrazo = new Date(p.final_prazo);
-                    dataPrazo.setHours(0,0,0,0);
-                    
-                    const diffTime = dataPrazo - hoje;
+                    const pData = new Date(p.final_prazo + 'T12:00:00'); 
+                    const diffTime = pData - agora;
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
-                    return diffDays <= 3;
+                    return p.final_prazo >= hojeStr && diffDays <= 7;
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
+            } else if (activeTab === 'vencidos') {
+                const criticos = dadosOriginais.filter(p => {
+                    if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
+                    if (!p.final_prazo) return true;
+                    
+                    // Comparação de string YYYY-MM-DD é segura para fuso horário
+                    return p.final_prazo < hojeStr;
+                });
+                dadosFiltrados = criticos;
+                dadosFiltrados.sort((a, b) => new Date(b.final_prazo) - new Date(a.final_prazo));
             } else {
                 dadosFiltrados = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
-                    const d = new Date(p.final_prazo);
-                    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                    const d = new Date(p.final_prazo + 'T12:00:00');
+                    const matchMonth = d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                    const naoVencido = p.final_prazo >= hojeStr;
+                    return matchMonth && naoVencido;
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
                 renderizarGridMeses();
@@ -298,18 +316,17 @@ if (!isset($_SESSION['usuario_id'])) {
             
             const selectTipo = document.getElementById('filtro-tipo-prazos');
             const tipoSel = selectTipo ? selectTipo.value : '';
-            const hoje = new Date();
-            hoje.setHours(0,0,0,0);
+            const agora = new Date();
+            const hojeStr = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
 
             meses.forEach((nome, index) => {
                 const count = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
-                    const d = new Date(p.final_prazo);
-                    d.setHours(0,0,0,0);
+                    const d = new Date(p.final_prazo + 'T12:00:00');
                     
                     const matchData = d.getMonth() === index && d.getFullYear() === selectedYear;
                     const matchTipo = !tipoSel || (p.tipo_processo || 'CIÊNCIA') === tipoSel;
-                    const naoVencido = d >= hoje;
+                    const naoVencido = p.final_prazo >= hojeStr;
                     
                     return matchData && matchTipo && naoVencido;
                 }).length;
