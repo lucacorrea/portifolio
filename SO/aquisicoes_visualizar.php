@@ -436,7 +436,7 @@ include 'views/layout/header.php';
                     <tr>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
                         <td style="font-weight: 700;"><?php echo strtoupper($aq['secretaria']); ?></td>
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência: <?php echo nl2br(htmlspecialchars($aq['justificativa'])); ?></td>
+                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
                         <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?php echo $aq['oficio_num']; ?></td>
                     </tr>
                 </table>
@@ -535,7 +535,7 @@ include 'views/layout/header.php';
                     <tr>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
                         <td style="font-weight: 700;"><?php echo strtoupper($aq['secretaria']); ?></td>
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência: <?php echo nl2br(htmlspecialchars($aq['justificativa'])); ?></td>
+                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
                         <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?php echo $aq['oficio_num']; ?></td>
                     </tr>
                 </table>
