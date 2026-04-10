@@ -91,6 +91,8 @@ if (!isset($_SESSION['usuario_id'])) {
     <div class="tabs" style="margin-top: 2rem;">
         <button class="tab-btn active" onclick="switchTab('ciencia')"><i class="fas fa-file-signature"></i> Processos de Ciência</button>
         <button class="tab-btn" onclick="switchTab('cumprimento')"><i class="fas fa-gavel"></i> Processos de Cumprimento</button>
+        <button class="tab-btn" onclick="switchTab('recurso-ciencia')"><i class="fas fa-file-export"></i> Recurso - Ciência</button>
+        <button class="tab-btn" onclick="switchTab('recurso-cumprimento')"><i class="fas fa-balance-scale-right"></i> Recurso - Cumprimento</button>
     </div>
 
     <!-- Aba Ciência -->
@@ -154,6 +156,68 @@ if (!isset($_SESSION['usuario_id'])) {
             <div id="paginacao-cumprimento" class="pagination" style="margin-top: 1.5rem;"></div>
         </section>
     </div>
+
+    <!-- Aba Recurso - Ciência -->
+    <div id="tab-recurso-ciencia" class="tab-content">
+        <section class="data-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem;">Recurso - Ciência</h2>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="text" id="filtro-recurso-ciencia" placeholder="Pesquisar..." style="width: 250px; padding: 0.5rem 1rem; height: 38px; border: 1px solid var(--border); border-radius: 8px;">
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table id="tabela-recurso-ciencia">
+                    <thead>
+                        <tr>
+                            <th>Nº PROCESSO</th>
+                            <th>ATO / NATUREZA</th>
+                            <th>PRAZO FINAL</th>
+                            <th>ANALISADOR</th>
+                            <th>STATUS</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-recurso-ciencia">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="paginacao-recurso-ciencia" class="pagination" style="margin-top: 1.5rem;"></div>
+        </section>
+    </div>
+
+    <!-- Aba Recurso - Cumprimento -->
+    <div id="tab-recurso-cumprimento" class="tab-content">
+        <section class="data-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem;">Recurso - Cumprimento</h2>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="text" id="filtro-recurso-cumprimento" placeholder="Pesquisar..." style="width: 250px; padding: 0.5rem 1rem; height: 38px; border: 1px solid var(--border); border-radius: 8px;">
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table id="tabela-recurso-cumprimento">
+                    <thead>
+                        <tr>
+                            <th>Nº PROCESSO</th>
+                            <th>ATO / NATUREZA</th>
+                            <th>PRAZO FINAL</th>
+                            <th>ANALISADOR</th>
+                            <th>STATUS</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-recurso-cumprimento">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="paginacao-recurso-cumprimento" class="pagination" style="margin-top: 1.5rem;"></div>
+        </section>
+    </div>
 </main>
 
 <script src="assets/js/script.js?v=10"></script>
@@ -163,6 +227,8 @@ if (!isset($_SESSION['usuario_id'])) {
     // Estados para cada aba
     let stateCiencia = { pagina: 1, itens: 10 };
     let stateCumprimento = { pagina: 1, itens: 10 };
+    let stateRecursoCiencia = { pagina: 1, itens: 10 };
+    let stateRecursoCumprimento = { pagina: 1, itens: 10 };
 
     function switchTab(tab) {
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -184,6 +250,16 @@ if (!isset($_SESSION['usuario_id'])) {
             stateCumprimento.pagina = 1;
             renderTabelaTipos('CUMPRIMENTO', 'lista-cumprimento', 'filtro-cumprimento', 'paginacao-cumprimento', stateCumprimento);
         });
+
+        document.getElementById('filtro-recurso-ciencia').addEventListener('input', () => {
+            stateRecursoCiencia.pagina = 1;
+            renderTabelaTipos('RECURSO - CIÊNCIA', 'lista-recurso-ciencia', 'filtro-recurso-ciencia', 'paginacao-recurso-ciencia', stateRecursoCiencia);
+        });
+
+        document.getElementById('filtro-recurso-cumprimento').addEventListener('input', () => {
+            stateRecursoCumprimento.pagina = 1;
+            renderTabelaTipos('RECURSO - CUMPRIMENTO', 'lista-recurso-cumprimento', 'filtro-recurso-cumprimento', 'paginacao-recurso-cumprimento', stateRecursoCumprimento);
+        });
     });
 
     async function carregarProcessosTipos() {
@@ -201,6 +277,8 @@ if (!isset($_SESSION['usuario_id'])) {
         
         renderTabelaTipos('CIÊNCIA', 'lista-ciencia', 'filtro-ciencia', 'paginacao-ciencia', stateCiencia);
         renderTabelaTipos('CUMPRIMENTO', 'lista-cumprimento', 'filtro-cumprimento', 'paginacao-cumprimento', stateCumprimento);
+        renderTabelaTipos('RECURSO - CIÊNCIA', 'lista-recurso-ciencia', 'filtro-recurso-ciencia', 'paginacao-recurso-ciencia', stateRecursoCiencia);
+        renderTabelaTipos('RECURSO - CUMPRIMENTO', 'lista-recurso-cumprimento', 'filtro-recurso-cumprimento', 'paginacao-recurso-cumprimento', stateRecursoCumprimento);
     }
 
     function renderTabelaTipos(tipoProcesso, tbodyId, filtroId, pagId, stateObj) {
