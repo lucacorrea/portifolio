@@ -461,6 +461,27 @@ try {
                         $protocolista_import = $analisador_import;
                     }
 
+                    // Cadastro automático de ACESSOR se extraído do protocolo
+                    if ($protocolista_import !== '' && $protocolista_import !== 'Sistema' && $protocolista_import !== $analisador_nome) {
+                        $stmt_ac = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE nome = ?");
+                        $stmt_ac->execute([$protocolista_import]);
+                        if ($stmt_ac->fetchColumn() == 0) {
+                            $login_gerado = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $protocolista_import));
+                            $check_l = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE login = ?");
+                            $check_l->execute([$login_gerado]);
+                            if ($check_l->fetchColumn() > 0) {
+                                $login_gerado .= rand(10, 99);
+                            }
+
+                            $senhaPadrao = 'admin123';
+                            $senhaHash = password_hash($senhaPadrao, PASSWORD_DEFAULT);
+                            $stmt_new_ac = $pdo->prepare("INSERT INTO usuarios (nome, login, senha, senha_plana, perfil) VALUES (?, ?, ?, ?, ?)");
+                            $stmt_new_ac->execute([$protocolista_import, $login_gerado, $senhaHash, $senhaPadrao, 'ACESSORES']);
+                            
+                            registrarAuditoria($pdo, 'AUTO_INSERT_USER', 'usuarios', $pdo->lastInsertId(), null, ['nome' => $protocolista_import, 'login' => $login_gerado, 'perfil' => 'ACESSORES']);
+                        }
+                    }
+
                     $stmt = $pdo->prepare("INSERT INTO processos (
                         numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                         revelia, data_envio, data_ciencia, tipo_contagem, 
