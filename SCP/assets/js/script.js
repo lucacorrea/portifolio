@@ -252,16 +252,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const sectionUrgente = document.getElementById('section-urgente');
         if (!listPrioridade || !sectionUrgente) return;
 
-        const hoje = new Date();
-        hoje.setHours(0,0,0,0);
+        const agora = new Date();
+        const hojeStr = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
 
         const criticos = dadosOriginais.filter(p => {
             if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
             if (!p.final_prazo) return true;
             
-            const dataPrazo = new Date(p.final_prazo);
-            dataPrazo.setHours(0,0,0,0);
-            return dataPrazo >= hoje;
+            // Comparação de string YYYY-MM-DD é segura para data local
+            return p.final_prazo >= hojeStr;
         });
 
         if (criticos.length === 0) {

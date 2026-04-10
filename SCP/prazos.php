@@ -264,41 +264,37 @@ if (!isset($_SESSION['usuario_id'])) {
         }
 
         function processarDados() {
-            const hoje = new Date();
-            hoje.setHours(0,0,0,0);
+            const agora = new Date();
+            const hojeStr = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
 
             if (activeTab === 'urgentes') {
                 dadosFiltrados = dadosOriginais.filter(p => {
                     if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
                     if (!p.final_prazo) return false;
                     
-                    const dataPrazo = new Date(p.final_prazo);
-                    dataPrazo.setHours(0,0,0,0);
-                    
-                    const diffTime = dataPrazo - hoje;
+                    const pData = new Date(p.final_prazo + 'T12:00:00'); 
+                    const diffTime = pData - agora;
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
-                    return diffDays >= 0 && diffDays <= 7;
+                    return p.final_prazo >= hojeStr && diffDays <= 7;
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
             } else if (activeTab === 'vencidos') {
-                dadosFiltrados = dadosOriginais.filter(p => {
+                const criticos = dadosOriginais.filter(p => {
                     if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
-                    if (!p.final_prazo) return false;
+                    if (!p.final_prazo) return true;
                     
-                    const dataPrazo = new Date(p.final_prazo);
-                    dataPrazo.setHours(0,0,0,0);
-                    
-                    return dataPrazo < hoje;
+                    // Comparação de string YYYY-MM-DD é segura para fuso horário
+                    return p.final_prazo < hojeStr;
                 });
-                dadosFiltrados.sort((a, b) => new Date(b.final_prazo) - new Date(a.final_prazo)); // Mais antigos no topo? Ou mais recentes? User prefer mais recentes no topo para ciência, mas vencidos talvez mais antigos primeiro ou mais recentes. Vou deixar por prazo.
+                dadosFiltrados = criticos;
+                dadosFiltrados.sort((a, b) => new Date(b.final_prazo) - new Date(a.final_prazo));
             } else {
                 dadosFiltrados = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
-                    const d = new Date(p.final_prazo);
-                    d.setHours(0,0,0,0);
+                    const d = new Date(p.final_prazo + 'T12:00:00');
                     const matchMonth = d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-                    const naoVencido = d >= hoje;
+                    const naoVencido = p.final_prazo >= hojeStr;
                     return matchMonth && naoVencido;
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
@@ -320,18 +316,17 @@ if (!isset($_SESSION['usuario_id'])) {
             
             const selectTipo = document.getElementById('filtro-tipo-prazos');
             const tipoSel = selectTipo ? selectTipo.value : '';
-            const hoje = new Date();
-            hoje.setHours(0,0,0,0);
+            const agora = new Date();
+            const hojeStr = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
 
             meses.forEach((nome, index) => {
                 const count = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
-                    const d = new Date(p.final_prazo);
-                    d.setHours(0,0,0,0);
+                    const d = new Date(p.final_prazo + 'T12:00:00');
                     
                     const matchData = d.getMonth() === index && d.getFullYear() === selectedYear;
                     const matchTipo = !tipoSel || (p.tipo_processo || 'CIÊNCIA') === tipoSel;
-                    const naoVencido = d >= hoje;
+                    const naoVencido = p.final_prazo >= hojeStr;
                     
                     return matchData && matchTipo && naoVencido;
                 }).length;
