@@ -46,21 +46,93 @@ if (!isset($_SESSION['usuario_id'])) {
 </header>
 
 <main class="main-content">
-    <header class="header">
-        <div class="title-group">
-            <h1>Prazos Urgentes</h1>
-            <p>Processos com prazo vencido ou a vencer em até 72 horas.</p>
+    <header class="header" style="flex-direction: column; align-items: flex-start; gap: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="title-group">
+                <h1 id="prazos-titulo">Prazos Urgentes</h1>
+                <p id="prazos-descricao">Processos com prazo vencido ou a vencer em até 72 horas.</p>
+            </div>
+            <div class="user-profile" style="display: flex; align-items: center; gap: 1rem; background: var(--glass-bg); padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--glass-border);">
+                <i class="fas fa-user-circle" style="font-size: 1.5rem; color: var(--primary);"></i>
+                <span style="font-weight: 600;"><?php echo $_SESSION['usuario_nome']; ?></span>
+            </div>
         </div>
-        <div class="user-profile" style="display: flex; align-items: center; gap: 1rem; background: var(--glass-bg); padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--glass-border);">
-            <i class="fas fa-user-circle" style="font-size: 1.5rem; color: var(--primary);"></i>
-            <span style="font-weight: 600;"><?php echo $_SESSION['usuario_nome']; ?></span>
+
+        <div class="tab-container" style="display: flex; gap: 1rem; background: var(--glass-bg); padding: 0.4rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+            <button class="tab-btn active" onclick="switchTab('urgentes')" id="tab-urgentes">
+                <i class="fas fa-exclamation-triangle"></i> Urgentes
+            </button>
+            <button class="tab-btn" onclick="switchTab('mensal')" id="tab-mensal">
+                <i class="fas fa-calendar-alt"></i> Cronograma Mensal
+            </button>
         </div>
     </header>
 
+    <style>
+        .tab-btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .tab-btn:hover {
+            background: rgba(37, 99, 235, 0.05);
+            color: var(--primary);
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+        .filter-group-mensal {
+            display: none;
+            gap: 1rem;
+            align-items: center;
+        }
+        .next-month-badge {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            margin-left: 5px;
+            border: 1px solid #bfdbfe;
+        }
+    </style>
+
     <section class="data-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 style="font-size: 1.25rem;">Urgentes</h2>
-            <div style="display: flex; gap: 1rem; align-items: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <h2 id="section-title" style="font-size: 1.25rem;">Urgentes</h2>
+            
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <!-- Filtros Mensais (ocultos por padrão) -->
+                <div id="contener-filtro-mensal" class="filter-group-mensal">
+                    <select id="filtro-mes" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
+                        <option value="0">Janeiro</option>
+                        <option value="1">Fevereiro</option>
+                        <option value="2">Março</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Maio</option>
+                        <option value="5">Junho</option>
+                        <option value="6">Julho</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Setembro</option>
+                        <option value="9">Outubro</option>
+                        <option value="10">Novembro</option>
+                        <option value="11">Dezembro</option>
+                    </select>
+                    <select id="filtro-ano" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
+                        <!-- JS preenche -->
+                    </select>
+                </div>
                 <select id="filtro-tipo-prazos" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
                     <option value="">Tipos (Todos)</option>
                     <option value="CIÊNCIA">Ciência</option>
@@ -100,31 +172,92 @@ if (!isset($_SESSION['usuario_id'])) {
     document.addEventListener('DOMContentLoaded', async () => {
         const listPrazos = document.getElementById('lista-prazos');
         const inputBusca = document.getElementById('filtro-urgentes');
-        let dadosUrgentes = [];
+        const selectMes = document.getElementById('filtro-mes');
+        const selectAno = document.getElementById('filtro-ano');
+        
+        let dadosOriginais = [];
+        let dadosFiltrados = [];
+        let activeTab = 'urgentes';
         let paginaAtual = 1;
         const itensPorPagina = 10;
 
+        // Inicializar Filtros de Data
+        const hoje_global = new Date();
+        if (selectMes) selectMes.value = hoje_global.getMonth();
+        
+        if (selectAno) {
+            const anoAtual = hoje_global.getFullYear();
+            for (let i = anoAtual - 1; i <= anoAtual + 2; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = i;
+                if (i === anoAtual) opt.selected = true;
+                selectAno.appendChild(opt);
+            }
+        }
+
+        window.switchTab = (tab) => {
+            activeTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            
+            const filtroMensal = document.getElementById('contener-filtro-mensal');
+            const titulo = document.getElementById('prazos-titulo');
+            const desc = document.getElementById('prazos-descricao');
+            const sectionTitle = document.getElementById('section-title');
+
+            if (tab === 'urgentes') {
+                filtroMensal.style.display = 'none';
+                titulo.textContent = 'Prazos Urgentes';
+                desc.textContent = 'Processos com prazo vencido ou a vencer em até 72 horas.';
+                sectionTitle.textContent = 'Urgentes';
+            } else {
+                filtroMensal.style.display = 'flex';
+                titulo.textContent = 'Cronograma Mensal';
+                desc.textContent = 'Visualize todos os prazos previstos para o mês selecionado.';
+                sectionTitle.textContent = 'Todos os Prazos do Mês';
+            }
+            
+            paginaAtual = 1;
+            processarDados();
+        };
+
         async function carregarPrazos() {
             const resp = await fetch('api.php?acao=listar');
-            const dados = await resp.json();
-            
+            dadosOriginais = await resp.json();
+            processarDados();
+        }
+
+        function processarDados() {
             const hoje = new Date();
             hoje.setHours(0,0,0,0);
 
-            dadosUrgentes = dados.filter(p => {
-                if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
-                if (!p.final_prazo) return false;
+            if (activeTab === 'urgentes') {
+                dadosFiltrados = dadosOriginais.filter(p => {
+                    if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
+                    if (!p.final_prazo) return false;
+                    
+                    const dataPrazo = new Date(p.final_prazo);
+                    dataPrazo.setHours(0,0,0,0);
+                    
+                    const diffTime = dataPrazo - hoje;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    return diffDays <= 3;
+                });
+                dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
+            } else {
+                const mesSel = parseInt(selectMes.value);
+                const anoSel = parseInt(selectAno.value);
                 
-                const dataPrazo = new Date(p.final_prazo);
-                dataPrazo.setHours(0,0,0,0);
-                
-                const diffTime = dataPrazo - hoje;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                return diffDays <= 3;
-            });
+                dadosFiltrados = dadosOriginais.filter(p => {
+                    if (!p.final_prazo) return false;
+                    const d = new Date(p.final_prazo);
+                    return d.getMonth() === mesSel && d.getFullYear() === anoSel;
+                });
+                dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
+            }
 
-            dadosUrgentes.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
             renderizarTabela();
         }
 
@@ -133,7 +266,7 @@ if (!isset($_SESSION['usuario_id'])) {
             listPrazos.innerHTML = '';
 
             const selectTipo = document.getElementById('filtro-tipo-prazos');
-            let filtrados = dadosUrgentes;
+            let filtrados = dadosFiltrados;
 
             if (selectTipo && selectTipo.value) {
                 filtrados = filtrados.filter(p => (p.tipo_processo || 'CIÊNCIA') === selectTipo.value);
@@ -154,7 +287,7 @@ if (!isset($_SESSION['usuario_id'])) {
             const paginados = filtrados.slice(inicio, fim);
 
             if (paginados.length === 0) {
-                listPrazos.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem;">Nenhum prazo urgente encontrado.</td></tr>';
+                listPrazos.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;">Nenhum prazo encontrado nesta categoria.</td></tr>';
                 renderizarPaginacao(0);
                 return;
             }
@@ -168,6 +301,7 @@ if (!isset($_SESSION['usuario_id'])) {
                 
                 let corPrazo = 'inherit';
                 let labelPrazo = diffDays + ' dias';
+                let extraBadge = '';
                 
                 if (diffDays < 0) {
                     corPrazo = '#ef4444';
@@ -177,6 +311,20 @@ if (!isset($_SESSION['usuario_id'])) {
                     labelPrazo = 'HOJE';
                 } else if (diffDays <= 2) {
                     corPrazo = '#f59e0b';
+                }
+
+                // Destaque Próximo Mês
+                const mesAtual = hoje.getMonth();
+                const anoAtual = hoje.getFullYear();
+                const mesPrazo = dataPrazo.getMonth();
+                const anoPrazo = dataPrazo.getFullYear();
+
+                let proximoMes = mesAtual + 1;
+                let anoProximo = anoAtual;
+                if (proximoMes > 11) { proximoMes = 0; anoProximo++; }
+
+                if (mesPrazo === proximoMes && anoPrazo === anoProximo) {
+                    extraBadge = `<span class="next-month-badge">Próximo Mês</span>`;
                 }
 
                 const classAto = window.getColorForAto(p.tipo_ato);
@@ -191,7 +339,10 @@ if (!isset($_SESSION['usuario_id'])) {
                         <div class="tag-badge ${classAto}" style="margin-bottom: 4px;">${p.tipo_ato}</div>
                         <div class="tag-badge ${classNat}" style="margin-top: 2px;">${p.natureza}</div>
                     </td>
-                    <td style="font-weight: bold; color: ${corPrazo};">${formatarData(p.final_prazo)}</td>
+                    <td style="font-weight: bold; color: ${corPrazo};">
+                        ${formatarData(p.final_prazo)}
+                        ${extraBadge}
+                    </td>
                     <td style="font-weight: 700; color: ${corPrazo};">${labelPrazo}</td>
                     <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
                     <td>
@@ -283,6 +434,9 @@ if (!isset($_SESSION['usuario_id'])) {
                 renderizarTabela();
             });
         }
+
+        if (selectMes) selectMes.addEventListener('change', () => { paginaAtual = 1; processarDados(); });
+        if (selectAno) selectAno.addEventListener('change', () => { paginaAtual = 1; processarDados(); });
 
         carregarPrazos();
     });

@@ -85,11 +85,32 @@ class PreSale extends BaseModel {
     }
 
     public function update($id, $data) {
+        $hasAvulso = $this->columnExists('nome_cliente_avulso');
+        $hasCpfCliente = $this->columnExists('cpf_cliente');
+        $hasUpdatedAt = $this->columnExists('updated_at');
+
+        $sets = ['cliente_id = ?', 'valor_total = ?'];
+        $params = [$data['cliente_id'] ?? null, $data['valor_total']];
+
+        if ($hasAvulso) {
+            $sets[] = 'nome_cliente_avulso = ?';
+            $params[] = $data['nome_cliente_avulso'] ?? null;
+        }
+
+        if ($hasCpfCliente) {
+            $sets[] = 'cpf_cliente = ?';
+            $params[] = $data['cpf_cliente'] ?? null;
+        }
+
+        if ($hasUpdatedAt) {
+            $sets[] = 'updated_at = NOW()';
+        }
+
+        $params[] = $id;
+
         // Update main record
-        $this->query(
-            "UPDATE {$this->table} SET cliente_id = ?, valor_total = ?, updated_at = NOW() WHERE id = ?",
-            [$data['cliente_id'] ?? null, $data['valor_total'], $id]
-        );
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = ?";
+        $this->query($sql, $params);
 
         // Delete old items
         $this->query("DELETE FROM pre_venda_itens WHERE pre_venda_id = ?", [$id]);

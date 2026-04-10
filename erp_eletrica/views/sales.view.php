@@ -129,9 +129,15 @@
                             </label>
                         </div>
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_cartao" value="cartao_credito">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_cartao">
-                                <i class="fas fa-credit-card me-2 text-primary"></i> Cartão
+                            <input type="radio" class="btn-check" name="payment" id="pay_credito" value="cartao_credito">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_credito">
+                                <i class="fas fa-credit-card me-2 text-primary"></i> Crédito
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="payment" id="pay_debito" value="cartao_debito">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_debito">
+                                <i class="fas fa-credit-card me-2 text-info"></i> Débito
                             </label>
                         </div>
                         <div class="col-6">
@@ -146,6 +152,18 @@
                                 <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado)
                             </label>
                         </div>
+                    </div>
+                    
+                    <!-- Card Tax Input (appears only for card payments) -->
+                    <div id="cardTaxContainer" class="d-none mt-3 p-3 bg-info bg-opacity-10 border border-info border-opacity-10 rounded">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Taxa da Maquininha (%)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-info">
+                                <i class="fas fa-percent"></i>
+                            </span>
+                            <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0">
+                        </div>
+                        <div class="extra-small text-info mt-1"><i class="fas fa-info-circle me-1"></i> Informe a taxa cobrada pela operadora.</div>
                     </div>
                 </div>
 
@@ -411,6 +429,19 @@ const productPreviewName = document.getElementById('productPreviewName');
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadRecentSales();
+    
+    // Payment Card Tax Visibility
+    document.querySelectorAll('input[name="payment"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const container = document.getElementById('cardTaxContainer');
+            if (e.target.value.includes('cartao')) {
+                container.classList.remove('d-none');
+                document.getElementById('taxa_cartao').focus();
+            } else {
+                container.classList.add('d-none');
+            }
+        });
+    });
 });
 
 // Search functionality
@@ -1116,6 +1147,16 @@ async function processarCheckout() {
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const total = subtotal * (1 - (discountPercent / 100));
     const payment = document.querySelector('input[name="payment"]:checked').value;
+    const taxaCartao = parseFloat(document.getElementById('taxa_cartao').value) || 0;
+
+    if (payment.includes('cartao')) {
+        if (!taxaCartao || taxaCartao <= 0) {
+            alert("Para pagamentos em cartão, é obrigatório informar a taxa da maquininha.");
+            document.getElementById('taxa_cartao').focus();
+            return;
+        }
+    }
+
     const entrada = parseFloat(document.getElementById('entradaValor')?.value) || 0;
     const entradaMetodo = document.getElementById('entradaMetodo')?.value || 'dinheiro';
 
@@ -1150,6 +1191,7 @@ async function processarCheckout() {
         nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
         cpf_cliente: selectedCustomerCPF,
         pv_id: currentPvId,
+        taxa_cartao: taxaCartao,
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential,
         tipo_nota: tipoNota
@@ -1175,6 +1217,7 @@ async function processarCheckout() {
         authSupervisorCredential = null;
         document.getElementById('discountPercent').value = 0;
         if (document.getElementById('entradaValor')) document.getElementById('entradaValor').value = 0;
+        document.getElementById('taxa_cartao').value = '';
         renderCart();
         loadRecentSales();
     } else {
