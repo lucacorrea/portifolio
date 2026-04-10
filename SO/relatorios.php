@@ -914,7 +914,7 @@ include 'views/layout/header.php';
                     <div class="summary-top">
                         <div>
                             <p class="summary-label">Quantidade total</p>
-                            <h3 class="summary-number"><?php echo number_format($total_qtd_geral, 2, ',', '.'); ?></h3>
+                            <h3 class="summary-number"><?php echo number_format((int)$total_qtd_geral, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="mini-icon">
                             <i class="fas fa-boxes"></i>
@@ -966,7 +966,7 @@ include 'views/layout/header.php';
                                 <?php foreach ($relatorio_secretarias as $row): ?>
                                     <tr>
                                         <td class="td-secretaria text-nowrap"><?php echo h($row['secretaria_nome']); ?></td>
-                                        <td class="td-right text-nowrap"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></td>
+                                        <td class="td-right text-nowrap"><?php echo number_format((int)$row['total_qtd'], 0, ',', '.'); ?></td>
                                         <td class="td-right text-nowrap">
                                             <span class="badge-total"><?php echo format_money($row['total_valor']); ?></span>
                                         </td>
