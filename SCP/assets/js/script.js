@@ -791,6 +791,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.visualizarProcesso = (pJson) => {
+        // Fechar dropdown menus ao vizualizar
+        document.querySelectorAll('.dropdown-menu-fixed').forEach(m => m.remove());
+        document.querySelectorAll('.btn-dots').forEach(b => b.classList.remove('active-btn'));
+
         const p = JSON.parse(decodeURIComponent(pJson));
         const modal = document.getElementById('modal-detalhes');
         if (!modal) return;
@@ -799,10 +803,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusOriginal = (p.status || 'PENDENTE').toUpperCase();
         const statusClass = statusOriginal.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
         
-        // Custom Header for the modal
-        const modalHeader = modal.querySelector('.modal-header');
-        if (modalHeader) modalHeader.style.display = 'none'; // Hide default header
-
         body.innerHTML = `
             <div class="modal-header-status header-status-${statusClass}">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -871,21 +871,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 ` : ''}
 
                 ${p.peticionador ? `
-                <div class="detail-item">
+                <div class="detail-item full-width">
                     <span class="detail-label"><i class="fas fa-file-upload"></i> Peticionado por</span>
                     <span class="detail-value">${p.peticionador} em ${formatarData(p.data_peticionamento)}</span>
                 </div>
                 ` : ''}
 
                 ${p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' ? `
-                <div class="detail-item">
+                <div class="detail-item full-width">
                     <span class="detail-label"><i class="fas fa-check-double"></i> Protocolo</span>
-                    <span class="detail-value">${formatarData(p.data_protocolo)} por ${p.protocolista || 'N/A'}</span>
+                    <span class="detail-value">Em ${formatarData(p.data_protocolo)} por ${p.protocolista || 'N/A'}</span>
                 </div>
                 ` : ''}
 
                 ${p.status === 'ANALISADO' ? `
-                <div class="detail-item">
+                <div class="detail-item full-width">
                     <span class="detail-label"><i class="fas fa-eye"></i> Análise</span>
                     <span class="detail-value">Concluída em ${formatarData(p.data_analise)}</span>
                 </div>
@@ -906,4 +906,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.getElementById('modal-detalhes');
         if (modal) modal.classList.remove('active');
     };
+
+    // Fechar ao clicar fora do modal
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            window.fecharModalDetalhes();
+        }
+    });
+
 });

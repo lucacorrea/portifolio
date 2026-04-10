@@ -198,6 +198,6 @@ if (!isset($_SESSION['usuario_id'])) {
         </div>
     </div>
 
-    <script src="assets/js/script.js?v=30"></script>
+    <script src="assets/js/script.js?v=35"></script>
 </body>
 </html>
