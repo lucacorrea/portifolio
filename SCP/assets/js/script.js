@@ -256,8 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalHoje = document.getElementById('total-hoje');
  
         if (totalProc) totalProc.textContent = dadosOriginais.length;
-        if (totalPend) totalPend.textContent = dadosOriginais.filter(p => p.status === 'PENDENTE').length;
-        if (totalProt) totalProt.textContent = dadosOriginais.filter(p => p.status === 'PROTOCOLADO').length;
+        if (totalPend) totalPend.textContent = dadosOriginais.filter(p => ['PENDENTE', 'SENDO AVALIADO', 'EM ELABORAÇÃO'].includes(p.status)).length;
+        if (totalProt) totalProt.textContent = dadosOriginais.filter(p => ['PROTOCOLADO', 'ANALISADO', 'PROCESSO FINALIZADO'].includes(p.status)).length;
         
         const hoje_str = new Date().toISOString().split('T')[0];
         if (totalHoje) totalHoje.textContent = dadosOriginais.filter(p => p.final_prazo === hoje_str).length;
