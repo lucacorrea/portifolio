@@ -257,7 +257,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const criticos = dadosOriginais.filter(p => {
             if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
-            return true; // Mostra qualquer um que não esteja pronto
+            if (!p.final_prazo) return true;
+            
+            const dataPrazo = new Date(p.final_prazo);
+            dataPrazo.setHours(0,0,0,0);
+            return dataPrazo >= hoje;
         });
 
         if (criticos.length === 0) {
