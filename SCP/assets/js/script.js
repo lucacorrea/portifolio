@@ -294,7 +294,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        actionsHtml += `<button class="dropdown-item" onclick="window.editarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-edit"></i> Editar</button>`;
+        if (perfil !== 'ACESSORES') {
+            actionsHtml += `<button class="dropdown-item" onclick="window.editarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-edit"></i> Editar</button>`;
+        }
         actionsHtml += `<div style="border-top: 1px solid var(--border); margin: 4px 0;"></div>`;
         actionsHtml += `<button class="dropdown-item text-danger" onclick="window.excluirProcesso(${p.id})"><i class="fas fa-trash"></i> Excluir</button>`;
 
