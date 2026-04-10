@@ -87,36 +87,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputPeticionador = document.getElementById('peticionador');
 
         window.calcularPrazoFinal = function() {
-            if (!inputEnvio || !inputEnvio.value || !inputDias.value) return;
+            if (!inputEnvio || !inputEnvio.value || !inputFinal || !inputFinal.value) return;
 
-            let data = new Date(inputEnvio.value + 'T12:00:00');
-            const dias = parseInt(inputDias.value);
+            let dataInicio = new Date(inputEnvio.value + 'T12:00:00');
+            let dataFim = new Date(inputFinal.value + 'T12:00:00');
             const tipo = inputContagem.value;
 
+            if (dataFim < dataInicio) {
+                inputDias.value = 0;
+                return;
+            }
+
             if (tipo === 'CORRIDOS') {
-                data.setDate(data.getDate() + dias);
+                const diffTime = Math.abs(dataFim - dataInicio);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                inputDias.value = diffDays;
             } else if (tipo === 'ÚTEIS') {
-                let cont = 0;
-                while (cont < dias) {
-                    data.setDate(data.getDate() + 1);
-                    const diaSemana = data.getDay();
+                let diasUteis = 0;
+                let dataAtual = new Date(dataInicio);
+                
+                while (dataAtual < dataFim) {
+                    dataAtual.setDate(dataAtual.getDate() + 1);
+                    const diaSemana = dataAtual.getDay();
                     if (diaSemana !== 0 && diaSemana !== 6) { // 0=Dom, 6=Sáb
-                        cont++;
+                        diasUteis++;
                     }
                 }
+                inputDias.value = diasUteis;
             } else if (tipo === 'REDESIGNADA') {
-                // Mantém a data original ou lógica específica se houver
+                inputDias.value = 0; // Ou lógica se houver
             }
-            
-            // Corrige o timezone local na hora de setar o value
-            const y = data.getFullYear();
-            const m = String(data.getMonth() + 1).padStart(2, '0');
-            const d = String(data.getDate()).padStart(2, '0');
-            inputFinal.value = `${y}-${m}-${d}`;
         };
 
         // Adiciona eventos aos campos para recálculo dinâmico
-        [inputEnvio, inputContagem, inputDias].forEach(input => {
+        [inputEnvio, inputContagem, inputFinal].forEach(input => {
             if(input) {
                 input.addEventListener('change', window.calcularPrazoFinal);
                 input.addEventListener('input', window.calcularPrazoFinal);

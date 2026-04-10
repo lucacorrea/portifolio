@@ -262,6 +262,6 @@ if (!isset($_SESSION['usuario_id'])) {
     </form>
 </main>
 
-<script src="assets/js/script.js?v=60"></script>
+<script src="assets/js/script.js?v=61"></script>
 </body>
 </html>
