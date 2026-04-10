@@ -295,14 +295,18 @@ if (!isset($_SESSION['usuario_id'])) {
                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
             ];
             
-            const anoSel = parseInt(selectAno.value);
-            const mesSel = parseInt(selectMes.value);
+            const selectTipo = document.getElementById('filtro-tipo-prazos');
+            const tipoSel = selectTipo ? selectTipo.value : '';
 
             meses.forEach((nome, index) => {
                 const count = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
                     const d = new Date(p.final_prazo);
-                    return d.getMonth() === index && d.getFullYear() === selectedYear;
+                    
+                    const matchData = d.getMonth() === index && d.getFullYear() === selectedYear;
+                    const matchTipo = !tipoSel || (p.tipo_processo || 'CIÊNCIA') === tipoSel;
+                    
+                    return matchData && matchTipo;
                 }).length;
 
                 const card = document.createElement('div');
@@ -492,7 +496,7 @@ if (!isset($_SESSION['usuario_id'])) {
         if (selectTipoDropdown) {
             selectTipoDropdown.addEventListener('change', () => {
                 paginaAtual = 1;
-                renderizarTabela();
+                processarDados();
             });
         }
 
