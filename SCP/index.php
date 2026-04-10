@@ -15,6 +15,34 @@ if (!isset($_SESSION['usuario_id'])) {
     <link rel="stylesheet" href="assets/css/estilo.css?v=6">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .tabs-container {
+            /* Styles handled inline mostly, generic class for reference */
+        }
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .tab-btn:hover {
+            background: rgba(37, 99, 235, 0.05);
+            color: var(--primary);
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+    </style>
 </head>
 <body>
 
@@ -101,9 +129,10 @@ if (!isset($_SESSION['usuario_id'])) {
         <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="font-size: 1.25rem; margin: 0;">Lista de Processos</h2>
-                <div id="filtro-meus-prazos" class="filter-toggle" title="Mostrar apenas os meus processos" style="padding: 0.45rem 1rem; font-size: 0.85rem; height: fit-content;">
-                    <i class="fas fa-user-check"></i> Meus
-                </div>
+            </div>
+            
+            <div class="tabs-container" id="analisador-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <!-- Preenchido via JS -->
             </div>
             
             <div class="filter-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: flex-start;">

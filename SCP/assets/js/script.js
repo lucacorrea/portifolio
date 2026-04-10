@@ -2,8 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const listTable = document.getElementById('lista-processos');
     const formProcesso = document.getElementById('form-processo');
     const nomeAnalisadorExibicao = document.getElementById('nome-analisador');
-    const toggleMeusPrazos = document.getElementById('filtro-meus-prazos');
-    let filtroUsuarioAtivo = false;
+    let analisadorAtivo = null;
     let dadosOriginais = [];
     let paginaAtual = 1;
     const itensPorPagina = 10;
@@ -27,13 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (toggleMeusPrazos) {
-        toggleMeusPrazos.addEventListener('click', () => {
-            filtroUsuarioAtivo = !filtroUsuarioAtivo;
-            toggleMeusPrazos.classList.toggle('active');
-            carregarProcessos();
-        });
-    }
+    // Tabs de analisadores renderizados dinamicamente
+
     
     // Carregar dados se estiver na index
     if (listTable) {
@@ -230,6 +224,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!listTable) return;
         
+        // Inicializar abas de analisadores
+        renderizarAbasAnalisadores();
+        
         // Atualizar Stats (com base em TODOS os dados)
         const totalProc = document.getElementById('total-processos');
         const totalPend = document.getElementById('total-pendentes');
@@ -331,6 +328,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    window.switchAnalisadorTab = function(analisador) {
+        analisadorAtivo = analisador;
+        paginaAtual = 1;
+        
+        document.querySelectorAll('#analisador-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById('tab-analisador-' + encodeURIComponent(analisador));
+        if (activeBtn) activeBtn.classList.add('active');
+        
+        renderizarTabela();
+    };
+
+    function renderizarAbasAnalisadores() {
+        const tabsContainer = document.getElementById('analisador-tabs');
+        if (!tabsContainer) return;
+
+        const analisadores = [...new Set(dadosOriginais.map(p => p.analisador || 'N/A'))].filter(a => a !== 'N/A').map(a => a.toUpperCase()).sort();
+        
+        // Determinar aba padrão (usuário logado ou "TODOS") caso ainda não tenha aba ativa
+        if (!analisadorAtivo) {
+            const meuNome = (nomeAnalisadorExibicao && nomeAnalisadorExibicao.textContent ? nomeAnalisadorExibicao.textContent.trim().toUpperCase() : '');
+            if (meuNome && analisadores.includes(meuNome)) {
+                analisadorAtivo = meuNome;
+            } else {
+                analisadorAtivo = 'TODOS';
+            }
+        }
+
+        tabsContainer.innerHTML = '';
+        
+        // Aba Todos
+        const btnTodos = document.createElement('button');
+        btnTodos.className = 'tab-btn' + (analisadorAtivo === 'TODOS' ? ' active' : '');
+        btnTodos.id = 'tab-analisador-TODOS';
+        btnTodos.innerHTML = '<i class="fas fa-users"></i> Todos';
+        btnTodos.onclick = () => window.switchAnalisadorTab('TODOS');
+        tabsContainer.appendChild(btnTodos);
+
+        // Abas Individuais
+        analisadores.forEach(nome => {
+            const btn = document.createElement('button');
+            btn.className = 'tab-btn' + (analisadorAtivo === nome ? ' active' : '');
+            btn.id = 'tab-analisador-' + encodeURIComponent(nome);
+            btn.innerHTML = `<i class="fas fa-user-circle"></i> ${nome}`;
+            btn.onclick = () => window.switchAnalisadorTab(nome);
+            tabsContainer.appendChild(btn);
+        });
+    }
+
     function renderizarTabela() {
         if (!listTable) return;
         listTable.innerHTML = '';
@@ -367,9 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
 
-        if (filtroUsuarioAtivo) {
-            const meuNome = (nomeAnalisadorExibicao.textContent || '').trim().toLowerCase();
-            filtrados = filtrados.filter(p => (p.analisador || '').trim().toLowerCase() === meuNome);
+        if (analisadorAtivo && analisadorAtivo !== 'TODOS') {
+            filtrados = filtrados.filter(p => (p.analisador || 'N/A').toUpperCase() === analisadorAtivo);
         }
 
         // Paginação
