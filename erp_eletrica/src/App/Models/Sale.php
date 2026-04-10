@@ -10,6 +10,7 @@ class Sale extends BaseModel {
         $hasValorRecebido = $this->columnExists('valor_recebido');
         $hasCpfCliente  = $this->columnExists('cpf_cliente');
         $hasClienteNome = $this->columnExists('cliente_nome');
+        $hasTaxaCartao  = $this->columnExists('taxa_cartao');
 
         $cols   = ['cliente_id', 'usuario_id', 'filial_id', 'valor_total', 'desconto_total', 'autorizado_por', 'forma_pagamento', 'status'];
         $params = [
@@ -48,6 +49,11 @@ class Sale extends BaseModel {
             $params[] = isset($data['valor_recebido']) ? (float)$data['valor_recebido'] : null;
             $cols[]   = 'troco';
             $params[] = isset($data['troco']) ? (float)$data['troco'] : null;
+        }
+
+        if ($hasTaxaCartao) {
+            $cols[]   = 'taxa_cartao';
+            $params[] = isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0.00;
         }
 
         $placeholders = implode(', ', array_fill(0, count($cols), '?'));
