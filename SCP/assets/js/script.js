@@ -804,97 +804,115 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusClass = statusOriginal.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
         
         body.innerHTML = `
-            <div class="modal-header-status header-status-${statusClass}">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <i class="fas fa-file-invoice" style="font-size: 1.2rem;"></i>
-                    <h2 style="margin: 0; font-size: 1rem; letter-spacing: 0.5px; font-weight: 700;">PROCESSO: ${p.numero}</h2>
+            <div class="modal-header-classic">
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: #1e293b;">
+                    <i class="fas fa-file-invoice" style="font-size: 1.25rem;"></i>
+                    <h2 style="margin: 0; font-size: 1rem; font-weight: 800; text-transform: uppercase;">DETALHES DO PROCESSO</h2>
                 </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <span style="font-size: 0.75rem; font-weight: 800; background: rgba(0,0,0,0.2); padding: 4px 12px; border-radius: 4px;">${statusOriginal}</span>
-                    <button class="btn-quick" onclick="window.fecharModalDetalhes()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; width: 26px; height: 26px;">
-                        <i class="fas fa-times" style="font-size: 0.7rem;"></i>
-                    </button>
-                </div>
+                <button class="btn-quick-close" onclick="window.fecharModalDetalhes()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
 
-            <div class="details-grid">
-                <!-- Seção: Identificação -->
-                <div class="detail-section-title">
-                    <i class="fas fa-id-card"></i> Identificação e Origem
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label"><i class="fas fa-fingerprint"></i> Nº Processo</span>
-                    <span class="detail-value">${p.numero}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label"><i class="fas fa-folder-open"></i> Tipo de Processo</span>
-                    <span class="detail-value">${p.tipo_processo || 'CIÊNCIA'}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label"><i class="fas fa-gavel"></i> Ato Processual</span>
-                    <span class="tag-badge ${window.getColorForAto(p.tipo_ato)}">${p.tipo_ato}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label"><i class="fas fa-leaf"></i> Natureza</span>
-                    <span class="tag-badge ${window.getColorForNatureza(p.natureza)}">${p.natureza}</span>
+            <div class="modal-body-split">
+                <!-- Coluna Esquerda -->
+                <div class="split-col">
+                    <h3 class="split-title">INFORMAÇÕES GERAIS</h3>
+                    
+                    <div class="split-item flex-between">
+                        <span class="split-label">Nº do Processo</span>
+                        <span class="split-value" style="font-size: 1.1rem; font-weight: 800; letter-spacing: 0.5px;">${p.numero}</span>
+                    </div>
+
+                    <div class="split-item flex-between">
+                        <span class="split-label">Status Atual</span>
+                        <span class="split-status-badge header-status-${statusClass}">
+                            ${statusOriginal}
+                        </span>
+                    </div>
+
+                    <div class="split-item">
+                        <span class="split-label">Tipo de Processo</span>
+                        <span class="split-value">${p.tipo_processo || 'CIÊNCIA'}</span>
+                    </div>
+
+                    <div class="split-item flex-row">
+                        <div style="flex: 1;">
+                            <span class="split-label">Ato Processual</span>
+                            <div style="margin-top: 4px;">
+                                <span class="tag-badge ${window.getColorForAto(p.tipo_ato)}">${p.tipo_ato}</span>
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <span class="split-label">Natureza</span>
+                            <div style="margin-top: 4px;">
+                                <span class="tag-badge ${window.getColorForNatureza(p.natureza)}">${p.natureza}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="split-title" style="margin-top: 1.5rem;">REGISTRO E OBSERVAÇÕES</h3>
+                    
+                    ${p.peticionador ? `
+                    <div class="split-item flex-between">
+                        <span class="split-label">Peticionado por</span>
+                        <span class="split-value">${p.peticionador} em ${formatarData(p.data_peticionamento)}</span>
+                    </div>` : ''}
+
+                    ${p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' ? `
+                    <div class="split-item flex-between">
+                        <span class="split-label">Protocolado</span>
+                        <span class="split-value">Em ${formatarData(p.data_protocolo)} por ${p.protocolista || 'N/A'}</span>
+                    </div>` : ''}
+
+                    <div class="split-item">
+                        <span class="split-label">Observações Adicionais</span>
+                        <div class="split-obs">${p.observacoes || 'Nenhuma observação registrada.'}</div>
+                    </div>
                 </div>
 
-                <!-- Seção: Prazos -->
-                <div class="detail-section-title">
-                    <i class="fas fa-clock"></i> Controle de Prazos
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label"><i class="fas fa-calendar-alt"></i> Ciência / Envio</span>
-                    <span class="detail-value">${formatarData(p.data_ciencia)} / ${formatarData(p.data_envio)}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label"><i class="fas fa-hourglass-half"></i> Prazo Final</span>
-                    <span class="detail-value" style="color: ${p.prazo_critico === 'SIM' ? '#ef4444' : 'inherit'}; font-weight: 800;">
-                        ${formatarData(p.final_prazo)} (${p.quantidade_dias} dias ${p.tipo_contagem})
-                        ${p.prazo_critico === 'SIM' ? ' <i class="fas fa-fire" title="CRÍTICO"></i>' : ''}
-                    </span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label"><i class="fas fa-user-edit"></i> Analisador</span>
-                    <span class="tag-badge ${window.getColorForUser(p.analisador)}">${p.analisador || 'N/A'}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label"><i class="fas fa-bullhorn"></i> Manifestação</span>
-                    <span class="detail-value">${p.tipo_manifestacao || '---'}</span>
-                </div>
+                <!-- Coluna Direita -->
+                <div class="split-col right-col">
+                    <h3 class="split-title">CONTROLE DE PRAZOS</h3>
+                    
+                    <div class="split-item flex-between">
+                        <span class="split-label">Ciência / Envio</span>
+                        <span class="split-value">${formatarData(p.data_ciencia)} / ${formatarData(p.data_envio)}</span>
+                    </div>
+                    
+                    <div class="split-item flex-between">
+                        <span class="split-label">Prazo Final</span>
+                        <span class="split-value" style="color: ${p.prazo_critico === 'SIM' ? '#ef4444' : '#ef4444'}; font-size: 1.1rem; font-weight: 800;">
+                            ${formatarData(p.final_prazo)}
+                            ${p.prazo_critico === 'SIM' ? ' <i class="fas fa-exclamation-circle" title="CRÍTICO"></i>' : ''}
+                        </span>
+                    </div>
 
-                <!-- Seção: Status e Histórico -->
-                ${p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' || p.peticionador ? `
-                <div class="detail-section-title">
-                    <i class="fas fa-history"></i> Execução e Registro
-                </div>
-                ` : ''}
+                    <div class="split-item flex-between">
+                        <span class="split-label">Tempo Restante</span>
+                        <span class="split-value" style="color: ${p.prazo_critico === 'SIM' ? '#ef4444' : '#16a34a'}; font-weight: 700;">
+                            ${p.quantidade_dias} dias ${p.tipo_contagem}
+                        </span>
+                    </div>
 
-                ${p.peticionador ? `
-                <div class="detail-item full-width">
-                    <span class="detail-label"><i class="fas fa-file-upload"></i> Peticionado por</span>
-                    <span class="detail-value">${p.peticionador} em ${formatarData(p.data_peticionamento)}</span>
-                </div>
-                ` : ''}
+                    <h3 class="split-title" style="margin-top: 1.5rem;">RESPONSÁVEIS E AÇÕES</h3>
+                    
+                    <div class="split-item flex-between">
+                        <span class="split-label">Analisador Designado</span>
+                        <span class="split-value" style="color: var(--primary); font-weight: 700;">${p.analisador || 'N/A'}</span>
+                    </div>
 
-                ${p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' ? `
-                <div class="detail-item full-width">
-                    <span class="detail-label"><i class="fas fa-check-double"></i> Protocolo</span>
-                    <span class="detail-value">Em ${formatarData(p.data_protocolo)} por ${p.protocolista || 'N/A'}</span>
-                </div>
-                ` : ''}
+                    <div class="split-item">
+                        <span class="split-label">Manifestação</span>
+                        <span class="split-value">${p.tipo_manifestacao || '---'}</span>
+                    </div>
 
-                ${p.status === 'ANALISADO' ? `
-                <div class="detail-item full-width">
-                    <span class="detail-label"><i class="fas fa-eye"></i> Análise</span>
-                    <span class="detail-value">Concluída em ${formatarData(p.data_analise)}</span>
-                </div>
-                ` : ''}
-
-                <!-- Observações -->
-                <div class="detail-item full-width">
-                    <span class="detail-label"><i class="fas fa-comment-dots"></i> Observações Adicionais</span>
-                    <div class="observation-box">${p.observacoes || 'Nenhuma observação registrada.'}</div>
+                    ${p.status === 'ANALISADO' ? `
+                    <div class="split-item flex-between">
+                        <span class="split-label">Análise Concluída</span>
+                        <span class="split-value">Em ${formatarData(p.data_analise)}</span>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         `;
