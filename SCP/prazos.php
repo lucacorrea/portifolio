@@ -62,6 +62,9 @@ if (!isset($_SESSION['usuario_id'])) {
             <button class="tab-btn active" onclick="switchTab('urgentes')" id="tab-urgentes">
                 <i class="fas fa-exclamation-triangle"></i> Urgentes
             </button>
+            <button class="tab-btn" onclick="switchTab('vencidos')" id="tab-vencidos">
+                <i class="fas fa-calendar-times"></i> Vencidos
+            </button>
             <button class="tab-btn" onclick="switchTab('mensal')" id="tab-mensal">
                 <i class="fas fa-calendar-alt"></i> Cronograma Mensal
             </button>
@@ -236,13 +239,18 @@ if (!isset($_SESSION['usuario_id'])) {
             if (tab === 'urgentes') {
                 gridMeses.style.display = 'none';
                 titulo.textContent = 'Prazos Urgentes';
-                desc.textContent = 'Processos com prazo vencido ou a vencer em até 72 horas.';
+                desc.textContent = 'Processos que vencem em até 7 dias.';
                 sectionTitle.textContent = 'Urgentes';
+            } else if (tab === 'vencidos') {
+                gridMeses.style.display = 'none';
+                titulo.textContent = 'Prazos Vencidos';
+                desc.textContent = 'Processos cujas datas finais já expiraram e não foram protocolados.';
+                sectionTitle.textContent = 'Atenção: Vencidos';
             } else {
                 gridMeses.style.display = 'grid';
                 titulo.textContent = 'Cronograma Mensal';
-                desc.textContent = 'Visualize todos os prazos previstos para o mês selecionado.';
-                sectionTitle.textContent = 'Todos os Prazos do Mês';
+                desc.textContent = 'Visualize os prazos previstos para o mês selecionado (não vencidos).';
+                sectionTitle.textContent = 'Prazos Disponíveis no Mês';
             }
             
             paginaAtual = 1;
@@ -270,14 +278,28 @@ if (!isset($_SESSION['usuario_id'])) {
                     const diffTime = dataPrazo - hoje;
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
-                    return diffDays <= 3;
+                    return diffDays >= 0 && diffDays <= 7;
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
+            } else if (activeTab === 'vencidos') {
+                dadosFiltrados = dadosOriginais.filter(p => {
+                    if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
+                    if (!p.final_prazo) return false;
+                    
+                    const dataPrazo = new Date(p.final_prazo);
+                    dataPrazo.setHours(0,0,0,0);
+                    
+                    return dataPrazo < hoje;
+                });
+                dadosFiltrados.sort((a, b) => new Date(b.final_prazo) - new Date(a.final_prazo)); // Mais antigos no topo? Ou mais recentes? User prefer mais recentes no topo para ciência, mas vencidos talvez mais antigos primeiro ou mais recentes. Vou deixar por prazo.
             } else {
                 dadosFiltrados = dadosOriginais.filter(p => {
                     if (!p.final_prazo) return false;
                     const d = new Date(p.final_prazo);
-                    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                    d.setHours(0,0,0,0);
+                    const matchMonth = d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                    const naoVencido = d >= hoje;
+                    return matchMonth && naoVencido;
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
                 renderizarGridMeses();
