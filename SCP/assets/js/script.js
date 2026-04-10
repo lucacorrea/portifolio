@@ -797,60 +797,103 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const body = document.getElementById('detalhes-conteudo');
         const statusLimpo = (p.status || 'PENDENTE').toUpperCase();
+        const statusClass = statusLimpo.toLowerCase();
         
+        // Custom Header for the modal
+        const modalHeader = modal.querySelector('.modal-header');
+        if (modalHeader) modalHeader.style.display = 'none'; // Hide default header
+
         body.innerHTML = `
+            <div class="modal-header-status header-status-${statusClass}">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <i class="fas fa-file-alt fa-2x"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.25rem;">Processo nº ${p.numero}</h2>
+                        <span style="font-weight: 600; opacity: 0.9;">${statusLimpo}</span>
+                    </div>
+                </div>
+                <button class="btn-quick" onclick="window.fecharModalDetalhes()" style="background: rgba(255,255,255,0.2); border: none; color: white;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
             <div class="details-grid">
+                <!-- Seção: Identificação -->
+                <div class="detail-section-title">
+                    <i class="fas fa-id-card"></i> Identificação e Origem
+                </div>
                 <div class="detail-item">
-                    <span class="detail-label">Nº Processo</span>
+                    <span class="detail-label"><i class="fas fa-fingerprint"></i> Nº Processo</span>
                     <span class="detail-value">${p.numero}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Tipo de Processo</span>
+                    <span class="detail-label"><i class="fas fa-folder-open"></i> Tipo de Processo</span>
                     <span class="detail-value">${p.tipo_processo || 'CIÊNCIA'}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Ato e Natureza</span>
-                    <div class="detail-pills">
-                        <span class="tag-badge ${window.getColorForAto(p.tipo_ato)}">${p.tipo_ato}</span>
-                        <span class="tag-badge ${window.getColorForNatureza(p.natureza)}">${p.natureza}</span>
-                    </div>
+                    <span class="detail-label"><i class="fas fa-gavel"></i> Ato Processual</span>
+                    <span class="tag-badge ${window.getColorForAto(p.tipo_ato)}">${p.tipo_ato}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Status</span>
-                    <span class="badge badge-${statusLimpo.toLowerCase()}">${statusLimpo}</span>
+                    <span class="detail-label"><i class="fas fa-leaf"></i> Natureza</span>
+                    <span class="tag-badge ${window.getColorForNatureza(p.natureza)}">${p.natureza}</span>
+                </div>
+
+                <!-- Seção: Prazos -->
+                <div class="detail-section-title">
+                    <i class="fas fa-clock"></i> Controle de Prazos
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Ciência e Envio</span>
-                    <span class="detail-value">${formatarData(p.data_ciencia)} | ${formatarData(p.data_envio)}</span>
+                    <span class="detail-label"><i class="fas fa-calendar-alt"></i> Ciência / Envio</span>
+                    <span class="detail-value">${formatarData(p.data_ciencia)} / ${formatarData(p.data_envio)}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Prazo Final</span>
-                    <span class="detail-value" style="color: ${p.prazo_critico === 'SIM' ? 'red' : 'inherit'};">
+                    <span class="detail-label"><i class="fas fa-hourglass-half"></i> Prazo Final</span>
+                    <span class="detail-value" style="color: ${p.prazo_critico === 'SIM' ? '#ef4444' : 'inherit'}; font-weight: 800;">
                         ${formatarData(p.final_prazo)} (${p.quantidade_dias} dias ${p.tipo_contagem})
+                        ${p.prazo_critico === 'SIM' ? ' <i class="fas fa-fire" title="CRÍTICO"></i>' : ''}
                     </span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Analisador Responsável</span>
-                    <span class="detail-value">${p.analisador || 'N/A'}</span>
+                    <span class="detail-label"><i class="fas fa-user-edit"></i> Analisador</span>
+                    <span class="tag-badge ${window.getColorForUser(p.analisador)}">${p.analisador || 'N/A'}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Manifestação</span>
+                    <span class="detail-label"><i class="fas fa-bullhorn"></i> Manifestação</span>
                     <span class="detail-value">${p.tipo_manifestacao || '---'}</span>
                 </div>
+
+                <!-- Seção: Status e Histórico -->
+                ${p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' || p.peticionador ? `
+                <div class="detail-section-title">
+                    <i class="fas fa-history"></i> Execução e Registro
+                </div>
+                ` : ''}
+
+                ${p.peticionador ? `
+                <div class="detail-item">
+                    <span class="detail-label"><i class="fas fa-file-upload"></i> Peticionado por</span>
+                    <span class="detail-value">${p.peticionador} em ${formatarData(p.data_peticionamento)}</span>
+                </div>
+                ` : ''}
+
                 ${p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' ? `
                 <div class="detail-item">
-                    <span class="detail-label">Protocolado em</span>
+                    <span class="detail-label"><i class="fas fa-check-double"></i> Protocolo</span>
                     <span class="detail-value">${formatarData(p.data_protocolo)} por ${p.protocolista || 'N/A'}</span>
                 </div>
                 ` : ''}
+
                 ${p.status === 'ANALISADO' ? `
                 <div class="detail-item">
-                    <span class="detail-label">Analisado em</span>
-                    <span class="detail-value">${formatarData(p.data_analise)}</span>
+                    <span class="detail-label"><i class="fas fa-eye"></i> Análise</span>
+                    <span class="detail-value">Concluída em ${formatarData(p.data_analise)}</span>
                 </div>
                 ` : ''}
+
+                <!-- Observações -->
                 <div class="detail-item full-width">
-                    <span class="detail-label">Observações</span>
+                    <span class="detail-label"><i class="fas fa-comment-dots"></i> Observações Adicionais</span>
                     <div class="observation-box">${p.observacoes || 'Nenhuma observação registrada.'}</div>
                 </div>
             </div>
