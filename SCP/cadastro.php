@@ -156,6 +156,11 @@ if (!isset($_SESSION['usuario_id'])) {
                     <label for="quantidade_dias">Quantidade de Dias do Prazo</label>
                     <input type="number" id="quantidade_dias" value="15" min="1" required>
                 </div>
+
+                <div class="form-group">
+                    <label for="final_prazo">Final do Prazo (Calculado)</label>
+                    <input type="date" id="final_prazo" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700; color: var(--primary);">
+                </div>
             </div>
             
             <div class="form-navigation">
@@ -167,11 +172,6 @@ if (!isset($_SESSION['usuario_id'])) {
         <!-- Step 2: Conclusão -->
         <div class="form-step" id="step-2">
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
-                <div class="form-group">
-                    <label for="final_prazo">Final do Prazo (Calculado)</label>
-                    <input type="date" id="final_prazo" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700; color: var(--primary);">
-                </div>
-
                 <div class="form-group">
                     <label for="prazo_critico">Prazo Crítico?</label>
                     <select id="prazo_critico">

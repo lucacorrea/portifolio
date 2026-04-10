@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lógica do formulário
     if (formProcesso) {
         const inputCiencia = document.getElementById('data_ciencia');
+        const inputEnvio = document.getElementById('data_envio_intimacao');
         const inputContagem = document.getElementById('tipo_contagem');
         const inputDias = document.getElementById('quantidade_dias');
         const inputFinal = document.getElementById('final_prazo');
@@ -86,9 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputPeticionador = document.getElementById('peticionador');
 
         window.calcularPrazoFinal = function() {
-            if (!inputCiencia.value || !inputDias.value) return;
+            if (!inputEnvio || !inputEnvio.value || !inputDias.value) return;
 
-            let data = new Date(inputCiencia.value);
+            let data = new Date(inputEnvio.value + 'T12:00:00');
             const dias = parseInt(inputDias.value);
             const tipo = inputContagem.value;
 
@@ -107,8 +108,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Mantém a data original ou lógica específica se houver
             }
             
-            inputFinal.value = data.toISOString().split('T')[0];
-        }
+            // Corrige o timezone local na hora de setar o value
+            const y = data.getFullYear();
+            const m = String(data.getMonth() + 1).padStart(2, '0');
+            const d = String(data.getDate()).padStart(2, '0');
+            inputFinal.value = `${y}-${m}-${d}`;
+        };
+
+        // Adiciona eventos aos campos para recálculo dinâmico
+        [inputEnvio, inputContagem, inputDias].forEach(input => {
+            if(input) {
+                input.addEventListener('change', window.calcularPrazoFinal);
+                input.addEventListener('input', window.calcularPrazoFinal);
+            }
+        });
 
         window.irParaEtapa = (n) => {
             if (n === 1) window.etapaAnterior();
