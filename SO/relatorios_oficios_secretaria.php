@@ -329,15 +329,7 @@ include 'views/layout/header.php';
 
             <div class="no-print">
                 <a
-                    href="relatorios.php?<?php
-                                            echo h(http_build_query([
-                                                'sec_id' => $sec_id,
-                                                'forn_id' => $forn_id,
-                                                'produto' => $produto,
-                                                'inicio' => $periodo_inicio,
-                                                'fim' => $periodo_fim,
-                                            ]));
-                                            ?>"
+                    href="relatorios.php"
                     class="btn btn-outline btn-sm">
                     <i class="fas fa-arrow-left"></i> Voltar
                 </a>
