@@ -253,15 +253,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const sectionUrgente = document.getElementById('section-urgente');
         if (!listPrioridade || !sectionUrgente) return;
 
-        const agora = new Date();
-        const hojeStr = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
 
         const criticos = dadosOriginais.filter(p => {
             if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') return false;
-            if (!p.final_prazo) return true;
+            if (!p.final_prazo) return false; // Sem prazo não é prioridade urgente de prazo
             
-            // Comparação de string YYYY-MM-DD é segura para data local
-            return p.final_prazo >= hojeStr;
+            const pData = new Date(p.final_prazo + 'T12:00:00');
+            const diffTime = pData - hoje;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Apenas hoje ou próximos 3 dias. Vencidos (diffDays < 0) não entram aqui.
+            return diffDays >= 0 && diffDays <= 3;
         });
 
         if (criticos.length === 0) {
