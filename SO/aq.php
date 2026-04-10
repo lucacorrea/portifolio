@@ -467,7 +467,7 @@ $dataAtualBr  = date('d / m / Y');
             }
 
             .ordem-logo {
-                margin-left: -60px !important;
+                margin-left: -50px !important;
             }
 
             .ordem-logo img {
@@ -570,15 +570,7 @@ $dataAtualBr  = date('d / m / Y');
                     <input type="text" id="fornecedor" placeholder="Nome do fornecedor" oninput="atualizarPreview()">
                 </div>
 
-                <div class="field">
-                    <label>CNPJ do fornecedor</label>
-                    <input type="text" id="fornecedor_cnpj" placeholder="00.000.000/0001-00" oninput="atualizarPreview()">
-                </div>
-
-                <div class="field">
-                    <label>Contato do fornecedor</label>
-                    <input type="text" id="fornecedor_contato" placeholder="Telefone / responsável" oninput="atualizarPreview()">
-                </div>
+                
 
                 <div class="field span-2">
                     <label>Secretaria / Destino</label>
@@ -637,10 +629,7 @@ $dataAtualBr  = date('d / m / Y');
                             <div id="pv_datahora_1" style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
                                 DATA: <?php echo $dataAtualBr; ?>
                             </div>
-                            <div style="margin-top:8px; font-size:0.72rem; line-height:1.4;">
-                                <strong>CNPJ Fornecedor:</strong> <span id="pv_cnpj_fornecedor_1">-</span><br>
-                                <strong>Contato:</strong> <span id="pv_contato_fornecedor_1">-</span>
-                            </div>
+                           
                         </div>
                     </div>
 
