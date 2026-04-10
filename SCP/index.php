@@ -121,38 +121,6 @@ if (!isset($_SESSION['usuario_id'])) {
                     </tr>
                 </thead>
                 <tbody id="lista-prioridade">
-                    <!-- Preenchido via JS -->
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <section class="data-section">
-        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="font-size: 1.25rem; margin: 0;">Lista de Processos</h2>
-                    <tr>
-                        <th>Nº PROCESSO</th>
-                        <th>TIPO</th>
-                        <th>ATO / NATUREZA</th>
-                        <th>PRAZO FINAL</th>
-                        <th>ANALISADOR</th>
-                        <th>STATUS</th>
-                        <th>AÇÕES</th>
-                    </tr>
-                </thead>
-                <tbody id="lista-processos">
-                    <!-- Preenchido via JS -->
-                </tbody>
-            </table>
-        </div>
-        <div id="paginacao-processos" class="pagination" style="margin-top: 1.5rem;"></div>
-    </section>
-</main>
-
-    <!-- Modal de Detalhes do Processo -->
-    <div id="modal-detalhes" class="modal-overlay">
-        <div class="modal-content">
             <div id="detalhes-conteudo">
                 <!-- Preenchido via JS -->
             </div>
