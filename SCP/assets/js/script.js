@@ -266,6 +266,41 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizarTabela();
     }
 
+    function renderDropdownActions(p) {
+        const perfil = window.userPerfil || 'ANALISADOR';
+        let actionsHtml = `<button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-eye"></i> Visualizar</button>`;
+
+        if (p.status === 'PENDENTE') {
+            if (perfil === 'ACESSORES') {
+                actionsHtml += `<button class="dropdown-item" onclick="window.marcarSendoAvaliado(${p.id})"><i class="fas fa-search"></i> Sendo Avaliado</button>`;
+                actionsHtml += `<button class="dropdown-item" onclick="window.marcarEmElaboracao(${p.id})"><i class="fas fa-pencil-alt"></i> Em Elaboração</button>`;
+                actionsHtml += `<button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>`;
+            } else {
+                // ANALISADOR ou ADMIN
+                actionsHtml += `<button class="dropdown-item" onclick="window.marcarEmElaboracao(${p.id})"><i class="fas fa-pencil-alt"></i> Em Elaboração</button>`;
+                actionsHtml += `<button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>`;
+                actionsHtml += `<button class="dropdown-item" onclick="window.marcarFinalizado(${p.id})"><i class="fas fa-flag-checkered"></i> Processo Finalizado</button>`;
+            }
+        } else if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' || p.status === 'SENDO AVALIADO' || p.status === 'EM ELABORAÇÃO') {
+            // Opções comuns para estados intermediários
+            if (!p.peticionador) {
+                actionsHtml += `<button class="dropdown-item" onclick="window.peticionarProcesso(${p.id})"><i class="fas fa-file-upload"></i> Peticionar</button>`;
+            }
+            // Analisador pode finalizar processos que já saíram do PENDENTE também? 
+            // O usuário disse: "Os analisadores podem trocar de PENDENTES para..."
+            // Mas geralmente podem finalizar a qualquer momento.
+            if (perfil !== 'ACESSORES' && p.status !== 'PROCESSO FINALIZADO') {
+                actionsHtml += `<button class="dropdown-item" onclick="window.marcarFinalizado(${p.id})"><i class="fas fa-flag-checkered"></i> Processo Finalizado</button>`;
+            }
+        }
+
+        actionsHtml += `<button class="dropdown-item" onclick="window.editarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-edit"></i> Editar</button>`;
+        actionsHtml += `<div style="border-top: 1px solid var(--border); margin: 4px 0;"></div>`;
+        actionsHtml += `<button class="dropdown-item text-danger" onclick="window.excluirProcesso(${p.id})"><i class="fas fa-trash"></i> Excluir</button>`;
+
+        return actionsHtml;
+    }
+
     function renderizarPrioridade() {
         const listPrioridade = document.getElementById('lista-prioridade');
         const sectionUrgente = document.getElementById('section-urgente');
