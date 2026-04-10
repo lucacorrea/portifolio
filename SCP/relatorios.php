@@ -287,7 +287,12 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
 </main>
 
-<script src="assets/js/script.js"></script>
+<script>
+    window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
+</script>
+<script src="assets/js/script.js?v=61"></script>
+</body>
+</html>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const inputMes = document.getElementById('filtro-mes');
