@@ -264,9 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const diffTime = pData - hoje;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Apenas hoje ou próximos 3 dias. Vencidos (diffDays < 0) não entram aqui.
-            return diffDays >= 0 && diffDays <= 3;
-        });
+            // Vencidos (diffDays < 0) não entram aqui.
+            return diffDays >= 0;
+        })
+        .sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo))
+        .slice(0, 5);
 
         if (criticos.length === 0) {
             sectionUrgente.style.display = 'none';
@@ -276,14 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sectionUrgente.style.display = 'block';
         listPrioridade.innerHTML = '';
 
-        criticos.sort((a, b) => {
-            if (!a.final_prazo) return 1;
-            if (!b.final_prazo) return -1;
-            return new Date(a.final_prazo) - new Date(b.final_prazo);
-        });
-        const top5 = criticos.slice(0, 5);
-
-        top5.forEach(p => {
+        criticos.forEach(p => {
             const dataPrazo = new Date(p.final_prazo);
             const diffTime = dataPrazo - hoje;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
