@@ -587,7 +587,9 @@ $dataAtualBr  = date('d / m / Y');
         </div>
 
         <div class="items-box">
+
             <h3 class="items-title">Itens da aquisição</h3>
+            <button class="btn btn-primary" onclick="adicionarItem()">+ Adicionar item</button>
             <div id="itens-formulario"></div>
         </div>
     </div>
