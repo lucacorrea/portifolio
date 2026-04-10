@@ -208,7 +208,7 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=17"></script>
+<script src="assets/js/script.js?v=20"></script>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const listPrazos = document.getElementById('lista-prazos');
