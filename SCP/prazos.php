@@ -106,43 +106,67 @@ if (!isset($_SESSION['usuario_id'])) {
             margin-left: 5px;
             border: 1px solid #bfdbfe;
         }
+
+        /* Grid de Meses */
+        .month-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .month-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .month-card:hover {
+            transform: translateY(-3px);
+            background: white;
+            box-shadow: var(--shadow);
+            border-color: var(--primary);
+        }
+        .month-card.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .month-card .month-name {
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .month-card .process-count {
+            font-size: 1.25rem;
+            font-weight: 800;
+        }
+        .month-card .process-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+        .month-card.active .process-label {
+            opacity: 1;
+        }
     </style>
 
     <section class="data-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-            <h2 id="section-title" style="font-size: 1.25rem;">Urgentes</h2>
-            
-            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                <!-- Filtros Mensais (ocultos por padrão) -->
-                <div id="contener-filtro-mensal" class="filter-group-mensal">
-                    <select id="filtro-mes" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
-                        <option value="0">Janeiro</option>
-                        <option value="1">Fevereiro</option>
-                        <option value="2">Março</option>
-                        <option value="3">Abril</option>
-                        <option value="4">Maio</option>
-                        <option value="5">Junho</option>
-                        <option value="6">Julho</option>
-                        <option value="7">Agosto</option>
-                        <option value="8">Setembro</option>
-                        <option value="9">Outubro</option>
-                        <option value="10">Novembro</option>
-                        <option value="11">Dezembro</option>
-                    </select>
-                    <select id="filtro-ano" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
-                        <!-- JS preenche -->
-                    </select>
-                </div>
-                <select id="filtro-tipo-prazos" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
-                    <option value="">Tipos (Todos)</option>
-                    <option value="CIÊNCIA">Ciência</option>
-                    <option value="CUMPRIMENTO">Cumprimento</option>
-                </select>
-                <div style="position: relative;">
-                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                    <input type="text" id="filtro-urgentes" placeholder="Pesquisar..." style="width: 250px; padding: 0.5rem 1rem 0.5rem 36px; height: 38px; border-radius: 50px; border: 1px solid var(--border); outline: none;">
-                </div>
             </div>
+        </div>
+
+        <!-- Grid de Meses -->
+        <div id="month-grid" class="month-grid">
+            <!-- JS preenche -->
         </div>
 
         <div style="overflow-x: auto;">
@@ -202,17 +226,20 @@ if (!isset($_SESSION['usuario_id'])) {
             document.getElementById('tab-' + tab).classList.add('active');
             
             const filtroMensal = document.getElementById('contener-filtro-mensal');
+            const gridMeses = document.getElementById('month-grid');
             const titulo = document.getElementById('prazos-titulo');
             const desc = document.getElementById('prazos-descricao');
             const sectionTitle = document.getElementById('section-title');
 
             if (tab === 'urgentes') {
                 filtroMensal.style.display = 'none';
+                gridMeses.style.display = 'none';
                 titulo.textContent = 'Prazos Urgentes';
                 desc.textContent = 'Processos com prazo vencido ou a vencer em até 72 horas.';
                 sectionTitle.textContent = 'Urgentes';
             } else {
                 filtroMensal.style.display = 'flex';
+                gridMeses.style.display = 'grid';
                 titulo.textContent = 'Cronograma Mensal';
                 desc.textContent = 'Visualize todos os prazos previstos para o mês selecionado.';
                 sectionTitle.textContent = 'Todos os Prazos do Mês';
@@ -256,9 +283,47 @@ if (!isset($_SESSION['usuario_id'])) {
                     return d.getMonth() === mesSel && d.getFullYear() === anoSel;
                 });
                 dadosFiltrados.sort((a, b) => new Date(a.final_prazo) - new Date(b.final_prazo));
+                renderizarGridMeses();
             }
 
             renderizarTabela();
+        }
+
+        function renderizarGridMeses() {
+            const grid = document.getElementById('month-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            const meses = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            
+            const anoSel = parseInt(selectAno.value);
+            const mesSel = parseInt(selectMes.value);
+
+            meses.forEach((nome, index) => {
+                const count = dadosOriginais.filter(p => {
+                    if (!p.final_prazo) return false;
+                    const d = new Date(p.final_prazo);
+                    return d.getMonth() === index && d.getFullYear() === anoSel;
+                }).length;
+
+                const card = document.createElement('div');
+                card.className = `month-card ${index === mesSel ? 'active' : ''}`;
+                card.onclick = () => {
+                    selectMes.value = index;
+                    paginaAtual = 1;
+                    processarDados();
+                };
+
+                card.innerHTML = `
+                    <div class="month-name">${nome}</div>
+                    <div class="process-count">${count}</div>
+                    <div class="process-label">${count === 1 ? 'Processo' : 'Processos'}</div>
+                `;
+                grid.appendChild(card);
+            });
         }
 
         function renderizarTabela() {
