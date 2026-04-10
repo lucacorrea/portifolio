@@ -131,32 +131,6 @@ if (!isset($_SESSION['usuario_id'])) {
         <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="font-size: 1.25rem; margin: 0;">Lista de Processos</h2>
-            </div>
-            
-            <div class="tabs-container" id="analisador-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
-                <!-- Preenchido via JS -->
-            </div>
-            
-            <div class="filter-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
-                <select id="filtro-tipo-processo" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
-                    <option value="">Tipo (Todos)</option>
-                    <input type="date" id="filtro-data-fim" title="Data Final" style="width: auto; border: none; padding: 0; font-size: 0.75rem; outline: none; background: transparent; color: var(--text-main); font-weight: 600; margin-right: 4px;">
-                </div>
-
-                <div style="position: relative; flex-grow: 1; min-width: 150px; max-width: 300px;">
-                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
-                    <input type="text" id="filtro-busca" placeholder="Pesquisar nº ou tipo..." style="width: 100%; padding: 0.45rem 1rem 0.45rem 32px; border-radius: 50px; border: 1px solid var(--border); font-size: 0.85rem; outline: none;">
-                </div>
-                
-                <a href="cadastro.php" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem; border-radius: 50px; white-space: nowrap; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-plus"></i> Novo
-                </a>
-            </div>
-        </div>
-
-        <div style="overflow-x: auto;">
-            <table id="tabela-processos">
-                <thead>
                     <tr>
                         <th>Nº PROCESSO</th>
                         <th>TIPO</th>
