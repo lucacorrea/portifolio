@@ -467,7 +467,7 @@ $dataAtualBr  = date('d / m / Y');
             }
 
             .ordem-logo {
-                margin-left: -60px !important;
+                margin-left: -50px !important;
             }
 
             .ordem-logo img {
