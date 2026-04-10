@@ -306,7 +306,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td style="font-weight: 800; color: ${corPrazo}; font-size: 1rem;">${labelPrazo}</td>
                 <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
                 <td>
-                <td>
                     <div class="dropdown">
                         <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
                             <i class="fas fa-ellipsis-v"></i>
@@ -465,7 +464,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     ` : ''}
                 </td>
-                <td>
                 <td>
                     <div class="dropdown">
                         <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
