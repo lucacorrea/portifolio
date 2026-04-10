@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.renderDropdownActions = function(p) {
-        const perfil = window.userPerfil || 'ANALISADOR';
+        const perfil = (window.userPerfil || 'ANALISADOR').toUpperCase().trim();
         let actionsHtml = `<button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-eye"></i> Visualizar</button>`;
 
         if (p.status === 'PENDENTE') {
