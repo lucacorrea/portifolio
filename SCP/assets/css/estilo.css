@@ -1021,8 +1021,46 @@ input:focus, select:focus {
     color: white;
 }
 
+/* Classes CSS Específicas para Empilhamento Vertical (Fatura/Extrato) */
+.split-item-stacked {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed #e2e8f0;
+}
+
+.split-item-stacked:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.split-value-large {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #000000;
+    letter-spacing: 0.02em;
+    word-break: break-all;
+}
+
+.split-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.split-grid-2 .split-item-stacked {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
 @media (max-width: 768px) {
     .modal-body-split { flex-direction: column; gap: 1.5rem; }
     .split-col.right-col { border-left: none; padding-left: 0; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; }
     .split-item.flex-row { flex-direction: column; gap: 0.75rem; }
+    .split-grid-2 { grid-template-columns: 1fr; gap: 1rem; }
 }

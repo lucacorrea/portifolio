@@ -819,53 +819,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="split-col">
                     <h3 class="split-title">INFORMAÇÕES GERAIS</h3>
                     
-                    <div class="split-item flex-between">
+                    <div class="split-item-stacked">
                         <span class="split-label">Nº do Processo</span>
-                        <span class="split-value" style="font-size: 1.1rem; font-weight: 800; letter-spacing: 0.5px;">${p.numero}</span>
+                        <span class="split-value-large">${p.numero}</span>
                     </div>
 
-                    <div class="split-item flex-between">
-                        <span class="split-label">Status Atual</span>
-                        <span class="split-status-badge header-status-${statusClass}">
-                            ${statusOriginal}
-                        </span>
+                    <div class="split-grid-2">
+                        <div class="split-item-stacked">
+                            <span class="split-label">Status Atual</span>
+                            <div>
+                                <span class="split-status-badge header-status-${statusClass}">
+                                    ${statusOriginal}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="split-item-stacked">
+                            <span class="split-label">Tipo de Processo</span>
+                            <span class="split-value">${p.tipo_processo || 'CIÊNCIA'}</span>
+                        </div>
                     </div>
 
-                    <div class="split-item">
-                        <span class="split-label">Tipo de Processo</span>
-                        <span class="split-value">${p.tipo_processo || 'CIÊNCIA'}</span>
-                    </div>
-
-                    <div class="split-item flex-row">
-                        <div style="flex: 1;">
+                    <div class="split-grid-2" style="border-bottom: 1px dashed #e2e8f0; padding-bottom: 1.25rem; margin-bottom: 1.25rem;">
+                        <div class="split-item-stacked">
                             <span class="split-label">Ato Processual</span>
-                            <div style="margin-top: 4px;">
+                            <div>
                                 <span class="tag-badge ${window.getColorForAto(p.tipo_ato)}">${p.tipo_ato}</span>
                             </div>
                         </div>
-                        <div style="flex: 1;">
+                        <div class="split-item-stacked">
                             <span class="split-label">Natureza</span>
-                            <div style="margin-top: 4px;">
+                            <div>
                                 <span class="tag-badge ${window.getColorForNatureza(p.natureza)}">${p.natureza}</span>
                             </div>
                         </div>
                     </div>
 
-                    <h3 class="split-title" style="margin-top: 1.5rem;">REGISTRO E OBSERVAÇÕES</h3>
+                    <h3 class="split-title">REGISTRO E OBSERVAÇÕES</h3>
                     
                     ${p.peticionador ? `
                     <div class="split-item flex-between">
                         <span class="split-label">Peticionado por</span>
-                        <span class="split-value">${p.peticionador} em ${formatarData(p.data_peticionamento)}</span>
+                        <span class="split-value">${p.peticionador}<br><span style="font-size:0.8rem;color:#64748b;font-weight:600;">em ${formatarData(p.data_peticionamento)}</span></span>
                     </div>` : ''}
 
                     ${p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' ? `
                     <div class="split-item flex-between">
-                        <span class="split-label">Protocolado</span>
-                        <span class="split-value">Em ${formatarData(p.data_protocolo)} por ${p.protocolista || 'N/A'}</span>
+                        <span class="split-label">Protocolado por</span>
+                        <span class="split-value">${p.protocolista || 'N/A'}<br><span style="font-size:0.8rem;color:#64748b;font-weight:600;">em ${formatarData(p.data_protocolo)}</span></span>
                     </div>` : ''}
 
-                    <div class="split-item">
+                    <div class="split-item-stacked" style="border:none;">
                         <span class="split-label">Observações Adicionais</span>
                         <div class="split-obs">${p.observacoes || 'Nenhuma observação registrada.'}</div>
                     </div>
@@ -882,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     <div class="split-item flex-between">
                         <span class="split-label">Prazo Final</span>
-                        <span class="split-value" style="color: ${p.prazo_critico === 'SIM' ? '#ef4444' : '#ef4444'}; font-size: 1.1rem; font-weight: 800;">
+                        <span class="split-value" style="color: ${p.prazo_critico === 'SIM' ? '#ef4444' : '#ef4444'}; font-size: 1.15rem; font-weight: 800;">
                             ${formatarData(p.final_prazo)}
                             ${p.prazo_critico === 'SIM' ? ' <i class="fas fa-exclamation-circle" title="CRÍTICO"></i>' : ''}
                         </span>
@@ -890,25 +893,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <div class="split-item flex-between">
                         <span class="split-label">Tempo Restante</span>
-                        <span class="split-value" style="color: ${p.prazo_critico === 'SIM' ? '#ef4444' : '#16a34a'}; font-weight: 700;">
+                        <span class="split-value" style="color: ${p.prazo_critico === 'SIM' ? '#ef4444' : '#16a34a'}; font-weight: 700; font-size: 1.05rem;">
                             ${p.quantidade_dias} dias ${p.tipo_contagem}
                         </span>
                     </div>
 
-                    <h3 class="split-title" style="margin-top: 1.5rem;">RESPONSÁVEIS E AÇÕES</h3>
+                    <h3 class="split-title" style="margin-top: 2rem;">RESPONSÁVEIS E AÇÕES</h3>
                     
                     <div class="split-item flex-between">
                         <span class="split-label">Analisador Designado</span>
-                        <span class="split-value" style="color: var(--primary); font-weight: 700;">${p.analisador || 'N/A'}</span>
+                        <span class="split-value" style="color: var(--primary); font-weight: 800;">${p.analisador || 'N/A'}</span>
                     </div>
 
-                    <div class="split-item">
-                        <span class="split-label">Manifestação</span>
-                        <span class="split-value">${p.tipo_manifestacao || '---'}</span>
+                    <div class="split-item-stacked" style="border:none; margin-top: 0.5rem;">
+                        <span class="split-label">Manifestação Exigida</span>
+                        <span class="split-value" style="text-align: left; background: #f8fafc; padding: 10px; border-radius: 4px; border-left: 3px solid var(--primary);">${p.tipo_manifestacao || '---'}</span>
                     </div>
 
                     ${p.status === 'ANALISADO' ? `
-                    <div class="split-item flex-between">
+                    <div class="split-item flex-between" style="border-top: 1px dashed #e2e8f0; padding-top: 1rem; margin-top: 1rem;">
                         <span class="split-label">Análise Concluída</span>
                         <span class="split-value">Em ${formatarData(p.data_analise)}</span>
                     </div>
