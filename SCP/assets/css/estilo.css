@@ -672,3 +672,65 @@ input:focus, select:focus {
 .dropdown-item.text-danger:hover i {
     color: #ef4444;
 }
+
+/* Estilos para o Modal de Visualização de Detalhes */
+#modal-detalhes .modal-content {
+    max-width: 800px;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.detail-item {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+}
+
+.detail-item.full-width {
+    grid-column: span 2;
+}
+
+.detail-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.detail-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.observation-box {
+    background: rgba(var(--primary-rgb, 37, 99, 235), 0.05);
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: 1px dashed var(--border);
+    min-height: 80px;
+    font-style: italic;
+    white-space: pre-wrap;
+}
+
+.detail-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 600px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+    .detail-item.full-width {
+        grid-column: span 1;
+    }
+}

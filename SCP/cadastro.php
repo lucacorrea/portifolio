@@ -239,6 +239,11 @@ if (!isset($_SESSION['usuario_id'])) {
                     </div>
                 </div>
 
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="observacoes">Observações</label>
+                    <textarea id="observacoes" rows="4" placeholder="Adicione notas ou detalhes importantes sobre este processo..."></textarea>
+                </div>
+
                 <div class="form-group">
                     <label for="status">Status</label>
                     <select id="status">

@@ -208,7 +208,7 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=10"></script>
+<script src="assets/js/script.js?v=17"></script>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const listPrazos = document.getElementById('lista-prazos');
@@ -449,6 +449,7 @@ if (!isset($_SESSION['usuario_id'])) {
                                 <i class="fas fa-ellipsis-v"></i>
                             </button>
                             <div class="dropdown-menu">
+                                <button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-eye"></i> Visualizar</button>
                                 ${p.status === 'PENDENTE' ? `
                                     <button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>
                                 ` : ''}
@@ -536,5 +537,20 @@ if (!isset($_SESSION['usuario_id'])) {
         carregarPrazos();
     });
 </script>
+    <!-- Modal de Detalhes -->
+    <div id="modal-detalhes" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Detalhes do Processo</h2>
+                <button class="btn-quick" onclick="window.fecharModalDetalhes()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="detalhes-conteudo">
+                <!-- Preenchido via JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="window.fecharModalDetalhes()">Fechar</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

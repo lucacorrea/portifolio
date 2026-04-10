@@ -193,7 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 status: document.getElementById('status').value || 'PENDENTE',
                 prazo_critico: document.getElementById('prazo_critico') ? document.getElementById('prazo_critico').value : 'NÃO',
                 data_analise: document.getElementById('data_analise') ? document.getElementById('data_analise').value : '',
-                data_peticionamento: document.getElementById('data_peticionamento') ? document.getElementById('data_peticionamento').value : ''
+                data_peticionamento: document.getElementById('data_peticionamento') ? document.getElementById('data_peticionamento').value : '',
+                observacoes: document.getElementById('observacoes') ? document.getElementById('observacoes').value : ''
             };
 
             const resp = await fetch('api.php?acao=salvar', {
@@ -310,6 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="dropdown-menu">
+                            <button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-eye"></i> Visualizar</button>
                             ${p.status === 'PENDENTE' ? `
                                 <button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>
                             ` : ''}
@@ -467,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="dropdown-menu">
+                            <button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-eye"></i> Visualizar</button>
                             ${p.status === 'PENDENTE' ? `
                                 <button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>
                             ` : ''}
@@ -677,6 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('status').value = p.status;
         document.getElementById('prazo_critico').value = p.prazo_critico;
+        document.getElementById('observacoes').value = p.observacoes || '';
 
         if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') {
             const cProt = document.getElementById('container-protocolo');
@@ -784,5 +788,79 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveResp.ok) {
             window.location.reload();
         }
+    };
+
+    window.visualizarProcesso = (pJson) => {
+        const p = JSON.parse(decodeURIComponent(pJson));
+        const modal = document.getElementById('modal-detalhes');
+        if (!modal) return;
+
+        const body = document.getElementById('detalhes-conteudo');
+        const statusLimpo = (p.status || 'PENDENTE').toUpperCase();
+        
+        body.innerHTML = `
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Nº Processo</span>
+                    <span class="detail-value">${p.numero}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Tipo de Processo</span>
+                    <span class="detail-value">${p.tipo_processo || 'CIÊNCIA'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Ato e Natureza</span>
+                    <div class="detail-pills">
+                        <span class="tag-badge ${window.getColorForAto(p.tipo_ato)}">${p.tipo_ato}</span>
+                        <span class="tag-badge ${window.getColorForNatureza(p.natureza)}">${p.natureza}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Status</span>
+                    <span class="badge badge-${statusLimpo.toLowerCase()}">${statusLimpo}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Ciência e Envio</span>
+                    <span class="detail-value">${formatarData(p.data_ciencia)} | ${formatarData(p.data_envio)}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Prazo Final</span>
+                    <span class="detail-value" style="color: ${p.prazo_critico === 'SIM' ? 'red' : 'inherit'};">
+                        ${formatarData(p.final_prazo)} (${p.quantidade_dias} dias ${p.tipo_contagem})
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Analisador Responsável</span>
+                    <span class="detail-value">${p.analisador || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Manifestação</span>
+                    <span class="detail-value">${p.tipo_manifestacao || '---'}</span>
+                </div>
+                ${p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' ? `
+                <div class="detail-item">
+                    <span class="detail-label">Protocolado em</span>
+                    <span class="detail-value">${formatarData(p.data_protocolo)} por ${p.protocolista || 'N/A'}</span>
+                </div>
+                ` : ''}
+                ${p.status === 'ANALISADO' ? `
+                <div class="detail-item">
+                    <span class="detail-label">Analisado em</span>
+                    <span class="detail-value">${formatarData(p.data_analise)}</span>
+                </div>
+                ` : ''}
+                <div class="detail-item full-width">
+                    <span class="detail-label">Observações</span>
+                    <div class="observation-box">${p.observacoes || 'Nenhuma observação registrada.'}</div>
+                </div>
+            </div>
+        `;
+
+        modal.classList.add('active');
+    };
+
+    window.fecharModalDetalhes = () => {
+        const modal = document.getElementById('modal-detalhes');
+        if (modal) modal.classList.remove('active');
     };
 });

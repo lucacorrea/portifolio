@@ -189,6 +189,22 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=15"></script>
+    <!-- Modal de Detalhes do Processo -->
+    <div id="modal-detalhes" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Detalhes do Processo</h2>
+                <button class="btn-quick" onclick="window.fecharModalDetalhes()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="detalhes-conteudo">
+                <!-- Preenchido via JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="window.fecharModalDetalhes()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/script.js?v=17"></script>
 </body>
 </html>
