@@ -1065,6 +1065,12 @@ include 'views/layout/header.php';
                                     label: function(context) {
                                         const index = context.dataIndex ?? 0;
                                         const sigla = labels[index] || '';
+
+
+
+
+
+                                        
                                         const value = Number(context.raw || 0);
                                         return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
                                             style: 'currency',
