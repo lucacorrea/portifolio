@@ -165,26 +165,7 @@ if (!isset($_SESSION['usuario_id'])) {
             <h2 id="section-title" style="font-size: 1.25rem;">Urgentes</h2>
             
             <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                <!-- Filtros Mensais (ocultos por padrão) -->
-                <div id="contener-filtro-mensal" class="filter-group-mensal">
-                    <select id="filtro-mes" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
-                        <option value="0">Janeiro</option>
-                        <option value="1">Fevereiro</option>
-                        <option value="2">Março</option>
-                        <option value="3">Abril</option>
-                        <option value="4">Maio</option>
-                        <option value="5">Junho</option>
-                        <option value="6">Julho</option>
-                        <option value="7">Agosto</option>
-                        <option value="8">Setembro</option>
-                        <option value="9">Outubro</option>
-                        <option value="10">Novembro</option>
-                        <option value="11">Dezembro</option>
-                    </select>
-                    <select id="filtro-ano" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
-                        <!-- JS preenche -->
-                    </select>
-                </div>
+            
                 <select id="filtro-tipo-prazos" style="padding: 0.5rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; height: 38px;">
                     <option value="">Tipos (Todos)</option>
                     <option value="CIÊNCIA">Ciência</option>
