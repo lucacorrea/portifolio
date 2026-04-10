@@ -10,7 +10,127 @@ declare(strict_types=1);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ordem de Aquisição Manual</title>
     <style>
-        .print-topbar {
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 24px;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f5f7fb;
+            color: #222;
+        }
+
+        .container {
+            max-width: 1250px;
+            margin: 0 auto;
+        }
+
+        .topbar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #1d4ed8;
+            color: #fff;
+        }
+
+        .btn-success {
+            background: #15803d;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: #b91c1c;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #374151;
+            color: #fff;
+        }
+
+        .form-card,
+        .printable-page {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+            border: 1px solid #e5e7eb;
+        }
+
+        .form-card {
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-title {
+            margin: 0 0 18px;
+            font-size: 22px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #374151;
+        }
+
+        .field input,
+        .field textarea,
+        .field select {
+            width: 100%;
+            padding: 11px 12px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .field textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .span-2 {
+            grid-column: span 2;
+        }
+
+        .span-3 {
+            grid-column: span 3;
+        }
+
+        .span-4 {
+            grid-column: span 4;
+        }
+
+        <style>.print-topbar {
             margin-bottom: 2rem;
             display: flex;
             gap: 1rem;
@@ -361,6 +481,7 @@ declare(strict_types=1);
         }
     </style>
 
+    </style>
 </head>
 
 <body>
