@@ -212,7 +212,10 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=50"></script>
+<script>
+    window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
+</script>
+<script src="assets/js/script.js?v=61"></script>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const listPrazos = document.getElementById('lista-prazos');
