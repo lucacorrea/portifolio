@@ -70,7 +70,7 @@
     justify-content: space-between;
     align-items: center;
 }
-.header-status-pendente { background: #dc2626; } /* Sólido */
+.header-status-pendente, .header-status-em-elaboração { background: #dc2626; } 
 .header-status-protocolado { background: #16a34a; }
 .header-status-analisado { background: #2563eb; }
 
@@ -460,11 +460,11 @@ input:focus, select:focus {
 .modal-content {
     background: #ffffff;
     border: 1px solid #d1d5db;
-    border-radius: 8px; /* Mais sóbrio */
+    border-radius: 8px;
     padding: 0;
-    width: 95%;
-    max-width: 850px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    width: 90%;
+    max-width: 900px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     overflow: hidden;
     animation: modalReveal 0.2s ease-out;
 }
@@ -710,59 +710,71 @@ input:focus, select:focus {
 }
 
 .details-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0; /* Layout tabular */
-    padding: 0 1.5rem 1.5rem 1.5rem;
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.detail-section-title {
+    display: block;
+    width: 100%;
+    background: #f8fafc;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e1e8f0;
+    border-top: 1px solid #e1e8f0;
 }
 
 .detail-item {
-    padding: 1rem;
-    border-bottom: 1px solid #f3f4f6;
     display: flex;
-    flex-direction: column;
-}
-
-.detail-item:nth-child(even) {
-    border-left: 1px solid #f3f4f6;
+    width: 100%;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .detail-item.full-width {
-    grid-column: span 2;
-    border-left: none;
+    flex-direction: column;
+    padding: 1rem 1.5rem;
 }
 
 .detail-label {
+    width: 35%;
+    min-width: 150px;
+    padding: 0.75rem 1.5rem;
+    background: #fcfdfe;
+    border-right: 1px solid #f1f5f9;
     display: flex;
     align-items: center;
     font-size: 0.65rem;
     font-weight: 700;
-    color: #94a3b8;
-    text-transform: uppercase;
-    margin-bottom: 0.25rem;
-}
-
-.detail-label i {
-    font-size: 0.8rem;
-    margin-right: 6px;
     color: #64748b;
+    margin-bottom: 0;
 }
 
 .detail-value {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
     font-size: 0.9rem;
     font-weight: 600;
-    color: #334155;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
 }
 
 .observation-box {
-    background: #f8fafc;
+    background: #fdfdfd;
     padding: 1rem;
     border-radius: 4px;
     border: 1px solid #e2e8f0;
-    min-height: 80px;
+    min-height: 100px;
     font-size: 0.85rem;
     line-height: 1.6;
     color: #475569;
+    margin-top: 0.5rem;
+    width: 100%;
 }
 
 .detail-pills {

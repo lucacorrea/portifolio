@@ -796,8 +796,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!modal) return;
 
         const body = document.getElementById('detalhes-conteudo');
-        const statusLimpo = (p.status || 'PENDENTE').toUpperCase();
-        const statusClass = statusLimpo.toLowerCase();
+        const statusOriginal = (p.status || 'PENDENTE').toUpperCase();
+        const statusClass = statusOriginal.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
         
         // Custom Header for the modal
         const modalHeader = modal.querySelector('.modal-header');
@@ -806,12 +806,15 @@ document.addEventListener('DOMContentLoaded', () => {
         body.innerHTML = `
             <div class="modal-header-status header-status-${statusClass}">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <i class="fas fa-file-invoice"></i>
-                    <h2 style="margin: 0; font-size: 1.1rem; letter-spacing: 0.5px;">PROCESSO: ${p.numero}</h2>
+                    <i class="fas fa-file-invoice" style="font-size: 1.2rem;"></i>
+                    <h2 style="margin: 0; font-size: 1rem; letter-spacing: 0.5px; font-weight: 700;">PROCESSO: ${p.numero}</h2>
                 </div>
-                <button class="btn-quick" onclick="window.fecharModalDetalhes()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; width: 28px; height: 28px;">
-                    <i class="fas fa-times" style="font-size: 0.8rem;"></i>
-                </button>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span style="font-size: 0.75rem; font-weight: 800; background: rgba(0,0,0,0.2); padding: 4px 12px; border-radius: 4px;">${statusOriginal}</span>
+                    <button class="btn-quick" onclick="window.fecharModalDetalhes()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; width: 26px; height: 26px;">
+                        <i class="fas fa-times" style="font-size: 0.7rem;"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="details-grid">
