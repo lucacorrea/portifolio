@@ -547,7 +547,6 @@ $dataAtualBr  = date('d / m / Y');
     <div class="container">
 
         <div class="topbar no-print">
-            <button class="btn btn-primary" onclick="adicionarItem()">+ Adicionar item</button>
             <button class="btn btn-success" onclick="window.print()">Imprimir / Salvar em PDF</button>
             <button class="btn btn-secondary" onclick="limparFormulario()">Limpar tudo</button>
         </div>
