@@ -13,40 +13,52 @@ if (!$oficio) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_FILES['arquivo_oficio']) && $_FILES['arquivo_oficio']['error'] === UPLOAD_ERR_OK) {
-        $file_tmp  = $_FILES['arquivo_oficio']['tmp_name'];
-        $file_name = $_FILES['arquivo_oficio']['name'];
-        $ext       = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        
+    if (isset($_FILES['arquivo_oficio']) && !empty($_FILES['arquivo_oficio']['name'][0])) {
+        $files = $_FILES['arquivo_oficio'];
+        $upload_dir = "assets/uploads/oficios/";
         $allowed = ['pdf', 'jpg', 'jpeg', 'png'];
-        if (!in_array($ext, $allowed)) {
-            $error = "Apenas arquivos PDF, JPG e PNG são permitidos.";
-        } else {
-            // Gerar nome único
-            $new_name = "OFI_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
-            $upload_dir = "assets/uploads/oficios/";
+        $success_count = 0;
+        $first_file_path = null;
 
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
 
-            if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
-                $caminho_arquivo = $upload_dir . $new_name;
-                
-                // Atualizar no banco
-                $stmt_upd = $pdo->prepare("UPDATE oficios SET arquivo_oficio = ? WHERE id = ?");
-                $stmt_upd->execute([$caminho_arquivo, $id]);
+        for ($i = 0; $i < count($files['name']); $i++) {
+            if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                $file_tmp  = $files['tmp_name'][$i];
+                $file_name = $files['name'][$i];
+                $ext       = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
 
-                log_action($pdo, "ANEXAR_OFICIO", "Ofício anexado à solicitação " . $oficio['numero']);
-                flash_message('success', "Documento anexado com sucesso!");
-                header("Location: oficios_visualizar.php?id=$id");
-                exit();
-            } else {
-                $error = "Erro ao mover o arquivo para o diretório de destino.";
+                if (in_array($ext, $allowed)) {
+                    $new_name = "OFI_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
+                    if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
+                        $caminho = $upload_dir . $new_name;
+                        if ($success_count === 0) $first_file_path = $caminho;
+
+                        // Inserir na nova tabela de anexos
+                        $stmt_anexo = $pdo->prepare("INSERT INTO oficio_anexos (oficio_id, caminho, tipo, nome_original) VALUES (?, ?, 'OFICIO', ?)");
+                        $stmt_anexo->execute([$id, $caminho, $file_name]);
+                        $success_count++;
+                    }
+                }
             }
         }
+
+        if ($success_count > 0) {
+            // Atualizar o campo original na tabela oficios (retrocompatibilidade)
+            $stmt_upd = $pdo->prepare("UPDATE oficios SET arquivo_oficio = ? WHERE id = ?");
+            $stmt_upd->execute([$first_file_path, $id]);
+
+            log_action($pdo, "ANEXAR_OFICIO", "$success_count arquivo(s) anexado(s) à solicitação " . $oficio['numero']);
+            flash_message('success', "$success_count documento(s) anexado(s) com sucesso!");
+            header("Location: oficios_visualizar.php?id=$id");
+            exit();
+        } else {
+            $error = "Nenhum arquivo válido foi enviado ou ocorreu um erro no upload.";
+        }
     } else {
-        $error = "Selecione um arquivo válido para anexar.";
+        $error = "Selecione pelo menos um arquivo válido para anexar.";
     }
 }
 
@@ -74,14 +86,14 @@ include 'views/layout/header.php';
 
         <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 2rem;">
             <div class="form-group">
-                <label class="form-label">Selecione o arquivo (PDF, JPG, PNG)</label>
-                <input type="file" name="arquivo_oficio" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
-                <small class="text-muted">Este documento será anexado aos "Ofícios de solicitações das aquisições".</small>
+                <label class="form-label">Selecione o(s) arquivo(s) (PDF, JPG, PNG)</label>
+                <input type="file" name="arquivo_oficio[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required multiple>
+                <small class="text-muted">Você pode selecionar múltiplos arquivos. Eles serão anexados aos "Ofícios de solicitações das aquisições".</small>
             </div>
 
             <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; text-align: right;">
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Salvar Anexo
+                    <i class="fas fa-save"></i> Salvar Anexo(s)
                 </button>
             </div>
         </form>
