@@ -160,6 +160,6 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=9"></script>
+<script src="assets/js/script.js?v=10"></script>
 </body>
 </html>

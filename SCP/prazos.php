@@ -205,7 +205,7 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=9"></script>
+<script src="assets/js/script.js?v=10"></script>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const listPrazos = document.getElementById('lista-prazos');
@@ -412,11 +412,13 @@ if (!isset($_SESSION['usuario_id'])) {
                     <td style="font-weight: 700; color: ${corPrazo};">${labelPrazo}</td>
                     <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
                     <td>
-                        <span class="badge badge-${p.status.toLowerCase()}">${p.status}</span>
-                        ${p.status === 'PROTOCOLADO' ? `
+                        <span class="badge badge-${p.status.toLowerCase().trim()}">${p.status.trim()}</span>
+                        ${p.status.toUpperCase().trim() === 'PROTOCOLADO' ? `
                             <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
-                                <i class="fas fa-calendar-check" style="color: var(--status-protocolado);"></i> ${formatarData(p.data_protocolo)}<br>
-                                <i class="fas fa-user-edit" style="color: var(--status-protocolado);"></i> ${p.protocolista || p.peticionador || 'N/A'}
+                                ${(p.data_protocolo || p.protocolista || p.peticionador) ? `
+                                    <i class="fas fa-calendar-check" style="color: var(--status-protocolado);"></i> ${formatarData(p.data_protocolo)}<br>
+                                    <i class="fas fa-user-edit" style="color: var(--status-protocolado);"></i> ${p.protocolista || p.peticionador || 'N/A'}
+                                ` : `<i class="fas fa-info-circle"></i> Sem registro de detalhes`}
                             </div>
                         ` : ''}
                     </td>
