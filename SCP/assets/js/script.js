@@ -786,6 +786,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.marcarSendoAvaliado = async (id) => {
+        const resp = await fetch('api.php?acao=listar');
+        const dados = await resp.json();
+        const p = dados.find(x => x.id == id);
+        if (!p) return;
+        p.status = 'SENDO AVALIADO';
+        const saveResp = await fetch('api.php?acao=salvar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+        });
+        if (saveResp.ok) window.location.reload();
+    };
+
+    window.marcarEmElaboracao = async (id) => {
+        const resp = await fetch('api.php?acao=listar');
+        const dados = await resp.json();
+        const p = dados.find(x => x.id == id);
+        if (!p) return;
+        p.status = 'EM ELABORAÇÃO';
+        const saveResp = await fetch('api.php?acao=salvar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+        });
+        if (saveResp.ok) window.location.reload();
+    };
+
+    window.marcarFinalizado = async (id) => {
+        const resp = await fetch('api.php?acao=listar');
+        const dados = await resp.json();
+        const p = dados.find(x => x.id == id);
+        if (!p) return;
+        p.status = 'PROCESSO FINALIZADO';
+        // Processo finalizado é similar ao protocolado/analisado na lógica de registro
+        p.data_analise = new Date().toISOString().split('T')[0]; 
+        const saveResp = await fetch('api.php?acao=salvar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+        });
+        if (saveResp.ok) window.location.reload();
+    };
+
     window.peticionarProcesso = async (id) => {
         const resp = await fetch('api.php?acao=listar');
         const dados = await resp.json();
