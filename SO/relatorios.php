@@ -990,7 +990,7 @@ include 'views/layout/header.php';
 
                                 <tr class="total-row-main">
                                     <td class="text-nowrap">TOTAL GERAL</td>
-                                    <td class="td-right text-nowrap"><?php echo number_format($total_qtd_geral, 2, ',', '.'); ?></td>
+                                    <td class="td-right text-nowrap"><?php echo number_format((int)$total_qtd_geral, 0, ',', '.'); ?></td>
                                     <td class="td-right text-nowrap"><?php echo format_money($total_geral); ?></td>
                                     <td class="no-print"></td>
                                 </tr>
