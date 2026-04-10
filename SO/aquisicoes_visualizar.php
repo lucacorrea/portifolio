@@ -451,9 +451,9 @@ include 'views/layout/header.php';
                             <th style="text-align: center; width: 40px;">Item</th>
                             <th style="text-align: center; width: 50px;">Unid.</th>
                             <th style="text-align: center; width: 60px;">Qtd</th>
-                            <th style="text-align: left;">Especificação Completa</th>
-                            <th style="text-align: right; width: 110px;">Preço Unitário</th>
-                            <th style="text-align: right; width: 110px;">Valor Total</th>
+                            <th style="text-align: center;">Especificação Completa</th>
+                            <th style="text-align: center; width: 110px;">Preço Unitário</th>
+                            <th style="text-align: center; width: 110px;">Valor Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -464,8 +464,8 @@ include 'views/layout/header.php';
                                 <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
                                 <td style="text-align: center; font-weight: 700;"><?php echo number_format($item['quantidade'], 0, ',', '.'); ?></td>
                                 <td style="font-weight: 600;"><?php echo strtoupper($item['produto']); ?></td>
-                                <td style="text-align: right;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
-                                <td style="text-align: right; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
+                                <td style="text-align: center;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
+                                <td style="text-align: center; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -550,9 +550,9 @@ include 'views/layout/header.php';
                             <th style="text-align: center; width: 40px;">Item</th>
                             <th style="text-align: center; width: 50px;">Unid.</th>
                             <th style="text-align: center; width: 60px;">Qtd</th>
-                            <th style="text-align: left;">Especificação Completa</th>
-                            <th style="text-align: right; width: 110px;">Preço Unitário</th>
-                            <th style="text-align: right; width: 110px;">Valor Total</th>
+                            <th style="text-align: center;">Especificação Completa</th>
+                            <th style="text-align: center; width: 110px;">Preço Unitário</th>
+                            <th style="text-align: center; width: 110px;">Valor Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -563,8 +563,8 @@ include 'views/layout/header.php';
                                 <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
                                 <td style="text-align: center; font-weight: 700;"><?php echo number_format($item['quantidade'], 0, ',', '.'); ?></td>
                                 <td style="font-weight: 600;"><?php echo strtoupper($item['produto']); ?></td>
-                                <td style="text-align: right;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
-                                <td style="text-align: right; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
+                                <td style="text-align: center;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
+                                <td style="text-align: center; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
