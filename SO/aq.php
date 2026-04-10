@@ -947,9 +947,6 @@ $dataAtualBr  = date('d / m / Y');
             const fornecedor = maiusculo(valor('fornecedor'));
             const secretaria = maiusculo(valor('secretaria'));
             const oficio = valor('oficio_num') || '-';
-            const responsavel = maiusculo(valor('sec_responsavel'));
-            const fornecedorCnpj = valor('fornecedor_cnpj') || '-';
-            const fornecedorContato = valor('fornecedor_contato') || '-';
             const textoEntrega = valor('texto_entrega') || '-';
 
             document.getElementById('pv_numero_1').textContent = numeroCurto;
@@ -972,10 +969,7 @@ $dataAtualBr  = date('d / m / Y');
             document.getElementById('pv_oficio_1').textContent = oficio;
             document.getElementById('pv_oficio_2').textContent = oficio;
 
-            document.getElementById('pv_responsavel_1').textContent = responsavel;
 
-            document.getElementById('pv_cnpj_fornecedor_1').textContent = fornecedorCnpj;
-            document.getElementById('pv_contato_fornecedor_1').textContent = fornecedorContato;
 
             document.getElementById('pv_texto_entrega').textContent = textoEntrega;
 
