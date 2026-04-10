@@ -585,10 +585,7 @@ $dataAtualBr  = date('d / m / Y');
                     <input type="text" id="secretaria" placeholder="Ex: Secretaria Municipal de Saúde" oninput="atualizarPreview()">
                 </div>
 
-                <div class="field span-2">
-                    <label>Responsável</label>
-                    <input type="text" id="sec_responsavel" placeholder="Nome do responsável" oninput="atualizarPreview()">
-                </div>
+                
 
                 <div class="field span-4">
                     <label>Texto da observação da via do fornecedor</label>
