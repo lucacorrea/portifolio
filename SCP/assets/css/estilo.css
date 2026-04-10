@@ -807,19 +807,222 @@ input:focus, select:focus {
     border: 1px dashed #cbd5e1;
     border-radius: 4px;
     margin-top: 0.25rem;
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.page-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+
+/* Dropdown Actions */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-dots {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.btn-dots:hover {
+    background: #f1f5f9;
+    color: var(--text-main);
+}
+
+.dropdown-menu {
+    display: none;
+    background-color: white;
+    min-width: 220px;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.dropdown-menu-fixed {
+    animation: fadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+    color: var(--text-main);
+    padding: 10px 16px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.dropdown-item:hover {
+    background-color: #f1f5f9;
+}
+
+.dropdown-item:hover i {
+    color: var(--primary);
+}
+
+.dropdown-item.text-danger:hover {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.dropdown-item.text-danger:hover i {
+    color: #ef4444;
+}
+
+.modal-header-classic {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+}
+
+.btn-quick-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px; /* quadrado em vez de redondo */
+}
+.btn-quick-close:hover { 
+    color: #0f172a; 
+    background: #f1f5f9;
+}
+
+.modal-body-split {
+    display: flex;
+    gap: 3rem;
+    padding: 2rem;
+    background: #ffffff;
+}
+
+.split-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.split-col.right-col {
+    border-left: 1px solid #e2e8f0;
+    padding-left: 2rem;
+}
+
+.split-title {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+    margin-top: 0;
+}
+
+.split-item {
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.split-item.flex-between {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.split-item.flex-row {
+    flex-direction: row;
+    gap: 2rem;
+}
+
+.split-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.split-item.flex-between .split-label {
+    margin-bottom: 0;
+    text-transform: none;
+    font-size: 0.85rem;
+}
+
+.split-value {
+    font-size: 0.95rem;
+    color: #1e293b;
+    font-weight: 700;
+}
+
+.split-obs {
+    font-size: 0.85rem;
+    color: #475569;
+    padding: 1rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    margin-top: 0.25rem;
 }
 
 .split-status-badge {
-    display: inline-block;
-    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
     border-radius: 4px;
     font-size: 0.7rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
     color: white;
 }
 
 @media (max-width: 768px) {
-    .modal-body-split { grid-template-columns: 1fr; gap: 1.5rem; }
+    .modal-body-split { flex-direction: column; gap: 1.5rem; }
+    .split-col.right-col { border-left: none; padding-left: 0; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; }
     .split-item.flex-row { flex-direction: column; gap: 0.75rem; }
 }
