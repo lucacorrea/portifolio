@@ -379,13 +379,23 @@ class TransferenciasController extends BaseController {
                 "UPDATE erp_transferencias_itens SET quantidade_recebida = ? WHERE transferencia_id = ? AND produto_id = ?"
             );
 
+            // Busca ocorrências relatadas para subtrair
+            $stmtOc = $this->pdo->prepare("SELECT SUM(quantidade_problema) as total FROM erp_transferencias_ocorrencias WHERE transferencia_id = ? AND produto_id = ?");
+
             foreach ($itens->fetchAll() as $item) {
-                $qtd = $item['quantidade_enviada'];
-                if ($qtd > 0) {
-                    $stmtUpdItem->execute([$qtd, $transf_id, $item['produto_id']]);
-                    try {
-                        $stmtInc->execute([$item['produto_id'], $this->filialLogada, $qtd, $qtd]);
-                    } catch (\Exception $ex) { /* silent */ }
+                $stmtOc->execute([$transf_id, $item['produto_id']]);
+                $qtdProblema = (float)($stmtOc->fetchColumn() ?: 0);
+                
+                $qtdFinal = $item['quantidade_enviada'] - $qtdProblema;
+                if ($qtdFinal < 0) $qtdFinal = 0;
+
+                if ($item['quantidade_enviada'] > 0) {
+                    $stmtUpdItem->execute([$qtdFinal, $transf_id, $item['produto_id']]);
+                    if ($qtdFinal > 0) {
+                        try {
+                            $stmtInc->execute([$item['produto_id'], $this->filialLogada, $qtdFinal, $qtdFinal]);
+                        } catch (\Exception $ex) { /* silent */ }
+                    }
                 }
             }
 
@@ -446,7 +456,8 @@ class TransferenciasController extends BaseController {
     public function getTransferItems() {
         $transf_id = (int)($_GET['id'] ?? 0);
         
-        $sql = "SELECT ti.*, p.nome, p.codigo 
+        $sql = "SELECT ti.*, p.nome, p.codigo, 
+                (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
                 JOIN produtos p ON ti.produto_id = p.id 
                 WHERE ti.transferencia_id = ?";
