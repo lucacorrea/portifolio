@@ -403,12 +403,16 @@ class TransferenciasController extends BaseController {
 
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
         $mensagem  = trim($_POST['mensagem'] ?? '');
+        $itens_problema = $_POST['ocorrencias'] ?? [];
 
-        if (empty($mensagem)) {
-            $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode('O relato não pode estar vazio.'));
+        if (empty($itens_problema) && empty($mensagem)) {
+            $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode('Informe ao menos um item com problema ou uma mensagem descritiva.'));
         }
 
         try {
+            $this->pdo->beginTransaction();
+
+            // 1. Atualiza mestre
             $stmt = $this->pdo->prepare(
                 "UPDATE erp_transferencias 
                  SET tem_problema = 1, relato_problema = ?, data_relato = NOW(), problema_resolvido = 0
@@ -416,11 +420,42 @@ class TransferenciasController extends BaseController {
             );
             $stmt->execute([$mensagem, $transf_id, $this->filialLogada]);
 
-            setFlash('success', 'Problema relatado com sucesso. A Matriz foi notificada.');
+            // 2. Registra ocorrências por item
+            $stmtOc = $this->pdo->prepare(
+                "INSERT INTO erp_transferencias_ocorrencias (transferencia_id, produto_id, quantidade_problema, motivo, descricao)
+                 VALUES (?, ?, ?, ?, ?)"
+            );
+
+            foreach ($itens_problema as $produto_id => $oc) {
+                if (!empty($oc['selecionado']) && $oc['quantidade'] > 0) {
+                    $stmtOc->execute([$transf_id, $produto_id, $oc['quantidade'], $oc['motivo'] ?? 'defeito', $oc['descricao'] ?? '']);
+                }
+            }
+
+            $this->pdo->commit();
+            setFlash('success', 'Problema detalhado relatado com sucesso. A Matriz foi notificada.');
             $this->redirect('transferencias.php?aba=em_transito');
         } catch (\Exception $e) {
+            $this->pdo->rollBack();
             $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode($e->getMessage()));
         }
+    }
+
+    public function getTransferItems() {
+        $transf_id = (int)($_GET['id'] ?? 0);
+        
+        $sql = "SELECT ti.*, p.nome, p.codigo 
+                FROM erp_transferencias_itens ti 
+                JOIN produtos p ON ti.produto_id = p.id 
+                WHERE ti.transferencia_id = ?";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$transf_id]);
+        $items = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'items' => $items]);
+        exit;
     }
 
     public function resolverProblema() {
