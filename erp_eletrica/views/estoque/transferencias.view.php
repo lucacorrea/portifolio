@@ -421,18 +421,16 @@
                                         </li>
                                     <?php endif; endforeach; ?>
                                 </ul>
-                                <form action="transferencias.php?action=confirmar_recebimento" method="POST"
-                                      onsubmit="return confirm('ATENÇÃO: Isso dará entrada imediata no seu estoque e finalizará a transferência. Confirmar que a mercadoria chegou fisicamente?');">
-                                    <input type="hidden" name="transferencia_id" value="<?= $et['id'] ?>">
-                                    <div class="d-flex gap-2">
-                                        <button type="submit" class="btn btn-success fw-bold flex-grow-1 py-2">
-                                            <i class="fas fa-box-open me-2"></i>Confirmar Chegada e Internalizar Estoque
-                                        </button>
-                                        <button type="button" class="btn btn-outline-danger py-2 px-3" onclick="abrirModalRelato(<?= $et['id'] ?>, '<?= htmlspecialchars($et['codigo_transferencia']) ?>')">
-                                            <i class="fas fa-exclamation-triangle"></i>
-                                        </button>
-                                    </div>
-                                </form>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-<?= $et['tem_problema'] ? 'warning' : 'success' ?> fw-bold flex-grow-1 py-2" 
+                                            onclick="abrirResumoRecebimento(<?= $et['id'] ?>, '<?= htmlspecialchars($et['codigo_transferencia']) ?>', <?= $et['tem_problema'] ? 'true' : 'false' ?>)">
+                                        <i class="fas fa-box-open me-2"></i>
+                                        <?= $et['tem_problema'] ? 'Confirmar Recebimento com Ressalvas' : 'Confirmar Chegada e Internalizar Estoque' ?>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger py-2 px-3" onclick="abrirModalRelato(<?= $et['id'] ?>, '<?= htmlspecialchars($et['codigo_transferencia']) ?>')">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -667,9 +665,96 @@ function abrirModalRelato(id, codigo) {
 function toggleItemRelato(chk, id) {
     document.getElementById(`campos_oc_${id}`).classList.toggle('d-none', !chk.checked);
 }
+
+let resumoModalInstance = null;
+function abrirResumoRecebimento(id, codigo, temProblema) {
+    document.getElementById('resumo_transf_id').value = id;
+    document.getElementById('resumo_codigo').innerText = codigo;
+    
+    const container = document.getElementById('resumoItensContainer');
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>';
+
+    fetch(`transferencias.php?action=get_items&id=${id}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                let html = `
+                    <table class="table table-sm extra-small mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produto</th>
+                                <th class="text-center">Enviado</th>
+                                <th class="text-center">Problema</th>
+                                <th class="text-center bg-success bg-opacity-10">A Estocar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                data.items.forEach(item => {
+                    const enviada = parseFloat(item.quantidade_enviada);
+                    const problema = parseFloat(item.quantidade_problema || 0);
+                    const final = Math.max(0, enviada - problema);
+                    
+                    html += `
+                        <tr>
+                            <td>${item.nome}</td>
+                            <td class="text-center">${enviada.toFixed(2)}</td>
+                            <td class="text-center ${problema > 0 ? 'text-danger fw-bold' : 'text-muted'}">${problema.toFixed(2)}</td>
+                            <td class="text-center fw-bold text-success bg-success bg-opacity-10">${final.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            }
+        });
+
+    const modalEl = document.getElementById('modalResumoRecebimento');
+    if (!resumoModalInstance) {
+        resumoModalInstance = new bootstrap.Modal(modalEl);
+    }
+    resumoModalInstance.show();
+}
 </script>
 
 <?php if (!$isMatriz): ?>
+<!-- Modal Resumo de Recebimento -->
+<div class="modal fade" id="modalResumoRecebimento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <form action="transferencias.php?action=confirmar_recebimento" method="POST">
+                <div class="modal-header bg-primary text-white border-0">
+                    <h6 class="modal-title fw-bold"><i class="fas fa-clipboard-check me-2"></i>Resumo do Recebimento de Estoque</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" name="transferencia_id" id="resumo_transf_id">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Confira abaixo o que será internalizado. O sistema calculou automaticamente a diferença baseada nos seus relatos de problemas.
+                    </div>
+                    
+                    <p class="small mb-2">Pedido: <strong id="resumo_codigo"></strong></p>
+                    
+                    <div id="resumoItensContainer" class="border rounded bg-white overflow-hidden">
+                        <!-- Itens calculados via JS -->
+                    </div>
+
+                    <div class="mt-3 text-center text-muted extra-small">
+                        Ao confirmar, o saldo "A Estocar" será adicionado imediatamente ao estoque da sua filial.
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3 pt-0">
+                    <button type="button" class="btn btn-light btn-sm fw-bold text-muted px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold px-4">Confirmar Entrada no Estoque</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Relatar Problema (Global para Filial) -->
 <div class="modal fade" id="modalRelato" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
