@@ -270,12 +270,15 @@
                                 </td>
                             </tr>
                             <?php if ($he['tem_problema']): ?>
-                            <tr class="table-danger bg-opacity-10">
+                            <tr class="<?= $he['problema_resolvido'] ? 'table-light' : 'table-danger bg-opacity-10' ?>">
                                 <td colspan="4">
                                     <div class="p-2 small">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
-                                                <strong class="text-danger"><i class="fas fa-comment-dots me-2"></i>Relatos do Recebimento:</strong>
+                                                <strong class="<?= $he['problema_resolvido'] ? 'text-success' : 'text-danger' ?>">
+                                                    <i class="fas <?= $he['problema_resolvido'] ? 'fa-check-double' : 'fa-comment-dots' ?> me-2"></i>
+                                                    <?= $he['problema_resolvido'] ? 'Ocorrência Resolvida:' : 'Relatos do Recebimento:' ?>
+                                                </strong>
                                             </div>
                                             <?php if (!$he['problema_resolvido']): ?>
                                                 <button type="button" class="btn btn-sm btn-outline-success py-0" style="font-size: 0.7rem"
