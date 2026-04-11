@@ -84,6 +84,16 @@ class TransferenciasController extends BaseController {
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                         UNIQUE KEY uk_produto_filial (produto_id, filial_id)
                     );
+                    CREATE TABLE IF NOT EXISTS erp_transferencias_ocorrencias (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        transferencia_id INT NOT NULL,
+                        produto_id INT NOT NULL,
+                        quantidade_problema DECIMAL(10,3) NOT NULL,
+                        motivo VARCHAR(100) DEFAULT 'defeito',
+                        descricao TEXT,
+                        data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        KEY idx_transf (transferencia_id)
+                    );
                     INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
                     SELECT id, $mid, quantidade, estoque_minimo FROM produtos;
                 ");
