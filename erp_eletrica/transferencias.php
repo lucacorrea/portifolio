@@ -27,13 +27,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'resolver_problema':
             $controller->resolverProblema();
             break;
+        default:
+            $controller->index();
+    }
+} else {
+    switch ($action) {
         case 'get_items':
             $controller->getTransferItems();
             break;
         default:
             $controller->index();
     }
-} else {
-    $controller->index();
 }
 exit;
