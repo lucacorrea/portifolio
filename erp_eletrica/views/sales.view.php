@@ -123,51 +123,33 @@
                             </label>
                         </div>
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_credito" value="cartao_credito">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_credito">
-                                <i class="fas fa-credit-card me-2 text-primary"></i> Cartão Crédito (F6)
-                            </label>
-                        </div>
-                        <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_cheque" value="cheque">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_cheque">
-                                <i class="fas fa-money-check-alt me-2 text-secondary"></i> Cheque (F3)
-                            </label>
-                        </div>
-                        <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_devolucao" value="devolucao">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_devolucao">
-                                <i class="fas fa-undo me-2 text-danger"></i> Devolução (F5)
-                            </label>
-                        </div>
-                        <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_pix" value="pix">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_pix">
                                 <i class="fa-brands fa-pix me-2 text-info"></i> Pix (Ctrl+F1)
                             </label>
                         </div>
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_fiado">
-                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> Crediário (F8)
+                            <input type="radio" class="btn-check" name="payment" id="pay_credito" value="cartao_credito">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_credito">
+                                <i class="fas fa-credit-card me-2 text-primary"></i> Crédito (F6)
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_debito" value="cartao_debito">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_debito">
-                                <i class="fas fa-credit-card me-2 text-info"></i> Cartão Débito (F7)
+                                <i class="fas fa-credit-card me-2 text-info"></i> Débito (F7)
                             </label>
                         </div>
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_voucher" value="cartao_voucher">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_voucher">
-                                <i class="fas fa-ticket-alt me-2 text-primary"></i> Cartão Voucher (F11)
+                            <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_boleto">
+                                <i class="fas fa-barcode me-2 text-secondary"></i> Boleto
                             </label>
                         </div>
-                        <div class="col-12">
-                            <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
-                            <label class="btn btn-outline-secondary d-block text-start p-2 border" for="pay_boleto">
-                                <i class="fas fa-barcode me-2 text-muted"></i> Boleto
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_fiado">
+                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado) (F8)
                             </label>
                         </div>
                     </div>
@@ -1355,14 +1337,6 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         document.getElementById('pay_dinheiro').click();
     }
-    if (e.key === 'F3') {
-        e.preventDefault();
-        document.getElementById('pay_cheque').click();
-    }
-    if (e.key === 'F5') {
-        e.preventDefault();
-        document.getElementById('pay_devolucao').click();
-    }
     if (e.key === 'F6') {
         e.preventDefault();
         document.getElementById('pay_credito').click();
@@ -1374,10 +1348,6 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F8') {
         e.preventDefault();
         document.getElementById('pay_fiado').click();
-    }
-    if (e.key === 'F11') {
-        e.preventDefault();
-        document.getElementById('pay_voucher').click();
     }
     
     // Pix: Ctrl+F1
