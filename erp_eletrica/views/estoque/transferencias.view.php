@@ -595,7 +595,6 @@ function initCart(formId) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
     // Tabela da Matriz (Novo Despacho)
     initB2BTable('tbodyTransf', 'searchTransf', 'paginationTransf', 'paginfoTransf', 'noResultsTransf', 6);
     initCart('formTransf');
@@ -603,6 +602,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tabela da Filial (Nova Solicitação)
     initB2BTable('tbodyReq', 'searchReq', 'paginationReq', 'paginfoReq', 'noResultsReq', 6);
     initCart('formReq');
+
+    // Clique na linha para selecionar (Global)
+    document.addEventListener('click', (e) => {
+        const tr = e.target.closest('.selectable-row');
+        if (!tr) return;
+        
+        // Se clicar diretamente num input, select ou label, não fazemos nada extra
+        if (['INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'BUTTON'].includes(e.target.tagName)) return;
+
+        const chk = tr.querySelector('input[type="checkbox"]');
+        if (chk) {
+            chk.checked = !chk.checked;
+            chk.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
 });
 
 let reportModalInstance = null;
@@ -620,10 +634,10 @@ function abrirModalRelato(id, codigo) {
                 container.innerHTML = '';
                 data.items.forEach(item => {
                     const html = `
-                        <div class="item-relato-row border-bottom py-2 mb-2">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="item-relato-row selectable-row border-bottom py-2 mb-2 px-2 rounded">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" name="ocorrencias[${item.produto_id}][selecionado]" value="1" id="chk_${item.produto_id}" onchange="toggleItemRelato(this, ${item.produto_id})">
+                                    <input type="checkbox" class="form-check-input chkItem" name="ocorrencias[${item.produto_id}][selecionado]" value="1" id="chk_${item.produto_id}" onchange="toggleItemRelato(this, ${item.produto_id})">
                                     <label class="form-check-label fw-bold small" for="chk_${item.produto_id}">${item.nome}</label>
                                     <div class="extra-small text-muted">SKU: ${item.codigo} | Enviado: ${parseFloat(item.quantidade_enviada).toFixed(2)} UN</div>
                                 </div>
