@@ -25,9 +25,7 @@ class TransferenciasController extends BaseController {
 
     private function ensureTables() {
         try {
-            $this->pdo->query("SELECT id FROM erp_transferencias LIMIT 1");
-            
-            // Check for new columns in existing table
+            // 1. Verificar colunas na tabela principal
             $cols = $this->pdo->query("DESCRIBE erp_transferencias")->fetchAll(\PDO::FETCH_COLUMN);
             if (!in_array('tem_problema', $cols)) {
                 $this->pdo->exec("ALTER TABLE erp_transferencias ADD COLUMN tem_problema TINYINT DEFAULT 0");
@@ -41,64 +39,68 @@ class TransferenciasController extends BaseController {
             if (!in_array('problema_resolvido', $cols)) {
                 $this->pdo->exec("ALTER TABLE erp_transferencias ADD COLUMN problema_resolvido TINYINT DEFAULT 0");
             }
-
         } catch (\Exception $e) {
-            if (strpos($e->getMessage(), "doesn't exist") !== false || strpos($e->getMessage(), '42S02') !== false) {
-                $mid = $this->matrizId;
-                $this->pdo->exec("
-                    CREATE TABLE IF NOT EXISTS erp_transferencias (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        codigo_transferencia VARCHAR(20) NOT NULL UNIQUE,
-                        tipo VARCHAR(50) NOT NULL DEFAULT 'transferencia',
-                        origem_filial_id INT NOT NULL,
-                        destino_filial_id INT NOT NULL,
-                        status VARCHAR(50) NOT NULL DEFAULT 'pendente',
-                        valor_total_custo DECIMAL(10,2) DEFAULT 0,
-                        observacoes TEXT,
-                        usuario_id INT NOT NULL,
-                        data_solicitacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        data_aprovacao TIMESTAMP NULL,
-                        data_envio TIMESTAMP NULL,
-                        data_recebimento TIMESTAMP NULL,
-                        tem_problema TINYINT DEFAULT 0,
-                        relato_problema TEXT,
-                        data_relato TIMESTAMP NULL,
-                        problema_resolvido TINYINT DEFAULT 0
-                    );
-                    CREATE TABLE IF NOT EXISTS erp_transferencias_itens (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        transferencia_id INT NOT NULL,
-                        produto_id INT NOT NULL,
-                        quantidade_solicitada DECIMAL(10,3) NOT NULL,
-                        quantidade_enviada DECIMAL(10,3) DEFAULT 0,
-                        quantidade_recebida DECIMAL(10,3) DEFAULT 0,
-                        valor_custo_unitario DECIMAL(10,2) DEFAULT 0
-                    );
-                    CREATE TABLE IF NOT EXISTS estoque_filiais (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        produto_id INT NOT NULL,
-                        filial_id INT NOT NULL,
-                        quantidade DECIMAL(10,3) DEFAULT 0,
-                        estoque_minimo DECIMAL(10,3) DEFAULT 0,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                        UNIQUE KEY uk_produto_filial (produto_id, filial_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS erp_transferencias_ocorrencias (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        transferencia_id INT NOT NULL,
-                        produto_id INT NOT NULL,
-                        quantidade_problema DECIMAL(10,3) NOT NULL,
-                        motivo VARCHAR(100) DEFAULT 'defeito',
-                        descricao TEXT,
-                        data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        KEY idx_transf (transferencia_id)
-                    );
-                    INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
-                    SELECT id, $mid, quantidade, estoque_minimo FROM produtos;
-                ");
-            }
+            // Tabela erp_transferencias não existe, cria do zero
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS erp_transferencias (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    codigo_transferencia VARCHAR(20) NOT NULL UNIQUE,
+                    tipo VARCHAR(50) NOT NULL DEFAULT 'transferencia',
+                    origem_filial_id INT NOT NULL,
+                    destino_filial_id INT NOT NULL,
+                    status VARCHAR(50) NOT NULL DEFAULT 'pendente',
+                    valor_total_custo DECIMAL(10,2) DEFAULT 0,
+                    observacoes TEXT,
+                    usuario_id INT NOT NULL,
+                    data_solicitacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    data_aprovacao TIMESTAMP NULL,
+                    data_envio TIMESTAMP NULL,
+                    data_recebimento TIMESTAMP NULL,
+                    tem_problema TINYINT DEFAULT 0,
+                    relato_problema TEXT,
+                    data_relato TIMESTAMP NULL,
+                    problema_resolvido TINYINT DEFAULT 0
+                )
+            ");
         }
+
+        // 2. Criar tabelas auxiliares se não existirem
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS erp_transferencias_itens (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                transferencia_id INT NOT NULL,
+                produto_id INT NOT NULL,
+                quantidade_solicitada DECIMAL(10,3) NOT NULL,
+                quantidade_enviada DECIMAL(10,3) DEFAULT 0,
+                quantidade_recebida DECIMAL(10,3) DEFAULT 0,
+                valor_custo_unitario DECIMAL(10,2) DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS erp_transferencias_ocorrencias (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                transferencia_id INT NOT NULL,
+                produto_id INT NOT NULL,
+                quantidade_problema DECIMAL(10,3) NOT NULL,
+                motivo VARCHAR(100) DEFAULT 'defeito',
+                descricao TEXT,
+                data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_transf (transferencia_id)
+            );
+            CREATE TABLE IF NOT EXISTS estoque_filiais (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                produto_id INT NOT NULL,
+                filial_id INT NOT NULL,
+                quantidade DECIMAL(10,3) DEFAULT 0,
+                estoque_minimo DECIMAL(10,3) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_produto_filial (produto_id, filial_id)
+            );
+        ");
+
+        // 3. Garantir estoque da matriz (opcional/legado)
+        $mid = $this->matrizId;
+        $this->pdo->exec("INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                          SELECT id, $mid, quantidade, estoque_minimo FROM produtos");
     }
 
     public function index() {
