@@ -594,7 +594,7 @@ function initCart(formId) {
         });
     });
 }
-
+document.addEventListener('DOMContentLoaded', () => {
     // Tabela da Matriz (Novo Despacho)
     initB2BTable('tbodyTransf', 'searchTransf', 'paginationTransf', 'paginfoTransf', 'noResultsTransf', 6);
     initCart('formTransf');
