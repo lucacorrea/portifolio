@@ -128,6 +128,12 @@ class TransferenciasController extends BaseController {
         $historico = [];
         $problemas_pendentes = 0;
 
+        // Captura filtros
+        $fCodigo = $_GET['filtro_codigo'] ?? '';
+        $fStatus = $_GET['filtro_status'] ?? '';
+        $fInicio = $_GET['filtro_inicio'] ?? '';
+        $fFim    = $_GET['filtro_fim']    ?? '';
+
         if ($this->isMatriz) {
             // Solicitações pendentes recebidas das filiais
             $recebidas = $this->pdo->query(
@@ -138,23 +144,27 @@ class TransferenciasController extends BaseController {
                  ORDER BY t.data_solicitacao DESC"
             )->fetchAll();
 
-            // Histórico de tudo que a Matriz já enviou
-            $historico_envios = $this->pdo->query(
-                "SELECT t.*, f.nome as nome_filial
-                 FROM erp_transferencias t
-                 LEFT JOIN filiais f ON t.destino_filial_id = f.id
-                 WHERE t.origem_filial_id = $mid AND t.status IN ('em_transito', 'concluida')
-                 ORDER BY t.data_envio DESC LIMIT 50"
-            )->fetchAll();
+            // Histórico de tudo que a Matriz já enviou (COM FILTRO)
+            $sqlH = "SELECT t.*, f.nome as nome_filial FROM erp_transferencias t LEFT JOIN filiais f ON t.destino_filial_id = f.id WHERE t.origem_filial_id = $mid AND t.status IN ('em_transito', 'concluida')";
+            $paramsH = [];
 
-            // Conta problemas pendentes (tem_problema = 1 e problema_resolvido = 0)
+            if ($fCodigo) { $sqlH .= " AND t.codigo_transferencia LIKE ?"; $paramsH[] = "%$fCodigo%"; }
+            if ($fStatus) { $sqlH .= " AND t.status = ?"; $paramsH[] = $fStatus; }
+            if ($fInicio) { $sqlH .= " AND DATE(t.data_envio) >= ?"; $paramsH[] = $fInicio; }
+            if ($fFim)    { $sqlH .= " AND DATE(t.data_envio) <= ?"; $paramsH[] = $fFim; }
+
+            $sqlH .= " ORDER BY t.data_envio DESC LIMIT 100";
+            $stmtH = $this->pdo->prepare($sqlH);
+            $stmtH->execute($paramsH);
+            $historico_envios = $stmtH->fetchAll();
+
+            // Conta problemas pendentes
             $problemas_pendentes = $this->pdo->query(
                 "SELECT COUNT(*) FROM erp_transferencias WHERE origem_filial_id = $mid AND tem_problema = 1 AND problema_resolvido = 0"
             )->fetchColumn();
 
         } else {
             // Em Trânsito: o que foi despachado pela Matriz para ESTA filial
-            // LEFT JOIN para não perder linhas caso a filial-origem não exista na tabela
             $stmt = $this->pdo->prepare(
                 "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial
                  FROM erp_transferencias t
@@ -165,16 +175,19 @@ class TransferenciasController extends BaseController {
             $stmt->execute([$this->filialLogada]);
             $em_transito = $stmt->fetchAll();
 
-            // Histórico completo desta filial
-            $stmt2 = $this->pdo->prepare(
-                "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial
-                 FROM erp_transferencias t
-                 LEFT JOIN filiais f ON t.origem_filial_id = f.id
-                 WHERE t.destino_filial_id = ?
-                 ORDER BY t.data_solicitacao DESC LIMIT 50"
-            );
-            $stmt2->execute([$this->filialLogada]);
-            $historico = $stmt2->fetchAll();
+            // Histórico completo desta filial (COM FILTRO)
+            $sqlF = "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial FROM erp_transferencias t LEFT JOIN filiais f ON t.origem_filial_id = f.id WHERE t.destino_filial_id = ?";
+            $paramsF = [$this->filialLogada];
+
+            if ($fCodigo) { $sqlF .= " AND t.codigo_transferencia LIKE ?"; $paramsF[] = "%$fCodigo%"; }
+            if ($fStatus) { $sqlF .= " AND t.status = ?"; $paramsF[] = $fStatus; }
+            if ($fInicio) { $sqlF .= " AND DATE(COALESCE(t.data_recebimento, t.data_solicitacao)) >= ?"; $paramsF[] = $fInicio; }
+            if ($fFim)    { $sqlF .= " AND DATE(COALESCE(t.data_recebimento, t.data_solicitacao)) <= ?"; $paramsF[] = $fFim; }
+
+            $sqlF .= " ORDER BY t.data_solicitacao DESC LIMIT 100";
+            $stmtF = $this->pdo->prepare($sqlF);
+            $stmtF->execute($paramsF);
+            $historico = $stmtF->fetchAll();
         }
 
         $this->render('estoque/transferencias', [

@@ -243,6 +243,39 @@
                         <h6 class="fw-bold">Nenhum envio registrado</h6>
                     </div>
                 <?php else: ?>
+                    <!-- Filtros Matriz -->
+                    <div class="card border-0 bg-light mb-4 shadow-sm">
+                        <div class="card-body p-3">
+                            <form method="GET" action="transferencias.php" class="row g-2 align-items-end">
+                                <input type="hidden" name="aba" value="historico_envios">
+                                <div class="col-md-3">
+                                    <label class="extra-small fw-bold text-muted">Código</label>
+                                    <input type="text" name="filtro_codigo" class="form-control form-control-sm" placeholder="Ex: ENV-..." value="<?= htmlspecialchars($_GET['filtro_codigo'] ?? '') ?>">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="extra-small fw-bold text-muted">Status</label>
+                                    <select name="filtro_status" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="em_transito" <?= ($_GET['filtro_status'] ?? '') == 'em_transito' ? 'selected' : '' ?>>Em Trânsito</option>
+                                        <option value="concluida" <?= ($_GET['filtro_status'] ?? '') == 'concluida' ? 'selected' : '' ?>>Concluída</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="extra-small fw-bold text-muted">Início</label>
+                                    <input type="date" name="filtro_inicio" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['filtro_inicio'] ?? '') ?>">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="extra-small fw-bold text-muted">Fim</label>
+                                    <input type="date" name="filtro_fim" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['filtro_fim'] ?? '') ?>">
+                                </div>
+                                <div class="col-md-3 d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary btn-sm fw-bold flex-grow-1"><i class="fas fa-filter me-1"></i>Filtrar</button>
+                                    <a href="transferencias.php?aba=historico_envios" class="btn btn-outline-secondary btn-sm fw-bold"><i class="fas fa-times"></i></a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
@@ -441,6 +474,40 @@
             <?php endif; ?>
 
             <?php if ($aba == 'historico_recebimentos'): ?>
+                <!-- Filtros Filial -->
+                <div class="card border-0 bg-light mb-4 shadow-sm">
+                    <div class="card-body p-3">
+                        <form method="GET" action="transferencias.php" class="row g-2 align-items-end">
+                            <input type="hidden" name="aba" value="historico_recebimentos">
+                            <div class="col-md-3">
+                                <label class="extra-small fw-bold text-muted">Código</label>
+                                <input type="text" name="filtro_codigo" class="form-control form-control-sm" placeholder="Buscar código..." value="<?= htmlspecialchars($_GET['filtro_codigo'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="extra-small fw-bold text-muted">Status</label>
+                                <select name="filtro_status" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    <option value="pendente" <?= ($_GET['filtro_status'] ?? '') == 'pendente' ? 'selected' : '' ?>>Pendente</option>
+                                    <option value="em_transito" <?= ($_GET['filtro_status'] ?? '') == 'em_transito' ? 'selected' : '' ?>>Em Trânsito</option>
+                                    <option value="concluida" <?= ($_GET['filtro_status'] ?? '') == 'concluida' ? 'selected' : '' ?>>Concluída</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="extra-small fw-bold text-muted">Início</label>
+                                <input type="date" name="filtro_inicio" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['filtro_inicio'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="extra-small fw-bold text-muted">Fim</label>
+                                <input type="date" name="filtro_fim" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['filtro_fim'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-3 d-flex gap-1">
+                                <button type="submit" class="btn btn-primary btn-sm fw-bold flex-grow-1"><i class="fas fa-filter me-1"></i>Filtrar</button>
+                                <a href="transferencias.php?aba=historico_recebimentos" class="btn btn-outline-secondary btn-sm fw-bold"><i class="fas fa-times"></i></a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <?php if (empty($historico)): ?>
                     <div class="text-center text-muted py-5">
                         <i class="fas fa-history fa-3x mb-3 opacity-25"></i>
