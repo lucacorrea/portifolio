@@ -26,6 +26,8 @@
     .b2b-pagination .page-btn.active { background: var(--primary-color, #0d6efd); color: white; border-color: var(--primary-color, #0d6efd); }
     .b2b-pagination .page-btn:disabled { opacity: .4; cursor: default; }
     .b2b-no-results { text-align: center; color: #94a3b8; padding: 30px 0; }
+    .selectable-row { cursor: pointer; transition: background-color 0.1s; }
+    .selectable-row:hover { background-color: rgba(var(--bs-primary-rgb), 0.05) !important; }
 </style>
 
 <?php if (isset($_GET['erro']) && $_GET['erro']): ?>
