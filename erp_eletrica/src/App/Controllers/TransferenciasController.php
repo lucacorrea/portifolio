@@ -26,6 +26,22 @@ class TransferenciasController extends BaseController {
     private function ensureTables() {
         try {
             $this->pdo->query("SELECT id FROM erp_transferencias LIMIT 1");
+            
+            // Check for new columns in existing table
+            $cols = $this->pdo->query("DESCRIBE erp_transferencias")->fetchAll(\PDO::FETCH_COLUMN);
+            if (!in_array('tem_problema', $cols)) {
+                $this->pdo->exec("ALTER TABLE erp_transferencias ADD COLUMN tem_problema TINYINT DEFAULT 0");
+            }
+            if (!in_array('relato_problema', $cols)) {
+                $this->pdo->exec("ALTER TABLE erp_transferencias ADD COLUMN relato_problema TEXT");
+            }
+            if (!in_array('data_relato', $cols)) {
+                $this->pdo->exec("ALTER TABLE erp_transferencias ADD COLUMN data_relato TIMESTAMP NULL");
+            }
+            if (!in_array('problema_resolvido', $cols)) {
+                $this->pdo->exec("ALTER TABLE erp_transferencias ADD COLUMN problema_resolvido TINYINT DEFAULT 0");
+            }
+
         } catch (\Exception $e) {
             if (strpos($e->getMessage(), "doesn't exist") !== false || strpos($e->getMessage(), '42S02') !== false) {
                 $mid = $this->matrizId;
@@ -43,7 +59,11 @@ class TransferenciasController extends BaseController {
                         data_solicitacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         data_aprovacao TIMESTAMP NULL,
                         data_envio TIMESTAMP NULL,
-                        data_recebimento TIMESTAMP NULL
+                        data_recebimento TIMESTAMP NULL,
+                        tem_problema TINYINT DEFAULT 0,
+                        relato_problema TEXT,
+                        data_relato TIMESTAMP NULL,
+                        problema_resolvido TINYINT DEFAULT 0
                     );
                     CREATE TABLE IF NOT EXISTS erp_transferencias_itens (
                         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -94,6 +114,7 @@ class TransferenciasController extends BaseController {
         $historico_envios = [];
         $em_transito = [];
         $historico = [];
+        $problemas_pendentes = 0;
 
         if ($this->isMatriz) {
             // Solicitações pendentes recebidas das filiais
@@ -113,6 +134,11 @@ class TransferenciasController extends BaseController {
                  WHERE t.origem_filial_id = $mid AND t.status IN ('em_transito', 'concluida')
                  ORDER BY t.data_envio DESC LIMIT 50"
             )->fetchAll();
+
+            // Conta problemas pendentes (tem_problema = 1 e problema_resolvido = 0)
+            $problemas_pendentes = $this->pdo->query(
+                "SELECT COUNT(*) FROM erp_transferencias WHERE origem_filial_id = $mid AND tem_problema = 1 AND problema_resolvido = 0"
+            )->fetchColumn();
 
         } else {
             // Em Trânsito: o que foi despachado pela Matriz para ESTA filial
@@ -152,6 +178,7 @@ class TransferenciasController extends BaseController {
             'historico'       => $historico,
             'pdo'             => $this->pdo,
             'matrizId'        => $this->matrizId,
+            'problemas_pendentes' => $problemas_pendentes
         ]);
     }
 
@@ -356,6 +383,53 @@ class TransferenciasController extends BaseController {
         } catch (\Exception $e) {
             $this->pdo->rollBack();
             $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode($e->getMessage()));
+        }
+    }
+
+    public function relatarProblema() {
+        if ($this->isMatriz) {
+            $this->redirect('transferencias.php?aba=em_transito&erro=Ação inválida para a Matriz.');
+        }
+
+        $transf_id = (int)($_POST['transferencia_id'] ?? 0);
+        $mensagem  = trim($_POST['mensagem'] ?? '');
+
+        if (empty($mensagem)) {
+            $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode('O relato não pode estar vazio.'));
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "UPDATE erp_transferencias 
+                 SET tem_problema = 1, relato_problema = ?, data_relato = NOW(), problema_resolvido = 0
+                 WHERE id = ? AND destino_filial_id = ?"
+            );
+            $stmt->execute([$mensagem, $transf_id, $this->filialLogada]);
+
+            setFlash('success', 'Problema relatado com sucesso. A Matriz foi notificada.');
+            $this->redirect('transferencias.php?aba=em_transito');
+        } catch (\Exception $e) {
+            $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode($e->getMessage()));
+        }
+    }
+
+    public function resolverProblema() {
+        if (!$this->isMatriz) {
+            $this->redirect('transferencias.php?erro=Acesso negado.');
+        }
+
+        $transf_id = (int)($_POST['transferencia_id'] ?? 0);
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "UPDATE erp_transferencias SET problema_resolvido = 1 WHERE id = ? AND origem_filial_id = ?"
+            );
+            $stmt->execute([$transf_id, $this->matrizId]);
+
+            setFlash('success', 'Ocorrência marcada como resolvida.');
+            $this->redirect('transferencias.php?aba=historico_envios');
+        } catch (\Exception $e) {
+            $this->redirect('transferencias.php?aba=historico_envios&erro=' . urlencode($e->getMessage()));
         }
     }
 }

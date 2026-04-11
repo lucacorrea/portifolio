@@ -62,6 +62,9 @@
                 </button>
                 <button class="tab-btn <?= $aba == 'historico_envios' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=historico_envios'">
                     <i class="fas fa-history me-2"></i>Histórico de Envios
+                    <?php if (($problemas_pendentes ?? 0) > 0): ?>
+                        <span class="badge bg-danger ms-1" title="Ocorrências não resolvidas"><?= $problemas_pendentes ?></span>
+                    <?php endif; ?>
                 </button>
             <?php else: ?>
                 <button class="tab-btn <?= $aba == 'nova_solicitacao' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_solicitacao'">
@@ -250,7 +253,12 @@
                         <tbody>
                             <?php foreach ($historico_envios as $he): ?>
                             <tr>
-                                <td><strong class="text-primary"><?= htmlspecialchars($he['codigo_transferencia']) ?></strong></td>
+                                <td>
+                                    <strong class="text-primary"><?= htmlspecialchars($he['codigo_transferencia']) ?></strong>
+                                    <?php if ($he['tem_problema']): ?>
+                                        <i class="fas fa-exclamation-triangle text-danger ms-1" title="Problema reportado"></i>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= htmlspecialchars($he['nome_filial']) ?></td>
                                 <td><?= $he['data_envio'] ? date('d/m/Y H:i', strtotime($he['data_envio'])) : '---' ?></td>
                                 <td>
@@ -259,6 +267,31 @@
                                     </span>
                                 </td>
                             </tr>
+                            <?php if ($he['tem_problema']): ?>
+                            <tr class="table-danger bg-opacity-10">
+                                <td colspan="4">
+                                    <div class="p-2 small">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong class="text-danger"><i class="fas fa-comment-dots me-2"></i>Relato da Filial:</strong>
+                                                <span class="text-dark">"<?= htmlspecialchars($he['relato_problema']) ?>"</span>
+                                                <span class="text-muted ms-2">(em <?= date('d/m/Y H:i', strtotime($he['data_relato'])) ?>)</span>
+                                            </div>
+                                            <?php if (!$he['problema_resolvido']): ?>
+                                                <form action="transferencias.php?action=resolver_problema" method="POST" class="d-inline">
+                                                    <input type="hidden" name="transferencia_id" value="<?= $he['id'] ?>">
+                                                    <button type="submit" class="btn btn-sm btn-outline-success py-0" style="font-size: 0.7rem">
+                                                        <i class="fas fa-check me-1"></i>Marcar como Resolvido
+                                                    </button>
+                                                </form>
+                                            <?php else: ?>
+                                                <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i>Resolvido</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -367,15 +400,54 @@
                                 <form action="transferencias.php?action=confirmar_recebimento" method="POST"
                                       onsubmit="return confirm('ATENÇÃO: Isso dará entrada imediata no seu estoque e finalizará a transferência. Confirmar que a mercadoria chegou fisicamente?');">
                                     <input type="hidden" name="transferencia_id" value="<?= $et['id'] ?>">
-                                    <button type="submit" class="btn btn-success fw-bold w-100 py-2">
-                                        <i class="fas fa-box-open me-2"></i>Confirmar Chegada e Dar Entrada no Estoque
-                                    </button>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-success fw-bold flex-grow-1 py-2">
+                                            <i class="fas fa-box-open me-2"></i>Confirmar Chegada e Internalizar Estoque
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger py-2 px-3" onclick="abrirModalRelato(<?= $et['id'] ?>, '<?= htmlspecialchars($et['codigo_transferencia']) ?>')">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
             <?php endif; ?>
+
+            <!-- Modal Relatar Problema -->
+            <div class="modal fade" id="modalRelato" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form action="transferencias.php?action=relatar_problema" method="POST">
+                            <div class="modal-header bg-danger text-white">
+                                <h6 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema na Entrega</h6>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" name="transferencia_id" id="relato_id">
+                                <p class="small text-muted mb-3">
+                                    Identificou falta de produtos ou avarias no pedido <strong id="relato_codigo"></strong>? 
+                                    Descreva os detalhes abaixo para que a Matriz seja notificada.
+                                </p>
+                                <textarea name="mensagem" class="form-control" rows="4" placeholder="Ex: Faltaram 2 unidades do produto X. A caixa chegou molhada..." required></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-danger btn-sm fw-bold px-3">Enviar Relato à Matriz</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function abrirModalRelato(id, codigo) {
+                    document.getElementById('relato_id').value = id;
+                    document.getElementById('relato_codigo').innerText = codigo;
+                    new bootstrap.Modal(document.getElementById('modalRelato')).show();
+                }
+            </script>
 
             <?php if ($aba == 'historico_recebimentos'): ?>
                 <?php if (empty($historico)): ?>
