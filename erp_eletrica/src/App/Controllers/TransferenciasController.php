@@ -319,7 +319,7 @@ class TransferenciasController extends BaseController {
             );
             $stmt->execute([$transf_id, $mid]);
 
-            if ($this->pdo->rowCount() === 0) {
+            if ($stmt->rowCount() === 0) {
                 throw new \Exception("Transferência não encontrada ou não pertence à Matriz.");
             }
 
