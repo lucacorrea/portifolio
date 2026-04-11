@@ -235,6 +235,7 @@ class SefazXmlService extends BaseService {
             'debito'                   => '04',
             'cartao de debito'         => '04',
             'cartao debito'            => '04',
+            'crediario'                => '05',
             'credito loja'             => '05',
             'vale alimentacao'         => '10',
             'vale refeicao'            => '11',
@@ -246,6 +247,8 @@ class SefazXmlService extends BaseService {
             'transferencia'            => '18',
             'carteira digital'         => '18',
             'programa de fidelidade'   => '19',
+            'devolucao'                => '99',
+            'cartao_voucher'           => '99',
             'sem pagamento'            => '90',
             'fiado'                    => '99',
             'outros'                   => '99'

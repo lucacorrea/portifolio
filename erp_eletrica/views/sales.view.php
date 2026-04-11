@@ -30,10 +30,10 @@
                         </div>
                         <div class="mt-3 d-flex gap-2">
                              <button class="btn btn-outline-primary fw-bold" onclick="loadPendingPreSales()">
-                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda (F8)
+                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda (F9)
                             </button>
                             <button class="btn btn-outline-info fw-bold" onclick="saveCurrentSaleAsPreSale()" id="btnPauseSale">
-                                <i class="fas fa-pause-circle me-2"></i>Pausar Venda (F7)
+                                <i class="fas fa-pause-circle me-2"></i>Pausar Venda (F10)
                             </button>
                         </div>
                     </div>
@@ -119,37 +119,55 @@
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_dinheiro" value="dinheiro" checked>
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_dinheiro">
-                                <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro
-                            </label>
-                        </div>
-                        <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_pix" value="pix">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_pix">
-                                <i class="fa-brands fa-pix me-2 text-info"></i> Pix
+                                <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro (F1)
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_credito" value="cartao_credito">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_credito">
-                                <i class="fas fa-credit-card me-2 text-primary"></i> Crédito
+                                <i class="fas fa-credit-card me-2 text-primary"></i> Cartão Crédito (F6)
                             </label>
                         </div>
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_debito" value="cartao_debito">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_debito">
-                                <i class="fas fa-credit-card me-2 text-info"></i> Débito
+                            <input type="radio" class="btn-check" name="payment" id="pay_cheque" value="cheque">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_cheque">
+                                <i class="fas fa-money-check-alt me-2 text-secondary"></i> Cheque (F3)
                             </label>
                         </div>
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_boleto">
-                                <i class="fas fa-barcode me-2 text-secondary"></i> Boleto
+                            <input type="radio" class="btn-check" name="payment" id="pay_devolucao" value="devolucao">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_devolucao">
+                                <i class="fas fa-undo me-2 text-danger"></i> Devolução (F5)
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="payment" id="pay_pix" value="pix">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_pix">
+                                <i class="fa-brands fa-pix me-2 text-info"></i> Pix (Ctrl+F1)
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_fiado">
-                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado)
+                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> Crediário (F8)
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="payment" id="pay_debito" value="cartao_debito">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_debito">
+                                <i class="fas fa-credit-card me-2 text-info"></i> Cartão Débito (F7)
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="payment" id="pay_voucher" value="cartao_voucher">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_voucher">
+                                <i class="fas fa-ticket-alt me-2 text-primary"></i> Cartão Voucher (F11)
+                            </label>
+                        </div>
+                        <div class="col-12">
+                            <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
+                            <label class="btn btn-outline-secondary d-block text-start p-2 border" for="pay_boleto">
+                                <i class="fas fa-barcode me-2 text-muted"></i> Boleto
                             </label>
                         </div>
                     </div>
@@ -1311,22 +1329,71 @@ async function issueNFCe(saleId) {
 
 // Keyboard Hotkeys
 document.addEventListener('keydown', (e) => {
+    // F2: Checkout
     if (e.key === 'F2') {
         e.preventDefault();
         btnCheckout.click();
     }
+    // F4: Search
     if (e.key === 'F4') {
         e.preventDefault();
         pdvSearch.focus();
     }
-    if (e.key === 'F8') {
+    // F9: Pre-sales (Changed from F8)
+    if (e.key === 'F9') {
         e.preventDefault();
         loadPendingPreSales();
     }
-    if (e.key === 'F7') {
+    // F10: Pause sale (Changed from F7)
+    if (e.key === 'F10') {
         e.preventDefault();
         saveCurrentSaleAsPreSale();
     }
+
+    // Payment Shortcuts
+    if (e.key === 'F1') {
+        e.preventDefault();
+        document.getElementById('pay_dinheiro').click();
+    }
+    if (e.key === 'F3') {
+        e.preventDefault();
+        document.getElementById('pay_cheque').click();
+    }
+    if (e.key === 'F5') {
+        e.preventDefault();
+        document.getElementById('pay_devolucao').click();
+    }
+    if (e.key === 'F6') {
+        e.preventDefault();
+        document.getElementById('pay_credito').click();
+    }
+    if (e.key === 'F7') {
+        e.preventDefault();
+        document.getElementById('pay_debito').click();
+    }
+    if (e.key === 'F8') {
+        e.preventDefault();
+        document.getElementById('pay_fiado').click();
+    }
+    if (e.key === 'F11') {
+        e.preventDefault();
+        document.getElementById('pay_voucher').click();
+    }
+    
+    // Pix: Ctrl+F1
+    if (e.key === 'F1' && e.ctrlKey) {
+        e.preventDefault();
+        document.getElementById('pay_pix').click();
+    }
+
+    // Discount: Ctrl+F12
+    if (e.key === 'F12' && e.ctrlKey) {
+        e.preventDefault();
+        const discountInput = document.getElementById('discountPercent');
+        discountInput.focus();
+        discountInput.select();
+    }
+
     if (e.key === 'Escape') {
         searchResults.classList.add('d-none');
     }
